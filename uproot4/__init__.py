@@ -2,5 +2,6 @@
 
 from __future__ import absolute_import
 
+
 def stuff():
     return "This is a test."
