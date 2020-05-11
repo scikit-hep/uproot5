@@ -22,18 +22,23 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          activate-environment: testing
 
       - name: dependencies
         run: |
-          conda install --file requirements.txt
-          conda install --file requirements-test.txt
+          conda activate testing
+          conda install --file requirements.txt requirements-test.txt
           conda list
 
       - name: flake8
         run: |
+          conda activate testing
+          conda env list
           python -m flake8 uproot4 --count --select=E9,F63,F7,F82 --show-source --statistics
           python -m flake8 uproot4 --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
 
       - name: pytest
         run: |
+          conda activate testing
+          conda env list
           python -m pytest -vv tests
