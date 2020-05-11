@@ -31,9 +31,9 @@ jobs:
 
       - name: flake8
         run: |
-          flake8 uproot4 --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 uproot4 --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+          python -m flake8 uproot4 --count --select=E9,F63,F7,F82 --show-source --statistics
+          python -m flake8 uproot4 --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
 
       - name: pytest
         run: |
-          pytest -vv tests
+          python -m pytest -vv tests
