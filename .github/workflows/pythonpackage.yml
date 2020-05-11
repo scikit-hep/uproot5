@@ -22,9 +22,12 @@ jobs:
         with:
           auto-update-conda: true
 
-      - name: dependencies
+      - name: create environment
         run: |
           conda create -n testing python=${{ matrix.python-version }}
+
+      - name: install dependencies
+        run: |
           conda activate testing
           conda env list
           conda install --file requirements.txt requirements-test.txt
