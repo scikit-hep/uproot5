@@ -26,6 +26,8 @@ jobs:
         run: |
           conda create -n testing python=${{ matrix.python-version }}
           conda init bash
+          conda config --add channels conda-forge
+          conda info
 
       - name: install dependencies
         shell: "bash -l {0}"
