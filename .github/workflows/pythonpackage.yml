@@ -21,12 +21,12 @@ jobs:
         uses: goanpeca/setup-miniconda@v1
         with:
           auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
-          activate-environment: testing
 
       - name: dependencies
         run: |
+          conda create -n testing python=${{ matrix.python-version }}
           conda activate testing
+          conda env list
           conda install --file requirements.txt requirements-test.txt
           conda list
 
