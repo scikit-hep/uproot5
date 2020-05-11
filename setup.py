@@ -1,6 +1,7 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
 
 from setuptools import setup
+from setuptools import find_packages
 
 install_requires = open("requirements.txt").read().strip().split()
 
@@ -10,7 +11,8 @@ extras["all"] = sum(extras.values(), [])
 tests_require = extras["test"]
 
 setup(name = "uproot4",
-      packages = setuptools.find_packages(),
+      packages = find_packages(exclude = ["tests"]),
+      scripts = [],
       version = open("VERSION_INFO").read().strip(),
       author = "Jim Pivarski",
       author_email = "pivarski@princeton.edu",
