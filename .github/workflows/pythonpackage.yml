@@ -25,6 +25,7 @@ jobs:
       - name: create environment
         run: |
           conda create -n testing python=${{ matrix.python-version }}
+          conda init
 
       - name: install dependencies
         run: |
