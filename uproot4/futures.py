@@ -70,7 +70,7 @@ class ResourceExecutor(object):
 
 
 class TaskFuture(object):
-    def __init__(self, task, args, kwargs):
+    def __init__(self, task, *args, **kwargs):
         self._task = task
         self._args = args
         self._kwargs = kwargs
@@ -167,7 +167,7 @@ class ThreadResourceExecutor(object):
             thread.resource.__exit__(exception_type, exception_value, traceback)
 
     def submit(self, fn, *args, **kwargs):
-        task = TaskFuture(fn, args, kwargs)
+        task = TaskFuture(fn, *args, **kwargs)
         self._work_queue.put(task)
         return task
 

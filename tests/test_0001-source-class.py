@@ -4,6 +4,9 @@ from __future__ import absolute_import
 
 import sys
 import os
+from http.client import HTTPConnection
+from http.client import HTTPSConnection
+from urllib.parse import urlparse
 
 try:
     from io import StringIO
@@ -14,7 +17,10 @@ import numpy
 
 import uproot4
 import uproot4.futures
-import uproot4.source.source
+import uproot4.source.cursor
+import uproot4.source.chunk
+import uproot4.source.file
+import uproot4.source.http
 
 
 def test_source(tmpdir):
@@ -24,11 +30,12 @@ def test_source(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     for num_workers in [1, 2]:
-        source = uproot4.source.source.FileSource(filename, num_workers=num_workers)
+        source = uproot4.source.file.FileSource(filename, num_workers=num_workers)
         assert not source.ready
 
         with source as tmp:
             assert source.ready
+            assert tmp.ready
             chunks = tmp.chunks(
                 [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
             )
@@ -56,8 +63,8 @@ def test_debug():
     )
     future = uproot4.futures.TrivialFuture(data)
 
-    chunk = uproot4.source.source.Chunk(None, 0, len(data), future)
-    cursor = uproot4.source.source.Cursor(0)
+    chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future)
+    cursor = uproot4.source.cursor.Cursor(0)
 
     output = StringIO()
     cursor.debug(chunk, offset=3, dtype=">f4", stream=output)
@@ -93,3 +100,26 @@ def test_debug():
 --- --- ---   C   J --- ---   C --- --- ---   {   {
 """
     )
+
+
+def test_http():
+    url = "https://example.com"
+    parsed_url = urlparse(url)
+    if parsed_url.scheme == "https":
+        connection = HTTPSConnection(parsed_url.netloc)
+    elif parsed_url.scheme == "http":
+        connection = HTTPConnection(parsed_url.netloc)
+
+    source = uproot4.source.http.MultipartSource(url, parsed_url, connection)
+    assert not source.ready
+
+    with source as tmp:
+        assert source.ready
+        assert tmp.ready
+
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        assert len(chunks[0].raw_data) == 100
+        assert len(chunks[1].raw_data) == 5
+        assert len(chunks[2].raw_data) == 200
+
+    assert not source.ready
