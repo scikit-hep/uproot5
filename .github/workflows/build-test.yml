@@ -42,7 +42,7 @@ jobs:
         run: |
           conda activate testing
           conda env list
-          python -m flake8 uproot4 --count --exit-zero --max-complexity=20 --max-line-length=88 --statistics
+          python -m flake8
 
       - name: pytest
         shell: "bash -l {0}"

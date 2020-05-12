@@ -295,40 +295,44 @@ of file path {2}""".format(
     )
 
     def debug(
-        self,
-        chunk,
-        limit_bytes=None,
-        dtype=numpy.dtype(">i4"),
-        offset=0,
-        stream=sys.stdout,
+        self, chunk, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout,
     ):
         data = chunk.remainder(self._index)
         if limit_bytes is not None:
             data = data[:limit_bytes]
 
-        if not isinstance(dtype, numpy.dtype):
-            dtype = numpy.dtype(dtype)
+        if dtype is not None:
+            if not isinstance(dtype, numpy.dtype):
+                dtype = numpy.dtype(dtype)
 
-        interpreted = [None] * len(data)
-        i = offset
-        interpreted_length = ((len(data) - offset) // dtype.itemsize) * dtype.itemsize
-        for x in data[offset:offset + interpreted_length].view(dtype):
-            i += dtype.itemsize
-            interpreted[i - 1] = x
+            interpreted = [None] * len(data)
+            i = offset
+            interpreted_length = (
+                (len(data) - offset) // dtype.itemsize
+            ) * dtype.itemsize
+            for x in data[offset : offset + interpreted_length].view(dtype):
+                i += dtype.itemsize
+                interpreted[i - 1] = x
 
-        formatter = u"{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
+            formatter = u"{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
+
         for line_start in range(0, int(numpy.ceil(len(data) / 20.0)) * 20, 20):
-            line_data = data[line_start:line_start + 20]
-            nones = 0
-            for x in interpreted[line_start:]:
-                if x is None:
-                    nones += 1
-                else:
-                    break
-            fill = max(0, dtype.itemsize - 1 - nones)
-            line_interpreted = [None] * fill + interpreted[line_start:line_start + 20]
-            prefix = u"    " * fill
-            interpreted_prefix = u"    " * (fill + nones + 1 - dtype.itemsize)
+            line_data = data[line_start : line_start + 20]
+
+            prefix = u""
+            if dtype is not None:
+                nones = 0
+                for x in interpreted[line_start:]:
+                    if x is None:
+                        nones += 1
+                    else:
+                        break
+                fill = max(0, dtype.itemsize - 1 - nones)
+                line_interpreted = [None] * fill + interpreted[
+                    line_start : line_start + 20
+                ]
+                prefix = u"    " * fill
+                interpreted_prefix = u"    " * (fill + nones + 1 - dtype.itemsize)
 
             stream.write(prefix + (u"--+-" * 20) + u"\n")
             stream.write(
@@ -342,10 +346,14 @@ of file path {2}""".format(
                 )
                 + u"\n"
             )
-            stream.write(
-                interpreted_prefix
-                + u" ".join(
-                    formatter.format(str(x)) for x in line_interpreted if x is not None
+
+            if dtype is not None:
+                stream.write(
+                    interpreted_prefix
+                    + u" ".join(
+                        formatter.format(str(x))
+                        for x in line_interpreted
+                        if x is not None
+                    )
+                    + u"\n"
                 )
-                + u"\n"
-            )
