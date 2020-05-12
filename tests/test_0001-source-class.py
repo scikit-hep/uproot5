@@ -36,7 +36,7 @@ def test_source(tmpdir):
             chunks = tmp.chunks(
                 [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
             )
-            assert [chunk.raw_data for chunk in chunks] == [
+            assert [chunk.raw_data.tostring() for chunk in chunks] == [
                 b"******",
                 b"    ",
                 b"...",
@@ -100,7 +100,7 @@ def test_debug():
 
 
 def test_http():
-    source = uproot4.source.http.MultipartSource("https://example.com")
+    source = uproot4.source.http.HTTPMultipartSource("https://example.com")
     assert not source.ready
 
     with source as tmp:
@@ -108,8 +108,16 @@ def test_http():
         assert tmp.ready
 
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
-        assert len(chunks[0].raw_data) == 100
-        assert len(chunks[1].raw_data) == 5
-        assert len(chunks[2].raw_data) == 200
-
+        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
     assert not source.ready
+
+    source = uproot4.source.http.HTTPSource("https://example.com")
+    with source as tmp:
+        assert source.ready
+        assert tmp.ready
+
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        assert [x.raw_data.tostring() for x in chunks] == [one, two, three]

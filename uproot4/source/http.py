@@ -18,15 +18,26 @@ except ImportError:
     from httplib import HTTPSConnection
     from urlparse import urlparse
 
-import numpy
-
 import uproot4.futures
 import uproot4.source.chunk
 
 
-class MultipartThread(threading.Thread):
+def connection(parsed_url):
+    if parsed_url.scheme == "https":
+        return HTTPSConnection(parsed_url.netloc)
+    elif parsed_url.scheme == "http":
+        return HTTPConnection(parsed_url.netloc)
+    else:
+        raise ValueError(
+            "unrecognized URL scheme for HTTP MultipartSource: {0}".format(
+                parsed_url.scheme
+            )
+        )
+
+
+class HTTPMultipartThread(threading.Thread):
     def __init__(self, file_path, connection, work_queue):
-        super(MultipartThread, self).__init__()
+        super(HTTPMultipartThread, self).__init__()
         self.daemon = True
         self._file_path = file_path
         self._connection = connection
@@ -51,7 +62,7 @@ class MultipartThread(threading.Thread):
         line = response.fp.readline()
         r = None
         while r is None:
-            m = MultipartThread._content_range.match(line)
+            m = HTTPMultipartThread._content_range.match(line)
             if m is not None:
                 r = m.group(1)
             line = response.fp.readline()
@@ -103,28 +114,18 @@ for URL {3}""".format(
         future._finished.set()
 
     def run(self):
-        print("start thread")
-
         while True:
-            print("waiting for work")
-
             futures = self._work_queue.get()
             if futures is None:
                 break
 
-            print("got work")
-
             assert isinstance(futures, dict)
             response = self._connection.getresponse()
-
-            print("got response", response.status)
 
             if response.status != 206:
                 raise NotImplementedError("FIXME: switch to single-part")
 
             for i in range(len(futures)):
-                print("for", i, "in futures")
-
                 r = self.next_header(response)
                 if r is None:
                     self.raise_missing(i, futures, self._file_path)
@@ -138,39 +139,29 @@ for URL {3}""".format(
                 first, last = r.split(b"-")
                 length = int(last) + 1 - int(first)
 
-                future._result = numpy.frombuffer(
-                    response.read(length), dtype=numpy.uint8
-                )
-
+                future._result = response.read(length)
                 if len(future._result) != length:
                     self.raise_wrong_length(
                         len(future._result), length, r, future, self._file_path
                     )
                     break
 
-                print("done with future")
                 future._finished.set()
 
-            print("done with response")
             response.close()
 
 
-class MultipartSource(uproot4.source.chunk.Source):
+class HTTPMultipartSource(uproot4.source.chunk.Source):
+    __slots__ = ["_file_path", "_parsed_url", "_connection", "_work_queue", "_worker"]
+
     def __init__(self, file_path):
         self._file_path = file_path
         self._parsed_url = urlparse(file_path)
-        if self._parsed_url.scheme == "https":
-            self._connection = HTTPSConnection(self._parsed_url.netloc)
-        elif self._parsed_url.scheme == "http":
-            self._connection = HTTPConnection(self._parsed_url.netloc)
-        else:
-            raise ValueError(
-                "unrecognized URL scheme for HTTP MultipartSource: {0}".format(
-                    self._parsed_url.scheme
-                )
-            )
+        self._connection = connection(self._parsed_url)
         self._work_queue = queue.Queue()
-        self._worker = MultipartThread(file_path, self._connection, self._work_queue)
+        self._worker = HTTPMultipartThread(
+            file_path, self._connection, self._work_queue
+        )
 
     @property
     def file_path(self):
@@ -226,27 +217,56 @@ class MultipartSource(uproot4.source.chunk.Source):
         return chunks
 
 
-# connection = http.client.HTTPConnection("example.com")
-# connection.request("GET", "", headers={"Range": "bytes=0-99, 150-159, 200-399"})
-# response = connection.getresponse()
-# print(response.status)
-# for k, v in response.headers.items():
-#     print(repr(k), repr(v))
+class HTTPResource(uproot4.source.chunk.Resource):
+    def __init__(self, file_path):
+        self._file_path = file_path
+        self._parsed_url = urlparse(file_path)
+        self._connection = connection(self._parsed_url)
 
-# print(next(response))
+    @property
+    def file_path(self):
+        return self._file_path
+
+    @property
+    def parsed_url(self):
+        return self._parsed_url
+
+    @property
+    def connection(self):
+        return self._connection
+
+    @property
+    def ready(self):
+        return True
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._connection.close()
+
+    def get(self, start, stop):
+        self._connection.request(
+            "GET",
+            self._parsed_url.path,
+            headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
+        )
+
+        response = self._connection.getresponse()
+        if response.status != 206:
+            raise NotImplementedError("FIXME: switch to whole-file")
+
+        return response.read()
 
 
-# print(response.read())
-
-# connection = http.client.HTTPSConnection("scikit-hep.org")
-# # connection.request("HEAD", "uproot/examples/Zmumu.root",
-# headers={"Range": "bytes=0-1, 2-3"})
-# # connection.request("HEAD", "uproot/examples/Zmumu.root",
-# headers={"Range": "bytes=90000-170000"})
-# connection.request("GET", "uproot/examples/Zmumu.root",
-# headers={"Range": "bytes=0-99, 90000-170000"})
-# response = connection.getresponse()
-# print(response.status)
-# for k, v in response.headers.items():
-#     print(repr(k), repr(v))
-# print(len(response.read()))
+class HTTPSource(uproot4.source.chunk.Source):
+    def __init__(self, file_path, num_workers=1):
+        self._file_path = file_path
+        if num_workers == 1:
+            self._executor = uproot4.futures.ResourceExecutor(HTTPResource(file_path))
+        elif num_workers > 1:
+            self._executor = uproot4.futures.ThreadResourceExecutor(
+                [HTTPResource(file_path) for x in range(num_workers)]
+            )
+        else:
+            raise ValueError("num_workers must be at least 1")
