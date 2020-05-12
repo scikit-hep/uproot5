@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import sys
 import numbers
+import re
 
 import numpy
 
@@ -15,12 +16,12 @@ py35 = not py2 and sys.version_info[1] <= 5
 
 
 def isint(x):
-    return isinstance(data, (int, number.Integral, numpy.integer)) and not isinstance(
-        data, (numpy.bool, numpy.bool_)
+    return isinstance(x, (int, numbers.Integral, numpy.integer)) and not isinstance(
+        x, (numpy.bool, numpy.bool_)
     )
 
 
-def numbytes(data):
+def memory_size(data):
     if isinstance(data, str):
         m = re.match(
             r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",

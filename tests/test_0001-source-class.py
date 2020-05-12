@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import sys
 import os
+
 try:
     from io import StringIO
 except ImportError:
@@ -42,8 +43,17 @@ def test_source(tmpdir):
 
         assert not source.ready
 
+
 def test_debug():
-    data = numpy.concatenate([numpy.array([123, 123, 123], "u1"), numpy.array([1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 101, 202, 303], ">f4").view("u1"), numpy.array([123, 123], "u1")])
+    data = numpy.concatenate(
+        [
+            numpy.array([123, 123, 123], "u1"),
+            numpy.array(
+                [1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 101, 202, 303], ">f4"
+            ).view("u1"),
+            numpy.array([123, 123], "u1"),
+        ]
+    )
     future = uproot4.futures.TrivialFuture(data)
 
     chunk = uproot4.source.source.Chunk(None, 0, len(data), future)
@@ -53,7 +63,9 @@ def test_debug():
 
     cursor.debug(chunk, offset=3, dtype=">f4", stream=output)
 
-    assert output.getvalue() == """--+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+    assert (
+        output.getvalue()
+        == """--+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
 123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
   {   {   {   ? --- --- ---   @ --- --- ---   @   S   3   3   @ --- --- ---   @
                         1.1             2.2             3.3             4.4
@@ -66,3 +78,4 @@ def test_debug():
     --- --- ---   C   J --- ---   C --- --- ---   {   {
           101.0           202.0           303.0
 """
+    )

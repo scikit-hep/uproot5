@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import sys
 import time
 import threading
+
 try:
     import queue
 except ImportError:

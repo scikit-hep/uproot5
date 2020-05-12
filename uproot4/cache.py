@@ -17,7 +17,7 @@ class LRUCache(MutableMapping):
         if limit_bytes is None:
             self._limit_bytes = None
         else:
-            self._limit_bytes = uproot4._util.numbytes(limit_bytes)
+            self._limit_bytes = uproot4._util.memory_size(limit_bytes)
         self._current_bytes = 0
         self._order = []
         self._data = {}
