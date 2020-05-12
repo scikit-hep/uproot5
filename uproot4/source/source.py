@@ -31,6 +31,10 @@ class FileResource(Resource):
     def file(self):
         return self._file
 
+    @property
+    def ready(self):
+        return self._file is not None and not self._file.closed
+
     def __enter__(self):
         self._file = open(self._file_path, "rb")
 
@@ -50,17 +54,32 @@ class FileSource(Source):
         self._file_path = file_path
         if num_workers == 1:
             self._executor = uproot4.futures.ResourceExecutor(FileResource(file_path))
-        else:
+        elif num_workers > 1:
             self._executor = uproot4.futures.ThreadResourceExecutor(
-                [FileResource(file_path) for x in range(len(num_workers))]
+                [FileResource(file_path) for x in range(num_workers)]
             )
+        else:
+            raise ValueError("num_workers must be at least 1")
 
     @property
     def file_path(self):
         return self._file_path
 
+    @property
+    def executor(self):
+        return self._executor
+
+    @property
+    def num_workers(self):
+        return self._executor.num_workers
+
+    @property
+    def ready(self):
+        return self._executor.ready
+
     def __enter__(self):
         self._executor.__enter__()
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._executor.__exit__(exception_type, exception_value, traceback)

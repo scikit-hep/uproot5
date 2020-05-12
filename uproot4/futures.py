@@ -42,6 +42,14 @@ class ResourceExecutor(object):
     def __init__(self, resource):
         self._resource = resource
 
+    @property
+    def num_workers(self):
+        return 1
+
+    @property
+    def ready(self):
+        return self._resource.ready
+
     def __enter__(self):
         self._resource.__enter__()
 
@@ -51,7 +59,7 @@ class ResourceExecutor(object):
     def submit(self, fn, *args, **kwargs):
         return TrivialFuture(fn(self._resource, *args, **kwargs))
 
-    def map(self, func, *iterables, timeout=None, chunksize=1):
+    def map(self, func, *iterables):
         for x in iterables:
             yield func(self._resource, x)
 
@@ -84,7 +92,7 @@ class TaskFuture(object):
         if self._excinfo is None:
             return self._result
         else:
-            cls, err, trc = excinfo
+            cls, err, trc = self._excinfo
             if sys.version_info[0] <= 2:
                 exec("raise cls, err, trc")
             else:
@@ -120,8 +128,8 @@ class ThreadResourceWorker(threading.Thread):
 
             assert isinstance(future, TaskFuture)
             try:
-                future._result = future.task(
-                    self._resource, *future.args, **future.kwargs
+                future._result = future._task(
+                    self._resource, *future._args, **future._kwargs
                 )
             except Exception:
                 future._excinfo = sys.exc_info()
@@ -131,17 +139,29 @@ class ThreadResourceWorker(threading.Thread):
 class ThreadResourceExecutor(object):
     def __init__(self, resources):
         self._work_queue = queue.Queue()
-        self._threads = [ThreadResourceWorker(x) for x in resources]
-        for thread in self._threads:
+        self._workers = [ThreadResourceWorker(x, self._work_queue) for x in resources]
+        for thread in self._workers:
             thread.start()
 
+    @property
+    def num_workers(self):
+        return len(self._workers)
+
+    @property
+    def workers(self):
+        return self._workers
+
+    @property
+    def ready(self):
+        return all(x.resource.ready for x in self._workers)
+
     def __enter__(self):
-        for thread in self._threads:
+        for thread in self._workers:
             thread.resource.__enter__()
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.shutdown()
-        for thread in self._threads:
+        for thread in self._workers:
             thread.resource.__exit__(exception_type, exception_value, traceback)
 
     def submit(self, fn, *args, **kwargs):
@@ -149,13 +169,13 @@ class ThreadResourceExecutor(object):
         self._work_queue.put(task)
         return task
 
-    def map(self, func, *iterables, timeout=None, chunksize=1):
+    def map(self, func, *iterables):
         futures = [self.submit(func, x) for x in iterables]
         for future in futures:
             yield future.result()
 
     def shutdown(self, wait=True):
-        while any(thread.is_alive() for thread in self._threads):
-            for x in range(len(self._threads)):
+        while any(thread.is_alive() for thread in self._workers):
+            for x in range(len(self._workers)):
                 self._work_queue.put(None)
             time.sleep(0.001)
