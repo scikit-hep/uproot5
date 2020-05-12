@@ -6,5 +6,6 @@ import sys
 
 import uproot4
 
+
 def test():
     assert uproot4.stuff() == "This is a test."

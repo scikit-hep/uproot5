@@ -8,6 +8,7 @@ import os
 import uproot4
 import uproot4.source.source
 
+
 def test(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
 
@@ -20,8 +21,16 @@ def test(tmpdir):
 
         with source as tmp:
             assert source.ready
-            chunks = tmp.chunks([(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)])
+            chunks = tmp.chunks(
+                [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
+            )
             assert [chunk.raw_data for chunk in chunks] == [
-                b"******", b"    ", b"...", b"+++++++", b"!!!!!", b"@@@@@"]
+                b"******",
+                b"    ",
+                b"...",
+                b"+++++++",
+                b"!!!!!",
+                b"@@@@@",
+            ]
 
         assert not source.ready

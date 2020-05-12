@@ -10,11 +10,11 @@ import uproot4
 import uproot4.futures
 
 
-class Source(object):
+class Resource(object):
     pass
 
 
-class Resource(object):
+class Source(object):
     pass
 
 
