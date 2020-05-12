@@ -28,11 +28,7 @@ def test_source(tmpdir):
 
     for num_workers in [1, 2]:
         source = uproot4.source.file.FileSource(filename, num_workers=num_workers)
-        assert not source.ready
-
         with source as tmp:
-            assert source.ready
-            assert tmp.ready
             chunks = tmp.chunks(
                 [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
             )
@@ -44,8 +40,6 @@ def test_source(tmpdir):
                 b"!!!!!",
                 b"@@@@@",
             ]
-
-        assert not source.ready
 
 
 def test_debug():
@@ -101,23 +95,38 @@ def test_debug():
 
 def test_http():
     source = uproot4.source.http.HTTPMultipartSource("https://example.com")
-    assert not source.ready
-
     with source as tmp:
-        assert source.ready
-        assert tmp.ready
-
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
-    assert not source.ready
 
     source = uproot4.source.http.HTTPSource("https://example.com")
     with source as tmp:
-        assert source.ready
-        assert tmp.ready
-
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
+
+
+def test_no_multipart():
+    with uproot4.source.http.HTTPSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+        assert one[:4] == b"root"
+
+
+def test_fallback():
+    with uproot4.source.http.HTTPMultipartSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+        assert one[:4] == b"root"

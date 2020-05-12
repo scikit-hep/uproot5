@@ -48,10 +48,6 @@ class ResourceExecutor(object):
     def num_workers(self):
         return 1
 
-    @property
-    def ready(self):
-        return self._resource.ready
-
     def __enter__(self):
         self._resource.__enter__()
 
@@ -75,6 +71,7 @@ class TaskFuture(object):
         self._args = args
         self._kwargs = kwargs
         self._finished = threading.Event()
+        self._result = None
         self._excinfo = None
 
     def cancel(self):
@@ -152,10 +149,6 @@ class ThreadResourceExecutor(object):
     @property
     def workers(self):
         return self._workers
-
-    @property
-    def ready(self):
-        return all(x.resource.ready for x in self._workers)
 
     def __enter__(self):
         for thread in self._workers:

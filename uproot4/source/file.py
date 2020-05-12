@@ -12,7 +12,7 @@ class FileResource(uproot4.source.chunk.Resource):
 
     def __init__(self, file_path):
         self._file_path = file_path
-        self._file = None
+        self._file = open(self._file_path, "rb")
 
     @property
     def file_path(self):
@@ -22,12 +22,8 @@ class FileResource(uproot4.source.chunk.Resource):
     def file(self):
         return self._file
 
-    @property
-    def ready(self):
-        return self._file is not None and not self._file.closed
-
     def __enter__(self):
-        self._file = open(self._file_path, "rb")
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.__exit__(exception_type, exception_value, traceback)

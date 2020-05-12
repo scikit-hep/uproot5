@@ -24,10 +24,6 @@ class Source(object):
     def num_workers(self):
         return self._executor.num_workers
 
-    @property
-    def ready(self):
-        return self._executor.ready
-
     def __enter__(self):
         self._executor.__enter__()
         return self

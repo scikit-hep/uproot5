@@ -36,12 +36,14 @@ def connection(parsed_url):
 
 
 class HTTPMultipartThread(threading.Thread):
-    def __init__(self, file_path, connection, work_queue):
+    def __init__(self, file_path, connection, work_queue, num_fallback_workers):
         super(HTTPMultipartThread, self).__init__()
         self.daemon = True
         self._file_path = file_path
         self._connection = connection
         self._work_queue = work_queue
+        self._num_fallback_workers = num_fallback_workers
+        self._fallback = None
 
     @property
     def file_path(self):
@@ -54,6 +56,32 @@ class HTTPMultipartThread(threading.Thread):
     @property
     def work_queue(self):
         return self._work_queue
+
+    @property
+    def fallback(self):
+        return self._fallback
+
+    @property
+    def num_fallback_workers(self):
+        return self._num_fallback_workers
+
+    def make_fallback(self):
+        self._fallback = HTTPSource(self._file_path, self._num_fallback_workers)
+
+    def fill_with_fallback(self, ranges, futures):
+        chunks = self._fallback.chunks(ranges)
+
+        for (start, stop), chunk in zip(ranges, chunks):
+            r = "{0}-{1}".format(start, stop - 1).encode()
+            assert r in futures
+            future = futures[r]
+
+            if hasattr(chunk.future, "_finished"):
+                chunk.future._finished.wait()
+
+            future._result = chunk.future._result
+            future._excinfo = getattr(chunk.future, "_excinfo", None)
+            future._finished.set()
 
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
 
@@ -115,15 +143,24 @@ for URL {3}""".format(
 
     def run(self):
         while True:
-            futures = self._work_queue.get()
-            if futures is None:
+            pair = self._work_queue.get()
+            if pair is None:
                 break
 
+            assert isinstance(pair, tuple) and len(pair) == 2
+            ranges, futures = pair
             assert isinstance(futures, dict)
-            response = self._connection.getresponse()
 
+            if self._fallback is not None:
+                self.fill_with_fallback(ranges, futures)
+                break
+
+            response = self._connection.getresponse()
             if response.status != 206:
-                raise NotImplementedError("FIXME: switch to single-part")
+                response.close()
+                self.make_fallback()
+                self.fill_with_fallback(ranges, futures)
+                break
 
             for i in range(len(futures)):
                 r = self.next_header(response)
@@ -154,14 +191,15 @@ for URL {3}""".format(
 class HTTPMultipartSource(uproot4.source.chunk.Source):
     __slots__ = ["_file_path", "_parsed_url", "_connection", "_work_queue", "_worker"]
 
-    def __init__(self, file_path):
+    def __init__(self, file_path, num_fallback_workers=1):
         self._file_path = file_path
         self._parsed_url = urlparse(file_path)
         self._connection = connection(self._parsed_url)
         self._work_queue = queue.Queue()
         self._worker = HTTPMultipartThread(
-            file_path, self._connection, self._work_queue
+            file_path, self._connection, self._work_queue, num_fallback_workers
         )
+        self._worker.start()
 
     @property
     def file_path(self):
@@ -184,11 +222,14 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
         return self._worker
 
     @property
-    def ready(self):
-        return self._worker.is_alive()
+    def has_fallback(self):
+        return self._worker.fallback is not None
+
+    @property
+    def num_fallback_workers(self):
+        return self._worker.num_fallback_workers
 
     def __enter__(self):
-        self._worker.start()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -199,6 +240,9 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
             time.sleep(0.001)
 
     def chunks(self, ranges):
+        if self._worker.fallback is not None:
+            return self._worker.fallback.chunks(ranges)
+
         range_strings = []
         futures = {}
         chunks = []
@@ -212,8 +256,8 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
         self._connection.request(
             "GET", self._parsed_url.path, headers={"Range": range_string}
         )
-        self._work_queue.put(futures)
 
+        self._work_queue.put((ranges, futures))
         return chunks
 
 
@@ -235,12 +279,8 @@ class HTTPResource(uproot4.source.chunk.Resource):
     def connection(self):
         return self._connection
 
-    @property
-    def ready(self):
-        return True
-
     def __enter__(self):
-        pass
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._connection.close()
@@ -254,7 +294,12 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
         response = self._connection.getresponse()
         if response.status != 206:
-            raise NotImplementedError("FIXME: switch to whole-file")
+            raise IOError(
+                """remote server does not support HTTP range requests
+for URL {0}""".format(
+                    self._file_path
+                )
+            )
 
         return response.read()
 
