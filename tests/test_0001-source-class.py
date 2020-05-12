@@ -11,6 +11,7 @@ except ImportError:
     from StringIO import StringIO
 
 import numpy
+import pytest
 
 import uproot4
 import uproot4.source.futures
@@ -18,6 +19,7 @@ import uproot4.source.cursor
 import uproot4.source.chunk
 import uproot4.source.file
 import uproot4.source.http
+import uproot4.source.xrootd
 
 
 def test_source(tmpdir):
@@ -123,6 +125,19 @@ def test_no_multipart():
 def test_fallback():
     with uproot4.source.http.HTTPMultipartSource(
         "https://scikit-hep.org/uproot/examples/Zmumu.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+        assert one[:4] == b"root"
+
+
+def test_xrootd():
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]

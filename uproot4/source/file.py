@@ -2,8 +2,6 @@
 
 from __future__ import absolute_import
 
-import os
-
 import uproot4.source.chunk
 import uproot4.source.futures
 
@@ -38,9 +36,6 @@ class FileSource(uproot4.source.chunk.Source):
     __slots__ = ["_file_path", "_executor"]
 
     def __init__(self, file_path, num_workers=1):
-        if not os.path.exists(file_path):
-            raise IOError("file not found: {0}".format(file_path))
-
         self._file_path = file_path
         if num_workers == 1:
             self._executor = uproot4.source.futures.ResourceExecutor(

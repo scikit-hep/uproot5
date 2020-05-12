@@ -100,7 +100,7 @@ class Cursor(object):
         char = None
         while char != 0:
             if local_stop > len(remainder):
-                raise IOError(
+                raise OSError(
                     """C-style string has no terminator (null byte) in Chunk {0}:{1}
 of file path {2}""".format(
                         self._start, self._stop, self._source.file_path

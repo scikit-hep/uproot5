@@ -71,7 +71,7 @@ class Chunk(object):
         if self._raw_data is None:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
             if len(self._raw_data) != self._stop - self._start:
-                raise IOError(
+                raise OSError(
                     """expected Chunk of length {0},
 received Chunk of length {1}
 for file path {2}""".format(
@@ -93,7 +93,7 @@ for file path {2}""".format(
             self.wait()
             return self.raw_data[local_start:local_stop]
         else:
-            raise IOError(
+            raise OSError(
                 """attempting to get bytes {0}:{1}
  outside expected range {2}:{3} for this Chunk
 of file path {4}""".format(
@@ -107,7 +107,7 @@ of file path {4}""".format(
             self.wait()
             return self.raw_data[local_start:]
         else:
-            raise IOError(
+            raise OSError(
                 """attempting to get byte {0}
  outside expected range {1}:{2} for this Chunk
 of file path {3}""".format(
