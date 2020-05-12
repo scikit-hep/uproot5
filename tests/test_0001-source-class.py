@@ -4,9 +4,6 @@ from __future__ import absolute_import
 
 import sys
 import os
-from http.client import HTTPConnection
-from http.client import HTTPSConnection
-from urllib.parse import urlparse
 
 try:
     from io import StringIO
@@ -103,14 +100,7 @@ def test_debug():
 
 
 def test_http():
-    url = "https://example.com"
-    parsed_url = urlparse(url)
-    if parsed_url.scheme == "https":
-        connection = HTTPSConnection(parsed_url.netloc)
-    elif parsed_url.scheme == "http":
-        connection = HTTPConnection(parsed_url.netloc)
-
-    source = uproot4.source.http.MultipartSource(url, parsed_url, connection)
+    source = uproot4.source.http.MultipartSource("https://example.com")
     assert not source.ready
 
     with source as tmp:
