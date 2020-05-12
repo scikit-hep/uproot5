@@ -5,11 +5,12 @@ from __future__ import absolute_import
 import sys
 import time
 import threading
-
 try:
     import queue
 except ImportError:
     import Queue as queue
+
+import uproot4._util
 
 
 class TrivialFuture(object):
@@ -93,7 +94,7 @@ class TaskFuture(object):
             return self._result
         else:
             cls, err, trc = self._excinfo
-            if sys.version_info[0] <= 2:
+            if uproot4._util.py2:
                 exec("raise cls, err, trc")
             else:
                 raise err.with_traceback(trc)

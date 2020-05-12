@@ -2,9 +2,16 @@
 
 from __future__ import absolute_import
 
+import sys
 import numbers
 
 import numpy
+
+
+py2 = sys.version_info[0] <= 2
+py26 = py2 and sys.version_info[1] <= 6
+py27 = py2 and not py26
+py35 = not py2 and sys.version_info[1] <= 5
 
 
 def isint(x):
