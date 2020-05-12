@@ -18,7 +18,7 @@ except ImportError:
     from httplib import HTTPSConnection
     from urlparse import urlparse
 
-import uproot4.futures
+import uproot4.source.futures
 import uproot4.source.chunk
 
 
@@ -249,7 +249,7 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
         for start, stop in ranges:
             r = "{0}-{1}".format(start, stop - 1)
             range_strings.append(r)
-            futures[r.encode()] = future = uproot4.futures.TaskFuture(None)
+            futures[r.encode()] = future = uproot4.source.futures.TaskFuture(None)
             chunks.append(uproot4.source.chunk.Chunk(self, start, stop, future))
 
         range_string = "bytes=" + ", ".join(range_strings)
@@ -308,9 +308,11 @@ class HTTPSource(uproot4.source.chunk.Source):
     def __init__(self, file_path, num_workers=1):
         self._file_path = file_path
         if num_workers == 1:
-            self._executor = uproot4.futures.ResourceExecutor(HTTPResource(file_path))
+            self._executor = uproot4.source.futures.ResourceExecutor(
+                HTTPResource(file_path)
+            )
         elif num_workers > 1:
-            self._executor = uproot4.futures.ThreadResourceExecutor(
+            self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [HTTPResource(file_path) for x in range(num_workers)]
             )
         else:

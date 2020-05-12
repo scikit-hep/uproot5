@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import os
 
 import uproot4.source.chunk
+import uproot4.source.futures
 
 
 class FileResource(uproot4.source.chunk.Resource):
@@ -42,9 +43,11 @@ class FileSource(uproot4.source.chunk.Source):
 
         self._file_path = file_path
         if num_workers == 1:
-            self._executor = uproot4.futures.ResourceExecutor(FileResource(file_path))
+            self._executor = uproot4.source.futures.ResourceExecutor(
+                FileResource(file_path)
+            )
         elif num_workers > 1:
-            self._executor = uproot4.futures.ThreadResourceExecutor(
+            self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [FileResource(file_path) for x in range(num_workers)]
             )
         else:

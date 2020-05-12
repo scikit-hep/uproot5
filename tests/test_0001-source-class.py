@@ -13,7 +13,7 @@ except ImportError:
 import numpy
 
 import uproot4
-import uproot4.futures
+import uproot4.source.futures
 import uproot4.source.cursor
 import uproot4.source.chunk
 import uproot4.source.file
@@ -52,7 +52,7 @@ def test_debug():
             numpy.array([123, 123], "u1"),
         ]
     )
-    future = uproot4.futures.TrivialFuture(data)
+    future = uproot4.source.futures.TrivialFuture(data)
 
     chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future)
     cursor = uproot4.source.cursor.Cursor(0)
