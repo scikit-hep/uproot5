@@ -71,19 +71,17 @@ class XRootDResource(uproot4.source.chunk.Resource):
 class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
     __slots__ = ["_file_path", "_executor"]
 
-    def __init__(self, file_path, num_workers=1, timeout=None):
+    def __init__(self, file_path, num_workers=0, timeout=None):
         self._file_path = file_path
 
-        if num_workers == 1:
+        if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(
                 XRootDResource(file_path, timeout)
             )
-        elif num_workers > 1:
+        else:
             self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [XRootDResource(file_path, timeout) for x in range(num_workers)]
             )
-        else:
-            raise ValueError("num_workers must be at least 1")
 
         self._timeout = timeout
 

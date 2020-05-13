@@ -29,7 +29,7 @@ def test_file(tmpdir):
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-    for num_workers in [1, 2]:
+    for num_workers in [0, 1, 2]:
         source = uproot4.source.file.FileSource(filename, num_workers=num_workers)
         with source as tmp:
             chunks = tmp.chunks(
@@ -95,34 +95,37 @@ def test_http():
 
 
 def test_no_multipart():
-    with uproot4.source.http.HTTPSource(
-        "https://scikit-hep.org/uproot/examples/Zmumu.root"
-    ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-        assert len(one) == 100
-        assert len(two) == 5
-        assert len(three) == 200
-        assert one[:4] == b"root"
+    for num_workers in [0, 1, 2]:
+        with uproot4.source.http.HTTPSource(
+            "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=num_workers
+        ) as source:
+            chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+            one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+            assert len(one) == 100
+            assert len(two) == 5
+            assert len(three) == 200
+            assert one[:4] == b"root"
 
-    source = uproot4.source.http.HTTPSource(
-        "https://wonky.cern/does-not-exist", timeout=0.1
-    )
-    with pytest.raises(Exception) as err:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-        chunks[0].raw_data
+        source = uproot4.source.http.HTTPSource(
+            "https://wonky.cern/does-not-exist", num_workers=num_workers, timeout=0.1
+        )
+        with pytest.raises(Exception) as err:
+            chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+            chunks[0].raw_data
 
 
 def test_fallback():
-    with uproot4.source.http.HTTPMultipartSource(
-        "https://scikit-hep.org/uproot/examples/Zmumu.root"
-    ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-        assert len(one) == 100
-        assert len(two) == 5
-        assert len(three) == 200
-        assert one[:4] == b"root"
+    for num_workers in [0, 1, 2]:
+        with uproot4.source.http.HTTPMultipartSource(
+            "https://scikit-hep.org/uproot/examples/Zmumu.root",
+            num_fallback_workers=num_workers
+        ) as source:
+            chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+            one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+            assert len(one) == 100
+            assert len(two) == 5
+            assert len(three) == 200
+            assert one[:4] == b"root"
 
 
 def test_xrootd():

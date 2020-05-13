@@ -35,15 +35,14 @@ class FileResource(uproot4.source.chunk.Resource):
 class FileSource(uproot4.source.chunk.MultiThreadedSource):
     __slots__ = ["_file_path", "_executor"]
 
-    def __init__(self, file_path, num_workers=1):
+    def __init__(self, file_path, num_workers=0):
         self._file_path = file_path
-        if num_workers == 1:
+
+        if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(
                 FileResource(file_path)
             )
-        elif num_workers > 1:
+        else:
             self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [FileResource(file_path) for x in range(num_workers)]
             )
-        else:
-            raise ValueError("num_workers must be at least 1")
