@@ -1,0 +1,296 @@
+# BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
+
+"""
+Defines the Cursor, which is a universal pointer/interpreter at point of data
+in a ROOT file.
+"""
+
+from __future__ import absolute_import
+
+import sys
+
+import numpy
+
+import uproot4
+
+
+class Cursor(object):
+    """
+    Represents a position in a ROOT file, which may be held for later reference
+    or advanced while interpreting bytes from Chunks.
+    """
+
+    __slots__ = ["_index", "_origin", "_refs"]
+
+    def __init__(self, index, origin=0, refs=None):
+        """
+        Args:
+            index (int): Global position in the ROOT file.
+            origin (int): Placeholder that is sometimes useful for arithmetic.
+            refs (None or dict): References to data already read, for
+                `_readobjany`.
+        """
+        self._index = index
+        self._origin = origin
+        self._refs = refs
+
+    @property
+    def index(self):
+        """
+        Global position in the ROOT file.
+        """
+        return self._index
+
+    @property
+    def origin(self):
+        """
+        Placeholder that is sometimes useful for arithmetic.
+        """
+        return self._origin
+
+    @property
+    def refs(self):
+        """
+        References to data already read, for `_readobjany`.
+        """
+        if self._refs is None:
+            self._refs = {}
+        return self._refs
+
+    def copy(self, link_refs=False):
+        """
+        Returns a copy of this Cursor. If `link_refs` is True, any `refs` will
+        be *referenced*, rather than *copied*.
+        """
+        if link_refs or self._refs is None:
+            return Cursor(self._index, origin=self._origin, refs=self._refs)
+        else:
+            return Cursor(self._index, origin=self._origin, refs=dict(self._refs))
+
+    def skip(self, num_bytes):
+        """
+        Move the index forward `num_bytes`.
+        """
+        self._index += num_bytes
+
+    def fields(self, chunk, format, move=True):
+        """
+        Interpret data at this index of the Chunk with a `struct.Struct`
+        format. Returns a tuple (length determined by `format`).
+
+        If `move` is False, only peek: don't update the index.
+        """
+        start = self._index
+        stop = start + format.size
+        if move:
+            self._index = stop
+        return format.unpack(chunk.get(start, stop))
+
+    def field(self, chunk, format, move=True):
+        """
+        Interpret data at this index of the Chunk with a `struct.Struct`
+        format, returning a single item instead of a tuple (the first).
+
+        If `move` is False, only peek: don't update the index.
+        """
+        start = self._index
+        stop = start + format.size
+        if move:
+            self._index = stop
+        return format.unpack(chunk.get(start, stop))[0]
+
+    def bytes(self, chunk, length, move=True):
+        """
+        Interpret data at this index of the Chunk as raw bytes with a
+        given `length`.
+
+        If `move` is False, only peek: don't update the index.
+        """
+        start = self._index
+        stop = start + length
+        if move:
+            self._index = stop
+        return chunk.get(start, stop)
+
+    def array(self, chunk, length, dtype, move=True):
+        """
+        Interpret data at this index of the Chunk as an array with a
+        given `length` and `dtype`.
+
+        If `move` is False, only peek: don't update the index.
+        """
+        start = self._index
+        stop = start + length * dtype.itemsize
+        if move:
+            self._index = stop
+        return numpy.frombuffer(chunk.get(start, stop), dtype=dtype)
+
+    _u1 = numpy.dtype("u1")
+    _i4 = numpy.dtype(">i4")
+
+    def bytestring(self, chunk, move=True):
+        """
+        Interpret data at this index of the Chunk as a ROOT bytestring
+        (first 1 or 5 bytes indicate size).
+
+        If `move` is False, only peek: don't update the index.
+        """
+        start = self._index
+        stop = start + 1
+        length = chunk.get(start, stop)[0]
+        if length == 255:
+            start = stop
+            stop = start + 4
+            length = numpy.frombuffer(chunk.get(start, stop), dtype=self._u1).view(
+                self._i4
+            )[0]
+        start = stop
+        stop = start + length
+        if move:
+            self._index = stop
+        return chunk.get(start, stop).tostring()
+
+    def string(self, chunk, move=True):
+        """
+        Interpret data at this index of the Chunk as a Python str
+        (first 1 or 5 bytes indicate size).
+
+        The encoding is assumed to be UTF-8, but errors are surrogate-escaped.
+
+        If `move` is False, only peek: don't update the index.
+        """
+        out = self.bytestring(chunk, move=move)
+        if uproot4._util.py2:
+            return out
+        else:
+            return out.decode(errors="surrogateescape")
+
+    def class_string(self, chunk, move=True):
+        """
+        Interpret data at this index of the Chunk as a ROOT class
+        string (null-terminated).
+
+        The encoding is assumed to be UTF-8, but errors are surrogate-escaped.
+
+        If `move` is False, only peek: don't update the index.
+        """
+        remainder = chunk.remainder(self._index)
+        local_stop = 0
+        char = None
+        while char != 0:
+            if local_stop > len(remainder):
+                raise OSError(
+                    """C-style string has no terminator (null byte) in Chunk {0}:{1}
+of file path {2}""".format(
+                        self._start, self._stop, self._source.file_path
+                    )
+                )
+            char = remainder[local_stop]
+            local_stop += 1
+
+        if move:
+            self._index += local_stop
+
+        out = remainder[: local_stop - 1]
+        if uproot4._util.py2:
+            return out
+        else:
+            return out.decode(errors="surrogateescape")
+
+    _printable = (
+        "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM"
+        "NOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ "
+    )
+
+    def debug(
+        self, chunk, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout,
+    ):
+        """
+        Args:
+            chunk (Chunk): Data to interpret.
+            limit_bytes (None or int): Maximum number of bytes to view or None
+                to see all bytes to the end of the Chunk.
+            dtype (None or dtype): If a dtype, additionally interpret the data
+                as numbers.
+            offset (int): Number of bytes offset for interpreting as a dtype.
+            stream: Object with a `write` method for writing the output.
+
+        Peek at data by printing it to the `stream` (usually stdout). The data
+        are always presented as decimal bytes and ASCII characters, but may
+        also be interpreted as numbers.
+
+        Example output with dtype=">f4" and offset=3.
+
+            --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+            123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
+              {   {   {   ? --- --- ---   @ --- --- ---   @   S   3   3   @ --- --- ---   @
+                                    1.1             2.2             3.3             4.4
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                176   0   0  64 211  51  51  64 246 102 102  65  12 204 205  65  30 102 102  66
+                --- --- ---   @ ---   3   3   @ ---   f   f   A --- --- ---   A ---   f   f   B
+                        5.5             6.6             7.7             8.8             9.9
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                202   0   0  67  74   0   0  67 151 128   0 123 123
+                --- --- ---   C   J --- ---   C --- --- ---   {   {
+                      101.0           202.0           303.0
+        """
+        data = chunk.remainder(self._index)
+        if limit_bytes is not None:
+            data = data[:limit_bytes]
+
+        if dtype is not None:
+            if not isinstance(dtype, numpy.dtype):
+                dtype = numpy.dtype(dtype)
+
+            interpreted = [None] * len(data)
+            i = offset
+            interpreted_length = (
+                (len(data) - offset) // dtype.itemsize
+            ) * dtype.itemsize
+            for x in data[offset : offset + interpreted_length].view(dtype):
+                i += dtype.itemsize
+                interpreted[i - 1] = x
+
+            formatter = u"{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
+
+        for line_start in range(0, int(numpy.ceil(len(data) / 20.0)) * 20, 20):
+            line_data = data[line_start : line_start + 20]
+
+            prefix = u""
+            if dtype is not None:
+                nones = 0
+                for x in interpreted[line_start:]:
+                    if x is None:
+                        nones += 1
+                    else:
+                        break
+                fill = max(0, dtype.itemsize - 1 - nones)
+                line_interpreted = [None] * fill + interpreted[
+                    line_start : line_start + 20
+                ]
+                prefix = u"    " * fill
+                interpreted_prefix = u"    " * (fill + nones + 1 - dtype.itemsize)
+
+            stream.write(prefix + (u"--+-" * 20) + u"\n")
+            stream.write(
+                prefix + u" ".join(u"{0:3d}".format(x) for x in line_data) + u"\n"
+            )
+            stream.write(
+                prefix
+                + u" ".join(
+                    u"{0:>3s}".format(chr(x)) if chr(x) in self._printable else u"---"
+                    for x in line_data
+                )
+                + u"\n"
+            )
+
+            if dtype is not None:
+                stream.write(
+                    interpreted_prefix
+                    + u" ".join(
+                        formatter.format(str(x))
+                        for x in line_interpreted
+                        if x is not None
+                    )
+                    + u"\n"
+                )
