@@ -118,7 +118,7 @@ def test_fallback():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.HTTPMultipartSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root",
-            num_fallback_workers=num_workers
+            num_fallback_workers=num_workers,
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
             one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
