@@ -280,6 +280,8 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
 
 
 class HTTPResource(uproot4.source.chunk.Resource):
+    __slots__ = ["_file_path", "_timeout", "_parsed_url", "_connection"]
+
     def __init__(self, file_path, timeout):
         self._file_path = file_path
         self._timeout = timeout
@@ -327,7 +329,9 @@ for URL {0}""".format(
         return response.read()
 
 
-class HTTPSource(uproot4.source.chunk.Source):
+class HTTPSource(uproot4.source.chunk.MultiThreadedSource):
+    __slots__ = ["_file_path", "_executor", "_timeout"]
+
     def __init__(self, file_path, num_workers=1, timeout=None):
         self._file_path = file_path
 

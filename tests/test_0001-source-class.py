@@ -18,6 +18,7 @@ import uproot4.source.futures
 import uproot4.source.cursor
 import uproot4.source.chunk
 import uproot4.source.file
+import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
 
@@ -47,6 +48,28 @@ def test_file(tmpdir):
             uproot4.source.file.FileSource(
                 filename + "-does-not-exist", num_workers=num_workers
             )
+
+
+def test_memmap(tmpdir):
+    filename = os.path.join(str(tmpdir), "tmp.raw")
+
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
+
+    source = uproot4.source.memmap.MemmapSource(filename)
+    with source as tmp:
+        chunks = tmp.chunks([(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)])
+        assert [chunk.raw_data.tostring() for chunk in chunks] == [
+            b"******",
+            b"    ",
+            b"...",
+            b"+++++++",
+            b"!!!!!",
+            b"@@@@@",
+        ]
+
+    with pytest.raises(Exception):
+        uproot4.source.file.FileSource(filename + "-does-not-exist")
 
 
 def test_http():

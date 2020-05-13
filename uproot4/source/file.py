@@ -32,7 +32,7 @@ class FileResource(uproot4.source.chunk.Resource):
         return self._file.read(stop - start)
 
 
-class FileSource(uproot4.source.chunk.Source):
+class FileSource(uproot4.source.chunk.MultiThreadedSource):
     __slots__ = ["_file_path", "_executor"]
 
     def __init__(self, file_path, num_workers=1):

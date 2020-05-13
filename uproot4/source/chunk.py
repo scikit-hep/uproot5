@@ -16,6 +16,8 @@ class Source(object):
     def file_path(self):
         return self._file_path
 
+
+class MultiThreadedSource(Source):
     @property
     def executor(self):
         return self._executor
@@ -35,7 +37,7 @@ class Source(object):
         chunks = []
         for start, stop in ranges:
             future = self._executor.submit(Resource.getter(start, stop))
-            chunks.append(Chunk(self, start, stop, future,))
+            chunks.append(Chunk(self, start, stop, future))
         return chunks
 
 

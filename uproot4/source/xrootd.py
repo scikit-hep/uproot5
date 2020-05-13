@@ -68,7 +68,7 @@ class XRootDResource(uproot4.source.chunk.Resource):
         return data
 
 
-class XRootDSource(uproot4.source.chunk.Source):
+class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
     __slots__ = ["_file_path", "_executor"]
 
     def __init__(self, file_path, num_workers=1, timeout=None):
