@@ -1,5 +1,13 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
 
+"""
+Defines Futures and Executors for Uproot Sources.
+
+These are distinct from Python's built-in Futures and Executors because each
+Thread in the thread pools are associated with one Resource, such as an open
+file handle.
+"""
+
 from __future__ import absolute_import
 
 import sys

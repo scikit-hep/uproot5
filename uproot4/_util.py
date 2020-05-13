@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
 
+"""
+Utilities for internal use.
+"""
+
 from __future__ import absolute_import
 
 import sys
@@ -16,12 +20,20 @@ py35 = not py2 and sys.version_info[1] <= 5
 
 
 def isint(x):
+    """
+    Returns True if and only if `x` is an integer (including NumPy, not
+    including bool).
+    """
     return isinstance(x, (int, numbers.Integral, numpy.integer)) and not isinstance(
         x, (numpy.bool, numpy.bool_)
     )
 
 
 def memory_size(data):
+    """
+    Normalizes strings like '## kB' and plain integer number of bytes to
+    an integer number of bytes.
+    """
     if isinstance(data, str):
         m = re.match(
             r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",
