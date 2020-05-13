@@ -20,13 +20,26 @@ except ImportError:
 
 import uproot4.source.futures
 import uproot4.source.chunk
+import uproot4._util
 
 
 def make_connection(parsed_url, timeout):
     if parsed_url.scheme == "https":
-        return HTTPSConnection(parsed_url.netloc, parsed_url.port, timeout)
+        if uproot4._util.py2:
+            return HTTPSConnection(
+                parsed_url.netloc, parsed_url.port, None, None, False, timeout
+            )
+        else:
+            return HTTPSConnection(
+                parsed_url.netloc, parsed_url.port, None, None, timeout
+            )
+
     elif parsed_url.scheme == "http":
-        return HTTPConnection(parsed_url.netloc, parsed_url.port, timeout)
+        if uproot4._util.py2:
+            return HTTPConnection(parsed_url.netloc, parsed_url.port, False, timeout)
+        else:
+            return HTTPConnection(parsed_url.netloc, parsed_url.port, timeout)
+
     else:
         raise ValueError(
             "unrecognized URL scheme for HTTP MultipartSource: {0}".format(
