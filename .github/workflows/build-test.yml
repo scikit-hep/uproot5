@@ -12,7 +12,7 @@ jobs:
     runs-on: "ubuntu-latest"
     strategy:
       matrix:
-        python-version: [2.7, 3.5, 3.6, 3.7, 3.8]
+        python-version: [3.5, 3.6, 3.7, 3.8]
 
     steps:
       - uses: "actions/checkout@v2"
@@ -38,7 +38,7 @@ jobs:
           conda list
 
       - name: "flake8"
-        if: "${{ matrix.python-version != 2.7 }}"
+        # if: "${{ matrix.python-version != 2.7 }}"
         shell: "bash -l {0}"
         run: |
           conda activate testing
