@@ -32,7 +32,7 @@ def get_pyxrootd():
 
 def get_server_config(file_path):
     """
-    Query a XRootD server for it's configuration
+    Query a XRootD server for its configuration
 
     Args:
         file_path (str): The full URl to the requested resource
@@ -49,17 +49,100 @@ def get_server_config(file_path):
     url = URL(file_path)
     eos = FileSystem("{}://{}/".format(url.protocol, url.hostid))
 
-    status, readv_iov_max = eos.query(QueryCode.CONFIG, 'readv_iov_max')
+    status, readv_iov_max = eos.query(QueryCode.CONFIG, "readv_iov_max")
     if not status.ok:
         raise NotImplementedError(status)
     readv_iov_max = int(readv_iov_max)
 
-    status, readv_ior_max = eos.query(QueryCode.CONFIG, 'readv_ior_max')
+    status, readv_ior_max = eos.query(QueryCode.CONFIG, "readv_ior_max")
     if not status.ok:
         raise NotImplementedError(status)
     readv_ior_max = int(readv_ior_max)
 
     return readv_iov_max, readv_ior_max
+
+
+class XRootDVectorReadSource(uproot4.source.chunk.Source):
+    """
+    Source managing data access using XRootD vector reads.
+    """
+
+    __slots__ = ["_file_path", "_max_num_elements", "_resource"]
+
+    def __init__(self, file_path, timeout=None, max_num_elements=None):
+        """
+        Args:
+            file_path (str): URL starting with "root://".
+            timeout (int): Number of seconds (loosely interpreted by XRootD)
+                before giving up on a remote file.
+            max_num_elements (int): Maximum number of reads to batch into a
+                single request. May be reduced to match the server's
+                capabilities.
+        """
+        self._file_path = file_path
+        self._timeout = timeout
+        self._max_num_elements, self._max_element_size = get_server_config(file_path)
+        if max_num_elements:
+            self._max_num_elements = min(self._max_num_elements, max_num_elements)
+        self._resource = XRootDResource(file_path, timeout)
+
+    def __enter__(self):
+        """
+        Does nothing and returns self.
+        """
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Closes the HTTP(S) connection and passes `__exit__` to the worker
+        Thread.
+        """
+        pass
+
+    def chunks(self, ranges):
+        """
+        Args:
+            ranges (iterable of (int, int)): The start (inclusive) and stop
+                (exclusive) byte ranges for each desired chunk.
+
+        Returns a list of Chunks that will be filled asynchronously by the
+        one or more XRootD vector reads.
+        """
+
+        all_request_ranges = [[]]
+        for start, stop in ranges:
+            if stop - start > self._max_element_size:
+                raise NotImplementedError(
+                    "TODO: Probably need to fall back to a non-vector read"
+                )
+            if len(all_request_ranges[-1]) > self._max_num_elements:
+                all_request_ranges.append([])
+            all_request_ranges[-1].append((start, stop - start))
+
+        chunks = []
+        for i, request_ranges in enumerate(all_request_ranges):
+            futures = {}
+            for start, size in request_ranges:
+                futures[(start, size)] = future = uproot4.source.futures.TaskFuture(
+                    None
+                )
+                chunks.append(
+                    uproot4.source.chunk.Chunk(self, start, start + size, future)
+                )
+
+            def _callback(status, response, hosts, futures=futures):
+                for chunk in response["chunks"]:
+                    future = futures[(chunk["offset"], chunk["length"])]
+                    future._result = chunk["buffer"]
+                    future._finished.set()
+
+            status = self._resource._file.vector_read(
+                chunks=request_ranges, callback=_callback
+            )
+            if not status["ok"]:
+                raise OSError("XRootD error: " + status["message"])
+
+        return chunks
 
 
 class XRootDResource(uproot4.source.chunk.Resource):
@@ -142,82 +225,6 @@ class XRootDResource(uproot4.source.chunk.Resource):
         if status.get("error", None):
             raise OSError(status["message"])
         return data
-
-
-class XRootDVectorReadSource(uproot4.source.chunk.Source):
-    """
-    Source managing data access using XRootD vector reads.
-    """
-    __slots__ = ["_file_path", "_max_num_elements", "_resource"]
-
-    def __init__(self, file_path, timeout=None, max_num_elements=None):
-        """
-        Args:
-            file_path (str): URL starting with "root://".
-            timeout (int): Number of seconds (loosely interpreted by XRootD)
-                before giving up on a remote file.
-            max_num_elements (int): Maximum number of reads to batch into a
-                single request. May be reduced to match the server's
-                capabilities.
-        """
-        self._file_path = file_path
-        self._timeout = timeout
-        self._max_num_elements, self._max_element_size = get_server_config(file_path)
-        if max_num_elements:
-            self._max_num_elements = min(self._max_num_elements, max_num_elements)
-        self._resource = XRootDResource(file_path, timeout)
-
-    def __enter__(self):
-        """
-        Does nothing and returns self.
-        """
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        """
-        Closes the HTTP(S) connection and passes `__exit__` to the worker
-        Thread.
-        """
-        pass
-
-    def chunks(self, ranges):
-        """
-        Args:
-            ranges (iterable of (int, int)): The start (inclusive) and stop
-                (exclusive) byte ranges for each desired chunk.
-
-        Returns a list of Chunks that will be filled asynchronously by the
-        one or more XRootD vector reads.
-        """
-        ranges = ranges[:]
-        all_request_ranges = [list()]
-        while ranges:
-            start, stop = ranges.pop()
-            if (stop - start) > self._max_element_size:
-                raise NotImplementedError("TODO: Probably need to fall back to a non-vector read")
-            if len(all_request_ranges[-1]) > self._max_num_elements:
-                all_request_ranges.append(list())
-            all_request_ranges[-1].append((start, stop - start))
-
-        chunks = []
-        for i, request_ranges in enumerate(all_request_ranges):
-            futures = {}
-            for start, size in request_ranges:
-                futures[(start, size)] = future = uproot4.source.futures.TaskFuture(None)
-                chunks.append(uproot4.source.chunk.Chunk(self, start, start + size, future))
-
-            def _callback(status, response, hosts, futures=futures):
-                for chunk in response["chunks"]:
-                    future = futures[(chunk['offset'], chunk['length'])]
-                    future._result = chunk["buffer"]
-                    future._excinfo = getattr(future, "_excinfo", None)
-                    future._finished.set()
-
-            status = self._resource._file.vector_read(chunks=request_ranges, callback=_callback)
-            if not status["ok"]:
-                raise NotImplementedError(status)
-
-        return chunks
 
 
 class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
