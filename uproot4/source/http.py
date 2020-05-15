@@ -232,7 +232,16 @@ for URL {3}""".format(
                 break
 
             response = self._connection.getresponse()
-            if response.status != 206:
+
+            multipart_supported = (response.status == 206)
+
+            if multipart_supported:
+                content_length = int(response.headers["Content-Length"])
+                for start, stop in ranges:
+                    if content_length == stop - start:
+                        multipart_supported = False
+
+            if not multipart_supported:
                 response.close()
                 self.make_fallback()
                 self.fill_with_fallback(ranges, futures)
