@@ -44,6 +44,14 @@ def test_file(tmpdir):
                 b"@@@@@",
             ]
 
+
+def test_file(tmpdir):
+    filename = os.path.join(str(tmpdir), "tmp.raw")
+
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
+
+    for num_workers in [0, 1, 2]:
         with pytest.raises(Exception):
             uproot4.source.file.FileSource(
                 filename + "-does-not-exist", num_workers=num_workers
@@ -68,6 +76,13 @@ def test_memmap(tmpdir):
             b"@@@@@",
         ]
 
+
+def test_memmap(tmpdir):
+    filename = os.path.join(str(tmpdir), "tmp.raw")
+
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
+
     with pytest.raises(Exception):
         uproot4.source.file.FileSource(filename + "-does-not-exist")
 
@@ -86,6 +101,8 @@ def test_http():
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
 
+
+def test_http():
     source = uproot4.source.http.HTTPMultipartSource(
         "https://wonky.cern/does-not-exist", timeout=0.1
     )
@@ -106,6 +123,9 @@ def test_no_multipart():
             assert len(three) == 200
             assert one[:4] == b"root"
 
+
+def test_no_multipart_fail():
+    for num_workers in [0, 1, 2]:
         source = uproot4.source.http.HTTPSource(
             "https://wonky.cern/does-not-exist", num_workers=num_workers, timeout=0.1
         )
@@ -140,8 +160,30 @@ def test_xrootd():
         assert len(three) == 200
         assert one[:4] == b"root"
 
+
+def test_xrootd_fail():
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.XRootDSource(
+            "root://wonky.cern/does-not-exist", timeout=1
+        )
+
+
+def test_xrootd_vectorread():
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.XRootDVectorReadSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+        assert one[:4] == b"root"
+
+
+def test_xrootd_vectorread_fail():
+    with pytest.raises(Exception) as err:
+        source = uproot4.source.xrootd.XRootDVectorReadSource(
             "root://wonky.cern/does-not-exist", timeout=1
         )
 
