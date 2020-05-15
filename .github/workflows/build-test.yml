@@ -38,6 +38,7 @@ jobs:
           conda list
 
       - name: flake8
+        if: "python-version != 2.7"
         shell: "bash -l {0}"
         run: |
           conda activate testing
