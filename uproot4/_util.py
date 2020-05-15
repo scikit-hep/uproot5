@@ -66,5 +66,5 @@ def memory_size(data):
     else:
         raise TypeError(
             "number of bytes or memory size string with units "
-            "required, not ".format(repr(data))
+            "required, not {0}".format(repr(data))
         )
