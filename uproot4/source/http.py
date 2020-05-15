@@ -233,7 +233,7 @@ for URL {3}""".format(
 
             response = self._connection.getresponse()
 
-            multipart_supported = (response.status == 206)
+            multipart_supported = response.status == 206
 
             if multipart_supported:
                 content_length = int(response.headers["Content-Length"])
