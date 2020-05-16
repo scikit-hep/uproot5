@@ -56,7 +56,7 @@ def make_connection(parsed_url, timeout):
         )
 
 
-class HTTPMultipartThread(threading.Thread):
+class HTTPBackgroundThread(threading.Thread):
     class SinglepartWork(object):
         __slots__ = ["start", "stop", "future"]
 
@@ -82,9 +82,9 @@ class HTTPMultipartThread(threading.Thread):
             work_queue (queue.Queue): Incoming communication from the main
                 thread.
             num_fallback_workers (int): Number of workers to pass to a fallback
-                HTTPSource, if necessary.
+                MultithreadedHTTPSource, if necessary.
         """
-        super(HTTPMultipartThread, self).__init__()
+        super(HTTPBackgroundThread, self).__init__()
         self.daemon = True
         self._file_path = file_path
         self._parsed_url = urlparse(file_path)
@@ -124,8 +124,8 @@ class HTTPMultipartThread(threading.Thread):
     @property
     def fallback(self):
         """
-        Fallback HTTPSource or None; only created if the server returned a code
-        other than 206 in response to a multi-part GET.
+        Fallback MultithreadedHTTPSource or None; only created if the server
+        returned a code other than 206 in response to a multi-part GET.
         """
         return self._fallback
 
@@ -163,19 +163,18 @@ for URL {0}""".format(
 
     def make_fallback(self):
         """
-        Creates a fallback HTTPSource because the server didn't respond with
-        206.
+        Creates a fallback MultithreadedHTTPSource because the server didn't
+        respond with 206.
         """
-        self._fallback = HTTPSource(self._file_path, self._num_fallback_workers)
+        self._fallback = MultithreadedHTTPSource(self._file_path, self._num_fallback_workers)
 
     def fill_with_fallback(self, ranges, futures):
         """
         Fills the existing `futures` with data from Chunks made by the
-        `fallback` HTTPSource.
+        `fallback` MultithreadedHTTPSource.
 
-        This will only be called before the HTTPMultipartSource notices
-        that there is a `fallback` and sends requests for `chunks` to it
-        directly.
+        This will only be called before the HTTPSource notices that there is a
+        `fallback` and sends requests for `chunks` to it directly.
         """
         chunks = self._fallback.chunks(ranges)
 
@@ -201,7 +200,7 @@ for URL {0}""".format(
         line = response.fp.readline()
         r = None
         while r is None:
-            m = HTTPMultipartThread._content_range.match(line)
+            m = HTTPBackgroundThread._content_range.match(line)
             if m is not None:
                 r = m.group(1)
             line = response.fp.readline()
@@ -343,7 +342,7 @@ for URL {3}""".format(
 
             else:
                 raise AssertionError(
-                    "unrecognized message for HTTPMultipartThread: {0}".format(
+                    "unrecognized message for HTTPBackgroundThread: {0}".format(
                         type(work)
                     )
                 )
@@ -351,17 +350,17 @@ for URL {3}""".format(
         self._connection.close()
 
 
-class HTTPMultipartSource(uproot4.source.chunk.Source):
+class HTTPSource(uproot4.source.chunk.Source):
     """
     Source managing one asynchronous HTTP(S) capable of multi-part GET requests.
 
     This Source always has exactly 1 background Thread, since the result of a
     multi-part request has to be parsed by a single Thread.
 
-    See HTTPSource for one Thread per part (one part per request).
+    See MultithreadedHTTPSource for one Thread per part (one part per request).
 
     If a remote server fails to respond appropriately to a multi-part request
-    (206), this falls back to a nested HTTPSource.
+    (206), this falls back to a nested MultithreadedHTTPSource.
     """
 
     __slots__ = ["_file_path", "_parsed_url", "_connection", "_work_queue", "_worker"]
@@ -371,14 +370,14 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
         Args:
             file_path (str): URL starting with "http://" or "https://".
             num_fallback_workers (int): Number of workers to pass to a fallback
-                HTTPSource, if necessary.
+                MultithreadedHTTPSource, if necessary.
             timeout (None or float): Number of seconds before giving up on a
                 remote file.
         """
         self._file_path = file_path
         self._timeout = timeout
         self._work_queue = queue.Queue()
-        self._worker = HTTPMultipartThread(
+        self._worker = HTTPBackgroundThread(
             file_path, timeout, self._work_queue, num_fallback_workers
         )
         self._worker.start()
@@ -415,22 +414,23 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
     def has_fallback(self):
         """
         If True, the server failed to respond appropriately to a multi-part GET
-        (206) and will henceforth be accessed through a nested HTTPSource.
+        (206) and will henceforth be accessed through a nested
+        MultithreadedHTTPSource.
         """
         return self._worker.fallback is not None
 
     @property
     def fallback(self):
         """
-        A nested HTTPSource or None; only created if the remote server fails to
-        respond appriately to a multi-part GET (206).
+        A nested MultithreadedHTTPSource or None; only created if the remote
+        server fails to respond appriately to a multi-part GET (206).
         """
         return self._worker.fallback
 
     @property
     def num_fallback_workers(self):
         """
-        Number of workers to use with the `fallback` HTTPSource.
+        Number of workers to use with the `fallback` MultithreadedHTTPSource.
         """
         return self._worker.num_fallback_workers
 
@@ -461,7 +461,7 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
         """
         future = uproot4.source.futures.TaskFuture(None)
         chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
-        self._work_queue.put(HTTPMultipartThread.SinglepartWork(start, stop, future))
+        self._work_queue.put(HTTPBackgroundThread.SinglepartWork(start, stop, future))
         return chunk
 
     def chunks(self, ranges, notifications=None):
@@ -496,7 +496,7 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
 
         range_string = "bytes=" + ", ".join(range_strings)
         self._work_queue.put(
-            HTTPMultipartThread.MultipartWork(ranges, range_string, futures)
+            HTTPBackgroundThread.MultipartWork(ranges, range_string, futures)
         )
         return chunks
 
@@ -593,18 +593,18 @@ for URL {0}""".format(
         return response.read()
 
 
-class HTTPSource(uproot4.source.chunk.MultiThreadedSource):
+class MultithreadedHTTPSource(uproot4.source.chunk.MultiThreadedSource):
     """
     Source managing one synchronous or multiple asynchronous HTTP(S) handles as
     a context manager.
 
     This Source always makes one request per Chunk (though they may come from
-    many concurrent Threads). See HTTPMultipartSource for multi-part HTTP(S).
+    many concurrent Threads). See HTTPSource for multi-part HTTP(S).
     """
 
     __slots__ = ["_file_path", "_executor", "_timeout"]
 
-    def __init__(self, file_path, num_workers=0, timeout=None):
+    def __init__(self, file_path, num_workers=10, timeout=None):
         """
         Args:
             file_path (str): URL starting with "http://" or "https://".

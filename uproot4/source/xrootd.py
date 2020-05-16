@@ -153,7 +153,7 @@ class XRootDResource(uproot4.source.chunk.Resource):
         return data
 
 
-class XRootDVectorReadSource(uproot4.source.chunk.Source):
+class XRootDSource(uproot4.source.chunk.Source):
     """
     Source managing data access using XRootD vector reads.
     """
@@ -258,7 +258,7 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         return chunks
 
 
-class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
+class MultiThreadedXRootDSource(uproot4.source.chunk.MultiThreadedSource):
     """
     Source managing one synchronous or multiple asynchronous XRootD handles as
     a context manager.
@@ -266,7 +266,7 @@ class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
 
     __slots__ = ["_file_path", "_executor"]
 
-    def __init__(self, file_path, num_workers=0, timeout=None):
+    def __init__(self, file_path, num_workers=10, timeout=None):
         """
         Args:
             file_path (str): URL starting with "root://".
