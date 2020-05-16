@@ -57,11 +57,10 @@ class FileSource(uproot4.source.chunk.MultiThreadedSource):
                 ThreadResourceExecutors are created.
         """
         self._file_path = file_path
+        self._resource = FileResource(file_path)
 
         if num_workers == 0:
-            self._executor = uproot4.source.futures.ResourceExecutor(
-                FileResource(file_path)
-            )
+            self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
         else:
             self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [FileResource(file_path) for x in range(num_workers)]

@@ -58,6 +58,19 @@ class MemmapSource(uproot4.source.chunk.Source):
         else:
             self._file._mmap.close()
 
+    def chunk(self, start, stop):
+        """
+        Args:
+            start (int): The start (inclusive) byte position for the desired
+                chunk.
+            stop (int): The stop (exclusive) byte position for the desired
+                chunk.
+
+        Returns a filled Chunk synchronously.
+        """
+        future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
+        return uproot4.source.chunk.Chunk(self, start, stop, future)
+
     def chunks(self, ranges, notifications=None):
         """
         Args:
