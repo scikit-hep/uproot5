@@ -102,12 +102,18 @@ class ResourceExecutor(Executor):
         """
         self._resource.__exit__(exception_type, exception_value, traceback)
 
+    def _prepare(self, fn, *args, **kwargs):
+        return TrivialFuture(fn(self._resource, *args, **kwargs))
+
     def submit(self, fn, *args, **kwargs):
         """
         Immediately evaluate the function `fn` with `resource` as a first
         argument, before `args` and `kwargs`.
         """
-        return TrivialFuture(fn(self._resource, *args, **kwargs))
+        if isinstance(fn, TrivialFuture):
+            return fn
+        else:
+            return self._prepare(fn, *args, **kwargs)
 
     def map(self, func, *iterables):
         """
@@ -141,6 +147,7 @@ class TaskFuture(Future):
         self._finished = threading.Event()
         self._result = None
         self._excinfo = None
+        self._callback = None
 
     def cancel(self):
         raise NotImplementedError
@@ -156,6 +163,8 @@ class TaskFuture(Future):
 
     def _set_finished(self):
         self._finished.set()
+        if self._callback is not None:
+            self._callback(self)
 
     def result(self, timeout=None):
         """
@@ -176,7 +185,7 @@ class TaskFuture(Future):
         raise NotImplementedError
 
     def add_done_callback(self, fn):
-        raise NotImplementedError
+        self._callback = fn
 
 
 class ThreadResourceWorker(threading.Thread):
@@ -285,6 +294,12 @@ class ThreadResourceExecutor(Executor):
         for thread in self._workers:
             thread.resource.__exit__(exception_type, exception_value, traceback)
 
+    def _prepare(self, fn, *args, **kwargs):
+        if len(args) != 0 or len(kwargs) != 0:
+            return TaskFuture(lambda: fn(*args, **kwargs))
+        else:
+            return TaskFuture(fn)
+
     def submit(self, fn, *args, **kwargs):
         """
         Submits a function to be evaluated by a Thread in the thread pool.
@@ -292,10 +307,11 @@ class ThreadResourceExecutor(Executor):
         The Resource associated with that Thread is passed as the first argument
         to the callable `fn`.
         """
-        if len(args) != 0 or len(kwargs) != 0:
-            task = TaskFuture(lambda: fn(*args, **kwargs))
+        if isinstance(fn, TaskFuture):
+            task = fn
         else:
-            task = TaskFuture(fn)
+            task = self._prepare(fn)
+
         self._work_queue.put(task)
         return task
 
