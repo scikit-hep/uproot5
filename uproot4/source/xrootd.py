@@ -227,7 +227,7 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
                 for chunk in response["chunks"]:
                     future = futures[(chunk["offset"], chunk["length"])]
                     future._result = chunk["buffer"]
-                    future._finished.set()
+                    future._set_finished()
 
             status = self._resource._file.vector_read(
                 chunks=request_ranges, callback=_callback

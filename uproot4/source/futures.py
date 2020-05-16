@@ -154,6 +154,9 @@ class TaskFuture(Future):
     def done(self):
         raise NotImplementedError
 
+    def _set_finished(self):
+        self._finished.set()
+
     def result(self, timeout=None):
         """
         Wait for the `threading.Event` to be set, and then either return the
@@ -229,7 +232,7 @@ class ThreadResourceWorker(threading.Thread):
                 future._result = future._task(self._resource)
             except Exception:
                 future._excinfo = sys.exc_info()
-            future._finished.set()
+            future._set_finished()
 
 
 class ThreadResourceExecutor(Executor):

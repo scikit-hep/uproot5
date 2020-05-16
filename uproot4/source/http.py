@@ -137,7 +137,7 @@ class HTTPMultipartThread(threading.Thread):
 
             future._result = chunk.future._result
             future._excinfo = getattr(chunk.future, "_excinfo", None)
-            future._finished.set()
+            future._set_finished()
 
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
 
@@ -174,7 +174,7 @@ for URL {2}""".format(
                     )
                 except Exception:
                     future._excinfo = sys.exc_info()
-                future._finished.set()
+                future._set_finished()
 
     @staticmethod
     def raise_unrecognized(r, futures, file_path):
@@ -193,7 +193,7 @@ for URL {1}""".format(
                     )
                 except Exception:
                     future._excinfo = sys.exc_info()
-                future._finished.set()
+                future._set_finished()
 
     @staticmethod
     def raise_wrong_length(actual, expected, r, future, file_path):
@@ -209,7 +209,7 @@ for URL {3}""".format(
             )
         except Exception:
             future._excinfo = sys.exc_info()
-        future._finished.set()
+        future._set_finished()
 
     def run(self):
         """
@@ -268,7 +268,7 @@ for URL {3}""".format(
                     )
                     break
 
-                future._finished.set()
+                future._set_finished()
 
             response.close()
 
