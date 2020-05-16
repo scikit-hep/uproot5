@@ -236,10 +236,14 @@ for URL {3}""".format(
             multipart_supported = response.status == 206
 
             if multipart_supported:
-                content_length = int(response.headers["Content-Length"])
-                for start, stop in ranges:
-                    if content_length == stop - start:
-                        multipart_supported = False
+                for k, x in response.getheaders():
+                    if k.lower() == "content-length":
+                        content_length = int(x)
+                        for start, stop in ranges:
+                            if content_length == stop - start:
+                                multipart_supported = False
+                else:
+                    multipart_supported = False
 
             if not multipart_supported:
                 response.close()
@@ -388,11 +392,13 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
             self._work_queue.put(None)
             time.sleep(0.001)
 
-    def chunks(self, ranges):
+    def chunks(self, ranges, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            notifications (None or Queue): If not None, Chunks will be put
+                on this Queue immediately after they are ready.
 
         Returns a list of Chunks that will be filled asynchronously by the
         multi-part GET or the `fallback` threads (asynchronously in either
@@ -410,6 +416,8 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
             future = uproot4.source.futures.TaskFuture(None)
             futures[r.encode()] = future
             chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+            if notifications is not None:
+                future.add_done_callback(Resource.notifier(chunk, notifications))
             chunks.append(chunk)
 
         range_string = "bytes=" + ", ".join(range_strings)

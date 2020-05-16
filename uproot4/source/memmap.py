@@ -58,11 +58,13 @@ class MemmapSource(uproot4.source.chunk.Source):
         else:
             self._file._mmap.close()
 
-    def chunks(self, ranges):
+    def chunks(self, ranges, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            notifications (None or Queue): If not None, Chunks will be put
+                on this Queue immediately after they are ready.
 
         Returns a list of Chunks that are already filled with data.
         """
@@ -79,5 +81,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         for start, stop in ranges:
             future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
             chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+            if notifications is not None:
+                future.add_done_callback(Resource.notifier(chunk, notifications))
             chunks.append(chunk)
         return chunks

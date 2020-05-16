@@ -194,11 +194,13 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         """
         pass
 
-    def chunks(self, ranges):
+    def chunks(self, ranges, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            notifications (None or Queue): If not None, Chunks will be put
+                on this Queue immediately after they are ready.
 
         Returns a list of Chunks that will be filled asynchronously by the
         one or more XRootD vector reads.
@@ -221,6 +223,8 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
                 future = future = uproot4.source.futures.TaskFuture(None)
                 futures[(start, size)] = future
                 chunk = uproot4.source.chunk.Chunk(self, start, start + size, future)
+                if notifications is not None:
+                    future.add_done_callback(Resource.notifier(chunk, notifications))
                 chunks.append(chunk)
 
             def _callback(status, response, hosts, futures=futures):
