@@ -106,7 +106,8 @@ class MultiThreadedSource(Source):
         chunks = []
         for start, stop in ranges:
             future = self._executor.submit(Resource.getter(start, stop))
-            chunks.append(Chunk(self, start, stop, future))
+            chunk = Chunk(self, start, stop, future)
+            chunks.append(chunk)
         return chunks
 
 

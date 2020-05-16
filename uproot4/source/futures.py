@@ -131,20 +131,13 @@ class TaskFuture(Future):
     Contains one `threading.Event` to block `result` until ready.
     """
 
-    def __init__(self, task, *args, **kwargs):
+    def __init__(self, task):
         """
         Args:
-            task (None or callable): An object that determines when the
-                `result` will be ready, but its meaning is interpreted by the
-                controlling Executor or Thread.
-            args (tuple): Arguments to pass to the `task` as a callable,
-                after the Resource.
-            kwargs (dict): Keyword arguments to pass to the `task` as a
-                callable.
+            task (None or callable): A zero-argument callable that produces
+                the `result` or None if the `result` is assigned externally.
         """
         self._task = task
-        self._args = args
-        self._kwargs = kwargs
         self._finished = threading.Event()
         self._result = None
         self._excinfo = None
@@ -233,9 +226,7 @@ class ThreadResourceWorker(threading.Thread):
 
             assert isinstance(future, TaskFuture)
             try:
-                future._result = future._task(
-                    self._resource, *future._args, **future._kwargs
-                )
+                future._result = future._task(self._resource)
             except Exception:
                 future._excinfo = sys.exc_info()
             future._finished.set()
@@ -298,7 +289,10 @@ class ThreadResourceExecutor(Executor):
         The Resource associated with that Thread is passed as the first argument
         to the callable `fn`.
         """
-        task = TaskFuture(fn, *args, **kwargs)
+        if len(args) != 0 or len(kwargs) != 0:
+            task = TaskFuture(lambda: fn(*args, **kwargs))
+        else:
+            task = TaskFuture(fn)
         self._work_queue.put(task)
         return task
 

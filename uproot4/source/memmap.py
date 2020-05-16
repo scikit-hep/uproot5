@@ -78,5 +78,6 @@ class MemmapSource(uproot4.source.chunk.Source):
         chunks = []
         for start, stop in ranges:
             future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
-            chunks.append(uproot4.source.chunk.Chunk(self, start, stop, future))
+            chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+            chunks.append(chunk)
         return chunks

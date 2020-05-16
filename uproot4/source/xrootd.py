@@ -218,12 +218,10 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         for i, request_ranges in enumerate(all_request_ranges):
             futures = {}
             for start, size in request_ranges:
-                futures[(start, size)] = future = uproot4.source.futures.TaskFuture(
-                    None
-                )
-                chunks.append(
-                    uproot4.source.chunk.Chunk(self, start, start + size, future)
-                )
+                future = future = uproot4.source.futures.TaskFuture(None)
+                futures[(start, size)] = future
+                chunk = uproot4.source.chunk.Chunk(self, start, start + size, future)
+                chunks.append(chunk)
 
             def _callback(status, response, hosts, futures=futures):
                 for chunk in response["chunks"]:

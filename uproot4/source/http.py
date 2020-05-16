@@ -407,8 +407,10 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
         for start, stop in ranges:
             r = "{0}-{1}".format(start, stop - 1)
             range_strings.append(r)
-            futures[r.encode()] = future = uproot4.source.futures.TaskFuture(None)
-            chunks.append(uproot4.source.chunk.Chunk(self, start, stop, future))
+            future = uproot4.source.futures.TaskFuture(None)
+            futures[r.encode()] = future
+            chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+            chunks.append(chunk)
 
         range_string = "bytes=" + ", ".join(range_strings)
         self._connection.request(
