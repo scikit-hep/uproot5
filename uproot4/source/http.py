@@ -57,6 +57,14 @@ def make_connection(parsed_url, timeout):
 
 
 class HTTPMultipartThread(threading.Thread):
+    class SinglepartWork(object):
+        __slots__ = ["start", "stop", "future"]
+
+        def __init__(self, start, stop, future):
+            self.start = start
+            self.stop = stop
+            self.future = future
+
     class MultipartWork(object):
         __slots__ = ["ranges", "range_string", "futures"]
 
@@ -124,6 +132,34 @@ class HTTPMultipartThread(threading.Thread):
     @property
     def num_fallback_workers(self):
         return self._num_fallback_workers
+
+    def fill_with_singlepart(self, start, stop, future):
+        """
+        Fills the `future` with data from a single-part range request.
+        """
+        try:
+            self._connection.request(
+                "GET",
+                self._parsed_url.path,
+                headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
+            )
+
+            response = self._connection.getresponse()
+
+            if response.status != 206:
+                raise OSError(
+                    """remote server does not support HTTP range requests
+for URL {0}""".format(
+                        self._file_path
+                    )
+                )
+
+            future._result = response.read()
+
+        except Exception:
+            future._excinfo = sys.exc_info()
+
+        future._set_finished()
 
     def make_fallback(self):
         """
@@ -298,9 +334,22 @@ for URL {3}""".format(
                 if self._fallback is not None:
                     self.fill_with_fallback(work.ranges, work.futures)
                 else:
-                    self.fill_with_multipart(work.ranges, work.range_string, work.futures)
+                    self.fill_with_multipart(
+                        work.ranges, work.range_string, work.futures
+                    )
+
+            elif isinstance(work, self.SinglepartWork):
+                self.fill_with_singlepart(work.start, work.stop, work.future)
+
+            else:
+                raise AssertionError(
+                    "unrecognized message for HTTPMultipartThread: {0}".format(
+                        type(work)
+                    )
+                )
 
         self._connection.close()
+
 
 class HTTPMultipartSource(uproot4.source.chunk.Source):
     """
@@ -408,9 +457,12 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
             stop (int): The stop (exclusive) byte position for the desired
                 chunk.
 
-        Returns a filled Chunk synchronously.
+        Returns a single Chunk that will be filled by the background thread.
         """
-        raise Exception
+        future = uproot4.source.futures.TaskFuture(None)
+        chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+        self._work_queue.put(HTTPMultipartThread.SinglepartWork(start, stop, future))
+        return chunk
 
     def chunks(self, ranges, notifications=None):
         """
@@ -443,7 +495,9 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
             chunks.append(chunk)
 
         range_string = "bytes=" + ", ".join(range_strings)
-        self._work_queue.put(HTTPMultipartThread.MultipartWork(ranges, range_string, futures))
+        self._work_queue.put(
+            HTTPMultipartThread.MultipartWork(ranges, range_string, futures)
+        )
         return chunks
 
 

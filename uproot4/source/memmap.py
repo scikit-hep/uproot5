@@ -66,7 +66,7 @@ class MemmapSource(uproot4.source.chunk.Source):
             stop (int): The stop (exclusive) byte position for the desired
                 chunk.
 
-        Returns a filled Chunk synchronously.
+        Returns a single Chunk that has already been filled synchronously.
         """
         future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
         return uproot4.source.chunk.Chunk(self, start, stop, future)

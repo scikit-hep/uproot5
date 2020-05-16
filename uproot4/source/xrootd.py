@@ -263,10 +263,11 @@ class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
                 before giving up on a remote file.
         """
         self._file_path = file_path
+        self._resource = XRootDResource(file_path, timeout)
 
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(
-                XRootDResource(file_path, timeout)
+                self._resource
             )
         else:
             self._executor = uproot4.source.futures.ThreadResourceExecutor(

@@ -99,7 +99,7 @@ class MultiThreadedSource(Source):
         file handles when exiting a context block.
         """
         self._executor.__exit__(exception_type, exception_value, traceback)
-        # self._resource.__exit__(exception_type, exception_value, traceback)
+        self._resource.__exit__(exception_type, exception_value, traceback)
 
     def chunk(self, start, stop):
         """
@@ -109,7 +109,7 @@ class MultiThreadedSource(Source):
             stop (int): The stop (exclusive) byte position for the desired
                 chunk.
 
-        Returns a filled Chunk synchronously.
+        Returns a single Chunk that has already been filled synchronously.
         """
         future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
         return Chunk(self, start, stop, future)
