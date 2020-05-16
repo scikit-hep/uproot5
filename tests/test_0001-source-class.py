@@ -45,7 +45,7 @@ def test_file(tmpdir):
             ]
 
 
-def test_file(tmpdir):
+def test_file_fail(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
 
     with open(filename, "wb") as tmp:
@@ -77,7 +77,7 @@ def test_memmap(tmpdir):
         ]
 
 
-def test_memmap(tmpdir):
+def test_memmap_fail(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
 
     with open(filename, "wb") as tmp:
@@ -102,7 +102,7 @@ def test_http():
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
 
 
-def test_http():
+def test_http_fail():
     source = uproot4.source.http.HTTPMultipartSource(
         "https://wonky.cern/does-not-exist", timeout=0.1
     )

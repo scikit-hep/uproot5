@@ -29,6 +29,10 @@ class Resource(object):
         """
         return lambda resource: resource.get(start, stop)
 
+    @staticmethod
+    def notifier(chunk, notifications):
+        return lambda future: notifications.put(chunk)
+
 
 class Source(object):
     """
@@ -49,7 +53,7 @@ class Source(object):
         """
         Manually calls `__exit__`.
         """
-        self.__exit__()
+        self.__exit__(None, None, None)
 
 
 class MultiThreadedSource(Source):
@@ -94,19 +98,25 @@ class MultiThreadedSource(Source):
         """
         self._executor.__exit__(exception_type, exception_value, traceback)
 
-    def chunks(self, ranges):
+    def chunks(self, ranges, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            notifications (None or Queue): If not None, Chunks will be put
+                on this Queue immediately after they are ready.
 
         Returns a list of Chunks that may already be filled with data or are
         filling in another thread and only block when their bytes are needed.
         """
         chunks = []
         for start, stop in ranges:
-            future = self._executor.submit(Resource.getter(start, stop))
-            chunks.append(Chunk(self, start, stop, future))
+            future = self._executor._prepare(Resource.getter(start, stop))
+            chunk = Chunk(self, start, stop, future)
+            if notifications is not None:
+                future.add_done_callback(Resource.notifier(chunk, notifications))
+            self._executor.submit(future)
+            chunks.append(chunk)
         return chunks
 
 

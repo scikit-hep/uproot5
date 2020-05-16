@@ -192,13 +192,15 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         Closes the HTTP(S) connection and passes `__exit__` to the worker
         Thread.
         """
-        pass
+        self._resource.__exit__(exception_type, exception_value, traceback)
 
-    def chunks(self, ranges):
+    def chunks(self, ranges, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            notifications (None or Queue): If not None, Chunks will be put
+                on this Queue immediately after they are ready.
 
         Returns a list of Chunks that will be filled asynchronously by the
         one or more XRootD vector reads.
@@ -218,18 +220,20 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         for i, request_ranges in enumerate(all_request_ranges):
             futures = {}
             for start, size in request_ranges:
-                futures[(start, size)] = future = uproot4.source.futures.TaskFuture(
-                    None
-                )
-                chunks.append(
-                    uproot4.source.chunk.Chunk(self, start, start + size, future)
-                )
+                future = future = uproot4.source.futures.TaskFuture(None)
+                futures[(start, size)] = future
+                chunk = uproot4.source.chunk.Chunk(self, start, start + size, future)
+                if notifications is not None:
+                    future.add_done_callback(
+                        uproot4.source.chunk.Resource.notifier(chunk, notifications)
+                    )
+                chunks.append(chunk)
 
             def _callback(status, response, hosts, futures=futures):
                 for chunk in response["chunks"]:
                     future = futures[(chunk["offset"], chunk["length"])]
                     future._result = chunk["buffer"]
-                    future._finished.set()
+                    future._set_finished()
 
             status = self._resource._file.vector_read(
                 chunks=request_ranges, callback=_callback

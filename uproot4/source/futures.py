@@ -102,12 +102,18 @@ class ResourceExecutor(Executor):
         """
         self._resource.__exit__(exception_type, exception_value, traceback)
 
+    def _prepare(self, fn, *args, **kwargs):
+        return TrivialFuture(fn(self._resource, *args, **kwargs))
+
     def submit(self, fn, *args, **kwargs):
         """
         Immediately evaluate the function `fn` with `resource` as a first
         argument, before `args` and `kwargs`.
         """
-        return TrivialFuture(fn(self._resource, *args, **kwargs))
+        if isinstance(fn, TrivialFuture):
+            return fn
+        else:
+            return self._prepare(fn, *args, **kwargs)
 
     def map(self, func, *iterables):
         """
@@ -120,7 +126,7 @@ class ResourceExecutor(Executor):
         """
         Manually calls `__exit__`.
         """
-        self.__exit__()
+        self.__exit__(None, None, None)
 
 
 class TaskFuture(Future):
@@ -131,23 +137,17 @@ class TaskFuture(Future):
     Contains one `threading.Event` to block `result` until ready.
     """
 
-    def __init__(self, task, *args, **kwargs):
+    def __init__(self, task):
         """
         Args:
-            task (None or callable): An object that determines when the
-                `result` will be ready, but its meaning is interpreted by the
-                controlling Executor or Thread.
-            args (tuple): Arguments to pass to the `task` as a callable,
-                after the Resource.
-            kwargs (dict): Keyword arguments to pass to the `task` as a
-                callable.
+            task (None or callable): A zero-argument callable that produces
+                the `result` or None if the `result` is assigned externally.
         """
         self._task = task
-        self._args = args
-        self._kwargs = kwargs
         self._finished = threading.Event()
         self._result = None
         self._excinfo = None
+        self._callback = None
 
     def cancel(self):
         raise NotImplementedError
@@ -160,6 +160,11 @@ class TaskFuture(Future):
 
     def done(self):
         raise NotImplementedError
+
+    def _set_finished(self):
+        self._finished.set()
+        if self._callback is not None:
+            self._callback(self)
 
     def result(self, timeout=None):
         """
@@ -180,7 +185,7 @@ class TaskFuture(Future):
         raise NotImplementedError
 
     def add_done_callback(self, fn):
-        raise NotImplementedError
+        self._callback = fn
 
 
 class ThreadResourceWorker(threading.Thread):
@@ -233,12 +238,10 @@ class ThreadResourceWorker(threading.Thread):
 
             assert isinstance(future, TaskFuture)
             try:
-                future._result = future._task(
-                    self._resource, *future._args, **future._kwargs
-                )
+                future._result = future._task(self._resource)
             except Exception:
                 future._excinfo = sys.exc_info()
-            future._finished.set()
+            future._set_finished()
 
 
 class ThreadResourceExecutor(Executor):
@@ -291,6 +294,12 @@ class ThreadResourceExecutor(Executor):
         for thread in self._workers:
             thread.resource.__exit__(exception_type, exception_value, traceback)
 
+    def _prepare(self, fn, *args, **kwargs):
+        if len(args) != 0 or len(kwargs) != 0:
+            return TaskFuture(lambda: fn(*args, **kwargs))
+        else:
+            return TaskFuture(fn)
+
     def submit(self, fn, *args, **kwargs):
         """
         Submits a function to be evaluated by a Thread in the thread pool.
@@ -298,7 +307,11 @@ class ThreadResourceExecutor(Executor):
         The Resource associated with that Thread is passed as the first argument
         to the callable `fn`.
         """
-        task = TaskFuture(fn, *args, **kwargs)
+        if isinstance(fn, TaskFuture):
+            task = fn
+        else:
+            task = self._prepare(fn)
+
         self._work_queue.put(task)
         return task
 
