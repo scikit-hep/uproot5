@@ -129,7 +129,21 @@ def test_xrootd_worker():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        num_workers=5
+        num_workers=5,
+    ) as source:
+        one = source.chunk(0, 100).raw_data.tostring()
+        assert len(one) == 100
+        two = source.chunk(50, 55).raw_data.tostring()
+        assert len(two) == 5
+        three = source.chunk(200, 400).raw_data.tostring()
+        assert len(three) == 200
+        assert one[:4] == b"root"
+
+
+def test_xrootd_vectorread():
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.XRootDVectorReadSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
     ) as source:
         one = source.chunk(0, 100).raw_data.tostring()
         assert len(one) == 100

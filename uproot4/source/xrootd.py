@@ -194,6 +194,20 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         """
         self._resource.__exit__(exception_type, exception_value, traceback)
 
+    def chunk(self, start, stop):
+        """
+        Args:
+            start (int): The start (inclusive) byte position for the desired
+                chunk.
+            stop (int): The stop (exclusive) byte position for the desired
+                chunk.
+
+        Returns a single Chunk that has already been filled synchronously.
+        """
+        data = self._resource.get(start, stop)
+        future = uproot4.source.futures.TrivialFuture(data)
+        return uproot4.source.chunk.Chunk(self, start, stop, future)
+
     def chunks(self, ranges, notifications=None):
         """
         Args:
@@ -266,9 +280,7 @@ class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
         self._resource = XRootDResource(file_path, timeout)
 
         if num_workers == 0:
-            self._executor = uproot4.source.futures.ResourceExecutor(
-                self._resource
-            )
+            self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
         else:
             self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [XRootDResource(file_path, timeout) for x in range(num_workers)]
