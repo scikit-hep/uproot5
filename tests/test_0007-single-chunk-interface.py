@@ -82,6 +82,7 @@ def test_memmap(tmpdir):
         uproot4.source.memmap.MemmapSource(filename + "-does-not-exist")
 
 
+@pytest.mark.network_slow
 def test_http():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
@@ -98,6 +99,7 @@ def test_http():
                     source.chunk(0, 100)
 
 
+@pytest.mark.network_slow
 def test_http_multipart():
     with uproot4.source.http.HTTPSource("https://example.com") as source:
         for start, stop in [(0, 100), (50, 55), (200, 400)]:
@@ -111,6 +113,7 @@ def test_http_multipart():
                 source.chunk(0, 100).raw_data.tostring()
 
 
+@pytest.mark.network_slow
 def test_xrootd():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.MultiThreadedXRootDSource(
@@ -125,6 +128,7 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_xrootd_worker():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.MultiThreadedXRootDSource(
@@ -140,6 +144,7 @@ def test_xrootd_worker():
         assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(

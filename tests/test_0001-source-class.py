@@ -87,6 +87,7 @@ def test_memmap_fail(tmpdir):
         uproot4.source.file.FileSource(filename + "-does-not-exist")
 
 
+@pytest.mark.network_slow
 def test_http():
     source = uproot4.source.http.HTTPSource("https://example.com")
     with source as tmp:
@@ -102,6 +103,7 @@ def test_http():
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
 
 
+@pytest.mark.network_slow
 def test_http_fail():
     source = uproot4.source.http.HTTPSource(
         "https://wonky.cern/does-not-exist", timeout=0.1
@@ -111,6 +113,7 @@ def test_http_fail():
         chunks[0].raw_data
 
 
+@pytest.mark.network_slow
 def test_no_multipart():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
@@ -124,6 +127,7 @@ def test_no_multipart():
             assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_no_multipart_fail():
     for num_workers in [0, 1, 2]:
         source = uproot4.source.http.MultithreadedHTTPSource(
@@ -134,6 +138,7 @@ def test_no_multipart_fail():
             chunks[0].raw_data
 
 
+@pytest.mark.network_slow
 def test_fallback():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.HTTPSource(
@@ -148,6 +153,7 @@ def test_fallback():
             assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_xrootd():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.MultiThreadedXRootDSource(
@@ -161,6 +167,7 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_xrootd_fail():
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.MultiThreadedXRootDSource(
@@ -168,6 +175,7 @@ def test_xrootd_fail():
         )
 
 
+@pytest.mark.network_slow
 def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(
@@ -181,6 +189,7 @@ def test_xrootd_vectorread():
         assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_xrootd_vectorread_fail():
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.XRootDSource(

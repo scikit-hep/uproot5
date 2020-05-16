@@ -166,7 +166,9 @@ for URL {0}""".format(
         Creates a fallback MultithreadedHTTPSource because the server didn't
         respond with 206.
         """
-        self._fallback = MultithreadedHTTPSource(self._file_path, self._num_fallback_workers)
+        self._fallback = MultithreadedHTTPSource(
+            self._file_path, self._num_fallback_workers
+        )
 
     def fill_with_fallback(self, ranges, futures):
         """

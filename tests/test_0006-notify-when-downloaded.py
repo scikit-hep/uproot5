@@ -75,6 +75,7 @@ def test_memmap(tmpdir):
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_http_multipart():
     notifications = queue.Queue()
     with uproot4.source.http.HTTPSource("https://example.com") as source:
@@ -85,6 +86,7 @@ def test_http_multipart():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_http():
     notifications = queue.Queue()
     with uproot4.source.http.MultithreadedHTTPSource("https://example.com") as source:
@@ -95,9 +97,12 @@ def test_http():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_http_workers():
     notifications = queue.Queue()
-    with uproot4.source.http.MultithreadedHTTPSource("https://example.com", num_workers=2) as source:
+    with uproot4.source.http.MultithreadedHTTPSource(
+        "https://example.com", num_workers=2
+    ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
@@ -105,6 +110,7 @@ def test_http_workers():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_http_fallback():
     notifications = queue.Queue()
     with uproot4.source.http.HTTPSource(
@@ -117,6 +123,7 @@ def test_http_fallback():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_http_fallback_workers():
     notifications = queue.Queue()
     with uproot4.source.http.HTTPSource(
@@ -129,6 +136,7 @@ def test_http_fallback_workers():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_xrootd():
     pytest.importorskip("pyxrootd")
     notifications = queue.Queue()
@@ -142,6 +150,7 @@ def test_xrootd():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_xrootd_workers():
     pytest.importorskip("pyxrootd")
     notifications = queue.Queue()
@@ -156,6 +165,7 @@ def test_xrootd_workers():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.network_slow
 def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     notifications = queue.Queue()
