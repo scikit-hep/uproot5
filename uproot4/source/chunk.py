@@ -53,7 +53,7 @@ class Source(object):
         """
         Manually calls `__exit__`.
         """
-        self.__exit__()
+        self.__exit__(None, None, None)
 
 
 class MultiThreadedSource(Source):

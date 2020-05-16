@@ -27,173 +27,143 @@ import uproot4.source.http
 import uproot4.source.xrootd
 
 
-# def test_file(tmpdir):
-#     filename = os.path.join(str(tmpdir), "tmp.raw")
+def test_file(tmpdir):
+    filename = os.path.join(str(tmpdir), "tmp.raw")
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-#     with open(filename, "wb") as tmp:
-#         tmp.write(b"******    ...+++++++!!!!!@@@@@")
-
-#     for num_workers in [0, 1, 2]:
-#         source = uproot4.source.file.FileSource(filename, num_workers=num_workers)
-#         with source as tmp:
-#             chunks = tmp.chunks(
-#                 [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
-#             )
-#             assert [chunk.raw_data.tostring() for chunk in chunks] == [
-#                 b"******",
-#                 b"    ",
-#                 b"...",
-#                 b"+++++++",
-#                 b"!!!!!",
-#                 b"@@@@@",
-#             ]
+    notifications = queue.Queue()
+    with uproot4.source.file.FileSource(filename) as source:
+        chunks = source.chunks(
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
+        )
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
-# def test_file(tmpdir):
-#     filename = os.path.join(str(tmpdir), "tmp.raw")
+def test_file_workers(tmpdir):
+    filename = os.path.join(str(tmpdir), "tmp.raw")
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-#     with open(filename, "wb") as tmp:
-#         tmp.write(b"******    ...+++++++!!!!!@@@@@")
-
-#     for num_workers in [0, 1, 2]:
-#         with pytest.raises(Exception):
-#             uproot4.source.file.FileSource(
-#                 filename + "-does-not-exist", num_workers=num_workers
-#             )
-
-
-# def test_memmap(tmpdir):
-#     filename = os.path.join(str(tmpdir), "tmp.raw")
-
-#     with open(filename, "wb") as tmp:
-#         tmp.write(b"******    ...+++++++!!!!!@@@@@")
-
-#     source = uproot4.source.memmap.MemmapSource(filename)
-#     with source as tmp:
-#         chunks = tmp.chunks([(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)])
-#         assert [chunk.raw_data.tostring() for chunk in chunks] == [
-#             b"******",
-#             b"    ",
-#             b"...",
-#             b"+++++++",
-#             b"!!!!!",
-#             b"@@@@@",
-#         ]
+    notifications = queue.Queue()
+    with uproot4.source.file.FileSource(filename, num_workers=5) as source:
+        chunks = source.chunks(
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
+        )
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
-# def test_memmap(tmpdir):
-#     filename = os.path.join(str(tmpdir), "tmp.raw")
+def test_memmap(tmpdir):
+    filename = os.path.join(str(tmpdir), "tmp.raw")
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-#     with open(filename, "wb") as tmp:
-#         tmp.write(b"******    ...+++++++!!!!!@@@@@")
+    notifications = queue.Queue()
+    with uproot4.source.memmap.MemmapSource(filename) as source:
+        chunks = source.chunks(
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
+        )
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
-#     with pytest.raises(Exception):
-#         uproot4.source.file.FileSource(filename + "-does-not-exist")
+
+def test_http_multipart():
+    notifications = queue.Queue()
+    with uproot4.source.http.HTTPMultipartSource("https://example.com") as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
 def test_http():
-    with uproot4.source.http.HTTPMultipartSource("https://example.com") as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+    notifications = queue.Queue()
+    with uproot4.source.http.HTTPSource("https://example.com") as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
+def test_http_workers():
+    notifications = queue.Queue()
+    with uproot4.source.http.HTTPSource("https://example.com", num_workers=2) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
-# def test_http():
-#     source = uproot4.source.http.HTTPMultipartSource("https://example.com")
-#     with source as tmp:
-#         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
-#         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-#         assert len(one) == 100
-#         assert len(two) == 5
-#         assert len(three) == 200
-
-#     source = uproot4.source.http.HTTPSource("https://example.com")
-#     with source as tmp:
-#         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
-#         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
+def test_http_fallback():
+    notifications = queue.Queue()
+    with uproot4.source.http.HTTPMultipartSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
-# def test_http():
-#     source = uproot4.source.http.HTTPMultipartSource(
-#         "https://wonky.cern/does-not-exist", timeout=0.1
-#     )
-#     with pytest.raises(Exception) as err:
-#         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-#         chunks[0].raw_data
+def test_http_fallback_workers():
+    notifications = queue.Queue()
+    with uproot4.source.http.HTTPMultipartSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root", num_fallback_workers=5
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
-# def test_no_multipart():
-#     for num_workers in [0, 1, 2]:
-#         with uproot4.source.http.HTTPSource(
-#             "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=num_workers
-#         ) as source:
-#             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-#             one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-#             assert len(one) == 100
-#             assert len(two) == 5
-#             assert len(three) == 200
-#             assert one[:4] == b"root"
+def test_xrootd():
+    pytest.importorskip("pyxrootd")
+    notifications = queue.Queue()
+    with uproot4.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
-# def test_no_multipart_fail():
-#     for num_workers in [0, 1, 2]:
-#         source = uproot4.source.http.HTTPSource(
-#             "https://wonky.cern/does-not-exist", num_workers=num_workers, timeout=0.1
-#         )
-#         with pytest.raises(Exception) as err:
-#             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-#             chunks[0].raw_data
+def test_xrootd_workers():
+    pytest.importorskip("pyxrootd")
+    notifications = queue.Queue()
+    with uproot4.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        num_workers=5,
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
 
 
-# def test_fallback():
-#     for num_workers in [0, 1, 2]:
-#         with uproot4.source.http.HTTPMultipartSource(
-#             "https://scikit-hep.org/uproot/examples/Zmumu.root",
-#             num_fallback_workers=num_workers,
-#         ) as source:
-#             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-#             one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-#             assert len(one) == 100
-#             assert len(two) == 5
-#             assert len(three) == 200
-#             assert one[:4] == b"root"
-
-
-# def test_xrootd():
-#     pytest.importorskip("pyxrootd")
-#     with uproot4.source.xrootd.XRootDSource(
-#         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
-#     ) as source:
-#         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-#         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-#         assert len(one) == 100
-#         assert len(two) == 5
-#         assert len(three) == 200
-#         assert one[:4] == b"root"
-
-
-# def test_xrootd_fail():
-#     with pytest.raises(Exception) as err:
-#         source = uproot4.source.xrootd.XRootDSource(
-#             "root://wonky.cern/does-not-exist", timeout=1
-#         )
-
-
-# def test_xrootd_vectorread():
-#     pytest.importorskip("pyxrootd")
-#     with uproot4.source.xrootd.XRootDVectorReadSource(
-#         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
-#     ) as source:
-#         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-#         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-#         assert len(one) == 100
-#         assert len(two) == 5
-#         assert len(three) == 200
-#         assert one[:4] == b"root"
-
-
-# def test_xrootd_vectorread_fail():
-#     with pytest.raises(Exception) as err:
-#         source = uproot4.source.xrootd.XRootDVectorReadSource(
-#             "root://wonky.cern/does-not-exist", timeout=1
-#         )
+def test_xrootd_vectorread():
+    pytest.importorskip("pyxrootd")
+    notifications = queue.Queue()
+    with uproot4.source.xrootd.XRootDVectorReadSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))

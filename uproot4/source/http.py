@@ -417,7 +417,9 @@ class HTTPMultipartSource(uproot4.source.chunk.Source):
             futures[r.encode()] = future
             chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
             if notifications is not None:
-                future.add_done_callback(Resource.notifier(chunk, notifications))
+                future.add_done_callback(
+                    uproot4.source.chunk.Resource.notifier(chunk, notifications)
+                )
             chunks.append(chunk)
 
         range_string = "bytes=" + ", ".join(range_strings)

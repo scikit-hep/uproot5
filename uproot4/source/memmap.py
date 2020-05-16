@@ -82,6 +82,8 @@ class MemmapSource(uproot4.source.chunk.Source):
             future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
             chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
             if notifications is not None:
-                future.add_done_callback(Resource.notifier(chunk, notifications))
+                future.add_done_callback(
+                    uproot4.source.chunk.Resource.notifier(chunk, notifications)
+                )
             chunks.append(chunk)
         return chunks

@@ -192,7 +192,7 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         Closes the HTTP(S) connection and passes `__exit__` to the worker
         Thread.
         """
-        pass
+        self._resource.__exit__(exception_type, exception_value, traceback)
 
     def chunks(self, ranges, notifications=None):
         """
@@ -224,7 +224,9 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
                 futures[(start, size)] = future
                 chunk = uproot4.source.chunk.Chunk(self, start, start + size, future)
                 if notifications is not None:
-                    future.add_done_callback(Resource.notifier(chunk, notifications))
+                    future.add_done_callback(
+                        uproot4.source.chunk.Resource.notifier(chunk, notifications)
+                    )
                 chunks.append(chunk)
 
             def _callback(status, response, hosts, futures=futures):

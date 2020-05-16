@@ -126,7 +126,7 @@ class ResourceExecutor(Executor):
         """
         Manually calls `__exit__`.
         """
-        self.__exit__()
+        self.__exit__(None, None, None)
 
 
 class TaskFuture(Future):
