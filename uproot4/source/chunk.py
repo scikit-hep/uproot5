@@ -12,6 +12,8 @@ from __future__ import absolute_import
 
 import numpy
 
+import uproot4.source.futures
+
 
 class Resource(object):
     """
@@ -97,6 +99,20 @@ class MultiThreadedSource(Source):
         file handles when exiting a context block.
         """
         self._executor.__exit__(exception_type, exception_value, traceback)
+        self._resource.__exit__(exception_type, exception_value, traceback)
+
+    def chunk(self, start, stop):
+        """
+        Args:
+            start (int): The start (inclusive) byte position for the desired
+                chunk.
+            stop (int): The stop (exclusive) byte position for the desired
+                chunk.
+
+        Returns a single Chunk that has already been filled synchronously.
+        """
+        future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
+        return Chunk(self, start, stop, future)
 
     def chunks(self, ranges, notifications=None):
         """

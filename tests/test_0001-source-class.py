@@ -87,8 +87,9 @@ def test_memmap_fail(tmpdir):
         uproot4.source.file.FileSource(filename + "-does-not-exist")
 
 
+@pytest.mark.network_slow
 def test_http():
-    source = uproot4.source.http.HTTPMultipartSource("https://example.com")
+    source = uproot4.source.http.HTTPSource("https://example.com")
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
@@ -96,14 +97,15 @@ def test_http():
         assert len(two) == 5
         assert len(three) == 200
 
-    source = uproot4.source.http.HTTPSource("https://example.com")
+    source = uproot4.source.http.MultithreadedHTTPSource("https://example.com")
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
 
 
+@pytest.mark.network_slow
 def test_http_fail():
-    source = uproot4.source.http.HTTPMultipartSource(
+    source = uproot4.source.http.HTTPSource(
         "https://wonky.cern/does-not-exist", timeout=0.1
     )
     with pytest.raises(Exception) as err:
@@ -111,9 +113,10 @@ def test_http_fail():
         chunks[0].raw_data
 
 
+@pytest.mark.network_slow
 def test_no_multipart():
     for num_workers in [0, 1, 2]:
-        with uproot4.source.http.HTTPSource(
+        with uproot4.source.http.MultithreadedHTTPSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=num_workers
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
@@ -124,9 +127,10 @@ def test_no_multipart():
             assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_no_multipart_fail():
     for num_workers in [0, 1, 2]:
-        source = uproot4.source.http.HTTPSource(
+        source = uproot4.source.http.MultithreadedHTTPSource(
             "https://wonky.cern/does-not-exist", num_workers=num_workers, timeout=0.1
         )
         with pytest.raises(Exception) as err:
@@ -134,9 +138,10 @@ def test_no_multipart_fail():
             chunks[0].raw_data
 
 
+@pytest.mark.network_slow
 def test_fallback():
     for num_workers in [0, 1, 2]:
-        with uproot4.source.http.HTTPMultipartSource(
+        with uproot4.source.http.HTTPSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root",
             num_fallback_workers=num_workers,
         ) as source:
@@ -148,7 +153,30 @@ def test_fallback():
             assert one[:4] == b"root"
 
 
+@pytest.mark.network_slow
 def test_xrootd():
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.MultiThreadedXRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+    ) as source:
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+        assert one[:4] == b"root"
+
+
+@pytest.mark.network_slow
+def test_xrootd_fail():
+    with pytest.raises(Exception) as err:
+        source = uproot4.source.xrootd.MultiThreadedXRootDSource(
+            "root://wonky.cern/does-not-exist", timeout=1
+        )
+
+
+@pytest.mark.network_slow
+def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
@@ -161,29 +189,10 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
-def test_xrootd_fail():
-    with pytest.raises(Exception) as err:
-        source = uproot4.source.xrootd.XRootDSource(
-            "root://wonky.cern/does-not-exist", timeout=1
-        )
-
-
-def test_xrootd_vectorread():
-    pytest.importorskip("pyxrootd")
-    with uproot4.source.xrootd.XRootDVectorReadSource(
-        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
-    ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
-        assert len(one) == 100
-        assert len(two) == 5
-        assert len(three) == 200
-        assert one[:4] == b"root"
-
-
+@pytest.mark.network_slow
 def test_xrootd_vectorread_fail():
     with pytest.raises(Exception) as err:
-        source = uproot4.source.xrootd.XRootDVectorReadSource(
+        source = uproot4.source.xrootd.XRootDSource(
             "root://wonky.cern/does-not-exist", timeout=1
         )
 

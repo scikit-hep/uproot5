@@ -29,7 +29,7 @@ jobs:
           conda config --add channels conda-forge
           conda info
 
-      - name: "install dependencies"
+      - name: "install most dependencies"
         shell: "bash -l {0}"
         run: |
           conda activate testing
@@ -37,8 +37,16 @@ jobs:
           conda install --file requirements.txt --file requirements-test.txt
           conda list
 
+      - name: "install XRootD"
+        shell: "bash -l {0}"
+        if: "${{ matrix.python-version != 3.5 }}"
+        run: |
+          conda activate testing
+          conda env list
+          conda install xrootd
+          conda list
+
       - name: "flake8"
-        # if: "${{ matrix.python-version != 2.7 }}"
         shell: "bash -l {0}"
         run: |
           conda activate testing

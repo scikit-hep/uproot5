@@ -153,7 +153,7 @@ class XRootDResource(uproot4.source.chunk.Resource):
         return data
 
 
-class XRootDVectorReadSource(uproot4.source.chunk.Source):
+class XRootDSource(uproot4.source.chunk.Source):
     """
     Source managing data access using XRootD vector reads.
     """
@@ -193,6 +193,20 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         Thread.
         """
         self._resource.__exit__(exception_type, exception_value, traceback)
+
+    def chunk(self, start, stop):
+        """
+        Args:
+            start (int): The start (inclusive) byte position for the desired
+                chunk.
+            stop (int): The stop (exclusive) byte position for the desired
+                chunk.
+
+        Returns a single Chunk that has already been filled synchronously.
+        """
+        data = self._resource.get(start, stop)
+        future = uproot4.source.futures.TrivialFuture(data)
+        return uproot4.source.chunk.Chunk(self, start, stop, future)
 
     def chunks(self, ranges, notifications=None):
         """
@@ -244,7 +258,7 @@ class XRootDVectorReadSource(uproot4.source.chunk.Source):
         return chunks
 
 
-class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
+class MultiThreadedXRootDSource(uproot4.source.chunk.MultiThreadedSource):
     """
     Source managing one synchronous or multiple asynchronous XRootD handles as
     a context manager.
@@ -252,7 +266,7 @@ class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
 
     __slots__ = ["_file_path", "_executor"]
 
-    def __init__(self, file_path, num_workers=0, timeout=None):
+    def __init__(self, file_path, num_workers=10, timeout=None):
         """
         Args:
             file_path (str): URL starting with "root://".
@@ -263,11 +277,10 @@ class XRootDSource(uproot4.source.chunk.MultiThreadedSource):
                 before giving up on a remote file.
         """
         self._file_path = file_path
+        self._resource = XRootDResource(file_path, timeout)
 
         if num_workers == 0:
-            self._executor = uproot4.source.futures.ResourceExecutor(
-                XRootDResource(file_path, timeout)
-            )
+            self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
         else:
             self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [XRootDResource(file_path, timeout) for x in range(num_workers)]
