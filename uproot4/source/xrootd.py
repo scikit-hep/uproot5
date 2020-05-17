@@ -160,7 +160,7 @@ class XRootDSource(uproot4.source.chunk.Source):
 
     __slots__ = ["_file_path", "_max_num_elements", "_resource"]
 
-    def __init__(self, file_path, timeout=None, max_num_elements=None):
+    def __init__(self, file_path, **options):
         """
         Args:
             file_path (str): URL starting with "root://".
@@ -171,12 +171,13 @@ class XRootDSource(uproot4.source.chunk.Source):
                 capabilities.
         """
         self._file_path = file_path
-        self._timeout = timeout
+        self._timeout = options["timeout"]
 
         # important: construct this first because it raises an error for nonexistent hosts
-        self._resource = XRootDResource(file_path, timeout)
+        self._resource = XRootDResource(file_path, self._timeout)
 
         # this comes after because it HANGS for nonexistent hosts
+        max_num_elements = options["max_num_elements"]
         self._max_num_elements, self._max_element_size = get_server_config(file_path)
         if max_num_elements:
             self._max_num_elements = min(self._max_num_elements, max_num_elements)
@@ -274,7 +275,7 @@ class MultiThreadedXRootDSource(uproot4.source.chunk.MultiThreadedSource):
 
     __slots__ = ["_file_path", "_executor"]
 
-    def __init__(self, file_path, num_workers=10, timeout=None):
+    def __init__(self, file_path, **options):
         """
         Args:
             file_path (str): URL starting with "root://".
@@ -285,8 +286,10 @@ class MultiThreadedXRootDSource(uproot4.source.chunk.MultiThreadedSource):
                 before giving up on a remote file.
         """
         self._file_path = file_path
+        timeout = options["timeout"]
         self._resource = XRootDResource(file_path, timeout)
 
+        num_workers = options["num_workers"]
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
         else:

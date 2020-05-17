@@ -48,7 +48,7 @@ class FileSource(uproot4.source.chunk.MultiThreadedSource):
 
     __slots__ = ["_file_path", "_executor"]
 
-    def __init__(self, file_path, num_workers=10):
+    def __init__(self, file_path, **options):
         """
         Args:
             file_path (str): Path to the file.
@@ -58,6 +58,7 @@ class FileSource(uproot4.source.chunk.MultiThreadedSource):
         """
         self._file_path = file_path
         self._resource = FileResource(file_path)
+        num_workers = options["num_workers"]
 
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)

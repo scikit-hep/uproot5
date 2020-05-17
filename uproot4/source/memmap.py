@@ -24,7 +24,7 @@ class MemmapSource(uproot4.source.chunk.Source):
 
     _dtype = uproot4.source.chunk.Chunk._dtype
 
-    def __init__(self, file_path):
+    def __init__(self, file_path, **options):
         """
         Args:
             file_path (str): Path to the file.

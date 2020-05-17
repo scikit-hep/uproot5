@@ -89,6 +89,7 @@ class HTTPBackgroundThread(threading.Thread):
         self._file_path = file_path
         self._parsed_url = urlparse(file_path)
         self._connection = make_connection(self._parsed_url, timeout)
+        self._timeout = timeout
         self._work_queue = work_queue
         self._num_fallback_workers = num_fallback_workers
         self._fallback = None
@@ -113,6 +114,13 @@ class HTTPBackgroundThread(threading.Thread):
         Used only for multi-part GET.
         """
         return self._connection
+
+    @property
+    def timeout(self):
+        """
+        Number of seconds before giving up on a remote file.
+        """
+        return self._timeout
 
     @property
     def work_queue(self):
@@ -167,7 +175,9 @@ for URL {0}""".format(
         respond with 206.
         """
         self._fallback = MultithreadedHTTPSource(
-            self._file_path, self._num_fallback_workers
+            self._file_path,
+            num_workers=self._num_fallback_workers,
+            timeout=self._timeout,
         )
 
     def fill_with_fallback(self, ranges, futures):
@@ -367,7 +377,7 @@ class HTTPSource(uproot4.source.chunk.Source):
 
     __slots__ = ["_file_path", "_parsed_url", "_connection", "_work_queue", "_worker"]
 
-    def __init__(self, file_path, num_fallback_workers=1, timeout=None):
+    def __init__(self, file_path, **options):
         """
         Args:
             file_path (str): URL starting with "http://" or "https://".
@@ -377,10 +387,10 @@ class HTTPSource(uproot4.source.chunk.Source):
                 remote file.
         """
         self._file_path = file_path
-        self._timeout = timeout
+        self._timeout = options["timeout"]
         self._work_queue = queue.Queue()
         self._worker = HTTPBackgroundThread(
-            file_path, timeout, self._work_queue, num_fallback_workers
+            file_path, self._timeout, self._work_queue, options["num_fallback_workers"]
         )
         self._worker.start()
 
@@ -612,7 +622,7 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultiThreadedSource):
 
     __slots__ = ["_file_path", "_executor", "_timeout"]
 
-    def __init__(self, file_path, num_workers=10, timeout=None):
+    def __init__(self, file_path, **options):
         """
         Args:
             file_path (str): URL starting with "http://" or "https://".
@@ -623,8 +633,10 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultiThreadedSource):
                 file.
         """
         self._file_path = file_path
+        timeout = options["timeout"]
         self._resource = HTTPResource(file_path, timeout)
 
+        num_workers = options["num_workers"]
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
         else:
