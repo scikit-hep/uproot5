@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 
 import struct
-import threading
 import uuid
 
 import uproot4._util

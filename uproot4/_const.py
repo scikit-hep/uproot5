@@ -24,11 +24,11 @@ kDisplacementMask = numpy.uint32(0xFF000000)
 
 ############# core/zip/inc/Compression.h
 
-kZLIB                          = 1
-kLZMA                          = 2
-kOldCompressionAlgo            = 3
-kLZ4                           = 4
-kZSTD                          = 5
+kZLIB = 1
+kLZMA = 2
+kOldCompressionAlgo = 3
+kLZ4 = 4
+kZSTD = 5
 kUndefinedCompressionAlgorithm = 6
 
 ############# constants for streamers
