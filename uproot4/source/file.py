@@ -40,7 +40,7 @@ class FileResource(uproot4.source.chunk.Resource):
         return self._file.read(stop - start)
 
 
-class FileSource(uproot4.source.chunk.MultiThreadedSource):
+class FileSource(uproot4.source.chunk.MultithreadedSource):
     """
     Source managing one synchronous or multiple asynchronous file handles as a
     context manager.

@@ -53,15 +53,19 @@ def path_to_source_class(file_path, options):
         os.name == "nt" and _windows_absolute_path_pattern.match(file_path) is not None
     )
     parsed_url = urlparse(file_path)
-    if parsed.scheme == "file" or len(parsed.scheme) == 0 or windows_absolute_path:
+    if (
+        parsed_url.scheme == "file"
+        or len(parsed_url.scheme) == 0
+        or windows_absolute_path
+    ):
         if not windows_absolute_path:
-            file_path = parsed_url.netloc + parsed.path
+            file_path = parsed_url.netloc + parsed_url.path
         return options["file_handler"]
 
-    elif parsed.scheme == "root":
+    elif parsed_url.scheme == "root":
         return options["xrootd_handler"]
 
-    elif parsed.scheme == "http" or parsed.scheme == "https":
+    elif parsed_url.scheme == "http" or parsed_url.scheme == "https":
         return options["http_handler"]
 
     else:

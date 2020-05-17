@@ -58,7 +58,7 @@ class Source(object):
         self.__exit__(None, None, None)
 
 
-class MultiThreadedSource(Source):
+class MultithreadedSource(Source):
     """
     Base class for Sources that maintain an Executor.
     """

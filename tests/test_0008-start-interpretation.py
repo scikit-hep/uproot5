@@ -10,13 +10,10 @@ import skhep_testdata
 
 import uproot4
 import uproot4.model
+import uproot4.reading
 
 
-# filename = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
-# filename = skhep_testdata.data_path("uproot-nesteddirs.root")
-
-
-def test(tmpdir):
+def test_classname_encoding(tmpdir):
     assert (
         uproot4.model.classname_encode("namespace::some.deep<templated, thing>", 12)
         == "ROOT_namespace_3a3a_some_2e_deep_3c_templated_2c20_thing_3e__v12"
@@ -32,3 +29,9 @@ def test(tmpdir):
     assert uproot4.model.classname_decode(
         "ROOT_namespace_3a3a_some_2e_deep_3c_templated_2c20_thing_3e_"
     ) == ("namespace::some.deep<templated, thing>", None)
+
+
+def test_file_header():
+    filename = skhep_testdata.data_path("uproot-Zmumu.root")
+    file = uproot4.reading.ReadOnlyFile(filename)
+    assert repr(file.compression) == "ZLIB(4)"

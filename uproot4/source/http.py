@@ -611,7 +611,7 @@ for URL {0}""".format(
         return response.read()
 
 
-class MultithreadedHTTPSource(uproot4.source.chunk.MultiThreadedSource):
+class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
     """
     Source managing one synchronous or multiple asynchronous HTTP(S) handles as
     a context manager.

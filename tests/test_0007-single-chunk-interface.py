@@ -94,7 +94,9 @@ def test_http():
 
             with pytest.raises(Exception):
                 with uproot4.source.http.MultithreadedHTTPSource(
-                    "https://wonky.cern/does-not-exist", num_workers=num_workers, timeout=1
+                    "https://wonky.cern/does-not-exist",
+                    num_workers=num_workers,
+                    timeout=1,
                 ) as source:
                     source.chunk(0, 100)
 
@@ -118,7 +120,7 @@ def test_http_multipart():
 @pytest.mark.network
 def test_xrootd():
     pytest.importorskip("pyxrootd")
-    with uproot4.source.xrootd.MultiThreadedXRootDSource(
+    with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=0,
         timeout=1,
@@ -135,7 +137,7 @@ def test_xrootd():
 @pytest.mark.network
 def test_xrootd_worker():
     pytest.importorskip("pyxrootd")
-    with uproot4.source.xrootd.MultiThreadedXRootDSource(
+    with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=5,
         timeout=1,

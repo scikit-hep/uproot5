@@ -267,7 +267,7 @@ class XRootDSource(uproot4.source.chunk.Source):
         return chunks
 
 
-class MultiThreadedXRootDSource(uproot4.source.chunk.MultiThreadedSource):
+class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
     """
     Source managing one synchronous or multiple asynchronous XRootD handles as
     a context manager.
