@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
 Source and Resource for plain file handle physical I/O.

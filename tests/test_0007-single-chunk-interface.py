@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 from __future__ import absolute_import
 
@@ -82,7 +82,7 @@ def test_memmap(tmpdir):
         uproot4.source.memmap.MemmapSource(filename + "-does-not-exist")
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_http():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
@@ -99,7 +99,7 @@ def test_http():
                     source.chunk(0, 100)
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_http_multipart():
     with uproot4.source.http.HTTPSource("https://example.com") as source:
         for start, stop in [(0, 100), (50, 55), (200, 400)]:
@@ -113,7 +113,7 @@ def test_http_multipart():
                 source.chunk(0, 100).raw_data.tostring()
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_xrootd():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.MultiThreadedXRootDSource(
@@ -128,7 +128,7 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_xrootd_worker():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.MultiThreadedXRootDSource(
@@ -144,7 +144,7 @@ def test_xrootd_worker():
         assert one[:4] == b"root"
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(
