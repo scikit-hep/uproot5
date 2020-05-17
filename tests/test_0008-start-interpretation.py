@@ -35,3 +35,6 @@ def test_file_header():
     filename = skhep_testdata.data_path("uproot-Zmumu.root")
     file = uproot4.reading.ReadOnlyFile(filename)
     assert repr(file.compression) == "ZLIB(4)"
+    assert not file.is_64bit
+    assert file.fNbytesInfo == 4447
+    assert file.hex_uuid == "944b77d0-98ab-11e7-a769-0100007fbeef"

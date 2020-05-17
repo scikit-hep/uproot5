@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import struct
 import threading
+import uuid
 
 import uproot4._util
 import uproot4.compression
@@ -14,8 +15,8 @@ import uproot4.source.http
 import uproot4.source.xrootd
 
 
-_header_fields_small = struct.Struct(">4siiiiiiiBiii18s")
-_header_fields_big = struct.Struct(">4siiqqiiiBiqi18s")
+_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
+_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
 
 class ReadOnlyFile(object):
@@ -52,6 +53,7 @@ class ReadOnlyFile(object):
             self._fCompress,
             self._fSeekInfo,
             self._fNbytesInfo,
+            self._fUUID_version,
             self._fUUID,
         ) = uproot4.source.cursor.Cursor(0).fields(chunk, _header_fields_small)
 
@@ -69,6 +71,7 @@ class ReadOnlyFile(object):
                 self._fCompress,
                 self._fSeekInfo,
                 self._fNbytesInfo,
+                self._fUUID_version,
                 self._fUUID,
             ) = uproot4.source.cursor.Cursor(0).fields(chunk, _header_fields_big)
 
@@ -115,12 +118,24 @@ in file {1}""".format(
         return "{0}.{1:02d}/{2:02d}".format(*self.root_version_tuple)
 
     @property
+    def is_64bit(self):
+        return self._fVersion >= 1000000
+
+    @property
     def compression(self):
         return uproot4.compression.Compression.from_code(self._fCompress)
 
     @property
+    def hex_uuid(self):
+        if uproot4._util.py2:
+            out = "".join("{0:02x}".format(ord(x)) for x in self._fUUID)
+        else:
+            out = "".join("{0:02x}".format(x) for x in self._fUUID)
+        return "-".join([out[0:8], out[8:12], out[12:16], out[16:20], out[20:32]])
+
+    @property
     def uuid(self):
-        return self._fUUID
+        return uuid.UUID(self.hex_uuid.replace("-", ""))
 
     @property
     def fVersion(self):
