@@ -93,10 +93,10 @@ def classname_pretty(obj):
 
 class Model(object):
     @classmethod
-    def read(cls, cursor, chunk, file, parent, options, encoded_classname=None):
+    def read(cls, chunk, cursor, file, parent, options, encoded_classname=None):
         cls.hook_before_read(
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
             file=file,
             parent=parent,
             options=options,
@@ -118,8 +118,8 @@ class Model(object):
         self._bases = []
 
         self.hook_before_read_members(
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
             file=file,
             parent=parent,
             options=options,
@@ -190,7 +190,7 @@ _numbytes_version_1 = struct.Struct(">IH")
 _numbytes_version_2 = struct.Struct(">H")
 
 
-def _numbytes_version(cursor, chunk):
+def _numbytes_version(chunk, cursor):
     num_bytes, version = cursor.fields(chunk, _numbytes_version_1, move=False)
     num_bytes = numpy.int64(num_bytes)
 
@@ -219,12 +219,12 @@ in file {4}""".format(
 
 class UnknownClass(Model):
     @classmethod
-    def read(cls, cursor, chunk, file, parent, options, encoded_classname=None):
+    def read(cls, chunk, cursor, file, parent, options, encoded_classname=None):
         self = Model.read(
-            cursor, chunk, file, parent, options, encoded_classname=encoded_classname
+            chunk, cursor, file, parent, options, encoded_classname=encoded_classname
         )
 
-        num_bytes, version = _numbytes_version(cursor, chunk)
+        num_bytes, version = _numbytes_version(chunk, cursor)
 
         if num_bytes is not None:
             self._num_bytes = num_bytes
@@ -264,9 +264,9 @@ class UnknownClassVersion(Model):
 
 class ModelVersions(object):
     @classmethod
-    def read(cls, cursor, chunk, file, parent, options, encoded_classname=None):
+    def read(cls, chunk, cursor, file, parent, options, encoded_classname=None):
         start_cursor = cursor.copy(link_refs=True)
-        num_bytes, version = _numbytes_version(cursor, chunk)
+        num_bytes, version = _numbytes_version(chunk, cursor)
 
         if version in cls._class_versions:
             versioned_cls = cls._class_versions[version]

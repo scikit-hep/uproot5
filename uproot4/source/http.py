@@ -57,6 +57,13 @@ def make_connection(parsed_url, timeout):
 
 
 class HTTPBackgroundThread(threading.Thread):
+    class GetSize(object):
+        __slots__ = ["done", "excinfo"]
+
+        def __init__(self):
+            self.done = threading.Event()
+            self.excinfo = None
+
     class SinglepartWork(object):
         __slots__ = ["start", "stop", "future"]
 
@@ -93,6 +100,7 @@ class HTTPBackgroundThread(threading.Thread):
         self._work_queue = work_queue
         self._num_fallback_workers = num_fallback_workers
         self._fallback = None
+        self._size = None
 
     @property
     def file_path(self):
@@ -188,19 +196,31 @@ for URL {0}""".format(
         This will only be called before the HTTPSource notices that there is a
         `fallback` and sends requests for `chunks` to it directly.
         """
-        chunks = self._fallback.chunks(ranges)
+        try:
+            chunks = self._fallback.chunks(ranges)
 
-        for (start, stop), chunk in zip(ranges, chunks):
-            r = "{0}-{1}".format(start, stop - 1).encode()
-            assert r in futures
-            future = futures[r]
+        except Exception:
+            for future in futures.values():
+                future._excinfo = sys.exc_info()
+                future._set_finished()
 
-            if hasattr(chunk.future, "_finished"):
-                chunk.future._finished.wait()
+        else:
+            for (start, stop), chunk in zip(ranges, chunks):
+                r = "{0}-{1}".format(start, stop - 1).encode()
+                assert r in futures
+                future = futures[r]
 
-            future._result = chunk.future._result
-            future._excinfo = getattr(chunk.future, "_excinfo", None)
-            future._set_finished()
+                if hasattr(chunk.future, "_finished"):
+                    try:
+                        chunk.future._finished.wait()
+                    except Exception:
+                        future._excinfo = chunk.future._excinfo
+                        future._set_finished()
+                        continue
+
+                future._result = chunk.future._result
+                future._excinfo = getattr(chunk.future, "_excinfo", None)
+                future._set_finished()
 
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
 
@@ -329,6 +349,45 @@ for URL {3}""".format(
 
         response.close()
 
+    def fill_size(self, work):
+        try:
+            self._connection.request("HEAD", self._parsed_url.path)
+            response = self._connection.getresponse()
+
+        except Exception:
+            work.excinfo = sys.exc_info()
+
+        else:
+            if response.status != 200:
+                try:
+                    raise OSError(
+                        """response status was {0}, rather than 200
+in file {1}""".format(
+                            response.status, self._file_path
+                        )
+                    )
+                except Exception:
+                    work.excinfo = sys.exc_info()
+
+            else:
+                for k, x in response.getheaders():
+                    if k.lower() == "content-length":
+                        self._size = int(x)
+                        break
+
+                else:
+                    try:
+                        raise OSError(
+                            """response headers did not include content-length: {0}
+in file {1}""".format(
+                                repr(dict(response.getheaders())), self._file_path
+                            )
+                        )
+                    except Exception:
+                        work.excinfo = sys.exc_info()
+
+        work.done.set()
+
     def run(self):
         """
         Listens to the `work_queue`, processing each (ranges, futures) it
@@ -351,6 +410,9 @@ for URL {3}""".format(
 
             elif isinstance(work, self.SinglepartWork):
                 self.fill_with_singlepart(work.start, work.stop, work.future)
+
+            elif isinstance(work, self.GetSize):
+                self.fill_size(work)
 
             else:
                 raise AssertionError(
@@ -386,11 +448,13 @@ class HTTPSource(uproot4.source.chunk.Source):
             timeout (None or float): Number of seconds before giving up on a
                 remote file.
         """
-        self._file_path = file_path
         self._timeout = options["timeout"]
+        num_fallback_workers = options["num_fallback_workers"]
+
+        self._file_path = file_path
         self._work_queue = queue.Queue()
         self._worker = HTTPBackgroundThread(
-            file_path, self._timeout, self._work_queue, options["num_fallback_workers"]
+            file_path, self._timeout, self._work_queue, num_fallback_workers
         )
         self._worker.start()
 
@@ -461,19 +525,34 @@ class HTTPSource(uproot4.source.chunk.Source):
             self._work_queue.put(None)
             time.sleep(0.001)
 
+    def __len__(self):
+        """
+        The number of bytes in the file.
+        """
+        if self._worker._size is None:
+            work = HTTPBackgroundThread.GetSize()
+            self._work_queue.put(work)
+            work.done.wait()
+            if work.excinfo is not None:
+                uproot4.source.futures.delayed_raise(*work.excinfo)
+
+        return self._worker._size
+
     def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
-            stop (int): The stop (exclusive) byte position for the desired
-                chunk.
+            stop (int or None): If an int, the stop (exclusive) byte position
+                for the desired chunk; if None, stop at the end of the file.
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
 
         Returns a single Chunk that will be filled by the background thread.
         """
+        if stop is None:
+            stop = len(self)
         future = uproot4.source.futures.TaskFuture(None)
         chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
         self._work_queue.put(HTTPBackgroundThread.SinglepartWork(start, stop, future))
@@ -632,11 +711,13 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
             timeout (float): Number of seconds before giving up on a remote
                 file.
         """
-        self._file_path = file_path
         timeout = options["timeout"]
-        self._resource = HTTPResource(file_path, timeout)
-
         num_workers = options["num_workers"]
+
+        self._file_path = file_path
+        self._resource = HTTPResource(file_path, timeout)
+        self._size = None
+
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
         else:
@@ -652,3 +733,33 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
         Number of seconds before giving up on a remote file.
         """
         return self._timeout
+
+    def __len__(self):
+        """
+        The number of bytes in the file.
+        """
+        if self._size is None:
+            self._resource._connection.request("HEAD", self._resource._parsed_url.path)
+            response = self._resource._connection.getresponse()
+
+            if response.status != 200:
+                raise OSError(
+                    """response status was {0}, rather than 200
+in file {1}""".format(
+                        response.status, self._file_path
+                    )
+                )
+
+            for k, x in response.getheaders():
+                if k.lower() == "content-length":
+                    self._size = int(x)
+                    break
+            else:
+                raise OSError(
+                    """response headers did not include content-length: {0}
+in file {1}""".format(
+                        repr(dict(response.getheaders())), self._file_path
+                    )
+                )
+
+        return self._size

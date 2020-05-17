@@ -14,10 +14,6 @@ import uproot4.source.http
 import uproot4.source.xrootd
 
 
-_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
-_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
-
-
 class ReadOnlyFile(object):
     defaults = {
         "file_handler": uproot4.source.memmap.MemmapSource,
@@ -27,17 +23,31 @@ class ReadOnlyFile(object):
         "max_num_elements": None,
         "num_workers": 10,
         "num_fallback_workers": 10,
+        "read_streamers": True,
     }
 
-    def __init__(self, file_path, **options):
+    _header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
+    _header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
+
+    def __init__(self, file_path, cache=None, **options):
         all_options = dict(self.defaults)
         all_options.update(options)
+        options = all_options
 
         self._file_path = file_path
+        self.cache = cache
 
-        Source = uproot4._util.path_to_source_class(file_path, all_options)
-        self._source = Source(file_path, **all_options)
-        chunk = self._source.chunk(0, _header_fields_big.size)
+        self.hook_before_create_source(file_path=file_path, options=options)
+
+        Source = uproot4._util.path_to_source_class(file_path, options)
+        self._source = Source(file_path, **options)
+
+        self.hook_before_get_chunk(file_path=file_path, options=options)
+
+        # chunk = self._source.chunk(0, self._header_fields_big.size)
+        chunk = self._source.chunk(0, None, exact=False)
+
+        self.hook_before_read(file_path=file_path, options=options, chunk=chunk)
 
         (
             magic,
@@ -54,7 +64,7 @@ class ReadOnlyFile(object):
             self._fNbytesInfo,
             self._fUUID_version,
             self._fUUID,
-        ) = uproot4.source.cursor.Cursor(0).fields(chunk, _header_fields_small)
+        ) = uproot4.source.cursor.Cursor(0).fields(chunk, self._header_fields_small)
 
         if self._fVersion >= 1000000:
             (
@@ -72,7 +82,7 @@ class ReadOnlyFile(object):
                 self._fNbytesInfo,
                 self._fUUID_version,
                 self._fUUID,
-            ) = uproot4.source.cursor.Cursor(0).fields(chunk, _header_fields_big)
+            ) = uproot4.source.cursor.Cursor(0).fields(chunk, self._header_fields_big)
 
         if magic != b"root":
             raise ValueError(
@@ -83,10 +93,71 @@ in file {1}""".format(
             )
 
         self._streamers = {}
+        self._classes = {}
+
+        if options["read_streamers"] and self._fSeekInfo != 0:
+            self.hook_before_read_streamers(
+                file_path=file_path, options=options, chunk=chunk
+            )
+
+            self._streamer_key = ReadOnlyKey(
+                uproot4.source.cursor.Cursor(self._fSeekInfo),
+                chunk,
+                self,
+                self,
+                options,
+            )
+
+            self.hook_before_define_classes(
+                file_path=file_path, options=options, chunk=chunk
+            )
+
+        else:
+            self._streamer_key = None
+
+        self.hook_before_root_directory(
+            file_path=file_path, options=options, chunk=chunk
+        )
+
+        self.hook_after_root_directory(
+            file_path=file_path, options=options, chunk=chunk
+        )
+
+    def __repr__(self):
+        return "<ReadOnlyFile {0}>".format(repr(self._file_path))
+
+    def hook_before_create_source(self, **kwargs):
+        pass
+
+    def hook_before_get_chunk(self, **kwargs):
+        pass
+
+    def hook_before_read(self, **kwargs):
+        pass
+
+    def hook_before_read_streamers(self, **kwargs):
+        pass
+
+    def hook_before_define_classes(self, **kwargs):
+        pass
+
+    def hook_before_root_directory(self, **kwargs):
+        pass
+
+    def hook_after_root_directory(self, **kwargs):
+        pass
 
     @property
     def file_path(self):
         return self._file_path
+
+    @property
+    def cache(self):
+        return self._cache
+
+    @cache.setter
+    def cache(self, value):
+        self._cache = value
 
     @property
     def source(self):
@@ -95,9 +166,6 @@ in file {1}""".format(
     @property
     def streamers(self):
         return self._streamers
-
-    def __repr__(self):
-        return "<ReadOnlyFile {0}>".format(repr(self._file_path))
 
     @property
     def root_version_tuple(self):
@@ -135,6 +203,10 @@ in file {1}""".format(
     @property
     def uuid(self):
         return uuid.UUID(self.hex_uuid.replace("-", ""))
+
+    @property
+    def streamer_key(self):
+        return self._streamer_key
 
     @property
     def fVersion(self):
@@ -183,3 +255,144 @@ in file {1}""".format(
     @property
     def fUUID(self):
         return self._fUUID
+
+
+class ReadOnlyKey(object):
+    _encoded_classname = "ROOT_TKey"
+
+    _format_small = struct.Struct(">ihiIhhii")
+    _format_big = struct.Struct(">ihiIhhqq")
+
+    def __init__(self, cursor, chunk, file, parent, options, read_strings=False):
+        self._cursor = cursor.copy(link_refs=True)
+        self._file = file
+        self._parent = parent
+
+        self.hook_before_read(
+            cursor=cursor,
+            chunk=chunk,
+            file=file,
+            parent=parent,
+            options=options,
+            read_strings=read_strings,
+        )
+
+        (
+            self._fNbytes,
+            self._fVersion,
+            self._fObjlen,
+            self._fDatime,
+            self._fKeylen,
+            self._fCycle,
+            self._fSeekKey,
+            self._fSeekPdir,
+        ) = cursor.fields(chunk, self._format_small, move=False)
+
+        if self._fVersion > 1000:
+            (
+                self._fNbytes,
+                self._fVersion,
+                self._fObjlen,
+                self._fDatime,
+                self._fKeylen,
+                self._fCycle,
+                self._fSeekKey,
+                self._fSeekPdir,
+            ) = cursor.fields(chunk, self._format_big)
+
+        else:
+            cursor.skip(self._format_small.size)
+
+        if read_strings:
+            self.hook_before_read_strings(
+                cursor=cursor,
+                chunk=chunk,
+                file=file,
+                parent=parent,
+                options=options,
+                read_strings=read_strings,
+            )
+
+            self._fClassName = cursor.string(chunk)
+            self._fName = cursor.string(chunk)
+            self._fTitle = cursor.string(chunk)
+
+        else:
+            self._fClassName = None
+            self._fName = None
+            self._fTitle = None
+
+        self.hook_after_read(
+            cursor=cursor,
+            chunk=chunk,
+            file=file,
+            parent=parent,
+            options=options,
+            read_strings=read_strings,
+        )
+
+    def __repr__(self):
+        if self._fName is None or self._fClass is None:
+            nameclass = ""
+        else:
+            nameclass = " {0}: {1}".format(self._fName, self._fClassName)
+        return "<ReadOnlyKey{0} at {1}>".format(
+            nameclass, self._fSeekKey + self._fKeylen
+        )
+
+    def hook_before_read(self, **kwargs):
+        pass
+
+    def hook_before_read_strings(self, **kwargs):
+        pass
+
+    def hook_after_read(self, **kwargs):
+        pass
+
+    @property
+    def data_cursor(self):
+        return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
+
+    @property
+    def data_compressed_bytes(self):
+        return self._fNbytes - self._fKeylen
+
+    @property
+    def data_uncompressed_bytes(self):
+        return self._fObjlen
+
+    @property
+    def is_compressed(self):
+        return self.data_compressed_bytes != self.data_uncompressed_bytes
+
+    @property
+    def fNbytes(self):
+        return self._fNbytes
+
+    @property
+    def fVersion(self):
+        return self._fVersion
+
+    @property
+    def fObjlen(self):
+        return self._fObjlen
+
+    @property
+    def fDatime(self):
+        return self._fDatime
+
+    @property
+    def fKeylen(self):
+        return self._fKeylen
+
+    @property
+    def fCycle(self):
+        return self._fCycle
+
+    @property
+    def fSeekKey(self):
+        return self._fSeekKey
+
+    @property
+    def fSeekPdir(self):
+        return self._fSeekPdir

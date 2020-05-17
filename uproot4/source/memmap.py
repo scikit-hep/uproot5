@@ -58,19 +58,36 @@ class MemmapSource(uproot4.source.chunk.Source):
         else:
             self._file._mmap.close()
 
+    def __len__(self):
+        """
+        The number of bytes in the file.
+        """
+        return self._file._mmap.size()
+
     def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
-            stop (int): The stop (exclusive) byte position for the desired
-                chunk.
+            stop (int or None): If an int, the stop (exclusive) byte position
+                for the desired chunk; if None, stop at the end of the file.
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
 
         Returns a single Chunk that has already been filled synchronously.
         """
+        if uproot4._util.py2:
+            try:
+                self._file._mmap.tell()
+            except ValueError:
+                raise OSError("memmap is closed for file {0}".format(self._file_path))
+
+        elif self._file._mmap.closed:
+            raise OSError("memmap is closed for file {0}".format(self._file_path))
+
+        if stop is None:
+            stop = len(self)
         future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
         return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
 

@@ -44,6 +44,8 @@ def test_file(tmpdir):
                 b"@@@@@",
             ]
 
+        assert len(source) == 30
+
 
 def test_file_fail(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
@@ -76,6 +78,8 @@ def test_memmap(tmpdir):
             b"@@@@@",
         ]
 
+        assert len(source) == 30
+
 
 def test_memmap_fail(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
@@ -90,7 +94,7 @@ def test_memmap_fail(tmpdir):
 @pytest.mark.network
 def test_http():
     source = uproot4.source.http.HTTPSource(
-        "https://example.com", timeout=1, num_fallback_workers=0
+        "https://example.com", timeout=10, num_fallback_workers=0
     )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
@@ -100,11 +104,28 @@ def test_http():
         assert len(three) == 200
 
     source = uproot4.source.http.MultithreadedHTTPSource(
-        "https://example.com", num_workers=0, timeout=1
+        "https://example.com", num_workers=0, timeout=10
     )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
+
+
+@pytest.mark.network
+def test_http_size():
+    with uproot4.source.http.HTTPSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root",
+        timeout=10,
+        num_fallback_workers=0,
+    ) as source:
+        size1 = len(source)
+
+    with uproot4.source.http.MultithreadedHTTPSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=0, timeout=10
+    ) as source:
+        size2 = len(source)
+
+    assert size1 == size2
 
 
 @pytest.mark.network
@@ -123,7 +144,7 @@ def test_no_multipart():
         with uproot4.source.http.MultithreadedHTTPSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root",
             num_workers=num_workers,
-            timeout=1,
+            timeout=10,
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
             one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
@@ -149,7 +170,7 @@ def test_fallback():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.HTTPSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root",
-            timeout=1,
+            timeout=10,
             num_fallback_workers=num_workers,
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
@@ -166,7 +187,7 @@ def test_xrootd():
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=0,
-        timeout=1,
+        timeout=10,
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
@@ -189,7 +210,7 @@ def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        timeout=1,
+        timeout=10,
         max_num_elements=None,
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
@@ -206,6 +227,28 @@ def test_xrootd_vectorread_fail():
         source = uproot4.source.xrootd.XRootDSource(
             "root://wonky.cern/does-not-exist", timeout=1, max_num_elements=None
         )
+
+
+@pytest.mark.network
+def test_xrootd_size():
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        max_num_elements=None,
+    ) as source:
+        size1 = len(source)
+
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.MultithreadedXRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        num_workers=0,
+    ) as source:
+        size2 = len(source)
+
+    assert size1 == size2
+    assert size1 == 3469136394
 
 
 def test_cursor_debug():

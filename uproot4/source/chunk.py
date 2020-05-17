@@ -106,14 +106,16 @@ class MultithreadedSource(Source):
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
-            stop (int): The stop (exclusive) byte position for the desired
-                chunk.
+            stop (int or None): If an int, the stop (exclusive) byte position
+                for the desired chunk; if None, stop at the end of the file.
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
 
         Returns a single Chunk that has already been filled synchronously.
         """
+        if stop is None:
+            stop = len(self)
         future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
         return Chunk(self, start, stop, future, exact)
 
@@ -218,7 +220,7 @@ class Chunk(object):
         """
         if self._raw_data is None:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
-            if len(self._raw_data) != self._stop - self._start:
+            if self._exact and len(self._raw_data) != self._stop - self._start:
                 raise OSError(
                     """expected Chunk of length {0},
 received Chunk of length {1}

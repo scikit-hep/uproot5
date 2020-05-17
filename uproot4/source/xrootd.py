@@ -93,7 +93,12 @@ class XRootDResource(uproot4.source.chunk.Resource):
 
         if status.get("error", None):
             self._file.close(timeout=(0 if self._timeout is None else self._timeout))
-            raise OSError(status["message"])
+            raise OSError(
+                """XRootD error: {0}
+in file {1}""".format(
+                    status["message"], self._file_path
+                )
+            )
 
     @property
     def file_path(self):
@@ -149,7 +154,12 @@ class XRootDResource(uproot4.source.chunk.Resource):
         )
         if status.get("error", None):
             self._file.close(timeout=(0 if self._timeout is None else self._timeout))
-            raise OSError(status["message"])
+            raise OSError(
+                """XRootD error: {0}
+in file {1}""".format(
+                    status["message"], self._file_path
+                )
+            )
         return data
 
 
@@ -170,14 +180,16 @@ class XRootDSource(uproot4.source.chunk.Source):
                 single request. May be reduced to match the server's
                 capabilities.
         """
-        self._file_path = file_path
         self._timeout = options["timeout"]
+        max_num_elements = options["max_num_elements"]
+
+        self._file_path = file_path
+        self._size = None
 
         # important: construct this first because it raises an error for nonexistent hosts
         self._resource = XRootDResource(file_path, self._timeout)
 
         # this comes after because it HANGS for nonexistent hosts
-        max_num_elements = options["max_num_elements"]
         self._max_num_elements, self._max_element_size = get_server_config(file_path)
         if max_num_elements:
             self._max_num_elements = min(self._max_num_elements, max_num_elements)
@@ -195,19 +207,40 @@ class XRootDSource(uproot4.source.chunk.Source):
         """
         self._resource.__exit__(exception_type, exception_value, traceback)
 
+    def __len__(self):
+        """
+        The number of bytes in the file.
+        """
+        if self._size is None:
+            status, info = self._resource._file.stat(
+                timeout=(0 if self._timeout is None else self._timeout)
+            )
+            if not status["ok"]:
+                raise OSError(
+                    """XRootD error: {0}
+in file {1}""".format(
+                        status["message"], self._file_path
+                    )
+                )
+            self._size = info["size"]
+
+        return self._size
+
     def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
-            stop (int): The stop (exclusive) byte position for the desired
-                chunk.
+            stop (int or None): If an int, the stop (exclusive) byte position
+                for the desired chunk; if None, stop at the end of the file.
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
 
         Returns a single Chunk that has already been filled synchronously.
         """
+        if stop is None:
+            stop = len(self)
         data = self._resource.get(start, stop)
         future = uproot4.source.futures.TrivialFuture(data)
         return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
@@ -262,7 +295,12 @@ class XRootDSource(uproot4.source.chunk.Source):
                 chunks=request_ranges, callback=_callback
             )
             if not status["ok"]:
-                raise OSError("XRootD error: " + status["message"])
+                raise OSError(
+                    """XRootD error: {0}
+in file {1}""".format(
+                        status["message"], self._file_path
+                    )
+                )
 
         return chunks
 
@@ -285,11 +323,13 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
             timeout (int): Number of seconds (loosely interpreted by XRootD)
                 before giving up on a remote file.
         """
-        self._file_path = file_path
         timeout = options["timeout"]
-        self._resource = XRootDResource(file_path, timeout)
-
         num_workers = options["num_workers"]
+
+        self._file_path = file_path
+        self._resource = XRootDResource(file_path, timeout)
+        self._size = None
+
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
         else:
@@ -306,3 +346,22 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
         remote file.
         """
         return self._timeout
+
+    def __len__(self):
+        """
+        The number of bytes in the file.
+        """
+        if self._size is None:
+            status, info = self._resource._file.stat(
+                timeout=(0 if self._timeout is None else self._timeout)
+            )
+            if not status["ok"]:
+                raise OSError(
+                    """XRootD error: {0}
+in file {1}""".format(
+                        status["message"], self._file_path
+                    )
+                )
+            self._size = info["size"]
+
+        return self._size

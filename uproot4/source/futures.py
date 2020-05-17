@@ -22,6 +22,16 @@ except ImportError:
 import uproot4._util
 
 
+def delayed_raise(exception_class, exception_value, traceback):
+    """
+    Raise an exception from a background thread on the main thread.
+    """
+    if uproot4._util.py2:
+        exec("raise exception_class, exception_value, traceback")
+    else:
+        raise exception_value.with_traceback(traceback)
+
+
 class Future(object):
     """
     Abstract base class for Futures, which have the same interface as Python
@@ -175,11 +185,7 @@ class TaskFuture(Future):
         if self._excinfo is None:
             return self._result
         else:
-            cls, err, trc = self._excinfo
-            if uproot4._util.py2:
-                exec("raise cls, err, trc")
-            else:
-                raise err.with_traceback(trc)
+            delayed_raise(*self._excinfo)
 
     def exception(self, timeout=None):
         raise NotImplementedError

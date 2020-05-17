@@ -6,6 +6,8 @@ Source and Resource for plain file handle physical I/O.
 
 from __future__ import absolute_import
 
+import os
+
 import uproot4.source.chunk
 import uproot4.source.futures
 
@@ -56,9 +58,11 @@ class FileSource(uproot4.source.chunk.MultithreadedSource):
                 created; if 1 or more, a collection of asynchronous
                 ThreadResourceExecutors are created.
         """
+        num_workers = options["num_workers"]
+
         self._file_path = file_path
         self._resource = FileResource(file_path)
-        num_workers = options["num_workers"]
+        self._size = os.path.getsize(self._file_path)
 
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
@@ -66,3 +70,9 @@ class FileSource(uproot4.source.chunk.MultithreadedSource):
             self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [FileResource(file_path) for x in range(num_workers)]
             )
+
+    def __len__(self):
+        """
+        The number of bytes in the file.
+        """
+        return self._size

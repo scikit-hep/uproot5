@@ -86,7 +86,7 @@ def test_memmap(tmpdir):
 def test_http():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
-            "https://example.com", num_workers=num_workers, timeout=1
+            "https://example.com", num_workers=num_workers, timeout=10
         ) as source:
             for start, stop in [(0, 100), (50, 55), (200, 400)]:
                 chunk = source.chunk(start, stop)
@@ -96,7 +96,7 @@ def test_http():
                 with uproot4.source.http.MultithreadedHTTPSource(
                     "https://wonky.cern/does-not-exist",
                     num_workers=num_workers,
-                    timeout=1,
+                    timeout=0.1,
                 ) as source:
                     source.chunk(0, 100)
 
@@ -104,7 +104,7 @@ def test_http():
 @pytest.mark.network
 def test_http_multipart():
     with uproot4.source.http.HTTPSource(
-        "https://example.com", timeout=1, num_fallback_workers=0
+        "https://example.com", timeout=10, num_fallback_workers=0
     ) as source:
         for start, stop in [(0, 100), (50, 55), (200, 400)]:
             chunk = source.chunk(start, stop)
@@ -112,7 +112,7 @@ def test_http_multipart():
 
         with pytest.raises(Exception):
             with uproot4.source.http.HTTPSource(
-                "https://wonky.cern/does-not-exist", timeout=1, num_fallback_workers=0
+                "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=0
             ) as source:
                 source.chunk(0, 100).raw_data.tostring()
 
@@ -123,7 +123,7 @@ def test_xrootd():
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=0,
-        timeout=1,
+        timeout=10,
     ) as source:
         one = source.chunk(0, 100).raw_data.tostring()
         assert len(one) == 100
@@ -140,7 +140,7 @@ def test_xrootd_worker():
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=5,
-        timeout=1,
+        timeout=10,
     ) as source:
         one = source.chunk(0, 100).raw_data.tostring()
         assert len(one) == 100
@@ -156,7 +156,7 @@ def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        timeout=1,
+        timeout=10,
         max_num_elements=None,
     ) as source:
         one = source.chunk(0, 100).raw_data.tostring()
