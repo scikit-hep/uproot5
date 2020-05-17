@@ -101,24 +101,30 @@ class MultiThreadedSource(Source):
         self._executor.__exit__(exception_type, exception_value, traceback)
         self._resource.__exit__(exception_type, exception_value, traceback)
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
             stop (int): The stop (exclusive) byte position for the desired
                 chunk.
+            exact (bool): If False, attempts to access bytes beyond the
+                end of the Chunk raises a RefineChunk; if True, it raises
+                an OSError with an informative message.
 
         Returns a single Chunk that has already been filled synchronously.
         """
         future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
-        return Chunk(self, start, stop, future)
+        return Chunk(self, start, stop, future, exact)
 
-    def chunks(self, ranges, notifications=None):
+    def chunks(self, ranges, exact=True, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            exact (bool): If False, attempts to access bytes beyond the
+                end of the Chunk raises a RefineChunk; if True, it raises
+                an OSError with an informative message.
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 
@@ -128,12 +134,16 @@ class MultiThreadedSource(Source):
         chunks = []
         for start, stop in ranges:
             future = self._executor._prepare(Resource.getter(start, stop))
-            chunk = Chunk(self, start, stop, future)
+            chunk = Chunk(self, start, stop, future, exact)
             if notifications is not None:
                 future.add_done_callback(Resource.notifier(chunk, notifications))
             self._executor.submit(future)
             chunks.append(chunk)
         return chunks
+
+
+class RefineChunk(Exception):
+    pass
 
 
 class Chunk(object):
@@ -144,22 +154,26 @@ class Chunk(object):
     It only blocks when `raw_data`, `get`, or `remainder` is called.
     """
 
-    __slots__ = ["_source", "_start", "_stop", "_future", "_raw_data"]
+    __slots__ = ["_source", "_start", "_stop", "_future", "_raw_data", "_exact"]
 
     _dtype = numpy.dtype(numpy.uint8)
 
-    def __init__(self, source, start, stop, future):
+    def __init__(self, source, start, stop, future, exact):
         """
         Args:
             source (Source): Parent from which this Chunk is derived.
             start (int): Starting byte position (inclusive, global in Source).
             stop (int): Stopping byte position (exclusive, global in Source).
             future (Future): Fills `raw_data` on demand.
+            exact (bool): If False, attempts to access bytes beyond the
+                end of this Chunk raises a RefineChunk; if True, it raises
+                an OSError with an informative message.
         """
         self._source = source
         self._start = start
         self._stop = stop
         self._future = future
+        self._exact = exact
         self._raw_data = None
 
     @property
@@ -189,6 +203,14 @@ class Chunk(object):
         Fills `raw_data` on demand.
         """
         return self._future
+
+    @property
+    def exact(self):
+        """
+        If False, attempts to access bytes beyond the end of this Chunk raises
+        a RefineChunk; if True, it raises an OSError with an informative message.
+        """
+        return self._exact
 
     def wait(self):
         """
@@ -237,7 +259,7 @@ for file path {2}""".format(
         if 0 <= local_start and stop <= self._stop:
             self.wait()
             return self.raw_data[local_start:local_stop]
-        else:
+        elif self._exact:
             raise OSError(
                 """attempting to get bytes {0}:{1}
  outside expected range {2}:{3} for this Chunk
@@ -245,6 +267,8 @@ of file path {4}""".format(
                     start, stop, self._start, self._stop, self._source.file_path,
                 )
             )
+        else:
+            raise RefineChunk
 
     def remainder(self, start):
         """

@@ -58,24 +58,30 @@ class MemmapSource(uproot4.source.chunk.Source):
         else:
             self._file._mmap.close()
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
             stop (int): The stop (exclusive) byte position for the desired
                 chunk.
+            exact (bool): If False, attempts to access bytes beyond the
+                end of the Chunk raises a RefineChunk; if True, it raises
+                an OSError with an informative message.
 
         Returns a single Chunk that has already been filled synchronously.
         """
         future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
-        return uproot4.source.chunk.Chunk(self, start, stop, future)
+        return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
 
-    def chunks(self, ranges, notifications=None):
+    def chunks(self, ranges, exact=True, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            exact (bool): If False, attempts to access bytes beyond the
+                end of the Chunk raises a RefineChunk; if True, it raises
+                an OSError with an informative message.
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 
@@ -93,7 +99,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         chunks = []
         for start, stop in ranges:
             future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
-            chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+            chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
             if notifications is not None:
                 future.add_done_callback(
                     uproot4.source.chunk.Resource.notifier(chunk, notifications)

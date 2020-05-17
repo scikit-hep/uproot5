@@ -209,7 +209,7 @@ def test_cursor_debug():
     )
     future = uproot4.source.futures.TrivialFuture(data)
 
-    chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future)
+    chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future, True)
     cursor = uproot4.source.cursor.Cursor(0)
 
     output = StringIO()

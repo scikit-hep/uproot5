@@ -35,7 +35,8 @@ def test_file(tmpdir):
     notifications = queue.Queue()
     with uproot4.source.file.FileSource(filename) as source:
         chunks = source.chunks(
-            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
+            notifications=notifications,
         )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
@@ -51,7 +52,8 @@ def test_file_workers(tmpdir):
     notifications = queue.Queue()
     with uproot4.source.file.FileSource(filename, num_workers=5) as source:
         chunks = source.chunks(
-            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
+            notifications=notifications,
         )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
@@ -67,7 +69,8 @@ def test_memmap(tmpdir):
     notifications = queue.Queue()
     with uproot4.source.memmap.MemmapSource(filename) as source:
         chunks = source.chunks(
-            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
+            notifications=notifications,
         )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
@@ -79,7 +82,9 @@ def test_memmap(tmpdir):
 def test_http_multipart():
     notifications = queue.Queue()
     with uproot4.source.http.HTTPSource("https://example.com") as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()
@@ -90,7 +95,9 @@ def test_http_multipart():
 def test_http():
     notifications = queue.Queue()
     with uproot4.source.http.MultithreadedHTTPSource("https://example.com") as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()
@@ -103,7 +110,9 @@ def test_http_workers():
     with uproot4.source.http.MultithreadedHTTPSource(
         "https://example.com", num_workers=2
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()
@@ -116,7 +125,9 @@ def test_http_fallback():
     with uproot4.source.http.HTTPSource(
         "https://scikit-hep.org/uproot/examples/Zmumu.root"
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()
@@ -129,7 +140,9 @@ def test_http_fallback_workers():
     with uproot4.source.http.HTTPSource(
         "https://scikit-hep.org/uproot/examples/Zmumu.root", num_fallback_workers=5
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()
@@ -143,7 +156,9 @@ def test_xrootd():
     with uproot4.source.xrootd.MultiThreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()
@@ -158,7 +173,9 @@ def test_xrootd_workers():
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=5,
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()
@@ -172,7 +189,9 @@ def test_xrootd_vectorread():
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
         expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
         while len(expected) > 0:
             chunk = notifications.get()

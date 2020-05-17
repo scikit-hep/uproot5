@@ -451,26 +451,32 @@ class HTTPSource(uproot4.source.chunk.Source):
             self._work_queue.put(None)
             time.sleep(0.001)
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
             stop (int): The stop (exclusive) byte position for the desired
                 chunk.
+            exact (bool): If False, attempts to access bytes beyond the
+                end of the Chunk raises a RefineChunk; if True, it raises
+                an OSError with an informative message.
 
         Returns a single Chunk that will be filled by the background thread.
         """
         future = uproot4.source.futures.TaskFuture(None)
-        chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+        chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
         self._work_queue.put(HTTPBackgroundThread.SinglepartWork(start, stop, future))
         return chunk
 
-    def chunks(self, ranges, notifications=None):
+    def chunks(self, ranges, exact=True, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
                 (exclusive) byte ranges for each desired chunk.
+            exact (bool): If False, attempts to access bytes beyond the
+                end of the Chunk raises a RefineChunk; if True, it raises
+                an OSError with an informative message.
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 
@@ -489,7 +495,7 @@ class HTTPSource(uproot4.source.chunk.Source):
             range_strings.append(r)
             future = uproot4.source.futures.TaskFuture(None)
             futures[r.encode()] = future
-            chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
+            chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
             if notifications is not None:
                 future.add_done_callback(
                     uproot4.source.chunk.Resource.notifier(chunk, notifications)
