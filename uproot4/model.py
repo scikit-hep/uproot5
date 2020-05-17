@@ -211,7 +211,7 @@ def _numbytes_check(start_cursor, stop_cursor, num_bytes, classname, file_path):
         if observed != num_bytes:
             raise ValueError(
                 """instance of ROOT class {0} has {1} bytes; expected {2}
-in file {4}""".format(
+in file {3}""".format(
                     classname, observed, num_bytes, file_path
                 )
             )
@@ -233,10 +233,10 @@ class UnknownClass(Model):
 
         else:
             raise ValueError(
-                """Unknown class {1} that cannot be skipped because its """
+                """Unknown class {0} that cannot be skipped because its """
                 """number of bytes is unknown.
 """.format(
-                    classname_pretty(self._encoded_classname), list(cls._class_versions)
+                    classname_pretty(self._encoded_classname)
                 )
             )
 

@@ -336,9 +336,7 @@ class ReadOnlyKey(object):
             nameclass = ""
         else:
             nameclass = " {0}: {1}".format(self._fName, self._fClassName)
-        return "<ReadOnlyKey{0} at {1}>".format(
-            nameclass, self._fSeekKey + self._fKeylen
-        )
+        return "<ReadOnlyKey{0} at {1}>".format(nameclass, self.data_cursor.index)
 
     def hook_before_read(self, **kwargs):
         pass
