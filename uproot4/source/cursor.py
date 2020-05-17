@@ -57,6 +57,15 @@ class Cursor(object):
             self._refs = {}
         return self._refs
 
+    def displacement(self, other):
+        """
+        The number of bytes between this Cursor and the other Cursor.
+
+        If the displacement is positive, this Cursor is later in the file
+        than the other; if negative, it is earlier.
+        """
+        return self._index - other._index
+
     def copy(self, link_refs=False):
         """
         Returns a copy of this Cursor. If `link_refs` is True, any `refs` will
