@@ -93,7 +93,16 @@ def classname_pretty(obj):
 
 class Model(object):
     @classmethod
-    def read(cls, cursor, chunk, file, parent, encoded_classname=None):
+    def read(cls, cursor, chunk, file, parent, options, encoded_classname=None):
+        cls.hook_before_read(
+            cursor=cursor,
+            chunk=chunk,
+            file=file,
+            parent=parent,
+            options=options,
+            encoded_classname=encoded_classname,
+        )
+
         self = cls.__new__(cls)
         self._cursor = cursor.copy(link_refs=True)
         self._file = file
@@ -107,7 +116,23 @@ class Model(object):
         self._num_bytes = None
         self._members = {}
         self._bases = []
+
+        self.hook_before_read_members(
+            cursor=cursor,
+            chunk=chunk,
+            file=file,
+            parent=parent,
+            options=options,
+            encoded_classname=encoded_classname,
+        )
         return self
+
+    @classmethod
+    def hook_before_read(cls, **kwargs):
+        pass
+
+    def hook_before_read_members(self, **kwargs):
+        pass
 
     @property
     def cursor(self):
@@ -194,9 +219,9 @@ in file {4}""".format(
 
 class UnknownClass(Model):
     @classmethod
-    def read(cls, cursor, chunk, file, parent, encoded_classname=None):
+    def read(cls, cursor, chunk, file, parent, options, encoded_classname=None):
         self = Model.read(
-            cursor, chunk, file, parent, encoded_classname=encoded_classname
+            cursor, chunk, file, parent, options, encoded_classname=encoded_classname
         )
 
         num_bytes, version = _numbytes_version(cursor, chunk)
@@ -220,7 +245,7 @@ class UnknownClass(Model):
 
 
 class UnknownClassVersion(Model):
-    def read_bases_members(self, cursor):
+    def read_members(self, cursor, options):
         cursor.skip(self._num_bytes)
 
     def __repr__(self):
@@ -239,19 +264,29 @@ class UnknownClassVersion(Model):
 
 class ModelVersions(object):
     @classmethod
-    def read(cls, cursor, chunk, file, parent, encoded_classname=None):
+    def read(cls, cursor, chunk, file, parent, options, encoded_classname=None):
         start_cursor = cursor.copy(link_refs=True)
         num_bytes, version = _numbytes_version(cursor, chunk)
 
         if version in cls._class_versions:
             versioned_cls = cls._class_versions[version]
             self = versioned_cls.read(
-                start_cursor, chunk, file, parent, encoded_classname=encoded_classname
+                start_cursor,
+                chunk,
+                file,
+                parent,
+                options,
+                encoded_classname=encoded_classname,
             )
 
         elif num_bytes is not None:
             self = UnknownClassVersion.read(
-                start_cursor, chunk, file, parent, encoded_classname=encoded_classname
+                start_cursor,
+                chunk,
+                file,
+                parent,
+                options,
+                encoded_classname=encoded_classname,
             )
             self._instance_version = version
             self._known_versions = cls._class_versions
@@ -267,10 +302,25 @@ class ModelVersions(object):
 
         self._num_bytes = num_bytes
 
-        self.read_bases_members(cursor)
+        self.read_members(cursor, options)
+        self.hook_after_read_members(
+            cursor=cursor,
+            chunk=chunk,
+            file=file,
+            parent=parent,
+            options=options,
+            encoded_classname=encoded_classname,
+            start_cursor=start_cursor,
+            num_bytes=num_bytes,
+            version=version,
+            versioned_cls=versioned_cls,
+        )
 
         _numbytes_check(
             start_cursor, cursor, num_bytes, classname_pretty(self), file.file_path
         )
 
         return self
+
+    def hook_after_read_members(self, **kwargs):
+        pass
