@@ -12,7 +12,7 @@ jobs:
     runs-on: "ubuntu-latest"
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.5, 3.6, 3.7, 3.8]
 
     steps:
       - uses: "actions/checkout@v2"
@@ -34,7 +34,8 @@ jobs:
         run: |
           conda activate testing
           conda env list
-          conda install --file requirements.txt --file requirements-test.txt
+          conda install numpy pytest flake8
+          pip install scikit-hep-testdata
           conda list
 
       - name: "install XRootD"
