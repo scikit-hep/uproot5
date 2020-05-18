@@ -512,7 +512,7 @@ class ReadOnlyDirectory(object):
             if key_cursor.index - self._fSeekKeys != self._fNbytesKeys:
                 raise ValueError(
                     """fNbytesKey != number of bytes in TDirectory seek keys
-in file {}""".format()
+in file {0}""".format(self._file.file_path)
                 )
 
     def __repr__(self):
