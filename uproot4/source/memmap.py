@@ -88,6 +88,10 @@ class MemmapSource(uproot4.source.chunk.Source):
 
         if stop is None:
             stop = len(self)
+        if start < 0:
+            start = start + len(self)
+        if stop < 0:
+            stop = stop + len(self)
         future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
         return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
 
@@ -115,6 +119,12 @@ class MemmapSource(uproot4.source.chunk.Source):
 
         chunks = []
         for start, stop in ranges:
+            if stop is None:
+                stop = len(self)
+            if start < 0:
+                start = start + len(self)
+            if stop < 0:
+                stop = stop + len(self)
             future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
             chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
             if notifications is not None:

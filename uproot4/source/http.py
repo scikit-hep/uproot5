@@ -553,6 +553,10 @@ class HTTPSource(uproot4.source.chunk.Source):
         """
         if stop is None:
             stop = len(self)
+        if start < 0:
+            start = start + len(self)
+        if stop < 0:
+            stop = stop + len(self)
         future = uproot4.source.futures.TaskFuture(None)
         chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
         self._work_queue.put(HTTPBackgroundThread.SinglepartWork(start, stop, future))
@@ -580,6 +584,12 @@ class HTTPSource(uproot4.source.chunk.Source):
         futures = {}
         chunks = []
         for start, stop in ranges:
+            if stop is None:
+                stop = len(self)
+            if start < 0:
+                start = start + len(self)
+            if stop < 0:
+                stop = stop + len(self)
             r = "{0}-{1}".format(start, stop - 1)
             range_strings.append(r)
             future = uproot4.source.futures.TaskFuture(None)

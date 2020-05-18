@@ -116,6 +116,10 @@ class MultithreadedSource(Source):
         """
         if stop is None:
             stop = len(self)
+        if start < 0:
+            start = start + len(self)
+        if stop < 0:
+            stop = stop + len(self)
         future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
         return Chunk(self, start, stop, future, exact)
 
@@ -135,6 +139,12 @@ class MultithreadedSource(Source):
         """
         chunks = []
         for start, stop in ranges:
+            if stop is None:
+                stop = len(self)
+            if start < 0:
+                start = start + len(self)
+            if stop < 0:
+                stop = stop + len(self)
             future = self._executor._prepare(Resource.getter(start, stop))
             chunk = Chunk(self, start, stop, future, exact)
             if notifications is not None:
@@ -145,7 +155,18 @@ class MultithreadedSource(Source):
 
 
 class RefineChunk(Exception):
-    pass
+    __slots__ = ["start", "stop", "chunk_start", "chunk_stop"]
+
+    def __init__(self, start, stop, chunk_start, chunk_stop):
+        self.start = start
+        self.stop = stop
+        self.chunk_start = chunk_start
+        self.chunk_stop = chunk_stop
+
+    def __repr__(self):
+        return "RefineChunk({0}, {1}, {2}, {3})".format(
+            self.start, self.stop, self.chunk_start, self.chunk_stop
+        )
 
 
 class Chunk(object):
@@ -177,6 +198,14 @@ class Chunk(object):
         self._future = future
         self._exact = exact
         self._raw_data = None
+
+    def __repr__(self):
+        if self._exact:
+            e = ""
+        else:
+            e = " (inexact)"
+
+        return "<Chunk {0}-{1}{2}>".format(self._start, self._stop, e)
 
     @property
     def source(self):
@@ -270,7 +299,7 @@ of file path {4}""".format(
                 )
             )
         else:
-            raise RefineChunk
+            raise RefineChunk(start, stop, self._start, self._stop)
 
     def remainder(self, start):
         """

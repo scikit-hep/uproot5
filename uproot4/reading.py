@@ -42,7 +42,7 @@ class ReadOnlyFile(object):
         Source = uproot4._util.path_to_source_class(file_path, options)
         self._source = Source(file_path, **options)
 
-        self.hook_before_get_chunk(file_path=file_path, options=options)
+        self.hook_before_get_chunks(file_path=file_path, options=options)
 
         # chunk = self._source.chunk(0, self._header_fields_big.size)
         chunk = self._source.chunk(0, None, exact=False)
@@ -119,6 +119,15 @@ in file {1}""".format(
             file_path=file_path, options=options, chunk=chunk
         )
 
+        self._root_directory = ReadOnlyDirectory(
+            "/",
+            uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
+            chunk,
+            self,
+            self,
+            options,
+        )
+
         self.hook_after_root_directory(
             file_path=file_path, options=options, chunk=chunk
         )
@@ -129,7 +138,7 @@ in file {1}""".format(
     def hook_before_create_source(self, **kwargs):
         pass
 
-    def hook_before_get_chunk(self, **kwargs):
+    def hook_before_get_chunks(self, **kwargs):
         pass
 
     def hook_before_read(self, **kwargs):
@@ -207,6 +216,10 @@ in file {1}""".format(
     @property
     def streamer_key(self):
         return self._streamer_key
+
+    @property
+    def root_directory(self):
+        return self._root_directory
 
     @property
     def fVersion(self):
@@ -394,3 +407,154 @@ class ReadOnlyKey(object):
     @property
     def fSeekPdir(self):
         return self._fSeekPdir
+
+
+class ReadOnlyDirectory(object):
+    _encoded_classname = "ROOT_TDirectory"
+
+    _format_small = struct.Struct(">hIIiiiii")
+    _format_big = struct.Struct(">hIIiiqqq")
+    _format_num_keys = struct.Struct(">i")
+
+    def __init__(self, name, cursor, chunk, file, parent, options):
+        self._name = name
+        self._cursor = cursor.copy(link_refs=True)
+        self._file = file
+        self._parent = parent
+
+        self.hook_before_read(
+            name=name,
+            cursor=cursor,
+            chunk=chunk,
+            file=file,
+            parent=parent,
+            options=options,
+        )
+
+        (
+            self._fVersion,
+            self._fDatimeC,
+            self._fDatimeM,
+            self._fNbytesKeys,
+            self._fNbytesName,
+            self._fSeekDir,
+            self._fSeekParent,
+            self._fSeekKeys,
+        ) = cursor.fields(chunk, self._format_small, move=False)
+
+        if self._fVersion > 1000:
+            (
+                self._fVersion,
+                self._fDatimeC,
+                self._fDatimeM,
+                self._fNbytesKeys,
+                self._fNbytesName,
+                self._fSeekDir,
+                self._fSeekParent,
+                self._fSeekKeys,
+            ) = cursor.fields(chunk, self._format_big)
+
+        else:
+            cursor.skip(self._format_small.size)
+
+        if self._fSeekKeys == 0:
+            self._header_key = None
+            self._keys = []
+
+        else:
+            key_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
+
+            self.hook_before_header_key(
+                name=name,
+                cursor=cursor,
+                chunk=chunk,
+                file=file,
+                parent=parent,
+                options=options,
+                key_cursor=key_cursor,
+            )
+
+            self._header_key = ReadOnlyKey(key_cursor, chunk, file, self, options, read_strings=True)
+
+            num_keys = key_cursor.field(chunk, self._format_num_keys)
+
+            self.hook_before_keys(
+                name=name,
+                cursor=cursor,
+                chunk=chunk,
+                file=file,
+                parent=parent,
+                options=options,
+                key_cursor=key_cursor,
+                num_keys=num_keys,
+            )
+
+            self._keys = []
+            for i in range(num_keys):
+                self._keys.append(ReadOnlyKey(key_cursor, chunk, file, self, options, read_strings=True))
+
+            self.hook_after_read(
+                name=name,
+                cursor=cursor,
+                chunk=chunk,
+                file=file,
+                parent=parent,
+                options=options,
+                key_cursor=key_cursor,
+                num_keys=num_keys,
+            )
+
+    def __repr__(self):
+        return "<ReadOnlyDirectory {0}>".format(self._name)
+
+    def hook_before_read(self, **kwargs):
+        pass
+
+    def hook_before_header_key(self, **kwargs):
+        pass
+
+    def hook_before_keys(self, **kwargs):
+        pass
+
+    def hook_after_read(self, **kwargs):
+        pass
+
+    @property
+    def header_key(self):
+        return self._header_key
+
+    @property
+    def keys(self):
+        return self._keys
+
+    @property
+    def fVersion(self):
+        return self._fVersion
+
+    @property
+    def fDatimeC(self):
+        return self._fDatimeC
+
+    @property
+    def fDatimeM(self):
+        return self._fDatimeM
+
+    @property
+    def fNbytesKeys(self):
+        return self._fNbytesKeys
+
+    @property
+    def fNbytesName(self):
+        return self._fNbytesName
+
+    @property
+    def fSeekDir(self):
+        return self._fSeekDir
+
+    @property
+    def fSeekParent(self):
+        return self._fSeekParent
+
+    @property
+    def fSeekKeys(self):
+        return self._fSeekKeys

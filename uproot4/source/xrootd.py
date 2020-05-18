@@ -241,6 +241,10 @@ in file {1}""".format(
         """
         if stop is None:
             stop = len(self)
+        if start < 0:
+            start = start + len(self)
+        if stop < 0:
+            stop = stop + len(self)
         data = self._resource.get(start, stop)
         future = uproot4.source.futures.TrivialFuture(data)
         return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
@@ -262,6 +266,12 @@ in file {1}""".format(
 
         all_request_ranges = [[]]
         for start, stop in ranges:
+            if stop is None:
+                stop = len(self)
+            if start < 0:
+                start = start + len(self)
+            if stop < 0:
+                stop = stop + len(self)
             if stop - start > self._max_element_size:
                 raise NotImplementedError(
                     "TODO: Probably need to fall back to a non-vector read"

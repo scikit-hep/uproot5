@@ -34,6 +34,19 @@ class Cursor(object):
         self._origin = origin
         self._refs = refs
 
+    def __repr__(self):
+        if self._origin == 0:
+            o = ""
+        else:
+            o = ", origin={0}".format(self._origin)
+
+        if self._refs is None or len(self._refs) == 0:
+            r = ""
+        else:
+            r = ", refs={0}".format(self._refs)
+
+        return "Cursor({0}{1}{2})".format(self._index, o, r)
+
     @property
     def index(self):
         """
