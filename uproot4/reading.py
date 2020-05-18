@@ -509,10 +509,14 @@ class ReadOnlyDirectory(object):
                 num_keys=num_keys,
             )
 
-            if key_cursor.index - self._fSeekKeys != self._fNbytesKeys:
+            if (key_cursor.index - self._fSeekKeys != self._fNbytesKeys) and (
+                key_cursor.index - self._fSeekKeys + 8 != self._fNbytesKeys
+            ):
                 raise ValueError(
                     """fNbytesKey != number of bytes in TDirectory seek keys
-in file {0}""".format(self._file.file_path)
+in file {0}""".format(
+                        self._file.file_path
+                    )
                 )
 
     def __repr__(self):
