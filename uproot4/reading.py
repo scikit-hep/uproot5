@@ -474,7 +474,9 @@ class ReadOnlyDirectory(object):
                 key_cursor=key_cursor,
             )
 
-            self._header_key = ReadOnlyKey(key_cursor, chunk, file, self, options, read_strings=True)
+            self._header_key = ReadOnlyKey(
+                key_cursor, chunk, file, self, options, read_strings=True
+            )
 
             num_keys = key_cursor.field(chunk, self._format_num_keys)
 
@@ -491,7 +493,10 @@ class ReadOnlyDirectory(object):
 
             self._keys = []
             for i in range(num_keys):
-                self._keys.append(ReadOnlyKey(key_cursor, chunk, file, self, options, read_strings=True))
+                key = ReadOnlyKey(
+                    key_cursor, chunk, file, self, options, read_strings=True
+                )
+                self._keys.append(key)
 
             self.hook_after_read(
                 name=name,
@@ -503,6 +508,12 @@ class ReadOnlyDirectory(object):
                 key_cursor=key_cursor,
                 num_keys=num_keys,
             )
+
+            if key_cursor.index - self._fSeekKeys != self._fNbytesKeys:
+                raise ValueError(
+                    """fNbytesKey != number of bytes in TDirectory seek keys
+in file {}""".format()
+                )
 
     def __repr__(self):
         return "<ReadOnlyDirectory {0}>".format(self._name)
