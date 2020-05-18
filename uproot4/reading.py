@@ -23,31 +23,28 @@ class ReadOnlyFile(object):
         "max_num_elements": None,
         "num_workers": 10,
         "num_fallback_workers": 10,
-        "read_streamers": True,
     }
 
     _header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
     _header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
     def __init__(self, file_path, cache=None, **options):
-        all_options = dict(self.defaults)
-        all_options.update(options)
-        options = all_options
+        self._options = dict(self.defaults)
+        self._options.update(options)
 
         self._file_path = file_path
         self.cache = cache
 
-        self.hook_before_create_source(file_path=file_path, options=options)
+        self.hook_before_create_source(file_path=file_path, options=self._options)
 
-        Source = uproot4._util.path_to_source_class(file_path, options)
-        self._source = Source(file_path, **options)
+        Source = uproot4._util.path_to_source_class(file_path, self._options)
+        self._source = Source(file_path, **self._options)
 
-        self.hook_before_get_chunks(file_path=file_path, options=options)
+        self.hook_before_get_chunks(file_path=file_path, options=self._options)
 
-        # chunk = self._source.chunk(0, self._header_fields_big.size)
-        chunk = self._source.chunk(0, None, exact=False)
+        chunk = self._source.chunk(0, 512, exact=False)
 
-        self.hook_before_read(file_path=file_path, options=options, chunk=chunk)
+        self.hook_before_read(file_path=file_path, options=self._options, chunk=chunk)
 
         (
             magic,
@@ -92,32 +89,15 @@ in file {1}""".format(
                 )
             )
 
-        self._streamers = {}
-        self._classes = {}
-
-        if options["read_streamers"] and self._fSeekInfo != 0:
-            self.hook_before_read_streamers(
-                file_path=file_path, options=options, chunk=chunk
-            )
-
-            self._streamer_key = ReadOnlyKey(
-                uproot4.source.cursor.Cursor(self._fSeekInfo),
-                chunk,
-                self,
-                self,
-                options,
-            )
-
-            self.hook_before_define_classes(
-                file_path=file_path, options=options, chunk=chunk
-            )
-
-        else:
-            self._streamer_key = None
+        self._streamer_key = None
+        self._streamers = None
 
         self.hook_before_root_directory(
-            file_path=file_path, options=options, chunk=chunk
+            file_path=file_path, options=self._options, chunk=chunk
         )
+
+        # TODO: if the guess was too small (self._fBEGIN + self._fNbytesName
+        # + ReadOnlyDirectory._format_big) make a new guess, updating chunk
 
         self._root_directory = ReadOnlyDirectory(
             "/",
@@ -125,11 +105,11 @@ in file {1}""".format(
             chunk,
             self,
             self,
-            options,
+            self._options,
         )
 
         self.hook_after_root_directory(
-            file_path=file_path, options=options, chunk=chunk
+            file_path=file_path, options=self._options, chunk=chunk
         )
 
     def __repr__(self):
@@ -144,16 +124,19 @@ in file {1}""".format(
     def hook_before_read(self, **kwargs):
         pass
 
-    def hook_before_read_streamers(self, **kwargs):
-        pass
-
-    def hook_before_define_classes(self, **kwargs):
-        pass
-
     def hook_before_root_directory(self, **kwargs):
         pass
 
     def hook_after_root_directory(self, **kwargs):
+        pass
+
+    def hook_before_read_streamer_key(self, **kwargs):
+        pass
+
+    def hook_before_read_streamers(self, **kwargs):
+        pass
+
+    def hook_after_read_streamers(self, **kwargs):
         pass
 
     @property
@@ -174,6 +157,39 @@ in file {1}""".format(
 
     @property
     def streamers(self):
+        if self._streamers is None:
+            if self._fSeekInfo == 0:
+                self._streamers = {}
+
+            else:
+                chunk = self._source.chunk(self._fSeekInfo, 32 * 1024, exact=False)
+
+                self.hook_before_read_streamer_key(chunk=chunk)
+
+                self._streamer_key = ReadOnlyKey(
+                    uproot4.source.cursor.Cursor(self._fSeekInfo),
+                    chunk,
+                    self,
+                    self,
+                    self._options,
+                )
+
+                # TODO: if the guess was too small (self._streamer_key.fNbytes),
+                # make a new guess, updating chunk
+
+                self.hook_before_read_streamers(
+                    chunk=chunk, streamer_key=self._streamer_key
+                )
+
+                # TODO: read streamers here
+                self._streamers = {}
+
+                self.hook_after_read_streamers(
+                    chunk=chunk,
+                    streamer_key=self._streamer_key,
+                    streamers=self._streamers,
+                )
+
         return self._streamers
 
     @property
