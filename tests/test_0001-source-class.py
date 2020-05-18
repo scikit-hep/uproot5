@@ -187,7 +187,7 @@ def test_xrootd():
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=0,
-        timeout=10,
+        timeout=20,
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]

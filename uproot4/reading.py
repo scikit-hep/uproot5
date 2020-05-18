@@ -42,7 +42,9 @@ class ReadOnlyFile(object):
 
         self.hook_before_get_chunks(file_path=file_path, options=self._options)
 
-        chunk = self._source.chunk(0, 512, exact=False)
+        # TODO: use this smaller chunk and get a second chunk for the root TDirectory
+        # chunk = self._source.chunk(0, 512, exact=False)
+        chunk = self._source.chunk(0, None, exact=False)
 
         self.hook_before_read(file_path=file_path, options=self._options, chunk=chunk)
 
