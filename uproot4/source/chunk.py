@@ -97,7 +97,8 @@ class Source(object):
             return chunk, chunk
         else:
             return self.chunks(
-                [(0, begin_guess_bytes), (end_guess_bytes, num_bytes)], exact=False
+                [(0, begin_guess_bytes), (num_bytes - end_guess_bytes, num_bytes)],
+                exact=False,
             )
 
 
