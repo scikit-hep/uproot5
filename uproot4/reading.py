@@ -25,7 +25,6 @@ class ReadOnlyFile(object):
         "num_fallback_workers": 10,
         "begin_guess_bytes": 512,
         "end_guess_bytes": 32 * 1024,
-        "directory_guess_bytes": 32 * 1024,
         "streamer_guess_bytes": 32 * 1024,
     }
 
@@ -56,7 +55,9 @@ class ReadOnlyFile(object):
                 )
             )
 
-        self._begin_chunk, self._end_chunk = self._source.begin_end_chunks(self._options["begin_guess_bytes"], self._options["end_guess_bytes"])
+        self._begin_chunk, self._end_chunk = self._source.begin_end_chunks(
+            self._options["begin_guess_bytes"], self._options["end_guess_bytes"]
+        )
 
         self.hook_before_read(file_path=file_path, options=self._options)
 
@@ -75,7 +76,9 @@ class ReadOnlyFile(object):
             self._fNbytesInfo,
             self._fUUID_version,
             self._fUUID,
-        ) = uproot4.source.cursor.Cursor(0).fields(self._begin_chunk, self._header_fields_small)
+        ) = uproot4.source.cursor.Cursor(0).fields(
+            self._begin_chunk, self._header_fields_small
+        )
 
         if self._fVersion >= 1000000:
             (
@@ -93,7 +96,9 @@ class ReadOnlyFile(object):
                 self._fNbytesInfo,
                 self._fUUID_version,
                 self._fUUID,
-            ) = uproot4.source.cursor.Cursor(0).fields(self._begin_chunk, self._header_fields_big)
+            ) = uproot4.source.cursor.Cursor(0).fields(
+                self._begin_chunk, self._header_fields_big
+            )
 
         if magic != b"root":
             raise ValueError(
@@ -194,7 +199,10 @@ in file {1}""".format(
                 elif (streamer_start, streamer_stop) in self._begin_chunk:
                     chunk = self._begin_chunk
                 else:
-                    chunk = self._source.chunk(streamer_start, streamer_stop, exact=False)
+                    print("for streamer key")
+                    chunk = self._source.chunk(
+                        streamer_start, streamer_stop, exact=False
+                    )
 
                 self.hook_before_read_streamer_key(chunk=chunk)
 
@@ -207,6 +215,7 @@ in file {1}""".format(
                 )
 
                 if self._streamer_key.fNbytes > streamer_stop - streamer_start:
+                    print("for the rest of the streamer")
                     chunk = self._source.chunk(
                         streamer_start, streamer_start + self._streamer_key.fNbytes
                     )
@@ -485,17 +494,14 @@ class ReadOnlyDirectory(object):
         self._parent = parent
 
         directory_start = cursor.index
-        directory_stop = min(
-            directory_start
-            + max(file.options["directory_guess_bytes"], self._format_big.size),
-            file.fEND,
-        )
+        directory_stop = min(directory_start + self._format_big.size, file.fEND)
 
         if (directory_start, directory_stop) in file.begin_chunk:
             chunk = file.begin_chunk
         elif (directory_start, directory_stop) in file.end_chunk:
             chunk = file.end_chunk
         else:
+            print("for directory header")
             chunk = file.source.chunk(directory_start, directory_stop, exact=False)
 
         self.hook_before_read(
@@ -548,7 +554,8 @@ class ReadOnlyDirectory(object):
             elif (keys_start, keys_stop) in chunk:
                 keys_chunk = chunk
             else:
-                chunk = file.source.chunk(keys_start, keys_stop)
+                print("for the keys in the directory")
+                keys_chunk = file.source.chunk(keys_start, keys_stop)
 
             keys_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
 
