@@ -11,6 +11,10 @@ import skhep_testdata
 import uproot4
 import uproot4.model
 import uproot4.reading
+import uproot4.source.file
+import uproot4.source.memmap
+import uproot4.source.http
+import uproot4.source.xrootd
 
 
 def test_classname_encoding(tmpdir):
@@ -38,3 +42,20 @@ def test_file_header():
     assert not file.is_64bit
     assert file.fNbytesInfo == 4447
     assert file.hex_uuid == "944b77d0-98ab-11e7-a769-0100007fbeef"
+
+
+# def test_file_minimal():
+#     filename = skhep_testdata.data_path("uproot-issue70.root")
+#     with uproot4.source.file.FileSource(filename, num_workers=0) as source:
+#         print(source.chunk(127, 1024, exact=False).raw_data.tostring())
+
+#     filename = skhep_testdata.data_path("uproot-issue70.root")
+#     with uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0) as source:
+#         print(source.chunk(127, 1024, exact=False).raw_data.tostring())
+
+#     filename = "https://scikit-hep.org/uproot/examples/uproot-issue70.root"
+#     with uproot4.source.http.HTTPSource(filename, timeout=10, num_fallback_workers=0) as source:
+#         print(source.chunk(127, 1024, exact=False).raw_data.tostring())
+
+
+#     raise Exception

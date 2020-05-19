@@ -30,6 +30,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         Args:
             file_path (str): Path to the file.
         """
+        num_fallback_workers = options["num_fallback_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
@@ -41,7 +42,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         except (OSError, IOError):
             self._file = None
             self._fallback = uproot4.source.file.FileSource(
-                file_path, num_workers=options["num_fallback_workers"]
+                file_path, num_workers=num_fallback_workers
             )
 
     @property

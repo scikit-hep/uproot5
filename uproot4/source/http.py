@@ -162,15 +162,19 @@ class HTTPBackgroundThread(threading.Thread):
 
             response = self._connection.getresponse()
 
-            if response.status != 206:
+            if response.status == 200:
+                future._result = response.read()[start:stop]
+
+            elif response.status == 206:
+                future._result = response.read()
+
+            else:
                 raise OSError(
-                    """remote server does not support HTTP range requests
-for URL {0}""".format(
-                        self._file_path
+                    """remote server responded with status {0}
+for URL {1}""".format(
+                        response.status, self._file_path
                     )
                 )
-
-            future._result = response.read()
 
         except Exception:
             future._excinfo = sys.exc_info()

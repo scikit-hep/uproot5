@@ -79,6 +79,27 @@ class Source(object):
         """
         self.__exit__(None, None, None)
 
+    def begin_end_chunks(self, begin_guess_bytes, end_guess_bytes):
+        """
+        Args:
+            begin_guess_bytes (int): Number of bytes to try to take from the
+                beginning of the file.
+            end_guess_bytes (int): Number of bytes to try to take from the
+                end of the file.
+
+        Returns two Chunks, one from the beginning of the file and the other
+        from the end of the file, which may be the same Chunk if these regions
+        overlap. The Chunks are filled asynchronously.
+        """
+        num_bytes = self.num_bytes
+        if begin_guess_bytes + end_guess_bytes > num_bytes:
+            chunk = self.chunk(0, num_bytes, exact=False)
+            return chunk, chunk
+        else:
+            return self.chunks(
+                [(0, begin_guess_bytes), (end_guess_bytes, num_bytes)], exact=False
+            )
+
 
 class MultithreadedSource(Source):
     """

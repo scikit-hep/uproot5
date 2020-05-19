@@ -66,7 +66,7 @@ def test_memmap(tmpdir):
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-    source = uproot4.source.memmap.MemmapSource(filename)
+    source = uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0)
     with source as tmp:
         chunks = tmp.chunks([(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)])
         assert [chunk.raw_data.tostring() for chunk in chunks] == [

@@ -67,7 +67,7 @@ def test_memmap(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     notifications = queue.Queue()
-    with uproot4.source.memmap.MemmapSource(filename) as source:
+    with uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0) as source:
         chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,

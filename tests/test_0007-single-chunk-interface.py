@@ -71,7 +71,7 @@ def test_memmap(tmpdir):
         b"@@@@@",
     ]
 
-    with uproot4.source.memmap.MemmapSource(filename) as source:
+    with uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0) as source:
         for i, (start, stop) in enumerate(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
         ):
@@ -79,7 +79,9 @@ def test_memmap(tmpdir):
             assert chunk.raw_data.tostring() == expected[i]
 
     with pytest.raises(Exception):
-        uproot4.source.memmap.MemmapSource(filename + "-does-not-exist")
+        uproot4.source.memmap.MemmapSource(
+            filename + "-does-not-exist", num_fallback_workers=0
+        )
 
 
 @pytest.mark.network
