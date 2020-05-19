@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
 Utilities for internal use.
@@ -6,9 +6,15 @@ Utilities for internal use.
 
 from __future__ import absolute_import
 
+import os
 import sys
 import numbers
 import re
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
 import numpy
 
@@ -27,6 +33,43 @@ def isint(x):
     return isinstance(x, (int, numbers.Integral, numpy.integer)) and not isinstance(
         x, (numpy.bool, numpy.bool_)
     )
+
+
+_windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
+
+
+def path_to_source_class(file_path, options):
+    if isinstance(file_path, getattr(os, "PathLike", ())):
+        file_path = os.fspath(file_path)
+    elif hasattr(file_path, "__fspath__"):
+        file_path = file_path.__fspath__()
+    elif file_path.__class__.__module__ == "pathlib":
+        import pathlib
+
+        if isinstance(file_path, pathlib.Path):
+            file_path = str(file_path)
+
+    windows_absolute_path = (
+        os.name == "nt" and _windows_absolute_path_pattern.match(file_path) is not None
+    )
+    parsed_url = urlparse(file_path)
+    if (
+        parsed_url.scheme == "file"
+        or len(parsed_url.scheme) == 0
+        or windows_absolute_path
+    ):
+        if not windows_absolute_path:
+            file_path = parsed_url.netloc + parsed_url.path
+        return options["file_handler"]
+
+    elif parsed_url.scheme == "root":
+        return options["xrootd_handler"]
+
+    elif parsed_url.scheme == "http" or parsed_url.scheme == "https":
+        return options["http_handler"]
+
+    else:
+        raise ValueError("URI scheme not recognized: {0}".format(file_path))
 
 
 def memory_size(data):

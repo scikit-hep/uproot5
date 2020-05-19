@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
 Defines the Cursor, which is a universal pointer/interpreter at point of data
@@ -34,6 +34,19 @@ class Cursor(object):
         self._origin = origin
         self._refs = refs
 
+    def __repr__(self):
+        if self._origin == 0:
+            o = ""
+        else:
+            o = ", origin={0}".format(self._origin)
+
+        if self._refs is None or len(self._refs) == 0:
+            r = ""
+        else:
+            r = ", refs={0}".format(self._refs)
+
+        return "Cursor({0}{1}{2})".format(self._index, o, r)
+
     @property
     def index(self):
         """
@@ -56,6 +69,15 @@ class Cursor(object):
         if self._refs is None:
             self._refs = {}
         return self._refs
+
+    def displacement(self, other):
+        """
+        The number of bytes between this Cursor and the other Cursor.
+
+        If the displacement is positive, this Cursor is later in the file
+        than the other; if negative, it is earlier.
+        """
+        return self._index - other._index
 
     def copy(self, link_refs=False):
         """

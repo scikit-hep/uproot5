@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 from __future__ import absolute_import
 
@@ -44,6 +44,8 @@ def test_file(tmpdir):
                 b"@@@@@",
             ]
 
+        assert source.num_bytes == 30
+
 
 def test_file_fail(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
@@ -64,7 +66,7 @@ def test_memmap(tmpdir):
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-    source = uproot4.source.memmap.MemmapSource(filename)
+    source = uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0)
     with source as tmp:
         chunks = tmp.chunks([(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)])
         assert [chunk.raw_data.tostring() for chunk in chunks] == [
@@ -75,6 +77,8 @@ def test_memmap(tmpdir):
             b"!!!!!",
             b"@@@@@",
         ]
+
+        assert source.num_bytes == 30
 
 
 def test_memmap_fail(tmpdir):
@@ -87,9 +91,11 @@ def test_memmap_fail(tmpdir):
         uproot4.source.file.FileSource(filename + "-does-not-exist")
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_http():
-    source = uproot4.source.http.HTTPSource("https://example.com")
+    source = uproot4.source.http.HTTPSource(
+        "https://example.com", timeout=10, num_fallback_workers=0
+    )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
@@ -97,27 +103,48 @@ def test_http():
         assert len(two) == 5
         assert len(three) == 200
 
-    source = uproot4.source.http.MultithreadedHTTPSource("https://example.com")
+    source = uproot4.source.http.MultithreadedHTTPSource(
+        "https://example.com", num_workers=0, timeout=10
+    )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
+def test_http_size():
+    with uproot4.source.http.HTTPSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root",
+        timeout=10,
+        num_fallback_workers=0,
+    ) as source:
+        size1 = source.num_bytes
+
+    with uproot4.source.http.MultithreadedHTTPSource(
+        "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=0, timeout=10
+    ) as source:
+        size2 = source.num_bytes
+
+    assert size1 == size2
+
+
+@pytest.mark.network
 def test_http_fail():
     source = uproot4.source.http.HTTPSource(
-        "https://wonky.cern/does-not-exist", timeout=0.1
+        "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=0
     )
     with pytest.raises(Exception) as err:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
         chunks[0].raw_data
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_no_multipart():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
-            "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=num_workers
+            "https://scikit-hep.org/uproot/examples/Zmumu.root",
+            num_workers=num_workers,
+            timeout=10,
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
             one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
@@ -127,7 +154,7 @@ def test_no_multipart():
             assert one[:4] == b"root"
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_no_multipart_fail():
     for num_workers in [0, 1, 2]:
         source = uproot4.source.http.MultithreadedHTTPSource(
@@ -138,11 +165,12 @@ def test_no_multipart_fail():
             chunks[0].raw_data
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_fallback():
     for num_workers in [0, 1, 2]:
         with uproot4.source.http.HTTPSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root",
+            timeout=10,
             num_fallback_workers=num_workers,
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
@@ -153,11 +181,13 @@ def test_fallback():
             assert one[:4] == b"root"
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_xrootd():
     pytest.importorskip("pyxrootd")
-    with uproot4.source.xrootd.MultiThreadedXRootDSource(
-        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+    with uproot4.source.xrootd.MultithreadedXRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        num_workers=0,
+        timeout=20,
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
@@ -167,19 +197,21 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_xrootd_fail():
     with pytest.raises(Exception) as err:
-        source = uproot4.source.xrootd.MultiThreadedXRootDSource(
-            "root://wonky.cern/does-not-exist", timeout=1
+        source = uproot4.source.xrootd.MultithreadedXRootDSource(
+            "root://wonky.cern/does-not-exist", num_workers=0, timeout=1
         )
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_xrootd_vectorread():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.XRootDSource(
-        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        max_num_elements=None,
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
         one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
@@ -189,12 +221,34 @@ def test_xrootd_vectorread():
         assert one[:4] == b"root"
 
 
-@pytest.mark.network_slow
+@pytest.mark.network
 def test_xrootd_vectorread_fail():
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.XRootDSource(
-            "root://wonky.cern/does-not-exist", timeout=1
+            "root://wonky.cern/does-not-exist", timeout=1, max_num_elements=None
         )
+
+
+@pytest.mark.network
+def test_xrootd_size():
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        max_num_elements=None,
+    ) as source:
+        size1 = source.num_bytes
+
+    pytest.importorskip("pyxrootd")
+    with uproot4.source.xrootd.MultithreadedXRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        num_workers=0,
+    ) as source:
+        size2 = source.num_bytes
+
+    assert size1 == size2
+    assert size1 == 3469136394
 
 
 def test_cursor_debug():
@@ -209,7 +263,7 @@ def test_cursor_debug():
     )
     future = uproot4.source.futures.TrivialFuture(data)
 
-    chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future)
+    chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future, True)
     cursor = uproot4.source.cursor.Cursor(0)
 
     output = StringIO()

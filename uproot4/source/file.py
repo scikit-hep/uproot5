@@ -1,10 +1,12 @@
-# BSD 3-Clause License; see https://github.com/jpivarski/awkward-1.0/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
 Source and Resource for plain file handle physical I/O.
 """
 
 from __future__ import absolute_import
+
+import os
 
 import uproot4.source.chunk
 import uproot4.source.futures
@@ -40,7 +42,7 @@ class FileResource(uproot4.source.chunk.Resource):
         return self._file.read(stop - start)
 
 
-class FileSource(uproot4.source.chunk.MultiThreadedSource):
+class FileSource(uproot4.source.chunk.MultithreadedSource):
     """
     Source managing one synchronous or multiple asynchronous file handles as a
     context manager.
@@ -48,7 +50,7 @@ class FileSource(uproot4.source.chunk.MultiThreadedSource):
 
     __slots__ = ["_file_path", "_executor"]
 
-    def __init__(self, file_path, num_workers=10):
+    def __init__(self, file_path, **options):
         """
         Args:
             file_path (str): Path to the file.
@@ -56,8 +58,14 @@ class FileSource(uproot4.source.chunk.MultiThreadedSource):
                 created; if 1 or more, a collection of asynchronous
                 ThreadResourceExecutors are created.
         """
+        num_workers = options["num_workers"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
+
         self._file_path = file_path
         self._resource = FileResource(file_path)
+        self._num_bytes = os.path.getsize(self._file_path)
 
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
@@ -65,3 +73,10 @@ class FileSource(uproot4.source.chunk.MultiThreadedSource):
             self._executor = uproot4.source.futures.ThreadResourceExecutor(
                 [FileResource(file_path) for x in range(num_workers)]
             )
+
+    @property
+    def num_bytes(self):
+        """
+        The number of bytes in the file.
+        """
+        return self._num_bytes
