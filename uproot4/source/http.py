@@ -200,6 +200,31 @@ for URL {1}""".format(
         This will only be called before the HTTPSource notices that there is a
         `fallback` and sends requests for `chunks` to it directly.
         """
+        if any(x is None or y is None for x, y in ranges):
+            (_, begin_guess_bytes), (end_guess_bytes, _) = ranges
+            num_bytes = self._num_bytes
+
+            if begin_guess_bytes + end_guess_bytes > num_bytes:
+                ranges = [
+                    (0, num_bytes),
+                    (0, num_bytes),
+                ]
+            else:
+                ranges = [
+                    (0, begin_guess_bytes),
+                    (num_bytes - end_guess_bytes, num_bytes),
+                ]
+
+            (
+                (futures[b"begin"]._start, futures[b"begin"]._stop),
+                (futures[b"end"]._start, futures[b"end"]._stop),
+            ) = ranges
+
+            mapping = {
+                "{0}-{1}".format(ranges[0][0], ranges[0][1] - 1).encode(): b"begin",
+                "{0}-{1}".format(ranges[1][0], ranges[1][1] - 1).encode(): b"end",
+            }
+
         try:
             chunks = self._fallback.chunks(ranges)
 
@@ -211,8 +236,9 @@ for URL {1}""".format(
         else:
             for (start, stop), chunk in zip(ranges, chunks):
                 r = "{0}-{1}".format(start, stop - 1).encode()
-                assert r in futures
-                future = futures[r]
+                future = futures.get(r)
+                if future is None:
+                    future = futures[mapping[r]]
 
                 if hasattr(chunk.future, "_finished"):
                     try:
@@ -306,6 +332,8 @@ for URL {3}""".format(
         future._set_finished()
 
     def fill_with_multipart(self, ranges, range_string, futures):
+        is_begin_end = any(x is None or y is None for x, y in ranges)
+
         try:
             self._connection.request(
                 "GET", self._parsed_url.path, headers={"Range": range_string}
@@ -319,7 +347,7 @@ for URL {3}""".format(
 
         multipart_supported = response.status == 206
 
-        if multipart_supported and all(x is not None and y is not None for x, y in ranges):
+        if multipart_supported and not is_begin_end:
             for k, x in response.getheaders():
                 if k.lower() == "content-length":
                     content_length = int(x)
@@ -330,6 +358,9 @@ for URL {3}""".format(
                 multipart_supported = False
 
         if not multipart_supported:
+            for k, x in response.getheaders():
+                if k.lower() == "content-length":
+                    self._num_bytes = int(x)
             response.close()
             self.make_fallback()
             self.fill_with_fallback(ranges, futures)
@@ -371,6 +402,20 @@ for URL {3}""".format(
             future._set_finished()
 
         response.close()
+
+    @property
+    def num_bytes(self):
+        """
+        The number of bytes in the file.
+        """
+        if self._num_bytes is None:
+            work = HTTPBackgroundThread.GetSize()
+            self._work_queue.put(work)
+            work.done.wait()
+            if work.excinfo is not None:
+                uproot4.source.futures.delayed_raise(*work.excinfo)
+
+        return self._num_bytes
 
     def fill_size(self, work):
         try:
@@ -556,14 +601,7 @@ class HTTPSource(uproot4.source.chunk.Source):
         """
         The number of bytes in the file.
         """
-        if self._worker._num_bytes is None:
-            work = HTTPBackgroundThread.GetSize()
-            self._work_queue.put(work)
-            work.done.wait()
-            if work.excinfo is not None:
-                uproot4.source.futures.delayed_raise(*work.excinfo)
-
-        return self._worker._num_bytes
+        return self._worker.num_bytes
 
     def chunk(self, start, stop, exact=True):
         """
@@ -636,6 +674,7 @@ class HTTPSource(uproot4.source.chunk.Source):
         def fix(future):
             chunk._start = future._start
             chunk._stop = future._stop
+
         return fix
 
     def begin_end_chunks(self, begin_guess_bytes, end_guess_bytes):
@@ -681,9 +720,14 @@ class HTTPSource(uproot4.source.chunk.Source):
 
             range_string = "bytes=" + ", ".join(range_strings)
             self._work_queue.put(
-                HTTPBackgroundThread.MultipartWork([(None, None), (None, None)], range_string, futures)
+                HTTPBackgroundThread.MultipartWork(
+                    [(None, begin_guess_bytes), (end_guess_bytes, None)],
+                    range_string,
+                    futures,
+                )
             )
             return chunks
+
 
 class HTTPResource(uproot4.source.chunk.Resource):
     """
@@ -759,6 +803,9 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
         Calling this function blocks until `raw_data` is filled.
         """
+
+        print("start", start, "stop", stop)
+
         self._connection.request(
             "GET",
             self._parsed_url.path,

@@ -46,23 +46,19 @@ def test_file_header():
 
 def test_http_begin_end():
     filename = "https://example.com"
-    with uproot4.source.http.HTTPSource(filename, timeout=10, num_fallback_workers=0) as source:
+    with uproot4.source.http.HTTPSource(
+        filename, timeout=10, num_fallback_workers=0
+    ) as source:
         begin, end = source.begin_end_chunks(20, 30)
         assert len(begin.raw_data.tostring()) == 20
         assert len(end.raw_data.tostring()) == 30
 
-# def test_file_minimal():
-#     filename = skhep_testdata.data_path("uproot-issue70.root")
-#     with uproot4.source.file.FileSource(filename, num_workers=0) as source:
-#         print(source.chunk(127, 1024, exact=False).raw_data.tostring())
 
-#     filename = skhep_testdata.data_path("uproot-issue70.root")
-#     with uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0) as source:
-#         print(source.chunk(127, 1024, exact=False).raw_data.tostring())
-
-#     filename = "https://scikit-hep.org/uproot/examples/uproot-issue70.root"
-#     with uproot4.source.http.HTTPSource(filename, timeout=10, num_fallback_workers=0) as source:
-#         print(source.chunk(127, 1024, exact=False).raw_data.tostring())
-
-
-#     raise Exception
+def test_http_begin_end_fallback():
+    filename = "https://scikit-hep.org/uproot/examples/Zmumu.root"
+    with uproot4.source.http.HTTPSource(
+        filename, timeout=10, num_fallback_workers=0
+    ) as source:
+        begin, end = source.begin_end_chunks(20, 30)
+        assert len(begin.raw_data.tostring()) == 20
+        assert len(end.raw_data.tostring()) == 30
