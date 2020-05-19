@@ -803,9 +803,6 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
         Calling this function blocks until `raw_data` is filled.
         """
-
-        print("start", start, "stop", stop)
-
         self._connection.request(
             "GET",
             self._parsed_url.path,
