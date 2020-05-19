@@ -9,6 +9,11 @@ from __future__ import absolute_import
 import struct
 import uuid
 
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
+
 import uproot4._util
 import uproot4.compression
 import uproot4.source.cursor
@@ -575,7 +580,7 @@ class ReadOnlyKey(object):
             raise NotImplementedError
 
 
-class ReadOnlyDirectory(object):
+class ReadOnlyDirectory(Mapping):
     _encoded_classname = "ROOT_TDirectory"
 
     _format_small = struct.Struct(">hIIiiiii")
@@ -777,22 +782,30 @@ class ReadOnlyDirectory(object):
         self._file.source.__exit__(exception_type, exception_value, traceback)
 
     def iterkeys(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         for key in self._keys:
             if filter_name(key.fName) and filter_classname(key.fClassName):
-                yield key.name(cycle=True)
+                yield key.name(cycle=cycle)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k in key.get().iterkeys(recursive, filter_name, filter_classname):
                     yield "{0}/{1}".format(key.name(cycle=False), k)
 
     def iteritems(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         for key in self._keys:
             if filter_name(key.fName) and filter_classname(key.fClassName):
-                yield key.name(cycle=True), key.get()
+                yield key.name(cycle=cycle), key.get()
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k, v in key.get().iteritems(
@@ -803,23 +816,46 @@ class ReadOnlyDirectory(object):
     def itervalues(
         self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
     ):
-        for k, v in self.iteritems(recursive, filter_name, filter_classname):
+        for k, v in self.iteritems(recursive, False, filter_name, filter_classname):
             yield v
 
     def keys(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
-        return list(self.iterkeys(recursive, filter_name, filter_classname))
+        return list(self.iterkeys(recursive, cycle, filter_name, filter_classname))
 
     def items(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
-        return list(self.iteritems(recursive, filter_name, filter_classname))
+        return list(self.iteritems(recursive, cycle, filter_name, filter_classname))
 
     def values(
         self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
     ):
         return list(self.itervalues(recursive, filter_name, filter_classname))
+
+    def __len__(self):
+        return len(self._keys) + sum(
+            len(x.get())
+            for x in self._keys
+            if x.fClassName in ("TDirectory", "TDirectoryFile")
+        )
+
+    def __contains__(self, where):
+        try:
+            self.key(where)
+        except KeyWithCycleError:
+            return False
+        else:
+            return True
 
     def __iter__(self):
         return self.iterkeys()
