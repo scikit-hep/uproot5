@@ -24,8 +24,8 @@ class ReadOnlyFile(object):
         "num_workers": 10,
         "num_fallback_workers": 10,
         "begin_guess_bytes": 512,
-        "end_guess_bytes": 32 * 1024,
-        "streamer_guess_bytes": 32 * 1024,
+        "end_guess_bytes": 64 * 1024,
+        "streamer_guess_bytes": 64 * 1024,
     }
 
     _header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
@@ -199,7 +199,6 @@ in file {1}""".format(
                 elif (streamer_start, streamer_stop) in self._begin_chunk:
                     chunk = self._begin_chunk
                 else:
-                    print("for streamer key")
                     chunk = self._source.chunk(
                         streamer_start, streamer_stop, exact=False
                     )
@@ -215,7 +214,6 @@ in file {1}""".format(
                 )
 
                 if self._streamer_key.fNbytes > streamer_stop - streamer_start:
-                    print("for the rest of the streamer")
                     chunk = self._source.chunk(
                         streamer_start, streamer_start + self._streamer_key.fNbytes
                     )
@@ -501,7 +499,6 @@ class ReadOnlyDirectory(object):
         elif (directory_start, directory_stop) in file.end_chunk:
             chunk = file.end_chunk
         else:
-            print("for directory header")
             chunk = file.source.chunk(directory_start, directory_stop, exact=False)
 
         self.hook_before_read(
@@ -554,7 +551,6 @@ class ReadOnlyDirectory(object):
             elif (keys_start, keys_stop) in chunk:
                 keys_chunk = chunk
             else:
-                print("for the keys in the directory")
                 keys_chunk = file.source.chunk(keys_start, keys_stop)
 
             keys_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
