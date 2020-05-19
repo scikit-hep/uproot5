@@ -226,6 +226,7 @@ for URL {1}""".format(
                 future._excinfo = getattr(chunk.future, "_excinfo", None)
                 future._set_finished()
 
+    _content_range_size = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)")
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
 
     @staticmethod
@@ -234,15 +235,21 @@ for URL {1}""".format(
         Helper function to get the next header of multi-part content.
         """
         line = response.fp.readline()
-        r = None
+        r, size = None, None
         while r is None:
-            m = HTTPBackgroundThread._content_range.match(line)
+            m = HTTPBackgroundThread._content_range_size.match(line)
             if m is not None:
                 r = m.group(1)
+                size = int(m.group(2))
+            else:
+                m = HTTPBackgroundThread._content_range.match(line)
+                if m is not None:
+                    r = m.group(1)
+                    size = None
             line = response.fp.readline()
             if len(line.strip()) == 0:
                 break
-        return r
+        return r, size
 
     @staticmethod
     def raise_missing(i, futures, file_path):
@@ -312,7 +319,7 @@ for URL {3}""".format(
 
         multipart_supported = response.status == 206
 
-        if multipart_supported:
+        if multipart_supported and all(x is not None and y is not None for x, y in ranges):
             for k, x in response.getheaders():
                 if k.lower() == "content-length":
                     content_length = int(x)
@@ -329,18 +336,30 @@ for URL {3}""".format(
             return
 
         for i in range(len(futures)):
-            r = self.next_header(response)
+            r, size = self.next_header(response)
             if r is None:
                 self.raise_missing(i, futures, self._file_path)
                 break
-            if r not in futures:
-                self.raise_unrecognized(r, futures, self._file_path)
-                break
-
-            future = futures[r]
 
             first, last = r.split(b"-")
-            length = int(last) + 1 - int(first)
+            first, last = int(first), int(last)
+            length = last + 1 - first
+
+            future = futures.get(r)
+            if future is None:
+                if first == 0:
+                    future = futures.get(b"begin")
+                    future._start = first
+                    future._stop = last + 1
+
+                elif last + 1 == size:
+                    future = futures.get(b"end")
+                    future._start = first
+                    future._stop = last + 1
+
+            if future is None:
+                self.raise_unrecognized(r, futures, self._file_path)
+                break
 
             future._result = response.read(length)
             if len(future._result) != length:
@@ -612,6 +631,59 @@ class HTTPSource(uproot4.source.chunk.Source):
             )
             return chunks
 
+    @staticmethod
+    def _fix_start_stop(chunk):
+        def fix(future):
+            chunk._start = future._start
+            chunk._stop = future._stop
+        return fix
+
+    def begin_end_chunks(self, begin_guess_bytes, end_guess_bytes):
+        """
+        Args:
+            begin_guess_bytes (int): Number of bytes to try to take from the
+                beginning of the file.
+            end_guess_bytes (int): Number of bytes to try to take from the
+                end of the file.
+
+        Returns two Chunks, one from the beginning of the file and the other
+        from the end of the file, which may be the same Chunk if these regions
+        overlap. The Chunks are filled asynchronously.
+        """
+        self._num_requests += 1
+        self._num_requested_chunks += 2
+        self._num_requested_bytes += begin_guess_bytes + end_guess_bytes
+
+        if self._worker.fallback is not None:
+            return self._worker.fallback.begin_end_chunks(
+                begin_guess_bytes, end_guess_bytes
+            )
+
+        else:
+            range_strings = [
+                "0-{0}".format(begin_guess_bytes - 1),
+                "-{0}".format(end_guess_bytes),
+            ]
+            futures = {}
+            chunks = []
+
+            future = uproot4.source.futures.TaskFuture(None)
+            chunk = uproot4.source.chunk.Chunk(self, 0, 0, future, exact=False)
+            future.add_done_callback(self._fix_start_stop(chunk))
+            futures[b"begin"] = future
+            chunks.append(chunk)
+
+            future = uproot4.source.futures.TaskFuture(None)
+            chunk = uproot4.source.chunk.Chunk(self, 0, 0, future, exact=False)
+            future.add_done_callback(self._fix_start_stop(chunk))
+            futures[b"end"] = future
+            chunks.append(chunk)
+
+            range_string = "bytes=" + ", ".join(range_strings)
+            self._work_queue.put(
+                HTTPBackgroundThread.MultipartWork([(None, None), (None, None)], range_string, futures)
+            )
+            return chunks
 
 class HTTPResource(uproot4.source.chunk.Resource):
     """

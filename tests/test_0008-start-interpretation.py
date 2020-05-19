@@ -44,6 +44,13 @@ def test_file_header():
     assert file.hex_uuid == "944b77d0-98ab-11e7-a769-0100007fbeef"
 
 
+def test_http_begin_end():
+    filename = "https://example.com"
+    with uproot4.source.http.HTTPSource(filename, timeout=10, num_fallback_workers=0) as source:
+        begin, end = source.begin_end_chunks(20, 30)
+        assert len(begin.raw_data.tostring()) == 20
+        assert len(end.raw_data.tostring()) == 30
+
 # def test_file_minimal():
 #     filename = skhep_testdata.data_path("uproot-issue70.root")
 #     with uproot4.source.file.FileSource(filename, num_workers=0) as source:
