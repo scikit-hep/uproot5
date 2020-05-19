@@ -184,7 +184,7 @@ class XRootDSource(uproot4.source.chunk.Source):
         max_num_elements = options["max_num_elements"]
 
         self._file_path = file_path
-        self._size = None
+        self._num_bytes = None
 
         # important: construct this first because it raises an error for nonexistent hosts
         self._resource = XRootDResource(file_path, self._timeout)
@@ -207,11 +207,12 @@ class XRootDSource(uproot4.source.chunk.Source):
         """
         self._resource.__exit__(exception_type, exception_value, traceback)
 
-    def __len__(self):
+    @property
+    def num_bytes(self):
         """
         The number of bytes in the file.
         """
-        if self._size is None:
+        if self._num_bytes is None:
             status, info = self._resource._file.stat(
                 timeout=(0 if self._timeout is None else self._timeout)
             )
@@ -222,29 +223,23 @@ in file {1}""".format(
                         status["message"], self._file_path
                     )
                 )
-            self._size = info["size"]
+            self._num_bytes = info["size"]
 
-        return self._size
+        return self._num_bytes
 
     def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
-            stop (int or None): If an int, the stop (exclusive) byte position
-                for the desired chunk; if None, stop at the end of the file.
+            stop (int None): The stop (exclusive) byte position for the desired
+                chunk.
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
 
         Returns a single Chunk that has already been filled synchronously.
         """
-        if stop is None:
-            stop = len(self)
-        if start < 0:
-            start = start + len(self)
-        if stop < 0:
-            stop = stop + len(self)
         data = self._resource.get(start, stop)
         future = uproot4.source.futures.TrivialFuture(data)
         return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
@@ -266,12 +261,6 @@ in file {1}""".format(
 
         all_request_ranges = [[]]
         for start, stop in ranges:
-            if stop is None:
-                stop = len(self)
-            if start < 0:
-                start = start + len(self)
-            if stop < 0:
-                stop = stop + len(self)
             if stop - start > self._max_element_size:
                 raise NotImplementedError(
                     "TODO: Probably need to fall back to a non-vector read"
@@ -338,7 +327,7 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
 
         self._file_path = file_path
         self._resource = XRootDResource(file_path, timeout)
-        self._size = None
+        self._num_bytes = None
 
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
@@ -357,11 +346,12 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
         """
         return self._timeout
 
-    def __len__(self):
+    @property
+    def num_bytes(self):
         """
         The number of bytes in the file.
         """
-        if self._size is None:
+        if self._num_bytes is None:
             status, info = self._resource._file.stat(
                 timeout=(0 if self._timeout is None else self._timeout)
             )
@@ -372,6 +362,6 @@ in file {1}""".format(
                         status["message"], self._file_path
                     )
                 )
-            self._size = info["size"]
+            self._num_bytes = info["size"]
 
-        return self._size
+        return self._num_bytes

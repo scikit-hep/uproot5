@@ -44,7 +44,7 @@ def test_file(tmpdir):
                 b"@@@@@",
             ]
 
-        assert len(source) == 30
+        assert source.num_bytes == 30
 
 
 def test_file_fail(tmpdir):
@@ -78,7 +78,7 @@ def test_memmap(tmpdir):
             b"@@@@@",
         ]
 
-        assert len(source) == 30
+        assert source.num_bytes == 30
 
 
 def test_memmap_fail(tmpdir):
@@ -118,12 +118,12 @@ def test_http_size():
         timeout=10,
         num_fallback_workers=0,
     ) as source:
-        size1 = len(source)
+        size1 = source.num_bytes
 
     with uproot4.source.http.MultithreadedHTTPSource(
         "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=0, timeout=10
     ) as source:
-        size2 = len(source)
+        size2 = source.num_bytes
 
     assert size1 == size2
 
@@ -237,7 +237,7 @@ def test_xrootd_size():
         timeout=10,
         max_num_elements=None,
     ) as source:
-        size1 = len(source)
+        size1 = source.num_bytes
 
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
@@ -245,7 +245,7 @@ def test_xrootd_size():
         timeout=10,
         num_workers=0,
     ) as source:
-        size2 = len(source)
+        size2 = source.num_bytes
 
     assert size1 == size2
     assert size1 == 3469136394

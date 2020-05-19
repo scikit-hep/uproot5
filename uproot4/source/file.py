@@ -62,7 +62,7 @@ class FileSource(uproot4.source.chunk.MultithreadedSource):
 
         self._file_path = file_path
         self._resource = FileResource(file_path)
-        self._size = os.path.getsize(self._file_path)
+        self._num_bytes = os.path.getsize(self._file_path)
 
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
@@ -71,8 +71,9 @@ class FileSource(uproot4.source.chunk.MultithreadedSource):
                 [FileResource(file_path) for x in range(num_workers)]
             )
 
-    def __len__(self):
+    @property
+    def num_bytes(self):
         """
         The number of bytes in the file.
         """
-        return self._size
+        return self._num_bytes

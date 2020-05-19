@@ -100,7 +100,7 @@ class HTTPBackgroundThread(threading.Thread):
         self._work_queue = work_queue
         self._num_fallback_workers = num_fallback_workers
         self._fallback = None
-        self._size = None
+        self._num_bytes = None
 
     @property
     def file_path(self):
@@ -372,7 +372,7 @@ in file {1}""".format(
             else:
                 for k, x in response.getheaders():
                     if k.lower() == "content-length":
-                        self._size = int(x)
+                        self._num_bytes = int(x)
                         break
 
                 else:
@@ -525,38 +525,33 @@ class HTTPSource(uproot4.source.chunk.Source):
             self._work_queue.put(None)
             time.sleep(0.001)
 
-    def __len__(self):
+    @property
+    def num_bytes(self):
         """
         The number of bytes in the file.
         """
-        if self._worker._size is None:
+        if self._worker._num_bytes is None:
             work = HTTPBackgroundThread.GetSize()
             self._work_queue.put(work)
             work.done.wait()
             if work.excinfo is not None:
                 uproot4.source.futures.delayed_raise(*work.excinfo)
 
-        return self._worker._size
+        return self._worker._num_bytes
 
     def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
-            stop (int or None): If an int, the stop (exclusive) byte position
-                for the desired chunk; if None, stop at the end of the file.
+            stop (int None): The stop (exclusive) byte position for the desired
+                chunk.
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
 
         Returns a single Chunk that will be filled by the background thread.
         """
-        if stop is None:
-            stop = len(self)
-        if start < 0:
-            start = start + len(self)
-        if stop < 0:
-            stop = stop + len(self)
         future = uproot4.source.futures.TaskFuture(None)
         chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
         self._work_queue.put(HTTPBackgroundThread.SinglepartWork(start, stop, future))
@@ -584,12 +579,6 @@ class HTTPSource(uproot4.source.chunk.Source):
         futures = {}
         chunks = []
         for start, stop in ranges:
-            if stop is None:
-                stop = len(self)
-            if start < 0:
-                start = start + len(self)
-            if stop < 0:
-                stop = stop + len(self)
             r = "{0}-{1}".format(start, stop - 1)
             range_strings.append(r)
             future = uproot4.source.futures.TaskFuture(None)
@@ -726,7 +715,7 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
 
         self._file_path = file_path
         self._resource = HTTPResource(file_path, timeout)
-        self._size = None
+        self._num_bytes = None
 
         if num_workers == 0:
             self._executor = uproot4.source.futures.ResourceExecutor(self._resource)
@@ -744,11 +733,12 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
         """
         return self._timeout
 
-    def __len__(self):
+    @property
+    def num_bytes(self):
         """
         The number of bytes in the file.
         """
-        if self._size is None:
+        if self._num_bytes is None:
             self._resource._connection.request("HEAD", self._resource._parsed_url.path)
             response = self._resource._connection.getresponse()
 
@@ -762,7 +752,7 @@ in file {1}""".format(
 
             for k, x in response.getheaders():
                 if k.lower() == "content-length":
-                    self._size = int(x)
+                    self._num_bytes = int(x)
                     break
             else:
                 raise OSError(
@@ -772,4 +762,4 @@ in file {1}""".format(
                     )
                 )
 
-        return self._size
+        return self._num_bytes

@@ -10,6 +10,7 @@ import numpy
 
 import uproot4.source.chunk
 import uproot4.source.futures
+import uproot4.source.file
 import uproot4._util
 
 
@@ -20,7 +21,7 @@ class MemmapSource(uproot4.source.chunk.Source):
     Threading is unnecessary because a memory-map is stateless.
     """
 
-    __slots__ = ["_file_path", "_file"]
+    __slots__ = ["_file_path", "_file", "_fallback"]
 
     _dtype = uproot4.source.chunk.Chunk._dtype
 
@@ -30,7 +31,14 @@ class MemmapSource(uproot4.source.chunk.Source):
             file_path (str): Path to the file.
         """
         self._file_path = file_path
-        self._file = numpy.memmap(self._file_path, dtype=self._dtype, mode="r")
+        try:
+            self._file = numpy.memmap(self._file_path, dtype=self._dtype, mode="r")
+            self._fallback = None
+        except (OSError, IOError):
+            self._file = None
+            self._fallback = uproot4.source.file.FileSource(
+                file_path, num_workers=options["num_fallback_workers"]
+            )
 
     @property
     def file(self):
@@ -39,30 +47,49 @@ class MemmapSource(uproot4.source.chunk.Source):
         """
         return self._file
 
+    @property
+    def fallback(self):
+        """
+        Fallback FileSource or None; only created if opening a memory map
+        raised OSError or IOError.
+        """
+        return self._fallback
+
     def __enter__(self):
         """
         Passes `__enter__` to the memory-map.
 
         Returns self.
         """
-        if hasattr(self._file._mmap, "__enter__"):
-            self._file._mmap.__enter__()
+        if self._fallback is None:
+            if hasattr(self._file._mmap, "__enter__"):
+                self._file._mmap.__enter__()
+        else:
+            self._fallback.__enter__()
+
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         """
         Passes `__exit__` to the memory-map or otherwise closes the file.
         """
-        if hasattr(self._file._mmap, "__exit__"):
-            self._file._mmap.__exit__(exception_type, exception_value, traceback)
+        if self._fallback is None:
+            if hasattr(self._file._mmap, "__exit__"):
+                self._file._mmap.__exit__(exception_type, exception_value, traceback)
+            else:
+                self._file._mmap.close()
         else:
-            self._file._mmap.close()
+            self._fallback.__exit__(exception_type, exception_value, traceback)
 
-    def __len__(self):
+    @property
+    def num_bytes(self):
         """
         The number of bytes in the file.
         """
-        return self._file._mmap.size()
+        if self._fallback is None:
+            return self._file._mmap.size()
+        else:
+            return self._fallback.num_bytes
 
     def chunk(self, start, stop, exact=True):
         """
@@ -77,23 +104,23 @@ class MemmapSource(uproot4.source.chunk.Source):
 
         Returns a single Chunk that has already been filled synchronously.
         """
-        if uproot4._util.py2:
-            try:
-                self._file._mmap.tell()
-            except ValueError:
+        if self._fallback is None:
+            if uproot4._util.py2:
+                try:
+                    self._file._mmap.tell()
+                except ValueError:
+                    raise OSError(
+                        "memmap is closed for file {0}".format(self._file_path)
+                    )
+
+            elif self._file._mmap.closed:
                 raise OSError("memmap is closed for file {0}".format(self._file_path))
 
-        elif self._file._mmap.closed:
-            raise OSError("memmap is closed for file {0}".format(self._file_path))
+            future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
+            return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
 
-        if stop is None:
-            stop = len(self)
-        if start < 0:
-            start = start + len(self)
-        if stop < 0:
-            stop = stop + len(self)
-        future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
-        return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
+        else:
+            return self._fallback(start, stop, exact=exact)
 
     def chunks(self, ranges, exact=True, notifications=None):
         """
@@ -108,28 +135,28 @@ class MemmapSource(uproot4.source.chunk.Source):
 
         Returns a list of Chunks that are already filled with data.
         """
-        if uproot4._util.py2:
-            try:
-                self._file._mmap.tell()
-            except ValueError:
+        if self._fallback is None:
+            if uproot4._util.py2:
+                try:
+                    self._file._mmap.tell()
+                except ValueError:
+                    raise OSError(
+                        "memmap is closed for file {0}".format(self._file_path)
+                    )
+
+            elif self._file._mmap.closed:
                 raise OSError("memmap is closed for file {0}".format(self._file_path))
 
-        elif self._file._mmap.closed:
-            raise OSError("memmap is closed for file {0}".format(self._file_path))
+            chunks = []
+            for start, stop in ranges:
+                future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
+                chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
+                if notifications is not None:
+                    future.add_done_callback(
+                        uproot4.source.chunk.Resource.notifier(chunk, notifications)
+                    )
+                chunks.append(chunk)
+            return chunks
 
-        chunks = []
-        for start, stop in ranges:
-            if stop is None:
-                stop = len(self)
-            if start < 0:
-                start = start + len(self)
-            if stop < 0:
-                stop = stop + len(self)
-            future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
-            chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
-            if notifications is not None:
-                future.add_done_callback(
-                    uproot4.source.chunk.Resource.notifier(chunk, notifications)
-                )
-            chunks.append(chunk)
-        return chunks
+        else:
+            return self._fallback(ranges, exact=exact, notifications=notifications)

@@ -13,6 +13,7 @@ from __future__ import absolute_import
 import numpy
 
 import uproot4.source.futures
+import uproot4.source.cursor
 
 
 class Resource(object):
@@ -106,20 +107,14 @@ class MultithreadedSource(Source):
         Args:
             start (int): The start (inclusive) byte position for the desired
                 chunk.
-            stop (int or None): If an int, the stop (exclusive) byte position
-                for the desired chunk; if None, stop at the end of the file.
+            stop (int): The stop (exclusive) byte position for the desired
+                chunk.
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
 
         Returns a single Chunk that has already been filled synchronously.
         """
-        if stop is None:
-            stop = len(self)
-        if start < 0:
-            start = start + len(self)
-        if stop < 0:
-            stop = stop + len(self)
         future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
         return Chunk(self, start, stop, future, exact)
 
@@ -139,12 +134,6 @@ class MultithreadedSource(Source):
         """
         chunks = []
         for start, stop in ranges:
-            if stop is None:
-                stop = len(self)
-            if start < 0:
-                start = start + len(self)
-            if stop < 0:
-                stop = stop + len(self)
             future = self._executor._prepare(Resource.getter(start, stop))
             chunk = Chunk(self, start, stop, future, exact)
             if notifications is not None:
@@ -270,6 +259,18 @@ for file path {2}""".format(
         self.wait()
         return self._raw_data
 
+    def __contains__(self, range):
+        """
+        True if the range (start, stop) is fully contained within the Chunk;
+        False otherwise.
+        """
+        start, stop = range
+        if isinstance(start, uproot4.source.cursor.Cursor):
+            start = start.index
+        if isinstance(stop, uproot4.source.cursor.Cursor):
+            stop = stop.index
+        return self._start <= start and stop <= self._stop
+
     def get(self, start, stop):
         """
         Args:
@@ -287,7 +288,7 @@ for file path {2}""".format(
         """
         local_start = start - self._start
         local_stop = stop - self._start
-        if 0 <= local_start and stop <= self._stop:
+        if (start, stop) in self:
             self.wait()
             return self.raw_data[local_start:local_stop]
         elif self._exact:

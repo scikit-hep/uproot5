@@ -23,6 +23,10 @@ class ReadOnlyFile(object):
         "max_num_elements": None,
         "num_workers": 10,
         "num_fallback_workers": 10,
+        "begin_guess_bytes": 512,
+        "end_guess_bytes": 32 * 1024,
+        "directory_guess_bytes": 32 * 1024,
+        "streamer_guess_bytes": 32 * 1024,
     }
 
     _header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
@@ -33,6 +37,9 @@ class ReadOnlyFile(object):
         self._options.update(options)
 
         self._file_path = file_path
+        self._streamer_key = None
+        self._streamers = None
+
         self.cache = cache
 
         self.hook_before_create_source(file_path=file_path, options=self._options)
@@ -42,9 +49,13 @@ class ReadOnlyFile(object):
 
         self.hook_before_get_chunks(file_path=file_path, options=self._options)
 
-        # TODO: use this smaller chunk and get a second chunk for the root TDirectory
-        # chunk = self._source.chunk(0, 512, exact=False)
-        chunk = self._source.chunk(0, None, exact=False)
+        if self._options["begin_guess_bytes"] < self._header_fields_big.size:
+            raise ValueError(
+                "begin_guess_bytes={0} is not enough to read the TFile header ({1})".format(
+                    self._options["begin_guess_bytes"], self._header_fields_big.size
+                )
+            )
+        chunk = self._source.chunk(0, self._options["begin_guess_bytes"], exact=False)
 
         self.hook_before_read(file_path=file_path, options=self._options, chunk=chunk)
 
@@ -91,28 +102,17 @@ in file {1}""".format(
                 )
             )
 
-        self._streamer_key = None
-        self._streamers = None
-
-        self.hook_before_root_directory(
-            file_path=file_path, options=self._options, chunk=chunk
-        )
-
-        # TODO: if the guess was too small (self._fBEGIN + self._fNbytesName
-        # + ReadOnlyDirectory._format_big) make a new guess, updating chunk
+        self.hook_before_root_directory(file_path=file_path, options=self._options)
 
         self._root_directory = ReadOnlyDirectory(
             "/",
             uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
-            chunk,
             self,
             self,
             self._options,
         )
 
-        self.hook_after_root_directory(
-            file_path=file_path, options=self._options, chunk=chunk
-        )
+        self.hook_after_root_directory(file_path=file_path, options=self._options)
 
     def __repr__(self):
         return "<ReadOnlyFile {0}>".format(repr(self._file_path))
@@ -142,6 +142,10 @@ in file {1}""".format(
         pass
 
     @property
+    def options(self):
+        return self._options
+
+    @property
     def file_path(self):
         return self._file_path
 
@@ -164,7 +168,18 @@ in file {1}""".format(
                 self._streamers = {}
 
             else:
-                chunk = self._source.chunk(self._fSeekInfo, 32 * 1024, exact=False)
+                if self._options["streamer_guess_bytes"] < ReadOnlyKey._format_big.size:
+                    raise ValueError(
+                        "streamer_guess_bytes={0} is not enough to read the streamer TKey ({1})".format(
+                            self._options["streamer_guess_bytes"],
+                            ReadOnlyKey._format_big.size,
+                        )
+                    )
+                streamer_start = self._fSeekInfo
+                streamer_stop = min(
+                    self._fSeekInfo + self._options["streamer_guess_bytes"], self._fEND
+                )
+                chunk = self._source.chunk(streamer_start, streamer_stop, exact=False)
 
                 self.hook_before_read_streamer_key(chunk=chunk)
 
@@ -176,8 +191,10 @@ in file {1}""".format(
                     self._options,
                 )
 
-                # TODO: if the guess was too small (self._streamer_key.fNbytes),
-                # make a new guess, updating chunk
+                if self._streamer_key.fNbytes > streamer_stop - streamer_start:
+                    chunk = self._source.chunk(
+                        streamer_start, streamer_start + self._streamer_key.fNbytes
+                    )
 
                 self.hook_before_read_streamers(
                     chunk=chunk, streamer_key=self._streamer_key
@@ -426,6 +443,18 @@ class ReadOnlyKey(object):
     def fSeekPdir(self):
         return self._fSeekPdir
 
+    @property
+    def fClassName(self):
+        return self._fClassName
+
+    @property
+    def fName(self):
+        return self._fName
+
+    @property
+    def fTitle(self):
+        return self._fTitle
+
 
 class ReadOnlyDirectory(object):
     _encoded_classname = "ROOT_TDirectory"
@@ -434,11 +463,19 @@ class ReadOnlyDirectory(object):
     _format_big = struct.Struct(">hIIiiqqq")
     _format_num_keys = struct.Struct(">i")
 
-    def __init__(self, name, cursor, chunk, file, parent, options):
+    def __init__(self, name, cursor, file, parent, options):
         self._name = name
         self._cursor = cursor.copy(link_refs=True)
         self._file = file
         self._parent = parent
+
+        directory_start = cursor.index
+        directory_stop = min(
+            directory_start
+            + max(file.options["directory_guess_bytes"], self._format_big.size),
+            file.fEND,
+        )
+        chunk = file.source.chunk(directory_start, directory_stop, exact=False)
 
         self.hook_before_read(
             name=name,
@@ -480,7 +517,14 @@ class ReadOnlyDirectory(object):
             self._keys = []
 
         else:
-            key_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
+            keys_start = self._fSeekKeys
+            keys_stop = min(keys_start + self._fNbytesKeys + 8, file.fEND)
+            if (keys_start, keys_stop) in chunk:
+                keys_chunk = chunk
+            else:
+                keys_chunk = file.source.chunk(keys_start, keys_stop)
+
+            keys_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
 
             self.hook_before_header_key(
                 name=name,
@@ -489,14 +533,15 @@ class ReadOnlyDirectory(object):
                 file=file,
                 parent=parent,
                 options=options,
-                key_cursor=key_cursor,
+                keys_chunk=keys_chunk,
+                keys_cursor=keys_cursor,
             )
 
             self._header_key = ReadOnlyKey(
-                key_cursor, chunk, file, self, options, read_strings=True
+                keys_cursor, keys_chunk, file, self, options, read_strings=True
             )
 
-            num_keys = key_cursor.field(chunk, self._format_num_keys)
+            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys)
 
             self.hook_before_keys(
                 name=name,
@@ -505,14 +550,15 @@ class ReadOnlyDirectory(object):
                 file=file,
                 parent=parent,
                 options=options,
-                key_cursor=key_cursor,
+                keys_chunk=keys_chunk,
+                keys_cursor=keys_cursor,
                 num_keys=num_keys,
             )
 
             self._keys = []
             for i in range(num_keys):
                 key = ReadOnlyKey(
-                    key_cursor, chunk, file, self, options, read_strings=True
+                    keys_cursor, keys_chunk, file, self, options, read_strings=True
                 )
                 self._keys.append(key)
 
@@ -523,19 +569,10 @@ class ReadOnlyDirectory(object):
                 file=file,
                 parent=parent,
                 options=options,
-                key_cursor=key_cursor,
+                keys_chunk=keys_chunk,
+                keys_cursor=keys_cursor,
                 num_keys=num_keys,
             )
-
-            if (key_cursor.index - self._fSeekKeys != self._fNbytesKeys) and (
-                key_cursor.index - self._fSeekKeys + 8 != self._fNbytesKeys
-            ):
-                raise ValueError(
-                    """fNbytesKey != number of bytes in TDirectory seek keys
-in file {0}""".format(
-                        self._file.file_path
-                    )
-                )
 
     def __repr__(self):
         return "<ReadOnlyDirectory {0}>".format(self._name)
