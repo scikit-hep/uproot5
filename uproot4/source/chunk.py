@@ -52,6 +52,27 @@ class Source(object):
         """
         return self._file_path
 
+    @property
+    def num_requests(self):
+        """
+        The number of requests that have been made.
+        """
+        return self._num_requests
+
+    @property
+    def num_requested_chunks(self):
+        """
+        The number of chunks that have been requested.
+        """
+        return self._num_requested_chunks
+
+    @property
+    def num_requested_bytes(self):
+        """
+        The number of bytes that have been requested.
+        """
+        return self._num_requested_bytes
+
     def close(self):
         """
         Manually calls `__exit__`.
@@ -115,6 +136,10 @@ class MultithreadedSource(Source):
 
         Returns a single Chunk that has already been filled synchronously.
         """
+        self._num_requests += 1
+        self._num_requested_chunks += 1
+        self._num_requested_bytes += stop - start
+
         future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
         return Chunk(self, start, stop, future, exact)
 
@@ -132,6 +157,10 @@ class MultithreadedSource(Source):
         Returns a list of Chunks that may already be filled with data or are
         filling in another thread and only block when their bytes are needed.
         """
+        self._num_requests += 1
+        self._num_requested_chunks += len(ranges)
+        self._num_requested_bytes += sum(stop - start for start, stop in ranges)
+
         chunks = []
         for start, stop in ranges:
             future = self._executor._prepare(Resource.getter(start, stop))

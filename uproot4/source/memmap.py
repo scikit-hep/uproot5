@@ -30,6 +30,10 @@ class MemmapSource(uproot4.source.chunk.Source):
         Args:
             file_path (str): Path to the file.
         """
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
+
         self._file_path = file_path
         try:
             self._file = numpy.memmap(self._file_path, dtype=self._dtype, mode="r")
@@ -104,6 +108,10 @@ class MemmapSource(uproot4.source.chunk.Source):
 
         Returns a single Chunk that has already been filled synchronously.
         """
+        self._num_requests += 1
+        self._num_requested_chunks += 1
+        self._num_requested_bytes += stop - start
+
         if self._fallback is None:
             if uproot4._util.py2:
                 try:
@@ -135,6 +143,10 @@ class MemmapSource(uproot4.source.chunk.Source):
 
         Returns a list of Chunks that are already filled with data.
         """
+        self._num_requests += 1
+        self._num_requested_chunks += len(ranges)
+        self._num_requested_bytes += sum(stop - start for start, stop in ranges)
+
         if self._fallback is None:
             if uproot4._util.py2:
                 try:

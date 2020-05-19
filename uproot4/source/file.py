@@ -59,6 +59,9 @@ class FileSource(uproot4.source.chunk.MultithreadedSource):
                 ThreadResourceExecutors are created.
         """
         num_workers = options["num_workers"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
 
         self._file_path = file_path
         self._resource = FileResource(file_path)

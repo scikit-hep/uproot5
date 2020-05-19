@@ -450,6 +450,9 @@ class HTTPSource(uproot4.source.chunk.Source):
         """
         self._timeout = options["timeout"]
         num_fallback_workers = options["num_fallback_workers"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
 
         self._file_path = file_path
         self._work_queue = queue.Queue()
@@ -552,6 +555,10 @@ class HTTPSource(uproot4.source.chunk.Source):
 
         Returns a single Chunk that will be filled by the background thread.
         """
+        self._num_requests += 1
+        self._num_requested_chunks += 1
+        self._num_requested_bytes += stop - start
+
         future = uproot4.source.futures.TaskFuture(None)
         chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
         self._work_queue.put(HTTPBackgroundThread.SinglepartWork(start, stop, future))
@@ -572,29 +579,34 @@ class HTTPSource(uproot4.source.chunk.Source):
         multi-part GET or the `fallback` threads (asynchronously in either
         case).
         """
+        self._num_requests += 1
+        self._num_requested_chunks += len(ranges)
+        self._num_requested_bytes += sum(stop - start for start, stop in ranges)
+
         if self._worker.fallback is not None:
             return self._worker.fallback.chunks(ranges)
 
-        range_strings = []
-        futures = {}
-        chunks = []
-        for start, stop in ranges:
-            r = "{0}-{1}".format(start, stop - 1)
-            range_strings.append(r)
-            future = uproot4.source.futures.TaskFuture(None)
-            futures[r.encode()] = future
-            chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
-            if notifications is not None:
-                future.add_done_callback(
-                    uproot4.source.chunk.Resource.notifier(chunk, notifications)
-                )
-            chunks.append(chunk)
+        else:
+            range_strings = []
+            futures = {}
+            chunks = []
+            for start, stop in ranges:
+                r = "{0}-{1}".format(start, stop - 1)
+                range_strings.append(r)
+                future = uproot4.source.futures.TaskFuture(None)
+                futures[r.encode()] = future
+                chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
+                if notifications is not None:
+                    future.add_done_callback(
+                        uproot4.source.chunk.Resource.notifier(chunk, notifications)
+                    )
+                chunks.append(chunk)
 
-        range_string = "bytes=" + ", ".join(range_strings)
-        self._work_queue.put(
-            HTTPBackgroundThread.MultipartWork(ranges, range_string, futures)
-        )
-        return chunks
+            range_string = "bytes=" + ", ".join(range_strings)
+            self._work_queue.put(
+                HTTPBackgroundThread.MultipartWork(ranges, range_string, futures)
+            )
+            return chunks
 
 
 class HTTPResource(uproot4.source.chunk.Resource):
@@ -712,6 +724,9 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
         """
         timeout = options["timeout"]
         num_workers = options["num_workers"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
 
         self._file_path = file_path
         self._resource = HTTPResource(file_path, timeout)

@@ -182,6 +182,9 @@ class XRootDSource(uproot4.source.chunk.Source):
         """
         self._timeout = options["timeout"]
         max_num_elements = options["max_num_elements"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
 
         self._file_path = file_path
         self._num_bytes = None
@@ -240,6 +243,10 @@ in file {1}""".format(
 
         Returns a single Chunk that has already been filled synchronously.
         """
+        self._num_requests += 1
+        self._num_requested_chunks += 1
+        self._num_requested_bytes += stop - start
+
         data = self._resource.get(start, stop)
         future = uproot4.source.futures.TrivialFuture(data)
         return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
@@ -258,6 +265,9 @@ in file {1}""".format(
         Returns a list of Chunks that will be filled asynchronously by the
         one or more XRootD vector reads.
         """
+        self._num_requests += 1
+        self._num_requested_chunks += len(ranges)
+        self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
         all_request_ranges = [[]]
         for start, stop in ranges:
@@ -324,6 +334,9 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
         """
         timeout = options["timeout"]
         num_workers = options["num_workers"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
 
         self._file_path = file_path
         self._resource = XRootDResource(file_path, timeout)
