@@ -9,7 +9,10 @@ from uproot4.source.http import MultithreadedHTTPSource
 from uproot4.source.xrootd import XRootDSource
 from uproot4.source.xrootd import MultithreadedXRootDSource
 
-from uproot4.reading import ReadOnlyFile as open
+from uproot4.reading import open
+from uproot4.reading import no_filter
+from uproot4.reading import ReadOnlyFile
+from uproot4.reading import ReadOnlyDirectory
 
 streamers = {}
 classes = {}

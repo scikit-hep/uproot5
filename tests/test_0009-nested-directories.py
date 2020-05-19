@@ -1,0 +1,30 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+
+from __future__ import absolute_import
+
+import sys
+
+import numpy
+import pytest
+import skhep_testdata
+
+import uproot4
+import uproot4.model
+import uproot4.reading
+
+
+def test():
+    with uproot4.open(skhep_testdata.data_path("uproot-nesteddirs.root")) as directory:
+        assert directory.keys() == [
+            "one;1",
+            "one/two;1",
+            "one/two/tree;1",
+            "one/tree;1",
+            "three;1",
+            "three/tree;1",
+        ]
+
+        assert directory.path == ()
+        assert directory["one"].path == ("one",)
+        assert directory["one/two"].path == ("one", "two")
+        assert directory["three"].path == ("three",)

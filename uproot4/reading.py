@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Central classes and functions for reading ROOT files.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -12,34 +16,69 @@ import uproot4.source.chunk
 import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
+import uproot4.generate
+import uproot4.model
+
+
+def open(file_path, cache=None, **options):
+    """
+    Args:
+        file_path (str or Path): File path or URL to open.
+        cache (None or MutableMapping): FIXME not implemented.
+        options: see below.
+
+    Opens a ROOT file, possibly through a remote protocol.
+
+    Options (type; default):
+
+        * file_handler (Source class; uproot4.source.memmap.MemmapSource)
+        * xrootd_handler (Source class; uproot4.source.xrootd.XRootDSource)
+        * http_handler (Source class; uproot4.source.http.HTTPSource)
+        * timeout (float for HTTP, int for XRootD; 30)
+        * max_num_elements (None or int; None)
+        * num_workers (int; 10)
+        * num_fallback_workers (int; 10)
+        * begin_guess_bytes (memory_size; 512)
+        * end_guess_bytes (memory_size; "64 kB")
+        * streamer_guess_bytes (memory_size; "64 kB")
+    """
+
+    file = ReadOnlyFile(file_path, cache=cache, **options)
+    return file.root_directory
+
+
+open.defaults = {
+    "file_handler": uproot4.source.memmap.MemmapSource,
+    "xrootd_handler": uproot4.source.xrootd.XRootDSource,
+    "http_handler": uproot4.source.http.HTTPSource,
+    "timeout": 30,
+    "max_num_elements": None,
+    "num_workers": 10,
+    "num_fallback_workers": 10,
+    "begin_guess_bytes": 512,
+    "end_guess_bytes": "64 kB",
+    "streamer_guess_bytes": "64 kB",
+}
+
+
+def no_filter(x):
+    return True
 
 
 class ReadOnlyFile(object):
-    defaults = {
-        "file_handler": uproot4.source.memmap.MemmapSource,
-        "xrootd_handler": uproot4.source.xrootd.XRootDSource,
-        "http_handler": uproot4.source.http.HTTPSource,
-        "timeout": 30,
-        "max_num_elements": None,
-        "num_workers": 10,
-        "num_fallback_workers": 10,
-        "begin_guess_bytes": 512,
-        "end_guess_bytes": 64 * 1024,
-        "streamer_guess_bytes": 64 * 1024,
-    }
-
     _header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
     _header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
     def __init__(self, file_path, cache=None, **options):
-        self._options = dict(self.defaults)
-        self._options.update(options)
-
         self._file_path = file_path
+        self.cache = cache
         self._streamer_key = None
         self._streamers = None
 
-        self.cache = cache
+        self._options = dict(open.defaults)
+        self._options.update(options)
+        for option in ("begin_guess_bytes", "end_guess_bytes", "streamer_guess_bytes"):
+            self._options[option] = uproot4._util.memory_size(self._options[option])
 
         self.hook_before_create_source(file_path=file_path, options=self._options)
 
@@ -80,7 +119,7 @@ class ReadOnlyFile(object):
             self._begin_chunk, self._header_fields_small
         )
 
-        if self._fVersion >= 1000000:
+        if self.is_64bit:
             (
                 magic,
                 self._fVersion,
@@ -111,7 +150,7 @@ in file {1}""".format(
         self.hook_before_root_directory(file_path=file_path, options=self._options)
 
         self._root_directory = ReadOnlyDirectory(
-            "/",
+            (),
             uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
             self,
             self,
@@ -175,6 +214,14 @@ in file {1}""".format(
     def end_chunk(self):
         return self._end_chunk
 
+    def chunk(self, start, stop):
+        if (start, stop) in self._end_chunk:
+            return self._end_chunk
+        elif (start, stop) in self._begin_chunk:
+            return self._begin_chunk
+        else:
+            return self._source.chunk(start, stop)
+
     @property
     def streamers(self):
         if self._streamers is None:
@@ -193,15 +240,7 @@ in file {1}""".format(
                 streamer_stop = min(
                     self._fSeekInfo + self._options["streamer_guess_bytes"], self._fEND
                 )
-
-                if (streamer_start, streamer_stop) in self._end_chunk:
-                    chunk = self._end_chunk
-                elif (streamer_start, streamer_stop) in self._begin_chunk:
-                    chunk = self._begin_chunk
-                else:
-                    chunk = self._source.chunk(
-                        streamer_start, streamer_stop, exact=False
-                    )
+                chunk = self.chunk(streamer_start, streamer_stop)
 
                 self.hook_before_read_streamer_key(chunk=chunk)
 
@@ -214,9 +253,8 @@ in file {1}""".format(
                 )
 
                 if self._streamer_key.fNbytes > streamer_stop - streamer_start:
-                    chunk = self._source.chunk(
-                        streamer_start, streamer_start + self._streamer_key.fNbytes
-                    )
+                    streamer_stop = streamer_start + self._streamer_key.fNbytes
+                    chunk = self.chunk(streamer_start, streamer_stop)
 
                 self.hook_before_read_streamers(
                     chunk=chunk, streamer_key=self._streamer_key
@@ -326,6 +364,21 @@ in file {1}""".format(
     def fUUID(self):
         return self._fUUID
 
+    def __enter__(self):
+        """
+        Passes __enter__ to the file's Source and returns self.
+        """
+        self._source.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Passes __exit__ to the file's Source, which closes physical files
+        and shuts down any other resources, such as thread pools for parallel
+        reading.
+        """
+        self._source.__exit__(exception_type, exception_value, traceback)
+
 
 class ReadOnlyKey(object):
     _encoded_classname = "ROOT_TKey"
@@ -358,7 +411,7 @@ class ReadOnlyKey(object):
             self._fSeekPdir,
         ) = cursor.fields(chunk, self._format_small, move=False)
 
-        if self._fVersion > 1000:
+        if self.is_64bit:
             (
                 self._fNbytes,
                 self._fVersion,
@@ -402,11 +455,11 @@ class ReadOnlyKey(object):
         )
 
     def __repr__(self):
-        if self._fName is None or self._fClass is None:
+        if self._fName is None or self._fClassName is None:
             nameclass = ""
         else:
-            nameclass = " {0}: {1}".format(self._fName, self._fClassName)
-        return "<ReadOnlyKey{0} at {1}>".format(nameclass, self.data_cursor.index)
+            nameclass = " {0}: {1}".format(self.name(cycle=True), self.classname())
+        return "<ReadOnlyKey{0} at byte {1}>".format(nameclass, self.data_cursor.index)
 
     def hook_before_read(self, **kwargs):
         pass
@@ -416,6 +469,18 @@ class ReadOnlyKey(object):
 
     def hook_after_read(self, **kwargs):
         pass
+
+    @property
+    def cursor(self):
+        return self._cursor
+
+    @property
+    def file(self):
+        return self._file
+
+    @property
+    def parent(self):
+        return self._parent
 
     @property
     def data_cursor(self):
@@ -432,6 +497,22 @@ class ReadOnlyKey(object):
     @property
     def is_compressed(self):
         return self.data_compressed_bytes != self.data_uncompressed_bytes
+
+    @property
+    def is_64bit(self):
+        return self._fVersion > 1000
+
+    def name(self, cycle=False):
+        if cycle:
+            return "{0};{1}".format(self.fName, self.fCycle)
+        else:
+            return self.fName
+
+    def classname(self, encoded=False, version=None):
+        if encoded:
+            return uproot4.model.classname_encode(self.fClassName, version=version)
+        else:
+            return self.fClassName
 
     @property
     def fNbytes(self):
@@ -477,6 +558,22 @@ class ReadOnlyKey(object):
     def fTitle(self):
         return self._fTitle
 
+    def get(self):
+        if isinstance(self._parent, ReadOnlyDirectory) and self._fClassName in (
+            "TDirectory",
+            "TDirectoryFile",
+        ):
+            return ReadOnlyDirectory(
+                self._parent.path + (self.fName,),
+                self.data_cursor,
+                self._file,
+                self._parent,
+                self._file.options,
+            )
+
+        else:
+            raise NotImplementedError
+
 
 class ReadOnlyDirectory(object):
     _encoded_classname = "ROOT_TDirectory"
@@ -485,24 +582,18 @@ class ReadOnlyDirectory(object):
     _format_big = struct.Struct(">hIIiiqqq")
     _format_num_keys = struct.Struct(">i")
 
-    def __init__(self, name, cursor, file, parent, options):
-        self._name = name
+    def __init__(self, path, cursor, file, parent, options):
+        self._path = path
         self._cursor = cursor.copy(link_refs=True)
         self._file = file
         self._parent = parent
 
         directory_start = cursor.index
         directory_stop = min(directory_start + self._format_big.size, file.fEND)
-
-        if (directory_start, directory_stop) in file.begin_chunk:
-            chunk = file.begin_chunk
-        elif (directory_start, directory_stop) in file.end_chunk:
-            chunk = file.end_chunk
-        else:
-            chunk = file.source.chunk(directory_start, directory_stop, exact=False)
+        chunk = file.chunk(directory_start, directory_stop)
 
         self.hook_before_read(
-            name=name,
+            path=path,
             cursor=cursor,
             chunk=chunk,
             file=file,
@@ -521,7 +612,7 @@ class ReadOnlyDirectory(object):
             self._fSeekKeys,
         ) = cursor.fields(chunk, self._format_small, move=False)
 
-        if self._fVersion > 1000:
+        if self.is_64bit:
             (
                 self._fVersion,
                 self._fDatimeC,
@@ -544,19 +635,15 @@ class ReadOnlyDirectory(object):
             keys_start = self._fSeekKeys
             keys_stop = min(keys_start + self._fNbytesKeys + 8, file.fEND)
 
-            if (keys_start, keys_stop) in file.end_chunk:
-                keys_chunk = file.end_chunk
-            elif (keys_start, keys_stop) in file.begin_chunk:
-                keys_chunk = file.begin_chunk
-            elif (keys_start, keys_stop) in chunk:
+            if (keys_start, keys_stop) in chunk:
                 keys_chunk = chunk
             else:
-                keys_chunk = file.source.chunk(keys_start, keys_stop)
+                keys_chunk = file.chunk(keys_start, keys_stop)
 
             keys_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
 
             self.hook_before_header_key(
-                name=name,
+                path=path,
                 cursor=cursor,
                 chunk=chunk,
                 file=file,
@@ -573,7 +660,7 @@ class ReadOnlyDirectory(object):
             num_keys = keys_cursor.field(keys_chunk, self._format_num_keys)
 
             self.hook_before_keys(
-                name=name,
+                path=path,
                 cursor=cursor,
                 chunk=chunk,
                 file=file,
@@ -592,7 +679,7 @@ class ReadOnlyDirectory(object):
                 self._keys.append(key)
 
             self.hook_after_read(
-                name=name,
+                path=path,
                 cursor=cursor,
                 chunk=chunk,
                 file=file,
@@ -604,7 +691,7 @@ class ReadOnlyDirectory(object):
             )
 
     def __repr__(self):
-        return "<ReadOnlyDirectory {0}>".format(self._name)
+        return "<ReadOnlyDirectory {0}>".format(repr("/" + "/".join(self._path)))
 
     def hook_before_read(self, **kwargs):
         pass
@@ -619,12 +706,28 @@ class ReadOnlyDirectory(object):
         pass
 
     @property
+    def path(self):
+        return self._path
+
+    @property
+    def cursor(self):
+        return self._cursor
+
+    @property
+    def file(self):
+        return self._file
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
     def header_key(self):
         return self._header_key
 
     @property
-    def keys(self):
-        return self._keys
+    def is_64bit(self):
+        return self._fVersion > 1000
 
     @property
     def fVersion(self):
@@ -657,3 +760,134 @@ class ReadOnlyDirectory(object):
     @property
     def fSeekKeys(self):
         return self._fSeekKeys
+
+    def __enter__(self):
+        """
+        Passes __enter__ to the directory's file and returns self.
+        """
+        self._file.source.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Passes __exit__ to the directory's file, which closes physical files
+        and shuts down any other resources, such as thread pools for parallel
+        reading.
+        """
+        self._file.source.__exit__(exception_type, exception_value, traceback)
+
+    def iterkeys(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        for key in self._keys:
+            if filter_name(key.fName) and filter_classname(key.fClassName):
+                yield key.name(cycle=True)
+
+            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
+                for k in key.get().iterkeys(recursive, filter_name, filter_classname):
+                    yield "{0}/{1}".format(key.name(cycle=False), k)
+
+    def iteritems(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        for key in self._keys:
+            if filter_name(key.fName) and filter_classname(key.fClassName):
+                yield key.name(cycle=True), key.get()
+
+            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
+                for k, v in key.get().iteritems(
+                    recursive, filter_name, filter_classname
+                ):
+                    yield "{0}/{1}".format(key.name(cycle=False), k), v
+
+    def itervalues(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        for k, v in self.iteritems(recursive, filter_name, filter_classname):
+            yield v
+
+    def keys(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        return list(self.iterkeys(recursive, filter_name, filter_classname))
+
+    def items(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        return list(self.iteritems(recursive, filter_name, filter_classname))
+
+    def values(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        return list(self.itervalues(recursive, filter_name, filter_classname))
+
+    def __iter__(self):
+        return self.iterkeys()
+
+    def _ipython_key_completions_(self):
+        "Support key-completion in an IPython or Jupyter kernel."
+        return self.iterkeys()
+
+    def __getitem__(self, where):
+        return self.key(where).get()
+
+    def classname_of(self, where, encoded=False, version=None):
+        return self.key(where).classname(encoded=encoded, version=version)
+
+    def streamer_of(self, where, version=None):
+        key = self.key(where)
+        return uproot4.generate.streamer_named(key.fClassName, version=version)
+
+    def class_of(self, where, version=None):
+        key = self.key(where)
+        return uproot4.generate.class_named(key.fClassName, version=version)
+
+    def key(self, where):
+        where = uproot4._util.ensure_str(where)
+
+        if "/" in where:
+            items = where.split("/")
+            step = self
+            for item in items[:-1]:
+                if item != "":
+                    step = step[item]
+            return step.key(items[-1])
+
+        if ";" in where:
+            at = where.rindex(";")
+            item, cycle = where[:at], where[at + 1 :]
+            cycle = int(cycle)
+        else:
+            item, cycle = where, None
+
+        last = None
+        for key in self._keys:
+            if key.fName == item:
+                if cycle == key.fCycle:
+                    return key
+                elif cycle is None and last is None:
+                    last = key
+                elif cycle is None and last.fCycle < key.fCycle:
+                    last = key
+
+        if last is not None:
+            return last
+        elif cycle is None:
+            raise KeyWithCycleError(
+                """not found: {0} (with any cycle number)
+in file {1}""".format(
+                    repr(item), self._file.file_path
+                )
+            )
+        else:
+            raise KeyWithCycleError(
+                """not found: {0} with cycle {1}
+in file {2}""".format(
+                    repr(item), cycle, self._file.file_path
+                )
+            )
+
+
+class KeyWithCycleError(KeyError):
+    def __str__(self):
+        return self.args[0]
