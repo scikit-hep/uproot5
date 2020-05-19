@@ -199,6 +199,7 @@ def test_xrootd():
 
 @pytest.mark.network
 def test_xrootd_fail():
+    pytest.importorskip("pyxrootd")
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.MultithreadedXRootDSource(
             "root://wonky.cern/does-not-exist", num_workers=0, timeout=1
@@ -223,6 +224,7 @@ def test_xrootd_vectorread():
 
 @pytest.mark.network
 def test_xrootd_vectorread_fail():
+    pytest.importorskip("pyxrootd")
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.XRootDSource(
             "root://wonky.cern/does-not-exist", timeout=1, max_num_elements=None

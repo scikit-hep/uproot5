@@ -25,6 +25,13 @@ py27 = py2 and not py26
 py35 = not py2 and sys.version_info[1] <= 5
 
 
+# to silence flake8 F821 errors
+if py2:
+    unicode = eval("unicode")
+else:
+    unicode = None
+
+
 def isint(x):
     """
     Returns True if and only if `x` is an integer (including NumPy, not
@@ -33,6 +40,22 @@ def isint(x):
     return isinstance(x, (int, numbers.Integral, numpy.integer)) and not isinstance(
         x, (numpy.bool, numpy.bool_)
     )
+
+
+def isstr(x):
+    if py2:
+        return isinstance(x, (bytes, unicode))
+    else:
+        return isinstance(x, str)
+
+
+def ensure_str(x):
+    if not py2 and isinstance(x, bytes):
+        return x.decode(errors="surrogateescape")
+    elif (py2 and isinstance(x, (bytes, unicode))) or isinstance(x, str):
+        return x
+    else:
+        raise TypeError("expected a string, not {0}".format(type(x)))
 
 
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
@@ -101,7 +124,7 @@ def memory_size(data):
                 target *= 1024 ** 7
             elif unit == "YB":
                 target *= 1024 ** 8
-            return target
+            return int(target)
 
     elif isint(data):
         return int(data)
