@@ -2,6 +2,11 @@
 
 from __future__ import absolute_import
 
+import struct
+
+import numpy
+
+import uproot4.source.chunk
 import uproot4._const
 import uproot4._util
 
@@ -55,19 +60,75 @@ class Compression(object):
 
 
 class ZLIB(Compression):
-    pass
+    @classmethod
+    def decompress(cls, data, uncompressed_bytes=None):
+        import zlib
+
+        return zlib.decompress(data)
 
 
 class LZMA(Compression):
-    pass
+    @classmethod
+    def decompress(cls, data, uncompressed_bytes=None):
+        try:
+            import lzma
+        except ImportError:
+            try:
+                import backports.lzma as lzma
+            except ImportError:
+                raise ImportError(
+                    """install the 'lzma' package with:
+
+    pip install backports.lzma
+
+or
+
+    conda install backports.lzma
+
+or use Python >= 3.3."""
+                )
+        return lzma.decompress(data)
 
 
 class LZ4(Compression):
-    pass
+    @classmethod
+    def decompress(cls, data, uncompressed_bytes=None):
+        try:
+            import lz4.block
+        except ImportError:
+            raise ImportError(
+                """install the 'lz4' package with:
+
+    pip install lz4
+
+or
+
+    conda install lz4"""
+            )
+        if uncompressed_bytes is None:
+            raise ValueError(
+                "lz4 block decompression requires the number of uncompressed bytes"
+            )
+        return lz4.block.decompress(data, uncompressed_size=uncompressed_bytes)
 
 
 class ZSTD(Compression):
-    pass
+    @classmethod
+    def decompress(cls, data, uncompressed_bytes=None):
+        try:
+            import zstandard
+        except ImportError:
+            raise ImportError(
+                """install the 'zstandard' package with:
+
+    pip install zstandard
+
+or
+
+    conda install zstandard"""
+            )
+        dctx = zstandard.ZstdDecompressor()
+        return dctx.decompress(data)
 
 
 algorithm_codes = {
@@ -76,3 +137,98 @@ algorithm_codes = {
     uproot4._const.kLZ4: LZ4,
     uproot4._const.kZSTD: ZSTD,
 }
+
+
+_decompress_header_format = struct.Struct("2sBBBBBBB")
+_decompress_checksum_format = struct.Struct(">Q")
+
+
+def decompress(chunk, cursor, compressed_bytes, uncompressed_bytes):
+    print(cursor)
+    cursor.debug(chunk, 200)
+
+    start = cursor.copy()
+    filled = 0
+    num_blocks = 0
+    while cursor.displacement(start) < compressed_bytes:
+        # https://github.com/root-project/root/blob/master/core/zip/src/RZip.cxx#L217
+        # https://github.com/root-project/root/blob/master/core/lzma/src/ZipLZMA.c#L81
+        # https://github.com/root-project/root/blob/master/core/lz4/src/ZipLZ4.cxx#L38
+        algo, method, c1, c2, c3, u1, u2, u3 = cursor.fields(
+            chunk, _decompress_header_format
+        )
+        block_compressed_bytes = c1 + (c2 << 8) + (c3 << 16)
+        block_uncompressed_bytes = u1 + (u2 << 8) + (u3 << 16)
+
+        if algo == b"ZL":
+            cls = ZLIB
+            data = cursor.bytes(chunk, block_compressed_bytes)
+
+        elif algo == b"XZ":
+            cls = LZMA
+            data = cursor.bytes(chunk, block_compressed_bytes)
+
+        elif algo == b"L4":
+            cls = LZ4
+            block_compressed_bytes -= 8
+            expected_checksum = cursor.field(chunk, _decompress_checksum_format)
+            data = cursor.bytes(chunk, block_compressed_bytes)
+            try:
+                import xxhash
+            except ImportError:
+                raise ImportError(
+                    """install the 'xxhash' package with:
+
+    pip install xxhash
+
+or
+
+    conda install python-xxhash"""
+                )
+            computed_checksum = xxhash.xxh64(data).intdigest()
+            if computed_checksum != expected_checksum:
+                raise ValueError(
+                    """computed checksum {0} didn't match expected checksum {1}
+in file {2}""".format(
+                        computed_checksum, expected_checksum, chunk.source.file_path
+                    )
+                )
+
+        elif algo == b"ZS":
+            cls = ZSTD
+            data = cursor.bytes(chunk, block_compressed_bytes)
+
+        elif algo == b"CS":
+            raise ValueError(
+                """unsupported compression algorithm: {0} (according to """
+                """ROOT comments, it hasn't been used in 20 years!
+in file {1}""".format(
+                    algo, chunk.source.file_path
+                )
+            )
+
+        else:
+            raise ValueError(
+                """unrecognized compression algorithm: {0}
+in file {1}""".format(
+                    algo, chunk.source.file_path
+                )
+            )
+
+        uncompressed_bytestring = cls.decompress(data, block_uncompressed_bytes)
+
+        if len(uncompressed_bytestring) != block_uncompressed_bytes:
+            raise ValueError(
+                """after {0} successfully decompressed blocks, a block of """
+                """compressed size {1} decompressed to {2} bytes, but the """
+                """block header expects {3} bytes.
+in file {4}""".format(
+                    num_blocks,
+                    block_compressed_bytes,
+                    len(uncompressed_bytestring),
+                    block_uncompressed_bytes,
+                )
+            )
+        num_blocks += 1
+
+    raise Exception

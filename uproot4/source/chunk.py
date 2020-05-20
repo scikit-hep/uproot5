@@ -221,6 +221,15 @@ class Chunk(object):
 
     _dtype = numpy.dtype(numpy.uint8)
 
+    @classmethod
+    def wrap(cls, source, data):
+        """
+        Wrap a `data` buffer with a Chunk interface, linking it to a given
+        Source. Used for presenting uncompressed data as Chunks.
+        """
+        future = uproot4.source.futures.TrivialFuture(data)
+        return Chunk(source, 0, len(data), future, True)
+
     def __init__(self, source, start, stop, future, exact):
         """
         Args:
@@ -283,6 +292,18 @@ class Chunk(object):
         """
         return self._exact
 
+    def __contains__(self, range):
+        """
+        True if the range (start, stop) is fully contained within the Chunk;
+        False otherwise.
+        """
+        start, stop = range
+        if isinstance(start, uproot4.source.cursor.Cursor):
+            start = start.index
+        if isinstance(stop, uproot4.source.cursor.Cursor):
+            stop = stop.index
+        return self._start <= start and stop <= self._stop
+
     def wait(self):
         """
         Explicitly block until `raw_data` is filled.
@@ -310,18 +331,6 @@ for file path {2}""".format(
         self.wait()
         return self._raw_data
 
-    def __contains__(self, range):
-        """
-        True if the range (start, stop) is fully contained within the Chunk;
-        False otherwise.
-        """
-        start, stop = range
-        if isinstance(start, uproot4.source.cursor.Cursor):
-            start = start.index
-        if isinstance(stop, uproot4.source.cursor.Cursor):
-            stop = stop.index
-        return self._start <= start and stop <= self._stop
-
     def get(self, start, stop):
         """
         Args:
@@ -337,11 +346,12 @@ for file path {2}""".format(
 
         Calling this function blocks until `raw_data` is filled.
         """
-        local_start = start - self._start
-        local_stop = stop - self._start
         if (start, stop) in self:
             self.wait()
-            return self.raw_data[local_start:local_stop]
+            local_start = start - self._start
+            local_stop = stop - self._start
+            return self._raw_data[local_start:local_stop]
+
         elif self._exact:
             raise OSError(
                 """attempting to get bytes {0}:{1}
@@ -350,6 +360,7 @@ of file path {4}""".format(
                     start, stop, self._start, self._stop, self._source.file_path,
                 )
             )
+
         else:
             raise RefineChunk(start, stop, self._start, self._stop)
 
@@ -366,10 +377,11 @@ of file path {4}""".format(
 
         Calling this function blocks until `raw_data` is filled.
         """
-        local_start = start - self._start
-        if 0 <= local_start:
+        if self._start <= start:
             self.wait()
-            return self.raw_data[local_start:]
+            local_start = start - self._start
+            return self._raw_data[local_start:]
+
         else:
             raise OSError(
                 """attempting to get byte {0}

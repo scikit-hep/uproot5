@@ -351,6 +351,7 @@ in file {3}""".format(
                 )
             )
 
+
 _skip_tobject_format1 = struct.Struct(">h")
 _skip_tobject_format2 = struct.Struct(">II")
 
@@ -400,7 +401,9 @@ def _read_object_any(chunk, cursor, file, parent, as_class=None):
     beg = cursor.displacement()
     bcnt = numpy.int64(cursor.field(chunk, _read_object_any_format1))
 
-    if (bcnt & uproot4._const.kByteCountMask) == 0 or (bcnt == uproot4._const.kNewClassTag):
+    if (bcnt & uproot4._const.kByteCountMask) == 0 or (
+        bcnt == uproot4._const.kNewClassTag
+    ):
         vers = 0
         start = 0
         tag = bcnt
@@ -415,18 +418,18 @@ def _read_object_any(chunk, cursor, file, parent, as_class=None):
         # reference object
 
         if tag == 0:
-            return None                                         # return null
+            return None  # return null
 
         elif tag == 1:
-            return parent                                       # return parent
+            return parent  # return parent
 
         elif tag not in cursor.refs:
             # jump past this object
             cursor.move_to(cursor.origin + beg + bcnt + 4)
-            return None                                         # return null
+            return None  # return null
 
         else:
-            return cursor.refs[int(tag)]                        # return object
+            return cursor.refs[int(tag)]  # return object
 
     elif tag == uproot4._const.kNewClassTag:
         # new class and object
@@ -451,7 +454,7 @@ def _read_object_any(chunk, cursor, file, parent, as_class=None):
         else:
             cursor.refs[len(cursor.refs) + 1] = obj
 
-        return obj                                              # return object
+        return obj  # return object
 
     else:
         # reference class, new object
@@ -460,10 +463,14 @@ def _read_object_any(chunk, cursor, file, parent, as_class=None):
 
         if as_class is None:
             if ref not in cursor.refs:
-                raise OSError("""invalid class-tag reference
-in file: {0}""".format(file.file_path))
+                raise OSError(
+                    """invalid class-tag reference
+in file: {0}""".format(
+                        file.file_path
+                    )
+                )
 
-            cls = cursor.refs[ref]                              # reference class
+            cls = cursor.refs[ref]  # reference class
             obj = cls.read(chunk, cursor, file, parent, None)
 
         else:
@@ -474,4 +481,4 @@ in file: {0}""".format(file.file_path))
         else:
             cursor.refs[len(cursor.refs) + 1] = obj
 
-        return obj                                              # return object
+        return obj  # return object

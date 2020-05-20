@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import struct
+
 try:
     from collections.abc import Sequence
 except ImportError:
@@ -17,13 +18,14 @@ _tlist_format2 = struct.Struct(">B")
 
 class ROOT_TList(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor):
-        cursor.debug(chunk, 200)
+        # cursor.debug(chunk, 300)
 
         uproot4.model._skip_tobject(chunk, cursor)
 
         self._members["fName"] = cursor.string(chunk)
         self._members["fSize"] = cursor.field(chunk, _tlist_format1)
 
+        print(self._cursor, self._num_bytes, self._instance_version)
         print(self._members)
 
         self._data = []
