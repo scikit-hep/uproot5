@@ -140,7 +140,7 @@ in file {1}""".format(
     def has_version(self, version):
         return True
 
-    def class_version(self, version):
+    def class_of_version(self, version):
         return type(self)
 
 
@@ -190,7 +190,7 @@ class UnknownClassVersion(Model):
     def has_version(self, version):
         return version in self._known_versions
 
-    def class_version(self, version):
+    def class_of_version(self, version):
         return self._known_versions[version]
 
 
@@ -236,7 +236,7 @@ class ModelVersions(object):
     def has_version(self, version):
         return version in self._known_versions
 
-    def class_version(self, version):
+    def class_of_version(self, version):
         return self._known_versions[version]
 
 
@@ -375,6 +375,7 @@ def _name_title(chunk, cursor, classname, file_path):
     title = cursor.string(chunk)
 
     _numbytes_check(start_cursor, cursor, num_bytes, classname, file_path)
+    return name, title
 
 
 _map_string_string_format1 = struct.Struct(">I")

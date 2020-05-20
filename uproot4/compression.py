@@ -144,9 +144,6 @@ _decompress_checksum_format = struct.Struct(">Q")
 
 
 def decompress(chunk, cursor, compressed_bytes, uncompressed_bytes):
-    print(cursor)
-    cursor.debug(chunk, 200)
-
     start = cursor.copy()
     filled = 0
     num_blocks = 0
@@ -229,6 +226,24 @@ in file {4}""".format(
                     block_uncompressed_bytes,
                 )
             )
+
+        uncompressed_array = numpy.frombuffer(
+            uncompressed_bytestring, dtype=uproot4.source.chunk.Chunk._dtype
+        )
+
+        if num_blocks == 0:
+            if uncompressed_bytes == block_uncompressed_bytes:
+                # the usual case: only one block
+                output = uncompressed_array
+                break
+
+            else:
+                output = numpy.empty(
+                    uncompressed_bytes, dtype=uproot4.source.chunk.Chunk._dtype
+                )
+
+        output[filled : filled + block_uncompressed_bytes] = uncompressed_array
+        filled += block_uncompressed_bytes
         num_blocks += 1
 
-    raise Exception
+    return uproot4.source.chunk.Chunk.wrap(chunk.source, output)

@@ -63,7 +63,6 @@ open.defaults = {
     "num_fallback_workers": 10,
     "begin_guess_bytes": 512,
     "end_guess_bytes": "64 kB",
-    "streamer_guess_bytes": "64 kB",
 }
 
 
@@ -84,7 +83,7 @@ class ReadOnlyFile(object):
 
         self._options = dict(open.defaults)
         self._options.update(options)
-        for option in ("begin_guess_bytes", "end_guess_bytes", "streamer_guess_bytes"):
+        for option in ("begin_guess_bytes", "end_guess_bytes"):
             self._options[option] = uproot4._util.memory_size(self._options[option])
 
         self.hook_before_create_source(file_path=file_path, options=self._options)
@@ -188,6 +187,9 @@ in file {1}""".format(
     def hook_before_read_streamer_key(self, **kwargs):
         pass
 
+    def hook_before_decompress_streamers(self, **kwargs):
+        pass
+
     def hook_before_read_streamers(self, **kwargs):
         pass
 
@@ -239,54 +241,49 @@ in file {1}""".format(
                 self._streamers = {}
 
             else:
-                if self._options["streamer_guess_bytes"] < ReadOnlyKey._format_big.size:
-                    raise ValueError(
-                        "streamer_guess_bytes={0} is not enough to read the streamer TKey ({1})".format(
-                            self._options["streamer_guess_bytes"],
-                            ReadOnlyKey._format_big.size,
-                        )
-                    )
-                streamer_start = self._fSeekInfo
-                streamer_stop = min(
-                    self._fSeekInfo + self._options["streamer_guess_bytes"], self._fEND
+                key_cursor = uproot4.source.cursor.Cursor(self._fSeekInfo)
+                key_start = self._fSeekInfo
+                key_stop = min(
+                    self._fSeekInfo + ReadOnlyKey._format_big.size, self._fEND
                 )
-                chunk = self.chunk(streamer_start, streamer_stop)
+                key_chunk = self.chunk(key_start, key_stop)
 
-                self.hook_before_read_streamer_key(chunk=chunk)
-
-                cursor = uproot4.source.cursor.Cursor(self._fSeekInfo)
-
-                print("cursor at fSeekInfo", cursor)
+                self.hook_before_read_streamer_key(
+                    key_cursor=key_cursor, key_chunk=key_chunk,
+                )
 
                 self._streamer_key = ReadOnlyKey(
-                    cursor, chunk, self, self, self._options
+                    key_cursor, key_chunk, self, self, self._options
                 )
 
-                print(self._streamer_key.__dict__)
-                print(self._streamer_key.data_cursor)
+                self.hook_before_decompress_streamers(
+                    key_cursor=key_cursor,
+                    key_chunk=key_chunk,
+                )
 
-                if self._streamer_key.fNbytes > streamer_stop - streamer_start:
-                    streamer_stop = streamer_start + self._streamer_key.fNbytes
-                    chunk = self.chunk(streamer_start, streamer_stop)
+                streamer_cursor = uproot4.source.cursor.Cursor(0)
+                streamer_chunk = self._streamer_key.get_uncompressed_chunk()
 
                 self.hook_before_read_streamers(
-                    chunk=chunk, streamer_key=self._streamer_key
+                    key_cursor=key_cursor,
+                    key_chunk=key_chunk,
+                    streamer_cursor=streamer_cursor,
+                    streamer_chunk=streamer_chunk,
                 )
 
                 self._streamers = {}
 
-                chunk = self._streamer_key.get_uncompressed_chunk()
-
-                # print("before TList", cursor)
-
-                # tlist = uproot4.classes["TList"].read(chunk, cursor, self, self, None)
-                # for obj in tlist:
-                #     raise NotImplementedError
+                tlist = uproot4.classes["TList"].read(
+                    streamer_chunk, streamer_cursor, self, self, None
+                )
+                for obj in tlist:
+                    raise NotImplementedError
 
                 self.hook_after_read_streamers(
-                    chunk=chunk,
-                    streamer_key=self._streamer_key,
-                    streamers=self._streamers,
+                    key_cursor=key_cursor,
+                    key_chunk=key_chunk,
+                    streamer_cursor=streamer_cursor,
+                    streamer_chunk=streamer_chunk,
                 )
 
         return self._streamers
@@ -302,7 +299,7 @@ in file {1}""".format(
             raise NotImplementedError
 
         if version is not None:
-            cls = cls.class_version(version)
+            cls = cls.class_of_version(version)
 
         return cls
 
@@ -604,7 +601,7 @@ class ReadOnlyKey(object):
                 self.data_uncompressed_bytes,
             )
         else:
-            return uproot4.source.chunk.wrap(chunk.source, chunk.raw_data)
+            return uproot4.source.chunk.Chunk.wrap(chunk.source, chunk.raw_data)
 
     def get(self):
         if isinstance(self._parent, ReadOnlyDirectory) and self._fClassName in (

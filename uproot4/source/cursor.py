@@ -224,7 +224,7 @@ of file path {2}""".format(
         if move:
             self._index += local_stop
 
-        out = remainder[: local_stop - 1]
+        out = remainder[: local_stop - 1].tostring()
         if uproot4._util.py2:
             return out
         else:
