@@ -234,7 +234,9 @@ in file {1}""".format(
 
     @property
     def streamers(self):
+        import uproot4.streamers
         import uproot4.models.TList
+        import uproot4.models.TObjArray
 
         if self._streamers is None:
             if self._fSeekInfo == 0:
@@ -257,12 +259,13 @@ in file {1}""".format(
                 )
 
                 self.hook_before_decompress_streamers(
-                    key_cursor=key_cursor,
-                    key_chunk=key_chunk,
+                    key_cursor=key_cursor, key_chunk=key_chunk,
                 )
 
-                streamer_cursor = uproot4.source.cursor.Cursor(0)
-                streamer_chunk = self._streamer_key.get_uncompressed_chunk()
+                (
+                    streamer_cursor,
+                    streamer_chunk,
+                ) = self._streamer_key.get_uncompressed_cursor_chunk()
 
                 self.hook_before_read_streamers(
                     key_cursor=key_cursor,
@@ -273,11 +276,11 @@ in file {1}""".format(
 
                 self._streamers = {}
 
-                tlist = uproot4.classes["TList"].read(
-                    streamer_chunk, streamer_cursor, self, self, None
-                )
-                for obj in tlist:
-                    raise NotImplementedError
+                # tlist = uproot4.classes["TList"].read(
+                #     streamer_chunk, streamer_cursor, self, self, None
+                # )
+                # for obj in tlist:
+                #     raise NotImplementedError
 
                 self.hook_after_read_streamers(
                     key_cursor=key_cursor,
@@ -588,20 +591,28 @@ class ReadOnlyKey(object):
     def data_cursor(self):
         return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
 
-    def get_uncompressed_chunk(self):
+    def get_uncompressed_cursor_chunk(self):
         data_start = self.data_cursor.index
         data_stop = data_start + self.data_compressed_bytes
         chunk = self._file.chunk(data_start, data_stop)
 
+        cursor = uproot4.source.cursor.Cursor(0, origin=-self._fKeylen)
+
         if self.is_compressed:
-            return uproot4.compression.decompress(
-                chunk,
-                self.data_cursor,
-                self.data_compressed_bytes,
-                self.data_uncompressed_bytes,
+            return (
+                cursor,
+                uproot4.compression.decompress(
+                    chunk,
+                    self.data_cursor,
+                    self.data_compressed_bytes,
+                    self.data_uncompressed_bytes,
+                ),
             )
         else:
-            return uproot4.source.chunk.Chunk.wrap(chunk.source, chunk.raw_data)
+            return (
+                cursor,
+                uproot4.source.chunk.Chunk.wrap(chunk.source, chunk.raw_data),
+            )
 
     def get(self):
         if isinstance(self._parent, ReadOnlyDirectory) and self._fClassName in (
@@ -612,7 +623,7 @@ class ReadOnlyKey(object):
                 self._parent.path + (self.fName,),
                 self.data_cursor,
                 self._file,
-                self._parent,
+                self,
                 self._file.options,
             )
 

@@ -43,7 +43,7 @@ class Cursor(object):
         if self._refs is None or len(self._refs) == 0:
             r = ""
         else:
-            r = ", refs={0}".format(self._refs)
+            r = ", refs=[{0}]".format(", ".join(str(x) for x in self._refs))
 
         return "Cursor({0}{1}{2})".format(self._index, o, r)
 

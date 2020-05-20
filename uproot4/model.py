@@ -52,6 +52,9 @@ class Model(object):
 
         return self
 
+    def __repr__(self):
+        return "<{0} at 0x{1:012x}>".format(classname_pretty(self), id(self))
+
     def read_numbytes_version(self, chunk, cursor):
         self._num_bytes, self._instance_version = _numbytes_version(chunk, cursor)
 
@@ -329,7 +332,7 @@ def _numbytes_version(chunk, cursor, move=True):
     num_bytes = numpy.int64(num_bytes)
 
     if num_bytes & uproot4._const.kByteCountMask:
-        num_bytes = int(num_bytes & ~uproot4._const.kByteCountMask)
+        num_bytes = int(num_bytes & ~uproot4._const.kByteCountMask) + 4
         if move:
             cursor.skip(_numbytes_version_1.size)
 
@@ -366,7 +369,7 @@ def _skip_tobject(chunk, cursor):
         cursor.skip(2)
 
 
-def _name_title(chunk, cursor, classname, file_path):
+def _name_title(chunk, cursor, file_path):
     start_cursor = cursor.copy()
     num_bytes, version = _numbytes_version(chunk, cursor)
 
@@ -374,7 +377,7 @@ def _name_title(chunk, cursor, classname, file_path):
     name = cursor.string(chunk)
     title = cursor.string(chunk)
 
-    _numbytes_check(start_cursor, cursor, num_bytes, classname, file_path)
+    _numbytes_check(start_cursor, cursor, num_bytes, "TNamed", file_path)
     return name, title
 
 
