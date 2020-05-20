@@ -70,16 +70,20 @@ class Cursor(object):
             self._refs = {}
         return self._refs
 
-    def displacement(self, other):
+    def displacement(self, other=None):
         """
-        The number of bytes between this Cursor and the other Cursor.
+        The number of bytes between this Cursor and its origin (if None)
+        or the other Cursor (if provided).
 
         If the displacement is positive, this Cursor is later in the file
-        than the other; if negative, it is earlier.
+        than the origin/other; if negative, it is earlier.
         """
-        return self._index - other._index
+        if other is None:
+            return self._index - self._origin
+        else:
+            return self._index - other._index
 
-    def copy(self, link_refs=False):
+    def copy(self, link_refs=True):
         """
         Returns a copy of this Cursor. If `link_refs` is True, any `refs` will
         be *referenced*, rather than *copied*.
@@ -88,6 +92,12 @@ class Cursor(object):
             return Cursor(self._index, origin=self._origin, refs=self._refs)
         else:
             return Cursor(self._index, origin=self._origin, refs=dict(self._refs))
+
+    def move_to(self, index):
+        """
+        Move the cursor to a specified byte position.
+        """
+        self._index = index
 
     def skip(self, num_bytes):
         """
@@ -187,10 +197,11 @@ class Cursor(object):
         else:
             return out.decode(errors="surrogateescape")
 
-    def class_string(self, chunk, move=True):
+    def classname(self, chunk, move=True):
         """
         Interpret data at this index of the Chunk as a ROOT class
-        string (null-terminated).
+        name, which is the only usage of null-terminated strings (rather than
+        1-to-5 byte size prefix, as in the `string` method).
 
         The encoding is assumed to be UTF-8, but errors are surrogate-escaped.
 

@@ -1,7 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Central classes and functions for reading ROOT files.
+Defines the most basic functions for reading ROOT files: ReadOnlyFile,
+ReadOnlyKey, and ReadOnlyDirectory, as well as the uproot.open function.
 """
 
 from __future__ import absolute_import
@@ -21,7 +22,7 @@ import uproot4.source.chunk
 import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
-import uproot4.generate
+import uproot4.streamers
 import uproot4.model
 
 
@@ -70,10 +71,11 @@ def no_filter(x):
     return True
 
 
-class ReadOnlyFile(object):
-    _header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
-    _header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
+_file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
+_file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
+
+class ReadOnlyFile(object):
     def __init__(self, file_path, cache=None, **options):
         self._file_path = file_path
         self.cache = cache
@@ -92,10 +94,11 @@ class ReadOnlyFile(object):
 
         self.hook_before_get_chunks(file_path=file_path, options=self._options)
 
-        if self._options["begin_guess_bytes"] < self._header_fields_big.size:
+        if self._options["begin_guess_bytes"] < _file_header_fields_big.size:
             raise ValueError(
                 "begin_guess_bytes={0} is not enough to read the TFile header ({1})".format(
-                    self._options["begin_guess_bytes"], self._header_fields_big.size
+                    self._options["begin_guess_bytes"],
+                    self._file_header_fields_big.size,
                 )
             )
 
@@ -121,7 +124,7 @@ class ReadOnlyFile(object):
             self._fUUID_version,
             self._fUUID,
         ) = uproot4.source.cursor.Cursor(0).fields(
-            self._begin_chunk, self._header_fields_small
+            self._begin_chunk, _file_header_fields_small
         )
 
         if self.is_64bit:
@@ -141,7 +144,7 @@ class ReadOnlyFile(object):
                 self._fUUID_version,
                 self._fUUID,
             ) = uproot4.source.cursor.Cursor(0).fields(
-                self._begin_chunk, self._header_fields_big
+                self._begin_chunk, _file_header_fields_big
             )
 
         if magic != b"root":
@@ -229,6 +232,8 @@ in file {1}""".format(
 
     @property
     def streamers(self):
+        import uproot4.models.TList
+
         if self._streamers is None:
             if self._fSeekInfo == 0:
                 self._streamers = {}
@@ -249,13 +254,8 @@ in file {1}""".format(
 
                 self.hook_before_read_streamer_key(chunk=chunk)
 
-                self._streamer_key = ReadOnlyKey(
-                    uproot4.source.cursor.Cursor(self._fSeekInfo),
-                    chunk,
-                    self,
-                    self,
-                    self._options,
-                )
+                cursor = uproot4.source.cursor.Cursor(self._fSeekInfo)
+                self._streamer_key = ReadOnlyKey(cursor, chunk, self, self, self._options)
 
                 if self._streamer_key.fNbytes > streamer_stop - streamer_start:
                     streamer_stop = streamer_start + self._streamer_key.fNbytes
@@ -265,8 +265,11 @@ in file {1}""".format(
                     chunk=chunk, streamer_key=self._streamer_key
                 )
 
-                # TODO: read streamers here
                 self._streamers = {}
+
+                tlist = uproot4.classes["TList"].read(chunk, cursor, self, self, None)
+                for obj in tlist:
+                    raise NotImplementedError
 
                 self.hook_after_read_streamers(
                     chunk=chunk,
@@ -275,6 +278,21 @@ in file {1}""".format(
                 )
 
         return self._streamers
+
+    def streamer_named(self, classname, version=None):
+        raise NotImplementedError
+
+    def class_named(self, classname, version=None):
+        import uproot4
+
+        cls = uproot4.classes.get(classname)
+        if cls is None:
+            raise NotImplementedError
+
+        if version is not None:
+            cls = cls.class_version(version)
+
+        return cls
 
     @property
     def root_version_tuple(self):
@@ -386,13 +404,11 @@ in file {1}""".format(
 
 
 class ReadOnlyKey(object):
-    _encoded_classname = "ROOT_TKey"
-
     _format_small = struct.Struct(">ihiIhhii")
     _format_big = struct.Struct(">ihiIhhqq")
 
     def __init__(self, cursor, chunk, file, parent, options, read_strings=False):
-        self._cursor = cursor.copy(link_refs=True)
+        self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
 
@@ -581,15 +597,13 @@ class ReadOnlyKey(object):
 
 
 class ReadOnlyDirectory(Mapping):
-    _encoded_classname = "ROOT_TDirectory"
-
     _format_small = struct.Struct(">hIIiiiii")
     _format_big = struct.Struct(">hIIiiqqq")
     _format_num_keys = struct.Struct(">i")
 
     def __init__(self, path, cursor, file, parent, options):
         self._path = path
-        self._cursor = cursor.copy(link_refs=True)
+        self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
 
@@ -868,15 +882,16 @@ class ReadOnlyDirectory(Mapping):
         return self.key(where).get()
 
     def classname_of(self, where, encoded=False, version=None):
-        return self.key(where).classname(encoded=encoded, version=version)
+        key = self.key(where)
+        return key.classname(encoded=encoded, version=version)
 
     def streamer_of(self, where, version=None):
         key = self.key(where)
-        return uproot4.generate.streamer_named(key.fClassName, version=version)
+        return self._file.streamer_named(key.fClassName, version=version)
 
     def class_of(self, where, version=None):
         key = self.key(where)
-        return uproot4.generate.class_named(key.fClassName, version=version)
+        return self._file.class_named(key.fClassName, version=version)
 
     def key(self, where):
         where = uproot4._util.ensure_str(where)

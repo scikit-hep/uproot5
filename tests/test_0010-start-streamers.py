@@ -9,10 +9,11 @@ import pytest
 import skhep_testdata
 
 import uproot4
-import uproot4.generate
 import uproot4.reading
 
 
-def test():
-    with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as directory:
-        pass
+# def test():
+#     with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
+#         f.file.streamers
+
+#     raise Exception

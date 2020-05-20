@@ -14,5 +14,7 @@ from uproot4.reading import no_filter
 from uproot4.reading import ReadOnlyFile
 from uproot4.reading import ReadOnlyDirectory
 
-streamers = {}
 classes = {}
+
+from uproot4.model import classname_decode
+from uproot4.model import classname_encode
