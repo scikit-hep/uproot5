@@ -16,7 +16,7 @@ import uproot4.deserialization
 _tobjarray_format1 = struct.Struct(">ii")
 
 
-class ROOT_TObjArray(uproot4.model.Model, Sequence):
+class Class_TObjArray(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor):
         uproot4.deserialization.skip_tobject(chunk, cursor)
 
@@ -46,4 +46,4 @@ class ROOT_TObjArray(uproot4.model.Model, Sequence):
         }
 
 
-uproot4.classes["TObjArray"] = ROOT_TObjArray
+uproot4.classes["TObjArray"] = Class_TObjArray

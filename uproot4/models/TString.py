@@ -3,16 +3,17 @@
 from __future__ import absolute_import
 
 import uproot4.model
-import uproot4.deserialization
 
 
-class Class_TObjString(uproot4.model.Model, str):
+class Class_TString(uproot4.model.Model, str):
+    def read_numbytes_version(self, chunk, cursor):
+        pass
+
     def read_members(self, chunk, cursor):
-        uproot4.deserialization.skip_tobject(chunk, cursor)
         self._data = cursor.string(chunk)
 
     def postprocess(self):
-        return Class_TObjString(
+        return Class_TString(
             self._data,
             self._cursor,
             self._file,
@@ -33,4 +34,4 @@ class Class_TObjString(uproot4.model.Model, str):
         return self
 
 
-uproot4.classes["TObjString"] = Class_TObjString
+uproot4.classes["TString"] = Class_TString

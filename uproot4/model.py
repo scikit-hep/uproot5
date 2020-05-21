@@ -203,30 +203,36 @@ class DispatchByVersion(object):
             chunk, cursor, move=False
         )
 
-        if version in cls._known_versions:
-            versioned_cls = cls._known_versions[version]
+        versioned_cls = cls._known_versions.get(version)
+
+        if versioned_cls is not None:
             self = versioned_cls.read(chunk, cursor, file, parent)
             self._known_versions = cls._known_versions
             return self
 
         elif num_bytes is not None:
             classname, _ = classname_decode(cls.__name__)
+            streamer = file.streamer_named(classname, version)
 
-            unknown_cls = uproot4.unknown_classes.get(classname)
-            if unknown_cls is None:
-                unknown_cls = type(
-                    uproot4._util.ensure_str(
-                        classname_encode(classname, version, unknown=True)
-                    ),
-                    (UnknownClassVersion,),
-                    {},
-                )
-                unknown_cls.__module__ = "<dynamic>"
-                uproot4.unknown_classes[classname] = unknown_cls
+            if streamer is not None:
+                versioned_cls = streamer.new_class(file.classes, file.streamers, file.file_path)
+                self = versioned_cls.read(chunk, cursor, file, parent)
+                self._known_versions = cls._known_versions
+                return self
 
-            self = unknown_cls.read(chunk, cursor, file, parent)
-            self._known_versions = cls._known_versions
-            return self
+            else:
+                unknown_cls = uproot4.unknown_classes.get(classname)
+                if unknown_cls is None:
+                    unknown_cls = uproot4._util.new_class(
+                        classname_encode(classname, version, unknown=True),
+                        (UnknownClassVersion,),
+                        {}
+                    )
+                    uproot4.unknown_classes[classname] = unknown_cls
+
+                self = unknown_cls.read(chunk, cursor, file, parent)
+                self._known_versions = cls._known_versions
+                return self
 
         else:
             raise ValueError(
@@ -280,7 +286,7 @@ def classname_encode(classname, version=None, unknown=False):
     if unknown:
         prefix = "Unknown_"
     else:
-        prefix = "ROOT_"
+        prefix = "Class_"
     if classname.startswith(prefix):
         raise ValueError("classname is already encoded: {0}".format(classname))
 
@@ -297,8 +303,8 @@ def classname_encode(classname, version=None, unknown=False):
 def classname_decode(encoded_classname):
     if encoded_classname.startswith("Unknown_"):
         raw = encoded_classname[8:].encode()
-    elif encoded_classname.startswith("ROOT_"):
-        raw = encoded_classname[5:].encode()
+    elif encoded_classname.startswith("Class_"):
+        raw = encoded_classname[6:].encode()
     else:
         raise ValueError("not an encoded classname: {0}".format(encoded_classname))
 

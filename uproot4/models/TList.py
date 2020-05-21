@@ -17,7 +17,7 @@ _tlist_format1 = struct.Struct(">i")
 _tlist_format2 = struct.Struct(">B")
 
 
-class ROOT_TList(uproot4.model.Model, Sequence):
+class Class_TList(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor):
         uproot4.deserialization.skip_tobject(chunk, cursor)
 
@@ -42,4 +42,4 @@ class ROOT_TList(uproot4.model.Model, Sequence):
         return len(self._data)
 
 
-uproot4.classes["TList"] = ROOT_TList
+uproot4.classes["TList"] = Class_TList

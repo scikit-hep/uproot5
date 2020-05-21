@@ -136,3 +136,8 @@ def memory_size(data):
             "number of bytes or memory size string with units "
             "required, not {0}".format(repr(data))
         )
+
+def new_class(name, bases, members):
+    out = type(ensure_str(name), bases, members)
+    out.__module__ = "<dynamic>"
+    return out
