@@ -38,7 +38,9 @@ class Model(object):
         return self.postprocess()
 
     def __repr__(self):
-        return "<{0} at 0x{1:012x}>".format(classname_pretty(self), id(self))
+        return "<{0} at 0x{1:012x}>".format(
+            classname_pretty(self.classname, self.class_version), id(self)
+        )
 
     def read_numbytes_version(self, chunk, cursor):
         (
@@ -54,7 +56,7 @@ class Model(object):
             self._cursor,
             cursor,
             self._num_bytes,
-            classname_pretty(self),
+            classname_pretty(self.classname, self.class_version),
             self._file.file_path,
         )
 
@@ -147,12 +149,6 @@ in file {1}""".format(
                 out[k] = v
         return out
 
-    def has_version(self, version):
-        return True
-
-    def class_of_version(self, version):
-        return type(self)
-
 
 class UnknownClass(Model):
     def read_members(self, chunk, cursor):
@@ -164,7 +160,7 @@ class UnknownClass(Model):
                 """Unknown class {0} that cannot be skipped because its """
                 """number of bytes is unknown.
 """.format(
-                    classname_pretty(self._encoded_classname)
+                    self.classname
                 )
             )
 
@@ -172,10 +168,16 @@ class UnknownClass(Model):
         return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
 
 
-class UnknownClassVersion(Model):
+class VersionedModel(Model):
+    @property
+    def known_versions(self):
+        return self._known_versions
+
+
+class UnknownClassVersion(VersionedModel):
     def read_members(self, chunk, cursor):
         if self._num_bytes is not None:
-            cursor.skip(self._num_bytes)
+            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
         else:
             raise ValueError(
@@ -193,38 +195,36 @@ class UnknownClassVersion(Model):
             self.classname, self._instance_version, id(self)
         )
 
-    @property
-    def known_versions(self):
-        return self._known_versions
-
-    def has_version(self, version):
-        return version in self._known_versions
-
-    def class_of_version(self, version):
-        return self._known_versions[version]
-
-
-class VersionedModel(Model):
-    @property
-    def known_versions(self):
-        return self._known_versions
-
 
 class DispatchByVersion(object):
     @classmethod
     def read(cls, chunk, cursor, file, parent):
-        num_bytes, instance_version = uproot4.deserialization.numbytes_version(
+        num_bytes, version = uproot4.deserialization.numbytes_version(
             chunk, cursor, move=False
         )
 
-        if instance_version in cls._known_versions:
-            versioned_cls = cls._known_versions[instance_version]
+        if version in cls._known_versions:
+            versioned_cls = cls._known_versions[version]
             self = versioned_cls.read(chunk, cursor, file, parent)
             self._known_versions = cls._known_versions
             return self
 
         elif num_bytes is not None:
-            self = UnknownClassVersion.read(chunk, cursor, file, parent)
+            classname, _ = classname_decode(cls.__name__)
+
+            unknown_cls = uproot4.unknown_classes.get(classname)
+            if unknown_cls is None:
+                unknown_cls = type(
+                    uproot4._util.ensure_str(
+                        classname_encode(classname, version, unknown=True)
+                    ),
+                    (UnknownClassVersion,),
+                    {},
+                )
+                unknown_cls.__module__ = "<dynamic>"
+                uproot4.unknown_classes[classname] = unknown_cls
+
+            self = unknown_cls.read(chunk, cursor, file, parent)
             self._known_versions = cls._known_versions
             return self
 
@@ -233,8 +233,8 @@ class DispatchByVersion(object):
                 """Unknown version {0} for class {1} (known versions: {2})"""
                 """ that cannot be skipped because its number of bytes is unknown.
 """.format(
-                    instance_version,
-                    classname_pretty(cls),
+                    version,
+                    classname_decode(type(cls).__name__)[0],
                     ", ".join(str(x) for x in self._known_versions),
                 )
             )
@@ -321,18 +321,7 @@ def classname_version(encoded_classname):
         return int(m.group(1))
 
 
-def classname_pretty(obj):
-    typename = type(obj).__name__
-    objname = getattr(obj, "__name__", "")
-
-    if typename.startswith("ROOT_") or typename.startswith("Unknown_"):
-        encoded_classname = typename
-    elif objname.startswith("ROOT_") or objname.startswith("Unknown_"):
-        encoded_classname = objname
-    else:
-        encoded_classname = obj
-
-    classname, version = classname_decode(encoded_classname)
+def classname_pretty(classname, version):
     if version is None:
         return classname
     else:

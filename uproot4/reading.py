@@ -281,7 +281,9 @@ in file {1}""".format(
 
                 self._streamers = {}
                 for x in tlist:
-                    self._streamers[x.name] = x
+                    if x.name not in self._streamers:
+                        self._streamers[x.name] = {}
+                    self._streamers[x.name][x.class_version] = x
 
                 self.hook_after_read_streamers(
                     key_cursor=key_cursor,
@@ -293,28 +295,46 @@ in file {1}""".format(
         return self._streamers
 
     def streamer_named(self, classname, version=None):
-        raise NotImplementedError
+        streamer_versions = self._streamers[classname]
+        if version is None:
+            return streamer_versions[max(streamer_versions)]
+        else:
+            return streamer_versions[streamer_versions]
+
+    def streamers_named(self, classname):
+        return self.streamers[classname].values()
 
     def class_named(self, classname, version=None):
-        import uproot4
-
         cls = uproot4.classes.get(classname)
+
         if cls is None:
-            # FIXME: define from streamers, only return unknown if no streamer
+            streamers = self.streamers_named(classname)
 
-            unknown_cls = uproot4.unknown_classes.get(classname)
-            if unknown_cls is None:
-                unknown_cls = type(
-                    uproot4.model.classname_encode(classname, unknown=True),
-                    (uproot4.model.UnknownClass,),
-                    {"_encoded_classname": uproot4.model.classname_encode(classname)},
+            if len(streamers) == 0:
+                unknown_cls = uproot4.unknown_classes.get(classname)
+                if unknown_cls is None:
+                    unknown_cls = type(
+                        uproot4._util.ensure_str(
+                            uproot4.model.classname_encode(classname, unknown=True)
+                        ),
+                        (uproot4.model.UnknownClass,),
+                        {},
+                    )
+                    unknown_cls.__module__ = "<dynamic>"
+                    uproot4.unknown_classes[classname] = unknown_cls
+                return unknown_cls
+
+            else:
+                dispatch_cls = type(
+                    uproot4._util.ensure_str(uproot4.model.classname_encode(classname)),
+                    (uproot4.model.DispatchByVersion,),
+                    {"_known_versions": {}},
                 )
-                unknown_cls.__module__ = "<dynamic>"
-                uproot4.unknown_classes[classname] = unknown_cls
+                dispatch_cls.__module__ = "<dynamic>"
+                uproot4.classes[classname] = dispatch_cls
+                cls = dispatch_cls
 
-            return unknown_cls
-
-        if version is not None:
+        if version is not None and isinstance(uproot4.model.DispatchByVersion):
             cls = cls.class_of_version(version)
 
         return cls

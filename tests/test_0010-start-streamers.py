@@ -1113,5 +1113,18 @@ def test():
     with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
         streamers = f.file.streamers
         assert len(streamers) == 14
-        for k, v in streamers.items():
-            assert v.tojson() == from_ROOT[k]
+
+        assert from_ROOT["TH1F"] == streamers["TH1F"][2].tojson()
+        assert from_ROOT["TH1"] == streamers["TH1"][7].tojson()
+        assert from_ROOT["TNamed"] == streamers["TNamed"][1].tojson()
+        assert from_ROOT["TObject"] == streamers["TObject"][1].tojson()
+        assert from_ROOT["TAttLine"] == streamers["TAttLine"][2].tojson()
+        assert from_ROOT["TAttFill"] == streamers["TAttFill"][2].tojson()
+        assert from_ROOT["TAttMarker"] == streamers["TAttMarker"][2].tojson()
+        assert from_ROOT["TAxis"] == streamers["TAxis"][10].tojson()
+        assert from_ROOT["TAttAxis"] == streamers["TAttAxis"][4].tojson()
+        assert from_ROOT["THashList"] == streamers["THashList"][0].tojson()
+        assert from_ROOT["TList"] == streamers["TList"][5].tojson()
+        assert from_ROOT["TSeqCollection"] == streamers["TSeqCollection"][0].tojson()
+        assert from_ROOT["TCollection"] == streamers["TCollection"][3].tojson()
+        assert from_ROOT["TString"] == streamers["TString"][2].tojson()

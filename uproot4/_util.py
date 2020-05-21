@@ -52,7 +52,9 @@ def isstr(x):
 def ensure_str(x):
     if not py2 and isinstance(x, bytes):
         return x.decode(errors="surrogateescape")
-    elif (py2 and isinstance(x, (bytes, unicode))) or isinstance(x, str):
+    elif py2 and isinstance(x, unicode):
+        return x.encode()
+    elif isinstance(x, str):
         return x
     else:
         raise TypeError("expected a string, not {0}".format(type(x)))

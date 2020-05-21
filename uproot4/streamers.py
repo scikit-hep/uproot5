@@ -80,6 +80,10 @@ class ROOT_TStreamerInfo(uproot4.model.Model):
         return self._members["fName"]
 
     @property
+    def class_version(self):
+        return self._members["fClassVersion"]
+
+    @property
     def elements(self):
         return self._members["fElements"]
 
