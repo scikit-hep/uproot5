@@ -16,5 +16,6 @@ from uproot4.reading import no_filter
 from uproot4.reading import ReadOnlyFile
 from uproot4.reading import ReadOnlyDirectory
 
-from uproot4.deserialization import classname_decode
-from uproot4.deserialization import classname_encode
+from uproot4.model import Model
+from uproot4.model import classname_decode
+from uproot4.model import classname_encode

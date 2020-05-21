@@ -7,7 +7,7 @@ import struct
 import numpy
 
 import uproot4.source.chunk
-import uproot4._const
+import uproot4.const
 import uproot4._util
 
 
@@ -132,10 +132,10 @@ or
 
 
 algorithm_codes = {
-    uproot4._const.kZLIB: ZLIB,
-    uproot4._const.kLZMA: LZMA,
-    uproot4._const.kLZ4: LZ4,
-    uproot4._const.kZSTD: ZSTD,
+    uproot4.const.kZLIB: ZLIB,
+    uproot4.const.kLZMA: LZMA,
+    uproot4.const.kLZ4: LZ4,
+    uproot4.const.kZSTD: ZSTD,
 }
 
 

@@ -23,7 +23,7 @@ import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
 import uproot4.streamers
-import uproot4.deserialization
+import uproot4.model
 
 
 def open(file_path, cache=None, **options):
@@ -539,7 +539,7 @@ class ReadOnlyKey(object):
 
     def classname(self, encoded=False, version=None):
         if encoded:
-            return uproot4.deserialization.classname_encode(
+            return uproot4.model.classname_encode(
                 self.fClassName, version=version
             )
         else:

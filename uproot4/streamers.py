@@ -7,6 +7,8 @@ import re
 
 import numpy
 
+import uproot4.model
+import uproot4.const
 import uproot4.deserialization
 
 
@@ -57,9 +59,9 @@ def _canonical_typename(name):
 _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 
-class ROOT_TStreamerInfo(uproot4.deserialization.Model):
+class ROOT_TStreamerInfo(uproot4.model.Model):
     def read_members(self, chunk, cursor):
-        name, self._members["fTitle"] = uproot4.deserialization._name_title(
+        name, self._members["fTitle"] = uproot4.deserialization.name_title(
             chunk, cursor, self._file.file_path
         )
         self._members["fUniqueID"], self._members["fBits"] = 0, 0
@@ -69,7 +71,7 @@ class ROOT_TStreamerInfo(uproot4.deserialization.Model):
             chunk, _tstreamerinfo_format1
         )
 
-        self._members["fElements"] = uproot4.deserialization._read_object_any(
+        self._members["fElements"] = uproot4.deserialization.read_object_any(
             chunk, cursor, self._file, self._parent
         )
 
@@ -88,7 +90,7 @@ _tstreamerelement_format3 = struct.Struct(">ddd")
 _tstreamerelement_dtype1 = numpy.dtype(">i4")
 
 
-class ROOT_TStreamerElement(uproot4.deserialization.Model):
+class ROOT_TStreamerElement(uproot4.model.Model):
     def read_members(self, chunk, cursor):
         # https://github.com/root-project/root/blob/master/core/meta/src/TStreamerElement.cxx#L505
 
@@ -96,7 +98,7 @@ class ROOT_TStreamerElement(uproot4.deserialization.Model):
         (
             self._members["fName"],
             self._members["fTitle"],
-        ) = uproot4.deserialization._name_title(chunk, cursor, self._file.file_path)
+        ) = uproot4.deserialization.name_title(chunk, cursor, self._file.file_path)
 
         (
             self._members["fType"],
@@ -173,56 +175,56 @@ class ROOT_TStreamerBasicType(ROOT_TStreamerElement):
             ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
         )
         if (
-            uproot4._const.kOffsetL
+            uproot4.const.kOffsetL
             < self._bases[0]._members["fType"]
-            < uproot4._const.kOffsetP
+            < uproot4.const.kOffsetP
         ):
-            self._bases[0]._members["fType"] -= uproot4._const.kOffsetL
+            self._bases[0]._members["fType"] -= uproot4.const.kOffsetL
 
         basic = True
 
         if self._bases[0]._members["fType"] in (
-            uproot4._const.kBool,
-            uproot4._const.kUChar,
-            uproot4._const.kChar,
+            uproot4.const.kBool,
+            uproot4.const.kUChar,
+            uproot4.const.kChar,
         ):
             self._bases[0]._members["fSize"] = 1
 
         elif self._bases[0]._members["fType"] in (
-            uproot4._const.kUShort,
-            uproot4._const.kShort,
+            uproot4.const.kUShort,
+            uproot4.const.kShort,
         ):
             self._bases[0]._members["fSize"] = 2
 
         elif self._bases[0]._members["fType"] in (
-            uproot4._const.kBits,
-            uproot4._const.kUInt,
-            uproot4._const.kInt,
-            uproot4._const.kCounter,
+            uproot4.const.kBits,
+            uproot4.const.kUInt,
+            uproot4.const.kInt,
+            uproot4.const.kCounter,
         ):
             self._bases[0]._members["fSize"] = 4
 
         elif self._bases[0]._members["fType"] in (
-            uproot4._const.kULong,
-            uproot4._const.kULong64,
-            uproot4._const.kLong,
-            uproot4._const.kLong64,
+            uproot4.const.kULong,
+            uproot4.const.kULong64,
+            uproot4.const.kLong,
+            uproot4.const.kLong64,
         ):
             self._bases[0]._members["fSize"] = 8
 
         elif self._bases[0]._members["fType"] in (
-            uproot4._const.kFloat,
-            uproot4._const.kFloat16,
+            uproot4.const.kFloat,
+            uproot4.const.kFloat16,
         ):
             self._bases[0]._members["fSize"] = 4
 
         elif self._bases[0]._members["fType"] in (
-            uproot4._const.kDouble,
-            uproot4._const.kDouble32,
+            uproot4.const.kDouble,
+            uproot4.const.kDouble32,
         ):
             self._bases[0]._members["fSize"] = 8
 
-        elif self._bases[0]._members["fType"] == uproot4._const.kCharStar:
+        elif self._bases[0]._members["fType"] == uproot4.const.kCharStar:
             self._bases[0]._members["fSize"] = numpy.dtype(numpy.intp).itemsize
 
         else:
@@ -286,18 +288,18 @@ class ROOT_TStreamerSTL(ROOT_TStreamerElement):
         )
 
         if self._members["fSTLtype"] in (
-            uproot4._const.kSTLmultimap,
-            uproot4._const.kSTLset,
+            uproot4.const.kSTLmultimap,
+            uproot4.const.kSTLset,
         ):
             if self._bases[0]._members["fTypeName"].startswith(
                 "std::set"
             ) or self._bases[0]._members["fTypeName"].startswith("set"):
-                self._members["fSTLtype"] = uproot4._const.kSTLset
+                self._members["fSTLtype"] = uproot4.const.kSTLset
 
             elif self._bases[0]._members["fTypeName"].startswith(
                 "std::multimap"
             ) or self._bases[0]._members["fTypeName"].startswith("multimap"):
-                self._members["fSTLtype"] = uproot4._const.kSTLmultimap
+                self._members["fSTLtype"] = uproot4.const.kSTLmultimap
 
 
 class ROOT_TStreamerSTLstring(ROOT_TStreamerElement):
