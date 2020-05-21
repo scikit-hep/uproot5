@@ -37,5 +37,12 @@ class ROOT_TObjArray(uproot4.model.Model, Sequence):
     def __len__(self):
         return len(self._data)
 
+    def tojson(self):
+        return {
+            "_typename": "TObjArray",
+            "name": "TObjArray",
+            "arr": [x.tojson() for x in self._data],
+        }
+
 
 uproot4.classes["TObjArray"] = ROOT_TObjArray

@@ -274,13 +274,13 @@ in file {1}""".format(
                     streamer_chunk=streamer_chunk,
                 )
 
-                self._streamers = {}
-
                 # tlist = uproot4.classes["TList"].read(
                 #     streamer_chunk, streamer_cursor, self, self, None
                 # )
-                # for obj in tlist:
-                #     raise NotImplementedError
+
+                # self._streamers = {}
+                # for x in tlist:
+                #     self._streamers[x.classname] = x
 
                 self.hook_after_read_streamers(
                     key_cursor=key_cursor,

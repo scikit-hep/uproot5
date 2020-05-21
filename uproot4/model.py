@@ -122,6 +122,14 @@ class Model(object):
         return self._members
 
     @property
+    def all_members(self):
+        out = {}
+        for base in self._bases:
+            out.update(base.all_members)
+        out.update(self._members)
+        return out
+
+    @property
     def bases(self):
         return self._bases
 
@@ -139,6 +147,17 @@ in file {1}""".format(
                         repr(name), self._file.file_path
                     )
                 )
+
+    def tojson(self):
+        out = {"_typename": self.classname}
+        for k, v in self.all_members.items():
+            if isinstance(v, Model):
+                out[k] = v.tojson()
+            elif isinstance(v, (numpy.number, numpy.ndarray)):
+                out[k] = v.tolist()
+            else:
+                out[k] = v
+        return out
 
     def has_version(self, version):
         return True

@@ -216,7 +216,7 @@ in file {1}""".format(
 
         if len(uncompressed_bytestring) != block_uncompressed_bytes:
             raise ValueError(
-                """after {0} successfully decompressed blocks, a block of """
+                """after successfully decompressing {0} blocks, a block of """
                 """compressed size {1} decompressed to {2} bytes, but the """
                 """block header expects {3} bytes.
 in file {4}""".format(
@@ -224,6 +224,7 @@ in file {4}""".format(
                     block_compressed_bytes,
                     len(uncompressed_bytestring),
                     block_uncompressed_bytes,
+                    chunk.source.file_path,
                 )
             )
 
