@@ -18,11 +18,12 @@ class Model(object):
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
+
         if encoded_classname is not None:
             assert encoded_classname.startswith("ROOT_")
             self._encoded_classname = encoded_classname
-        elif type(cls).__name__.startswith("ROOT_"):
-            self._encoded_classname = type(cls).__name__
+        elif cls.__name__.startswith("ROOT_"):
+            self._encoded_classname = cls.__name__
         else:
             self._encoded_classname = "ROOT__3f3f3f_"
 

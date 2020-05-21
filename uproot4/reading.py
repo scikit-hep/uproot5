@@ -23,7 +23,7 @@ import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
 import uproot4.streamers
-import uproot4.model
+import uproot4.deserialization
 
 
 def open(file_path, cache=None, **options):
@@ -274,13 +274,13 @@ in file {1}""".format(
                     streamer_chunk=streamer_chunk,
                 )
 
-                # tlist = uproot4.classes["TList"].read(
-                #     streamer_chunk, streamer_cursor, self, self, None
-                # )
+                tlist = uproot4.classes["TList"].read(
+                    streamer_chunk, streamer_cursor, self, self, None
+                )
 
-                # self._streamers = {}
-                # for x in tlist:
-                #     self._streamers[x.classname] = x
+                self._streamers = {}
+                for x in tlist:
+                    self._streamers[x.name] = x
 
                 self.hook_after_read_streamers(
                     key_cursor=key_cursor,
@@ -539,7 +539,9 @@ class ReadOnlyKey(object):
 
     def classname(self, encoded=False, version=None):
         if encoded:
-            return uproot4.model.classname_encode(self.fClassName, version=version)
+            return uproot4.deserialization.classname_encode(
+                self.fClassName, version=version
+            )
         else:
             return self.fClassName
 

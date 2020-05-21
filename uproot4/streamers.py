@@ -7,7 +7,7 @@ import re
 
 import numpy
 
-import uproot4.model
+import uproot4.deserialization
 
 
 _canonical_typename_patterns = [
@@ -57,9 +57,9 @@ def _canonical_typename(name):
 _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 
-class ROOT_TStreamerInfo(uproot4.model.Model):
+class ROOT_TStreamerInfo(uproot4.deserialization.Model):
     def read_members(self, chunk, cursor):
-        name, self._members["fTitle"] = uproot4.model._name_title(
+        name, self._members["fTitle"] = uproot4.deserialization._name_title(
             chunk, cursor, self._file.file_path
         )
         self._members["fUniqueID"], self._members["fBits"] = 0, 0
@@ -69,9 +69,17 @@ class ROOT_TStreamerInfo(uproot4.model.Model):
             chunk, _tstreamerinfo_format1
         )
 
-        self._members["fElements"] = uproot4.model._read_object_any(
+        self._members["fElements"] = uproot4.deserialization._read_object_any(
             chunk, cursor, self._file, self._parent
         )
+
+    @property
+    def name(self):
+        return self._members["fName"]
+
+    @property
+    def elements(self):
+        return self._members["fElements"]
 
 
 _tstreamerelement_format1 = struct.Struct(">iiii")
@@ -80,14 +88,15 @@ _tstreamerelement_format3 = struct.Struct(">ddd")
 _tstreamerelement_dtype1 = numpy.dtype(">i4")
 
 
-class ROOT_TStreamerElement(uproot4.model.Model):
+class ROOT_TStreamerElement(uproot4.deserialization.Model):
     def read_members(self, chunk, cursor):
         # https://github.com/root-project/root/blob/master/core/meta/src/TStreamerElement.cxx#L505
 
         self._members["fUniqueID"], self._members["fBits"] = 0, 0
-        self._members["fName"], self._members["fTitle"] = uproot4.model._name_title(
-            chunk, cursor, self._file.file_path
-        )
+        (
+            self._members["fName"],
+            self._members["fTitle"],
+        ) = uproot4.deserialization._name_title(chunk, cursor, self._file.file_path)
 
         (
             self._members["fType"],
@@ -117,19 +126,6 @@ class ROOT_TStreamerElement(uproot4.model.Model):
             # FIXME
             # self._fSize = self._fArrayLength * gROOT->GetType(GetTypeName())->Size()
             pass
-
-        self._members["fXmin"], self._members["fXmax"], self._members["fFactor"] = (
-            0.0,
-            0.0,
-            0.0,
-        )
-
-        if self._instance_version == 3:
-            (
-                self._members["fXmin"],
-                self._members["fXmax"],
-                self._members["fFactor"],
-            ) = cursor.fields(chunk, _tstreamerelement_format3)
 
         if self._instance_version > 3:
             # FIXME
