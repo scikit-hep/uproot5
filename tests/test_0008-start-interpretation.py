@@ -20,15 +20,11 @@ import uproot4.source.xrootd
 
 def test_classname_encoding(tmpdir):
     assert (
-        uproot4.model.classname_encode(
-            "namespace::some.deep<templated, thing>", 12
-        )
+        uproot4.model.classname_encode("namespace::some.deep<templated, thing>", 12)
         == "ROOT_namespace_3a3a_some_2e_deep_3c_templated_2c20_thing_3e__v12"
     )
     assert (
-        uproot4.model.classname_encode(
-            "namespace::some.deep<templated, thing>"
-        )
+        uproot4.model.classname_encode("namespace::some.deep<templated, thing>")
         == "ROOT_namespace_3a3a_some_2e_deep_3c_templated_2c20_thing_3e_"
     )
 

@@ -237,6 +237,7 @@ in file {1}""".format(
         import uproot4.streamers
         import uproot4.models.TList
         import uproot4.models.TObjArray
+        import uproot4.models.TObjString
 
         if self._streamers is None:
             if self._fSeekInfo == 0:
@@ -263,9 +264,9 @@ in file {1}""".format(
                 )
 
                 (
-                    streamer_cursor,
                     streamer_chunk,
-                ) = self._streamer_key.get_uncompressed_cursor_chunk()
+                    streamer_cursor,
+                ) = self._streamer_key.get_uncompressed_chunk_cursor()
 
                 self.hook_before_read_streamers(
                     key_cursor=key_cursor,
@@ -275,7 +276,7 @@ in file {1}""".format(
                 )
 
                 tlist = uproot4.classes["TList"].read(
-                    streamer_chunk, streamer_cursor, self, self, None
+                    streamer_chunk, streamer_cursor, self, self
                 )
 
                 self._streamers = {}
@@ -299,7 +300,19 @@ in file {1}""".format(
 
         cls = uproot4.classes.get(classname)
         if cls is None:
-            raise NotImplementedError
+            # FIXME: define from streamers, only return unknown if no streamer
+
+            unknown_cls = uproot4.unknown_classes.get(classname)
+            if unknown_cls is None:
+                unknown_cls = type(
+                    uproot4.model.classname_encode(classname, unknown=True),
+                    (uproot4.model.UnknownClass,),
+                    {"_encoded_classname": uproot4.model.classname_encode(classname)},
+                )
+                unknown_cls.__module__ = "<dynamic>"
+                uproot4.unknown_classes[classname] = unknown_cls
+
+            return unknown_cls
 
         if version is not None:
             cls = cls.class_of_version(version)
@@ -539,9 +552,7 @@ class ReadOnlyKey(object):
 
     def classname(self, encoded=False, version=None):
         if encoded:
-            return uproot4.model.classname_encode(
-                self.fClassName, version=version
-            )
+            return uproot4.model.classname_encode(self.fClassName, version=version)
         else:
             return self.fClassName
 
@@ -593,7 +604,7 @@ class ReadOnlyKey(object):
     def data_cursor(self):
         return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
 
-    def get_uncompressed_cursor_chunk(self):
+    def get_uncompressed_chunk_cursor(self):
         data_start = self.data_cursor.index
         data_stop = data_start + self.data_compressed_bytes
         chunk = self._file.chunk(data_start, data_stop)
@@ -602,18 +613,20 @@ class ReadOnlyKey(object):
 
         if self.is_compressed:
             return (
-                cursor,
                 uproot4.compression.decompress(
                     chunk,
                     self.data_cursor,
                     self.data_compressed_bytes,
                     self.data_uncompressed_bytes,
                 ),
+                cursor,
             )
         else:
             return (
+                uproot4.source.chunk.Chunk.wrap(
+                    chunk.source, chunk.get(data_start, data_stop)
+                ),
                 cursor,
-                uproot4.source.chunk.Chunk.wrap(chunk.source, chunk.raw_data),
             )
 
     def get(self):
@@ -630,7 +643,9 @@ class ReadOnlyKey(object):
             )
 
         else:
-            raise NotImplementedError
+            chunk, cursor = self.get_uncompressed_chunk_cursor()
+            cls = self._file.class_named(self._fClassName)
+            return cls.read(chunk, cursor, self._file, self)
 
 
 class ReadOnlyDirectory(Mapping):

@@ -13,51 +13,38 @@ import uproot4._util
 
 class Model(object):
     @classmethod
-    def read(cls, chunk, cursor, file, parent, encoded_classname):
+    def read(cls, chunk, cursor, file, parent):
         self = cls.__new__(cls)
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
 
-        if encoded_classname is not None:
-            assert encoded_classname.startswith("ROOT_")
-            self._encoded_classname = encoded_classname
-        elif cls.__name__.startswith("ROOT_"):
-            self._encoded_classname = cls.__name__
-        else:
-            self._encoded_classname = "ROOT__3f3f3f_"
-
-        self.hook_before_read(
-            chunk=chunk, cursor=cursor, encoded_classname=encoded_classname,
-        )
+        self.hook_before_read(chunk=chunk, cursor=cursor)
 
         self._members = {}
         self._bases = []
         self.read_numbytes_version(chunk, cursor)
 
-        self.hook_before_read_members(
-            chunk=chunk, cursor=cursor, encoded_classname=encoded_classname,
-        )
+        self.hook_before_read_members(chunk=chunk, cursor=cursor)
 
         self.read_members(chunk, cursor)
 
-        self.hook_after_read_members(
-            chunk=chunk, cursor=cursor, encoded_classname=encoded_classname,
-        )
+        self.hook_after_read_members(chunk=chunk, cursor=cursor)
 
         self.check_numbytes(cursor)
 
-        self.hook_before_postprocess(encoded_classname=encoded_classname,)
+        self.hook_before_postprocess()
 
-        self.postprocess()
-
-        return self
+        return self.postprocess()
 
     def __repr__(self):
         return "<{0} at 0x{1:012x}>".format(classname_pretty(self), id(self))
 
     def read_numbytes_version(self, chunk, cursor):
-        self._num_bytes, self._instance_version = uproot4.deserialization.numbytes_version(chunk, cursor)
+        (
+            self._num_bytes,
+            self._instance_version,
+        ) = uproot4.deserialization.numbytes_version(chunk, cursor)
 
     def read_members(self, chunk, cursor):
         pass
@@ -72,7 +59,7 @@ class Model(object):
         )
 
     def postprocess(self):
-        pass
+        return self
 
     def hook_before_read(self, **kwargs):
         pass
@@ -100,15 +87,15 @@ class Model(object):
 
     @property
     def encoded_classname(self):
-        return self._encoded_classname
+        return type(self).__name__
 
     @property
     def classname(self):
-        return classname_decode(self._encoded_classname)[0]
+        return classname_decode(self.encoded_classname)[0]
 
     @property
     def class_version(self):
-        return classname_decode(self._encoded_classname)[1]
+        return classname_decode(self.encoded_classname)[1]
 
     @property
     def num_bytes(self):
@@ -170,7 +157,7 @@ in file {1}""".format(
 class UnknownClass(Model):
     def read_members(self, chunk, cursor):
         if self._num_bytes is not None:
-            cursor.skip(self._num_bytes)
+            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
         else:
             raise ValueError(
@@ -182,7 +169,7 @@ class UnknownClass(Model):
             )
 
     def __repr__(self):
-        return "<Unknown {0}>".format(self.classname)
+        return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
 
 
 class UnknownClassVersion(Model):
@@ -202,8 +189,8 @@ class UnknownClassVersion(Model):
             )
 
     def __repr__(self):
-        return "<{0} with unknown version {1}>".format(
-            self.classname, self._instance_version
+        return "<{0} with unknown version {1} at 0x{2:012x}>".format(
+            self.classname, self._instance_version, id(self)
         )
 
     @property
@@ -223,21 +210,21 @@ class VersionedModel(Model):
         return self._known_versions
 
 
-class ModelVersions(object):
+class DispatchByVersion(object):
     @classmethod
-    def read(cls, chunk, cursor, file, parent, encoded_classname):
-        num_bytes, instance_version = uproot4.deserialization.numbytes_version(chunk, cursor, move=False)
+    def read(cls, chunk, cursor, file, parent):
+        num_bytes, instance_version = uproot4.deserialization.numbytes_version(
+            chunk, cursor, move=False
+        )
 
         if instance_version in cls._known_versions:
             versioned_cls = cls._known_versions[instance_version]
-            self = versioned_cls.read(chunk, cursor, file, parent, encoded_classname,)
+            self = versioned_cls.read(chunk, cursor, file, parent)
             self._known_versions = cls._known_versions
             return self
 
         elif num_bytes is not None:
-            self = UnknownClassVersion.read(
-                chunk, cursor, file, parent, encoded_classname,
-            )
+            self = UnknownClassVersion.read(chunk, cursor, file, parent)
             self._known_versions = cls._known_versions
             return self
 
@@ -289,8 +276,12 @@ else:
         return bytes(int(g[i : i + 2], 16) for i in range(0, len(g), 2))
 
 
-def classname_encode(classname, version=None):
-    if classname.startswith("ROOT_"):
+def classname_encode(classname, version=None, unknown=False):
+    if unknown:
+        prefix = "Unknown_"
+    else:
+        prefix = "ROOT_"
+    if classname.startswith(prefix):
         raise ValueError("classname is already encoded: {0}".format(classname))
 
     if version is None:
@@ -300,14 +291,16 @@ def classname_encode(classname, version=None):
 
     raw = classname.encode()
     out = _classname_encode_pattern.sub(_classname_encode_convert, raw)
-    return "ROOT_" + out.decode() + v
+    return prefix + out.decode() + v
 
 
 def classname_decode(encoded_classname):
-    if not encoded_classname.startswith("ROOT_"):
+    if encoded_classname.startswith("Unknown_"):
+        raw = encoded_classname[8:].encode()
+    elif encoded_classname.startswith("ROOT_"):
+        raw = encoded_classname[5:].encode()
+    else:
         raise ValueError("not an encoded classname: {0}".format(encoded_classname))
-
-    raw = encoded_classname[5:].encode()
 
     m = _classname_decode_version.match(raw)
     if m is None:
@@ -329,10 +322,13 @@ def classname_version(encoded_classname):
 
 
 def classname_pretty(obj):
-    if type(obj).__name__.startswith("ROOT_"):
-        encoded_classname = type(obj).__name__
-    elif getattr(obj, "__name__", "").startswith("ROOT_"):
-        encoded_classname = obj.__name__
+    typename = type(obj).__name__
+    objname = getattr(obj, "__name__", "")
+
+    if typename.startswith("ROOT_") or typename.startswith("Unknown_"):
+        encoded_classname = typename
+    elif objname.startswith("ROOT_") or objname.startswith("Unknown_"):
+        encoded_classname = objname
     else:
         encoded_classname = obj
 

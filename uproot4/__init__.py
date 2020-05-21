@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 classes = {}
+unknown_classes = {}
 
 from uproot4.source.memmap import MemmapSource
 from uproot4.source.file import FileSource

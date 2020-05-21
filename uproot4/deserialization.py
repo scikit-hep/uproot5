@@ -127,7 +127,6 @@ def read_object_any(chunk, cursor, file, parent, as_class=None):
         # new class and object
 
         classname = cursor.classname(chunk)
-        encoded_classname = uproot4.model.classname_encode(classname)
 
         cls = file.class_named(classname)
 
@@ -137,9 +136,9 @@ def read_object_any(chunk, cursor, file, parent, as_class=None):
             cursor.refs[len(cursor.refs) + 1] = cls
 
         if as_class is None:
-            obj = cls.read(chunk, cursor, file, parent, encoded_classname)
+            obj = cls.read(chunk, cursor, file, parent)
         else:
-            obj = as_class.read(chunk, cursor, file, parent, encoded_classname)
+            obj = as_class.read(chunk, cursor, file, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj
@@ -163,10 +162,10 @@ in file: {0}""".format(
                 )
 
             cls = cursor.refs[ref]  # reference class
-            obj = cls.read(chunk, cursor, file, parent, None)
+            obj = cls.read(chunk, cursor, file, parent)
 
         else:
-            obj = as_class.read(chunk, cursor, file, parent, None)
+            obj = as_class.read(chunk, cursor, file, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj

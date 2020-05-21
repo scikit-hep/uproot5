@@ -141,14 +141,14 @@ _tstreamerbase_format1 = struct.Struct(">i")
 class ROOT_TStreamerArtificial(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
 
 
 class ROOT_TStreamerBase(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
         if self._instance_version >= 2:
             self._members["fBaseVersion"] = cursor.field(chunk, _tstreamerbase_format1)
@@ -160,7 +160,7 @@ _tstreamerbasicpointer_format1 = struct.Struct(">i")
 class ROOT_TStreamerBasicPointer(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
         self._members["fCountVersion"] = cursor.field(
             chunk, _tstreamerbasicpointer_format1
@@ -172,7 +172,7 @@ class ROOT_TStreamerBasicPointer(ROOT_TStreamerElement):
 class ROOT_TStreamerBasicType(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
         if (
             uproot4.const.kOffsetL
@@ -240,7 +240,7 @@ _tstreamerloop_format1 = struct.Struct(">i")
 class ROOT_TStreamerLoop(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
         self._members["fCountVersion"] = cursor.field(chunk, _tstreamerloop_format1)
         self._members["fCountName"] = cursor.string(chunk)
@@ -250,28 +250,28 @@ class ROOT_TStreamerLoop(ROOT_TStreamerElement):
 class ROOT_TStreamerObject(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
 
 
 class ROOT_TStreamerObjectAny(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
 
 
 class ROOT_TStreamerObjectAnyPointer(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
 
 
 class ROOT_TStreamerObjectPointer(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
 
 
@@ -281,7 +281,7 @@ _tstreamerstl_format1 = struct.Struct(">ii")
 class ROOT_TStreamerSTL(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
         self._members["fSTLtype"], self._members["fCtype"] = cursor.fields(
             chunk, _tstreamerstl_format1
@@ -305,14 +305,14 @@ class ROOT_TStreamerSTL(ROOT_TStreamerElement):
 class ROOT_TStreamerSTLstring(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
 
 
 class ROOT_TStreamerString(ROOT_TStreamerElement):
     def read_members(self, chunk, cursor):
         self._bases.append(
-            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent, None)
+            ROOT_TStreamerElement.read(chunk, cursor, self._file, self._parent)
         )
 
 
