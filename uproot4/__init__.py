@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+classes = {}
+
 from uproot4.source.memmap import MemmapSource
 from uproot4.source.file import FileSource
 from uproot4.source.http import HTTPSource
@@ -14,5 +16,5 @@ from uproot4.reading import no_filter
 from uproot4.reading import ReadOnlyFile
 from uproot4.reading import ReadOnlyDirectory
 
-streamers = {}
-classes = {}
+from uproot4.deserialization import classname_decode
+from uproot4.deserialization import classname_encode

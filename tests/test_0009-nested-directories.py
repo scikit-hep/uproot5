@@ -9,7 +9,6 @@ import pytest
 import skhep_testdata
 
 import uproot4
-import uproot4.model
 import uproot4.reading
 
 
