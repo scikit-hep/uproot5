@@ -5,7 +5,7 @@ from __future__ import absolute_import
 import uproot4.model
 
 
-class Class_TString(uproot4.model.Model, str):
+class Model_TString(uproot4.model.Model, str):
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -13,7 +13,7 @@ class Class_TString(uproot4.model.Model, str):
         self._data = cursor.string(chunk)
 
     def postprocess(self):
-        return Class_TString(
+        return Model_TString(
             self._data,
             self._cursor,
             self._file,
@@ -34,4 +34,4 @@ class Class_TString(uproot4.model.Model, str):
         return self
 
 
-uproot4.classes["TString"] = Class_TString
+uproot4.classes["TString"] = Model_TString

@@ -6,7 +6,7 @@ import uproot4.model
 import uproot4.deserialization
 
 
-class Class_TObject(uproot4.model.Model):
+class Model_TObject(uproot4.model.Model):
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -14,4 +14,4 @@ class Class_TObject(uproot4.model.Model):
         uproot4.deserialization.skip_tobject(chunk, cursor, context)
 
 
-uproot4.classes["TObject"] = Class_TObject
+uproot4.classes["TObject"] = Model_TObject

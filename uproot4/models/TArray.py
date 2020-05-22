@@ -18,7 +18,7 @@ import uproot4.deserialization
 _tarray_format1 = struct.Struct(">i")
 
 
-class Class_TArray(uproot4.model.Model, Sequence):
+class Model_TArray(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor, context):
         self._members["fN"] = cursor.field(chunk, _tarray_format1)
         self._data = cursor.array(chunk, self._members["fN"], self.dtype)
@@ -33,39 +33,39 @@ class Class_TArray(uproot4.model.Model, Sequence):
         return len(self._data)
 
 
-class Class_TArrayC(Class_TArray):
+class Model_TArrayC(Model_TArray):
     dtype = numpy.dtype(">i1")
 
 
-class Class_TArrayS(Class_TArray):
+class Model_TArrayS(Model_TArray):
     dtype = numpy.dtype(">i2")
 
 
-class Class_TArrayI(Class_TArray):
+class Model_TArrayI(Model_TArray):
     dtype = numpy.dtype(">i4")
 
 
-class Class_TArrayL(Class_TArray):
+class Model_TArrayL(Model_TArray):
     dtype = numpy.dtype(numpy.int_).newbyteorder(">")
 
 
-class Class_TArrayL64(Class_TArray):
+class Model_TArrayL64(Model_TArray):
     dtype = numpy.dtype(">i8")
 
 
-class Class_TArrayF(Class_TArray):
+class Model_TArrayF(Model_TArray):
     dtype = numpy.dtype(">f4")
 
 
-class Class_TArrayD(Class_TArray):
+class Model_TArrayD(Model_TArray):
     dtype = numpy.dtype(">f8")
 
 
-uproot4.classes["TArray"] = Class_TArray
-uproot4.classes["TArrayC"] = Class_TArrayC
-uproot4.classes["TArrayS"] = Class_TArrayS
-uproot4.classes["TArrayI"] = Class_TArrayI
-uproot4.classes["TArrayL"] = Class_TArrayL
-uproot4.classes["TArrayL64"] = Class_TArrayL64
-uproot4.classes["TArrayF"] = Class_TArrayF
-uproot4.classes["TArrayD"] = Class_TArrayD
+uproot4.classes["TArray"] = Model_TArray
+uproot4.classes["TArrayC"] = Model_TArrayC
+uproot4.classes["TArrayS"] = Model_TArrayS
+uproot4.classes["TArrayI"] = Model_TArrayI
+uproot4.classes["TArrayL"] = Model_TArrayL
+uproot4.classes["TArrayL64"] = Model_TArrayL64
+uproot4.classes["TArrayF"] = Model_TArrayF
+uproot4.classes["TArrayD"] = Model_TArrayD

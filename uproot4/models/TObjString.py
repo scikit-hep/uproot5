@@ -6,13 +6,13 @@ import uproot4.model
 import uproot4.deserialization
 
 
-class Class_TObjString(uproot4.model.Model, str):
+class Model_TObjString(uproot4.model.Model, str):
     def read_members(self, chunk, cursor, context):
         uproot4.deserialization.skip_tobject(chunk, cursor)
         self._data = cursor.string(chunk)
 
     def postprocess(self):
-        return Class_TObjString(
+        return Model_TObjString(
             self._data,
             self._cursor,
             self._file,
@@ -33,4 +33,4 @@ class Class_TObjString(uproot4.model.Model, str):
         return self
 
 
-uproot4.classes["TObjString"] = Class_TObjString
+uproot4.classes["TObjString"] = Model_TObjString

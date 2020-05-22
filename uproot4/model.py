@@ -290,7 +290,7 @@ def classname_encode(classname, version=None, unknown=False):
     if unknown:
         prefix = "Unknown_"
     else:
-        prefix = "Class_"
+        prefix = "Model_"
     if classname.startswith(prefix):
         raise ValueError("classname is already encoded: {0}".format(classname))
 
@@ -307,7 +307,7 @@ def classname_encode(classname, version=None, unknown=False):
 def classname_decode(encoded_classname):
     if encoded_classname.startswith("Unknown_"):
         raw = encoded_classname[8:].encode()
-    elif encoded_classname.startswith("Class_"):
+    elif encoded_classname.startswith("Model_"):
         raw = encoded_classname[6:].encode()
     else:
         raise ValueError("not an encoded classname: {0}".format(encoded_classname))

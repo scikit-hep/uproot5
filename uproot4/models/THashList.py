@@ -6,11 +6,11 @@ import uproot4.deserialization
 import uproot4.models.TList
 
 
-class Class_THashList(uproot4.models.TList.Class_TList):
+class Model_THashList(uproot4.models.TList.Model_TList):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             uproot4.models.TList.read(chunk, cursor, context, self._file, self._parent)
         )
 
 
-uproot4.classes["THashList"] = Class_THashList
+uproot4.classes["THashList"] = Model_THashList
