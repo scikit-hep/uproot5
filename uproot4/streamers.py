@@ -200,6 +200,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         formats = []
         dtypes = []
         member_names = []
+        class_flags = {}
 
         for i in range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
@@ -211,6 +212,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 formats,
                 dtypes,
                 member_names,
+                class_flags,
             )
 
         read_members.append("")
@@ -224,6 +226,11 @@ class Model_TStreamerInfo(uproot4.model.Model):
             class_data.append("    _dtype{0} = {1}".format(i, dt))
         class_data.append(
             "    _member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
+        )
+        class_data.append(
+            "    _class_flags = {{{0}}}".format(
+                ", ".join(repr(k) + ": " + repr(v) for k, v in class_flags.items())
+            )
         )
 
         return "\n".join(
@@ -317,6 +324,18 @@ class Model_TStreamerElement(uproot4.model.Model):
     def dependencies(self, classes, streamers, file_path, to_satisfy):
         return []
 
+
+_tstreamerbase_format1 = struct.Struct(">i")
+
+
+class Model_TStreamerArtificial(Model_TStreamerElement):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+
     def class_code(
         self,
         streamerinfo,
@@ -327,22 +346,11 @@ class Model_TStreamerElement(uproot4.model.Model):
         formats,
         dtypes,
         member_names,
+        class_flags,
     ):
         read_members.append(
             "        raise NotImplementedError('class members defined by {0}')".format(
                 type(self).__name__
-            )
-        )
-
-
-_tstreamerbase_format1 = struct.Struct(">i")
-
-
-class Model_TStreamerArtificial(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk, cursor, context, self._file, self._parent
             )
         )
 
@@ -399,6 +407,7 @@ in file {3}""".format(
         formats,
         dtypes,
         member_names,
+        class_flags,
     ):
         read_members.append(
             "        self._bases.append(class_of_version({0}, {1}).read(chunk, "
@@ -436,6 +445,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         formats,
         dtypes,
         member_names,
+        class_flags,
     ):
         read_members.append("        tmp = self._dtype{0}".format(len(dtypes)))
         if streamerinfo.name == "TBranch" and self.name == "fBasketSeek":
@@ -493,8 +503,12 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         elif self._bases[0]._members["fType"] in (
             uproot4.const.kULong,
-            uproot4.const.kULong64,
             uproot4.const.kLong,
+        ):
+            self._bases[0]._members["fSize"] = numpy.dtype(numpy.long).itemsize
+
+        elif self._bases[0]._members["fType"] in (
+            uproot4.const.kULong64,
             uproot4.const.kLong64,
         ):
             self._bases[0]._members["fSize"] = 8
@@ -530,6 +544,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         formats,
         dtypes,
         member_names,
+        class_flags,
     ):
         if self.array_length == 0:
             if (
@@ -589,41 +604,32 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         self._members["fCountName"] = cursor.string(chunk)
         self._members["fCountClass"] = cursor.string(chunk)
 
+    @property
+    def count_name(self):
+        return self._members["fCountName"]
 
-class Model_TStreamerObject(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk, cursor, context, self._file, self._parent
-            )
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+        class_flags,
+    ):
+        read_members.extend(
+            [
+                "        cursor.skip(6)",
+                "        for tmp in range(self.member({0})):".format(self.count_name),
+                "            self._members[{0}] = {1}.read(chunk, cursor, context, file, self)".format(
+                    repr(self.name), self.type_name.rstrip("*")
+                ),
+            ]
         )
-
-
-class Model_TStreamerObjectAny(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk, cursor, context, self._file, self._parent
-            )
-        )
-
-
-class Model_TStreamerObjectAnyPointer(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk, cursor, context, self._file, self._parent
-            )
-        )
-
-
-class Model_TStreamerObjectPointer(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk, cursor, context, self._file, self._parent
-            )
-        )
+        member_names.append(self.name)
 
 
 _tstreamerstl_format1 = struct.Struct(">ii")
@@ -654,6 +660,143 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             ) or self._bases[0]._members["fTypeName"].startswith("multimap"):
                 self._members["fSTLtype"] = uproot4.const.kSTLmultimap
 
+    @property
+    def stl_type(self):
+        return self._members["fSTLtype"]
+
+    @property
+    def fCtype(self):
+        return self._members["fCtype"]
+
+    @property
+    def is_string(self):
+        return self.stl_type == uproot4.const.kSTLstring or self.type_name == "string"
+
+    @property
+    def is_vector_dtype(self):
+        return self.vector_dtype is not None
+
+    @property
+    def vector_dtype(self):
+        if self.stl_type == uproot4.const.kSTLvector:
+            if self.fCtype == uproot4.const.kBool:
+                return "numpy.dtype('?')"
+            elif self.fCtype == uproot4.const.kChar:
+                return "numpy.dtype('i1')"
+            elif self.fCtype == uproot4.const.kShort:
+                return "numpy.dtype('>i2')"
+            elif self.fCtype == uproot4.const.kInt:
+                return "numpy.dtype('>i4')"
+            elif self.fCtype == uproot4.const.kLong:
+                return "numpy.dtype(numpy.long).newbyteorder('>')"
+            elif self.fCtype == uproot4.const.kLong64:
+                return "numpy.dtype('>i8')"
+            elif self.fCtype == uproot4.const.kUChar:
+                return "numpy.dtype('u1')"
+            elif self.fCtype == uproot4.const.kUShort:
+                return "numpy.dtype('>u2')"
+            elif self.fCtype == uproot4.const.kUInt:
+                return "numpy.dtype('>u4')"
+            elif self.fCtype == uproot4.const.kULong:
+                return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
+            elif self.fCtype == uproot4.const.kULong64:
+                return "numpy.dtype('>u8')"
+            elif self.fCtype == uproot4.const.kFloat:
+                return "numpy.dtype('>f4')"
+            elif self.fCtype == uproot4.const.kDouble:
+                return "numpy.dtype('>f8')"
+
+        if self.type_name == "vector<bool>" or self.type_name == "vector<Bool_t>":
+            return "numpy.dtype('?')"
+        elif self.type_name == "vector<char>" or self.type_name == "vector<Char_t>":
+            return "numpy.dtype('i1')"
+        elif self.type_name == "vector<short>" or self.type_name == "vector<Short_t>":
+            return "numpy.dtype('>i2')"
+        elif self.type_name == "vector<int>" or self.type_name == "vector<Int_t>":
+            return "numpy.dtype('>i4')"
+        elif self.type_name == "vector<long>" or self.type_name == "vector<Long_t>":
+            return "numpy.dtype(numpy.long).newbyteorder('>')"
+        elif self.type_name == "vector<Long64_t>":
+            return "numpy.dtype('>i8')"
+        elif (
+            self.type_name == "vector<unsigned char>"
+            or self.type_name == "vector<UChar_t>"
+        ):
+            return "numpy.dtype('u1')"
+        elif (
+            self.type_name == "vector<unsigned short>"
+            or self.type_name == "vector<UShort_t>"
+        ):
+            return "numpy.dtype('>u2')"
+        elif (
+            self.type_name == "vector<unsigned int>"
+            or self.type_name == "vector<UInt_t>"
+        ):
+            return "numpy.dtype('>u4')"
+        elif (
+            self.type_name == "vector<unsigned long>"
+            or self.type_name == "vector<ULong_t>"
+        ):
+            return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
+        elif self.type_name == "vector<ULong64_t>":
+            return "numpy.dtype('>u8')"
+        elif self.type_name == "vector<float>" or self.type_name == "vector<Float_t>":
+            return "numpy.dtype('>f4')"
+        elif self.type_name == "vector<double>" or self.type_name == "vector<Double_t>":
+            return "numpy.dtype('>f8')"
+        else:
+            return None
+
+    @property
+    def is_map_string_string(self):
+        return self.type_name == "map<string,string>"
+
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+        class_flags,
+    ):
+        if self.is_string:
+            read_members.append("        cursor.skip(6)")
+            read_members.append(
+                "        self._members[{0}] = cursor.string(chunk)".format(
+                    repr(self.name)
+                )
+            )
+
+        elif self.is_vector_dtype:
+            read_members.append("        cursor.skip(6)")
+            read_members.append(
+                "        tmp = cursor.field(chunk, self._format{0})".format(
+                    len(formats)
+                )
+            )
+            read_members.append(
+                "        self._members[{0}] = cursor.array(chunk, tmp, self._dtype{0})".format(
+                    repr(self.name), len(dtypes)
+                )
+            )
+            formats.append(["i"])
+            dtypes.append(self.vector_dtype)
+
+        elif self.is_map_string_string:
+            read_members.append("        self._members[{0}] = map_string_string")
+
+        else:
+            read_members.append(
+                "        raise NotImplementedError('class members defined by {0} with type {1}')".format(
+                    type(self).__name__, self.type_name
+                )
+            )
+        member_names.append(self.name)
+
 
 class Model_TStreamerSTLstring(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context):
@@ -663,8 +806,118 @@ class Model_TStreamerSTLstring(Model_TStreamerElement):
             )
         )
 
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+        class_flags,
+    ):
+        read_members.append(
+            "        raise NotImplementedError('class members defined by {0}')".format(
+                type(self).__name__
+            )
+        )
 
-class Model_TStreamerString(Model_TStreamerElement):
+
+class pointer_types(object):
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+        class_flags,
+    ):
+        if self.fType == uproot4.const.kObjectp or self.fType == uproot4.const.kAnyp:
+            read_members.append(
+                "        self._members[{0}] = {1}.read(chunk, cursor, context, file, self)".format(
+                    repr(self.name), self.type_name.rstrip("*")
+                )
+            )
+        elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
+            read_members.append(
+                "        self._members[{0}] = read_object_any(chunk, cursor, context, file, parent)".format(
+                    repr(self.name)
+                )
+            )
+            class_flags["has_read_object_any"] = True
+        else:
+            read_members.append(
+                "        raise NotImplementedError('class members defined by {0} with fType {1}')".format(
+                    type(self).__name__, self.fType
+                )
+            )
+        member_names.append(self.name)
+
+
+class Model_TStreamerObjectAnyPointer(pointer_types, Model_TStreamerElement):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+
+
+class Model_TStreamerObjectPointer(pointer_types, Model_TStreamerElement):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+
+
+class object_types(object):
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+        class_flags,
+    ):
+        read_members.append(
+            "        self._members[{0}] = {1}.read(chunk, cursor, context, file, self)".format(
+                repr(self.name), self.type_name.rstrip("*")
+            )
+        )
+        member_names.append(self.name)
+
+
+class Model_TStreamerObject(object_types, Model_TStreamerElement):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+
+
+class Model_TStreamerObjectAny(object_types, Model_TStreamerElement):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+
+
+class Model_TStreamerString(object_types, Model_TStreamerElement):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             Model_TStreamerElement.read(
