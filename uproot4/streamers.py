@@ -138,7 +138,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
 
     def postprocess(self):
-        # no circular dependencies
+        # prevent circular dependencies and long-lived references to files
         self._file = None
         self._parent = None
         return self
@@ -169,15 +169,18 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def new_class(self, classes, streamers, file_path):
         dependencies = self.dependencies(classes, streamers, file_path)
 
-        print(self.name)
-        print(dependencies)
-
-        for streamer in reversed(dependencies):
+        for streamer in list(reversed(dependencies)):
             class_code = streamer.class_code()
-            print(class_code)
-            print()
+            class_name = uproot4.model.classname_encode(
+                streamer.name, streamer.class_version
+            )
 
-        raise Exception
+            cls = uproot4.deserialization.compile_class(classes, class_code, class_name)
+            cls._streamer = streamer
+
+            classes[class_name] = cls
+
+        return cls
 
     @property
     def bases(self):
@@ -189,13 +192,13 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def class_code(self):
         bases = [
-            uproot4.model.classname_encode(name, version)
+            "class_of_version({0}, {1})".format(repr(name), version)
             for name, version in self.bases
         ]
         if len(bases) == 0:
-            bases = ["Model"]
+            bases = ["VersionedModel"]
 
-        read_members = ["    def read_members(chunk, cursor, context):"]
+        read_members = ["    def read_members(self, chunk, cursor, context):"]
         fields = []
         formats = []
         dtypes = []
@@ -296,7 +299,7 @@ class Model_TStreamerElement(uproot4.model.Model):
             pass
 
     def postprocess(self):
-        # no circular dependencies
+        # prevent circular dependencies and long-lived references to files
         self._file = None
         self._parent = None
         return self
@@ -411,7 +414,9 @@ in file {3}""".format(
     ):
         read_members.append(
             "        self._bases.append(class_of_version({0}, {1}).read(chunk, "
-            "cursor, context, file, parent))".format(repr(self.name), self.base_version)
+            "cursor, context, self._file, self._parent))".format(
+                repr(self.name), self.base_version
+            )
         )
 
 
@@ -565,9 +570,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             ):
                 if len(fields[-1]) == 1:
                     read_members.append(
-                        "        self._members['{0}'] = cursor.field(chunk, self._format{1})".format(
-                            fields[-1][0], len(formats) - 1
-                        )
+                        "        self._members['{0}'] = cursor.field(chunk, "
+                        "self._format{1})".format(fields[-1][0], len(formats) - 1)
                     )
                 else:
                     read_members.append(
@@ -581,7 +585,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         else:
             read_members.append(
-                "        self._members[{0}] = cursor.array(chunk, {1}, self._dtype{2})".format(
+                "        self._members[{0}] = cursor.array(chunk, {1}, "
+                "self._dtype{2})".format(
                     repr(self.name), self.array_length, len(dtypes)
                 )
             )
@@ -624,7 +629,8 @@ class Model_TStreamerLoop(Model_TStreamerElement):
             [
                 "        cursor.skip(6)",
                 "        for tmp in range(self.member({0})):".format(self.count_name),
-                "            self._members[{0}] = {1}.read(chunk, cursor, context, file, self)".format(
+                "            self._members[{0}] = {1}.read(chunk, cursor, "
+                "context, self._file, self)".format(
                     repr(self.name), self.type_name.rstrip("*")
                 ),
             ]
@@ -779,21 +785,21 @@ class Model_TStreamerSTL(Model_TStreamerElement):
                 )
             )
             read_members.append(
-                "        self._members[{0}] = cursor.array(chunk, tmp, self._dtype{0})".format(
-                    repr(self.name), len(dtypes)
-                )
+                "        self._members[{0}] = cursor.array(chunk, tmp, "
+                "self._dtype{0})".format(repr(self.name), len(dtypes))
             )
             formats.append(["i"])
             dtypes.append(self.vector_dtype)
 
         elif self.is_map_string_string:
-            read_members.append("        self._members[{0}] = map_string_string")
+            read_members.append(
+                "        self._members[{0}] = map_string_string(chunk, cursor)"
+            )
 
         else:
             read_members.append(
-                "        raise NotImplementedError('class members defined by {0} with type {1}')".format(
-                    type(self).__name__, self.type_name
-                )
+                "        raise NotImplementedError('class members defined by "
+                "{0} with type {1}')".format(type(self).__name__, self.type_name)
             )
         member_names.append(self.name)
 
@@ -840,22 +846,19 @@ class pointer_types(object):
     ):
         if self.fType == uproot4.const.kObjectp or self.fType == uproot4.const.kAnyp:
             read_members.append(
-                "        self._members[{0}] = {1}.read(chunk, cursor, context, file, self)".format(
-                    repr(self.name), self.type_name.rstrip("*")
-                )
+                "        self._members[{0}] = {1}.read(chunk, cursor, context, "
+                "self._file, self)".format(repr(self.name), self.type_name.rstrip("*"))
             )
         elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
             read_members.append(
-                "        self._members[{0}] = read_object_any(chunk, cursor, context, file, parent)".format(
-                    repr(self.name)
-                )
+                "        self._members[{0}] = read_object_any(chunk, cursor, "
+                "context, self._file, self._parent)".format(repr(self.name))
             )
             class_flags["has_read_object_any"] = True
         else:
             read_members.append(
-                "        raise NotImplementedError('class members defined by {0} with fType {1}')".format(
-                    type(self).__name__, self.fType
-                )
+                "        raise NotImplementedError('class members defined by "
+                "{0} with fType {1}')".format(type(self).__name__, self.fType)
             )
         member_names.append(self.name)
 
@@ -892,9 +895,8 @@ class object_types(object):
         class_flags,
     ):
         read_members.append(
-            "        self._members[{0}] = {1}.read(chunk, cursor, context, file, self)".format(
-                repr(self.name), self.type_name.rstrip("*")
-            )
+            "        self._members[{0}] = {1}.read(chunk, cursor, context, "
+            "self._file, self)".format(repr(self.name), self.type_name.rstrip("*"))
         )
         member_names.append(self.name)
 

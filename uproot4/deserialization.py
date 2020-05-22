@@ -11,6 +11,41 @@ import uproot4.model
 import uproot4._util
 
 
+scope = {
+    "struct": struct,
+    "numpy": numpy,
+    "VersionedModel": uproot4.model.VersionedModel,
+}
+
+
+def compile_class(classes, class_code, class_name):
+    new_scope = dict(scope)
+    for cls in classes.values():
+        new_scope[cls.__name__] = cls
+
+    def class_of_version(name, version):
+        cls = new_scope.get(uproot4.model.classname_encode(name, version))
+        if cls is None:
+            cls = new_scope.get(uproot4.model.classname_encode(name))
+            if cls is None:
+                raise NameError(
+                    """class {0} not found in uproot4.deserialization.compile_class scope:
+
+{1}""".format(
+                        name, "\n".join(new_scope)
+                    )
+                )
+        return cls
+
+    new_scope["class_of_version"] = class_of_version
+
+    exec(compile(class_code, "<dynamic>", "exec"), new_scope)
+
+    out = new_scope[class_name]
+    out.__module__ = "<dynamic>"
+    return out
+
+
 _numbytes_version_1 = struct.Struct(">IH")
 _numbytes_version_2 = struct.Struct(">H")
 
@@ -80,6 +115,9 @@ def map_string_string(chunk, cursor):
     cursor.skip(6)
     values = [cursor.string(chunk) for i in range(size)]
     return dict(zip(keys, values))
+
+
+scope["map_string_string"] = map_string_string
 
 
 _read_object_any_format1 = struct.Struct(">I")
@@ -173,3 +211,6 @@ in file: {0}""".format(
             cursor.refs[len(cursor.refs) + 1] = obj
 
         return obj  # return object
+
+
+scope["read_object_any"] = read_object_any

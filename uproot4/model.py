@@ -7,7 +7,6 @@ import re
 import numpy
 
 import uproot4.const
-import uproot4.deserialization
 import uproot4._util
 
 
@@ -43,6 +42,8 @@ class Model(object):
         )
 
     def read_numbytes_version(self, chunk, cursor, context):
+        import uproot4.deserialization
+
         (
             self._num_bytes,
             self._instance_version,
@@ -52,6 +53,8 @@ class Model(object):
         pass
 
     def check_numbytes(self, cursor, context):
+        import uproot4.deserialization
+
         uproot4.deserialization.numbytes_check(
             self._cursor,
             cursor,
@@ -173,6 +176,14 @@ class VersionedModel(Model):
     def known_versions(self):
         return self._known_versions
 
+    @property
+    def member_names(self):
+        return self._member_names
+
+    @property
+    def streamer(self):
+        return self._streamer
+
 
 class UnknownClassVersion(VersionedModel):
     def read_members(self, chunk, cursor, context):
@@ -199,6 +210,8 @@ class UnknownClassVersion(VersionedModel):
 class DispatchByVersion(object):
     @classmethod
     def read(cls, chunk, cursor, context, file, parent):
+        import uproot4.deserialization
+
         num_bytes, version = uproot4.deserialization.numbytes_version(
             chunk, cursor, move=False
         )
