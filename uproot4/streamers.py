@@ -102,6 +102,7 @@ class Class_TStreamerInfo(uproot4.model.Model):
     def new_class(self, classes, streamers, file_path):
         dependencies = self.dependencies(classes, streamers, file_path)
 
+        print(self.name)
         print(dependencies)
 
 
@@ -171,6 +172,14 @@ class Class_TStreamerElement(uproot4.model.Model):
     def name(self):
         return self.member("fName")
 
+    @property
+    def title(self):
+        return self.member("fTitle")
+
+    @property
+    def type_name(self):
+        return self.member("fTypeName")
+
     def dependencies(self, classes, streamers, file_path, to_satisfy):
         return []
 
@@ -193,15 +202,31 @@ class Class_TStreamerBase(Class_TStreamerElement):
         if self._instance_version >= 2:
             self._members["fBaseVersion"] = cursor.field(chunk, _tstreamerbase_format1)
 
+    @property
+    def base_version(self):
+        return self._members["fBaseVersion"]
+
     def dependencies(self, classes, streamers, file_path, to_satisfy):
         out = []
-        cls = classes.get(self.name)
-        if cls is None:
-            streamer = streamers.get(self.name)
-            if streamer is None:
+
+        if self.name not in classes:
+            out.append(self.name)
+
+            streamer_versions = streamers.get(self.name)
+            if streamer_versions is None:
                 raise ValueError(
                     """cannot find {0} to satisfy {1}
 in file {2}""".format(self.name, to_satisfy, file_path))
+
+            elif self.base_version not in streamer_versions:
+                raise ValueError(
+                    """cannot find {0} version {1} to satisfy {2}
+in file {3}""".format(self.name, self.base_version, to_satisfy, file_path))
+
+            else:
+                streamer = streamer_versions[self.base_version]
+                out.extend(streamer.dependencies(classes, streamers, file_path))
+
         return out
 
 
@@ -296,6 +321,42 @@ class Class_TStreamerLoop(Class_TStreamerElement):
         self._members["fCountVersion"] = cursor.field(chunk, _tstreamerloop_format1)
         self._members["fCountName"] = cursor.string(chunk)
         self._members["fCountClass"] = cursor.string(chunk)
+
+    @property
+    def count_version(self):
+        return self._members["fCountVersion"]
+
+    @property
+    def count_name(self):
+        return self._members["fCountName"]
+
+    @property
+    def count_class(self):
+        return self._members["fCountClass"]
+
+    def dependencies(self, classes, streamers, file_path, to_satisfy):
+        out = []
+
+        type_name = self.type_name.rstrip("*")
+        if type_name not in classes:
+            out.append(type_name)
+
+            streamer_versions = streamers.get(type_name)
+            if streamer_versions is None:
+                raise ValueError(
+                    """cannot find {0} to satisfy {1}
+in file {2}""".format(type_name, to_satisfy, file_path))
+
+            elif self.count_version not in streamer_versions:
+                raise ValueError(
+                    """cannot find {0} version {1} to satisfy {2}
+in file {3}""".format(type_name, self.count_version, to_satisfy, file_path))
+
+            else:
+                streamer = stramer_versions[self.count_version]
+                out.extend(streamer.dependencies(classes, streamers, file_path))
+
+        return out
 
 
 class Class_TStreamerObject(Class_TStreamerElement):
