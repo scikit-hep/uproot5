@@ -56,6 +56,68 @@ def _canonical_typename(name):
     return name
 
 
+def _ftype_to_dtype(fType):
+    if fType == uproot4.const.kBool:
+        return "numpy.dtype(numpy.bool_)"
+    elif fType == uproot4.const.kChar:
+        return "numpy.dtype('i1')"
+    elif fType in (uproot4.const.kUChar, uproot4.const.kCharStar):
+        return "numpy.dtype('u1')"
+    elif fType == uproot4.const.kShort:
+        return "numpy.dtype('>i2')"
+    elif fType == uproot4.const.kUShort:
+        return "numpy.dtype('>u2')"
+    elif fType == uproot4.const.kInt:
+        return "numpy.dtype('>i4')"
+    elif fType in (uproot4.const.kBits, uproot4.const.kUInt, uproot4.const.kCounter):
+        return "numpy.dtype('>u4')"
+    elif fType == uproot4.const.kLong:
+        return "numpy.dtype(numpy.long).newbyteorder('>')"
+    elif fType == uproot4.const.kULong:
+        return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
+    elif fType == uproot4.const.kLong64:
+        return "numpy.dtype('>i8')"
+    elif fType == uproot4.const.kULong64:
+        return "numpy.dtype('>u8')"
+    elif fType in (uproot4.const.kFloat, uproot4.const.kFloat16):
+        return "numpy.dtype('>f4')"
+    elif fType in (uproot4.const.kDouble, uproot4.const.kDouble32):
+        return "numpy.dtype('>f8')"
+    else:
+        return None
+
+
+def _ftype_to_struct(fType):
+    if fType == uproot4.const.kBool:
+        return "?"
+    elif fType == uproot4.const.kChar:
+        return "b"
+    elif fType in (uproot4.const.kUChar, uproot4.const.kCharStar):
+        return "B"
+    elif fType == uproot4.const.kShort:
+        return "h"
+    elif fType == uproot4.const.kUShort:
+        return "H"
+    elif fType == uproot4.const.kInt:
+        return "i"
+    elif fType in (uproot4.const.kBits, uproot4.const.kUInt, uproot4.const.kCounter):
+        return "I"
+    elif fType == uproot4.const.kLong:
+        return "l"
+    elif fType == uproot4.const.kULong:
+        return "L"
+    elif fType == uproot4.const.kLong64:
+        return "q"
+    elif fType == uproot4.const.kULong64:
+        return "Q"
+    elif fType in (uproot4.const.kFloat, uproot4.const.kFloat16):
+        return "f"
+    elif fType in (uproot4.const.kDouble, uproot4.const.kDouble32):
+        return "d"
+    else:
+        raise NotImplementedError(fType)
+
+
 _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 
@@ -81,6 +143,11 @@ class Class_TStreamerInfo(uproot4.model.Model):
         self._parent = None
         return self
 
+    def __repr__(self):
+        return "<TStreamerInfo for {0} version {1} at 0x{2:012x}>".format(
+            self.name, self.class_version, id(self)
+        )
+
     @property
     def name(self):
         return self._members["fName"]
@@ -105,11 +172,52 @@ class Class_TStreamerInfo(uproot4.model.Model):
         print(self.name)
         print(dependencies)
 
-
-
+        for streamer in reversed(dependencies):
+            class_code = streamer.class_code()
+            print(class_code)
+            print()
 
         raise Exception
 
+    @property
+    def bases(self):
+        out = []
+        for element in self.elements:
+            if isinstance(element, Class_TStreamerBase):
+                out.append(element.name)
+        return out
+
+    def class_code(self):
+        bases = [uproot4.model.classname_encode(x) for x in self.bases]
+        if len(bases) == 0:
+            bases = ["Model"]
+
+        read_members = ["    def read_members(chunk, cursor):"]
+        fields = []
+        formats = []
+
+        for i in range(len(self._members["fElements"])):
+            self._members["fElements"][i].class_code(
+                i, self._members["fElements"], read_members, fields, formats
+            )
+
+        read_members.append("")
+
+        structs = []
+        for i, format in enumerate(formats):
+            structs.append(
+                "    _format{0} = struct.Struct('>{1}')".format(i, "".join(format))
+            )
+
+        return "\n".join(
+            [
+                "class {0}({1}):".format(
+                    uproot4.model.classname_encode(self.name), ", ".join(bases)
+                )
+            ]
+            + read_members
+            + structs
+        )
 
 
 _tstreamerelement_format1 = struct.Struct(">iiii")
@@ -180,8 +288,15 @@ class Class_TStreamerElement(uproot4.model.Model):
     def type_name(self):
         return self.member("fTypeName")
 
+    @property
+    def fType(self):
+        return self.member("fType")
+
     def dependencies(self, classes, streamers, file_path, to_satisfy):
         return []
+
+    def class_code(self, i, elements, read_members, fields, formats):
+        pass
 
 
 _tstreamerbase_format1 = struct.Struct(">i")
@@ -209,25 +324,36 @@ class Class_TStreamerBase(Class_TStreamerElement):
     def dependencies(self, classes, streamers, file_path, to_satisfy):
         out = []
 
-        if self.name not in classes:
-            out.append(self.name)
-
+        if not uproot4.model.has_class_named(self.name, self.base_version, classes):
             streamer_versions = streamers.get(self.name)
             if streamer_versions is None:
                 raise ValueError(
                     """cannot find {0} to satisfy {1}
-in file {2}""".format(self.name, to_satisfy, file_path))
+in file {2}""".format(
+                        self.name, to_satisfy, file_path
+                    )
+                )
 
             elif self.base_version not in streamer_versions:
                 raise ValueError(
                     """cannot find {0} version {1} to satisfy {2}
-in file {3}""".format(self.name, self.base_version, to_satisfy, file_path))
+in file {3}""".format(
+                        self.name, self.base_version, to_satisfy, file_path
+                    )
+                )
 
             else:
                 streamer = streamer_versions[self.base_version]
+                out.append(streamer)
                 out.extend(streamer.dependencies(classes, streamers, file_path))
 
         return out
+
+    def class_code(self, i, elements, read_members, fields, formats):
+        read_members.append(
+            "        self._bases.append(class_of_version({0}, {1}).read(chunk, "
+            "cursor, file, parent))".format(self.name, self.base_version)
+        )
 
 
 _tstreamerbasicpointer_format1 = struct.Struct(">i")
@@ -309,6 +435,31 @@ class Class_TStreamerBasicType(Class_TStreamerElement):
         if basic and self._bases[0]._members["fArrayLength"] > 0:
             self._bases[0]._members["fSize"] *= self._bases[0]._members["fArrayLength"]
 
+    def class_code(self, i, elements, read_members, fields, formats):
+        if i == 0 or not isinstance(elements[i - 1], Class_TStreamerBasicType):
+            fields.append([])
+            formats.append([])
+
+        fields[-1].append(self.name)
+        formats[-1].append(_ftype_to_struct(self.fType))
+
+        if i + 1 == len(elements) or not isinstance(
+            elements[i + 1], Class_TStreamerBasicType
+        ):
+            if len(fields[-1]) == 1:
+                read_members.append(
+                    "        self._members['{0}'] = cursor.field(chunk, self._format{1})".format(
+                        fields[-1][0], len(formats) - 1
+                    )
+                )
+            else:
+                read_members.append(
+                    "        {0} = cursor.fields(chunk, self._format{1})".format(
+                        ", ".join("self._members['{0}']".format(x) for x in fields[-1]),
+                        len(formats) - 1,
+                    )
+                )
+
 
 _tstreamerloop_format1 = struct.Struct(">i")
 
@@ -321,42 +472,6 @@ class Class_TStreamerLoop(Class_TStreamerElement):
         self._members["fCountVersion"] = cursor.field(chunk, _tstreamerloop_format1)
         self._members["fCountName"] = cursor.string(chunk)
         self._members["fCountClass"] = cursor.string(chunk)
-
-    @property
-    def count_version(self):
-        return self._members["fCountVersion"]
-
-    @property
-    def count_name(self):
-        return self._members["fCountName"]
-
-    @property
-    def count_class(self):
-        return self._members["fCountClass"]
-
-    def dependencies(self, classes, streamers, file_path, to_satisfy):
-        out = []
-
-        type_name = self.type_name.rstrip("*")
-        if type_name not in classes:
-            out.append(type_name)
-
-            streamer_versions = streamers.get(type_name)
-            if streamer_versions is None:
-                raise ValueError(
-                    """cannot find {0} to satisfy {1}
-in file {2}""".format(type_name, to_satisfy, file_path))
-
-            elif self.count_version not in streamer_versions:
-                raise ValueError(
-                    """cannot find {0} version {1} to satisfy {2}
-in file {3}""".format(type_name, self.count_version, to_satisfy, file_path))
-
-            else:
-                streamer = stramer_versions[self.count_version]
-                out.extend(streamer.dependencies(classes, streamers, file_path))
-
-        return out
 
 
 class Class_TStreamerObject(Class_TStreamerElement):

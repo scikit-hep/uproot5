@@ -37,14 +37,6 @@ class Class_TArrayC(Class_TArray):
     dtype = numpy.dtype(">i1")
 
 
-class Class_TArrayC(Class_TArray):
-    dtype = numpy.dtype(">i1")
-
-
-class Class_TArrayC(Class_TArray):
-    dtype = numpy.dtype(">i1")
-
-
 class Class_TArrayS(Class_TArray):
     dtype = numpy.dtype(">i2")
 

@@ -8,7 +8,9 @@ import uproot4.models.TList
 
 class Class_THashList(uproot4.models.TList.Class_TList):
     def read_members(self, chunk, cursor):
-        self._bases.append(uproot4.models.TList.read(chunk, cursor, self._file, self._parent))
+        self._bases.append(
+            uproot4.models.TList.read(chunk, cursor, self._file, self._parent)
+        )
 
 
 uproot4.classes["THashList"] = Class_THashList

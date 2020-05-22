@@ -215,7 +215,9 @@ class DispatchByVersion(object):
             streamer = file.streamer_named(classname, version)
 
             if streamer is not None:
-                versioned_cls = streamer.new_class(file.classes, file.streamers, file.file_path)
+                versioned_cls = streamer.new_class(
+                    file.classes, file.streamers, file.file_path
+                )
                 self = versioned_cls.read(chunk, cursor, file, parent)
                 self._known_versions = cls._known_versions
                 return self
@@ -226,7 +228,7 @@ class DispatchByVersion(object):
                     unknown_cls = uproot4._util.new_class(
                         classname_encode(classname, version, unknown=True),
                         (UnknownClassVersion,),
-                        {}
+                        {},
                     )
                     uproot4.unknown_classes[classname] = unknown_cls
 
@@ -249,11 +251,13 @@ class DispatchByVersion(object):
     def known_versions(self):
         return self._known_versions
 
-    def has_version(self, version):
-        return version in self._known_versions
+    @classmethod
+    def has_version(cls, version):
+        return version in cls._known_versions
 
-    def class_of_version(self, version):
-        return self._known_versions[version]
+    @classmethod
+    def class_of_version(cls, version):
+        return cls._known_versions[version]
 
 
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
@@ -332,3 +336,42 @@ def classname_pretty(classname, version):
         return classname
     else:
         return "{0} (version {1})".format(classname, version)
+
+
+def has_class_named(classname, version=None, classes=None):
+    if classes is None:
+        classes = uproot4.classes
+
+    cls = classes.get(classname)
+    if cls is None:
+        return False
+
+    if version is not None and isinstance(cls, DispatchByVersion):
+        return cls.has_version(version)
+    else:
+        return True
+
+
+def class_named(classname, version=None, classes=None):
+    if classes is None:
+        classes = uproot4.classes
+        where = "the given 'classes' dict"
+    else:
+        where = "uproot4.classes"
+
+    cls = classes.get(classname)
+    if cls is None:
+        raise ValueError("no class named {0} in {1}".format(classname, where))
+
+    if version is not None and isinstance(cls, DispatchByVersion):
+        if cls.has_version(version):
+            return cls.class_of_version(version)
+        else:
+            raise ValueError(
+                "no class named {0} with version {1} in {2}".format(
+                    classname, version, where
+                )
+            )
+
+    else:
+        return cls

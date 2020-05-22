@@ -271,8 +271,7 @@ in file {1}""".format(
                 key_chunk = self.chunk(key_start, key_stop)
 
                 self.hook_before_read_streamer_key(
-                    key_cursor=key_cursor,
-                    key_chunk=key_chunk,
+                    key_cursor=key_cursor, key_chunk=key_chunk,
                 )
 
                 streamer_key = ReadOnlyKey(
@@ -342,7 +341,7 @@ in file {1}""".format(
                     unknown_cls = uproot4._util.new_class(
                         uproot4.model.classname_encode(classname, unknown=True),
                         (uproot4.model.UnknownClass,),
-                        {}
+                        {},
                     )
                     uproot4.unknown_classes[classname] = unknown_cls
                 return unknown_cls
@@ -351,11 +350,11 @@ in file {1}""".format(
                 cls = uproot4._util.new_class(
                     uproot4._util.ensure_str(uproot4.model.classname_encode(classname)),
                     (uproot4.model.DispatchByVersion,),
-                    {"_known_versions": {}}
+                    {"_known_versions": {}},
                 )
                 self._classes[classname] = cls
 
-        if version is not None and isinstance(uproot4.model.DispatchByVersion):
+        if version is not None and isinstance(cls, uproot4.model.DispatchByVersion):
             cls = cls.class_of_version(version)
 
         return cls

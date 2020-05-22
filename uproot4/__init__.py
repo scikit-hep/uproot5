@@ -20,6 +20,8 @@ from uproot4.reading import ReadOnlyDirectory
 from uproot4.model import Model
 from uproot4.model import classname_decode
 from uproot4.model import classname_encode
+from uproot4.model import has_class_named
+from uproot4.model import class_named
 
 import uproot4.models.TObject
 import uproot4.models.TString
@@ -28,7 +30,9 @@ import uproot4.models.TObjArray
 import uproot4.models.TObjString
 import uproot4.models.TList
 import uproot4.models.THashList
+
 # import uproot4.models.TRef
 import uproot4.models.TArray
+
 # import uproot4.models.ROOT_3a3a_TIOFeatures
 # import uproot4.models.ROOT_3a3a_Experimental_3a3a_RNTuple
