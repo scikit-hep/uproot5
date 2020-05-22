@@ -28,7 +28,7 @@ class Cursor(object):
             index (int): Global position in the ROOT file.
             origin (int): Placeholder that is sometimes useful for arithmetic.
             refs (None or dict): References to data already read, for
-                `_readobjany`.
+                `read_object_any`.
         """
         self._index = index
         self._origin = origin
@@ -70,7 +70,7 @@ class Cursor(object):
     @property
     def refs(self):
         """
-        References to data already read, for `_readobjany`.
+        References to data already read, for `read_object_any`.
         """
         if self._refs is None:
             self._refs = {}

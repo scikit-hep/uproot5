@@ -271,16 +271,16 @@ in file {1}""".format(
                 key_chunk = self.chunk(key_start, key_stop)
 
                 self.hook_before_read_streamer_key(
-                    key_cursor=key_cursor, key_chunk=key_chunk,
+                    key_chunk=key_chunk, key_cursor=key_cursor,
                 )
 
                 streamer_key = ReadOnlyKey(
-                    key_cursor, key_chunk, self, self, self._options
+                    key_chunk, key_cursor, {}, self, self, self._options
                 )
 
                 self.hook_before_decompress_streamers(
-                    key_cursor=key_cursor,
                     key_chunk=key_chunk,
+                    key_cursor=key_cursor,
                     streamer_key=streamer_key,
                 )
 
@@ -290,15 +290,15 @@ in file {1}""".format(
                 ) = streamer_key.get_uncompressed_chunk_cursor()
 
                 self.hook_before_read_streamers(
-                    key_cursor=key_cursor,
                     key_chunk=key_chunk,
+                    key_cursor=key_cursor,
                     streamer_key=streamer_key,
                     streamer_cursor=streamer_cursor,
                     streamer_chunk=streamer_chunk,
                 )
 
                 tlist = self._classes["TList"].read(
-                    streamer_chunk, streamer_cursor, self, self
+                    streamer_chunk, streamer_cursor, {}, self, self
                 )
 
                 self._streamers = {}
@@ -308,8 +308,8 @@ in file {1}""".format(
                     self._streamers[x.name][x.class_version] = x
 
                 self.hook_after_read_streamers(
-                    key_cursor=key_cursor,
                     key_chunk=key_chunk,
+                    key_cursor=key_cursor,
                     streamer_key=streamer_key,
                     streamer_cursor=streamer_cursor,
                     streamer_chunk=streamer_chunk,
@@ -464,14 +464,17 @@ class ReadOnlyKey(object):
     _format_small = struct.Struct(">ihiIhhii")
     _format_big = struct.Struct(">ihiIhhqq")
 
-    def __init__(self, cursor, chunk, file, parent, options, read_strings=False):
+    def __init__(
+        self, chunk, cursor, context, file, parent, options, read_strings=False
+    ):
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
 
         self.hook_before_read(
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
+            context=context,
             file=file,
             parent=parent,
             options=options,
@@ -506,8 +509,9 @@ class ReadOnlyKey(object):
 
         if read_strings:
             self.hook_before_read_strings(
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
+                context=context,
                 file=file,
                 parent=parent,
                 options=options,
@@ -524,8 +528,9 @@ class ReadOnlyKey(object):
             self._fTitle = None
 
         self.hook_after_read(
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
+            context=context,
             file=file,
             parent=parent,
             options=options,
@@ -648,6 +653,7 @@ class ReadOnlyKey(object):
                 uproot4.compression.decompress(
                     chunk,
                     self.data_cursor,
+                    {},
                     self.data_compressed_bytes,
                     self.data_uncompressed_bytes,
                 ),
@@ -677,7 +683,7 @@ class ReadOnlyKey(object):
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             cls = self._file.class_named(self._fClassName)
-            return cls.read(chunk, cursor, self._file, self)
+            return cls.read(chunk, cursor, {}, self._file, self)
 
 
 class ReadOnlyDirectory(Mapping):
@@ -697,8 +703,8 @@ class ReadOnlyDirectory(Mapping):
 
         self.hook_before_read(
             path=path,
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
             file=file,
             parent=parent,
             options=options,
@@ -747,8 +753,8 @@ class ReadOnlyDirectory(Mapping):
 
             self.hook_before_header_key(
                 path=path,
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
                 file=file,
                 parent=parent,
                 options=options,
@@ -757,15 +763,15 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._header_key = ReadOnlyKey(
-                keys_cursor, keys_chunk, file, self, options, read_strings=True
+                keys_chunk, keys_cursor, {}, file, self, options, read_strings=True
             )
 
             num_keys = keys_cursor.field(keys_chunk, self._format_num_keys)
 
             self.hook_before_keys(
                 path=path,
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
                 file=file,
                 parent=parent,
                 options=options,
@@ -777,14 +783,14 @@ class ReadOnlyDirectory(Mapping):
             self._keys = []
             for i in range(num_keys):
                 key = ReadOnlyKey(
-                    keys_cursor, keys_chunk, file, self, options, read_strings=True
+                    keys_chunk, keys_cursor, {}, file, self, options, read_strings=True
                 )
                 self._keys.append(key)
 
             self.hook_after_read(
                 path=path,
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
                 file=file,
                 parent=parent,
                 options=options,

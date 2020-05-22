@@ -7,7 +7,7 @@ import uproot4.deserialization
 
 
 class Class_TObjString(uproot4.model.Model, str):
-    def read_members(self, chunk, cursor):
+    def read_members(self, chunk, cursor, context):
         uproot4.deserialization.skip_tobject(chunk, cursor)
         self._data = cursor.string(chunk)
 

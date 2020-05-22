@@ -143,7 +143,7 @@ _decompress_header_format = struct.Struct("2sBBBBBBB")
 _decompress_checksum_format = struct.Struct(">Q")
 
 
-def decompress(chunk, cursor, compressed_bytes, uncompressed_bytes):
+def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
     start = cursor.copy()
     filled = 0
     num_blocks = 0

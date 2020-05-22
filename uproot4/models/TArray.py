@@ -19,7 +19,7 @@ _tarray_format1 = struct.Struct(">i")
 
 
 class Class_TArray(uproot4.model.Model, Sequence):
-    def read_members(self, chunk, cursor):
+    def read_members(self, chunk, cursor, context):
         self._members["fN"] = cursor.field(chunk, _tarray_format1)
         self._data = cursor.array(chunk, self._members["fN"], self.dtype)
 

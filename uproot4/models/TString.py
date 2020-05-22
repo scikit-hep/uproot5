@@ -6,10 +6,10 @@ import uproot4.model
 
 
 class Class_TString(uproot4.model.Model, str):
-    def read_numbytes_version(self, chunk, cursor):
+    def read_numbytes_version(self, chunk, cursor, context):
         pass
 
-    def read_members(self, chunk, cursor):
+    def read_members(self, chunk, cursor, context):
         self._data = cursor.string(chunk)
 
     def postprocess(self):

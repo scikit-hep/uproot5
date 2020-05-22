@@ -85,7 +85,7 @@ def map_string_string(chunk, cursor):
 _read_object_any_format1 = struct.Struct(">I")
 
 
-def read_object_any(chunk, cursor, file, parent, as_class=None):
+def read_object_any(chunk, cursor, context, file, parent, as_class=None):
     # TBufferFile::ReadObjectAny()
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2684
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2404
@@ -136,9 +136,9 @@ def read_object_any(chunk, cursor, file, parent, as_class=None):
             cursor.refs[len(cursor.refs) + 1] = cls
 
         if as_class is None:
-            obj = cls.read(chunk, cursor, file, parent)
+            obj = cls.read(chunk, cursor, context, file, parent)
         else:
-            obj = as_class.read(chunk, cursor, file, parent)
+            obj = as_class.read(chunk, cursor, context, file, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj
@@ -162,10 +162,10 @@ in file: {0}""".format(
                 )
 
             cls = cursor.refs[ref]  # reference class
-            obj = cls.read(chunk, cursor, file, parent)
+            obj = cls.read(chunk, cursor, context, file, parent)
 
         else:
-            obj = as_class.read(chunk, cursor, file, parent)
+            obj = as_class.read(chunk, cursor, context, file, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj

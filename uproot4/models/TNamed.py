@@ -7,7 +7,7 @@ import uproot4.deserialization
 
 
 class Class_TNamed(uproot4.model.Model):
-    def read_members(self, chunk, cursor):
+    def read_members(self, chunk, cursor, context):
         uproot4.deserialization.skip_tobject(chunk, cursor)
         self._members["fName"] = cursor.string(chunk)
         self._members["fTitle"] = cursor.string(chunk)

@@ -7,11 +7,11 @@ import uproot4.deserialization
 
 
 class Class_TObject(uproot4.model.Model):
-    def read_numbytes_version(self, chunk, cursor):
+    def read_numbytes_version(self, chunk, cursor, context):
         pass
 
-    def read_members(self, chunk, cursor):
-        uproot4.deserialization.skip_tobject(chunk, cursor)
+    def read_members(self, chunk, cursor, context):
+        uproot4.deserialization.skip_tobject(chunk, cursor, context)
 
 
 uproot4.classes["TObject"] = Class_TObject

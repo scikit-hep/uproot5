@@ -13,25 +13,25 @@ import uproot4._util
 
 class Model(object):
     @classmethod
-    def read(cls, chunk, cursor, file, parent):
+    def read(cls, chunk, cursor, context, file, parent):
         self = cls.__new__(cls)
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
 
-        self.hook_before_read(chunk=chunk, cursor=cursor)
+        self.hook_before_read(chunk=chunk, cursor=cursor, context=context)
 
         self._members = {}
         self._bases = []
-        self.read_numbytes_version(chunk, cursor)
+        self.read_numbytes_version(chunk, cursor, context)
 
-        self.hook_before_read_members(chunk=chunk, cursor=cursor)
+        self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context)
 
-        self.read_members(chunk, cursor)
+        self.read_members(chunk, cursor, context)
 
-        self.hook_after_read_members(chunk=chunk, cursor=cursor)
+        self.hook_after_read_members(chunk=chunk, cursor=cursor, context=context)
 
-        self.check_numbytes(cursor)
+        self.check_numbytes(cursor, context)
 
         self.hook_before_postprocess()
 
@@ -42,16 +42,16 @@ class Model(object):
             classname_pretty(self.classname, self.class_version), id(self)
         )
 
-    def read_numbytes_version(self, chunk, cursor):
+    def read_numbytes_version(self, chunk, cursor, context):
         (
             self._num_bytes,
             self._instance_version,
         ) = uproot4.deserialization.numbytes_version(chunk, cursor)
 
-    def read_members(self, chunk, cursor):
+    def read_members(self, chunk, cursor, context):
         pass
 
-    def check_numbytes(self, cursor):
+    def check_numbytes(self, cursor, context):
         uproot4.deserialization.numbytes_check(
             self._cursor,
             cursor,
@@ -151,7 +151,7 @@ in file {1}""".format(
 
 
 class UnknownClass(Model):
-    def read_members(self, chunk, cursor):
+    def read_members(self, chunk, cursor, context):
         if self._num_bytes is not None:
             cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
@@ -175,7 +175,7 @@ class VersionedModel(Model):
 
 
 class UnknownClassVersion(VersionedModel):
-    def read_members(self, chunk, cursor):
+    def read_members(self, chunk, cursor, context):
         if self._num_bytes is not None:
             cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
@@ -198,7 +198,7 @@ class UnknownClassVersion(VersionedModel):
 
 class DispatchByVersion(object):
     @classmethod
-    def read(cls, chunk, cursor, file, parent):
+    def read(cls, chunk, cursor, context, file, parent):
         num_bytes, version = uproot4.deserialization.numbytes_version(
             chunk, cursor, move=False
         )
@@ -206,7 +206,7 @@ class DispatchByVersion(object):
         versioned_cls = cls._known_versions.get(version)
 
         if versioned_cls is not None:
-            self = versioned_cls.read(chunk, cursor, file, parent)
+            self = versioned_cls.read(chunk, cursor, context, file, parent)
             self._known_versions = cls._known_versions
             return self
 
@@ -218,7 +218,7 @@ class DispatchByVersion(object):
                 versioned_cls = streamer.new_class(
                     file.classes, file.streamers, file.file_path
                 )
-                self = versioned_cls.read(chunk, cursor, file, parent)
+                self = versioned_cls.read(chunk, cursor, context, file, parent)
                 self._known_versions = cls._known_versions
                 return self
 
@@ -232,7 +232,7 @@ class DispatchByVersion(object):
                     )
                     uproot4.unknown_classes[classname] = unknown_cls
 
-                self = unknown_cls.read(chunk, cursor, file, parent)
+                self = unknown_cls.read(chunk, cursor, context, file, parent)
                 self._known_versions = cls._known_versions
                 return self
 
