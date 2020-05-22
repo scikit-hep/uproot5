@@ -198,19 +198,33 @@ class Model_TStreamerInfo(uproot4.model.Model):
         read_members = ["    def read_members(chunk, cursor, context):"]
         fields = []
         formats = []
+        dtypes = []
+        member_names = []
 
         for i in range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
-                i, self._members["fElements"], read_members, fields, formats
+                self,
+                i,
+                self._members["fElements"],
+                read_members,
+                fields,
+                formats,
+                dtypes,
+                member_names,
             )
 
         read_members.append("")
 
-        structs = []
+        class_data = []
         for i, format in enumerate(formats):
-            structs.append(
+            class_data.append(
                 "    _format{0} = struct.Struct('>{1}')".format(i, "".join(format))
             )
+        for i, dt in enumerate(dtypes):
+            class_data.append("    _dtype{0} = {1}".format(i, dt))
+        class_data.append(
+            "    _member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
+        )
 
         return "\n".join(
             [
@@ -220,7 +234,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 )
             ]
             + read_members
-            + structs
+            + class_data
         )
 
 
@@ -293,13 +307,27 @@ class Model_TStreamerElement(uproot4.model.Model):
         return self.member("fTypeName")
 
     @property
+    def array_length(self):
+        return self.member("fArrayLength")
+
+    @property
     def fType(self):
         return self.member("fType")
 
     def dependencies(self, classes, streamers, file_path, to_satisfy):
         return []
 
-    def class_code(self, i, elements, read_members, fields, formats):
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+    ):
         read_members.append(
             "        raise NotImplementedError('class members defined by {0}')".format(
                 type(self).__name__
@@ -361,7 +389,17 @@ in file {3}""".format(
 
         return out
 
-    def class_code(self, i, elements, read_members, fields, formats):
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+    ):
         read_members.append(
             "        self._bases.append(class_of_version({0}, {1}).read(chunk, "
             "cursor, context, file, parent))".format(repr(self.name), self.base_version)
@@ -383,6 +421,37 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         )
         self._members["fCountName"] = cursor.string(chunk)
         self._members["fCountClass"] = cursor.string(chunk)
+
+    @property
+    def count_name(self):
+        return self._members["fCountName"]
+
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+    ):
+        read_members.append("        tmp = self._dtype{0}".format(len(dtypes)))
+        if streamerinfo.name == "TBranch" and self.name == "fBasketSeek":
+            read_members.append("        if context.get('speedbump', True):")
+            read_members.append("            if cursor.bytes(chunk, 1)[0] == 2:")
+            read_members.append("                tmp = numpy.dtype('>i8')")
+        else:
+            read_members.append("        if context.get('speedbump', True):")
+            read_members.append("            cursor.skip(1)")
+        read_members.append(
+            "        self._members[{0}] = cursor.array(chunk, self.member({1}), tmp)".format(
+                repr(self.name), self.count_name
+            )
+        )
+        member_names.append(self.name)
+        dtypes.append(_ftype_to_dtype(self.fType - uproot4.const.kOffsetP))
 
 
 class Model_TStreamerBasicType(Model_TStreamerElement):
@@ -451,30 +520,59 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         if basic and self._bases[0]._members["fArrayLength"] > 0:
             self._bases[0]._members["fSize"] *= self._bases[0]._members["fArrayLength"]
 
-    def class_code(self, i, elements, read_members, fields, formats):
-        if i == 0 or not isinstance(elements[i - 1], Model_TStreamerBasicType):
-            fields.append([])
-            formats.append([])
+    def class_code(
+        self,
+        streamerinfo,
+        i,
+        elements,
+        read_members,
+        fields,
+        formats,
+        dtypes,
+        member_names,
+    ):
+        if self.array_length == 0:
+            if (
+                i == 0
+                or not isinstance(elements[i - 1], Model_TStreamerBasicType)
+                or elements[i - 1].array_length != 0
+            ):
+                fields.append([])
+                formats.append([])
 
-        fields[-1].append(self.name)
-        formats[-1].append(_ftype_to_struct(self.fType))
+            fields[-1].append(self.name)
+            formats[-1].append(_ftype_to_struct(self.fType))
 
-        if i + 1 == len(elements) or not isinstance(
-            elements[i + 1], Model_TStreamerBasicType
-        ):
-            if len(fields[-1]) == 1:
-                read_members.append(
-                    "        self._members['{0}'] = cursor.field(chunk, self._format{1})".format(
-                        fields[-1][0], len(formats) - 1
+            if (
+                i + 1 == len(elements)
+                or not isinstance(elements[i + 1], Model_TStreamerBasicType)
+                or elements[i + 1].array_length != 0
+            ):
+                if len(fields[-1]) == 1:
+                    read_members.append(
+                        "        self._members['{0}'] = cursor.field(chunk, self._format{1})".format(
+                            fields[-1][0], len(formats) - 1
+                        )
                     )
-                )
-            else:
-                read_members.append(
-                    "        {0} = cursor.fields(chunk, self._format{1})".format(
-                        ", ".join("self._members['{0}']".format(x) for x in fields[-1]),
-                        len(formats) - 1,
+                else:
+                    read_members.append(
+                        "        {0} = cursor.fields(chunk, self._format{1})".format(
+                            ", ".join(
+                                "self._members[{0}]".format(repr(x)) for x in fields[-1]
+                            ),
+                            len(formats) - 1,
+                        )
                     )
+
+        else:
+            read_members.append(
+                "        self._members[{0}] = cursor.array(chunk, {1}, self._dtype{2})".format(
+                    repr(self.name), self.array_length, len(dtypes)
                 )
+            )
+            dtypes.append(_ftype_to_dtype(self.fType))
+
+        member_names.append(self.name)
 
 
 _tstreamerloop_format1 = struct.Struct(">i")
