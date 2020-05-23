@@ -23,7 +23,7 @@ def compile_class(file, classes, class_code, class_name):
     for cls in classes.values():
         new_scope[cls.__name__] = cls
 
-    def c(name, version):
+    def c(name, version=None):
         cls = new_scope.get(uproot4.model.classname_encode(name, version))
         if cls is None:
             cls = new_scope.get(uproot4.model.classname_encode(name))

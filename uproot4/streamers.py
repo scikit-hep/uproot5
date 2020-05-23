@@ -205,6 +205,12 @@ class Model_TStreamerInfo(uproot4.model.Model):
         member_names = []
         class_flags = {}
 
+        read_members.append(
+            "        if 0 in self.hooks: self.hooks[0](self, chunk, cursor, context)"
+        )
+
+        num_hooks = 0
+        last_length = len(read_members)
         for i in range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
                 self,
@@ -217,6 +223,13 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 member_names,
                 class_flags,
             )
+            if len(read_members) != last_length:
+                num_hooks += 1
+                read_members.append(
+                    "        if {0} in self.hooks: self.hooks[{0}](self, "
+                    "chunk, cursor, context)".format(num_hooks)
+                )
+            last_length = len(read_members)
 
         read_members.append("")
 
@@ -235,6 +248,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 ", ".join(repr(k) + ": " + repr(v) for k, v in class_flags.items())
             )
         )
+        class_data.append("    hooks = {}")
 
         return "\n".join(
             [
@@ -629,9 +643,9 @@ class Model_TStreamerLoop(Model_TStreamerElement):
             [
                 "        cursor.skip(6)",
                 "        for tmp in range(self.member({0})):".format(self.count_name),
-                "            self._members[{0}] = {1}.read(chunk, cursor, "
+                "            self._members[{0}] = c({1}).read(chunk, cursor, "
                 "context, self._file, self)".format(
-                    repr(self.name), self.type_name.rstrip("*")
+                    repr(self.name), repr(self.type_name.rstrip("*"))
                 ),
             ]
         )
@@ -846,8 +860,10 @@ class pointer_types(object):
     ):
         if self.fType == uproot4.const.kObjectp or self.fType == uproot4.const.kAnyp:
             read_members.append(
-                "        self._members[{0}] = {1}.read(chunk, cursor, context, "
-                "self._file, self)".format(repr(self.name), self.type_name.rstrip("*"))
+                "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
+                "self._file, self)".format(
+                    repr(self.name), repr(self.type_name.rstrip("*"))
+                )
             )
         elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
             read_members.append(
@@ -895,8 +911,10 @@ class object_types(object):
         class_flags,
     ):
         read_members.append(
-            "        self._members[{0}] = {1}.read(chunk, cursor, context, "
-            "self._file, self)".format(repr(self.name), self.type_name.rstrip("*"))
+            "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
+            "self._file, self)".format(
+                repr(self.name), repr(self.type_name.rstrip("*"))
+            )
         )
         member_names.append(self.name)
 

@@ -17,11 +17,13 @@ class Model(object):
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
+        self._members = {}
+        self._bases = []
+        self._num_bytes = None
+        self._instance_version = None
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context)
 
-        self._members = {}
-        self._bases = []
         self.read_numbytes_version(chunk, cursor, context)
 
         self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context)

@@ -38,3 +38,8 @@ def test():
             "fBuffer",
             "fBinStatErrOpt",
         ]
+
+        # cls = f.file.class_named("TAxis", "max")
+        # print(cls.class_code)
+
+        # print(f.get("one"))

@@ -32,6 +32,13 @@ class Model_TArray(uproot4.model.Model, Sequence):
     def __len__(self):
         return len(self._data)
 
+    def __repr__(self):
+        return "<{0} {1} at 0x{2:012x}>".format(
+            uproot4.model.classname_pretty(self.classname, self.class_version),
+            str(self._data),
+            id(self),
+        )
+
 
 class Model_TArrayC(Model_TArray):
     dtype = numpy.dtype(">i1")
