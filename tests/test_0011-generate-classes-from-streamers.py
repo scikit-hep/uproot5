@@ -13,8 +13,28 @@ import uproot4
 import uproot4.reading
 
 
-# def test():
-#     with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
-#         print(f["one"])
-
-#     raise Exception
+def test():
+    with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
+        assert f.file.class_named("TH1", 7).member_names == [
+            "fNcells",
+            "fXaxis",
+            "fYaxis",
+            "fZaxis",
+            "fBarOffset",
+            "fBarWidth",
+            "fEntries",
+            "fTsumw",
+            "fTsumw2",
+            "fTsumwx",
+            "fTsumwx2",
+            "fMaximum",
+            "fMinimum",
+            "fNormFactor",
+            "fContour",
+            "fSumw2",
+            "fOption",
+            "fFunctions",
+            "fBufferSize",
+            "fBuffer",
+            "fBinStatErrOpt",
+        ]

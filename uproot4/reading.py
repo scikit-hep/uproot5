@@ -317,11 +317,13 @@ in file {1}""".format(
 
         return self._streamers
 
-    def streamer_named(self, classname, version=None):
+    def streamer_named(self, classname, version):
         streamer_versions = self._streamers.get(classname)
         if streamer_versions is None or len(streamer_versions) == 0:
             return None
-        elif version is None:
+        elif version == "min":
+            return streamer_versions[min(streamer_versions)]
+        elif version == "max":
             return streamer_versions[max(streamer_versions)]
         else:
             return streamer_versions.get(version)
@@ -350,12 +352,17 @@ in file {1}""".format(
                 cls = uproot4._util.new_class(
                     uproot4._util.ensure_str(uproot4.model.classname_encode(classname)),
                     (uproot4.model.DispatchByVersion,),
-                    {"_known_versions": {}},
+                    {"known_versions": {}},
                 )
                 self._classes[classname] = cls
 
-        if version is not None and isinstance(cls, uproot4.model.DispatchByVersion):
-            cls = cls.class_of_version(version)
+        if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
+            if not uproot4._util.isint(version):
+                version = self.streamer_named(classname, version).class_version
+            if not cls.has_version(version):
+                cls = cls.new_class(self, version)
+            else:
+                cls = cls.class_of_version(version)
 
         return cls
 
@@ -975,9 +982,9 @@ class ReadOnlyDirectory(Mapping):
         key = self.key(where)
         return key.classname(encoded=encoded, version=version)
 
-    def streamer_of(self, where, version=None):
+    def streamer_of(self, where, version):
         key = self.key(where)
-        return self._file.streamer_named(key.fClassName, version=version)
+        return self._file.streamer_named(key.fClassName, version)
 
     def class_of(self, where, version=None):
         key = self.key(where)

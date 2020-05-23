@@ -172,17 +172,7 @@ class UnknownClass(Model):
 
 
 class VersionedModel(Model):
-    @property
-    def known_versions(self):
-        return self._known_versions
-
-    @property
-    def member_names(self):
-        return self._member_names
-
-    @property
-    def streamer(self):
-        return self._streamer
+    pass
 
 
 class UnknownClassVersion(VersionedModel):
@@ -192,12 +182,10 @@ class UnknownClassVersion(VersionedModel):
 
         else:
             raise ValueError(
-                """Class {0} with unknown version {1} (known versions: {2}) """
-                """ cannot be skipped because its number of bytes is unknown.
+                """Class {0} with unknown version {1} cannot be skipped """
+                """because its number of bytes is unknown.
 """.format(
-                    self.classname,
-                    self._instance_version,
-                    ", ".join(str(x) for x in self._known_versions),
+                    self.classname, self._instance_version,
                 )
             )
 
@@ -216,61 +204,53 @@ class DispatchByVersion(object):
             chunk, cursor, move=False
         )
 
-        versioned_cls = cls._known_versions.get(version)
+        versioned_cls = cls.known_versions.get(version)
 
         if versioned_cls is not None:
-            self = versioned_cls.read(chunk, cursor, context, file, parent)
-            self._known_versions = cls._known_versions
-            return self
+            return versioned_cls.read(chunk, cursor, context, file, parent)
 
         elif num_bytes is not None:
-            classname, _ = classname_decode(cls.__name__)
-            streamer = file.streamer_named(classname, version)
-
-            if streamer is not None:
-                versioned_cls = streamer.new_class(
-                    file.classes, file.streamers, file.file_path
-                )
-                self = versioned_cls.read(chunk, cursor, context, file, parent)
-                self._known_versions = cls._known_versions
-                return self
-
-            else:
-                unknown_cls = uproot4.unknown_classes.get(classname)
-                if unknown_cls is None:
-                    unknown_cls = uproot4._util.new_class(
-                        classname_encode(classname, version, unknown=True),
-                        (UnknownClassVersion,),
-                        {},
-                    )
-                    uproot4.unknown_classes[classname] = unknown_cls
-
-                self = unknown_cls.read(chunk, cursor, context, file, parent)
-                self._known_versions = cls._known_versions
-                return self
+            versioned_cls = cls.new_class(file, version)
+            return versioned_cls.read(chunk, cursor, context, file, parent)
 
         else:
             raise ValueError(
-                """Unknown version {0} for class {1} (known versions: {2})"""
-                """ that cannot be skipped because its number of bytes is unknown.
+                """Unknown version {0} for class {1} that cannot be skipped """
+                """because its number of bytes is unknown.
 """.format(
-                    version,
-                    classname_decode(type(cls).__name__)[0],
-                    ", ".join(str(x) for x in self._known_versions),
+                    version, classname_decode(type(cls).__name__)[0],
                 )
             )
 
-    @property
-    def known_versions(self):
-        return self._known_versions
+    @classmethod
+    def new_class(cls, file, version):
+        classname, _ = classname_decode(cls.__name__)
+        streamer = file.streamer_named(classname, version)
+
+        if streamer is not None:
+            versioned_cls = streamer.new_class(file)
+            versioned_cls.streamer = streamer
+            cls.known_versions[streamer.class_version] = versioned_cls
+            return versioned_cls
+
+        else:
+            unknown_cls = uproot4.unknown_classes.get(classname)
+            if unknown_cls is None:
+                unknown_cls = uproot4._util.new_class(
+                    classname_encode(classname, version, unknown=True),
+                    (UnknownClassVersion,),
+                    {},
+                )
+                uproot4.unknown_classes[classname] = unknown_cls
+            return unknown_cls
 
     @classmethod
     def has_version(cls, version):
-        return version in cls._known_versions
+        return version in cls.known_versions
 
     @classmethod
     def class_of_version(cls, version):
-        return cls._known_versions[version]
+        return cls.known_versions[version]
 
 
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")

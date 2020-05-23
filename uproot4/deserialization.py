@@ -18,31 +18,27 @@ scope = {
 }
 
 
-def compile_class(classes, class_code, class_name):
+def compile_class(file, classes, class_code, class_name):
     new_scope = dict(scope)
     for cls in classes.values():
         new_scope[cls.__name__] = cls
 
-    def class_of_version(name, version):
+    def c(name, version):
         cls = new_scope.get(uproot4.model.classname_encode(name, version))
         if cls is None:
             cls = new_scope.get(uproot4.model.classname_encode(name))
-            if cls is None:
-                raise NameError(
-                    """class {0} not found in uproot4.deserialization.compile_class scope:
-
-{1}""".format(
-                        name, "\n".join(new_scope)
-                    )
-                )
+        if cls is None:
+            cls = file.class_named(name, version)
         return cls
 
-    new_scope["class_of_version"] = class_of_version
+    new_scope["c"] = c
 
     exec(compile(class_code, "<dynamic>", "exec"), new_scope)
 
     out = new_scope[class_name]
+    out.class_code = class_code
     out.__module__ = "<dynamic>"
+
     return out
 
 

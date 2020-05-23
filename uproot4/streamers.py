@@ -166,18 +166,19 @@ class Model_TStreamerInfo(uproot4.model.Model):
             out.extend(element.dependencies(classes, streamers, file_path, self.name))
         return out
 
-    def new_class(self, classes, streamers, file_path):
+    def new_class(self, file):
+        classes, streamers, file_path = file.classes, file.streamers, file.file_path
         dependencies = self.dependencies(classes, streamers, file_path)
 
-        for streamer in list(reversed(dependencies)):
+        for streamer in list(reversed(dependencies)) + [self]:
             class_code = streamer.class_code()
             class_name = uproot4.model.classname_encode(
                 streamer.name, streamer.class_version
             )
 
-            cls = uproot4.deserialization.compile_class(classes, class_code, class_name)
-            cls._streamer = streamer
-
+            cls = uproot4.deserialization.compile_class(
+                file, classes, class_code, class_name
+            )
             classes[class_name] = cls
 
         return cls
@@ -192,8 +193,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def class_code(self):
         bases = [
-            "class_of_version({0}, {1})".format(repr(name), version)
-            for name, version in self.bases
+            "c({0}, {1})".format(repr(name), version) for name, version in self.bases
         ]
         if len(bases) == 0:
             bases = ["VersionedModel"]
@@ -228,10 +228,10 @@ class Model_TStreamerInfo(uproot4.model.Model):
         for i, dt in enumerate(dtypes):
             class_data.append("    _dtype{0} = {1}".format(i, dt))
         class_data.append(
-            "    _member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
+            "    member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
         )
         class_data.append(
-            "    _class_flags = {{{0}}}".format(
+            "    class_flags = {{{0}}}".format(
                 ", ".join(repr(k) + ": " + repr(v) for k, v in class_flags.items())
             )
         )
@@ -413,8 +413,8 @@ in file {3}""".format(
         class_flags,
     ):
         read_members.append(
-            "        self._bases.append(class_of_version({0}, {1}).read(chunk, "
-            "cursor, context, self._file, self._parent))".format(
+            "        self._bases.append(c({0}, {1}).read(chunk, cursor, "
+            "context, self._file, self._parent))".format(
                 repr(self.name), self.base_version
             )
         )
