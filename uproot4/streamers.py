@@ -800,7 +800,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             )
             read_members.append(
                 "        self._members[{0}] = cursor.array(chunk, tmp, "
-                "self._dtype{0})".format(repr(self.name), len(dtypes))
+                "self._dtype{1})".format(repr(self.name), len(dtypes))
             )
             formats.append(["i"])
             dtypes.append(self.vector_dtype)
