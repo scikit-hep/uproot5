@@ -112,6 +112,14 @@ class ResourceExecutor(Executor):
         """
         self._resource.__exit__(exception_type, exception_value, traceback)
 
+    @property
+    def closed(self):
+        """
+        True if the associated file/connection/thread pool is closed; False
+        otherwise.
+        """
+        return self._resource.closed
+
     def _prepare(self, fn, *args, **kwargs):
         return TrivialFuture(fn(self._resource, *args, **kwargs))
 
@@ -299,6 +307,14 @@ class ThreadResourceExecutor(Executor):
         self.shutdown()
         for thread in self._workers:
             thread.resource.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def closed(self):
+        """
+        True if the associated file/connection/thread pool is closed; False
+        otherwise.
+        """
+        return any(thread.is_alive() for thread in self._workers)
 
     def _prepare(self, fn, *args, **kwargs):
         if len(args) != 0 or len(kwargs) != 0:

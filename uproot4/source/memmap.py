@@ -87,6 +87,20 @@ class MemmapSource(uproot4.source.chunk.Source):
             self._fallback.__exit__(exception_type, exception_value, traceback)
 
     @property
+    def closed(self):
+        """
+        True if the associated file/connection/thread pool is closed; False
+        otherwise.
+        """
+        if uproot4._util.py2:
+            try:
+                self._file._mmap.tell()
+            except ValueError:
+                return True
+        elif self._file._mmap.closed:
+            return True
+
+    @property
     def num_bytes(self):
         """
         The number of bytes in the file.
@@ -96,7 +110,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         else:
             return self._fallback.num_bytes
 
-    def chunk(self, start, stop, exact=True):
+    def chunk(self, start, stop, exact=True, long_lived=False):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
@@ -106,6 +120,8 @@ class MemmapSource(uproot4.source.chunk.Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
+            long_lived (bool): If True, ensure that the returned Chunk has
+                indefinite lifespan (i.e. not attached to an open memory map).
 
         Returns a single Chunk that has already been filled synchronously.
         """
@@ -114,24 +130,20 @@ class MemmapSource(uproot4.source.chunk.Source):
         self._num_requested_bytes += stop - start
 
         if self._fallback is None:
-            if uproot4._util.py2:
-                try:
-                    self._file._mmap.tell()
-                except ValueError:
-                    raise OSError(
-                        "memmap is closed for file {0}".format(self._file_path)
-                    )
-
-            elif self._file._mmap.closed:
+            if self.closed:
                 raise OSError("memmap is closed for file {0}".format(self._file_path))
 
-            future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
+            data = self._file[start:stop]
+            if long_lived:
+                data = numpy.array(data)
+
+            future = uproot4.source.futures.TrivialFuture(data)
             return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
 
         else:
             return self._fallback(start, stop, exact=exact)
 
-    def chunks(self, ranges, exact=True, notifications=None):
+    def chunks(self, ranges, exact=True, long_lived=False, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
@@ -139,6 +151,8 @@ class MemmapSource(uproot4.source.chunk.Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
+            long_lived (bool): If True, ensure that the returned Chunk has
+                indefinite lifespan (i.e. not attached to an open memory map).
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 
@@ -149,20 +163,15 @@ class MemmapSource(uproot4.source.chunk.Source):
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
         if self._fallback is None:
-            if uproot4._util.py2:
-                try:
-                    self._file._mmap.tell()
-                except ValueError:
-                    raise OSError(
-                        "memmap is closed for file {0}".format(self._file_path)
-                    )
-
-            elif self._file._mmap.closed:
+            if self.closed:
                 raise OSError("memmap is closed for file {0}".format(self._file_path))
 
             chunks = []
             for start, stop in ranges:
-                future = uproot4.source.futures.TrivialFuture(self._file[start:stop])
+                data = self._file[start:stop]
+                if long_lived:
+                    data = numpy.array(data, copy=True)
+                future = uproot4.source.futures.TrivialFuture(data)
                 chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
                 if notifications is not None:
                     future.add_done_callback(

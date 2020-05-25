@@ -234,7 +234,9 @@ in file {1}""".format(
         return self._end_chunk
 
     def chunk(self, start, stop):
-        if (start, stop) in self._end_chunk:
+        if self.closed:
+            raise OSError("file {0} is closed".format(repr(self._file_path)))
+        elif (start, stop) in self._end_chunk:
             return self._end_chunk
         elif (start, stop) in self._begin_chunk:
             return self._begin_chunk
@@ -465,6 +467,13 @@ in file {1}""".format(
         reading.
         """
         self._source.__exit__(exception_type, exception_value, traceback)
+
+    def close(self):
+        self._source.close()
+
+    @property
+    def closed(self):
+        return self._source.closed
 
 
 class ReadOnlyKey(object):
@@ -891,6 +900,9 @@ class ReadOnlyDirectory(Mapping):
         reading.
         """
         self._file.source.__exit__(exception_type, exception_value, traceback)
+
+    def close(self):
+        self._file.close()
 
     def iterkeys(
         self,

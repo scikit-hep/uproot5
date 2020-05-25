@@ -13,8 +13,6 @@ import uproot4._util
 class Model(object):
     @classmethod
     def read(cls, chunk, cursor, context, file, parent):
-        print(cls, cursor.index, chunk.get(cursor.index, cursor.index + 10))
-
         self = cls.__new__(cls)
         self._cursor = cursor.copy()
         self._file = file
