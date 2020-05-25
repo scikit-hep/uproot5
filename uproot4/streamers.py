@@ -160,48 +160,25 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def elements(self):
         return self._members["fElements"]
 
-    def dependencies(self, classes, streamers, file_path):
-        out = []
-        for element in self.elements:
-            out.extend(element.dependencies(classes, streamers, file_path, self.name))
-        return out
-
     def new_class(self, file):
-        classes, streamers, file_path = file.classes, file.streamers, file.file_path
-        dependencies = self.dependencies(classes, streamers, file_path)
+        classes, file_path = file.classes, file.file_path
 
-        for streamer in list(reversed(dependencies)) + [self]:
-            class_code = streamer.class_code()
-            class_name = uproot4.model.classname_encode(
-                streamer.name, streamer.class_version
-            )
+        class_code = self.class_code()
+        class_name = uproot4.model.classname_encode(self.name, self.class_version)
 
-            cls = uproot4.deserialization.compile_class(
-                file, classes, class_code, class_name
-            )
-            classes[class_name] = cls
+        cls = uproot4.deserialization.compile_class(
+            file, classes, class_code, class_name
+        )
+        classes[class_name] = cls
 
         return cls
 
-    @property
-    def bases(self):
-        out = []
-        for element in self.elements:
-            if isinstance(element, Model_TStreamerBase):
-                out.append((element.name, element.base_version))
-        return out
-
     def class_code(self):
-        bases = [
-            "c({0}, {1})".format(repr(name), version) for name, version in self.bases
-        ]
-        if len(bases) == 0:
-            bases = ["VersionedModel"]
-
         read_members = ["    def read_members(self, chunk, cursor, context):"]
         fields = []
         formats = []
         dtypes = []
+        base_names_versions = []
         member_names = []
         class_flags = {}
 
@@ -220,6 +197,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 fields,
                 formats,
                 dtypes,
+                base_names_versions,
                 member_names,
                 class_flags,
             )
@@ -241,6 +219,14 @@ class Model_TStreamerInfo(uproot4.model.Model):
         for i, dt in enumerate(dtypes):
             class_data.append("    _dtype{0} = {1}".format(i, dt))
         class_data.append(
+            "    base_names_versions = [{0}]".format(
+                ", ".join(
+                    "({0}, {1})".format(repr(name), version)
+                    for name, version in base_names_versions
+                )
+            )
+        )
+        class_data.append(
             "    member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
         )
         class_data.append(
@@ -252,9 +238,8 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
         return "\n".join(
             [
-                "class {0}({1}):".format(
-                    uproot4.model.classname_encode(self.name, self.class_version),
-                    ", ".join(bases),
+                "class {0}(VersionedModel):".format(
+                    uproot4.model.classname_encode(self.name, self.class_version)
                 )
             ]
             + read_members
@@ -338,12 +323,6 @@ class Model_TStreamerElement(uproot4.model.Model):
     def fType(self):
         return self.member("fType")
 
-    def dependencies(self, classes, streamers, file_path, to_satisfy):
-        return []
-
-
-_tstreamerbase_format1 = struct.Struct(">i")
-
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context):
@@ -362,6 +341,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -370,6 +350,9 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
                 type(self).__name__
             )
         )
+
+
+_tstreamerbase_format1 = struct.Struct(">i")
 
 
 class Model_TStreamerBase(Model_TStreamerElement):
@@ -386,34 +369,6 @@ class Model_TStreamerBase(Model_TStreamerElement):
     def base_version(self):
         return self._members["fBaseVersion"]
 
-    def dependencies(self, classes, streamers, file_path, to_satisfy):
-        out = []
-
-        if not uproot4.model.has_class_named(self.name, self.base_version, classes):
-            streamer_versions = streamers.get(self.name)
-            if streamer_versions is None:
-                raise ValueError(
-                    """cannot find {0} to satisfy {1}
-in file {2}""".format(
-                        self.name, to_satisfy, file_path
-                    )
-                )
-
-            elif self.base_version not in streamer_versions:
-                raise ValueError(
-                    """cannot find {0} version {1} to satisfy {2}
-in file {3}""".format(
-                        self.name, self.base_version, to_satisfy, file_path
-                    )
-                )
-
-            else:
-                streamer = streamer_versions[self.base_version]
-                out.append(streamer)
-                out.extend(streamer.dependencies(classes, streamers, file_path))
-
-        return out
-
     def class_code(
         self,
         streamerinfo,
@@ -423,6 +378,7 @@ in file {3}""".format(
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -463,6 +419,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -476,9 +433,10 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             read_members.append("            cursor.skip(1)")
         read_members.append(
             "        self._members[{0}] = cursor.array(chunk, self.member({1}), tmp)".format(
-                repr(self.name), self.count_name
+                repr(self.name), repr(self.count_name)
             )
         )
+        base_names_versions,
         member_names.append(self.name)
         dtypes.append(_ftype_to_dtype(self.fType - uproot4.const.kOffsetP))
 
@@ -562,6 +520,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -636,6 +595,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -780,6 +740,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -835,6 +796,7 @@ class Model_TStreamerSTLstring(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -855,6 +817,7 @@ class pointer_types(object):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):
@@ -907,6 +870,7 @@ class object_types(object):
         fields,
         formats,
         dtypes,
+        base_names_versions,
         member_names,
         class_flags,
     ):

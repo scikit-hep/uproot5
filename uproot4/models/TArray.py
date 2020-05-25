@@ -19,6 +19,9 @@ _tarray_format1 = struct.Struct(">i")
 
 
 class Model_TArray(uproot4.model.Model, Sequence):
+    def read_numbytes_version(self, chunk, cursor, context):
+        pass
+
     def read_members(self, chunk, cursor, context):
         self._members["fN"] = cursor.field(chunk, _tarray_format1)
         self._data = cursor.array(chunk, self._members["fN"], self.dtype)

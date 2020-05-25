@@ -39,7 +39,9 @@ def test():
             "fBinStatErrOpt",
         ]
 
-        # cls = f.file.class_named("TAxis", "max")
-        # print(cls.class_code)
+        print(f.file.class_named("TH1", 7).class_code)
+        print(f.file.class_named("TH1F", 2).class_code)
 
-        # print(f.get("one"))
+        print(f.get("one"))
+
+    # raise Exception
