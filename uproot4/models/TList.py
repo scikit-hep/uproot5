@@ -11,6 +11,7 @@ except ImportError:
 
 import uproot4.model
 import uproot4.deserialization
+import uproot4.models.TObject
 
 
 _tlist_format1 = struct.Struct(">i")
@@ -19,7 +20,11 @@ _tlist_format2 = struct.Struct(">B")
 
 class Model_TList(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor, context):
-        uproot4.deserialization.skip_tobject(chunk, cursor)
+        self._bases.append(
+            uproot4.models.TObject.Model_TObject.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
 
         self._members["fName"] = cursor.string(chunk)
         self._members["fSize"] = cursor.field(chunk, _tlist_format1)
@@ -40,6 +45,14 @@ class Model_TList(uproot4.model.Model, Sequence):
 
     def __len__(self):
         return len(self._data)
+
+    def tojson(self):
+        return {
+            "_typename": "TList",
+            "name": "TList",
+            "arr": [x.tojson() for x in self._data],
+            "opt": [],
+        }
 
 
 uproot4.classes["TList"] = Model_TList

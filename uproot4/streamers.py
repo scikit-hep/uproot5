@@ -10,6 +10,7 @@ import numpy
 import uproot4.model
 import uproot4.const
 import uproot4.deserialization
+import uproot4.models.TNamed
 
 
 _canonical_typename_patterns = [
@@ -123,11 +124,14 @@ _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 class Model_TStreamerInfo(uproot4.model.Model):
     def read_members(self, chunk, cursor, context):
-        name, self._members["fTitle"] = uproot4.deserialization.name_title(
-            chunk, cursor, self._file.file_path
+        self._bases.append(
+            uproot4.models.TNamed.Model_TNamed.read(
+                chunk, cursor, context, self._file, self._parent
+            )
         )
-        self._members["fUniqueID"], self._members["fBits"] = 0, 0
-        self._members["fName"] = _canonical_typename(name)
+        self._bases[0]._members["fName"] = _canonical_typename(
+            self._bases[0]._members["fName"]
+        )
 
         self._members["fCheckSum"], self._members["fClassVersion"] = cursor.fields(
             chunk, _tstreamerinfo_format1
@@ -150,7 +154,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     @property
     def name(self):
-        return self._members["fName"]
+        return self.member("fName")
 
     @property
     def class_version(self):
@@ -161,17 +165,11 @@ class Model_TStreamerInfo(uproot4.model.Model):
         return self._members["fElements"]
 
     def new_class(self, file):
-        classes, file_path = file.classes, file.file_path
-
         class_code = self.class_code()
         class_name = uproot4.model.classname_encode(self.name, self.class_version)
-
-        cls = uproot4.deserialization.compile_class(
-            file, classes, class_code, class_name
+        return uproot4.deserialization.compile_class(
+            file, file.classes, class_code, class_name
         )
-        classes[class_name] = cls
-
-        return cls
 
     def class_code(self):
         read_members = ["    def read_members(self, chunk, cursor, context):"]
@@ -257,11 +255,11 @@ class Model_TStreamerElement(uproot4.model.Model):
     def read_members(self, chunk, cursor, context):
         # https://github.com/root-project/root/blob/master/core/meta/src/TStreamerElement.cxx#L505
 
-        self._members["fUniqueID"], self._members["fBits"] = 0, 0
-        (
-            self._members["fName"],
-            self._members["fTitle"],
-        ) = uproot4.deserialization.name_title(chunk, cursor, self._file.file_path)
+        self._bases.append(
+            uproot4.models.TNamed.Model_TNamed.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
 
         (
             self._members["fType"],

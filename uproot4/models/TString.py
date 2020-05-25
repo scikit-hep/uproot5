@@ -30,5 +30,8 @@ class Model_TString(uproot4.model.Model, str):
             id(self),
         )
 
+    def tojson(self):
+        return str(self)
+
 
 uproot4.classes["TString"] = Model_TString

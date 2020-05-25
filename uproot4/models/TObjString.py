@@ -3,12 +3,16 @@
 from __future__ import absolute_import
 
 import uproot4.model
-import uproot4.deserialization
+import uproot4.models.TObject
 
 
 class Model_TObjString(uproot4.model.Model, str):
     def read_members(self, chunk, cursor, context):
-        uproot4.deserialization.skip_tobject(chunk, cursor)
+        self._bases.append(
+            uproot4.models.TObject.Model_TObject.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
         self._data = cursor.string(chunk)
 
     def postprocess(self):

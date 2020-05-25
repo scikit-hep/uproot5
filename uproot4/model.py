@@ -64,7 +64,7 @@ class Model(object):
             cursor,
             self._num_bytes,
             classname_pretty(self.classname, self.class_version),
-            self._file.file_path,
+            getattr(self._file, "file_path"),
         )
 
     def postprocess(self):
@@ -130,20 +130,42 @@ class Model(object):
     def bases(self):
         return self._bases
 
-    def member(self, name):
+    def has_member(self, name, bases=True, recursive_bases=True):
+        if name in self._members:
+            return True
+        if bases:
+            for base in reversed(self._bases):
+                if recursive_bases:
+                    if base.has_member(
+                        name, bases=bases, recursive_bases=recursive_bases
+                    ):
+                        return True
+                else:
+                    if name in base._members:
+                        return True
+        return False
+
+    def member(self, name, bases=True, recursive_bases=True):
         if name in self._members:
             return self._members[name]
-        else:
+        if bases:
             for base in reversed(self._bases):
-                if name in base._members:
-                    return base._members[name]
-            else:
-                raise KeyError(
-                    """C++ member {0} not found
-in file {1}""".format(
-                        repr(name), self._file.file_path
-                    )
-                )
+                if recursive_bases:
+                    if base.has_member(
+                        name, bases=bases, recursive_bases=recursive_bases
+                    ):
+                        return base.member(
+                            name, bases=bases, recursive_bases=recursive_bases
+                        )
+                else:
+                    if name in base._members:
+                        return base._members[name]
+
+        if self._file is None:
+            in_file = ""
+        else:
+            in_file = "\nin file {0}".format(self._file.file_path)
+        raise KeyError("C++ member {0} not found{1}".format(repr(name), in_file))
 
     def tojson(self):
         out = {"_typename": self.classname}

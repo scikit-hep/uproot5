@@ -2,14 +2,15 @@
 
 from __future__ import absolute_import
 
-import uproot4.deserialization
 import uproot4.models.TList
 
 
-class Model_THashList(uproot4.models.TList.Model_TList):
+class Model_THashList(uproot4.model.Model):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
-            uproot4.models.TList.read(chunk, cursor, context, self._file, self._parent)
+            uproot4.models.TList.Model_TList.read(
+                chunk, cursor, context, self._file, self._parent
+            )
         )
 
 

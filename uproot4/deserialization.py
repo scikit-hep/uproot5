@@ -18,6 +18,10 @@ scope = {
 }
 
 
+def _actually_compile(class_code, new_scope):
+    exec(compile(class_code, "<dynamic>", "exec"), new_scope)
+
+
 def compile_class(file, classes, class_code, class_name):
     new_scope = dict(scope)
     for cls in classes.values():
@@ -33,7 +37,7 @@ def compile_class(file, classes, class_code, class_name):
 
     new_scope["c"] = c
 
-    exec(compile(class_code, "<dynamic>", "exec"), new_scope)
+    _actually_compile(class_code, new_scope)
 
     out = new_scope[class_name]
     out.class_code = class_code
@@ -66,38 +70,15 @@ def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, file_path):
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
+            if file_path is None:
+                in_file = ""
+            else:
+                in_file = "\nin file {0}".format(file_path)
             raise ValueError(
-                """instance of ROOT class {0} has {1} bytes; expected {2}
-in file {3}""".format(
-                    classname, observed, num_bytes, file_path
+                """instance of ROOT class {0} has {1} bytes; expected {2}{3}""".format(
+                    classname, observed, num_bytes, in_file
                 )
             )
-
-
-_skip_tobject_format1 = struct.Struct(">h")
-_skip_tobject_format2 = struct.Struct(">II")
-
-
-def skip_tobject(chunk, cursor):
-    version = cursor.field(chunk, _skip_tobject_format1)
-    if numpy.int64(version) & uproot4.const.kByteCountVMask:
-        cursor.skip(4)
-    fUniqueID, fBits = cursor.fields(chunk, _skip_tobject_format2)
-    fBits = numpy.uint32(fBits) | uproot4.const.kIsOnHeap
-    if fBits & uproot4.const.kIsReferenced:
-        cursor.skip(2)
-
-
-def name_title(chunk, cursor, file_path):
-    start_cursor = cursor.copy()
-    num_bytes, version = numbytes_version(chunk, cursor)
-
-    skip_tobject(chunk, cursor)
-    name = cursor.string(chunk)
-    title = cursor.string(chunk)
-
-    numbytes_check(start_cursor, cursor, num_bytes, "TNamed", file_path)
-    return name, title
 
 
 _map_string_string_format1 = struct.Struct(">I")
@@ -188,12 +169,11 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
 
         if as_class is None:
             if ref not in cursor.refs:
-                raise OSError(
-                    """invalid class-tag reference
-in file: {0}""".format(
-                        file.file_path
-                    )
-                )
+                if getattr(file, "file_path") is None:
+                    in_file = ""
+                else:
+                    in_file = "\nin file {0}".format(file.file_path)
+                raise OSError("""invalid class-tag reference{0}""".format(in_file))
 
             cls = cursor.refs[ref]  # reference class
             obj = cls.read(chunk, cursor, context, file, parent)

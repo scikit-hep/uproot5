@@ -12,7 +12,6 @@ except ImportError:
 import numpy
 
 import uproot4.model
-import uproot4.deserialization
 
 
 _tarray_format1 = struct.Struct(">i")
@@ -41,6 +40,9 @@ class Model_TArray(uproot4.model.Model, Sequence):
             str(self._data),
             id(self),
         )
+
+    def tojson(self):
+        return self._data.tolist()
 
 
 class Model_TArrayC(Model_TArray):
