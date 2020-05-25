@@ -52,7 +52,9 @@ def isstr(x):
 def ensure_str(x):
     if not py2 and isinstance(x, bytes):
         return x.decode(errors="surrogateescape")
-    elif (py2 and isinstance(x, (bytes, unicode))) or isinstance(x, str):
+    elif py2 and isinstance(x, unicode):
+        return x.encode()
+    elif isinstance(x, str):
         return x
     else:
         raise TypeError("expected a string, not {0}".format(type(x)))
@@ -134,3 +136,9 @@ def memory_size(data):
             "number of bytes or memory size string with units "
             "required, not {0}".format(repr(data))
         )
+
+
+def new_class(name, bases, members):
+    out = type(ensure_str(name), bases, members)
+    out.__module__ = "<dynamic>"
+    return out

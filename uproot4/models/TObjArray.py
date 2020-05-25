@@ -9,15 +9,21 @@ try:
 except ImportError:
     from collections import Sequence
 
+import uproot4.model
 import uproot4.deserialization
+import uproot4.models.TObject
 
 
 _tobjarray_format1 = struct.Struct(">ii")
 
 
-class ROOT_TObjArray(uproot4.deserialization.Model, Sequence):
-    def read_members(self, chunk, cursor):
-        uproot4.deserialization._skip_tobject(chunk, cursor)
+class Model_TObjArray(uproot4.model.Model, Sequence):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            uproot4.models.TObject.Model_TObject.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
 
         self._members["fName"] = cursor.string(chunk)
         self._members["fSize"], self._members["fLowerBound"] = cursor.fields(
@@ -26,8 +32,8 @@ class ROOT_TObjArray(uproot4.deserialization.Model, Sequence):
 
         self._data = []
         for i in range(self._members["fSize"]):
-            item = uproot4.deserialization._read_object_any(
-                chunk, cursor, self._file, self._parent
+            item = uproot4.deserialization.read_object_any(
+                chunk, cursor, context, self._file, self._parent
             )
             self._data.append(item)
 
@@ -45,4 +51,4 @@ class ROOT_TObjArray(uproot4.deserialization.Model, Sequence):
         }
 
 
-uproot4.classes["TObjArray"] = ROOT_TObjArray
+uproot4.classes["TObjArray"] = Model_TObjArray

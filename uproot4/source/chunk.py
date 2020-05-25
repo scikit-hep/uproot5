@@ -93,12 +93,13 @@ class Source(object):
         """
         num_bytes = self.num_bytes
         if begin_guess_bytes + end_guess_bytes > num_bytes:
-            chunk = self.chunk(0, num_bytes, exact=False)
+            chunk = self.chunk(0, num_bytes, exact=False, long_lived=True)
             return chunk, chunk
         else:
             return self.chunks(
                 [(0, begin_guess_bytes), (num_bytes - end_guess_bytes, num_bytes)],
                 exact=False,
+                long_lived=True,
             )
 
 
@@ -145,7 +146,7 @@ class MultithreadedSource(Source):
         self._executor.__exit__(exception_type, exception_value, traceback)
         self._resource.__exit__(exception_type, exception_value, traceback)
 
-    def chunk(self, start, stop, exact=True):
+    def chunk(self, start, stop, exact=True, long_lived=False):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
@@ -155,6 +156,8 @@ class MultithreadedSource(Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
+            long_lived (bool): If True, ensure that the returned Chunk has
+                indefinite lifespan (i.e. not attached to an open memory map).
 
         Returns a single Chunk that has already been filled synchronously.
         """
@@ -165,7 +168,7 @@ class MultithreadedSource(Source):
         future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
         return Chunk(self, start, stop, future, exact)
 
-    def chunks(self, ranges, exact=True, notifications=None):
+    def chunks(self, ranges, exact=True, long_lived=False, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
@@ -173,6 +176,8 @@ class MultithreadedSource(Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
+            long_lived (bool): If True, ensure that the returned Chunk has
+                indefinite lifespan (i.e. not attached to an open memory map).
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 

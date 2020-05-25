@@ -1109,9 +1109,57 @@ from_ROOT["TString"] = json.loads(
 )
 
 
+def drop_fbits(x):
+    if isinstance(x, dict):
+        return dict((k, drop_fbits(v)) for k, v in x.items() if k != "fBits")
+    elif isinstance(x, list):
+        return list(drop_fbits(v) for v in x)
+    else:
+        return x
+
+
 def test():
     with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
         streamers = f.file.streamers
         assert len(streamers) == 14
-        for k, v in streamers.items():
-            assert v.tojson() == from_ROOT[k]
+
+        assert drop_fbits(from_ROOT["TH1F"]) == drop_fbits(
+            streamers["TH1F"][2].tojson()
+        )
+        assert drop_fbits(from_ROOT["TH1"]) == drop_fbits(streamers["TH1"][7].tojson())
+        assert drop_fbits(from_ROOT["TNamed"]) == drop_fbits(
+            streamers["TNamed"][1].tojson()
+        )
+        assert drop_fbits(from_ROOT["TObject"]) == drop_fbits(
+            streamers["TObject"][1].tojson()
+        )
+        assert drop_fbits(from_ROOT["TAttLine"]) == drop_fbits(
+            streamers["TAttLine"][2].tojson()
+        )
+        assert drop_fbits(from_ROOT["TAttFill"]) == drop_fbits(
+            streamers["TAttFill"][2].tojson()
+        )
+        assert drop_fbits(from_ROOT["TAttMarker"]) == drop_fbits(
+            streamers["TAttMarker"][2].tojson()
+        )
+        assert drop_fbits(from_ROOT["TAxis"]) == drop_fbits(
+            streamers["TAxis"][10].tojson()
+        )
+        assert drop_fbits(from_ROOT["TAttAxis"]) == drop_fbits(
+            streamers["TAttAxis"][4].tojson()
+        )
+        assert drop_fbits(from_ROOT["THashList"]) == drop_fbits(
+            streamers["THashList"][0].tojson()
+        )
+        assert drop_fbits(from_ROOT["TList"]) == drop_fbits(
+            streamers["TList"][5].tojson()
+        )
+        assert drop_fbits(from_ROOT["TSeqCollection"]) == drop_fbits(
+            streamers["TSeqCollection"][0].tojson()
+        )
+        assert drop_fbits(from_ROOT["TCollection"]) == drop_fbits(
+            streamers["TCollection"][3].tojson()
+        )
+        assert drop_fbits(from_ROOT["TString"]) == drop_fbits(
+            streamers["TString"][2].tojson()
+        )

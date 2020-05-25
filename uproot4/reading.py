@@ -12,8 +12,10 @@ import uuid
 
 try:
     from collections.abc import Mapping
+    from collections.abc import MutableMapping
 except ImportError:
     from collections import Mapping
+    from collections import MutableMapping
 
 import uproot4._util
 import uproot4.compression
@@ -23,14 +25,17 @@ import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
 import uproot4.streamers
-import uproot4.deserialization
+import uproot4.model
 
 
-def open(file_path, cache=None, **options):
+def open(file_path, cache=None, classes=None, **options):
     """
     Args:
         file_path (str or Path): File path or URL to open.
         cache (None or MutableMapping): FIXME not implemented.
+        classes (None or MutableMapping): If None, defaults to uproot4.classes;
+            otherwise, a container of class definitions that is both used to
+            fill with new classes and search for dependencies.
         options: see below.
 
     Opens a ROOT file, possibly through a remote protocol.
@@ -49,7 +54,7 @@ def open(file_path, cache=None, **options):
         * streamer_guess_bytes (memory_size; "64 kB")
     """
 
-    file = ReadOnlyFile(file_path, cache=cache, **options)
+    file = ReadOnlyFile(file_path, cache=cache, classes=classes, **options)
     return file.root_directory
 
 
@@ -75,23 +80,24 @@ _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
 
 class ReadOnlyFile(object):
-    def __init__(self, file_path, cache=None, **options):
+    def __init__(self, file_path, cache=None, classes=None, **options):
         self._file_path = file_path
         self.cache = cache
-        self._streamer_key = None
-        self._streamers = None
+        self.classes = classes
 
         self._options = dict(open.defaults)
         self._options.update(options)
         for option in ("begin_guess_bytes", "end_guess_bytes"):
             self._options[option] = uproot4._util.memory_size(self._options[option])
 
-        self.hook_before_create_source(file_path=file_path, options=self._options)
+        self._streamers = None
+
+        self.hook_before_create_source()
 
         Source = uproot4._util.path_to_source_class(file_path, self._options)
         self._source = Source(file_path, **self._options)
 
-        self.hook_before_get_chunks(file_path=file_path, options=self._options)
+        self.hook_before_get_chunks()
 
         if self._options["begin_guess_bytes"] < _file_header_fields_big.size:
             raise ValueError(
@@ -105,7 +111,7 @@ class ReadOnlyFile(object):
             self._options["begin_guess_bytes"], self._options["end_guess_bytes"]
         )
 
-        self.hook_before_read(file_path=file_path, options=self._options)
+        self.hook_before_read()
 
         (
             magic,
@@ -146,6 +152,8 @@ class ReadOnlyFile(object):
                 self._begin_chunk, _file_header_fields_big
             )
 
+        self.hook_after_read(magic=magic)
+
         if magic != b"root":
             raise ValueError(
                 """not a ROOT file: first four bytes are {0}
@@ -153,18 +161,6 @@ in file {1}""".format(
                     repr(magic), file_path
                 )
             )
-
-        self.hook_before_root_directory(file_path=file_path, options=self._options)
-
-        self._root_directory = ReadOnlyDirectory(
-            (),
-            uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
-            self,
-            self,
-            self._options,
-        )
-
-        self.hook_after_root_directory(file_path=file_path, options=self._options)
 
     def __repr__(self):
         return "<ReadOnlyFile {0}>".format(repr(self._file_path))
@@ -178,10 +174,7 @@ in file {1}""".format(
     def hook_before_read(self, **kwargs):
         pass
 
-    def hook_before_root_directory(self, **kwargs):
-        pass
-
-    def hook_after_root_directory(self, **kwargs):
+    def hook_after_read(self, **kwargs):
         pass
 
     def hook_before_read_streamer_key(self, **kwargs):
@@ -197,10 +190,6 @@ in file {1}""".format(
         pass
 
     @property
-    def options(self):
-        return self._options
-
-    @property
     def file_path(self):
         return self._file_path
 
@@ -210,7 +199,27 @@ in file {1}""".format(
 
     @cache.setter
     def cache(self, value):
-        self._cache = value
+        if value is None or isinstance(value, MutableMapping):
+            self._cache = value
+        else:
+            raise TypeError("cache must be None or a MutableMapping")
+
+    @property
+    def classes(self):
+        return self._classes
+
+    @classes.setter
+    def classes(self, value):
+        if value is None:
+            self._classes = uproot4.classes
+        elif isinstance(value, MutableMapping):
+            self._classes = value
+        else:
+            raise TypeError("classes must be None or a MutableMapping")
+
+    @property
+    def options(self):
+        return self._options
 
     @property
     def source(self):
@@ -225,7 +234,9 @@ in file {1}""".format(
         return self._end_chunk
 
     def chunk(self, start, stop):
-        if (start, stop) in self._end_chunk:
+        if self.closed:
+            raise OSError("file {0} is closed".format(repr(self._file_path)))
+        elif (start, stop) in self._end_chunk:
             return self._end_chunk
         elif (start, stop) in self._begin_chunk:
             return self._begin_chunk
@@ -233,10 +244,21 @@ in file {1}""".format(
             return self._source.chunk(start, stop)
 
     @property
+    def root_directory(self):
+        return ReadOnlyDirectory(
+            (),
+            uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
+            self,
+            self,
+            self._options,
+        )
+
+    @property
     def streamers(self):
         import uproot4.streamers
         import uproot4.models.TList
         import uproot4.models.TObjArray
+        import uproot4.models.TObjString
 
         if self._streamers is None:
             if self._fSeekInfo == 0:
@@ -251,58 +273,98 @@ in file {1}""".format(
                 key_chunk = self.chunk(key_start, key_stop)
 
                 self.hook_before_read_streamer_key(
-                    key_cursor=key_cursor, key_chunk=key_chunk,
+                    key_chunk=key_chunk, key_cursor=key_cursor,
                 )
 
-                self._streamer_key = ReadOnlyKey(
-                    key_cursor, key_chunk, self, self, self._options
+                streamer_key = ReadOnlyKey(
+                    key_chunk, key_cursor, {}, self, self, self._options
                 )
 
                 self.hook_before_decompress_streamers(
-                    key_cursor=key_cursor, key_chunk=key_chunk,
+                    key_chunk=key_chunk,
+                    key_cursor=key_cursor,
+                    streamer_key=streamer_key,
                 )
 
                 (
-                    streamer_cursor,
                     streamer_chunk,
-                ) = self._streamer_key.get_uncompressed_cursor_chunk()
+                    streamer_cursor,
+                ) = streamer_key.get_uncompressed_chunk_cursor()
 
                 self.hook_before_read_streamers(
-                    key_cursor=key_cursor,
                     key_chunk=key_chunk,
+                    key_cursor=key_cursor,
+                    streamer_key=streamer_key,
                     streamer_cursor=streamer_cursor,
                     streamer_chunk=streamer_chunk,
                 )
 
-                tlist = uproot4.classes["TList"].read(
-                    streamer_chunk, streamer_cursor, self, self, None
+                tlist = self._classes["TList"].read(
+                    streamer_chunk, streamer_cursor, {}, self, self
                 )
 
                 self._streamers = {}
                 for x in tlist:
-                    self._streamers[x.name] = x
+                    if x.name not in self._streamers:
+                        self._streamers[x.name] = {}
+                    self._streamers[x.name][x.class_version] = x
 
                 self.hook_after_read_streamers(
-                    key_cursor=key_cursor,
                     key_chunk=key_chunk,
+                    key_cursor=key_cursor,
+                    streamer_key=streamer_key,
                     streamer_cursor=streamer_cursor,
                     streamer_chunk=streamer_chunk,
                 )
 
         return self._streamers
 
-    def streamer_named(self, classname, version=None):
-        raise NotImplementedError
+    def streamer_named(self, classname, version):
+        streamer_versions = self._streamers.get(classname)
+        if streamer_versions is None or len(streamer_versions) == 0:
+            return None
+        elif version == "min":
+            return streamer_versions[min(streamer_versions)]
+        elif version == "max":
+            return streamer_versions[max(streamer_versions)]
+        else:
+            return streamer_versions.get(version)
+
+    def streamers_named(self, classname):
+        return list(self.streamers[classname].values())
 
     def class_named(self, classname, version=None):
-        import uproot4
+        cls = self._classes.get(classname)
 
-        cls = uproot4.classes.get(classname)
         if cls is None:
-            raise NotImplementedError
+            streamers = self.streamers_named(classname)
 
-        if version is not None:
-            cls = cls.class_of_version(version)
+            if len(streamers) == 0:
+                unknown_cls = uproot4.unknown_classes.get(classname)
+                if unknown_cls is None:
+                    unknown_cls = uproot4._util.new_class(
+                        uproot4.model.classname_encode(classname, unknown=True),
+                        (uproot4.model.UnknownClass,),
+                        {},
+                    )
+                    uproot4.unknown_classes[classname] = unknown_cls
+                return unknown_cls
+
+            else:
+                cls = uproot4._util.new_class(
+                    uproot4._util.ensure_str(uproot4.model.classname_encode(classname)),
+                    (uproot4.model.DispatchByVersion,),
+                    {"known_versions": {}},
+                )
+                self._classes[classname] = cls
+
+        if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
+            if not uproot4._util.isint(version):
+                version = self.streamer_named(classname, version).class_version
+            if not cls.has_version(version):
+                cls = cls.new_class(self, version)
+            else:
+                cls = cls.class_of_version(version)
 
         return cls
 
@@ -342,14 +404,6 @@ in file {1}""".format(
     @property
     def uuid(self):
         return uuid.UUID(self.hex_uuid.replace("-", ""))
-
-    @property
-    def streamer_key(self):
-        return self._streamer_key
-
-    @property
-    def root_directory(self):
-        return self._root_directory
 
     @property
     def fVersion(self):
@@ -414,19 +468,29 @@ in file {1}""".format(
         """
         self._source.__exit__(exception_type, exception_value, traceback)
 
+    def close(self):
+        self._source.close()
+
+    @property
+    def closed(self):
+        return self._source.closed
+
 
 class ReadOnlyKey(object):
     _format_small = struct.Struct(">ihiIhhii")
     _format_big = struct.Struct(">ihiIhhqq")
 
-    def __init__(self, cursor, chunk, file, parent, options, read_strings=False):
+    def __init__(
+        self, chunk, cursor, context, file, parent, options, read_strings=False
+    ):
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
 
         self.hook_before_read(
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
+            context=context,
             file=file,
             parent=parent,
             options=options,
@@ -461,8 +525,9 @@ class ReadOnlyKey(object):
 
         if read_strings:
             self.hook_before_read_strings(
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
+                context=context,
                 file=file,
                 parent=parent,
                 options=options,
@@ -479,8 +544,9 @@ class ReadOnlyKey(object):
             self._fTitle = None
 
         self.hook_after_read(
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
+            context=context,
             file=file,
             parent=parent,
             options=options,
@@ -539,9 +605,7 @@ class ReadOnlyKey(object):
 
     def classname(self, encoded=False, version=None):
         if encoded:
-            return uproot4.deserialization.classname_encode(
-                self.fClassName, version=version
-            )
+            return uproot4.model.classname_encode(self.fClassName, version=version)
         else:
             return self.fClassName
 
@@ -593,7 +657,7 @@ class ReadOnlyKey(object):
     def data_cursor(self):
         return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
 
-    def get_uncompressed_cursor_chunk(self):
+    def get_uncompressed_chunk_cursor(self):
         data_start = self.data_cursor.index
         data_stop = data_start + self.data_compressed_bytes
         chunk = self._file.chunk(data_start, data_stop)
@@ -602,18 +666,21 @@ class ReadOnlyKey(object):
 
         if self.is_compressed:
             return (
-                cursor,
                 uproot4.compression.decompress(
                     chunk,
                     self.data_cursor,
+                    {},
                     self.data_compressed_bytes,
                     self.data_uncompressed_bytes,
                 ),
+                cursor,
             )
         else:
             return (
+                uproot4.source.chunk.Chunk.wrap(
+                    chunk.source, chunk.get(data_start, data_stop)
+                ),
                 cursor,
-                uproot4.source.chunk.Chunk.wrap(chunk.source, chunk.raw_data),
             )
 
     def get(self):
@@ -630,7 +697,9 @@ class ReadOnlyKey(object):
             )
 
         else:
-            raise NotImplementedError
+            chunk, cursor = self.get_uncompressed_chunk_cursor()
+            cls = self._file.class_named(self._fClassName)
+            return cls.read(chunk, cursor, {}, self._file, self)
 
 
 class ReadOnlyDirectory(Mapping):
@@ -650,8 +719,8 @@ class ReadOnlyDirectory(Mapping):
 
         self.hook_before_read(
             path=path,
-            cursor=cursor,
             chunk=chunk,
+            cursor=cursor,
             file=file,
             parent=parent,
             options=options,
@@ -700,8 +769,8 @@ class ReadOnlyDirectory(Mapping):
 
             self.hook_before_header_key(
                 path=path,
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
                 file=file,
                 parent=parent,
                 options=options,
@@ -710,15 +779,15 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._header_key = ReadOnlyKey(
-                keys_cursor, keys_chunk, file, self, options, read_strings=True
+                keys_chunk, keys_cursor, {}, file, self, options, read_strings=True
             )
 
             num_keys = keys_cursor.field(keys_chunk, self._format_num_keys)
 
             self.hook_before_keys(
                 path=path,
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
                 file=file,
                 parent=parent,
                 options=options,
@@ -730,14 +799,14 @@ class ReadOnlyDirectory(Mapping):
             self._keys = []
             for i in range(num_keys):
                 key = ReadOnlyKey(
-                    keys_cursor, keys_chunk, file, self, options, read_strings=True
+                    keys_chunk, keys_cursor, {}, file, self, options, read_strings=True
                 )
                 self._keys.append(key)
 
             self.hook_after_read(
                 path=path,
-                cursor=cursor,
                 chunk=chunk,
+                cursor=cursor,
                 file=file,
                 parent=parent,
                 options=options,
@@ -832,6 +901,9 @@ class ReadOnlyDirectory(Mapping):
         """
         self._file.source.__exit__(exception_type, exception_value, traceback)
 
+    def close(self):
+        self._file.close()
+
     def iterkeys(
         self,
         recursive=True,
@@ -922,9 +994,9 @@ class ReadOnlyDirectory(Mapping):
         key = self.key(where)
         return key.classname(encoded=encoded, version=version)
 
-    def streamer_of(self, where, version=None):
+    def streamer_of(self, where, version):
         key = self.key(where)
-        return self._file.streamer_named(key.fClassName, version=version)
+        return self._file.streamer_named(key.fClassName, version)
 
     def class_of(self, where, version=None):
         key = self.key(where)

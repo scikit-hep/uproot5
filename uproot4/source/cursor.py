@@ -28,7 +28,7 @@ class Cursor(object):
             index (int): Global position in the ROOT file.
             origin (int): Placeholder that is sometimes useful for arithmetic.
             refs (None or dict): References to data already read, for
-                `_readobjany`.
+                `read_object_any`.
         """
         self._index = index
         self._origin = origin
@@ -42,8 +42,14 @@ class Cursor(object):
 
         if self._refs is None or len(self._refs) == 0:
             r = ""
+        elif self._refs is None or len(self._refs) < 3:
+            r = ", {0} refs: {1}".format(
+                len(self._refs), ", ".join(str(x) for x in self._refs)
+            )
         else:
-            r = ", refs=[{0}]".format(", ".join(str(x) for x in self._refs))
+            r = ", {0} refs: {1}...".format(
+                len(self._refs), ", ".join(str(x) for x in list(self._refs)[:3])
+            )
 
         return "Cursor({0}{1}{2})".format(self._index, o, r)
 
@@ -64,7 +70,7 @@ class Cursor(object):
     @property
     def refs(self):
         """
-        References to data already read, for `_readobjany`.
+        References to data already read, for `read_object_any`.
         """
         if self._refs is None:
             self._refs = {}

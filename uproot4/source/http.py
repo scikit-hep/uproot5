@@ -597,13 +597,21 @@ class HTTPSource(uproot4.source.chunk.Source):
             time.sleep(0.001)
 
     @property
+    def closed(self):
+        """
+        True if the associated file/connection/thread pool is closed; False
+        otherwise.
+        """
+        return not self._worker.is_alive()
+
+    @property
     def num_bytes(self):
         """
         The number of bytes in the file.
         """
         return self._worker.num_bytes
 
-    def chunk(self, start, stop, exact=True):
+    def chunk(self, start, stop, exact=True, long_lived=False):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
@@ -613,6 +621,8 @@ class HTTPSource(uproot4.source.chunk.Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
+            long_lived (bool): If True, ensure that the returned Chunk has
+                indefinite lifespan (i.e. not attached to an open memory map).
 
         Returns a single Chunk that will be filled by the background thread.
         """
@@ -625,7 +635,7 @@ class HTTPSource(uproot4.source.chunk.Source):
         self._work_queue.put(HTTPBackgroundThread.SinglepartWork(start, stop, future))
         return chunk
 
-    def chunks(self, ranges, exact=True, notifications=None):
+    def chunks(self, ranges, exact=True, long_lived=False, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
@@ -633,6 +643,8 @@ class HTTPSource(uproot4.source.chunk.Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
+            long_lived (bool): If True, ensure that the returned Chunk has
+                indefinite lifespan (i.e. not attached to an open memory map).
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 
@@ -898,3 +910,11 @@ in file {1}""".format(
                 )
 
         return self._num_bytes
+
+    @property
+    def closed(self):
+        """
+        True if the associated file/connection/thread pool is closed; False
+        otherwise.
+        """
+        return self._executor.closed
