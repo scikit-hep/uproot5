@@ -11,6 +11,7 @@ from uproot4.source.http import HTTPSource
 from uproot4.source.http import MultithreadedHTTPSource
 from uproot4.source.xrootd import XRootDSource
 from uproot4.source.xrootd import MultithreadedXRootDSource
+from uproot4.source.cursor import Cursor
 
 from uproot4.reading import open
 from uproot4.reading import no_filter
@@ -35,4 +36,4 @@ import uproot4.models.THashList
 import uproot4.models.TArray
 
 # import uproot4.models.ROOT_3a3a_TIOFeatures
-# import uproot4.models.ROOT_3a3a_Experimental_3a3a_RNTuple
+import uproot4.models.RNTuple
