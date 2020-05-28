@@ -247,6 +247,31 @@ class Model_TLeafS(uproot4.model.DispatchByVersion):
     known_versions = {1: Model_TLeafS_v1}
 
 
+_tleafelement1_format1 = struct.Struct(">ii")
+
+
+class Model_TLeafElement_v1(uproot4.model.VersionedModel):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            self.class_named("TLeaf", 2).read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+        self._members["fID"], self._members["fType"] = cursor.fields(
+            chunk, _tleafelement1_format1
+        )
+
+    base_names_versions = [("TLeaf", 2)]
+    member_names = ["fID", "fType"]
+    class_flags = {}
+    hooks = None
+    class_code = None
+
+
+class Model_TLeafElement(uproot4.model.DispatchByVersion):
+    known_versions = {1: Model_TLeafElement_v1}
+
+
 uproot4.classes["TLeaf"] = Model_TLeaf
 uproot4.classes["TLeafB"] = Model_TLeafB
 uproot4.classes["TLeafC"] = Model_TLeafC
@@ -256,3 +281,4 @@ uproot4.classes["TLeafI"] = Model_TLeafI
 uproot4.classes["TLeafL"] = Model_TLeafL
 uproot4.classes["TLeafO"] = Model_TLeafO
 uproot4.classes["TLeafS"] = Model_TLeafS
+uproot4.classes["TLeafElement"] = Model_TLeafElement

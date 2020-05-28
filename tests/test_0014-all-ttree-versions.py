@@ -21,6 +21,7 @@ def test():
             assert x.class_version == 11
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.24.00-uncompressed.root")
@@ -30,6 +31,7 @@ def test():
             assert x.class_version == 11
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.25.02-uncompressed.root")
@@ -39,6 +41,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.26.00-uncompressed.root")
@@ -48,6 +51,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.27.02-uncompressed.root")
@@ -57,6 +61,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.28.00-uncompressed.root")
@@ -66,6 +71,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.29.02-uncompressed.root")
@@ -75,6 +81,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.30.00-uncompressed.root")
@@ -84,6 +91,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.08.04-uncompressed.root")
@@ -93,6 +101,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.10.05-uncompressed.root")
@@ -102,6 +111,7 @@ def test():
             assert x.class_version == 12
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.14.00-uncompressed.root")
@@ -111,6 +121,7 @@ def test():
             assert x.class_version == 13
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.16.00-uncompressed.root")
@@ -120,6 +131,7 @@ def test():
             assert x.class_version == 13
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.18.00-uncompressed.root")
@@ -129,6 +141,7 @@ def test():
             assert x.class_version == 13
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
@@ -138,5 +151,8 @@ def test():
             assert x.class_version == 13
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+        assert f.file._streamers is None
 
-    # raise Exception
+    with uproot4.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root")) as f:
+        print(f["t"])
+        assert f.file._streamers is None

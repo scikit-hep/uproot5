@@ -7,6 +7,7 @@ import struct
 import numpy
 
 import uproot4.model
+import uproot4.deserialization
 
 
 _tbranch11_format1 = struct.Struct(">iiiiqiIiqqqq")
@@ -330,4 +331,64 @@ class Model_TBranch(uproot4.model.DispatchByVersion):
     }
 
 
+_tbranchelement10_format1 = struct.Struct(">Ihiiii")
+
+
+class Model_TBranchElement_v10(uproot4.model.VersionedModel):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            self.class_named("TBranch", 12).read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+        self._members["fClassName"] = self.class_named("TString").read(
+            chunk, cursor, context, self._file, self
+        )
+        self._members["fParentName"] = self.class_named("TString").read(
+            chunk, cursor, context, self._file, self
+        )
+        self._members["fClonesName"] = self.class_named("TString").read(
+            chunk, cursor, context, self._file, self
+        )
+        (
+            self._members["fCheckSum"],
+            self._members["fClassVersion"],
+            self._members["fID"],
+            self._members["fType"],
+            self._members["fStreamerType"],
+            self._members["fMaximum"],
+        ) = cursor.fields(chunk, _tbranchelement10_format1)
+        self._members["fBranchCount"] = uproot4.deserialization.read_object_any(
+            chunk, cursor, context, self._file, self._parent
+        )
+        self._members["fBranchCount2"] = uproot4.deserialization.read_object_any(
+            chunk, cursor, context, self._file, self._parent
+        )
+
+    base_names_versions = [("TBranch", 12)]
+    member_names = [
+        "fClassName",
+        "fParentName",
+        "fClonesName",
+        "fCheckSum",
+        "fClassVersion",
+        "fID",
+        "fType",
+        "fStreamerType",
+        "fMaximum",
+        "fBranchCount",
+        "fBranchCount2",
+    ]
+    class_flags = {"has_read_object_any": True}
+    hooks = None
+    class_code = None
+
+
+class Model_TBranchElement(uproot4.model.DispatchByVersion):
+    known_versions = {
+        10: Model_TBranchElement_v10,
+    }
+
+
 uproot4.classes["TBranch"] = Model_TBranch
+uproot4.classes["TBranchElement"] = Model_TBranchElement
