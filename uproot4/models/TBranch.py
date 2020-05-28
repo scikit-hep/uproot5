@@ -7,8 +7,6 @@ import struct
 import numpy
 
 import uproot4.model
-import uproot4.deserialization
-import uproot4.models.TObject
 
 
 _tbranch11_format1 = struct.Struct(">iiiiqiIiqqqq")

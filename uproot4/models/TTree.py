@@ -8,7 +8,6 @@ import numpy
 
 import uproot4.model
 import uproot4.deserialization
-import uproot4.models.TObject
 
 
 _ttree16_format1 = struct.Struct(">qqqqdiiiqqqqq")
