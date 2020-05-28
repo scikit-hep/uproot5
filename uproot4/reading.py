@@ -91,6 +91,7 @@ class ReadOnlyFile(object):
             self._options[option] = uproot4._util.memory_size(self._options[option])
 
         self._streamers = None
+        self._streamer_rules = None
 
         self.hook_before_create_source()
 
@@ -304,10 +305,26 @@ in file {1}""".format(
                 )
 
                 self._streamers = {}
+                self._streamer_rules = []
+
                 for x in tlist:
-                    if x.name not in self._streamers:
-                        self._streamers[x.name] = {}
-                    self._streamers[x.name][x.class_version] = x
+                    if isinstance(x, uproot4.streamers.Model_TStreamerInfo):
+                        if x.name not in self._streamers:
+                            self._streamers[x.name] = {}
+                        self._streamers[x.name][x.class_version] = x
+
+                    elif isinstance(x, uproot4.models.TList.Model_TList) and all(
+                        isinstance(y, uproot4.models.TObjString.Model_TObjString) for y in x
+                    ):
+                        self._streamer_rules.extend([str(y) for y in x])
+
+                    else:
+                        raise ValueError(
+                            """unexpected type in TList of streamers and streamer rules: {0}
+in file {1}""".format(
+                                type(x), self._file_path
+                            )
+                        )
 
                 self.hook_after_read_streamers(
                     key_chunk=key_chunk,
@@ -319,8 +336,14 @@ in file {1}""".format(
 
         return self._streamers
 
+    @property
+    def streamer_rules(self):
+        if self._streamer_rules is None:
+            self.streamers
+        return self._streamer_rules
+
     def streamer_named(self, classname, version):
-        streamer_versions = self._streamers.get(classname)
+        streamer_versions = self.streamers.get(classname)
         if streamer_versions is None or len(streamer_versions) == 0:
             return None
         elif version == "min":
@@ -888,18 +911,26 @@ class ReadOnlyDirectory(Mapping):
 
     def __enter__(self):
         """
-        Passes __enter__ to the directory's file and returns self.
+        If this is the root directory, passes __enter__ to the file and
+        returns self.
+
+        If this is not the root directory, __enter__ is a pass-through,
+        returning self.
         """
-        self._file.source.__enter__()
+        if self._path == ():
+            self._file.source.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         """
-        Passes __exit__ to the directory's file, which closes physical files
-        and shuts down any other resources, such as thread pools for parallel
-        reading.
+        If this is the root directory, passes __exit__ to the file, which
+        closes physical files and shuts down any other resources, such as
+        thread pools for parallel reading.
+
+        If this is not the root directory, __exit__ is a pass-through.
         """
-        self._file.source.__exit__(exception_type, exception_value, traceback)
+        if self.path == ():
+            self._file.source.__exit__(exception_type, exception_value, traceback)
 
     def close(self):
         self._file.close()
