@@ -28,7 +28,7 @@ import uproot4.streamers
 import uproot4.model
 
 
-def open(file_path, cache=None, classes=None, **options):
+def open(file_path, cache=uproot4.cache, classes=None, **options):
     """
     Args:
         file_path (str or Path): File path or URL to open.
@@ -681,37 +681,42 @@ class ReadOnlyKey(object):
         return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
 
     def get_uncompressed_chunk_cursor(self):
+        cursor = uproot4.source.cursor.Cursor(0, origin=-self._fKeylen)
+
         data_start = self.data_cursor.index
         data_stop = data_start + self.data_compressed_bytes
         chunk = self._file.chunk(data_start, data_stop)
 
-        cursor = uproot4.source.cursor.Cursor(0, origin=-self._fKeylen)
-
         if self.is_compressed:
-            return (
-                uproot4.compression.decompress(
-                    chunk,
-                    self.data_cursor,
-                    {},
-                    self.data_compressed_bytes,
-                    self.data_uncompressed_bytes,
-                ),
-                cursor,
+            uncompressed_chunk = uproot4.compression.decompress(
+                chunk,
+                self.data_cursor,
+                {},
+                self.data_compressed_bytes,
+                self.data_uncompressed_bytes,
             )
         else:
-            return (
-                uproot4.source.chunk.Chunk.wrap(
-                    chunk.source, chunk.get(data_start, data_stop)
-                ),
-                cursor,
+            uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
+                chunk.source, chunk.get(data_start, data_stop)
             )
 
+        return uncompressed_chunk, cursor
+
+    @property
+    def cache_key(self):
+        return "{0}:{1}".format(self._file.hex_uuid, self._fSeekKey)
+
     def get(self):
+        if self._file.cache is not None:
+            out = self._file.cache.get(self.cache_key)
+            if out is not None:
+                return out
+
         if isinstance(self._parent, ReadOnlyDirectory) and self._fClassName in (
             "TDirectory",
             "TDirectoryFile",
         ):
-            return ReadOnlyDirectory(
+            out = ReadOnlyDirectory(
                 self._parent.path + (self.fName,),
                 self.data_cursor,
                 self._file,
@@ -722,7 +727,11 @@ class ReadOnlyKey(object):
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             cls = self._file.class_named(self._fClassName)
-            return cls.read(chunk, cursor, {}, self._file, self)
+            out = cls.read(chunk, cursor, {}, self._file, self)
+
+        if self._file.cache is not None:
+            self._file.cache[self.cache_key] = out
+        return out
 
 
 class ReadOnlyDirectory(Mapping):
