@@ -51,6 +51,7 @@ def open(file_path, cache=uproot4.cache, classes=uproot4.classes, **options):
         * num_fallback_workers (int; 10)
         * begin_guess_bytes (memory_size; 512)
         * end_guess_bytes (memory_size; "64 kB")
+        * minimal_ttree_metadata (bool; True)
     """
 
     file = ReadOnlyFile(file_path, cache=cache, classes=classes, **options)
@@ -67,6 +68,7 @@ open.defaults = {
     "num_fallback_workers": 10,
     "begin_guess_bytes": 512,
     "end_guess_bytes": "64 kB",
+    "minimal_ttree_metadata": True,
 }
 
 
@@ -376,6 +378,8 @@ in file {1}""".format(
                 return unknown_cls
 
             else:
+                print("dispatch", classname)
+
                 cls = uproot4._util.new_class(
                     uproot4._util.ensure_str(uproot4.model.classname_encode(classname)),
                     (uproot4.model.DispatchByVersion,),
@@ -386,10 +390,11 @@ in file {1}""".format(
         if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
             if not uproot4._util.isint(version):
                 version = self.streamer_named(classname, version).class_version
-            if not cls.has_version(version):
+            versioned_cls = cls.class_of_version(version)
+            if versioned_cls is None:
                 cls = cls.new_class(self, version)
             else:
-                cls = cls.class_of_version(version)
+                cls = versioned_cls
 
         return cls
 

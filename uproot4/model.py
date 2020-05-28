@@ -196,7 +196,8 @@ class UnknownClass(Model):
 
 
 class VersionedModel(Model):
-    pass
+    def class_named(self, classname, version=None):
+        return self._file.class_named(classname, version)
 
 
 class UnknownClassVersion(VersionedModel):
@@ -255,6 +256,11 @@ class DispatchByVersion(object):
             versioned_cls = streamer.new_class(file)
             versioned_cls.streamer = streamer
             cls.known_versions[streamer.class_version] = versioned_cls
+
+            print("define", classname_decode(versioned_cls.__name__))
+            if classname_decode(versioned_cls.__name__) == ("TTree", 16):
+                print(versioned_cls.class_code)
+
             return versioned_cls
 
         else:
@@ -274,7 +280,7 @@ class DispatchByVersion(object):
 
     @classmethod
     def class_of_version(cls, version):
-        return cls.known_versions[version]
+        return cls.known_versions.get(version)
 
 
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
@@ -381,8 +387,9 @@ def class_named(classname, version=None, classes=None):
         raise ValueError("no class named {0} in {1}".format(classname, where))
 
     if version is not None and isinstance(cls, DispatchByVersion):
-        if cls.has_version(version):
-            return cls.class_of_version(version)
+        versioned_cls = cls.class_of_version(version)
+        if versioned_cls is not None:
+            return versioned_cls
         else:
             raise ValueError(
                 "no class named {0} with version {1} in {2}".format(

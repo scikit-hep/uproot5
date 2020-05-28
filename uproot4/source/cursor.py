@@ -111,6 +111,24 @@ class Cursor(object):
         """
         self._index += num_bytes
 
+    def skip_after(self, obj):
+        """
+        Move the index after an object with a starting `obj.cursor` and an
+        `obj.num_bytes`.
+        """
+        start_cursor = getattr(obj, "cursor", None)
+        num_bytes = getattr(obj, "num_bytes", None)
+        if (
+            start_cursor is None
+            or not isinstance(start_cursor, Cursor)
+            or num_bytes is None
+        ):
+            raise TypeError(
+                "Cursor.skip_after can only be used on an object with a "
+                "`cursor` and `num_bytes`, not {0}".format(type(obj))
+            )
+        self._index = start_cursor.index + num_bytes
+
     def fields(self, chunk, format, move=True):
         """
         Interpret data at this index of the Chunk with a `struct.Struct`

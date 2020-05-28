@@ -22,7 +22,7 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
     class_flags = {}
     hooks = {}
-    class_code = ""
+    class_code = None
 
 
 _tattfill_format1 = struct.Struct(">hh")
@@ -38,7 +38,7 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
     member_names = ["fFillColor", "fFillStyle"]
     class_flags = {}
     hooks = {}
-    class_code = ""
+    class_code = None
 
 
 _tattmarker_format1 = struct.Struct(">hhf")
@@ -56,7 +56,7 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
     member_names = ["fMarkerColor", "fMarkerStyle", "fMarkserSize"]
     class_flags = {}
     hooks = {}
-    class_code = ""
+    class_code = None
 
 
 class Model_TAttLine(uproot4.model.DispatchByVersion):

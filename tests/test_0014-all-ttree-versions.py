@@ -138,3 +138,5 @@ def test():
             assert x.class_version == 13
         for x in f["sample"].member("fLeaves"):
             assert x.class_version == 1
+
+    # raise Exception
