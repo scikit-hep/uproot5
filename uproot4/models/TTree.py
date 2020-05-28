@@ -4,10 +4,10 @@ from __future__ import absolute_import
 
 import struct
 
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+# try:
+#     from collections.abc import Mapping
+# except ImportError:
+#     from collections import Mapping
 
 import uproot4.model
 import uproot4.deserialization
