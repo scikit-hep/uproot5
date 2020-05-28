@@ -123,7 +123,7 @@ class Model_TTree_v16(uproot4.model.VersionedModel):
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = {}
+    hooks = None
     class_code = None
 
 
@@ -240,7 +240,7 @@ class Model_TTree_v17(uproot4.model.VersionedModel):
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = {}
+    hooks = None
     class_code = None
 
 
@@ -361,7 +361,8 @@ class Model_TTree_v18(uproot4.model.VersionedModel):
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = {}
+    hooks = None
+    class_code = None
 
 
 _ttree19_format1 = struct.Struct(">qqqqqdiiiiIqqqqqq")
@@ -499,7 +500,8 @@ class Model_TTree_v19(uproot4.model.VersionedModel):
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = {}
+    hooks = None
+    class_code = None
 
 
 _ttree20_format1 = struct.Struct(">qqqqqdiiiiIqqqqqq")
@@ -641,7 +643,8 @@ class Model_TTree_v20(uproot4.model.VersionedModel):
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = {}
+    hooks = None
+    class_code = None
 
 
 class Model_TTree(uproot4.model.DispatchByVersion):
