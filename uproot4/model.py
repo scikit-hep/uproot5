@@ -196,7 +196,8 @@ class UnknownClass(Model):
 
 
 class VersionedModel(Model):
-    pass
+    def class_named(self, classname, version=None):
+        return self._file.class_named(classname, version)
 
 
 class UnknownClassVersion(VersionedModel):
@@ -231,11 +232,10 @@ class DispatchByVersion(object):
         versioned_cls = cls.known_versions.get(version)
 
         if versioned_cls is not None:
-            return versioned_cls.read(chunk, cursor, context, file, parent)
+            pass
 
         elif num_bytes is not None:
             versioned_cls = cls.new_class(file, version)
-            return versioned_cls.read(chunk, cursor, context, file, parent)
 
         else:
             raise ValueError(
@@ -245,6 +245,8 @@ class DispatchByVersion(object):
                     version, classname_decode(type(cls).__name__)[0],
                 )
             )
+
+        return cls.postprocess(versioned_cls.read(chunk, cursor, context, file, parent))
 
     @classmethod
     def new_class(cls, file, version):
@@ -269,12 +271,16 @@ class DispatchByVersion(object):
             return unknown_cls
 
     @classmethod
+    def postprocess(cls, self):
+        return self
+
+    @classmethod
     def has_version(cls, version):
         return version in cls.known_versions
 
     @classmethod
     def class_of_version(cls, version):
-        return cls.known_versions[version]
+        return cls.known_versions.get(version)
 
 
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
@@ -381,8 +387,9 @@ def class_named(classname, version=None, classes=None):
         raise ValueError("no class named {0} in {1}".format(classname, where))
 
     if version is not None and isinstance(cls, DispatchByVersion):
-        if cls.has_version(version):
-            return cls.class_of_version(version)
+        versioned_cls = cls.class_of_version(version)
+        if versioned_cls is not None:
+            return versioned_cls
         else:
             raise ValueError(
                 "no class named {0} with version {1} in {2}".format(

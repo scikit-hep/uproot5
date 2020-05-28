@@ -20,7 +20,12 @@ class LRUCache(MutableMapping):
     """
     Cache with Least-Recently Used (LRU) semantics, evicting if the total
     sum of all objects' `nbytes` exceeds `limit_bytes`.
+
+    If an object does not have an `nbytes` attribute, it is presumed to have
+    `default_nbytes`.
     """
+
+    default_nbytes = 1024
 
     def __init__(self, limit_bytes):
         """
@@ -72,7 +77,7 @@ class LRUCache(MutableMapping):
                 self._order.remove(where)
             self._order.append(where)
             self._data[where] = what
-            self._current_bytes += what.nbytes
+            self._current_bytes += getattr(what, "nbytes", self.default_nbytes)
 
             while (
                 self._limit_bytes is not None
@@ -105,14 +110,3 @@ class LRUCache(MutableMapping):
         Number of items in the cache.
         """
         return len(self._order)
-
-    def get(self, where, function):
-        """
-        Attempts to get an item. If the item is not available, `function` is
-        called and its value is both added to the cache and returned.
-        """
-        try:
-            return self._data[where]
-        except KeyError:
-            out = self._data[where] = function()
-            return out

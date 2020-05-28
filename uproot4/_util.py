@@ -10,6 +10,7 @@ import os
 import sys
 import numbers
 import re
+import glob
 
 try:
     from urlparse import urlparse
@@ -58,6 +59,51 @@ def ensure_str(x):
         return x
     else:
         raise TypeError("expected a string, not {0}".format(type(x)))
+
+
+_regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
+
+
+def _regularize_filter_regex_flags(flags):
+    flagsbyte = 0
+    for flag in flags:
+        if flag == "i":
+            flagsbyte += re.I
+        elif flag == "L":
+            flagsbyte += re.L
+        elif flag == "m":
+            flagsbyte += re.M
+        elif flag == "s":
+            flagsbyte += re.S
+        elif flag == "u":
+            flagsbyte += re.U
+        elif flag == "x":
+            flagsbyte += re.X
+    return flagsbyte
+
+
+def regularize_filter(filter):
+    if filter is None:
+        return lambda x: True
+    elif callable(filter):
+        return filter
+    elif isstr(filter):
+        m = _regularize_filter_regex.match(filter)
+        if m is not None:
+            regex, flags = m.groups()
+            return (
+                lambda x: re.match(regex, x, _regularize_filter_regex_flags(flags))
+                is not None
+            )
+        elif "*" in filter or "?" in filter or "[" in filter:
+            return lambda x: glob.fnmatch.fnmatchcase(x, filter)
+        else:
+            return lambda x: x == filter
+    else:
+        raise TypeError(
+            "filter must be callable, a regex string between slashes, or a "
+            "glob pattern, not {0}".format(repr(filter))
+        )
 
 
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")

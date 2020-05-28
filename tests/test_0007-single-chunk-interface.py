@@ -5,15 +5,6 @@ from __future__ import absolute_import
 import sys
 import os
 
-try:
-    from io import StringIO
-except ImportError:
-    from StringIO import StringIO
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
 import numpy
 import pytest
 

@@ -12,6 +12,7 @@ import sys
 import numpy
 
 import uproot4
+import uproot4.deserialization
 
 
 class Cursor(object):
@@ -109,6 +110,39 @@ class Cursor(object):
         """
         Move the index forward `num_bytes`.
         """
+        self._index += num_bytes
+
+    def skip_after(self, obj):
+        """
+        Move the index after an object with a starting `obj.cursor` and an
+        `obj.num_bytes`.
+        """
+        start_cursor = getattr(obj, "cursor", None)
+        num_bytes = getattr(obj, "num_bytes", None)
+        if (
+            start_cursor is None
+            or not isinstance(start_cursor, Cursor)
+            or num_bytes is None
+        ):
+            raise TypeError(
+                "Cursor.skip_after can only be used on an object with a "
+                "`cursor` and `num_bytes`, not {0}".format(type(obj))
+            )
+        self._index = start_cursor.index + num_bytes
+
+    def skip_over(self, chunk):
+        """
+        Move the index after serialized data for an object with
+        numbytes_version.
+        """
+        num_bytes, version = uproot4.deserialization.numbytes_version(
+            chunk, self, move=False
+        )
+        if num_bytes is None:
+            raise TypeError(
+                "Cursor.skip_over can only be used on an object with non-null "
+                "`num_bytes`"
+            )
         self._index += num_bytes
 
     def fields(self, chunk, format, move=True):

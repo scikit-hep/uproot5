@@ -7,6 +7,7 @@ Source and Resource for plain file handle physical I/O.
 from __future__ import absolute_import
 
 import os
+import os.path
 
 import uproot4.source.chunk
 import uproot4.source.futures
@@ -20,7 +21,7 @@ class FileResource(uproot4.source.chunk.Resource):
     __slots__ = ["_file_path", "_file"]
 
     def __init__(self, file_path):
-        self._file_path = file_path
+        self._file_path = os.path.expanduser(file_path)
         self._file = open(self._file_path, "rb")
 
     @property

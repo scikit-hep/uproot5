@@ -7,6 +7,7 @@ ReadOnlyKey, and ReadOnlyDirectory, as well as the uproot.open function.
 
 from __future__ import absolute_import
 
+import sys
 import struct
 import uuid
 
@@ -28,7 +29,7 @@ import uproot4.streamers
 import uproot4.model
 
 
-def open(file_path, cache=None, classes=None, **options):
+def open(file_path, cache=uproot4.cache, classes=uproot4.classes, **options):
     """
     Args:
         file_path (str or Path): File path or URL to open.
@@ -51,7 +52,7 @@ def open(file_path, cache=None, classes=None, **options):
         * num_fallback_workers (int; 10)
         * begin_guess_bytes (memory_size; 512)
         * end_guess_bytes (memory_size; "64 kB")
-        * streamer_guess_bytes (memory_size; "64 kB")
+        * minimal_ttree_metadata (bool; True)
     """
 
     file = ReadOnlyFile(file_path, cache=cache, classes=classes, **options)
@@ -68,11 +69,8 @@ open.defaults = {
     "num_fallback_workers": 10,
     "begin_guess_bytes": 512,
     "end_guess_bytes": "64 kB",
+    "minimal_ttree_metadata": True,
 }
-
-
-def no_filter(x):
-    return True
 
 
 _file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
@@ -80,7 +78,9 @@ _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
 
 class ReadOnlyFile(object):
-    def __init__(self, file_path, cache=None, classes=None, **options):
+    def __init__(
+        self, file_path, cache=uproot4.cache, classes=uproot4.classes, **options
+    ):
         self._file_path = file_path
         self.cache = cache
         self.classes = classes
@@ -91,6 +91,7 @@ class ReadOnlyFile(object):
             self._options[option] = uproot4._util.memory_size(self._options[option])
 
         self._streamers = None
+        self._streamer_rules = None
 
         self.hook_before_create_source()
 
@@ -304,10 +305,27 @@ in file {1}""".format(
                 )
 
                 self._streamers = {}
+                self._streamer_rules = []
+
                 for x in tlist:
-                    if x.name not in self._streamers:
-                        self._streamers[x.name] = {}
-                    self._streamers[x.name][x.class_version] = x
+                    if isinstance(x, uproot4.streamers.Model_TStreamerInfo):
+                        if x.name not in self._streamers:
+                            self._streamers[x.name] = {}
+                        self._streamers[x.name][x.class_version] = x
+
+                    elif isinstance(x, uproot4.models.TList.Model_TList) and all(
+                        isinstance(y, uproot4.models.TObjString.Model_TObjString)
+                        for y in x
+                    ):
+                        self._streamer_rules.extend([str(y) for y in x])
+
+                    else:
+                        raise ValueError(
+                            """unexpected type in TList of streamers and streamer rules: {0}
+in file {1}""".format(
+                                type(x), self._file_path
+                            )
+                        )
 
                 self.hook_after_read_streamers(
                     key_chunk=key_chunk,
@@ -319,8 +337,47 @@ in file {1}""".format(
 
         return self._streamers
 
-    def streamer_named(self, classname, version):
-        streamer_versions = self._streamers.get(classname)
+    @property
+    def streamer_rules(self):
+        if self._streamer_rules is None:
+            self.streamers
+        return self._streamer_rules
+
+    def streamer_dependencies(self, classname, version="max"):
+        streamer = self.streamer_named(classname, version=version)
+        out = []
+        streamer._dependencies(self.streamers, out)
+        return out[::-1]
+
+    def show_streamers(self, classname=None, version="max", stream=sys.stdout):
+        """
+        Args:
+            classname (None or str): If None, all streamers that are
+                defined in the file are shown; if a class name, only
+                this class and its dependencies are shown.
+            version (int, "min", or "max"): Version number of the desired
+                class; "min" or "max" returns the minimum or maximum version
+                number, respectively.
+            stream: Object with a `write` method for writing the output.
+        """
+        if classname is None:
+            names = []
+            for name, streamer_versions in self.streamers.items():
+                for version in streamer_versions:
+                    names.append((name, version))
+        else:
+            names = self.streamer_dependencies(classname, version=version)
+        first = True
+        for name, version in names:
+            for v, streamer in self.streamers[name].items():
+                if v == version:
+                    if not first:
+                        stream.write(u"\n")
+                    streamer.show(stream=stream)
+                    first = False
+
+    def streamer_named(self, classname, version="max"):
+        streamer_versions = self.streamers.get(classname)
         if streamer_versions is None or len(streamer_versions) == 0:
             return None
         elif version == "min":
@@ -361,10 +418,11 @@ in file {1}""".format(
         if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
             if not uproot4._util.isint(version):
                 version = self.streamer_named(classname, version).class_version
-            if not cls.has_version(version):
+            versioned_cls = cls.class_of_version(version)
+            if versioned_cls is None:
                 cls = cls.new_class(self, version)
             else:
-                cls = cls.class_of_version(version)
+                cls = versioned_cls
 
         return cls
 
@@ -658,37 +716,42 @@ class ReadOnlyKey(object):
         return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
 
     def get_uncompressed_chunk_cursor(self):
+        cursor = uproot4.source.cursor.Cursor(0, origin=-self._fKeylen)
+
         data_start = self.data_cursor.index
         data_stop = data_start + self.data_compressed_bytes
         chunk = self._file.chunk(data_start, data_stop)
 
-        cursor = uproot4.source.cursor.Cursor(0, origin=-self._fKeylen)
-
         if self.is_compressed:
-            return (
-                uproot4.compression.decompress(
-                    chunk,
-                    self.data_cursor,
-                    {},
-                    self.data_compressed_bytes,
-                    self.data_uncompressed_bytes,
-                ),
-                cursor,
+            uncompressed_chunk = uproot4.compression.decompress(
+                chunk,
+                self.data_cursor,
+                {},
+                self.data_compressed_bytes,
+                self.data_uncompressed_bytes,
             )
         else:
-            return (
-                uproot4.source.chunk.Chunk.wrap(
-                    chunk.source, chunk.get(data_start, data_stop)
-                ),
-                cursor,
+            uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
+                chunk.source, chunk.get(data_start, data_stop)
             )
 
+        return uncompressed_chunk, cursor
+
+    @property
+    def cache_key(self):
+        return "{0}:{1}".format(self._file.hex_uuid, self._fSeekKey)
+
     def get(self):
+        if self._file.cache is not None:
+            out = self._file.cache.get(self.cache_key)
+            if out is not None:
+                return out
+
         if isinstance(self._parent, ReadOnlyDirectory) and self._fClassName in (
             "TDirectory",
             "TDirectoryFile",
         ):
-            return ReadOnlyDirectory(
+            out = ReadOnlyDirectory(
                 self._parent.path + (self.fName,),
                 self.data_cursor,
                 self._file,
@@ -699,7 +762,11 @@ class ReadOnlyKey(object):
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             cls = self._file.class_named(self._fClassName)
-            return cls.read(chunk, cursor, {}, self._file, self)
+            out = cls.read(chunk, cursor, {}, self._file, self)
+
+        if self._file.cache is not None:
+            self._file.cache[self.cache_key] = out
+        return out
 
 
 class ReadOnlyDirectory(Mapping):
@@ -888,82 +955,151 @@ class ReadOnlyDirectory(Mapping):
 
     def __enter__(self):
         """
-        Passes __enter__ to the directory's file and returns self.
+        If this is the root directory, passes __enter__ to the file and
+        returns self.
+
+        If this is not the root directory, __enter__ is a pass-through,
+        returning self.
         """
-        self._file.source.__enter__()
+        if self._path == ():
+            self._file.source.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         """
-        Passes __exit__ to the directory's file, which closes physical files
-        and shuts down any other resources, such as thread pools for parallel
-        reading.
+        If this is the root directory, passes __exit__ to the file, which
+        closes physical files and shuts down any other resources, such as
+        thread pools for parallel reading.
+
+        If this is not the root directory, __exit__ is a pass-through.
         """
-        self._file.source.__exit__(exception_type, exception_value, traceback)
+        if self.path == ():
+            self._file.source.__exit__(exception_type, exception_value, traceback)
 
     def close(self):
         self._file.close()
 
-    def iterkeys(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+    def streamer_dependencies(self, classname, version="max"):
+        return self._file.streamer_dependencies(classname=classname, version=version)
+
+    def show_streamers(self, classname=None, stream=sys.stdout):
+        """
+        Args:
+            classname (None or str): If None, all streamers that are
+                defined in the file are shown; if a class name, only
+                this class and its dependencies are shown.
+            stream: Object with a `write` method for writing the output.
+        """
+        self._file.show_streamers(classname=classname, stream=stream)
+
+    def iterclassnames(
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
+        for key in self._keys:
+            if filter_name(key.fName) and filter_classname(key.fClassName):
+                yield key.name(cycle=cycle), key.fClassName
+
+            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
+                for k1, v in key.get().iterclassnames(
+                    recursive, None, filter_classname
+                ):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name(k3):
+                        yield k2, v
+
+    def classnames(
+        self, recursive=True, cycle=False, filter_name=None, filter_classname=None,
+    ):
+        return dict(
+            self.iterclassnames(recursive, cycle, filter_name, filter_classname)
+        )
+
+    def iterkeys(
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
+    ):
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
         for key in self._keys:
             if filter_name(key.fName) and filter_classname(key.fClassName):
                 yield key.name(cycle=cycle)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k in key.get().iterkeys(recursive, filter_name, filter_classname):
-                    yield "{0}/{1}".format(key.name(cycle=False), k)
+                for k1 in key.get().iterkeys(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=None,
+                    filter_classname=filter_classname,
+                ):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name(k3):
+                        yield k2
 
     def iteritems(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
         for key in self._keys:
             if filter_name(key.fName) and filter_classname(key.fClassName):
                 yield key.name(cycle=cycle), key.get()
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k, v in key.get().iteritems(
-                    recursive, filter_name, filter_classname
+                for k1, v in key.get().iteritems(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=None,
+                    filter_classname=filter_classname,
                 ):
-                    yield "{0}/{1}".format(key.name(cycle=False), k), v
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name(k3):
+                        yield k2, v
 
-    def itervalues(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
-    ):
-        for k, v in self.iteritems(recursive, False, filter_name, filter_classname):
+    def itervalues(self, recursive=True, filter_name=None, filter_classname=None):
+        for k, v in self.iteritems(
+            recursive=recursive,
+            cycle=False,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        ):
             yield v
 
     def keys(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
-        return list(self.iterkeys(recursive, cycle, filter_name, filter_classname))
+        return list(
+            self.iterkeys(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
 
     def items(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
-        return list(self.iteritems(recursive, cycle, filter_name, filter_classname))
+        return list(
+            self.iteritems(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
 
-    def values(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
-    ):
-        return list(self.itervalues(recursive, filter_name, filter_classname))
+    def values(self, recursive=True, filter_name=None, filter_classname=None):
+        return list(
+            self.itervalues(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
 
     def __len__(self):
         return len(self._keys) + sum(
