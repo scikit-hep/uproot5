@@ -41,6 +41,7 @@ import uproot4.models.TAtt
 import uproot4.models.TTree
 import uproot4.models.TBranch
 import uproot4.models.TLeaf
+import uproot4.models.TBasket
 
 import uproot4.models.RNTuple
 
