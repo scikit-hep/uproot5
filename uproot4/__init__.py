@@ -30,14 +30,18 @@ from uproot4.model import class_named
 
 import uproot4.models.TObject
 import uproot4.models.TString
+import uproot4.models.TArray
 import uproot4.models.TNamed
-import uproot4.models.TObjArray
-import uproot4.models.TObjString
 import uproot4.models.TList
 import uproot4.models.THashList
+import uproot4.models.TObjArray
+import uproot4.models.TObjString
+import uproot4.models.TAtt
+
+import uproot4.models.TTree
+import uproot4.models.TBranch
+import uproot4.models.TLeaf
+
+import uproot4.models.RNTuple
 
 # import uproot4.models.TRef
-import uproot4.models.TArray
-
-# import uproot4.models.ROOT_3a3a_TIOFeatures
-import uproot4.models.RNTuple

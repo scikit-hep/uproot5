@@ -28,7 +28,7 @@ import uproot4.streamers
 import uproot4.model
 
 
-def open(file_path, cache=uproot4.cache, classes=None, **options):
+def open(file_path, cache=uproot4.cache, classes=uproot4.classes, **options):
     """
     Args:
         file_path (str or Path): File path or URL to open.
@@ -51,7 +51,6 @@ def open(file_path, cache=uproot4.cache, classes=None, **options):
         * num_fallback_workers (int; 10)
         * begin_guess_bytes (memory_size; 512)
         * end_guess_bytes (memory_size; "64 kB")
-        * streamer_guess_bytes (memory_size; "64 kB")
     """
 
     file = ReadOnlyFile(file_path, cache=cache, classes=classes, **options)
@@ -80,7 +79,9 @@ _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
 
 class ReadOnlyFile(object):
-    def __init__(self, file_path, cache=None, classes=None, **options):
+    def __init__(
+        self, file_path, cache=uproot4.cache, classes=uproot4.classes, **options
+    ):
         self._file_path = file_path
         self.cache = cache
         self.classes = classes
@@ -314,7 +315,8 @@ in file {1}""".format(
                         self._streamers[x.name][x.class_version] = x
 
                     elif isinstance(x, uproot4.models.TList.Model_TList) and all(
-                        isinstance(y, uproot4.models.TObjString.Model_TObjString) for y in x
+                        isinstance(y, uproot4.models.TObjString.Model_TObjString)
+                        for y in x
                     ):
                         self._streamer_rules.extend([str(y) for y in x])
 
