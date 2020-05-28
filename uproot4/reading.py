@@ -343,17 +343,40 @@ in file {1}""".format(
             self.streamers
         return self._streamer_rules
 
-    def show_streamers(self, classname=None, stream=sys.stdout):
+    def streamer_dependencies(self, classname, version="max"):
+        streamer = self.streamer_named(classname, version=version)
+        out = []
+        streamer._dependencies(self.streamers, out)
+        return out[::-1]
+
+    def show_streamers(self, classname=None, version="max", stream=sys.stdout):
         """
         Args:
             classname (None or str): If None, all streamers that are
                 defined in the file are shown; if a class name, only
                 this class and its dependencies are shown.
+            version (int, "min", or "max"): Version number of the desired
+                class; "min" or "max" returns the minimum or maximum version
+                number, respectively.
             stream: Object with a `write` method for writing the output.
         """
-        raise NotImplementedError
+        if classname is None:
+            names = []
+            for name, streamer_versions in self.streamers.items():
+                for version in streamer_versions:
+                    names.append((name, version))
+        else:
+            names = self.streamer_dependencies(classname, version=version)
+        first = True
+        for name, version in names:
+            for v, streamer in self.streamers[name].items():
+                if v == version:
+                    if not first:
+                        stream.write("\n")
+                    streamer.show(stream=stream)
+                    first = False
 
-    def streamer_named(self, classname, version):
+    def streamer_named(self, classname, version="max"):
         streamer_versions = self.streamers.get(classname)
         if streamer_versions is None or len(streamer_versions) == 0:
             return None
@@ -958,6 +981,19 @@ class ReadOnlyDirectory(Mapping):
     def close(self):
         self._file.close()
 
+    def streamer_dependencies(self, classname, version="max"):
+        return self._file.streamer_dependencies(classname=classname, version=version)
+
+    def show_streamers(self, classname=None, stream=sys.stdout):
+        """
+        Args:
+            classname (None or str): If None, all streamers that are
+                defined in the file are shown; if a class name, only
+                this class and its dependencies are shown.
+            stream: Object with a `write` method for writing the output.
+        """
+        self._file.show_streamers(classname=classname, stream=stream)
+
     def iterclassnames(
         self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
@@ -968,7 +1004,9 @@ class ReadOnlyDirectory(Mapping):
                 yield key.name(cycle=cycle), key.fClassName
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iterclassnames(recursive, None, filter_classname):
+                for k1, v in key.get().iterclassnames(
+                    recursive, None, filter_classname
+                ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name(k3):
@@ -977,7 +1015,9 @@ class ReadOnlyDirectory(Mapping):
     def classnames(
         self, recursive=True, cycle=False, filter_name=None, filter_classname=None,
     ):
-        return dict(self.iterclassnames(recursive, cycle, filter_name, filter_classname))
+        return dict(
+            self.iterclassnames(recursive, cycle, filter_name, filter_classname)
+        )
 
     def iterkeys(
         self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
@@ -1016,20 +1056,12 @@ class ReadOnlyDirectory(Mapping):
             yield v
 
     def keys(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=None,
-        filter_classname=None,
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
         return list(self.iterkeys(recursive, cycle, filter_name, filter_classname))
 
     def items(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=None,
-        filter_classname=None,
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
         return list(self.iteritems(recursive, cycle, filter_name, filter_classname))
 

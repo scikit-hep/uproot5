@@ -5,6 +5,11 @@ from __future__ import absolute_import
 import sys
 import json
 
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
+
 import numpy
 import pytest
 import skhep_testdata
@@ -157,6 +162,24 @@ def test_streamerless_read():
         assert f["t"].class_version == 19
         assert f.file._streamers is None
 
+
 def test_list_streamers():
     with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
-        pass
+        assert f.streamer_dependencies("TNamed") == [
+            ("TString", 2),
+            ("TObject", 1),
+            ("TNamed", 1),
+        ]
+
+        output = StringIO()
+        f.show_streamers("TNamed", stream=output)
+        assert output.getvalue() == """TString (v2)
+
+TObject (v1)
+    fUniqueID: unsigned int
+    fBits: unsigned int
+
+TNamed (v1): TObject (v1)
+    fName: TString
+    fTitle: TString
+"""

@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import sys
 import struct
 import re
 
@@ -164,6 +165,28 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def elements(self):
         return self._members["fElements"]
 
+    def _dependencies(self, streamers, out):
+        out.append((self.name, self.class_version))
+        for element in self.elements:
+            element._dependencies(streamers, out)
+
+    def show(self, stream=sys.stdout):
+        """
+        Args:
+            stream: Object with a `write` method for writing the output.
+        """
+        bases = []
+        for element in self.elements:
+            if isinstance(element, Model_TStreamerBase):
+                bases.append("{0} (v{1})".format(element.name, element.base_version))
+        if len(bases) == 0:
+            bases = ""
+        else:
+            bases = ": " + ", ".join(bases)
+        stream.write("{0} (v{1}){2}\n".format(self.name, self.class_version, bases))
+        for element in self.elements:
+            element.show(stream=stream)
+
     def new_class(self, file):
         class_code = self.class_code()
         class_name = uproot4.model.classname_encode(self.name, self.class_version)
@@ -321,6 +344,16 @@ class Model_TStreamerElement(uproot4.model.Model):
     def fType(self):
         return self.member("fType")
 
+    def _dependencies(self, streamers, out):
+        pass
+
+    def show(self, stream=sys.stdout):
+        """
+        Args:
+            stream: Object with a `write` method for writing the output.
+        """
+        stream.write("    {0}: {1}\n".format(self.name, self.type_name))
+
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context):
@@ -366,6 +399,22 @@ class Model_TStreamerBase(Model_TStreamerElement):
     @property
     def base_version(self):
         return self._members["fBaseVersion"]
+
+    def _dependencies(self, streamers, out):
+        streamer_versions = streamers.get(self.name)
+        if streamer_versions is not None:
+            streamer = streamer_versions.get(self.base_version)
+            if (
+                streamer is not None
+                and (streamer.name, streamer.class_version) not in out
+            ):
+                streamer._dependencies(streamers, out)
+
+    def show(self, stream=sys.stdout):
+        """
+        Args:
+            stream: Object with a `write` method for writing the output.
+        """
 
     def class_code(
         self,
@@ -584,6 +633,13 @@ class Model_TStreamerLoop(Model_TStreamerElement):
     @property
     def count_name(self):
         return self._members["fCountName"]
+
+    def _dependencies(self, streamers, out):
+        streamer_versions = streamers.get(self.type_name.rstrip("*"))
+        if streamer_versions is not None:
+            for streamer in streamer_versions.values():
+                if (streamer.name, streamer.class_version) not in out:
+                    streamer._dependencies(streamers, out)
 
     def class_code(
         self,
@@ -807,6 +863,13 @@ class Model_TStreamerSTLstring(Model_TStreamerElement):
 
 
 class pointer_types(object):
+    def _dependencies(self, streamers, out):
+        streamer_versions = streamers.get(self.type_name.rstrip("*"))
+        if streamer_versions is not None:
+            for streamer in streamer_versions.values():
+                if (streamer.name, streamer.class_version) not in out:
+                    streamer._dependencies(streamers, out)
+
     def class_code(
         self,
         streamerinfo,
@@ -860,6 +923,13 @@ class Model_TStreamerObjectPointer(pointer_types, Model_TStreamerElement):
 
 
 class object_types(object):
+    def _dependencies(self, streamers, out):
+        streamer_versions = streamers.get(self.type_name.rstrip("*"))
+        if streamer_versions is not None:
+            for streamer in streamer_versions.values():
+                if (streamer.name, streamer.class_version) not in out:
+                    streamer._dependencies(streamers, out)
+
     def class_code(
         self,
         streamerinfo,
