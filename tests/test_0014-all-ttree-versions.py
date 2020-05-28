@@ -154,5 +154,5 @@ def test():
         assert f.file._streamers is None
 
     with uproot4.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root")) as f:
-        print(f["t"])
+        assert f["t"].class_version == 19
         assert f.file._streamers is None
