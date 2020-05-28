@@ -101,9 +101,8 @@ def regularize_filter(filter):
             return lambda x: x == filter
     else:
         raise TypeError(
-            "filter must be callable, a regex string between slashes, or a glob pattern, not {0}".format(
-                repr(x)
-            )
+            "filter must be callable, a regex string between slashes, or a "
+            "glob pattern, not {0}".format(repr(filter))
         )
 
 

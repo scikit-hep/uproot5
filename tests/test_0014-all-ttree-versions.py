@@ -173,7 +173,9 @@ def test_list_streamers():
 
         output = StringIO()
         f.show_streamers("TNamed", stream=output)
-        assert output.getvalue() == """TString (v2)
+        assert (
+            output.getvalue()
+            == """TString (v2)
 
 TObject (v1)
     fUniqueID: unsigned int
@@ -183,3 +185,4 @@ TNamed (v1): TObject (v1)
     fName: TString
     fTitle: TString
 """
+        )
