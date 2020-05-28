@@ -7,6 +7,7 @@ ReadOnlyKey, and ReadOnlyDirectory, as well as the uproot.open function.
 
 from __future__ import absolute_import
 
+import sys
 import struct
 import uuid
 
@@ -70,10 +71,6 @@ open.defaults = {
     "end_guess_bytes": "64 kB",
     "minimal_ttree_metadata": True,
 }
-
-
-def no_filter(x):
-    return True
 
 
 _file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
@@ -345,6 +342,16 @@ in file {1}""".format(
         if self._streamer_rules is None:
             self.streamers
         return self._streamer_rules
+
+    def show_streamers(self, classname=None, stream=sys.stdout):
+        """
+        Args:
+            classname (None or str): If None, all streamers that are
+                defined in the file are shown; if a class name, only
+                this class and its dependencies are shown.
+            stream: Object with a `write` method for writing the output.
+        """
+        raise NotImplementedError
 
     def streamer_named(self, classname, version):
         streamer_versions = self.streamers.get(classname)
@@ -951,41 +958,60 @@ class ReadOnlyDirectory(Mapping):
     def close(self):
         self._file.close()
 
-    def iterkeys(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+    def iterclassnames(
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
+        for key in self._keys:
+            if filter_name(key.fName) and filter_classname(key.fClassName):
+                yield key.name(cycle=cycle), key.fClassName
+
+            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
+                for k1, v in key.get().iterclassnames(recursive, None, filter_classname):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name(k3):
+                        yield k2, v
+
+    def classnames(
+        self, recursive=True, cycle=False, filter_name=None, filter_classname=None,
+    ):
+        return dict(self.iterclassnames(recursive, cycle, filter_name, filter_classname))
+
+    def iterkeys(
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
+    ):
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
         for key in self._keys:
             if filter_name(key.fName) and filter_classname(key.fClassName):
                 yield key.name(cycle=cycle)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k in key.get().iterkeys(recursive, filter_name, filter_classname):
-                    yield "{0}/{1}".format(key.name(cycle=False), k)
+                for k1 in key.get().iterkeys(recursive, None, filter_classname):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name(k3):
+                        yield k2
 
     def iteritems(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
         for key in self._keys:
             if filter_name(key.fName) and filter_classname(key.fClassName):
                 yield key.name(cycle=cycle), key.get()
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k, v in key.get().iteritems(
-                    recursive, filter_name, filter_classname
-                ):
-                    yield "{0}/{1}".format(key.name(cycle=False), k), v
+                for k1, v in key.get().iteritems(recursive, None, filter_classname):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name(k3):
+                        yield k2, v
 
-    def itervalues(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
-    ):
+    def itervalues(self, recursive=True, filter_name=None, filter_classname=None):
         for k, v in self.iteritems(recursive, False, filter_name, filter_classname):
             yield v
 
@@ -993,8 +1019,8 @@ class ReadOnlyDirectory(Mapping):
         self,
         recursive=True,
         cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+        filter_name=None,
+        filter_classname=None,
     ):
         return list(self.iterkeys(recursive, cycle, filter_name, filter_classname))
 
@@ -1002,14 +1028,12 @@ class ReadOnlyDirectory(Mapping):
         self,
         recursive=True,
         cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
+        filter_name=None,
+        filter_classname=None,
     ):
         return list(self.iteritems(recursive, cycle, filter_name, filter_classname))
 
-    def values(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
-    ):
+    def values(self, recursive=True, filter_name=None, filter_classname=None):
         return list(self.itervalues(recursive, filter_name, filter_classname))
 
     def __len__(self):

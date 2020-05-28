@@ -12,7 +12,7 @@ import skhep_testdata
 import uproot4
 
 
-def test():
+def test_streamerless_read():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-5.23.02-uncompressed.root")
     ) as f:
@@ -156,3 +156,7 @@ def test():
     with uproot4.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root")) as f:
         assert f["t"].class_version == 19
         assert f.file._streamers is None
+
+def test_list_streamers():
+    with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
+        pass

@@ -18,7 +18,6 @@ from uproot4.source.xrootd import MultithreadedXRootDSource
 from uproot4.source.cursor import Cursor
 
 from uproot4.reading import open
-from uproot4.reading import no_filter
 from uproot4.reading import ReadOnlyFile
 from uproot4.reading import ReadOnlyDirectory
 
@@ -45,4 +44,4 @@ import uproot4.models.TBasket
 
 import uproot4.models.RNTuple
 
-# import uproot4.models.TRef
+# FIXME: add uproot4.models.TRef

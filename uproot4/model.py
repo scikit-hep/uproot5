@@ -232,11 +232,10 @@ class DispatchByVersion(object):
         versioned_cls = cls.known_versions.get(version)
 
         if versioned_cls is not None:
-            return versioned_cls.read(chunk, cursor, context, file, parent)
+            pass
 
         elif num_bytes is not None:
             versioned_cls = cls.new_class(file, version)
-            return versioned_cls.read(chunk, cursor, context, file, parent)
 
         else:
             raise ValueError(
@@ -246,6 +245,8 @@ class DispatchByVersion(object):
                     version, classname_decode(type(cls).__name__)[0],
                 )
             )
+
+        return cls.postprocess(versioned_cls.read(chunk, cursor, context, file, parent))
 
     @classmethod
     def new_class(cls, file, version):
@@ -268,6 +269,10 @@ class DispatchByVersion(object):
                 )
                 uproot4.unknown_classes[classname] = unknown_cls
             return unknown_cls
+
+    @classmethod
+    def postprocess(cls, self):
+        return self
 
     @classmethod
     def has_version(cls, version):

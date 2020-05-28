@@ -47,6 +47,7 @@ class Model_TBranch_v10(uproot4.model.VersionedModel):
         self._members["fLeaves"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
+        self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk)
         else:
@@ -150,6 +151,7 @@ class Model_TBranch_v11(uproot4.model.VersionedModel):
         self._members["fLeaves"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
+        self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk)
         else:
@@ -254,6 +256,7 @@ class Model_TBranch_v12(uproot4.model.VersionedModel):
         self._members["fLeaves"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
+        self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk)
         else:
@@ -364,6 +367,7 @@ class Model_TBranch_v13(uproot4.model.VersionedModel):
         self._members["fLeaves"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
+        self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk)
         else:
