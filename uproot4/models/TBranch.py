@@ -364,9 +364,12 @@ class Model_TBranch_v13(uproot4.model.VersionedModel):
         self._members["fLeaves"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
-        self._members["fBaskets"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self
-        )
+        if self._file.options["minimal_ttree_metadata"]:
+            cursor.skip_over(chunk)
+        else:
+            self._members["fBaskets"] = self.class_named("TObjArray").read(
+                chunk, cursor, context, self._file, self
+            )
         tmp = _tbranch13_dtype1
         if context.get("speedbump", True):
             cursor.skip(1)
@@ -386,9 +389,12 @@ class Model_TBranch_v13(uproot4.model.VersionedModel):
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp
         )
-        self._members["fFileName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self
-        )
+        if self._file.options["minimal_ttree_metadata"]:
+            cursor.skip_after(self)
+        else:
+            self._members["fFileName"] = self.class_named("TString").read(
+                chunk, cursor, context, self._file, self
+            )
 
     @property
     def member_names(self):
