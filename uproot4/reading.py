@@ -372,7 +372,7 @@ in file {1}""".format(
             for v, streamer in self.streamers[name].items():
                 if v == version:
                     if not first:
-                        stream.write("\n")
+                        stream.write(u"\n")
                     streamer.show(stream=stream)
                     first = False
 
@@ -1029,10 +1029,17 @@ class ReadOnlyDirectory(Mapping):
                 yield key.name(cycle=cycle)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1 in key.get().iterkeys(recursive, None, filter_classname):
+                for k1 in key.get().iterkeys(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=None,
+                    filter_classname=filter_classname,
+                ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name(k3):
+                        print("HERE", k1, k2, k3)
+
                         yield k2
 
     def iteritems(
@@ -1045,28 +1052,58 @@ class ReadOnlyDirectory(Mapping):
                 yield key.name(cycle=cycle), key.get()
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iteritems(recursive, None, filter_classname):
+                for k1, v in key.get().iteritems(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=None,
+                    filter_classname=filter_classname,
+                ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name(k3):
                         yield k2, v
 
     def itervalues(self, recursive=True, filter_name=None, filter_classname=None):
-        for k, v in self.iteritems(recursive, False, filter_name, filter_classname):
+        for k, v in self.iteritems(
+            recursive=recursive,
+            cycle=False,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        ):
             yield v
 
     def keys(
         self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
-        return list(self.iterkeys(recursive, cycle, filter_name, filter_classname))
+        return list(
+            self.iterkeys(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
 
     def items(
         self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
     ):
-        return list(self.iteritems(recursive, cycle, filter_name, filter_classname))
+        return list(
+            self.iteritems(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
 
     def values(self, recursive=True, filter_name=None, filter_classname=None):
-        return list(self.itervalues(recursive, filter_name, filter_classname))
+        return list(
+            self.itervalues(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
 
     def __len__(self):
         return len(self._keys) + sum(

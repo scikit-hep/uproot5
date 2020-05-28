@@ -178,12 +178,12 @@ class Model_TStreamerInfo(uproot4.model.Model):
         bases = []
         for element in self.elements:
             if isinstance(element, Model_TStreamerBase):
-                bases.append("{0} (v{1})".format(element.name, element.base_version))
+                bases.append(u"{0} (v{1})".format(element.name, element.base_version))
         if len(bases) == 0:
-            bases = ""
+            bases = u""
         else:
-            bases = ": " + ", ".join(bases)
-        stream.write("{0} (v{1}){2}\n".format(self.name, self.class_version, bases))
+            bases = u": " + u", ".join(bases)
+        stream.write(u"{0} (v{1}){2}\n".format(self.name, self.class_version, bases))
         for element in self.elements:
             element.show(stream=stream)
 
@@ -352,7 +352,7 @@ class Model_TStreamerElement(uproot4.model.Model):
         Args:
             stream: Object with a `write` method for writing the output.
         """
-        stream.write("    {0}: {1}\n".format(self.name, self.type_name))
+        stream.write(u"    {0}: {1}\n".format(self.name, self.type_name))
 
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
