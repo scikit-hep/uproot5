@@ -258,7 +258,7 @@ class DispatchByVersion(object):
             cls.known_versions[streamer.class_version] = versioned_cls
 
             print("define", classname_decode(versioned_cls.__name__))
-            if classname_decode(versioned_cls.__name__) == ("TTree", 16):
+            if classname_decode(versioned_cls.__name__) == ("TTree", 17):
                 print(versioned_cls.class_code)
 
             return versioned_cls

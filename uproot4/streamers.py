@@ -386,6 +386,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
                 repr(self.name), self.base_version
             )
         )
+        base_names_versions.append((self.name, self.base_version))
 
 
 _tstreamerbasicpointer_format1 = struct.Struct(">i")
