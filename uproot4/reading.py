@@ -408,8 +408,6 @@ in file {1}""".format(
                 return unknown_cls
 
             else:
-                print("dispatch", classname)
-
                 cls = uproot4._util.new_class(
                     uproot4._util.ensure_str(uproot4.model.classname_encode(classname)),
                     (uproot4.model.DispatchByVersion,),
@@ -1038,8 +1036,6 @@ class ReadOnlyDirectory(Mapping):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name(k3):
-                        print("HERE", k1, k2, k3)
-
                         yield k2
 
     def iteritems(

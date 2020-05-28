@@ -8,6 +8,7 @@ import numpy
 
 import uproot4.model
 import uproot4.deserialization
+import uproot4.behaviors.TBranch
 
 
 _tbranch10_format1 = struct.Struct(">iiiiqiIiqqq")
@@ -16,7 +17,9 @@ _tbranch10_dtype2 = numpy.dtype(">i8")
 _tbranch10_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v10(uproot4.model.VersionedModel):
+class Model_TBranch_v10(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -119,7 +122,9 @@ _tbranch11_dtype2 = numpy.dtype(">i8")
 _tbranch11_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v11(uproot4.model.VersionedModel):
+class Model_TBranch_v11(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -224,7 +229,9 @@ _tbranch12_dtype2 = numpy.dtype(">i8")
 _tbranch12_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v12(uproot4.model.VersionedModel):
+class Model_TBranch_v12(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -330,7 +337,9 @@ _tbranch13_dtype2 = numpy.dtype(">i8")
 _tbranch13_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v13(uproot4.model.VersionedModel):
+class Model_TBranch_v13(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -447,7 +456,9 @@ class Model_TBranch(uproot4.model.DispatchByVersion):
 _tbranchelement8_format1 = struct.Struct(">Iiiiii")
 
 
-class Model_TBranchElement_v8(uproot4.model.VersionedModel):
+class Model_TBranchElement_v8(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TBranch", 10).read(
@@ -500,7 +511,9 @@ class Model_TBranchElement_v8(uproot4.model.VersionedModel):
 _tbranchelement9_format1 = struct.Struct(">Iiiiii")
 
 
-class Model_TBranchElement_v9(uproot4.model.VersionedModel):
+class Model_TBranchElement_v9(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TBranch", 12).read(
@@ -553,7 +566,9 @@ class Model_TBranchElement_v9(uproot4.model.VersionedModel):
 _tbranchelement10_format1 = struct.Struct(">Ihiiii")
 
 
-class Model_TBranchElement_v10(uproot4.model.VersionedModel):
+class Model_TBranchElement_v10(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TBranch", 12).read(

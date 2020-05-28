@@ -8,12 +8,13 @@ import numpy
 
 import uproot4.model
 import uproot4.deserialization
+import uproot4.behaviors.TTree
 
 
 _ttree16_format1 = struct.Struct(">qqqqdiiiqqqqq")
 
 
-class Model_TTree_v16(uproot4.model.VersionedModel):
+class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -129,7 +130,7 @@ class Model_TTree_v16(uproot4.model.VersionedModel):
 _ttree17_format1 = struct.Struct(">qqqqdiiiiqqqqq")
 
 
-class Model_TTree_v17(uproot4.model.VersionedModel):
+class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -246,7 +247,7 @@ class Model_TTree_v17(uproot4.model.VersionedModel):
 _ttree18_format1 = struct.Struct(">qqqqqdiiiiqqqqqq")
 
 
-class Model_TTree_v18(uproot4.model.VersionedModel):
+class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -369,7 +370,7 @@ _ttree19_dtype1 = numpy.dtype(">i8")
 _ttree19_dtype2 = numpy.dtype(">i8")
 
 
-class Model_TTree_v19(uproot4.model.VersionedModel):
+class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(
@@ -508,7 +509,7 @@ _ttree20_dtype1 = numpy.dtype(">i8")
 _ttree20_dtype2 = numpy.dtype(">i8")
 
 
-class Model_TTree_v20(uproot4.model.VersionedModel):
+class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             self.class_named("TNamed", 1).read(

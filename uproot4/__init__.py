@@ -41,7 +41,41 @@ import uproot4.models.TTree
 import uproot4.models.TBranch
 import uproot4.models.TLeaf
 import uproot4.models.TBasket
+from uproot4.behaviors.TTree import TTree
+from uproot4.behaviors.TBranch import TBranch
 
 import uproot4.models.RNTuple
 
 # FIXME: add uproot4.models.TRef
+
+import pkgutil
+import uproot4.behaviors
+
+
+def behavior_of(classname):
+    name = classname_encode(classname)
+    assert name.startswith("Model_")
+    name = name[6:]
+
+    if name not in globals():
+        if name in behavior_of._module_names:
+            exec(
+                compile(
+                    "import uproot4.behaviors.{0}".format(name), "<dynamic>", "exec"
+                ),
+                globals(),
+            )
+            module = eval("uproot4.behaviors.{0}".format(name))
+            behavior_cls = getattr(module, name)
+            if behavior_cls is not None:
+                globals()[name] = behavior_cls
+
+    return globals().get(name)
+
+
+behavior_of._module_names = [
+    module_name
+    for loader, module_name, is_pkg in pkgutil.walk_packages(uproot4.behaviors.__path__)
+]
+
+del pkgutil
