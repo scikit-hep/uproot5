@@ -16,7 +16,28 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpret.Interpretation):
-    pass
+    def empty_array(self, library):
+        return library.wrap_numpy(numpy.empty(0, dtype=self.numpy_dtype))
+
+    def fillable_array(self, num_items, num_entries):
+        assert num_items == num_entries
+        dtype, shape = _dtype_shape(self.to_dtype)
+        quotient, remainder = divmod(num_items, numpy.prod(shape))
+        if remainder != 0:
+            raise ValueError(
+                "cannot reshape {0} items into dimensions {1}".format(num_items, shape)
+            )
+        return numpy.empty(quotient, dtype=self.to_dtype)
+
+    def fill(self, basket_array, fillable_array, item_start, item_stop, entry_start, entry_stop):
+        assert item_start == entry_start and item_stop == entry_stop
+        fillable_array.reshape(-1)[item_start:item_stop] = basket_array.reshape(-1)
+
+    def trim(self, fillable_array, entry_start, entry_stop):
+        return fillable_array[entry_start:entry_stop]
+
+    def finalize(self, fillable_array, library):
+        return library.wrap_numpy(fillable_array)
 
 
 class AsDtype(Numerical):
@@ -79,6 +100,25 @@ class AsDtype(Numerical):
             )
 
         return "AsDtype({0},{1})".format(from_dtype, to_dtype)
+
+    @property
+    def numpy_dtype(self):
+        return self._to_dtype
+
+    @property
+    def awkward_form(self):
+        raise NotImplementedError
+
+    def num_items(self, num_bytes, num_entries):
+        dtype, shape = _dtype_shape(self._from_dtype)
+        quotient, remainder = divmod(num_bytes, dtype.itemsize)
+        assert remainder == 0
+        return quotient
+
+    def basket_array(self, data, byte_offsets):
+        assert byte_offsets is None
+        dtype, shape = _dtype_shape(self._from_dtype)
+        return data.view(self._from_dtype).reshape((-1,) + shape)
 
 
 class AsArray(NumpyDtype):

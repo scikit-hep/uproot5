@@ -11,6 +11,10 @@ from uproot4.cache import LRUArrayCache
 object_cache = LRUCache(100)
 array_cache = LRUArrayCache("100 MB")
 
+import uproot4.interpret
+
+library = "ak"
+
 from uproot4.source.memmap import MemmapSource
 from uproot4.source.file import FileSource
 from uproot4.source.http import HTTPSource
@@ -49,6 +53,7 @@ from uproot4.behaviors.TBranch import TBranch
 import uproot4.models.RNTuple
 
 # FIXME: add uproot4.models.TRef
+
 
 import pkgutil
 import uproot4.behaviors
