@@ -6,8 +6,10 @@ classes = {}
 unknown_classes = {}
 
 from uproot4.cache import LRUCache
+from uproot4.cache import LRUArrayCache
 
-cache = LRUCache("100 MB")
+object_cache = LRUCache(100)
+array_cache = LRUArrayCache("100 MB")
 
 from uproot4.source.memmap import MemmapSource
 from uproot4.source.file import FileSource
