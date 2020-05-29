@@ -29,11 +29,20 @@ import uproot4.streamers
 import uproot4.model
 
 
-def open(file_path, cache=uproot4.cache, classes=uproot4.classes, **options):
+def open(
+    file_path,
+    object_cache=uproot4.object_cache,
+    array_cache=uproot4.array_cache,
+    classes=uproot4.classes,
+    **options
+):
     """
     Args:
         file_path (str or Path): File path or URL to open.
-        cache (None or MutableMapping): FIXME not implemented.
+        object_cache (None or MutableMapping): Cache of objects drawn from
+            ROOT directories (e.g histograms, TTrees, other directories).
+        array_cache (None or MutableMapping): Cache of arrays drawn from
+            TTrees.
         classes (None or MutableMapping): If None, defaults to uproot4.classes;
             otherwise, a container of class definitions that is both used to
             fill with new classes and search for dependencies.
@@ -55,7 +64,13 @@ def open(file_path, cache=uproot4.cache, classes=uproot4.classes, **options):
         * minimal_ttree_metadata (bool; True)
     """
 
-    file = ReadOnlyFile(file_path, cache=cache, classes=classes, **options)
+    file = ReadOnlyFile(
+        file_path,
+        object_cache=object_cache,
+        array_cache=array_cache,
+        classes=classes,
+        **options
+    )
     return file.root_directory
 
 
@@ -79,10 +94,16 @@ _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
 class ReadOnlyFile(object):
     def __init__(
-        self, file_path, cache=uproot4.cache, classes=uproot4.classes, **options
+        self,
+        file_path,
+        object_cache=uproot4.object_cache,
+        array_cache=uproot4.array_cache,
+        classes=uproot4.classes,
+        **options
     ):
         self._file_path = file_path
-        self.cache = cache
+        self.object_cache = object_cache
+        self.array_cache = array_cache
         self.classes = classes
 
         self._options = dict(open.defaults)
@@ -195,15 +216,26 @@ in file {1}""".format(
         return self._file_path
 
     @property
-    def cache(self):
-        return self._cache
+    def object_cache(self):
+        return self._object_cache
 
-    @cache.setter
-    def cache(self, value):
+    @object_cache.setter
+    def object_cache(self, value):
         if value is None or isinstance(value, MutableMapping):
-            self._cache = value
+            self._object_cache = value
         else:
-            raise TypeError("cache must be None or a MutableMapping")
+            raise TypeError("object_cache must be None or a MutableMapping")
+
+    @property
+    def array_cache(self):
+        return self._array_cache
+
+    @array_cache.setter
+    def array_cache(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._array_cache = value
+        else:
+            raise TypeError("array_cache must be None or a MutableMapping")
 
     @property
     def classes(self):
@@ -742,8 +774,8 @@ class ReadOnlyKey(object):
         return "{0}:{1}".format(self._file.hex_uuid, self._fSeekKey)
 
     def get(self):
-        if self._file.cache is not None:
-            out = self._file.cache.get(self.cache_key)
+        if self._file.object_cache is not None:
+            out = self._file.object_cache.get(self.cache_key)
             if out is not None:
                 return out
 
@@ -764,8 +796,8 @@ class ReadOnlyKey(object):
             cls = self._file.class_named(self._fClassName)
             out = cls.read(chunk, cursor, {}, self._file, self)
 
-        if self._file.cache is not None:
-            self._file.cache[self.cache_key] = out
+        if self._file.object_cache is not None:
+            self._file.object_cache[self.cache_key] = out
         return out
 
 

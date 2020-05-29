@@ -18,83 +18,76 @@ import uproot4._util
 
 class LRUCache(MutableMapping):
     """
-    Cache with Least-Recently Used (LRU) semantics, evicting if the total
-    sum of all objects' `nbytes` exceeds `limit_bytes`.
-
-    If an object does not have an `nbytes` attribute, it is presumed to have
-    `default_nbytes`.
+    Cache with Least-Recently Used (LRU) semantics, evicting if the `current`
+    number of objects exceeds `limit`.
     """
 
-    default_nbytes = 1024
+    @classmethod
+    def sizeof(cls, obj):
+        return 1
 
-    def __init__(self, limit_bytes):
+    def __init__(self, limit):
         """
         Args:
-            limit_bytes (None, int, or str): If None, this cache never evicts;
-                otherwise, the limit is interpreted as a memory_size.
+            limit (None or int): If None, this cache never evicts;
+                otherwise, objects are evicted when the number of
+                items reachs the limit.
         """
-        if limit_bytes is None:
-            self._limit_bytes = None
-        else:
-            self._limit_bytes = uproot4._util.memory_size(limit_bytes)
-        self._current_bytes = 0
+        self._limit = limit
+        self._current = 0
         self._order = []
         self._data = {}
         self._lock = threading.Lock()
 
     @property
-    def limit_bytes(self):
+    def limit(self):
         """
-        Number of bytes before evicting or None if this cache never evicts.
+        Limit before evicting or None if this cache never evicts.
         """
-        return self._limit_bytes
+        return self._limit
 
     @property
-    def current_bytes(self):
+    def current(self):
         """
-        Current sum of `nbytes` of all objects in the cache.
+        Current fill level of the cache; to be compared with `limit`.
         """
-        return self._current_bytes
+        return self._current
 
     def __getitem__(self, where):
         """
         Try to get an object from the cache. Raises `KeyError` if it is not
         found.
-
-        (Thread-safe and lockless.)
         """
-        return self._data[where]
+        with self._lock:
+            out = self._data[where]
+            self._order.remove(where)
+            self._order.append(where)
+            return out
 
     def __setitem__(self, where, what):
         """
-        Adds an object to the cache and evicts if the new `current_bytes`
-        exceeds `limit_bytes`.
-
-        (Thread-safe with a lock.)
+        Adds an object to the cache and evicts if the new `current`
+        exceeds `limit`.
         """
         with self._lock:
             if where in self._data:
                 self._order.remove(where)
             self._order.append(where)
             self._data[where] = what
-            self._current_bytes += getattr(what, "nbytes", self.default_nbytes)
+            self._current += self.sizeof(what)
 
-            while (
-                self._limit_bytes is not None
-                and self._current_bytes > self._limit_bytes
-            ):
-                key = self._order.pop(0)
-                self._current_bytes -= self._data[key]
-                del self._data[key]
+            if self._limit is not None:
+                while self._current > self._limit and len(self._order) > 0:
+                    key = self._order.pop(0)
+                    self._current -= self.sizeof(self._data[key])
+                    del self._data[key]
 
     def __delitem__(self, where):
         """
         Manually deletes an item from the cache.
-
-        (Thread-safe with a lock.)
         """
         with self._lock:
-            self._current_bytes -= self._data[where]
+            self._current -= self.sizeof(self._data[where])
             del self._data[where]
             self._order.remove(where)
 
@@ -110,3 +103,31 @@ class LRUCache(MutableMapping):
         Number of items in the cache.
         """
         return len(self._order)
+
+
+class LRUArrayCache(LRUCache):
+    """
+    Cache with Least-Recently Used (LRU) semantics, evicting if the `current`
+    sum of all objects' `nbytes` exceeds `limit`.
+
+    If an object does not have an `nbytes` attribute, it is presumed to have
+    `default_nbytes`.
+    """
+
+    default_nbytes = 1024
+
+    @classmethod
+    def sizeof(cls, what):
+        return getattr(what, "nbytes", cls.default_nbytes)
+
+    def __init__(self, limit_bytes):
+        """
+        Args:
+            limit_bytes (None, int, or str): If None, this cache never evicts;
+                otherwise, the limit is interpreted as a memory_size.
+        """
+        if limit_bytes is None:
+            limit = None
+        else:
+            limit = uproot4._util.memory_size(limit_bytes)
+        super(LRUArrayCache, self).__init__(limit)
