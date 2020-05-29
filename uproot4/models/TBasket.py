@@ -46,8 +46,8 @@ class Model_TBasket(uproot4.model.Model):
         else:
             self._byte_offsets = None
 
-        # there's a second TKey here
-        cursor.skip(self._members["fKeylen"])
+        if context.get("second_key", True):
+            cursor.skip(self._members["fKeylen"])
 
         self._data = cursor.bytes(chunk, self.border)
 

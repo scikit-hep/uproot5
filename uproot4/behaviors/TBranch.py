@@ -8,6 +8,8 @@ except ImportError:
     from collections import Mapping
 
 import uproot4.source.cursor
+import uproot4.reading
+import uproot4.models.TBasket
 import uproot4._util
 from uproot4._util import no_filter
 
@@ -260,7 +262,7 @@ class TBranch(HasBranches):
 
     @property
     def num_entries(self):
-        return int(self.member("fEntries"))   # or fEntryNumber?
+        return int(self.member("fEntries"))  # or fEntryNumber?
 
     @property
     def num_baskets(self):
@@ -278,7 +280,9 @@ class TBranch(HasBranches):
         else:
             raise IndexError(
                 """branch {0} has {1} baskets; cannot get basket {2}
-in file {3}""".format(self.name, self.num_baskets, basket_num, self._file.file_path)
+in file {3}""".format(
+                    self.name, self.num_baskets, basket_num, self._file.file_path
+                )
             )
 
     def basket_chunk_bytes(self, basket_num):
@@ -289,7 +293,9 @@ in file {3}""".format(self.name, self.num_baskets, basket_num, self._file.file_p
         else:
             raise IndexError(
                 """branch {0} has {1} baskets; cannot get basket {2}
-in file {3}""".format(self.name, self.num_baskets, basket_num, self._file.file_path)
+in file {3}""".format(
+                    self.name, self.num_baskets, basket_num, self._file.file_path
+                )
             )
 
     def basket_compressed_bytes(self, basket_num):
@@ -298,9 +304,20 @@ in file {3}""".format(self.name, self.num_baskets, basket_num, self._file.file_p
     def basket_uncompressed_bytes(self, basket_num):
         raise NotImplementedError
 
-    def basket_chunk(self, basket_num):
-        start = self.basket_cursor(basket_num).index
+    def basket_key(self, basket_num):
+        cursor = self.basket_cursor(basket_num)
+        start = cursor.index
+        stop = start + uproot4.reading.ReadOnlyKey._format_big.size
+        chunk = self._file.source.chunk(start, stop)
+        return uproot4.reading.ReadOnlyKey(
+            chunk, cursor, {}, self._file, self, read_strings=False
+        )
+
+    def basket(self, basket_num):
+        cursor = self.basket_cursor(basket_num)
+        start = cursor.index
         stop = start + self.basket_chunk_bytes(basket_num)
-
-        return self._file.source.chunk(start, stop)
-
+        chunk = self._file.source.chunk(start, stop)
+        return uproot4.models.TBasket.Model_TBasket.read(
+            chunk, cursor, {"second_key": False}, self._file, self
+        )

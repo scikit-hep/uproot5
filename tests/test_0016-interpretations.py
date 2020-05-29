@@ -32,12 +32,17 @@ def test_get_key():
             f["Events"]["/evtNum"]
 
 
-import time
-
 def test_basket_data():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
     ) as f:
-        print(f["sample/i4"].basket_chunk(0))
-
-    # raise Exception
+        assert f["sample/i4"].basket_key(3).fSeekKey == 35042
+        assert f["sample/i4"].basket(3).data.view(">i4").tolist() == [
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+        ]

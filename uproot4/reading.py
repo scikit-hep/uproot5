@@ -569,9 +569,7 @@ class ReadOnlyKey(object):
     _format_small = struct.Struct(">ihiIhhii")
     _format_big = struct.Struct(">ihiIhhqq")
 
-    def __init__(
-        self, chunk, cursor, context, file, parent, read_strings=False
-    ):
+    def __init__(self, chunk, cursor, context, file, parent, read_strings=False):
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
@@ -783,10 +781,7 @@ class ReadOnlyKey(object):
             "TDirectoryFile",
         ):
             out = ReadOnlyDirectory(
-                self._parent.path + (self.fName,),
-                self.data_cursor,
-                self._file,
-                self,
+                self._parent.path + (self.fName,), self.data_cursor, self._file, self,
             )
 
         else:
@@ -815,11 +810,7 @@ class ReadOnlyDirectory(Mapping):
         chunk = file.chunk(directory_start, directory_stop)
 
         self.hook_before_read(
-            path=path,
-            chunk=chunk,
-            cursor=cursor,
-            file=file,
-            parent=parent,
+            path=path, chunk=chunk, cursor=cursor, file=file, parent=parent,
         )
 
         (
