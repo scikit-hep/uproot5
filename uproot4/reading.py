@@ -18,7 +18,6 @@ except ImportError:
     from collections import Mapping
     from collections import MutableMapping
 
-import uproot4._util
 import uproot4.compression
 import uproot4.source.cursor
 import uproot4.source.chunk
@@ -27,6 +26,9 @@ import uproot4.source.http
 import uproot4.source.xrootd
 import uproot4.streamers
 import uproot4.model
+import uproot4.behaviors.TBranch
+import uproot4._util
+from uproot4._util import no_filter
 
 
 def open(
@@ -1025,7 +1027,11 @@ class ReadOnlyDirectory(Mapping):
         self._file.show_streamers(classname=classname, stream=stream)
 
     def iterclassnames(
-        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_classname = uproot4._util.regularize_filter(filter_classname)
@@ -1035,7 +1041,10 @@ class ReadOnlyDirectory(Mapping):
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k1, v in key.get().iterclassnames(
-                    recursive, None, filter_classname
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=no_filter,
+                    filter_classname=filter_classname,
                 ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
@@ -1043,14 +1052,27 @@ class ReadOnlyDirectory(Mapping):
                         yield k2, v
 
     def classnames(
-        self, recursive=True, cycle=False, filter_name=None, filter_classname=None,
+        self,
+        recursive=True,
+        cycle=False,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         return dict(
-            self.iterclassnames(recursive, cycle, filter_name, filter_classname)
+            self.iterclassnames(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
         )
 
     def iterkeys(
-        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_classname = uproot4._util.regularize_filter(filter_classname)
@@ -1062,7 +1084,7 @@ class ReadOnlyDirectory(Mapping):
                 for k1 in key.get().iterkeys(
                     recursive=recursive,
                     cycle=cycle,
-                    filter_name=None,
+                    filter_name=no_filter,
                     filter_classname=filter_classname,
                 ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
@@ -1070,8 +1092,28 @@ class ReadOnlyDirectory(Mapping):
                     if filter_name(k3):
                         yield k2
 
+    def keys(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        return list(
+            self.iterkeys(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
     def iteritems(
-        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_classname = uproot4._util.regularize_filter(filter_classname)
@@ -1083,7 +1125,7 @@ class ReadOnlyDirectory(Mapping):
                 for k1, v in key.get().iteritems(
                     recursive=recursive,
                     cycle=cycle,
-                    filter_name=None,
+                    filter_name=no_filter,
                     filter_classname=filter_classname,
                 ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
@@ -1091,29 +1133,12 @@ class ReadOnlyDirectory(Mapping):
                     if filter_name(k3):
                         yield k2, v
 
-    def itervalues(self, recursive=True, filter_name=None, filter_classname=None):
-        for k, v in self.iteritems(
-            recursive=recursive,
-            cycle=False,
-            filter_name=filter_name,
-            filter_classname=filter_classname,
-        ):
-            yield v
-
-    def keys(
-        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
-    ):
-        return list(
-            self.iterkeys(
-                recursive=recursive,
-                cycle=cycle,
-                filter_name=filter_name,
-                filter_classname=filter_classname,
-            )
-        )
-
     def items(
-        self, recursive=True, cycle=True, filter_name=None, filter_classname=None,
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         return list(
             self.iteritems(
@@ -1124,7 +1149,20 @@ class ReadOnlyDirectory(Mapping):
             )
         )
 
-    def values(self, recursive=True, filter_name=None, filter_classname=None):
+    def itervalues(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        for k, v in self.iteritems(
+            recursive=recursive,
+            cycle=False,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        ):
+            yield v
+
+    def values(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
         return list(
             self.itervalues(
                 recursive=recursive,
@@ -1143,7 +1181,7 @@ class ReadOnlyDirectory(Mapping):
     def __contains__(self, where):
         try:
             self.key(where)
-        except KeyWithCycleError:
+        except KeyError:
             return False
         else:
             return True
@@ -1156,7 +1194,26 @@ class ReadOnlyDirectory(Mapping):
         return self.iterkeys()
 
     def __getitem__(self, where):
-        return self.key(where).get()
+        if "/" in where:
+            items = where.split("/")
+            step = self
+            for i, item in enumerate(items):
+                if item != "":
+                    if isinstance(step, ReadOnlyDirectory):
+                        step = step = step[item]
+                    elif isinstance(step, uproot4.behaviors.TBranch.HasBranches):
+                        return step["/".join(items[i:])]
+                    else:
+                        raise uproot4.KeyInFileError(
+                            where,
+                            self._file.file_path,
+                            because=repr(item)
+                            + " is not a TDirectory, TTree, or TBranch",
+                        )
+            return step
+
+        else:
+            return self.key(where).get()
 
     def classname_of(self, where, encoded=False, version=None):
         key = self.key(where)
@@ -1178,7 +1235,14 @@ class ReadOnlyDirectory(Mapping):
             step = self
             for item in items[:-1]:
                 if item != "":
-                    step = step[item]
+                    if isinstance(step, ReadOnlyDirectory):
+                        step = step[item]
+                    else:
+                        raise uproot4.KeyInFileError(
+                            where,
+                            self._file.file_path,
+                            because=repr(item) + " is not a TDirectory",
+                        )
             return step.key(items[-1])
 
         if ";" in where:
@@ -1201,21 +1265,6 @@ class ReadOnlyDirectory(Mapping):
         if last is not None:
             return last
         elif cycle is None:
-            raise KeyWithCycleError(
-                """not found: {0} (with any cycle number)
-in file {1}""".format(
-                    repr(item), self._file.file_path
-                )
-            )
+            raise uproot4.KeyInFileError(item, self._file.file_path, cycle="any")
         else:
-            raise KeyWithCycleError(
-                """not found: {0} with cycle {1}
-in file {2}""".format(
-                    repr(item), cycle, self._file.file_path
-                )
-            )
-
-
-class KeyWithCycleError(KeyError):
-    def __str__(self):
-        return self.args[0]
+            raise uproot4.KeyInFileError(item, self._file.file_path, cycle=cycle)

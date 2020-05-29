@@ -2,8 +2,10 @@
 
 from __future__ import absolute_import
 
+import uproot4.behaviors.TBranch
 
-class TTree(object):
+
+class TTree(uproot4.behaviors.TBranch.HasBranches):
     @property
     def name(self):
         return self.member("fName")
@@ -11,3 +13,6 @@ class TTree(object):
     @property
     def title(self):
         return self.member("fTitle")
+
+    def __repr__(self):
+        return "<TTree {0} ({1} branches)>".format(repr(self.name), len(self))

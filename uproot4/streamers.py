@@ -333,7 +333,7 @@ class Model_TStreamerElement(uproot4.model.Model):
         return self.member("fTitle")
 
     @property
-    def type_name(self):
+    def typename(self):
         return self.member("fTypeName")
 
     @property
@@ -352,7 +352,7 @@ class Model_TStreamerElement(uproot4.model.Model):
         Args:
             stream: Object with a `write` method for writing the output.
         """
-        stream.write(u"    {0}: {1}\n".format(self.name, self.type_name))
+        stream.write(u"    {0}: {1}\n".format(self.name, self.typename))
 
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
@@ -635,7 +635,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         return self._members["fCountName"]
 
     def _dependencies(self, streamers, out):
-        streamer_versions = streamers.get(self.type_name.rstrip("*"))
+        streamer_versions = streamers.get(self.typename.rstrip("*"))
         if streamer_versions is not None:
             for streamer in streamer_versions.values():
                 if (streamer.name, streamer.class_version) not in out:
@@ -660,7 +660,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 "        for tmp in range(self.member({0})):".format(self.count_name),
                 "            self._members[{0}] = c({1}).read(chunk, cursor, "
                 "context, self._file, self)".format(
-                    repr(self.name), repr(self.type_name.rstrip("*"))
+                    repr(self.name), repr(self.typename.rstrip("*"))
                 ),
             ]
         )
@@ -705,7 +705,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
     @property
     def is_string(self):
-        return self.stl_type == uproot4.const.kSTLstring or self.type_name == "string"
+        return self.stl_type == uproot4.const.kSTLstring or self.typename == "string"
 
     @property
     def is_vector_dtype(self):
@@ -741,50 +741,49 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             elif self.fCtype == uproot4.const.kDouble:
                 return "numpy.dtype('>f8')"
 
-        if self.type_name == "vector<bool>" or self.type_name == "vector<Bool_t>":
+        if self.typename == "vector<bool>" or self.typename == "vector<Bool_t>":
             return "numpy.dtype('?')"
-        elif self.type_name == "vector<char>" or self.type_name == "vector<Char_t>":
+        elif self.typename == "vector<char>" or self.typename == "vector<Char_t>":
             return "numpy.dtype('i1')"
-        elif self.type_name == "vector<short>" or self.type_name == "vector<Short_t>":
+        elif self.typename == "vector<short>" or self.typename == "vector<Short_t>":
             return "numpy.dtype('>i2')"
-        elif self.type_name == "vector<int>" or self.type_name == "vector<Int_t>":
+        elif self.typename == "vector<int>" or self.typename == "vector<Int_t>":
             return "numpy.dtype('>i4')"
-        elif self.type_name == "vector<long>" or self.type_name == "vector<Long_t>":
+        elif self.typename == "vector<long>" or self.typename == "vector<Long_t>":
             return "numpy.dtype(numpy.long).newbyteorder('>')"
-        elif self.type_name == "vector<Long64_t>":
+        elif self.typename == "vector<Long64_t>":
             return "numpy.dtype('>i8')"
         elif (
-            self.type_name == "vector<unsigned char>"
-            or self.type_name == "vector<UChar_t>"
+            self.typename == "vector<unsigned char>"
+            or self.typename == "vector<UChar_t>"
         ):
             return "numpy.dtype('u1')"
         elif (
-            self.type_name == "vector<unsigned short>"
-            or self.type_name == "vector<UShort_t>"
+            self.typename == "vector<unsigned short>"
+            or self.typename == "vector<UShort_t>"
         ):
             return "numpy.dtype('>u2')"
         elif (
-            self.type_name == "vector<unsigned int>"
-            or self.type_name == "vector<UInt_t>"
+            self.typename == "vector<unsigned int>" or self.typename == "vector<UInt_t>"
         ):
             return "numpy.dtype('>u4')"
         elif (
-            self.type_name == "vector<unsigned long>"
-            or self.type_name == "vector<ULong_t>"
+            self.typename == "vector<unsigned long>"
+            or self.typename == "vector<ULong_t>"
         ):
             return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
-        elif self.type_name == "vector<ULong64_t>":
+        elif self.typename == "vector<ULong64_t>":
             return "numpy.dtype('>u8')"
-        elif self.type_name == "vector<float>" or self.type_name == "vector<Float_t>":
+        elif self.typename == "vector<float>" or self.typename == "vector<Float_t>":
             return "numpy.dtype('>f4')"
-        elif self.type_name == "vector<double>" or self.type_name == "vector<Double_t>":
+        elif self.typename == "vector<double>" or self.typename == "vector<Double_t>":
             return "numpy.dtype('>f8')"
         else:
             return None
 
     @property
     def is_map_string_string(self):
-        return self.type_name == "map<string,string>"
+        return self.typename == "map<string,string>"
 
     def class_code(
         self,
@@ -829,7 +828,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         else:
             read_members.append(
                 "        raise NotImplementedError('class members defined by "
-                "{0} with type {1}')".format(type(self).__name__, self.type_name)
+                "{0} with type {1}')".format(type(self).__name__, self.typename)
             )
         member_names.append(self.name)
 
@@ -864,7 +863,7 @@ class Model_TStreamerSTLstring(Model_TStreamerElement):
 
 class pointer_types(object):
     def _dependencies(self, streamers, out):
-        streamer_versions = streamers.get(self.type_name.rstrip("*"))
+        streamer_versions = streamers.get(self.typename.rstrip("*"))
         if streamer_versions is not None:
             for streamer in streamer_versions.values():
                 if (streamer.name, streamer.class_version) not in out:
@@ -887,7 +886,7 @@ class pointer_types(object):
             read_members.append(
                 "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
                 "self._file, self)".format(
-                    repr(self.name), repr(self.type_name.rstrip("*"))
+                    repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
         elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
@@ -924,7 +923,7 @@ class Model_TStreamerObjectPointer(pointer_types, Model_TStreamerElement):
 
 class object_types(object):
     def _dependencies(self, streamers, out):
-        streamer_versions = streamers.get(self.type_name.rstrip("*"))
+        streamer_versions = streamers.get(self.typename.rstrip("*"))
         if streamer_versions is not None:
             for streamer in streamer_versions.values():
                 if (streamer.name, streamer.class_version) not in out:
@@ -945,9 +944,7 @@ class object_types(object):
     ):
         read_members.append(
             "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
-            "self._file, self)".format(
-                repr(self.name), repr(self.type_name.rstrip("*"))
-            )
+            "self._file, self)".format(repr(self.name), repr(self.typename.rstrip("*")))
         )
         member_names.append(self.name)
 

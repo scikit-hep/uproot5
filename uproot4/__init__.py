@@ -86,3 +86,36 @@ behavior_of._module_names = [
 ]
 
 del pkgutil
+
+
+class KeyInFileError(KeyError):
+    def __init__(self, key, file_path, cycle=None, because=""):
+        super(KeyInFileError, self).__init__(key)
+        self.key = key
+        self.file_path = file_path
+        self.cycle = cycle
+        self.because = because
+
+    def __str__(self):
+        if self.because == "":
+            because = ""
+        else:
+            because = " because " + self.because
+        if self.cycle == "any":
+            return """not found: {0} (with any cycle number){1}
+in file {2}""".format(
+                repr(self.key), because, self.file_path
+            )
+        elif self.cycle is None:
+            return """not found: {0}{1}
+in file {2}""".format(
+                repr(self.key), because, self.file_path
+            )
+        else:
+            return """not found: {0} with cycle {1}{2}
+in file {3}""".format(
+                repr(self.key), self.cycle, because, self.file_path
+            )
+
+
+from uproot4._util import no_filter

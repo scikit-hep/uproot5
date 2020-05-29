@@ -82,9 +82,13 @@ def _regularize_filter_regex_flags(flags):
     return flagsbyte
 
 
+def no_filter(x):
+    return True
+
+
 def regularize_filter(filter):
     if filter is None:
-        return lambda x: True
+        return no_filter
     elif callable(filter):
         return filter
     elif isstr(filter):

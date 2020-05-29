@@ -34,7 +34,7 @@ class Library(object):
         return repr(self.name)
 
     def __eq__(self, other):
-        return type(_libraries[self.name]) is type(_libraries[other.name])
+        return type(_libraries[self.name]) is type(_libraries[other.name])  # noqa: E721
 
 
 class NumPy(Library):
@@ -43,6 +43,7 @@ class NumPy(Library):
     @property
     def imported(self):
         import numpy
+
         return numpy
 
     def wrap_numpy(self, array):
@@ -57,7 +58,6 @@ class NumPy(Library):
         for i, x in enumerate(array):
             out[i] = x
         return out
-
 
 
 class Awkward(Library):
@@ -104,10 +104,13 @@ or
     def wrap_jagged(self, array):
         array = array.compact
         pandas = self.imported
-        index = pandas.MultiIndex.from_arrays([array.parents, array.localindex], names=["entry", "subentry"])
+        index = pandas.MultiIndex.from_arrays(
+            [array.parents, array.localindex], names=["entry", "subentry"]
+        )
         return pandas.Series(array.content, index=index)
 
     def wrap_python(self, array):
+        pandas = self.imported
         return pandas.Series(array)
 
 
@@ -136,7 +139,7 @@ _libraries["PANDAS"] = _libraries[Pandas.name]
 
 def _regularize_library(library):
     try:
-        return libraries[library]
+        return _libraries[library]
     except KeyError:
         raise ValueError("unrecognized library: {0}".format(repr(library)))
 

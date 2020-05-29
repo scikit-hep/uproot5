@@ -29,7 +29,15 @@ class Numerical(uproot4.interpret.Interpretation):
             )
         return numpy.empty(quotient, dtype=self.to_dtype)
 
-    def fill(self, basket_array, fillable_array, item_start, item_stop, entry_start, entry_stop):
+    def fill(
+        self,
+        basket_array,
+        fillable_array,
+        item_start,
+        item_stop,
+        entry_start,
+        entry_stop,
+    ):
         assert item_start == entry_start and item_stop == entry_stop
         fillable_array.reshape(-1)[item_start:item_stop] = basket_array.reshape(-1)
 
@@ -69,7 +77,7 @@ class AsDtype(Numerical):
         def form(dtype, name):
             d, s = _dtype_shape(dtype)
             return "{0}{1}{2}({3}{4})".format(
-                _numpy_byteorder_to_cache_key[d.byteorder],
+                self._numpy_byteorder_to_cache_key[d.byteorder],
                 d.kind,
                 d.itemsize,
                 ",".join(repr(x) for x in s),
@@ -121,7 +129,7 @@ class AsDtype(Numerical):
         return data.view(self._from_dtype).reshape((-1,) + shape)
 
 
-class AsArray(NumpyDtype):
+class AsArray(AsDtype):
     def __init__(self):
         raise NotImplementedError
 
