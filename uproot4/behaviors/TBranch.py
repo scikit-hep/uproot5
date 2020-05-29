@@ -7,6 +7,7 @@ try:
 except ImportError:
     from collections import Mapping
 
+import uproot4.source.cursor
 import uproot4._util
 from uproot4._util import no_filter
 
@@ -46,8 +47,7 @@ class HasBranches(Mapping):
             recursive = True
 
         if "/" in where:
-            while "//" in where:
-                where = where.replace("//", "/")
+            where = "/".join([x for x in where.split("/") if x != ""])
             for k, v in self.iteritems(recursive=True):
                 if where == k:
                     return v
@@ -153,6 +153,10 @@ class HasBranches(Mapping):
             )
         )
 
+    def _ipython_key_completions_(self):
+        "Support key-completion in an IPython or Jupyter kernel."
+        return self.iterkeys()
+
     def itervalues(
         self,
         recursive=True,
@@ -236,5 +240,67 @@ class TBranch(HasBranches):
     def typename(self):
         return "FIXME"
 
+    @property
+    def interpretation(self):
+        if self._interpretation is None:
+            raise NotImplementedError
+        return self._interpretation
+
+    @property
+    def count_branch(self):
+        if self._count_branch is None:
+            raise NotImplementedError
+        return self._count_branch
+
+    @property
+    def count_leaf(self):
+        if self._count_leaf is None:
+            raise NotImplementedError
+        return self._count_leaf
+
+    @property
+    def num_entries(self):
+        return int(self.member("fEntries"))   # or fEntryNumber?
+
+    @property
+    def num_baskets(self):
+        # FIXME: recover (which should be defined in the MODEL)
+        return self._num_good_baskets + len(self._recovered_baskets)
+
     def __repr__(self):
         return "<TBranch {0} ({1} subbranches)>".format(repr(self.name), len(self))
+
+    def basket_cursor(self, basket_num):
+        if 0 <= basket_num < self._num_good_baskets:
+            return uproot4.source.cursor.Cursor(self.member("fBasketSeek")[basket_num])
+        elif 0 <= basket_num < self.num_baskets:
+            raise NotImplementedError
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get basket {2}
+in file {3}""".format(self.name, self.num_baskets, basket_num, self._file.file_path)
+            )
+
+    def basket_chunk_bytes(self, basket_num):
+        if 0 <= basket_num < self._num_good_baskets:
+            return int(self.member("fBasketBytes")[basket_num])
+        elif 0 <= basket_num < self.num_baskets:
+            raise NotImplementedError
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get basket {2}
+in file {3}""".format(self.name, self.num_baskets, basket_num, self._file.file_path)
+            )
+
+    def basket_compressed_bytes(self, basket_num):
+        raise NotImplementedError
+
+    def basket_uncompressed_bytes(self, basket_num):
+        raise NotImplementedError
+
+    def basket_chunk(self, basket_num):
+        start = self.basket_cursor(basket_num).index
+        stop = start + self.basket_chunk_bytes(basket_num)
+
+        return self._file.source.chunk(start, stop)
+

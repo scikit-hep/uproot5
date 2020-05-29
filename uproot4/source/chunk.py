@@ -79,6 +79,14 @@ class Source(object):
         """
         self.__exit__(None, None, None)
 
+    @property
+    def closed(self):
+        """
+        True if the associated file/connection/thread pool is closed; False
+        otherwise.
+        """
+        return self._executor.closed
+
     def begin_end_chunks(self, begin_guess_bytes, end_guess_bytes):
         """
         Args:

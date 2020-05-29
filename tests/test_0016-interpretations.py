@@ -17,17 +17,27 @@ import skhep_testdata
 import uproot4
 
 
-def test():
+def test_get_key():
     with uproot4.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
         assert f["Events"].name == "Events"
         assert f["Events/Info"].name == "Info"
         assert f["Events/Info/evtNum"].name == "evtNum"
+        assert f["Events"]["Info/evtNum"].name == "evtNum"
+        assert f["Events"]["/Info/evtNum"].name == "evtNum"
         assert f["Events/evtNum"].name == "evtNum"
         assert f["Events"]["evtNum"].name == "evtNum"
         assert f["Events"]["/Info"].name == "Info"
+        assert f["Events"]["/Info/"].name == "Info"
         with pytest.raises(KeyError):
             f["Events"]["/evtNum"]
 
-    # sample-6.20.04-uncompressed
+
+import time
+
+def test_basket_data():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+    ) as f:
+        print(f["sample/i4"].basket_chunk(0))
 
     # raise Exception

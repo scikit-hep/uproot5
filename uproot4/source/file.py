@@ -32,6 +32,10 @@ class FileResource(uproot4.source.chunk.Resource):
     def file(self):
         return self._file
 
+    @property
+    def closed(self):
+        return self._file.closed
+
     def __enter__(self):
         return self
 

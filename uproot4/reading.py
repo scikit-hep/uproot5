@@ -285,7 +285,6 @@ in file {1}""".format(
             uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
             self,
             self,
-            self._options,
         )
 
     @property
@@ -311,9 +310,7 @@ in file {1}""".format(
                     key_chunk=key_chunk, key_cursor=key_cursor,
                 )
 
-                streamer_key = ReadOnlyKey(
-                    key_chunk, key_cursor, {}, self, self, self._options
-                )
+                streamer_key = ReadOnlyKey(key_chunk, key_cursor, {}, self, self)
 
                 self.hook_before_decompress_streamers(
                     key_chunk=key_chunk,
@@ -573,7 +570,7 @@ class ReadOnlyKey(object):
     _format_big = struct.Struct(">ihiIhhqq")
 
     def __init__(
-        self, chunk, cursor, context, file, parent, options, read_strings=False
+        self, chunk, cursor, context, file, parent, read_strings=False
     ):
         self._cursor = cursor.copy()
         self._file = file
@@ -585,7 +582,6 @@ class ReadOnlyKey(object):
             context=context,
             file=file,
             parent=parent,
-            options=options,
             read_strings=read_strings,
         )
 
@@ -622,7 +618,6 @@ class ReadOnlyKey(object):
                 context=context,
                 file=file,
                 parent=parent,
-                options=options,
                 read_strings=read_strings,
             )
 
@@ -641,7 +636,6 @@ class ReadOnlyKey(object):
             context=context,
             file=file,
             parent=parent,
-            options=options,
             read_strings=read_strings,
         )
 
@@ -779,7 +773,10 @@ class ReadOnlyKey(object):
         if self._file.object_cache is not None:
             out = self._file.object_cache.get(self.cache_key)
             if out is not None:
-                return out
+                if out.file.closed:
+                    del self._file.object_cache[self.cache_key]
+                else:
+                    return out
 
         if isinstance(self._parent, ReadOnlyDirectory) and self._fClassName in (
             "TDirectory",
@@ -790,7 +787,6 @@ class ReadOnlyKey(object):
                 self.data_cursor,
                 self._file,
                 self,
-                self._file.options,
             )
 
         else:
@@ -808,7 +804,7 @@ class ReadOnlyDirectory(Mapping):
     _format_big = struct.Struct(">hIIiiqqq")
     _format_num_keys = struct.Struct(">i")
 
-    def __init__(self, path, cursor, file, parent, options):
+    def __init__(self, path, cursor, file, parent):
         self._path = path
         self._cursor = cursor.copy()
         self._file = file
@@ -824,7 +820,6 @@ class ReadOnlyDirectory(Mapping):
             cursor=cursor,
             file=file,
             parent=parent,
-            options=options,
         )
 
         (
@@ -874,13 +869,12 @@ class ReadOnlyDirectory(Mapping):
                 cursor=cursor,
                 file=file,
                 parent=parent,
-                options=options,
                 keys_chunk=keys_chunk,
                 keys_cursor=keys_cursor,
             )
 
             self._header_key = ReadOnlyKey(
-                keys_chunk, keys_cursor, {}, file, self, options, read_strings=True
+                keys_chunk, keys_cursor, {}, file, self, read_strings=True
             )
 
             num_keys = keys_cursor.field(keys_chunk, self._format_num_keys)
@@ -891,7 +885,6 @@ class ReadOnlyDirectory(Mapping):
                 cursor=cursor,
                 file=file,
                 parent=parent,
-                options=options,
                 keys_chunk=keys_chunk,
                 keys_cursor=keys_cursor,
                 num_keys=num_keys,
@@ -900,7 +893,7 @@ class ReadOnlyDirectory(Mapping):
             self._keys = []
             for i in range(num_keys):
                 key = ReadOnlyKey(
-                    keys_chunk, keys_cursor, {}, file, self, options, read_strings=True
+                    keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )
                 self._keys.append(key)
 
@@ -910,7 +903,6 @@ class ReadOnlyDirectory(Mapping):
                 cursor=cursor,
                 file=file,
                 parent=parent,
-                options=options,
                 keys_chunk=keys_chunk,
                 keys_cursor=keys_cursor,
                 num_keys=num_keys,
