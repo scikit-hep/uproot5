@@ -49,7 +49,14 @@ class Model_TBasket(uproot4.model.Model):
         if context.get("second_key", True):
             cursor.skip(self._members["fKeylen"])
 
-        self._data = cursor.bytes(chunk, self.border)
+        nbytes = context.get("nbytes")
+        if (
+            nbytes is not None
+            and self._members["fObjlen"] != nbytes - self._members["fKeylen"]
+        ):
+            raise NotImplementedError
+        else:
+            self._data = cursor.bytes(chunk, self.border)
 
     @property
     def data(self):
