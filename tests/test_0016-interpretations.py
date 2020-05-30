@@ -70,6 +70,12 @@ def test_compressed():
         assert basket.byte_offsets.tolist() == [0, 4, 4, 16, 28, 28, 32, 52, 52, 56, 56]
 
 
+def test_read_all():
+    filename = skhep_testdata.data_path("uproot-issue327.root")
+    with uproot4.open(filename, minimal_ttree_metadata=False) as f:
+        f["DstTree/fTracks.fCharge"]
+
+
 def test_recovery():
     # uproot-issue327.root DstTree: fTracks.fCharge
     # uproot-issue232.root fTreeV0: V0s.fV0pt MCparticles.nbodies
@@ -77,7 +83,11 @@ def test_recovery():
     # uproot-from-geant4.root Details: numgood, TrackedRays: Event phi
 
     filename = skhep_testdata.data_path("uproot-issue327.root")
-    with uproot4.open(filename + " | DstTree/fTracks.fCharge") as branch:
+    with uproot4.open("file:" + filename + " | DstTree/fTracks.fCharge") as branch:
         print(branch)
+
+    # filename = skhep_testdata.data_path("uproot-issue21.root")
+    # with uproot4.open("file:" + filename + " | nllscan", minimal_ttree_metadata=False) as tree:
+    #     print(tree)
 
     # raise Exception

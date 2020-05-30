@@ -45,43 +45,71 @@ class Model_TBasket(uproot4.model.Model):
 
         cursor.skip(1)
 
-        # if self._members["fNevBufSize"] > 8:
-        #     self._byte_offsets = cursor.bytes(chunk, self._members["fNevBuf"] * 4 + 8)
-        #     cursor.skip(-4)
-        # else:
-        #     self._byte_offsets = None
+        if self.is_embedded:
+            if self._members["fNevBufSize"] > 8:
+                raw_byte_offsets = cursor.bytes(
+                    chunk, 8 + self._members["fNevBuf"] * 4
+                ).view(_tbasket_offsets_dtype)
+                cursor.skip(-4)
+                self._byte_offsets = raw_byte_offsets[1:] - self._members["fKeylen"]
+                self._byte_offsets[-1] = self.border
+            else:
+                self._byte_offsets = None
 
-        # if context.get("second_key", True):
-        #     cursor.skip(self._members["fKeylen"])
+            # second key has no new information
+            cursor.skip(self._members["fKeylen"])
 
-        if self.compressed_bytes != self.uncompressed_bytes:
-            uncompressed = uproot4.compression.decompress(
-                chunk, cursor, {}, self.compressed_bytes, self.uncompressed_bytes,
-            )
-            self._raw_data = uncompressed.get(0, self.uncompressed_bytes)
+            self._data = cursor.bytes(chunk, self.border)
+
         else:
-            self._raw_data = cursor.bytes(chunk, self.uncompressed_bytes)
+            if self.compressed_bytes != self.uncompressed_bytes:
+                uncompressed = uproot4.compression.decompress(
+                    chunk, cursor, {}, self.compressed_bytes, self.uncompressed_bytes,
+                )
+                self._raw_data = uncompressed.get(0, self.uncompressed_bytes)
+            else:
+                self._raw_data = cursor.bytes(chunk, self.uncompressed_bytes)
 
-        if self.border == self.uncompressed_bytes:
-            self._data = self._raw_data
-            self._byte_offsets = None
-        else:
-            self._data = self._raw_data[: self.border]
-            raw_byte_offsets = self._raw_data[self.border :].view(
-                _tbasket_offsets_dtype
-            )
-            # subtracting fKeylen makes a new buffer and converts to native endian
-            self._byte_offsets = raw_byte_offsets[1:] - self._members["fKeylen"]
-            # so modifying it in place doesn't have non-local consequences
-            self._byte_offsets[-1] = self.border
+            if self.border == self.uncompressed_bytes:
+                self._data = self._raw_data
+                self._byte_offsets = None
+            else:
+                self._data = self._raw_data[: self.border]
+                raw_byte_offsets = self._raw_data[self.border :].view(
+                    _tbasket_offsets_dtype
+                )
+                # subtracting fKeylen makes a new buffer and converts to native endian
+                self._byte_offsets = raw_byte_offsets[1:] - self._members["fKeylen"]
+                # so modifying it in place doesn't have non-local consequences
+                self._byte_offsets[-1] = self.border
+
+    @property
+    def key_version(self):
+        return self._key_version
+
+    @property
+    def is_embedded(self):
+        return self._members["fNbytes"] <= self._members["fKeylen"]
 
     @property
     def uncompressed_bytes(self):
-        return self._members["fObjlen"]
+        if self.is_embedded:
+            if self._byte_offsets is None:
+                return self._data.nbytes
+            else:
+                return self._data.nbytes + self._byte_offsets.nbytes - 4
+        else:
+            return self._members["fObjlen"]
 
     @property
     def compressed_bytes(self):
-        return self._members["fNbytes"] - self._members["fKeylen"]
+        if self.is_embedded:
+            if self._byte_offsets is None:
+                return self._data.nbytes
+            else:
+                return self._data.nbytes + self._byte_offsets.nbytes - 4
+        else:
+            return self._members["fNbytes"] - self._members["fKeylen"]
 
     @property
     def border(self):

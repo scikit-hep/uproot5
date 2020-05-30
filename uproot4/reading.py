@@ -129,7 +129,10 @@ class ReadOnlyFile(object):
         self.hook_before_create_source()
 
         Source = uproot4._util.path_to_source_class(file_path, self._options)
-        self._source = Source(file_path, **self._options)
+        if file_path.startswith("file:"):
+            self._source = Source(file_path[5:], **self._options)
+        else:
+            self._source = Source(file_path, **self._options)
 
         self.hook_before_get_chunks()
 

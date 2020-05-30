@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 
 import struct
-import threading
 
 import numpy
 
@@ -453,11 +452,6 @@ class Model_TBranch(uproot4.model.DispatchByVersion):
         13: Model_TBranch_v13,
     }
 
-    @classmethod
-    def postprocess(cls, self):
-        _setup_branch(self)
-        return self
-
 
 _tbranchelement8_format1 = struct.Struct(">Iiiiii")
 
@@ -631,42 +625,6 @@ class Model_TBranchElement(uproot4.model.DispatchByVersion):
         10: Model_TBranchElement_v10,
     }
 
-    @classmethod
-    def postprocess(cls, self):
-        _setup_branch(self)
-        return self
-
 
 uproot4.classes["TBranch"] = Model_TBranch
 uproot4.classes["TBranchElement"] = Model_TBranchElement
-
-
-def _setup_branch(branch):
-    fWriteBasket = branch.member("fWriteBasket")
-
-    branch._interpretation = None
-    branch._count_branch = None
-    branch._count_leaf = None
-
-    branch._num_good_baskets = 0
-    for i, x in enumerate(branch.member("fBasketSeek")):
-        if x == 0 or i == fWriteBasket:
-            break
-        branch._num_good_baskets += 1
-
-    if (
-        branch.member("fEntries")
-        == branch.member("fBasketEntry")[branch._num_good_baskets]
-    ):
-        branch._recovered_baskets = []
-        branch._entry_offsets = branch.member("fBasketEntry")[
-            : branch._num_good_baskets + 1
-        ].tolist()
-        branch._recovery_lock = None
-    else:
-        branch._recovered_baskets = None
-        branch._entry_offsets = None
-        branch._recovery_lock = threading.Lock()
-
-    if "fIOFeatures" in branch._parent.members:
-        branch._tree_iofeatures = branch._parent.member("fIOFeatures").member("fIOBits")

@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+import threading
+
 try:
     from collections.abc import Mapping
 except ImportError:
@@ -230,6 +232,41 @@ class HasBranches(Mapping):
 
 
 class TBranch(HasBranches):
+    def postprocess(self):
+        fWriteBasket = self.member("fWriteBasket")
+
+        self._interpretation = None
+        self._count_branch = None
+        self._count_leaf = None
+
+        self._num_good_baskets = 0
+        for i, x in enumerate(self.member("fBasketSeek")):
+            if x == 0 or i == fWriteBasket:
+                break
+            self._num_good_baskets += 1
+
+        if (
+            self.member("fEntries")
+            == self.member("fBasketEntry")[self._num_good_baskets]
+        ):
+            self._recovered_baskets = []
+            self._entry_offsets = self.member("fBasketEntry")[
+                : self._num_good_baskets + 1
+            ].tolist()
+            self._recovery_lock = None
+        else:
+            self._recovered_baskets = None
+            self._entry_offsets = None
+            self._recovery_lock = threading.Lock()
+
+        if "fIOFeatures" in self._parent.members:
+            self._tree_iofeatures = self._parent.member("fIOFeatures").member("fIOBits")
+
+        return self
+
+    def _recover_baskets(self):
+        raise Exception
+
     @property
     def name(self):
         return self.member("fName")
@@ -266,7 +303,8 @@ class TBranch(HasBranches):
 
     @property
     def num_baskets(self):
-        # FIXME: recover (which should be defined in the MODEL)
+        if self._recovered_baskets is None:
+            self._recover_baskets()
         return self._num_good_baskets + len(self._recovered_baskets)
 
     def __repr__(self):
@@ -324,5 +362,5 @@ in file {3}""".format(
         stop = start + self.basket_chunk_bytes(basket_num)
         chunk = self._file.source.chunk(start, stop)
         return uproot4.models.TBasket.Model_TBasket.read(
-            chunk, cursor, {"second_key": False}, self._file, self
+            chunk, cursor, {}, self._file, self
         )

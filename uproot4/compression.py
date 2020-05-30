@@ -144,9 +144,13 @@ _decompress_checksum_format = struct.Struct(">Q")
 
 
 def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
+    assert compressed_bytes >= 0
+    assert uncompressed_bytes >= 0
+
     start = cursor.copy()
     filled = 0
     num_blocks = 0
+
     while cursor.displacement(start) < compressed_bytes:
         # https://github.com/root-project/root/blob/master/core/zip/src/RZip.cxx#L217
         # https://github.com/root-project/root/blob/master/core/lzma/src/ZipLZMA.c#L81
