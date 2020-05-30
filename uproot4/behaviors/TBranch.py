@@ -12,6 +12,7 @@ except ImportError:
 import uproot4.source.cursor
 import uproot4.reading
 import uproot4.models.TBasket
+import uproot4.models.TObjArray
 import uproot4._util
 from uproot4._util import no_filter
 
@@ -232,7 +233,7 @@ class HasBranches(Mapping):
 
 
 class TBranch(HasBranches):
-    def postprocess(self):
+    def postprocess(self, chunk, cursor, context):
         fWriteBasket = self.member("fWriteBasket")
 
         self._interpretation = None
@@ -264,8 +265,52 @@ class TBranch(HasBranches):
 
         return self
 
+    @property
+    def tree(self):
+        import uproot4.behaviors.TTree
+
+        out = self
+        while not isinstance(out, uproot4.behaviors.TTree.TTree):
+            out = out.parent
+        return out
+
     def _recover_baskets(self):
-        raise Exception
+        cursor = self._cursor_baskets.copy()
+        baskets = uproot4.models.TObjArray.Model_TObjArrayOfTBaskets.read(
+            self.tree.chunk, cursor, {}, self._file, self
+        )
+
+        if self._num_good_baskets == 0:
+            entry_offsets = [0]
+        else:
+            entry_offsets = self.member("fBasketEntry")[
+                : self._num_good_baskets + 1
+            ].tolist()
+
+        num_entries_normal = entry_offsets[-1]
+        for basket in baskets:
+            entry_offsets.append(entry_offsets[-1] + basket.num_entries)
+
+        if entry_offsets[-1] != self.num_entries:
+            if self.interpretation is None:
+                with self._recovery_lock:
+                    self._recovered_baskets = []
+            else:
+                raise ValueError(
+                    """entries in normal baskets ({0}) plus recovered baskets """
+                    """({1}) don't add up to expected number of entries ({2})
+in file {3}""".format(
+                        num_entries_normal,
+                        sum(basket.num_entries for basket in baskets),
+                        self.num_entries,
+                        self._file.file_path,
+                    )
+                )
+        else:
+            with self._recovery_lock:
+                self._members["fBaskets"] = baskets
+                self._recovered_baskets = list(baskets)
+                self._entry_offsets = entry_offsets
 
     @property
     def name(self):
@@ -357,10 +402,20 @@ in file {3}""".format(
         )
 
     def basket(self, basket_num):
-        cursor = self.basket_cursor(basket_num)
-        start = cursor.index
-        stop = start + self.basket_chunk_bytes(basket_num)
-        chunk = self._file.source.chunk(start, stop)
-        return uproot4.models.TBasket.Model_TBasket.read(
-            chunk, cursor, {}, self._file, self
-        )
+        if 0 <= basket_num < self._num_good_baskets:
+            cursor = self.basket_cursor(basket_num)
+            start = cursor.index
+            stop = start + self.basket_chunk_bytes(basket_num)
+            chunk = self._file.source.chunk(start, stop)
+            return uproot4.models.TBasket.Model_TBasket.read(
+                chunk, cursor, {}, self._file, self
+            )
+        elif 0 <= basket_num < self.num_baskets:
+            return self._recovered_baskets[basket_num - self._num_good_baskets]
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get basket {2}
+in file {3}""".format(
+                    self.name, self.num_baskets, basket_num, self._file.file_path
+                )
+            )

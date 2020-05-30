@@ -34,9 +34,9 @@ class Model(object):
 
         self.check_numbytes(cursor, context)
 
-        self.hook_before_postprocess()
+        self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context)
 
-        return self.postprocess()
+        return self.postprocess(chunk, cursor, context)
 
     def __repr__(self):
         return "<{0} at 0x{1:012x}>".format(
@@ -65,7 +65,7 @@ class Model(object):
             getattr(self._file, "file_path"),
         )
 
-    def postprocess(self):
+    def postprocess(self, chunk, cursor, context):
         return self
 
     def hook_before_read(self, **kwargs):
@@ -279,7 +279,12 @@ class DispatchByVersion(object):
                 )
             )
 
-        return cls.postprocess(versioned_cls.read(chunk, cursor, context, file, parent))
+        return cls.postprocess(
+            versioned_cls.read(chunk, cursor, context, file, parent),
+            chunk,
+            cursor,
+            context,
+        )
 
     @classmethod
     def new_class(cls, file, version):
@@ -304,7 +309,7 @@ class DispatchByVersion(object):
             return unknown_cls
 
     @classmethod
-    def postprocess(cls, self):
+    def postprocess(cls, self, chunk, cursor, context):
         return self
 
     @classmethod

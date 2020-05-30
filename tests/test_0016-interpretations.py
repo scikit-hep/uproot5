@@ -77,17 +77,54 @@ def test_read_all():
 
 
 def test_recovery():
+    # flat array to recover:
+    filename = skhep_testdata.data_path("uproot-issue21.root")
+    with uproot4.open("file:" + filename + " | nllscan/mH") as branch:
+        basket = branch.basket(0)
+        assert basket.data.view(">f8").tolist()[:10] == [
+            124.0,
+            124.09089660644531,
+            124.18180084228516,
+            124.27269744873047,
+            124.36360168457031,
+            124.45449829101562,
+            124.54550170898438,
+            124.63639831542969,
+            124.72730255126953,
+            124.81819915771484,
+        ]
+        assert basket.byte_offsets is None
+
+    # jagged arrays to recover:
+
     # uproot-issue327.root DstTree: fTracks.fCharge
     # uproot-issue232.root fTreeV0: V0s.fV0pt MCparticles.nbodies
     # uproot-issue187.root fTreeV0: V0s.fV0pt MCparticles.nbodies
     # uproot-from-geant4.root Details: numgood, TrackedRays: Event phi
-
     filename = skhep_testdata.data_path("uproot-issue327.root")
     with uproot4.open("file:" + filename + " | DstTree/fTracks.fCharge") as branch:
-        print(branch)
-
-    # filename = skhep_testdata.data_path("uproot-issue21.root")
-    # with uproot4.open("file:" + filename + " | nllscan", minimal_ttree_metadata=False) as tree:
-    #     print(tree)
-
-    # raise Exception
+        basket = branch.basket(0)
+        assert basket.data.view("i1")[:10].tolist() == [
+            1,
+            -1,
+            1,
+            1,
+            -1,
+            -1,
+            1,
+            -1,
+            -1,
+            -1,
+        ]
+        assert basket.byte_offsets[:10].tolist() == [
+            0,
+            2,
+            37,
+            56,
+            60,
+            81,
+            82,
+            112,
+            112,
+            112,
+        ]

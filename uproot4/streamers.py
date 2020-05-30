@@ -142,7 +142,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
             chunk, cursor, context, self._file, self._parent
         )
 
-    def postprocess(self):
+    def postprocess(self, chunk, cursor, context):
         # prevent circular dependencies and long-lived references to files
         self._file = None
         self._parent = None
@@ -318,7 +318,7 @@ class Model_TStreamerElement(uproot4.model.Model):
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
 
-    def postprocess(self):
+    def postprocess(self, chunk, cursor, context):
         # prevent circular dependencies and long-lived references to files
         self._file = None
         self._parent = None

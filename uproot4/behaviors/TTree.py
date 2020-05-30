@@ -21,3 +21,11 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
             return "<TTree {0} ({1} branches) at 0x{2:012x}>".format(
                 repr(self.name), len(self), id(self)
             )
+
+    def postprocess(self, chunk, cursor, context):
+        self._chunk = chunk
+        return self
+
+    @property
+    def chunk(self):
+        return self._chunk

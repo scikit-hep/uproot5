@@ -656,11 +656,6 @@ class Model_TTree(uproot4.model.DispatchByVersion):
         20: Model_TTree_v20,
     }
 
-    @classmethod
-    def postprocess(cls, self):
-        # FIXME: attach streamers
-        return self
-
 
 _tiofeatures_format1 = struct.Struct(">B")
 
