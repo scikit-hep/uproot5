@@ -66,6 +66,12 @@ def open(
         * minimal_ttree_metadata (bool; True)
     """
 
+    if "|" in file_path:
+        i = file_path.index("|")
+        file_path, object_path = file_path[:i].rstrip(), file_path[i + 1 :].lstrip()
+    else:
+        object_path = None
+
     file = ReadOnlyFile(
         file_path,
         object_cache=object_cache,
@@ -73,7 +79,11 @@ def open(
         classes=classes,
         **options
     )
-    return file.root_directory
+
+    if object_path is None:
+        return file.root_directory
+    else:
+        return file.root_directory[object_path]
 
 
 open.defaults = {
@@ -972,29 +982,30 @@ class ReadOnlyDirectory(Mapping):
 
     def __enter__(self):
         """
-        If this is the root directory, passes __enter__ to the file and
-        returns self.
-
-        If this is not the root directory, __enter__ is a pass-through,
-        returning self.
+        Passes __enter__ to the file and returns self.
         """
-        if self._path == ():
-            self._file.source.__enter__()
+        self._file.source.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         """
-        If this is the root directory, passes __exit__ to the file, which
-        closes physical files and shuts down any other resources, such as
-        thread pools for parallel reading.
-
-        If this is not the root directory, __exit__ is a pass-through.
+        Passes __exit__ to the file, which closes physical files and shuts down
+        any other resources, such as thread pools for parallel reading.
         """
-        if self.path == ():
-            self._file.source.__exit__(exception_type, exception_value, traceback)
+        self._file.source.__exit__(exception_type, exception_value, traceback)
 
     def close(self):
+        """
+        Closes the file from which this object is derived.
+        """
         self._file.close()
+
+    @property
+    def closed(self):
+        """
+        True if the associated file is closed; False otherwise.
+        """
+        return self._file.closed
 
     def streamer_dependencies(self, classname, version="max"):
         return self._file.streamer_dependencies(classname=classname, version=version)

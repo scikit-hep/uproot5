@@ -270,7 +270,12 @@ class TBranch(HasBranches):
         return self._num_good_baskets + len(self._recovered_baskets)
 
     def __repr__(self):
-        return "<TBranch {0} ({1} subbranches)>".format(repr(self.name), len(self))
+        if len(self) == 0:
+            return "<TBranch {0} at 0x{1:012x}>".format(repr(self.name), id(self))
+        else:
+            return "<TBranch {0} ({1} subbranches) at 0x{2:012x}>".format(
+                repr(self.name), len(self), id(self)
+            )
 
     def basket_cursor(self, basket_num):
         if 0 <= basket_num < self._num_good_baskets:

@@ -176,6 +176,39 @@ class Model(object):
                 out[k] = v
         return out
 
+    def __enter__(self):
+        """
+        Passes __enter__ to the file and returns self.
+        """
+        if self._file is not None:
+            self._file.source.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Passes __exit__ to the file, which closes physical files and shuts down
+        any other resources, such as thread pools for parallel reading.
+        """
+        if self._file is not None:
+            self._file.source.__exit__(exception_type, exception_value, traceback)
+
+    def close(self):
+        """
+        Closes the file from which this object is derived.
+        """
+        if self._file is not None:
+            self._file.close()
+
+    @property
+    def closed(self):
+        """
+        True if the associated file is closed; False otherwise.
+        """
+        if self._file is not None:
+            return self._file.closed
+        else:
+            return None
+
 
 class UnknownClass(Model):
     def read_members(self, chunk, cursor, context):

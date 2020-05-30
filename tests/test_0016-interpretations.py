@@ -34,7 +34,7 @@ def test_get_key():
 
 def test_basket_data():
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     ) as f:
         assert f["sample/i4"].basket_key(3).fSeekKey == 35042
         assert f["sample/i4"].basket(3).data.view(">i4").tolist() == [
@@ -49,7 +49,7 @@ def test_basket_data():
 
 
 def test_compressed():
-    with uproot4.open(skhep_testdata.data_path("uproot-mc10events.root"),) as f:
+    with uproot4.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
         basket = f["Events/Muon.q"].basket(0)
         assert basket.data.view(">i4").tolist() == [
             -1,
@@ -68,3 +68,16 @@ def test_compressed():
             1,
         ]
         assert basket.byte_offsets.tolist() == [0, 4, 4, 16, 28, 28, 32, 52, 52, 56, 56]
+
+
+def test_recovery():
+    # uproot-issue327.root DstTree: fTracks.fCharge
+    # uproot-issue232.root fTreeV0: V0s.fV0pt MCparticles.nbodies
+    # uproot-issue187.root fTreeV0: V0s.fV0pt MCparticles.nbodies
+    # uproot-from-geant4.root Details: numgood, TrackedRays: Event phi
+
+    filename = skhep_testdata.data_path("uproot-issue327.root")
+    with uproot4.open(filename + " | DstTree/fTracks.fCharge") as branch:
+        print(branch)
+
+    # raise Exception

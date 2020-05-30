@@ -15,4 +15,9 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
         return self.member("fTitle")
 
     def __repr__(self):
-        return "<TTree {0} ({1} branches)>".format(repr(self.name), len(self))
+        if len(self) == 0:
+            return "<TTree {0} at 0x{1:012x}>".format(repr(self.name), id(self))
+        else:
+            return "<TTree {0} ({1} branches) at 0x{2:012x}>".format(
+                repr(self.name), len(self), id(self)
+            )
