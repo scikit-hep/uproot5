@@ -12,6 +12,7 @@ except ImportError:
 import uproot4.model
 import uproot4.deserialization
 import uproot4.models.TObject
+import uproot4.models.TBasket
 
 
 _tobjarray_format1 = struct.Struct(">ii")
@@ -52,3 +53,29 @@ class Model_TObjArray(uproot4.model.Model, Sequence):
 
 
 uproot4.classes["TObjArray"] = Model_TObjArray
+
+
+class Model_TObjArrayOfTBaskets(Model_TObjArray):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            uproot4.models.TObject.Model_TObject.read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+
+        self._members["fName"] = cursor.string(chunk)
+        self._members["fSize"], self._members["fLowerBound"] = cursor.fields(
+            chunk, _tobjarray_format1
+        )
+
+        self._data = []
+        for i in range(self._members["fSize"]):
+            item = uproot4.deserialization.read_object_any(
+                chunk,
+                cursor,
+                context,
+                self._file,
+                self._parent,
+                as_class=uproot4.models.TBasket.Model_TBasket,
+            )
+            self._data.append(item)

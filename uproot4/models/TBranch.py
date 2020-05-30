@@ -465,6 +465,7 @@ class Model_TBranchElement_v8(
                 chunk, cursor, context, self._file, self._parent
             )
         )
+        self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = self.class_named("TString").read(
             chunk, cursor, context, self._file, self
         )
@@ -520,6 +521,7 @@ class Model_TBranchElement_v9(
                 chunk, cursor, context, self._file, self._parent
             )
         )
+        self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = self.class_named("TString").read(
             chunk, cursor, context, self._file, self
         )
@@ -575,6 +577,7 @@ class Model_TBranchElement_v10(
                 chunk, cursor, context, self._file, self._parent
             )
         )
+        self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = self.class_named("TString").read(
             chunk, cursor, context, self._file, self
         )

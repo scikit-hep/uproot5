@@ -13,9 +13,9 @@ import re
 import glob
 
 try:
-    from urlparse import urlparse
-except ImportError:
     from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 import numpy
 
@@ -82,9 +82,13 @@ def _regularize_filter_regex_flags(flags):
     return flagsbyte
 
 
+def no_filter(x):
+    return True
+
+
 def regularize_filter(filter):
     if filter is None:
-        return lambda x: True
+        return no_filter
     elif callable(filter):
         return filter
     elif isstr(filter):
@@ -112,8 +116,10 @@ _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
 def path_to_source_class(file_path, options):
     if isinstance(file_path, getattr(os, "PathLike", ())):
         file_path = os.fspath(file_path)
+
     elif hasattr(file_path, "__fspath__"):
         file_path = file_path.__fspath__()
+
     elif file_path.__class__.__module__ == "pathlib":
         import pathlib
 
@@ -124,6 +130,7 @@ def path_to_source_class(file_path, options):
         os.name == "nt" and _windows_absolute_path_pattern.match(file_path) is not None
     )
     parsed_url = urlparse(file_path)
+
     if (
         parsed_url.scheme == "file"
         or len(parsed_url.scheme) == 0

@@ -101,6 +101,8 @@ class MemmapSource(uproot4.source.chunk.Source):
                 return True
         elif self._file._mmap.closed:
             return True
+        else:
+            return False
 
     @property
     def num_bytes(self):

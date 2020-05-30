@@ -4,12 +4,16 @@ from __future__ import absolute_import
 
 import struct
 
+import numpy
+
 import uproot4.model
 import uproot4.deserialization
+import uproot4.compression
 
 
-_tbasket_format1 = struct.Struct(">iIhh")
+_tbasket_format1 = struct.Struct(">ihiIhh")
 _tbasket_format2 = struct.Struct(">Hiiii")
+_tbasket_offsets_dtype = numpy.dtype(">i4")
 
 
 class Model_TBasket(uproot4.model.Model):
@@ -17,8 +21,9 @@ class Model_TBasket(uproot4.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context):
-        cursor.skip(6)
         (
+            self._members["fNbytes"],
+            self._key_version,
             self._members["fObjlen"],
             self._members["fDatime"],
             self._members["fKeylen"],
@@ -40,16 +45,90 @@ class Model_TBasket(uproot4.model.Model):
 
         cursor.skip(1)
 
-        if self._members["fNevBufSize"] > 8:
-            self._byte_offsets = cursor.bytes(chunk, self._members["fNevBuf"] * 4 + 8)
-            cursor.skip(-4)
+        if self.is_embedded:
+            if self._members["fNevBufSize"] > 8:
+                raw_byte_offsets = cursor.bytes(chunk, 8 + self.num_entries * 4).view(
+                    _tbasket_offsets_dtype
+                )
+                cursor.skip(-4)
+
+                # subtracting fKeylen makes a new buffer and converts to native endian
+                self._byte_offsets = raw_byte_offsets[1:] - self._members["fKeylen"]
+                # so modifying it in place doesn't have non-local consequences
+                self._byte_offsets[-1] = self.border
+
+            else:
+                self._byte_offsets = None
+
+            # second key has no new information
+            cursor.skip(self._members["fKeylen"])
+
+            self._raw_data = None
+            self._data = cursor.bytes(chunk, self.border)
+
         else:
-            self._byte_offsets = None
+            if self.compressed_bytes != self.uncompressed_bytes:
+                uncompressed = uproot4.compression.decompress(
+                    chunk, cursor, {}, self.compressed_bytes, self.uncompressed_bytes,
+                )
+                self._raw_data = uncompressed.get(0, self.uncompressed_bytes)
+            else:
+                self._raw_data = cursor.bytes(chunk, self.uncompressed_bytes)
 
-        # there's a second TKey here
-        cursor.skip(self._members["fKeylen"])
+            if self.border != self.uncompressed_bytes:
+                self._data = self._raw_data[: self.border]
+                raw_byte_offsets = self._raw_data[self.border :].view(
+                    _tbasket_offsets_dtype
+                )
 
-        self._data = cursor.bytes(chunk, self.border)
+                # subtracting fKeylen makes a new buffer and converts to native endian
+                self._byte_offsets = raw_byte_offsets[1:] - self._members["fKeylen"]
+                # so modifying it in place doesn't have non-local consequences
+                self._byte_offsets[-1] = self.border
+
+            else:
+                self._data = self._raw_data
+                self._byte_offsets = None
+
+    @property
+    def key_version(self):
+        return self._key_version
+
+    @property
+    def num_entries(self):
+        return self._members["fNevBuf"]
+
+    @property
+    def is_embedded(self):
+        return self._members["fNbytes"] <= self._members["fKeylen"]
+
+    @property
+    def uncompressed_bytes(self):
+        if self.is_embedded:
+            if self._byte_offsets is None:
+                return self._data.nbytes
+            else:
+                return self._data.nbytes + 4 + self.num_entries * 4
+        else:
+            return self._members["fObjlen"]
+
+    @property
+    def compressed_bytes(self):
+        if self.is_embedded:
+            if self._byte_offsets is None:
+                return self._data.nbytes
+            else:
+                return self._data.nbytes + 4 + self.num_entries * 4
+        else:
+            return self._members["fNbytes"] - self._members["fKeylen"]
+
+    @property
+    def border(self):
+        return self._members["fLast"] - self._members["fKeylen"]
+
+    @property
+    def raw_data(self):
+        return self._raw_data
 
     @property
     def data(self):
@@ -58,10 +137,6 @@ class Model_TBasket(uproot4.model.Model):
     @property
     def byte_offsets(self):
         return self._byte_offsets
-
-    @property
-    def border(self):
-        return self._members["fLast"] - self._members["fKeylen"]
 
 
 uproot4.classes["TBasket"] = Model_TBasket

@@ -34,9 +34,9 @@ class Model(object):
 
         self.check_numbytes(cursor, context)
 
-        self.hook_before_postprocess()
+        self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context)
 
-        return self.postprocess()
+        return self.postprocess(chunk, cursor, context)
 
     def __repr__(self):
         return "<{0} at 0x{1:012x}>".format(
@@ -65,7 +65,7 @@ class Model(object):
             getattr(self._file, "file_path"),
         )
 
-    def postprocess(self):
+    def postprocess(self, chunk, cursor, context):
         return self
 
     def hook_before_read(self, **kwargs):
@@ -176,6 +176,39 @@ class Model(object):
                 out[k] = v
         return out
 
+    def __enter__(self):
+        """
+        Passes __enter__ to the file and returns self.
+        """
+        if self._file is not None:
+            self._file.source.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Passes __exit__ to the file, which closes physical files and shuts down
+        any other resources, such as thread pools for parallel reading.
+        """
+        if self._file is not None:
+            self._file.source.__exit__(exception_type, exception_value, traceback)
+
+    def close(self):
+        """
+        Closes the file from which this object is derived.
+        """
+        if self._file is not None:
+            self._file.close()
+
+    @property
+    def closed(self):
+        """
+        True if the associated file is closed; False otherwise.
+        """
+        if self._file is not None:
+            return self._file.closed
+        else:
+            return None
+
 
 class UnknownClass(Model):
     def read_members(self, chunk, cursor, context):
@@ -246,7 +279,12 @@ class DispatchByVersion(object):
                 )
             )
 
-        return cls.postprocess(versioned_cls.read(chunk, cursor, context, file, parent))
+        return cls.postprocess(
+            versioned_cls.read(chunk, cursor, context, file, parent),
+            chunk,
+            cursor,
+            context,
+        )
 
     @classmethod
     def new_class(cls, file, version):
@@ -271,7 +309,7 @@ class DispatchByVersion(object):
             return unknown_cls
 
     @classmethod
-    def postprocess(cls, self):
+    def postprocess(cls, self, chunk, cursor, context):
         return self
 
     @classmethod
