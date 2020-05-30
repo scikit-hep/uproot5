@@ -315,12 +315,9 @@ in file {3}""".format(
 
     def basket(self, basket_num):
         cursor = self.basket_cursor(basket_num)
-        nbytes = self.basket_chunk_bytes(basket_num)
-
         start = cursor.index
-        stop = start + nbytes
+        stop = start + self.basket_chunk_bytes(basket_num)
         chunk = self._file.source.chunk(start, stop)
-
         return uproot4.models.TBasket.Model_TBasket.read(
-            chunk, cursor, {"second_key": False, "nbytes": nbytes}, self._file, self
+            chunk, cursor, {"second_key": False}, self._file, self
         )

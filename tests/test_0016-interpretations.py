@@ -46,3 +46,25 @@ def test_basket_data():
             11,
             12,
         ]
+
+
+def test_compressed():
+    with uproot4.open(skhep_testdata.data_path("uproot-mc10events.root"),) as f:
+        basket = f["Events/Muon.q"].basket(0)
+        assert basket.data.view(">i4").tolist() == [
+            -1,
+            -1,
+            -1,
+            1,
+            1,
+            -1,
+            -1,
+            -1,
+            1,
+            -1,
+            -1,
+            -1,
+            -1,
+            1,
+        ]
+        assert basket.byte_offsets.tolist() == [0, 4, 4, 16, 28, 28, 32, 52, 52, 56, 56]
