@@ -63,6 +63,7 @@ class Model_TBasket(uproot4.model.Model):
             # second key has no new information
             cursor.skip(self._members["fKeylen"])
 
+            self._raw_data = None
             self._data = cursor.bytes(chunk, self.border)
 
         else:

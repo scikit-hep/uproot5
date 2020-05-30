@@ -97,6 +97,7 @@ def test_recovery(mini):
             124.81819915771484,
         ]
         assert basket.byte_offsets is None
+        assert branch.entry_offsets == [0, branch.num_entries]
 
     # jagged arrays to recover:
 
@@ -133,3 +134,4 @@ def test_recovery(mini):
             112,
             112,
         ]
+        assert branch.entry_offsets == [0, branch.num_entries]

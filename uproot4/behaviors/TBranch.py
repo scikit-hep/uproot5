@@ -358,16 +358,31 @@ in file {3}""".format(
                 repr(self.name), len(self), id(self)
             )
 
+    def basket_compressed_bytes(self, basket_num):
+        raise NotImplementedError
+
+    def basket_uncompressed_bytes(self, basket_num):
+        raise NotImplementedError
+
     def basket_cursor(self, basket_num):
         if 0 <= basket_num < self._num_normal_baskets:
             return uproot4.source.cursor.Cursor(self.member("fBasketSeek")[basket_num])
         elif 0 <= basket_num < self.num_baskets:
-            raise NotImplementedError
+            raise IndexError(
+                """branch {0} has {1} normal baskets; cannot get """
+                """basket cursor {2} because only normal baskets have cursors
+in file """.format(
+                    repr(self.name),
+                    self._num_normal_baskets,
+                    basket_num,
+                    self._file.file_path,
+                )
+            )
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket {2}
+                """branch {0} has {1} baskets; cannot get basket cursor {2}
 in file {3}""".format(
-                    self.name, self.num_baskets, basket_num, self._file.file_path
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
 
@@ -375,20 +390,23 @@ in file {3}""".format(
         if 0 <= basket_num < self._num_normal_baskets:
             return int(self.member("fBasketBytes")[basket_num])
         elif 0 <= basket_num < self.num_baskets:
-            raise NotImplementedError
-        else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket {2}
-in file {3}""".format(
-                    self.name, self.num_baskets, basket_num, self._file.file_path
+                """branch {0} has {1} normal baskets; cannot get """
+                """basket chunk {2} because only normal baskets have chunks
+in file """.format(
+                    repr(self.name),
+                    self._num_normal_baskets,
+                    basket_num,
+                    self._file.file_path,
                 )
             )
-
-    def basket_compressed_bytes(self, basket_num):
-        raise NotImplementedError
-
-    def basket_uncompressed_bytes(self, basket_num):
-        raise NotImplementedError
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get basket chunk {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
 
     def basket_key(self, basket_num):
         cursor = self.basket_cursor(basket_num)
@@ -414,6 +432,6 @@ in file {3}""".format(
             raise IndexError(
                 """branch {0} has {1} baskets; cannot get basket {2}
 in file {3}""".format(
-                    self.name, self.num_baskets, basket_num, self._file.file_path
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
