@@ -240,25 +240,26 @@ class TBranch(HasBranches):
         self._count_branch = None
         self._count_leaf = None
 
-        self._num_good_baskets = 0
+        self._num_normal_baskets = 0
         for i, x in enumerate(self.member("fBasketSeek")):
             if x == 0 or i == fWriteBasket:
                 break
-            self._num_good_baskets += 1
+            self._num_normal_baskets += 1
 
         if (
             self.member("fEntries")
-            == self.member("fBasketEntry")[self._num_good_baskets]
+            == self.member("fBasketEntry")[self._num_normal_baskets]
         ):
-            self._recovered_baskets = []
-            self._entry_offsets = self.member("fBasketEntry")[
-                : self._num_good_baskets + 1
-            ].tolist()
-            self._recovery_lock = None
+            self._embedded_baskets = []
+            self._embedded_baskets_lock = None
+
+        elif self.has_member("fBaskets"):
+            self._embedded_baskets = self.member("fBaskets")
+            self._embedded_baskets_lock = None
+
         else:
-            self._recovered_baskets = None
-            self._entry_offsets = None
-            self._recovery_lock = threading.Lock()
+            self._embedded_baskets = None
+            self._embedded_baskets_lock = threading.Lock()
 
         if "fIOFeatures" in self._parent.members:
             self._tree_iofeatures = self._parent.member("fIOFeatures").member("fIOBits")
@@ -274,43 +275,42 @@ class TBranch(HasBranches):
             out = out.parent
         return out
 
-    def _recover_baskets(self):
-        cursor = self._cursor_baskets.copy()
-        baskets = uproot4.models.TObjArray.Model_TObjArrayOfTBaskets.read(
-            self.tree.chunk, cursor, {}, self._file, self
-        )
-
-        if self._num_good_baskets == 0:
-            entry_offsets = [0]
+    @property
+    def entry_offsets(self):
+        if self._num_normal_baskets == 0:
+            out = [0]
         else:
-            entry_offsets = self.member("fBasketEntry")[
-                : self._num_good_baskets + 1
-            ].tolist()
+            out = self.member("fBasketEntry")[: self._num_normal_baskets + 1].tolist()
+        num_entries_normal = out[-1]
 
-        num_entries_normal = entry_offsets[-1]
-        for basket in baskets:
-            entry_offsets.append(entry_offsets[-1] + basket.num_entries)
+        for basket in self.embedded_baskets:
+            out.append(out[-1] + basket.num_entries)
 
-        if entry_offsets[-1] != self.num_entries:
-            if self.interpretation is None:
-                with self._recovery_lock:
-                    self._recovered_baskets = []
-            else:
-                raise ValueError(
-                    """entries in normal baskets ({0}) plus recovered baskets """
-                    """({1}) don't add up to expected number of entries ({2})
+        if out[-1] != self.num_entries and self.interpretation is not None:
+            raise ValueError(
+                """entries in normal baskets ({0}) plus embedded baskets ({1}) """
+                """don't add up to expected number of entries ({2})
 in file {3}""".format(
-                        num_entries_normal,
-                        sum(basket.num_entries for basket in baskets),
-                        self.num_entries,
-                        self._file.file_path,
-                    )
+                    num_entries_normal,
+                    sum(basket.num_entries for basket in self.embedded_baskets),
+                    self.num_entries,
+                    self._file.file_path,
                 )
+            )
         else:
-            with self._recovery_lock:
-                self._members["fBaskets"] = baskets
-                self._recovered_baskets = list(baskets)
-                self._entry_offsets = entry_offsets
+            return out
+
+    @property
+    def embedded_baskets(self):
+        if self._embedded_baskets is None:
+            cursor = self._cursor_baskets.copy()
+            baskets = uproot4.models.TObjArray.Model_TObjArrayOfTBaskets.read(
+                self.tree.chunk, cursor, {}, self._file, self
+            )
+            with self._embedded_baskets_lock:
+                self._embedded_baskets = baskets
+
+        return self._embedded_baskets
 
     @property
     def name(self):
@@ -348,9 +348,7 @@ in file {3}""".format(
 
     @property
     def num_baskets(self):
-        if self._recovered_baskets is None:
-            self._recover_baskets()
-        return self._num_good_baskets + len(self._recovered_baskets)
+        return self._num_normal_baskets + len(self.embedded_baskets)
 
     def __repr__(self):
         if len(self) == 0:
@@ -361,7 +359,7 @@ in file {3}""".format(
             )
 
     def basket_cursor(self, basket_num):
-        if 0 <= basket_num < self._num_good_baskets:
+        if 0 <= basket_num < self._num_normal_baskets:
             return uproot4.source.cursor.Cursor(self.member("fBasketSeek")[basket_num])
         elif 0 <= basket_num < self.num_baskets:
             raise NotImplementedError
@@ -374,7 +372,7 @@ in file {3}""".format(
             )
 
     def basket_chunk_bytes(self, basket_num):
-        if 0 <= basket_num < self._num_good_baskets:
+        if 0 <= basket_num < self._num_normal_baskets:
             return int(self.member("fBasketBytes")[basket_num])
         elif 0 <= basket_num < self.num_baskets:
             raise NotImplementedError
@@ -402,7 +400,7 @@ in file {3}""".format(
         )
 
     def basket(self, basket_num):
-        if 0 <= basket_num < self._num_good_baskets:
+        if 0 <= basket_num < self._num_normal_baskets:
             cursor = self.basket_cursor(basket_num)
             start = cursor.index
             stop = start + self.basket_chunk_bytes(basket_num)
@@ -411,7 +409,7 @@ in file {3}""".format(
                 chunk, cursor, {}, self._file, self
             )
         elif 0 <= basket_num < self.num_baskets:
-            return self._recovered_baskets[basket_num - self._num_good_baskets]
+            return self.embedded_baskets[basket_num - self._num_normal_baskets]
         else:
             raise IndexError(
                 """branch {0} has {1} baskets; cannot get basket {2}
