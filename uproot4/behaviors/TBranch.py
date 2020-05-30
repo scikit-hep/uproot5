@@ -371,7 +371,7 @@ in file {3}""".format(
             raise IndexError(
                 """branch {0} has {1} normal baskets; cannot get """
                 """basket cursor {2} because only normal baskets have cursors
-in file """.format(
+in file {3}""".format(
                     repr(self.name),
                     self._num_normal_baskets,
                     basket_num,
@@ -393,7 +393,7 @@ in file {3}""".format(
             raise IndexError(
                 """branch {0} has {1} normal baskets; cannot get """
                 """basket chunk {2} because only normal baskets have chunks
-in file """.format(
+in file {3}""".format(
                     repr(self.name),
                     self._num_normal_baskets,
                     basket_num,
