@@ -34,7 +34,7 @@ class Numerical(uproot4.interpret.Interpretation):
                     length += stop - start
                 start = stop
 
-            out = numpy.zeros(length, dtype=self.to_dtype)
+            out = numpy.empty(length, dtype=self.to_dtype)
 
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):

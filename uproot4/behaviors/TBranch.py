@@ -317,7 +317,13 @@ class HasBranches(Mapping):
 
             original_index += 1
 
-        self._source.chunks(ranges, notifications=notifications)
+        self._file.source.chunks(ranges, notifications=notifications)
+
+        def replace(ranges_or_baskets, original_index, basket):
+            name, branch, basket_num, range_or_basket = ranges_or_baskets[
+                original_index
+            ]
+            ranges_or_baskets[original_index] = name, branch, basket_num, basket
 
         def chunk_to_basket(chunk, branch, basket_num):
             cursor = uproot4.source.cursor.Cursor(chunk.start)
@@ -325,7 +331,7 @@ class HasBranches(Mapping):
                 chunk, cursor, {"basket_num": basket_num}, self._file, branch
             )
             original_index = range_original_index[(chunk.start, chunk.stop)]
-            ranges_or_baskets[original_index] = basket
+            replace(ranges_or_baskets, original_index, basket)
             notifications.put(basket)
 
         output = {}
@@ -351,11 +357,11 @@ class HasBranches(Mapping):
             if isinstance(obj, uproot4.source.chunk.Chunk):
                 chunk = obj
                 args = range_args[(chunk.start, chunk.stop)]
-                decompression_executor.submit(chunk_to_basket, (chunk,) + args)
+                decompression_executor.submit(chunk_to_basket, chunk, *args)
 
             elif isinstance(obj, uproot4.models.TBasket.Model_TBasket):
                 basket = obj
-                interpretation_executor.submit(basket_to_array, (basket,))
+                interpretation_executor.submit(basket_to_array, basket)
 
             elif obj is None:
                 pass
@@ -586,7 +592,9 @@ in file {3}""".format(
         for basket_num, stop in enumerate(entry_offsets[1:]):
             if entry_start < stop and start <= entry_stop:
                 if 0 <= basket_num < self._num_normal_baskets:
-                    out.append((basket_num, (start, stop)))
+                    byte_start = self.member("fBasketSeek")[basket_num]
+                    byte_stop = byte_start + self.basket_chunk_bytes(basket_num)
+                    out.append((basket_num, (byte_start, byte_stop)))
                 elif 0 <= basket_num < self.num_baskets:
                     out.append((basket_num, self.basket(basket_num)))
                 else:

@@ -16,6 +16,7 @@ import skhep_testdata
 
 import uproot4
 import uproot4.interpret.numerical
+import uproot4.source.futures
 
 
 def test_any_basket():
@@ -60,7 +61,10 @@ def test_any_basket():
             11,
             12,
         ]
-        assert branch.basket(4).array(interpretation).tolist() == [13, 14]
+        assert branch.basket(4).array(interpretation).tolist() == [
+            13,
+            14,
+        ]
 
 
 def test_stitching_arrays():
@@ -75,3 +79,77 @@ def test_stitching_arrays():
                 basket_arrays, start, stop, entry_offsets
             )
             assert expectation[start:stop] == actual.tolist()
+
+
+def test_names_entries_to_ranges_or_baskets():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        out = sample._names_entries_to_ranges_or_baskets(["i4"], 0, 30)
+        assert all(x[0] == "i4" for x in out)
+        assert [x[2] for x in out] == [0, 1, 2, 3, 4]
+        assert [x[3] for x in out] == [
+            (6992, 7091),
+            (16085, 16184),
+            (25939, 26038),
+            (35042, 35141),
+            (40396, 40475),
+        ]
+
+
+def test_ranges_or_baskets_to_arrays():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        branch = sample["i4"]
+
+        ranges_or_baskets = sample._names_entries_to_ranges_or_baskets(["i4"], 0, 30)
+        branchid_interpretation = {
+            id(branch): uproot4.interpret.numerical.AsDtype(">i4")
+        }
+        entry_start, entry_stop = (0, 30)
+        decompression_executor = uproot4.source.futures.TrivialExecutor()
+        interpretation_executor = uproot4.source.futures.TrivialExecutor()
+        cache = None
+
+        output = sample._ranges_or_baskets_to_arrays(
+            ranges_or_baskets,
+            branchid_interpretation,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            cache,
+        )
+        assert output["i4"].tolist() == [
+            -15,
+            -14,
+            -13,
+            -12,
+            -11,
+            -10,
+            -9,
+            -8,
+            -7,
+            -6,
+            -5,
+            -4,
+            -3,
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+        ]
