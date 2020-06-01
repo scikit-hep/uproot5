@@ -29,7 +29,7 @@ class Library(object):
     def empty(self, shape, dtype):
         raise AssertionError
 
-    def finalize(self, array):
+    def finalize(self, array, branch):
         raise AssertionError
 
     def __repr__(self):
@@ -51,7 +51,7 @@ class NumPy(Library):
     def empty(self, shape, dtype):
         return numpy.empty(shape, dtype)
 
-    def finalize(self, array):
+    def finalize(self, array, branch):
         if isinstance(array, uproot4.interpret.jagged.JaggedArray):
             out = numpy.zeros(len(array), dtype=numpy.object)
             for i, x in enumerate(array):
@@ -102,7 +102,7 @@ or
     def empty(self, shape, dtype):
         return numpy.empty(shape, dtype)
 
-    def finalize(self, array):
+    def finalize(self, array, branch):
         pandas = self.imported
 
         if isinstance(array, uproot4.interpret.jagged.JaggedArray):
@@ -146,7 +146,7 @@ or
         cupy = self.imported
         return cupy.empty(shape, dtype)
 
-    def finalize(self, array):
+    def finalize(self, array, branch):
         cupy = self.imported
 
         if isinstance(array, uproot4.interpret.jagged.JaggedArray):
@@ -186,7 +186,14 @@ _libraries["CUPY"] = _libraries[CuPy.name]
 
 
 def _regularize_library(library):
-    try:
-        return _libraries[library]
-    except KeyError:
-        raise ValueError("unrecognized library: {0}".format(repr(library)))
+    if isinstance(library, Library):
+        return _libraries[library.name]
+
+    elif isinstance(library, type) and issubclass(library, Library):
+        return _libraries[library().name]
+
+    else:
+        try:
+            return _libraries[library]
+        except KeyError:
+            raise ValueError("unrecognized library: {0}".format(repr(library)))

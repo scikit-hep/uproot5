@@ -157,7 +157,7 @@ class Model_TBasket(uproot4.model.Model):
     def array(self, interpretation=None):
         if interpretation is None:
             interpretation = self._parent.interpretation
-        return interpretation.basket_array(self.data, self.byte_offsets)
+        return interpretation.basket_array(self, self.parent)
 
 
 uproot4.classes["TBasket"] = Model_TBasket

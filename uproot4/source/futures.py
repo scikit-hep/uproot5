@@ -85,6 +85,9 @@ class TrivialExecutor(Executor):
     An Executor that doesn't manage any Threads or Resources.
     """
 
+    def __repr__(self):
+        return "<TrivialExecutor at 0x{0:012x}>".format(id(self))
+
     @property
     def num_workers(self):
         """
@@ -339,6 +342,9 @@ class ThreadPoolExecutor(Executor):
         for thread in self._workers:
             thread.start()
 
+    def __repr__(self):
+        return "<ThreadPoolExecutor ({0} workers) at 0x{1:012x}>".format(len(self._workers), id(self))
+
     @property
     def num_workers(self):
         """
@@ -365,20 +371,14 @@ class ThreadPoolExecutor(Executor):
         """
         self.shutdown()
 
-    def _prepare(self, fn, *args, **kwargs):
-        if len(args) != 0 or len(kwargs) != 0:
-            return TaskFuture(lambda: fn(*args, **kwargs))
-        else:
-            return TaskFuture(fn)
-
     def submit(self, fn, *args, **kwargs):
         """
         Submits a function to be evaluated by a Thread in the thread pool.
         """
-        if isinstance(fn, TaskFuture):
-            task = fn
+        if len(args) != 0 or len(kwargs) != 0:
+            task = TaskFuture(lambda: fn(*args, **kwargs))
         else:
-            task = self._prepare(fn)
+            task = TaskFuture(fn)
 
         self._work_queue.put(task)
         return task

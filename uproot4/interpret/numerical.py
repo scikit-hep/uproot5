@@ -29,7 +29,7 @@ class Numerical(uproot4.interpret.Interpretation):
         raise NotImplementedError
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library
+        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
         self.hook_before_final_array(
             basket_arrays=basket_arrays,
@@ -37,6 +37,7 @@ class Numerical(uproot4.interpret.Interpretation):
             entry_stop=entry_stop,
             entry_offsets=entry_offsets,
             library=library,
+            branch=branch,
         )
 
         if not entry_start < entry_stop:
@@ -83,10 +84,11 @@ class Numerical(uproot4.interpret.Interpretation):
             entry_stop=entry_stop,
             entry_offsets=entry_offsets,
             library=library,
+            branch=branch,
             output=output,
         )
 
-        output = library.finalize(output)
+        output = library.finalize(output, branch)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -94,6 +96,7 @@ class Numerical(uproot4.interpret.Interpretation):
             entry_stop=entry_stop,
             entry_offsets=entry_offsets,
             library=library,
+            branch=branch,
             output=output,
         )
 
@@ -107,6 +110,9 @@ class AsDtype(Numerical):
             self._to_dtype = self._from_dtype.newbyteorder("=")
         else:
             self._to_dtype = numpy.dtype(to_dtype)
+
+    def __repr__(self):
+        return "AsDtype({0}, {1})".format(repr(self._from_dtype), repr(self._to_dtype))
 
     @property
     def from_dtype(self):
@@ -157,16 +163,20 @@ class AsDtype(Numerical):
 
         return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
 
-    def basket_array(self, data, byte_offsets):
-        self.hook_before_basket_array(data=data, byte_offsets=byte_offsets)
+    def basket_array(self, basket, branch):
+        self.hook_before_basket_array(basket=basket, branch=branch)
 
-        assert byte_offsets is None
+        assert basket.byte_offsets is None
         dtype, shape = _dtype_shape(self._from_dtype)
-        output = data.view(self._from_dtype).reshape((-1,) + shape)
+        try:
+            output = basket.data.view(self._from_dtype).reshape((-1,) + shape)
+        except ValueError:
+            raise ValueError(
+                """basket {0} in branch {1} has the wrong number of bytes ({2}) """
+                """for interpretation {3}
+in file {4}""".format(basket.basket_num, repr(branch.name), len(basket.data), self, branch.file.file_path))
 
-        self.hook_before_basket_array(
-            data=data, byte_offsets=byte_offsets, output=output
-        )
+        self.hook_before_basket_array(basket=basket, branch=branch, output=output)
 
         return output
 

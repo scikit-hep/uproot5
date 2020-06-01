@@ -2,18 +2,22 @@
 
 from __future__ import absolute_import
 
+import sys
 import threading
 
 try:
     from collections.abc import Mapping
+    from collections.abc import MutableMapping
 except ImportError:
     from collections import Mapping
+    from collections import MutableMapping
 try:
     import queue
 except ImportError:
     import Queue as queue
 
 import uproot4.source.cursor
+import uproot4.interpret.library
 import uproot4.reading
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
@@ -30,6 +34,45 @@ def _get_recursive(hasbranches, where):
             return got
     else:
         return None
+
+
+def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
+    if entry_start is None:
+        entry_start = 0
+    elif entry_start < 0:
+        entry_start += num_entries
+    entry_start = min(num_entries, max(0, entry_start))
+
+    if entry_stop is None:
+        entry_stop = num_entries
+    elif entry_stop < 0:
+        entry_stop += num_entries
+    entry_stop = min(num_entries, max(0, entry_stop))
+
+    if entry_stop < entry_start:
+        entry_stop = entry_start
+
+    return int(entry_start), int(entry_stop)
+
+
+def _regularize_executors(decompression_executor, interpretation_executor):
+    if decompression_executor is None:
+        decompression_executor = uproot4.decompression_executor
+    if interpretation_executor is None:
+        interpretation_executor = uproot4.interpretation_executor
+    return decompression_executor, interpretation_executor
+
+
+def _regularize_array_cache(array_cache, file):
+    if isinstance(array_cache, MutableMapping):
+        return array_cache
+    elif array_cache is None:
+        return file._array_cache
+    else:
+        raise TypeError(
+            "array_cache must be None or a MutableMapping"
+        )
+
 
 
 class HasBranches(Mapping):
@@ -327,33 +370,47 @@ class HasBranches(Mapping):
             ranges_or_baskets[original_index] = name, branch, basket_num, basket
 
         def chunk_to_basket(chunk, branch, basket_num):
-            cursor = uproot4.source.cursor.Cursor(chunk.start)
-            basket = uproot4.models.TBasket.Model_TBasket.read(
-                chunk, cursor, {"basket_num": basket_num}, self._file, branch
-            )
-            original_index = range_original_index[(chunk.start, chunk.stop)]
-            replace(ranges_or_baskets, original_index, basket)
-            notifications.put(basket)
+            try:
+                cursor = uproot4.source.cursor.Cursor(chunk.start)
+                basket = uproot4.models.TBasket.Model_TBasket.read(
+                    chunk, cursor, {"basket_num": basket_num}, self._file, branch
+                )
+                original_index = range_original_index[(chunk.start, chunk.stop)]
+                replace(ranges_or_baskets, original_index, basket)
+            except Exception:
+                notifications.put(sys.exc_info())
+            else:
+                notifications.put(basket)
 
         output = {}
 
         def basket_to_array(basket):
-            assert basket.basket_num is not None
-            branch = basket.parent
-            interpretation = branchid_interpretation[id(branch)]
-            basket_arrays = branchid_arrays[id(branch)]
-            basket_arrays[basket.basket_num] = interpretation.basket_array(
-                basket.data, basket.byte_offsets
-            )
-            if len(basket_arrays) == branchid_num_baskets[id(branch)]:
-                name = branchid_name[id(branch)]
-                output[name] = interpretation.final_array(
-                    basket_arrays, entry_start, entry_stop, branch.entry_offsets, library
-                )
-            notifications.put(None)
+            try:
+                assert basket.basket_num is not None
+                branch = basket.parent
+                interpretation = branchid_interpretation[id(branch)]
+                basket_arrays = branchid_arrays[id(branch)]
+                basket_arrays[basket.basket_num] = interpretation.basket_array(basket, branch)
+                if len(basket_arrays) == branchid_num_baskets[id(branch)]:
+                    name = branchid_name[id(branch)]
+                    output[name] = interpretation.final_array(
+                        basket_arrays,
+                        entry_start,
+                        entry_stop,
+                        branch.entry_offsets,
+                        library,
+                        branch,
+                    )
+            except Exception as err:
+                notifications.put(sys.exc_info())
+            else:
+                notifications.put(None)
 
         while len(output) < len(branchid_arrays):
-            obj = notifications.get()
+            try:
+                obj = notifications.get(timeout=0.001)
+            except queue.Empty:
+                continue
 
             if isinstance(obj, uproot4.source.chunk.Chunk):
                 chunk = obj
@@ -366,6 +423,9 @@ class HasBranches(Mapping):
 
             elif obj is None:
                 pass
+
+            elif isinstance(obj, tuple) and len(obj) == 3:
+                uproot4.source.futures.delayed_raise(*obj)
 
             else:
                 raise AssertionError(obj)
@@ -602,3 +662,41 @@ in file {3}""".format(
                     raise AssertionError((self.name, basket_num))
             start = stop
         return out
+
+    def array(
+        self,
+        interpretation=None,
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache=None,
+        library="ak",
+    ):
+        if interpretation is None:
+            interpretation = self.interpretation
+        branchid_interpretation = {id(self): interpretation}
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+        library = uproot4.interpret.library._regularize_library(library)
+
+        ranges_or_baskets = []
+        for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(entry_start, entry_stop):
+            ranges_or_baskets.append((None, self, basket_num, range_or_basket))
+
+        return self._ranges_or_baskets_to_arrays(
+            ranges_or_baskets,
+            branchid_interpretation,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            array_cache,
+            library,
+        )[None]
