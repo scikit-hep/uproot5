@@ -69,10 +69,7 @@ def _regularize_array_cache(array_cache, file):
     elif array_cache is None:
         return file._array_cache
     else:
-        raise TypeError(
-            "array_cache must be None or a MutableMapping"
-        )
-
+        raise TypeError("array_cache must be None or a MutableMapping")
 
 
 class HasBranches(Mapping):
@@ -390,7 +387,9 @@ class HasBranches(Mapping):
                 branch = basket.parent
                 interpretation = branchid_interpretation[id(branch)]
                 basket_arrays = branchid_arrays[id(branch)]
-                basket_arrays[basket.basket_num] = interpretation.basket_array(basket, branch)
+                basket_arrays[basket.basket_num] = interpretation.basket_array(
+                    basket, branch
+                )
                 if len(basket_arrays) == branchid_num_baskets[id(branch)]:
                     name = branchid_name[id(branch)]
                     output[name] = interpretation.final_array(
@@ -401,7 +400,7 @@ class HasBranches(Mapping):
                         library,
                         branch,
                     )
-            except Exception as err:
+            except Exception:
                 notifications.put(sys.exc_info())
             else:
                 notifications.put(None)
@@ -687,7 +686,9 @@ in file {3}""".format(
         library = uproot4.interpret.library._regularize_library(library)
 
         ranges_or_baskets = []
-        for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(entry_start, entry_stop):
+        for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
+            entry_start, entry_stop
+        ):
             ranges_or_baskets.append((None, self, basket_num, range_or_basket))
 
         return self._ranges_or_baskets_to_arrays(

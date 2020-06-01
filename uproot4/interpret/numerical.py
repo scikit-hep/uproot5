@@ -174,7 +174,14 @@ class AsDtype(Numerical):
             raise ValueError(
                 """basket {0} in branch {1} has the wrong number of bytes ({2}) """
                 """for interpretation {3}
-in file {4}""".format(basket.basket_num, repr(branch.name), len(basket.data), self, branch.file.file_path))
+in file {4}""".format(
+                    basket.basket_num,
+                    repr(branch.name),
+                    len(basket.data),
+                    self,
+                    branch.file.file_path,
+                )
+            )
 
         self.hook_before_basket_array(basket=basket, branch=branch, output=output)
 

@@ -343,7 +343,9 @@ class ThreadPoolExecutor(Executor):
             thread.start()
 
     def __repr__(self):
-        return "<ThreadPoolExecutor ({0} workers) at 0x{1:012x}>".format(len(self._workers), id(self))
+        return "<ThreadPoolExecutor ({0} workers) at 0x{1:012x}>".format(
+            len(self._workers), id(self)
+        )
 
     @property
     def num_workers(self):

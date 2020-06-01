@@ -159,11 +159,14 @@ def test_ranges_or_baskets_to_arrays():
             14,
         ]
 
+
 def test_branch_array():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/i4"] as branch:
-        assert branch.array(uproot4.interpret.numerical.AsDtype(">i4"), library="np").tolist() == [
+        assert branch.array(
+            uproot4.interpret.numerical.AsDtype(">i4"), library="np"
+        ).tolist() == [
             -15,
             -14,
             -13,
