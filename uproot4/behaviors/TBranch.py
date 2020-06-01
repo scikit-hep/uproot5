@@ -358,34 +358,6 @@ in file {3}""".format(
                 repr(self.name), len(self), id(self)
             )
 
-    def basket_compressed_bytes(self, basket_num):
-        raise NotImplementedError
-
-    def basket_uncompressed_bytes(self, basket_num):
-        raise NotImplementedError
-
-    def basket_cursor(self, basket_num):
-        if 0 <= basket_num < self._num_normal_baskets:
-            return uproot4.source.cursor.Cursor(self.member("fBasketSeek")[basket_num])
-        elif 0 <= basket_num < self.num_baskets:
-            raise IndexError(
-                """branch {0} has {1} normal baskets; cannot get """
-                """basket cursor {2} because only normal baskets have cursors
-in file {3}""".format(
-                    repr(self.name),
-                    self._num_normal_baskets,
-                    basket_num,
-                    self._file.file_path,
-                )
-            )
-        else:
-            raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket cursor {2}
-in file {3}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
-            )
-
     def basket_chunk_bytes(self, basket_num):
         if 0 <= basket_num < self._num_normal_baskets:
             return int(self.member("fBasketBytes")[basket_num])
@@ -408,10 +380,37 @@ in file {3}""".format(
                 )
             )
 
+    def basket_chunk_cursor(self, basket_num):
+        if 0 <= basket_num < self._num_normal_baskets:
+            start = self.member("fBasketSeek")[basket_num]
+            stop = start + self.basket_chunk_bytes(basket_num)
+            cursor = uproot4.source.cursor.Cursor(start)
+            chunk = self._file.source.chunk(start, stop)
+            return chunk, cursor
+        elif 0 <= basket_num < self.num_baskets:
+            raise IndexError(
+                """branch {0} has {1} normal baskets; cannot get chunk and """
+                """cursor for basket {2} because only normal baskets have cursors
+in file {3}""".format(
+                    repr(self.name),
+                    self._num_normal_baskets,
+                    basket_num,
+                    self._file.file_path,
+                )
+            )
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get cursor and chunk """
+                """for basket {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
+
     def basket_key(self, basket_num):
-        cursor = self.basket_cursor(basket_num)
-        start = cursor.index
+        start = self.member("fBasketSeek")[basket_num]
         stop = start + uproot4.reading.ReadOnlyKey._format_big.size
+        cursor = uproot4.source.cursor.Cursor(start)
         chunk = self._file.source.chunk(start, stop)
         return uproot4.reading.ReadOnlyKey(
             chunk, cursor, {}, self._file, self, read_strings=False
@@ -419,10 +418,7 @@ in file {3}""".format(
 
     def basket(self, basket_num):
         if 0 <= basket_num < self._num_normal_baskets:
-            cursor = self.basket_cursor(basket_num)
-            start = cursor.index
-            stop = start + self.basket_chunk_bytes(basket_num)
-            chunk = self._file.source.chunk(start, stop)
+            chunk, cursor = self.basket_chunk_cursor(basket_num)
             return uproot4.models.TBasket.Model_TBasket.read(
                 chunk, cursor, {}, self._file, self
             )
