@@ -9,6 +9,7 @@ import numpy
 import uproot4.model
 import uproot4.deserialization
 import uproot4.compression
+import uproot4.behaviors.TBranch
 
 
 _tbasket_format1 = struct.Struct(">ihiIhh")
@@ -21,6 +22,9 @@ class Model_TBasket(uproot4.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context):
+        assert isinstance(self._parent, uproot4.behaviors.TBranch.TBranch)
+        self._basket_num = context.get("basket_num")
+
         (
             self._members["fNbytes"],
             self._key_version,
@@ -89,6 +93,10 @@ class Model_TBasket(uproot4.model.Model):
             else:
                 self._data = self._raw_data
                 self._byte_offsets = None
+
+    @property
+    def basket_num(self):
+        return self._basket_num
 
     @property
     def key_version(self):

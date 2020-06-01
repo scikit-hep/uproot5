@@ -8,13 +8,6 @@ unknown_classes = {}
 from uproot4.cache import LRUCache
 from uproot4.cache import LRUArrayCache
 
-object_cache = LRUCache(100)
-array_cache = LRUArrayCache("100 MB")
-
-import uproot4.interpret
-
-library = "ak"
-
 from uproot4.source.memmap import MemmapSource
 from uproot4.source.file import FileSource
 from uproot4.source.http import HTTPSource
@@ -32,6 +25,10 @@ from uproot4.model import classname_decode
 from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
+
+import uproot4.interpret
+
+library = "ak"
 
 import uproot4.models.TObject
 import uproot4.models.TString

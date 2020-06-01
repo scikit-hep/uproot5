@@ -24,6 +24,9 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
 
     def postprocess(self, chunk, cursor, context):
         self._chunk = chunk
+
+        self._lookup = {}
+
         return self
 
     @property

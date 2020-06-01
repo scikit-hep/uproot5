@@ -36,6 +36,10 @@ class HasBranches(Mapping):
     def __getitem__(self, where):
         original_where = where
 
+        got = self._lookup.get(original_where)
+        if got is not None:
+            return got
+
         if uproot4._util.isint(where):
             return self.branches[where]
         elif uproot4._util.isstr(where):
@@ -55,6 +59,7 @@ class HasBranches(Mapping):
             where = "/".join([x for x in where.split("/") if x != ""])
             for k, v in self.iteritems(recursive=True):
                 if where == k:
+                    self._lookup[original_where] = v
                     return v
             else:
                 raise uproot4.KeyInFileError(original_where, self._file.file_path)
@@ -62,6 +67,7 @@ class HasBranches(Mapping):
         elif recursive:
             got = _get_recursive(self, where)
             if got is not None:
+                self._lookup[original_where] = got
                 return got
             else:
                 raise uproot4.KeyInFileError(original_where, self._file.file_path)
@@ -69,6 +75,7 @@ class HasBranches(Mapping):
         else:
             for branch in self.branches:
                 if branch.name == where:
+                    self._lookup[original_where] = branch
                     return branch
             else:
                 raise uproot4.KeyInFileError(original_where, self._file.file_path)
@@ -231,11 +238,97 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
+    def names_entries_to_ranges_or_baskets(self, names, entry_start, entry_stop):
+        out = []
+        for name in names:
+            branch = self[name]
+            for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+                entry_start, entry_stop
+            ):
+                out.append((name, branch, basket_num, range_or_basket))
+        return out
+
+    def ranges_or_baskets_to_arrays(
+        self,
+        ranges_or_baskets,
+        branchid_interpretation,
+        entry_start,
+        entry_stop,
+        decompression_executor,
+        interpretation_executor,
+    ):
+        notifications = queue.Queue()
+
+        branchid_name = {}
+        branchid_arrays = {}
+        branchid_num_baskets = {}
+        ranges = []
+        range_args = {}
+        for name, branch, basket_num, range_or_basket in ranges_or_baskets:
+            if id(branch) not in branchid_name:
+                branchid_name[id(branch)] = name
+                branchid_arrays[id(branch)] = {}
+                branchid_num_baskets[id(branch)] = 0
+            branchid_num_baskets[id(branch)] += 1
+
+            if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
+                ranges.append(range_or_basket)
+                range_args[range_or_basket] = (branch, basket_num)
+            else:
+                notifications.put(range_or_basket)
+
+        self._source.chunks(ranges, notifications=notifications)
+
+        def chunk_to_basket(chunk, branch, basket_num):
+            cursor = uproot4.source.cursor.Cursor(chunk.start)
+            basket = uproot4.models.TBasket.Model_TBasket.read(
+                chunk, cursor, {"basket_num": basket_num}, self._file, branch
+            )
+            notifications.put(basket)
+
+        output = {}
+
+        def basket_to_array(basket):
+            assert basket.basket_num is not None
+            branch = basket.parent
+            interpretation = branchid_interpretation[id(branch)]
+            arrays = branchid_arrays[id(branch)]
+            arrays[basket.basket_num] = interpretation.basket_array(
+                basket.data, basket.byte_offsets
+            )
+            if len(arrays) == branchid_num_baskets[id(branch)]:
+                name = branchid_name[id(branch)]
+                output[name] = interpretation.final_array(
+                    arrays, entry_start, entry_stop, branch.entry_offsets
+                )
+            notifications.put(None)
+
+        while len(output) < len(branchid_to_arrays):
+            obj = notifications.get()
+
+            if isinstance(obj, uproot4.source.chunk.Chunk):
+                chunk = obj
+                args = range_args[(chunk.start, chunk.stop)]
+                decompression_executor.submit(chunk_to_basket, (chunk,) + args)
+
+            elif isinstance(obj, uproot4.models.TBasket.Model_TBasket):
+                basket = obj
+                interpretation_executor.submit(basket_to_array, (basket,))
+
+            elif obj is None:
+                pass
+
+            else:
+                raise AssertionError(obj)
+
+        return output
+
 
 class TBranch(HasBranches):
     def postprocess(self, chunk, cursor, context):
         fWriteBasket = self.member("fWriteBasket")
 
+        self._lookup = {}
         self._interpretation = None
         self._count_branch = None
         self._count_leaf = None
@@ -254,7 +347,11 @@ class TBranch(HasBranches):
             self._embedded_baskets_lock = None
 
         elif self.has_member("fBaskets"):
-            self._embedded_baskets = self.member("fBaskets")
+            self._embedded_baskets = []
+            for basket in self.member("fBaskets"):
+                if basket is not None:
+                    basket._basket_num = self._num_normal_baskets + len(self._embedded_baskets)
+                    self._embedded_baskets.append(basket)
             self._embedded_baskets_lock = None
 
         else:
@@ -308,7 +405,11 @@ in file {3}""".format(
                 self.tree.chunk, cursor, {}, self._file, self
             )
             with self._embedded_baskets_lock:
-                self._embedded_baskets = baskets
+                self._embedded_baskets = []
+                for basket in baskets:
+                    if basket is not None:
+                        basket._basket_num = self._num_normal_baskets + len(self._embedded_baskets)
+                        self._embedded_baskets.append(basket)
 
         return self._embedded_baskets
 
@@ -420,7 +521,7 @@ in file {3}""".format(
         if 0 <= basket_num < self._num_normal_baskets:
             chunk, cursor = self.basket_chunk_cursor(basket_num)
             return uproot4.models.TBasket.Model_TBasket.read(
-                chunk, cursor, {}, self._file, self
+                chunk, cursor, {"basket_num": basket_num}, self._file, self
             )
         elif 0 <= basket_num < self.num_baskets:
             return self.embedded_baskets[basket_num - self._num_normal_baskets]
@@ -431,3 +532,18 @@ in file {3}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
+
+    def entries_to_ranges_or_baskets(self, entry_start, entry_stop):
+        entry_offsets = self.entry_offsets
+        out = []
+        start = entry_offsets[0]
+        for basket_num, stop in enumerate(entry_offsets[1:]):
+            if entry_start < stop and start <= entry_stop:
+                if 0 <= basket_num < self._num_normal_baskets:
+                    out.append((basket_num, (start, stop)))
+                elif 0 <= basket_num < self.num_baskets:
+                    out.append((basket_num, self.basket(basket_num)))
+                else:
+                    raise AssertionError((self.name, basket_num))
+            start = stop
+        return out
