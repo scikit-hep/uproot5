@@ -27,8 +27,9 @@ from uproot4.model import has_class_named
 from uproot4.model import class_named
 
 import uproot4.interpret
+import uproot4.interpret.library
 
-library = "ak"
+default_library = "ak"
 
 import uproot4.models.TObject
 import uproot4.models.TString

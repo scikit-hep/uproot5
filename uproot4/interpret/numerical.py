@@ -16,9 +16,31 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpret.Interpretation):
-    def final_array(self, basket_arrays, entry_start, entry_stop, entry_offsets):
+    @property
+    def to_dtype(self):
+        return self._to_dtype
+
+    @property
+    def numpy_dtype(self):
+        return self._to_dtype
+
+    @property
+    def awkward_form(self):
+        raise NotImplementedError
+
+    def final_array(
+        self, basket_arrays, entry_start, entry_stop, entry_offsets, library
+    ):
+        self.hook_before_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+        )
+
         if not entry_start < entry_stop:
-            return numpy.empty(0, dtype=self.to_dtype)
+            output = library.empty((0,), self.to_dtype)
 
         else:
             length = 0
@@ -34,7 +56,7 @@ class Numerical(uproot4.interpret.Interpretation):
                     length += stop - start
                 start = stop
 
-            out = numpy.empty(length, dtype=self.to_dtype)
+            output = library.empty((length,), self.to_dtype)
 
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
@@ -42,20 +64,40 @@ class Numerical(uproot4.interpret.Interpretation):
                 if start <= entry_start and entry_stop <= stop:
                     local_start = entry_start - start
                     local_stop = entry_stop - start
-                    out[:] = basket_array[local_start:local_stop]
+                    output[:] = basket_array[local_start:local_stop]
                 elif start <= entry_start < stop:
                     local_start = entry_start - start
                     local_stop = stop - start
-                    out[: stop - entry_start] = basket_array[local_start:local_stop]
+                    output[: stop - entry_start] = basket_array[local_start:local_stop]
                 elif start <= entry_stop <= stop:
                     local_start = 0
                     local_stop = entry_stop - start
-                    out[start - entry_start :] = basket_array[local_start:local_stop]
+                    output[start - entry_start :] = basket_array[local_start:local_stop]
                 elif entry_start < stop and start <= entry_stop:
-                    out[start - entry_start : stop - entry_start] = basket_array
+                    output[start - entry_start : stop - entry_start] = basket_array
                 start = stop
 
-            return out
+        self.hook_before_library_finalize(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            output=output,
+        )
+
+        output = library.finalize(output)
+
+        self.hook_after_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            output=output,
+        )
+
+        return output
 
 
 class AsDtype(Numerical):
@@ -69,10 +111,6 @@ class AsDtype(Numerical):
     @property
     def from_dtype(self):
         return self._from_dtype
-
-    @property
-    def to_dtype(self):
-        return self._to_dtype
 
     _numpy_byteorder_to_cache_key = {
         "!": "B",
@@ -117,26 +155,20 @@ class AsDtype(Numerical):
                 + "]"
             )
 
-        return "AsDtype({0},{1})".format(from_dtype, to_dtype)
-
-    @property
-    def numpy_dtype(self):
-        return self._to_dtype
-
-    @property
-    def awkward_form(self):
-        raise NotImplementedError
-
-    def num_items(self, num_bytes, num_entries):
-        dtype, shape = _dtype_shape(self._from_dtype)
-        quotient, remainder = divmod(num_bytes, dtype.itemsize)
-        assert remainder == 0
-        return quotient
+        return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
 
     def basket_array(self, data, byte_offsets):
+        self.hook_before_basket_array(data=data, byte_offsets=byte_offsets)
+
         assert byte_offsets is None
         dtype, shape = _dtype_shape(self._from_dtype)
-        return data.view(self._from_dtype).reshape((-1,) + shape)
+        output = data.view(self._from_dtype).reshape((-1,) + shape)
+
+        self.hook_before_basket_array(
+            data=data, byte_offsets=byte_offsets, output=output
+        )
+
+        return output
 
 
 class AsArray(AsDtype):

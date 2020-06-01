@@ -16,6 +16,7 @@ import skhep_testdata
 
 import uproot4
 import uproot4.interpret.numerical
+import uproot4.interpret.library
 import uproot4.source.futures
 
 
@@ -71,12 +72,14 @@ def test_stitching_arrays():
     interpretation = uproot4.interpret.numerical.AsDtype("i8")
     expectation = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     basket_arrays = [[0, 1, 2, 3, 4], [5, 6], [], [7, 8, 9], [10], [11, 12, 13, 14]]
-    entry_offsets = [0, 5, 7, 7, 10, 11, 15]
+    basket_arrays = [numpy.array(x) for x in basket_arrays]
+    entry_offsets = numpy.array([0, 5, 7, 7, 10, 11, 15])
+    library = uproot4.interpret.library._libraries["np"]
 
     for start in range(16):
         for stop in range(15, -1, -1):
             actual = interpretation.final_array(
-                basket_arrays, start, stop, entry_offsets
+                basket_arrays, start, stop, entry_offsets, library
             )
             assert expectation[start:stop] == actual.tolist()
 
@@ -111,6 +114,7 @@ def test_ranges_or_baskets_to_arrays():
         decompression_executor = uproot4.source.futures.TrivialExecutor()
         interpretation_executor = uproot4.source.futures.TrivialExecutor()
         cache = None
+        library = uproot4.interpret.library._libraries["np"]
 
         output = sample._ranges_or_baskets_to_arrays(
             ranges_or_baskets,
@@ -120,6 +124,7 @@ def test_ranges_or_baskets_to_arrays():
             decompression_executor,
             interpretation_executor,
             cache,
+            library,
         )
         assert output["i4"].tolist() == [
             -15,

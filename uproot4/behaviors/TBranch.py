@@ -290,6 +290,7 @@ class HasBranches(Mapping):
         decompression_executor,
         interpretation_executor,
         cache,
+        library,
     ):
         notifications = queue.Queue()
 
@@ -347,7 +348,7 @@ class HasBranches(Mapping):
             if len(basket_arrays) == branchid_num_baskets[id(branch)]:
                 name = branchid_name[id(branch)]
                 output[name] = interpretation.final_array(
-                    basket_arrays, entry_start, entry_stop, branch.entry_offsets
+                    basket_arrays, entry_start, entry_stop, branch.entry_offsets, library
                 )
             notifications.put(None)
 
