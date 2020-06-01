@@ -8,6 +8,10 @@ try:
     from collections.abc import Mapping
 except ImportError:
     from collections import Mapping
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 import uproot4.source.cursor
 import uproot4.reading
@@ -238,9 +242,38 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
-    def names_entries_to_ranges_or_baskets(self, names, entry_start, entry_stop):
+    def arrays(
+        self,
+        branch_names,
+        entry_start,
+        entry_stop,
+        decompression_executor,
+        interpretation_executor,
+        cache,
+    ):
+        ranges_or_baskets = self._names_entries_to_ranges_or_baskets(
+            branch_names, entry_start, entry_stop
+        )
+
+        branchid_interpretation = {}
+        for name, branch, basket_num, range_or_basket in ranges_or_baskets:
+            branchid_interpretation[id(branch)] = branch.interpretation
+
+        return self._ranges_or_baskets_to_arrays(
+            ranges_or_baskets,
+            branchid_interpretation,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            cache,
+        )
+
+    def _names_entries_to_ranges_or_baskets(
+        self, branch_names, entry_start, entry_stop
+    ):
         out = []
-        for name in names:
+        for name in branch_names:
             branch = self[name]
             for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
                 entry_start, entry_stop
@@ -248,7 +281,7 @@ class HasBranches(Mapping):
                 out.append((name, branch, basket_num, range_or_basket))
         return out
 
-    def ranges_or_baskets_to_arrays(
+    def _ranges_or_baskets_to_arrays(
         self,
         ranges_or_baskets,
         branchid_interpretation,
@@ -256,6 +289,7 @@ class HasBranches(Mapping):
         entry_stop,
         decompression_executor,
         interpretation_executor,
+        cache,
     ):
         notifications = queue.Queue()
 
@@ -264,6 +298,9 @@ class HasBranches(Mapping):
         branchid_num_baskets = {}
         ranges = []
         range_args = {}
+        range_original_index = {}
+        original_index = 0
+
         for name, branch, basket_num, range_or_basket in ranges_or_baskets:
             if id(branch) not in branchid_name:
                 branchid_name[id(branch)] = name
@@ -274,8 +311,11 @@ class HasBranches(Mapping):
             if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
                 ranges.append(range_or_basket)
                 range_args[range_or_basket] = (branch, basket_num)
+                range_original_index[range_or_basket] = original_index
             else:
                 notifications.put(range_or_basket)
+
+            original_index += 1
 
         self._source.chunks(ranges, notifications=notifications)
 
@@ -284,6 +324,8 @@ class HasBranches(Mapping):
             basket = uproot4.models.TBasket.Model_TBasket.read(
                 chunk, cursor, {"basket_num": basket_num}, self._file, branch
             )
+            original_index = range_original_index[(chunk.start, chunk.stop)]
+            ranges_or_baskets[original_index] = basket
             notifications.put(basket)
 
         output = {}
@@ -292,18 +334,18 @@ class HasBranches(Mapping):
             assert basket.basket_num is not None
             branch = basket.parent
             interpretation = branchid_interpretation[id(branch)]
-            arrays = branchid_arrays[id(branch)]
-            arrays[basket.basket_num] = interpretation.basket_array(
+            basket_arrays = branchid_arrays[id(branch)]
+            basket_arrays[basket.basket_num] = interpretation.basket_array(
                 basket.data, basket.byte_offsets
             )
-            if len(arrays) == branchid_num_baskets[id(branch)]:
+            if len(basket_arrays) == branchid_num_baskets[id(branch)]:
                 name = branchid_name[id(branch)]
                 output[name] = interpretation.final_array(
-                    arrays, entry_start, entry_stop, branch.entry_offsets
+                    basket_arrays, entry_start, entry_stop, branch.entry_offsets
                 )
             notifications.put(None)
 
-        while len(output) < len(branchid_to_arrays):
+        while len(output) < len(branchid_arrays):
             obj = notifications.get()
 
             if isinstance(obj, uproot4.source.chunk.Chunk):
@@ -321,7 +363,7 @@ class HasBranches(Mapping):
             else:
                 raise AssertionError(obj)
 
-        return output
+        return dict((name, output[name]) for name, _, _, _ in ranges_or_baskets)
 
 
 class TBranch(HasBranches):
@@ -350,7 +392,9 @@ class TBranch(HasBranches):
             self._embedded_baskets = []
             for basket in self.member("fBaskets"):
                 if basket is not None:
-                    basket._basket_num = self._num_normal_baskets + len(self._embedded_baskets)
+                    basket._basket_num = self._num_normal_baskets + len(
+                        self._embedded_baskets
+                    )
                     self._embedded_baskets.append(basket)
             self._embedded_baskets_lock = None
 
@@ -408,7 +452,9 @@ in file {3}""".format(
                 self._embedded_baskets = []
                 for basket in baskets:
                     if basket is not None:
-                        basket._basket_num = self._num_normal_baskets + len(self._embedded_baskets)
+                        basket._basket_num = self._num_normal_baskets + len(
+                            self._embedded_baskets
+                        )
                         self._embedded_baskets.append(basket)
 
         return self._embedded_baskets

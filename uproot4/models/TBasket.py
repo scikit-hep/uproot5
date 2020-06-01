@@ -18,6 +18,12 @@ _tbasket_offsets_dtype = numpy.dtype(">i4")
 
 
 class Model_TBasket(uproot4.model.Model):
+    def __repr__(self):
+        basket_num = self._basket_num if self._basket_num is not None else "(unknown)"
+        return "<TBasket {0} of {1} at 0x{2:012x}>".format(
+            basket_num, repr(self._parent.name), id(self)
+        )
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -145,6 +151,11 @@ class Model_TBasket(uproot4.model.Model):
     @property
     def byte_offsets(self):
         return self._byte_offsets
+
+    def array(self, interpretation=None):
+        if interpretation is None:
+            interpretation = self._parent.interpretation
+        return interpretation.basket_array(self.data, self.byte_offsets)
 
 
 uproot4.classes["TBasket"] = Model_TBasket

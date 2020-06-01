@@ -16,36 +16,46 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpret.Interpretation):
-    def empty_array(self, library):
-        return library.wrap_numpy(numpy.empty(0, dtype=self.numpy_dtype))
+    def final_array(self, basket_arrays, entry_start, entry_stop, entry_offsets):
+        if not entry_start < entry_stop:
+            return numpy.empty(0, dtype=self.to_dtype)
 
-    def fillable_array(self, num_items, num_entries):
-        assert num_items == num_entries
-        dtype, shape = _dtype_shape(self.to_dtype)
-        quotient, remainder = divmod(num_items, numpy.prod(shape))
-        if remainder != 0:
-            raise ValueError(
-                "cannot reshape {0} items into dimensions {1}".format(num_items, shape)
-            )
-        return numpy.empty(quotient, dtype=self.to_dtype)
+        else:
+            length = 0
+            start = entry_offsets[0]
+            for basket_num, stop in enumerate(entry_offsets[1:]):
+                if start <= entry_start and entry_stop <= stop:
+                    length += entry_stop - entry_start
+                elif start <= entry_start < stop:
+                    length += stop - entry_start
+                elif start <= entry_stop <= stop:
+                    length += entry_stop - start
+                elif entry_start < stop and start <= entry_stop:
+                    length += stop - start
+                start = stop
 
-    def fill(
-        self,
-        basket_array,
-        fillable_array,
-        item_start,
-        item_stop,
-        entry_start,
-        entry_stop,
-    ):
-        assert item_start == entry_start and item_stop == entry_stop
-        fillable_array.reshape(-1)[item_start:item_stop] = basket_array.reshape(-1)
+            out = numpy.zeros(length, dtype=self.to_dtype)
 
-    def trim(self, fillable_array, entry_start, entry_stop):
-        return fillable_array[entry_start:entry_stop]
+            start = entry_offsets[0]
+            for basket_num, stop in enumerate(entry_offsets[1:]):
+                basket_array = basket_arrays[basket_num]
+                if start <= entry_start and entry_stop <= stop:
+                    local_start = entry_start - start
+                    local_stop = entry_stop - start
+                    out[:] = basket_array[local_start:local_stop]
+                elif start <= entry_start < stop:
+                    local_start = entry_start - start
+                    local_stop = stop - start
+                    out[: stop - entry_start] = basket_array[local_start:local_stop]
+                elif start <= entry_stop <= stop:
+                    local_start = 0
+                    local_stop = entry_stop - start
+                    out[start - entry_start :] = basket_array[local_start:local_stop]
+                elif entry_start < stop and start <= entry_stop:
+                    out[start - entry_start : stop - entry_start] = basket_array
+                start = stop
 
-    def finalize(self, fillable_array, library):
-        return library.wrap_numpy(fillable_array)
+            return out
 
 
 class AsDtype(Numerical):
