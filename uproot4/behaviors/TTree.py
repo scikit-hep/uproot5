@@ -15,11 +15,22 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
         return self.member("fTitle")
 
     @property
+    def num_entries(self):
+        return self.member("fEntries")
+
+    @property
     def aliases(self):
-        return dict(
-            (alias.member("fName"), alias.member("fTitle"))
-            for alias in self.member("fAliases")
-        )
+        aliases = self.member("fAliases")
+        if aliases is None:
+            return {}
+        else:
+            return dict(
+                (alias.member("fName"), alias.member("fTitle")) for alias in aliases
+            )
+
+    @property
+    def tree(self):
+        return self
 
     def __repr__(self):
         if len(self) == 0:

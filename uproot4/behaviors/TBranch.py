@@ -129,6 +129,7 @@ def _regularize_names(
             filter_typename,
             filter_branch,
             aliases,
+            functions,
             out,
         )
 
@@ -143,6 +144,7 @@ def _regularize_names(
                     filter_typename,
                     filter_branch,
                     aliases,
+                    functions,
                     out,
                 )
             else:
@@ -162,6 +164,7 @@ def _regularize_names(
                     filter_typename,
                     filter_branch,
                     aliases,
+                    functions,
                     out,
                 )
             raise TypeError(
@@ -610,7 +613,7 @@ class HasBranches(Mapping):
                 )
                 array_cache[cache_key] = output[name]
 
-        return dict((name, output[name]) for name, _, _, _ in ranges_or_baskets)
+        return library.group(output, name_interp_branch, how)
 
 
 class TBranch(HasBranches):

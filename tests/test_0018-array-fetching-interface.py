@@ -15,6 +15,177 @@ import uproot4.interpret.jagged
 import uproot4.interpret.numerical
 
 
+def test_arrays():
+    awkward1 = pytest.importorskip("awkward1")
+
+    interp_i4 = uproot4.interpret.numerical.AsDtype(">i4")
+    interp_f4 = uproot4.interpret.numerical.AsDtype(">f4")
+    interp_Ai4 = uproot4.interpret.jagged.AsJagged(
+        uproot4.interpret.numerical.AsDtype(">i4")
+    )
+    interp_Af8 = uproot4.interpret.jagged.AsJagged(
+        uproot4.interpret.numerical.AsDtype(">f8")
+    )
+
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        result = sample.arrays(
+            {"i4": interp_i4, "f4": interp_f4, "Ai4": interp_Ai4, "Af8": interp_Af8},
+            how="zip",
+        )
+        assert result.tolist() == [
+            {"i4": -15, "f4": -14.899999618530273, "A": []},
+            {"i4": -14, "f4": -13.899999618530273, "A": [{"i4": -15, "f8": -15.0}]},
+            {
+                "i4": -13,
+                "f4": -12.899999618530273,
+                "A": [{"i4": -15, "f8": -15.0}, {"i4": -13, "f8": -13.9}],
+            },
+            {
+                "i4": -12,
+                "f4": -11.899999618530273,
+                "A": [
+                    {"i4": -15, "f8": -15.0},
+                    {"i4": -13, "f8": -13.9},
+                    {"i4": -11, "f8": -12.8},
+                ],
+            },
+            {
+                "i4": -11,
+                "f4": -10.899999618530273,
+                "A": [
+                    {"i4": -15, "f8": -15.0},
+                    {"i4": -13, "f8": -13.9},
+                    {"i4": -11, "f8": -12.8},
+                    {"i4": -9, "f8": -11.7},
+                ],
+            },
+            {"i4": -10, "f4": -9.899999618530273, "A": []},
+            {"i4": -9, "f4": -8.899999618530273, "A": [{"i4": -10, "f8": -10.0}]},
+            {
+                "i4": -8,
+                "f4": -7.900000095367432,
+                "A": [{"i4": -10, "f8": -10.0}, {"i4": -8, "f8": -8.9}],
+            },
+            {
+                "i4": -7,
+                "f4": -6.900000095367432,
+                "A": [
+                    {"i4": -10, "f8": -10.0},
+                    {"i4": -8, "f8": -8.9},
+                    {"i4": -6, "f8": -7.8},
+                ],
+            },
+            {
+                "i4": -6,
+                "f4": -5.900000095367432,
+                "A": [
+                    {"i4": -10, "f8": -10.0},
+                    {"i4": -8, "f8": -8.9},
+                    {"i4": -6, "f8": -7.8},
+                    {"i4": -4, "f8": -6.7},
+                ],
+            },
+            {"i4": -5, "f4": -4.900000095367432, "A": []},
+            {"i4": -4, "f4": -3.9000000953674316, "A": [{"i4": -5, "f8": -5.0}]},
+            {
+                "i4": -3,
+                "f4": -2.9000000953674316,
+                "A": [{"i4": -5, "f8": -5.0}, {"i4": -3, "f8": -3.9}],
+            },
+            {
+                "i4": -2,
+                "f4": -1.899999976158142,
+                "A": [
+                    {"i4": -5, "f8": -5.0},
+                    {"i4": -3, "f8": -3.9},
+                    {"i4": -1, "f8": -2.8},
+                ],
+            },
+            {
+                "i4": -1,
+                "f4": -0.8999999761581421,
+                "A": [
+                    {"i4": -5, "f8": -5.0},
+                    {"i4": -3, "f8": -3.9},
+                    {"i4": -1, "f8": -2.8},
+                    {"i4": 1, "f8": -1.7},
+                ],
+            },
+            {"i4": 0, "f4": 0.10000000149011612, "A": []},
+            {"i4": 1, "f4": 1.100000023841858, "A": [{"i4": 0, "f8": 0.0}]},
+            {
+                "i4": 2,
+                "f4": 2.0999999046325684,
+                "A": [{"i4": 0, "f8": 0.0}, {"i4": 2, "f8": 1.1}],
+            },
+            {
+                "i4": 3,
+                "f4": 3.0999999046325684,
+                "A": [{"i4": 0, "f8": 0.0}, {"i4": 2, "f8": 1.1}, {"i4": 4, "f8": 2.2}],
+            },
+            {
+                "i4": 4,
+                "f4": 4.099999904632568,
+                "A": [
+                    {"i4": 0, "f8": 0.0},
+                    {"i4": 2, "f8": 1.1},
+                    {"i4": 4, "f8": 2.2},
+                    {"i4": 6, "f8": 3.3},
+                ],
+            },
+            {"i4": 5, "f4": 5.099999904632568, "A": []},
+            {"i4": 6, "f4": 6.099999904632568, "A": [{"i4": 5, "f8": 5.0}]},
+            {
+                "i4": 7,
+                "f4": 7.099999904632568,
+                "A": [{"i4": 5, "f8": 5.0}, {"i4": 7, "f8": 6.1}],
+            },
+            {
+                "i4": 8,
+                "f4": 8.100000381469727,
+                "A": [{"i4": 5, "f8": 5.0}, {"i4": 7, "f8": 6.1}, {"i4": 9, "f8": 7.2}],
+            },
+            {
+                "i4": 9,
+                "f4": 9.100000381469727,
+                "A": [
+                    {"i4": 5, "f8": 5.0},
+                    {"i4": 7, "f8": 6.1},
+                    {"i4": 9, "f8": 7.2},
+                    {"i4": 11, "f8": 8.3},
+                ],
+            },
+            {"i4": 10, "f4": 10.100000381469727, "A": []},
+            {"i4": 11, "f4": 11.100000381469727, "A": [{"i4": 10, "f8": 10.0}]},
+            {
+                "i4": 12,
+                "f4": 12.100000381469727,
+                "A": [{"i4": 10, "f8": 10.0}, {"i4": 12, "f8": 11.1}],
+            },
+            {
+                "i4": 13,
+                "f4": 13.100000381469727,
+                "A": [
+                    {"i4": 10, "f8": 10.0},
+                    {"i4": 12, "f8": 11.1},
+                    {"i4": 14, "f8": 12.2},
+                ],
+            },
+            {
+                "i4": 14,
+                "f4": 14.100000381469727,
+                "A": [
+                    {"i4": 10, "f8": 10.0},
+                    {"i4": 12, "f8": 11.1},
+                    {"i4": 14, "f8": 12.2},
+                    {"i4": 16, "f8": 13.3},
+                ],
+            },
+        ]
+
+
 def test_jagged():
     interpretation = uproot4.interpret.jagged.AsJagged(
         uproot4.interpret.numerical.AsDtype(">i2")
@@ -387,18 +558,19 @@ def test_pandas_merge():
     pandas = pytest.importorskip("pandas")
 
     group = uproot4.interpret.library.Pandas().group
+    name_interp_branch = [("a", None, None), ("b", None, None), ("c", None, None)]
 
     a = pandas.Series([1, 2, 3, 4, 5])
     b = pandas.Series([1.1, 2.2, 3.3, 4.4, 5.5])
     c = pandas.Series([100, 200, 300, 400, 500])
 
-    df = group({"a": a, "b": b, "c": c}, ["a", "b", "c"], None)
+    df = group({"a": a, "b": b, "c": c}, name_interp_branch, None)
     assert df.index.tolist() == [0, 1, 2, 3, 4]
     assert df.a.tolist() == [1, 2, 3, 4, 5]
     assert df.b.tolist() == [1.1, 2.2, 3.3, 4.4, 5.5]
     assert df.c.tolist() == [100, 200, 300, 400, 500]
 
-    df = group({"a": a, "b": b, "c": c}, ["a", "b", "c"], "outer")
+    df = group({"a": a, "b": b, "c": c}, name_interp_branch, "outer")
     assert df.index.tolist() == [0, 1, 2, 3, 4]
     assert df.a.tolist() == [1, 2, 3, 4, 5]
     assert df.b.tolist() == [1.1, 2.2, 3.3, 4.4, 5.5]
@@ -414,7 +586,7 @@ def test_pandas_merge():
         index=pandas.MultiIndex.from_arrays([[0, 0, 1, 1, 2, 2], [0, 1, 0, 1, 0, 1]]),
     )
 
-    dfs = group({"a": a, "b": b, "c": c}, ["a", "b", "c"], None)
+    dfs = group({"a": a, "b": b, "c": c}, name_interp_branch, None)
     assert isinstance(dfs, tuple) and len(dfs) == 2
     assert dfs[0].columns.tolist() == ["a", "b"]
     assert dfs[0].index.tolist() == [(0, 0), (0, 1), (0, 2), (2, 0), (2, 1)]
@@ -425,7 +597,7 @@ def test_pandas_merge():
     assert dfs[1].b.tolist() == [100, 100, 200, 200, 300, 300]
     assert dfs[1].c.tolist() == [1, 2, 3, 4, 5, 6]
 
-    df = group({"a": a, "b": b, "c": c}, ["a", "b", "c"], "outer")
+    df = group({"a": a, "b": b, "c": c}, name_interp_branch, "outer")
     assert df.columns.tolist() == ["b", "a", "c"]
     assert df.index.tolist() == [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (2, 0), (2, 1)]
     assert df.b.tolist() == [100, 100, 100, 200, 200, 300, 300]

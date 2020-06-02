@@ -18,9 +18,9 @@ class Library(object):
        * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
        * `finalize(array, branch)`: Convert the internal storage form into one
              appropriate for this library (NumPy array, Pandas Series, etc.).
-       * `group(arrays, names, how)`: Combine arrays into a group, either
-             a generic tuple or a grouping style appropriate for this library
-             (NumPy array dict, Awkward RecordArray, Pandas DataFrame, etc.).
+       * `group(arrays, name_interp_branch, how)`: Combine arrays into a group,
+             either a generic tuple or a grouping style appropriate for this
+             library (NumPy array dict, Awkward RecordArray, etc.).
     """
 
     @property
@@ -33,13 +33,13 @@ class Library(object):
     def finalize(self, array, branch):
         raise AssertionError
 
-    def group(self, arrays, names, how):
+    def group(self, arrays, name_interp_branch, how):
         if how is tuple:
-            return tuple(arrays[name] for name in names)
+            return tuple(arrays[name] for name, _, _ in name_interp_branch)
         elif how is list:
-            return [arrays[name] for name in names]
+            return [arrays[name] for name, _, _ in name_interp_branch]
         elif how is dict or how is None:
-            return arrays
+            return dict((name, arrays[name]) for name, _, _ in name_interp_branch)
         else:
             raise TypeError(
                 "for library {0}, how must be tuple, list, dict, or None (for "
@@ -100,8 +100,11 @@ class Awkward(Library):
         awkward1 = self.imported
 
         if isinstance(array, uproot4.interpret.jagged.JaggedArray):
+            array_content = array.content.astype(
+                array.content.dtype.newbyteorder("="), copy=False
+            )
+            content = awkward1.from_numpy(array_content, highlevel=False)
             offsets = awkward1.layout.Index32(array.offsets)
-            content = awkward1.from_numpy(array.content, highlevel=False)
             layout = awkward1.layout.ListOffsetArray32(offsets, content)
             return awkward1.Array(layout)
 
@@ -112,7 +115,73 @@ class Awkward(Library):
             raise NotImplementedError
 
         else:
+            array = array.astype(array.dtype.newbyteorder("="), copy=False)
             return awkward1.from_numpy(array)
+
+    def group(self, arrays, name_interp_branch, how):
+        awkward1 = self.imported
+
+        if how is tuple:
+            return tuple(arrays[name] for name, _, _ in name_interp_branch)
+        elif how is list:
+            return [arrays[name] for name, _, _ in name_interp_branch]
+        elif how is dict:
+            return dict((name, arrays[name]) for name, _, _ in name_interp_branch)
+        elif how is None:
+            return awkward1.zip(
+                dict((name, arrays[name]) for name, _, _ in name_interp_branch)
+            )
+        elif how == "zip":
+            nonjagged = []
+            offsets = []
+            jaggeds = []
+            for name, interp, _ in name_interp_branch:
+                array = arrays[name]
+                if isinstance(interp, uproot4.interpret.jagged.AsJagged):
+                    if len(offsets) == 0:
+                        offsets.append(array.layout.offsets)
+                        jaggeds.append([name])
+                    else:
+                        for o, j in zip(offsets, jaggeds):
+                            if numpy.array_equal(array.layout.offsets, o):
+                                j.append(name)
+                                break
+                        else:
+                            offsets.append(array.layout.offsets)
+                            jaggeds.append([name])
+                else:
+                    nonjagged.append(name)
+            out = None
+            if len(nonjagged) != 0:
+                out = awkward1.zip(
+                    dict((name, arrays[name]) for name in nonjagged), depth_limit=1
+                )
+            for number, jagged in enumerate(jaggeds):
+                cut = len(jagged[0])
+                for name in jagged:
+                    cut = min(cut, len(name))
+                    while cut > 0 and name[:cut] != jagged[0][:cut]:
+                        cut -= 1
+                    if cut == 0:
+                        break
+                if cut == 0:
+                    common = "jagged{0}".format(number)
+                else:
+                    common = jagged[0][:cut].strip("_./")
+                subarray = awkward1.zip(
+                    dict((name[cut:].strip("_./"), arrays[name]) for name in jagged)
+                )
+                if out is None:
+                    out = awkward1.zip({common: subarray}, depth_limit=1)
+                else:
+                    for name in jagged:
+                        out = awkward1.with_field(out, subarray, common)
+            return out
+        else:
+            raise TypeError(
+                "for library {0}, how must be tuple, list, dict, or None (for "
+                "an Awkward record array)".format(self.name)
+            )
 
 
 class Pandas(Library):
@@ -160,14 +229,15 @@ or
         else:
             return pandas.Series(array)
 
-    def group(self, arrays, names, how):
+    def group(self, arrays, name_interp_branch, how):
+        names = [name for name, _, _ in name_interp_branch]
         pandas = self.imported
         if how is tuple:
             return tuple(arrays[name] for name in names)
         elif how is list:
             return [arrays[name] for name in names]
         elif how is dict:
-            return arrays
+            return dict((name, arrays[name]) for name in names)
         elif uproot4._util.isstr(how) or how is None:
             if all(isinstance(x.index, pandas.RangeIndex) for x in arrays.values()):
                 return pandas.DataFrame(data=arrays, columns=names)
