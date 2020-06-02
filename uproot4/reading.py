@@ -1033,6 +1033,38 @@ class ReadOnlyDirectory(Mapping):
         """
         self._file.show_streamers(classname=classname, stream=stream)
 
+    @property
+    def cache_key(self):
+        return self.file.hex_uuid + ":" + "/".join(self.path) + "/"
+
+    @property
+    def object_cache(self):
+        return self._file._object_cache
+
+    @object_cache.setter
+    def object_cache(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._file._object_cache = value
+        elif uproot4._util.isint(value):
+            self._file._object_cache = uproot4.cache.LRUCache(value)
+        else:
+            raise TypeError("object_cache must be None, a MutableMapping, or an int")
+
+    @property
+    def array_cache(self):
+        return self._file._array_cache
+
+    @array_cache.setter
+    def array_cache(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._file._array_cache = value
+        elif uproot4._util.isint(value) or uproot4._util.isstr(value):
+            self._file._array_cache = uproot4.cache.LRUArrayCache(value)
+        else:
+            raise TypeError(
+                "array_cache must be None, a MutableMapping, or a memory size"
+            )
+
     def iterclassnames(
         self,
         recursive=True,

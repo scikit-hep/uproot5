@@ -61,20 +61,23 @@ class Numerical(uproot4.interpret.Interpretation):
 
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
-                basket_array = basket_arrays[basket_num]
                 if start <= entry_start and entry_stop <= stop:
                     local_start = entry_start - start
                     local_stop = entry_stop - start
+                    basket_array = basket_arrays[basket_num]
                     output[:] = basket_array[local_start:local_stop]
                 elif start <= entry_start < stop:
                     local_start = entry_start - start
                     local_stop = stop - start
+                    basket_array = basket_arrays[basket_num]
                     output[: stop - entry_start] = basket_array[local_start:local_stop]
                 elif start <= entry_stop <= stop:
                     local_start = 0
                     local_stop = entry_stop - start
+                    basket_array = basket_arrays[basket_num]
                     output[start - entry_start :] = basket_array[local_start:local_stop]
                 elif entry_start < stop and start <= entry_stop:
+                    basket_array = basket_arrays[basket_num]
                     output[start - entry_start : stop - entry_start] = basket_array
                 start = stop
 

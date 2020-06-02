@@ -282,33 +282,6 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
-    def arrays(
-        self,
-        branch_names,
-        entry_start,
-        entry_stop,
-        decompression_executor,
-        interpretation_executor,
-        cache,
-    ):
-        ranges_or_baskets = self._names_entries_to_ranges_or_baskets(
-            branch_names, entry_start, entry_stop
-        )
-
-        branchid_interpretation = {}
-        for name, branch, basket_num, range_or_basket in ranges_or_baskets:
-            branchid_interpretation[id(branch)] = branch.interpretation
-
-        return self._ranges_or_baskets_to_arrays(
-            ranges_or_baskets,
-            branchid_interpretation,
-            entry_start,
-            entry_stop,
-            decompression_executor,
-            interpretation_executor,
-            cache,
-        )
-
     def _names_entries_to_ranges_or_baskets(
         self, branch_names, entry_start, entry_stop
     ):
@@ -481,6 +454,13 @@ class TBranch(HasBranches):
         while not isinstance(out, uproot4.behaviors.TTree.TTree):
             out = out.parent
         return out
+
+    @property
+    def cache_key(self):
+        if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
+            return self.parent.cache_key + ":" + self.name
+        else:
+            return self.parent.cache_key + "/" + self.name
 
     @property
     def entry_offsets(self):
@@ -685,13 +665,25 @@ in file {3}""".format(
         array_cache = _regularize_array_cache(array_cache, self._file)
         library = uproot4.interpret.library._regularize_library(library)
 
+        cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+            self.cache_key,
+            interpretation.cache_key,
+            entry_start,
+            entry_stop,
+            library.name,
+        )
+        if array_cache is not None:
+            got = array_cache.get(cache_key)
+            if got is not None:
+                return got
+
         ranges_or_baskets = []
         for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
             entry_start, entry_stop
         ):
             ranges_or_baskets.append((None, self, basket_num, range_or_basket))
 
-        return self._ranges_or_baskets_to_arrays(
+        out = self._ranges_or_baskets_to_arrays(
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
@@ -701,3 +693,8 @@ in file {3}""".format(
             array_cache,
             library,
         )[None]
+
+        if array_cache is not None:
+            array_cache[cache_key] = out
+
+        return out
