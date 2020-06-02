@@ -5,5 +5,5 @@ from __future__ import absolute_import
 import uproot4.interpret
 
 
-class ObjectArray(uproot4.interpret.Interpretation):
+class StringArray(uproot4.interpret.Interpretation):
     pass

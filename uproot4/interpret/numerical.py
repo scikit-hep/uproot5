@@ -17,6 +17,10 @@ def _dtype_shape(dtype):
 
 class Numerical(uproot4.interpret.Interpretation):
     @property
+    def itemsize(self):
+        raise AssertionError
+
+    @property
     def to_dtype(self):
         return self._to_dtype
 
@@ -40,7 +44,7 @@ class Numerical(uproot4.interpret.Interpretation):
             branch=branch,
         )
 
-        if not entry_start < entry_stop:
+        if entry_start >= entry_stop:
             output = library.empty((0,), self.to_dtype)
 
         else:
@@ -66,19 +70,23 @@ class Numerical(uproot4.interpret.Interpretation):
                     local_stop = entry_stop - start
                     basket_array = basket_arrays[basket_num]
                     output[:] = basket_array[local_start:local_stop]
+
                 elif start <= entry_start < stop:
                     local_start = entry_start - start
                     local_stop = stop - start
                     basket_array = basket_arrays[basket_num]
                     output[: stop - entry_start] = basket_array[local_start:local_stop]
+
                 elif start <= entry_stop <= stop:
                     local_start = 0
                     local_stop = entry_stop - start
                     basket_array = basket_arrays[basket_num]
                     output[start - entry_start :] = basket_array[local_start:local_stop]
+
                 elif entry_start < stop and start <= entry_stop:
                     basket_array = basket_arrays[basket_num]
                     output[start - entry_start : stop - entry_start] = basket_array
+
                 start = stop
 
         self.hook_before_library_finalize(
@@ -120,6 +128,10 @@ class AsDtype(Numerical):
     @property
     def from_dtype(self):
         return self._from_dtype
+
+    @property
+    def itemsize(self):
+        return self._from_dtype.itemsize
 
     _numpy_byteorder_to_cache_key = {
         "!": "B",
@@ -166,13 +178,16 @@ class AsDtype(Numerical):
 
         return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
 
-    def basket_array(self, basket, branch):
-        self.hook_before_basket_array(basket=basket, branch=branch)
+    def basket_array(self, data, byte_offsets, basket, branch):
+        self.hook_before_basket_array(
+            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch
+        )
 
-        assert basket.byte_offsets is None
+        assert byte_offsets is None
+
         dtype, shape = _dtype_shape(self._from_dtype)
         try:
-            output = basket.data.view(self._from_dtype).reshape((-1,) + shape)
+            output = data.view(self._from_dtype).reshape((-1,) + shape)
         except ValueError:
             raise ValueError(
                 """basket {0} in branch {1} has the wrong number of bytes ({2}) """
@@ -180,13 +195,19 @@ class AsDtype(Numerical):
 in file {4}""".format(
                     basket.basket_num,
                     repr(branch.name),
-                    len(basket.data),
+                    len(data),
                     self,
                     branch.file.file_path,
                 )
             )
 
-        self.hook_before_basket_array(basket=basket, branch=branch, output=output)
+        self.hook_before_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            output=output,
+        )
 
         return output
 
@@ -209,3 +230,7 @@ class AsFloat16(Numerical):
 class AsSTLBits(Numerical):
     def __init__(self):
         raise NotImplementedError
+
+    @property
+    def itemsize(self):
+        return self._num_bytes + 4

@@ -11,10 +11,80 @@ import skhep_testdata
 
 import uproot4
 import uproot4.interpret.library
+import uproot4.interpret.jagged
+import uproot4.interpret.numerical
 
 
-def test():
-    pass
+def test_jagged():
+    interpretation = uproot4.interpret.jagged.AsJagged(
+        uproot4.interpret.numerical.AsDtype(">i2")
+    )
+
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample/Ai2"] as branch:
+        result = branch.array(interpretation, library="np")
+        result = [[int(y) for y in x] for x in result]
+        assert result == [
+            [],
+            [-15],
+            [-15, -13],
+            [-15, -13, -11],
+            [-15, -13, -11, -9],
+            [],
+            [-10],
+            [-10, -8],
+            [-10, -8, -6],
+            [-10, -8, -6, -4],
+            [],
+            [-5],
+            [-5, -3],
+            [-5, -3, -1],
+            [-5, -3, -1, 1],
+            [],
+            [0],
+            [0, 2],
+            [0, 2, 4],
+            [0, 2, 4, 6],
+            [],
+            [5],
+            [5, 7],
+            [5, 7, 9],
+            [5, 7, 9, 11],
+            [],
+            [10],
+            [10, 12],
+            [10, 12, 14],
+            [10, 12, 14, 16],
+        ]
+
+        result = branch.array(
+            interpretation, entry_start=3, entry_stop=-6, library="np"
+        )
+        result = [[int(y) for y in x] for x in result]
+        assert result == [
+            [-15, -13, -11],
+            [-15, -13, -11, -9],
+            [],
+            [-10],
+            [-10, -8],
+            [-10, -8, -6],
+            [-10, -8, -6, -4],
+            [],
+            [-5],
+            [-5, -3],
+            [-5, -3, -1],
+            [-5, -3, -1, 1],
+            [],
+            [0],
+            [0, 2],
+            [0, 2, 4],
+            [0, 2, 4, 6],
+            [],
+            [5],
+            [5, 7],
+            [5, 7, 9],
+        ]
 
 
 def test_pandas_merge():

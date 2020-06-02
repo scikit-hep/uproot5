@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import numpy
 
 import uproot4.interpret.jagged
+import uproot4.interpret.strings
 import uproot4.interpret.objects
 
 
@@ -65,7 +66,14 @@ class NumPy(Library):
         return numpy.empty(shape, dtype)
 
     def finalize(self, array, branch):
-        if isinstance(array, uproot4.interpret.jagged.JaggedArray):
+        if isinstance(
+            array,
+            (
+                uproot4.interpret.jagged.JaggedArray,
+                uproot4.interpret.strings.StringArray,
+                uproot4.interpret.objects.ObjectArray,
+            ),
+        ):
             out = numpy.zeros(len(array), dtype=numpy.object)
             for i, x in enumerate(array):
                 out[i] = x
@@ -118,12 +126,18 @@ or
     def finalize(self, array, branch):
         pandas = self.imported
 
-        if isinstance(array, uproot4.interpret.jagged.JaggedArray):
-            compact = array.compact
+        if isinstance(
+            array,
+            (
+                uproot4.interpret.jagged.JaggedArray,
+                uproot4.interpret.strings.StringArray,
+                uproot4.interpret.objects.ObjectArray,
+            ),
+        ):
             index = pandas.MultiIndex.from_arrays(
-                [compact.parents, compact.localindex], names=["entry", "subentry"]
+                [array.parents, array.localindex], names=["entry", "subentry"]
             )
-            return pandas.Series(compact.content, index=index)
+            return pandas.Series(array.content, index=index)
 
         elif isinstance(array, uproot4.interpret.objects.ObjectArray):
             out = numpy.zeros(len(array), dtype=numpy.object)
@@ -262,7 +276,14 @@ or
     def finalize(self, array, branch):
         cupy = self.imported
 
-        if isinstance(array, uproot4.interpret.jagged.JaggedArray):
+        if isinstance(
+            array,
+            (
+                uproot4.interpret.jagged.JaggedArray,
+                uproot4.interpret.strings.StringArray,
+                uproot4.interpret.objects.ObjectArray,
+            ),
+        ):
             raise TypeError("jagged arrays and objects are not supported by CuPy")
 
         else:

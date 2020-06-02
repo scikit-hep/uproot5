@@ -361,7 +361,7 @@ class HasBranches(Mapping):
                 interpretation = branchid_interpretation[id(branch)]
                 basket_arrays = branchid_arrays[id(branch)]
                 basket_arrays[basket.basket_num] = interpretation.basket_array(
-                    basket, branch
+                    basket.data, basket.byte_offsets, basket, branch
                 )
                 if len(basket_arrays) == branchid_num_baskets[id(branch)]:
                     name = branchid_name[id(branch)]
