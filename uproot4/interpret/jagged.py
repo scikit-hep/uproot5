@@ -71,7 +71,7 @@ class AsJagged(uproot4.interpret.Interpretation):
             return "AsJagged({0})".format(repr(self._content))
         else:
             return "AsJagged({0}, header_bytes={1})".format(
-                repr(self._content), header_bytes
+                repr(self._content), self._header_bytes
             )
 
     @property
