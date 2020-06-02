@@ -2,14 +2,22 @@
 
 from __future__ import absolute_import
 
+import sys
 import threading
 
 try:
     from collections.abc import Mapping
+    from collections.abc import MutableMapping
 except ImportError:
     from collections import Mapping
+    from collections import MutableMapping
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 import uproot4.source.cursor
+import uproot4.interpret.library
 import uproot4.reading
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
@@ -28,6 +36,42 @@ def _get_recursive(hasbranches, where):
         return None
 
 
+def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
+    if entry_start is None:
+        entry_start = 0
+    elif entry_start < 0:
+        entry_start += num_entries
+    entry_start = min(num_entries, max(0, entry_start))
+
+    if entry_stop is None:
+        entry_stop = num_entries
+    elif entry_stop < 0:
+        entry_stop += num_entries
+    entry_stop = min(num_entries, max(0, entry_stop))
+
+    if entry_stop < entry_start:
+        entry_stop = entry_start
+
+    return int(entry_start), int(entry_stop)
+
+
+def _regularize_executors(decompression_executor, interpretation_executor):
+    if decompression_executor is None:
+        decompression_executor = uproot4.decompression_executor
+    if interpretation_executor is None:
+        interpretation_executor = uproot4.interpretation_executor
+    return decompression_executor, interpretation_executor
+
+
+def _regularize_array_cache(array_cache, file):
+    if isinstance(array_cache, MutableMapping):
+        return array_cache
+    elif array_cache is None:
+        return file._array_cache
+    else:
+        raise TypeError("array_cache must be None or a MutableMapping")
+
+
 class HasBranches(Mapping):
     @property
     def branches(self):
@@ -35,6 +79,10 @@ class HasBranches(Mapping):
 
     def __getitem__(self, where):
         original_where = where
+
+        got = self._lookup.get(original_where)
+        if got is not None:
+            return got
 
         if uproot4._util.isint(where):
             return self.branches[where]
@@ -55,6 +103,7 @@ class HasBranches(Mapping):
             where = "/".join([x for x in where.split("/") if x != ""])
             for k, v in self.iteritems(recursive=True):
                 if where == k:
+                    self._lookup[original_where] = v
                     return v
             else:
                 raise uproot4.KeyInFileError(original_where, self._file.file_path)
@@ -62,6 +111,7 @@ class HasBranches(Mapping):
         elif recursive:
             got = _get_recursive(self, where)
             if got is not None:
+                self._lookup[original_where] = got
                 return got
             else:
                 raise uproot4.KeyInFileError(original_where, self._file.file_path)
@@ -69,6 +119,7 @@ class HasBranches(Mapping):
         else:
             for branch in self.branches:
                 if branch.name == where:
+                    self._lookup[original_where] = branch
                     return branch
             else:
                 raise uproot4.KeyInFileError(original_where, self._file.file_path)
@@ -231,11 +282,134 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
+    def _names_entries_to_ranges_or_baskets(
+        self, branch_names, entry_start, entry_stop
+    ):
+        out = []
+        for name in branch_names:
+            branch = self[name]
+            for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+                entry_start, entry_stop
+            ):
+                out.append((name, branch, basket_num, range_or_basket))
+        return out
+
+    def _ranges_or_baskets_to_arrays(
+        self,
+        ranges_or_baskets,
+        branchid_interpretation,
+        entry_start,
+        entry_stop,
+        decompression_executor,
+        interpretation_executor,
+        cache,
+        library,
+    ):
+        notifications = queue.Queue()
+
+        branchid_name = {}
+        branchid_arrays = {}
+        branchid_num_baskets = {}
+        ranges = []
+        range_args = {}
+        range_original_index = {}
+        original_index = 0
+
+        for name, branch, basket_num, range_or_basket in ranges_or_baskets:
+            if id(branch) not in branchid_name:
+                branchid_name[id(branch)] = name
+                branchid_arrays[id(branch)] = {}
+                branchid_num_baskets[id(branch)] = 0
+            branchid_num_baskets[id(branch)] += 1
+
+            if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
+                ranges.append(range_or_basket)
+                range_args[range_or_basket] = (branch, basket_num)
+                range_original_index[range_or_basket] = original_index
+            else:
+                notifications.put(range_or_basket)
+
+            original_index += 1
+
+        self._file.source.chunks(ranges, notifications=notifications)
+
+        def replace(ranges_or_baskets, original_index, basket):
+            name, branch, basket_num, range_or_basket = ranges_or_baskets[
+                original_index
+            ]
+            ranges_or_baskets[original_index] = name, branch, basket_num, basket
+
+        def chunk_to_basket(chunk, branch, basket_num):
+            try:
+                cursor = uproot4.source.cursor.Cursor(chunk.start)
+                basket = uproot4.models.TBasket.Model_TBasket.read(
+                    chunk, cursor, {"basket_num": basket_num}, self._file, branch
+                )
+                original_index = range_original_index[(chunk.start, chunk.stop)]
+                replace(ranges_or_baskets, original_index, basket)
+            except Exception:
+                notifications.put(sys.exc_info())
+            else:
+                notifications.put(basket)
+
+        output = {}
+
+        def basket_to_array(basket):
+            try:
+                assert basket.basket_num is not None
+                branch = basket.parent
+                interpretation = branchid_interpretation[id(branch)]
+                basket_arrays = branchid_arrays[id(branch)]
+                basket_arrays[basket.basket_num] = interpretation.basket_array(
+                    basket, branch
+                )
+                if len(basket_arrays) == branchid_num_baskets[id(branch)]:
+                    name = branchid_name[id(branch)]
+                    output[name] = interpretation.final_array(
+                        basket_arrays,
+                        entry_start,
+                        entry_stop,
+                        branch.entry_offsets,
+                        library,
+                        branch,
+                    )
+            except Exception:
+                notifications.put(sys.exc_info())
+            else:
+                notifications.put(None)
+
+        while len(output) < len(branchid_arrays):
+            try:
+                obj = notifications.get(timeout=0.001)
+            except queue.Empty:
+                continue
+
+            if isinstance(obj, uproot4.source.chunk.Chunk):
+                chunk = obj
+                args = range_args[(chunk.start, chunk.stop)]
+                decompression_executor.submit(chunk_to_basket, chunk, *args)
+
+            elif isinstance(obj, uproot4.models.TBasket.Model_TBasket):
+                basket = obj
+                interpretation_executor.submit(basket_to_array, basket)
+
+            elif obj is None:
+                pass
+
+            elif isinstance(obj, tuple) and len(obj) == 3:
+                uproot4.source.futures.delayed_raise(*obj)
+
+            else:
+                raise AssertionError(obj)
+
+        return dict((name, output[name]) for name, _, _, _ in ranges_or_baskets)
+
 
 class TBranch(HasBranches):
     def postprocess(self, chunk, cursor, context):
         fWriteBasket = self.member("fWriteBasket")
 
+        self._lookup = {}
         self._interpretation = None
         self._count_branch = None
         self._count_leaf = None
@@ -254,7 +428,13 @@ class TBranch(HasBranches):
             self._embedded_baskets_lock = None
 
         elif self.has_member("fBaskets"):
-            self._embedded_baskets = self.member("fBaskets")
+            self._embedded_baskets = []
+            for basket in self.member("fBaskets"):
+                if basket is not None:
+                    basket._basket_num = self._num_normal_baskets + len(
+                        self._embedded_baskets
+                    )
+                    self._embedded_baskets.append(basket)
             self._embedded_baskets_lock = None
 
         else:
@@ -274,6 +454,13 @@ class TBranch(HasBranches):
         while not isinstance(out, uproot4.behaviors.TTree.TTree):
             out = out.parent
         return out
+
+    @property
+    def cache_key(self):
+        if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
+            return self.parent.cache_key + ":" + self.name
+        else:
+            return self.parent.cache_key + "/" + self.name
 
     @property
     def entry_offsets(self):
@@ -308,7 +495,13 @@ in file {3}""".format(
                 self.tree.chunk, cursor, {}, self._file, self
             )
             with self._embedded_baskets_lock:
-                self._embedded_baskets = baskets
+                self._embedded_baskets = []
+                for basket in baskets:
+                    if basket is not None:
+                        basket._basket_num = self._num_normal_baskets + len(
+                            self._embedded_baskets
+                        )
+                        self._embedded_baskets.append(basket)
 
         return self._embedded_baskets
 
@@ -358,34 +551,6 @@ in file {3}""".format(
                 repr(self.name), len(self), id(self)
             )
 
-    def basket_compressed_bytes(self, basket_num):
-        raise NotImplementedError
-
-    def basket_uncompressed_bytes(self, basket_num):
-        raise NotImplementedError
-
-    def basket_cursor(self, basket_num):
-        if 0 <= basket_num < self._num_normal_baskets:
-            return uproot4.source.cursor.Cursor(self.member("fBasketSeek")[basket_num])
-        elif 0 <= basket_num < self.num_baskets:
-            raise IndexError(
-                """branch {0} has {1} normal baskets; cannot get """
-                """basket cursor {2} because only normal baskets have cursors
-in file {3}""".format(
-                    repr(self.name),
-                    self._num_normal_baskets,
-                    basket_num,
-                    self._file.file_path,
-                )
-            )
-        else:
-            raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket cursor {2}
-in file {3}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
-            )
-
     def basket_chunk_bytes(self, basket_num):
         if 0 <= basket_num < self._num_normal_baskets:
             return int(self.member("fBasketBytes")[basket_num])
@@ -408,10 +573,37 @@ in file {3}""".format(
                 )
             )
 
+    def basket_chunk_cursor(self, basket_num):
+        if 0 <= basket_num < self._num_normal_baskets:
+            start = self.member("fBasketSeek")[basket_num]
+            stop = start + self.basket_chunk_bytes(basket_num)
+            cursor = uproot4.source.cursor.Cursor(start)
+            chunk = self._file.source.chunk(start, stop)
+            return chunk, cursor
+        elif 0 <= basket_num < self.num_baskets:
+            raise IndexError(
+                """branch {0} has {1} normal baskets; cannot get chunk and """
+                """cursor for basket {2} because only normal baskets have cursors
+in file {3}""".format(
+                    repr(self.name),
+                    self._num_normal_baskets,
+                    basket_num,
+                    self._file.file_path,
+                )
+            )
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get cursor and chunk """
+                """for basket {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
+
     def basket_key(self, basket_num):
-        cursor = self.basket_cursor(basket_num)
-        start = cursor.index
+        start = self.member("fBasketSeek")[basket_num]
         stop = start + uproot4.reading.ReadOnlyKey._format_big.size
+        cursor = uproot4.source.cursor.Cursor(start)
         chunk = self._file.source.chunk(start, stop)
         return uproot4.reading.ReadOnlyKey(
             chunk, cursor, {}, self._file, self, read_strings=False
@@ -419,12 +611,9 @@ in file {3}""".format(
 
     def basket(self, basket_num):
         if 0 <= basket_num < self._num_normal_baskets:
-            cursor = self.basket_cursor(basket_num)
-            start = cursor.index
-            stop = start + self.basket_chunk_bytes(basket_num)
-            chunk = self._file.source.chunk(start, stop)
+            chunk, cursor = self.basket_chunk_cursor(basket_num)
             return uproot4.models.TBasket.Model_TBasket.read(
-                chunk, cursor, {}, self._file, self
+                chunk, cursor, {"basket_num": basket_num}, self._file, self
             )
         elif 0 <= basket_num < self.num_baskets:
             return self.embedded_baskets[basket_num - self._num_normal_baskets]
@@ -435,3 +624,77 @@ in file {3}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
+
+    def entries_to_ranges_or_baskets(self, entry_start, entry_stop):
+        entry_offsets = self.entry_offsets
+        out = []
+        start = entry_offsets[0]
+        for basket_num, stop in enumerate(entry_offsets[1:]):
+            if entry_start < stop and start <= entry_stop:
+                if 0 <= basket_num < self._num_normal_baskets:
+                    byte_start = self.member("fBasketSeek")[basket_num]
+                    byte_stop = byte_start + self.basket_chunk_bytes(basket_num)
+                    out.append((basket_num, (byte_start, byte_stop)))
+                elif 0 <= basket_num < self.num_baskets:
+                    out.append((basket_num, self.basket(basket_num)))
+                else:
+                    raise AssertionError((self.name, basket_num))
+            start = stop
+        return out
+
+    def array(
+        self,
+        interpretation=None,
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache=None,
+        library="ak",
+    ):
+        if interpretation is None:
+            interpretation = self.interpretation
+        branchid_interpretation = {id(self): interpretation}
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+        library = uproot4.interpret.library._regularize_library(library)
+
+        cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+            self.cache_key,
+            interpretation.cache_key,
+            entry_start,
+            entry_stop,
+            library.name,
+        )
+        if array_cache is not None:
+            got = array_cache.get(cache_key)
+            if got is not None:
+                return got
+
+        ranges_or_baskets = []
+        for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
+            entry_start, entry_stop
+        ):
+            ranges_or_baskets.append((None, self, basket_num, range_or_basket))
+
+        out = self._ranges_or_baskets_to_arrays(
+            ranges_or_baskets,
+            branchid_interpretation,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            array_cache,
+            library,
+        )[None]
+
+        if array_cache is not None:
+            array_cache[cache_key] = out
+
+        return out

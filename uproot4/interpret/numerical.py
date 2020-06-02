@@ -16,36 +16,94 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpret.Interpretation):
-    def empty_array(self, library):
-        return library.wrap_numpy(numpy.empty(0, dtype=self.numpy_dtype))
+    @property
+    def to_dtype(self):
+        return self._to_dtype
 
-    def fillable_array(self, num_items, num_entries):
-        assert num_items == num_entries
-        dtype, shape = _dtype_shape(self.to_dtype)
-        quotient, remainder = divmod(num_items, numpy.prod(shape))
-        if remainder != 0:
-            raise ValueError(
-                "cannot reshape {0} items into dimensions {1}".format(num_items, shape)
-            )
-        return numpy.empty(quotient, dtype=self.to_dtype)
+    @property
+    def numpy_dtype(self):
+        return self._to_dtype
 
-    def fill(
-        self,
-        basket_array,
-        fillable_array,
-        item_start,
-        item_stop,
-        entry_start,
-        entry_stop,
+    @property
+    def awkward_form(self):
+        raise NotImplementedError
+
+    def final_array(
+        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
-        assert item_start == entry_start and item_stop == entry_stop
-        fillable_array.reshape(-1)[item_start:item_stop] = basket_array.reshape(-1)
+        self.hook_before_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+        )
 
-    def trim(self, fillable_array, entry_start, entry_stop):
-        return fillable_array[entry_start:entry_stop]
+        if not entry_start < entry_stop:
+            output = library.empty((0,), self.to_dtype)
 
-    def finalize(self, fillable_array, library):
-        return library.wrap_numpy(fillable_array)
+        else:
+            length = 0
+            start = entry_offsets[0]
+            for basket_num, stop in enumerate(entry_offsets[1:]):
+                if start <= entry_start and entry_stop <= stop:
+                    length += entry_stop - entry_start
+                elif start <= entry_start < stop:
+                    length += stop - entry_start
+                elif start <= entry_stop <= stop:
+                    length += entry_stop - start
+                elif entry_start < stop and start <= entry_stop:
+                    length += stop - start
+                start = stop
+
+            output = library.empty((length,), self.to_dtype)
+
+            start = entry_offsets[0]
+            for basket_num, stop in enumerate(entry_offsets[1:]):
+                if start <= entry_start and entry_stop <= stop:
+                    local_start = entry_start - start
+                    local_stop = entry_stop - start
+                    basket_array = basket_arrays[basket_num]
+                    output[:] = basket_array[local_start:local_stop]
+                elif start <= entry_start < stop:
+                    local_start = entry_start - start
+                    local_stop = stop - start
+                    basket_array = basket_arrays[basket_num]
+                    output[: stop - entry_start] = basket_array[local_start:local_stop]
+                elif start <= entry_stop <= stop:
+                    local_start = 0
+                    local_stop = entry_stop - start
+                    basket_array = basket_arrays[basket_num]
+                    output[start - entry_start :] = basket_array[local_start:local_stop]
+                elif entry_start < stop and start <= entry_stop:
+                    basket_array = basket_arrays[basket_num]
+                    output[start - entry_start : stop - entry_start] = basket_array
+                start = stop
+
+        self.hook_before_library_finalize(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+            output=output,
+        )
+
+        output = library.finalize(output, branch)
+
+        self.hook_after_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+            output=output,
+        )
+
+        return output
 
 
 class AsDtype(Numerical):
@@ -56,13 +114,12 @@ class AsDtype(Numerical):
         else:
             self._to_dtype = numpy.dtype(to_dtype)
 
+    def __repr__(self):
+        return "AsDtype({0}, {1})".format(repr(self._from_dtype), repr(self._to_dtype))
+
     @property
     def from_dtype(self):
         return self._from_dtype
-
-    @property
-    def to_dtype(self):
-        return self._to_dtype
 
     _numpy_byteorder_to_cache_key = {
         "!": "B",
@@ -107,26 +164,31 @@ class AsDtype(Numerical):
                 + "]"
             )
 
-        return "AsDtype({0},{1})".format(from_dtype, to_dtype)
+        return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
 
-    @property
-    def numpy_dtype(self):
-        return self._to_dtype
+    def basket_array(self, basket, branch):
+        self.hook_before_basket_array(basket=basket, branch=branch)
 
-    @property
-    def awkward_form(self):
-        raise NotImplementedError
-
-    def num_items(self, num_bytes, num_entries):
+        assert basket.byte_offsets is None
         dtype, shape = _dtype_shape(self._from_dtype)
-        quotient, remainder = divmod(num_bytes, dtype.itemsize)
-        assert remainder == 0
-        return quotient
+        try:
+            output = basket.data.view(self._from_dtype).reshape((-1,) + shape)
+        except ValueError:
+            raise ValueError(
+                """basket {0} in branch {1} has the wrong number of bytes ({2}) """
+                """for interpretation {3}
+in file {4}""".format(
+                    basket.basket_num,
+                    repr(branch.name),
+                    len(basket.data),
+                    self,
+                    branch.file.file_path,
+                )
+            )
 
-    def basket_array(self, data, byte_offsets):
-        assert byte_offsets is None
-        dtype, shape = _dtype_shape(self._from_dtype)
-        return data.view(self._from_dtype).reshape((-1,) + shape)
+        self.hook_before_basket_array(basket=basket, branch=branch, output=output)
+
+        return output
 
 
 class AsArray(AsDtype):

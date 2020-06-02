@@ -10,6 +10,7 @@ file handle.
 
 from __future__ import absolute_import
 
+import os
 import sys
 import time
 import threading
@@ -79,6 +80,56 @@ class TrivialFuture(Future):
         return fn(self)
 
 
+class TrivialExecutor(Executor):
+    """
+    An Executor that doesn't manage any Threads or Resources.
+    """
+
+    def __repr__(self):
+        return "<TrivialExecutor at 0x{0:012x}>".format(id(self))
+
+    @property
+    def num_workers(self):
+        """
+        Always returns 0, which indicates the lack of background workers.
+        """
+        return 0
+
+    def __enter__(self):
+        """
+        Returns self.
+        """
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Does nothing.
+        """
+        pass
+
+    def submit(self, fn, *args, **kwargs):
+        """
+        Immediately evaluate the function `fn` with `args` and `kwargs`.
+        """
+        if isinstance(fn, TrivialFuture):
+            return fn
+        else:
+            return TrivialFuture(fn(*args, **kwargs))
+
+    def map(self, func, *iterables):
+        """
+        Like Python's Executor.
+        """
+        for x in iterables:
+            yield func(x)
+
+    def shutdown(self, wait=True):
+        """
+        Does nothing.
+        """
+        pass
+
+
 class ResourceExecutor(Executor):
     """
     An Executor that doesn't manage any Threads, but does manage Resources,
@@ -105,6 +156,7 @@ class ResourceExecutor(Executor):
         Passes `__enter__` to the Resource.
         """
         self._resource.__enter__()
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         """
@@ -252,10 +304,104 @@ class ThreadResourceWorker(threading.Thread):
 
             assert isinstance(future, TaskFuture)
             try:
-                future._result = future._task(self._resource)
+                if self._resource is None:
+                    future._result = future._task()
+                else:
+                    future._result = future._task(self._resource)
             except Exception:
                 future._excinfo = sys.exc_info()
             future._set_finished()
+
+
+class ThreadPoolExecutor(Executor):
+    """
+    An Executor that manages only Threads, not Resources.
+
+    All Threads are shut down when exiting a context block.
+    """
+
+    def __init__(self, num_workers=None):
+        """
+        Args:
+            num_workers (None or int): Number of threads to launch; if None,
+                use os.cpu_count().
+        """
+        if num_workers is None:
+            if hasattr(os, "cpu_count"):
+                num_workers = os.cpu_count()
+
+            else:
+                import multiprocessing
+
+                num_workers = multiprocessing.cpu_count()
+
+        self._work_queue = queue.Queue()
+        self._workers = []
+        for x in range(num_workers):
+            self._workers.append(ThreadResourceWorker(None, self._work_queue))
+        for thread in self._workers:
+            thread.start()
+
+    def __repr__(self):
+        return "<ThreadPoolExecutor ({0} workers) at 0x{1:012x}>".format(
+            len(self._workers), id(self)
+        )
+
+    @property
+    def num_workers(self):
+        """
+        The number of Threads in this thread pool.
+        """
+        return len(self._workers)
+
+    @property
+    def workers(self):
+        """
+        The Threads in this thread pool.
+        """
+        return self._workers
+
+    def __enter__(self):
+        """
+        Returns self.
+        """
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        """
+        Shuts down the Threads in the thread pool.
+        """
+        self.shutdown()
+
+    def submit(self, fn, *args, **kwargs):
+        """
+        Submits a function to be evaluated by a Thread in the thread pool.
+        """
+        if len(args) != 0 or len(kwargs) != 0:
+            task = TaskFuture(lambda: fn(*args, **kwargs))
+        else:
+            task = TaskFuture(fn)
+
+        self._work_queue.put(task)
+        return task
+
+    def map(self, func, *iterables):
+        """
+        Like Python's Executor.
+        """
+        futures = [self.submit(func, x) for x in iterables]
+        for future in futures:
+            yield future.result()
+
+    def shutdown(self, wait=True):
+        """
+        Puts None on the `work_queue` until all Threads get the message and
+        shut down.
+        """
+        while any(thread.is_alive() for thread in self._workers):
+            for x in range(len(self._workers)):
+                self._work_queue.put(None)
+            time.sleep(0.001)
 
 
 class ThreadResourceExecutor(Executor):
@@ -298,6 +444,7 @@ class ThreadResourceExecutor(Executor):
         """
         for thread in self._workers:
             thread.resource.__enter__()
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         """

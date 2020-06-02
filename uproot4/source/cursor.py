@@ -171,18 +171,27 @@ class Cursor(object):
             self._index = stop
         return format.unpack(chunk.get(start, stop))[0]
 
-    def bytes(self, chunk, length, move=True):
+    def bytes(self, chunk, length, move=True, copy_if_memmap=False):
         """
         Interpret data at this index of the Chunk as raw bytes with a
         given `length`.
 
         If `move` is False, only peek: don't update the index.
+
+        If `copy_if_memmap` is True and the chunk is a np.memmap, it is copied.
         """
         start = self._index
         stop = start + length
         if move:
             self._index = stop
-        return chunk.get(start, stop)
+        out = chunk.get(start, stop)
+        if copy_if_memmap:
+            step = out
+            while getattr(step, "base", None) is not None:
+                if isinstance(step, numpy.memmap):
+                    return numpy.array(out, copy=True)
+                step = step.base
+        return out
 
     def array(self, chunk, length, dtype, move=True):
         """

@@ -19,6 +19,7 @@ except ImportError:
     from collections import MutableMapping
 
 import uproot4.compression
+import uproot4.cache
 import uproot4.source.cursor
 import uproot4.source.chunk
 import uproot4.source.memmap
@@ -33,18 +34,21 @@ from uproot4._util import no_filter
 
 def open(
     file_path,
-    object_cache=uproot4.object_cache,
-    array_cache=uproot4.array_cache,
+    object_cache=100,
+    array_cache="100 MB",
     classes=uproot4.classes,
     **options
 ):
     """
     Args:
         file_path (str or Path): File path or URL to open.
-        object_cache (None or MutableMapping): Cache of objects drawn from
-            ROOT directories (e.g histograms, TTrees, other directories).
-        array_cache (None or MutableMapping): Cache of arrays drawn from
-            TTrees.
+        object_cache (None, MutableMapping, or int): Cache of objects drawn
+            from ROOT directories (e.g histograms, TTrees, other directories);
+            if None, do not use a cache; if an int, create a new cache of this
+            size.
+        array_cache (None, MutableMapping, or memory size): Cache of arrays
+            drawn from TTrees; if None, do not use a cache; if a memory size,
+            create a new cache of this size.
         classes (None or MutableMapping): If None, defaults to uproot4.classes;
             otherwise, a container of class definitions that is both used to
             fill with new classes and search for dependencies.
@@ -108,8 +112,8 @@ class ReadOnlyFile(object):
     def __init__(
         self,
         file_path,
-        object_cache=uproot4.object_cache,
-        array_cache=uproot4.array_cache,
+        object_cache=100,
+        array_cache="100 MB",
         classes=uproot4.classes,
         **options
     ):
@@ -238,8 +242,10 @@ in file {1}""".format(
     def object_cache(self, value):
         if value is None or isinstance(value, MutableMapping):
             self._object_cache = value
+        elif uproot4._util.isint(value):
+            self._object_cache = uproot4.cache.LRUCache(value)
         else:
-            raise TypeError("object_cache must be None or a MutableMapping")
+            raise TypeError("object_cache must be None, a MutableMapping, or an int")
 
     @property
     def array_cache(self):
@@ -249,8 +255,12 @@ in file {1}""".format(
     def array_cache(self, value):
         if value is None or isinstance(value, MutableMapping):
             self._array_cache = value
+        elif uproot4._util.isint(value) or uproot4._util.isstr(value):
+            self._array_cache = uproot4.cache.LRUArrayCache(value)
         else:
-            raise TypeError("array_cache must be None or a MutableMapping")
+            raise TypeError(
+                "array_cache must be None, a MutableMapping, or a memory size"
+            )
 
     @property
     def classes(self):
@@ -1022,6 +1032,38 @@ class ReadOnlyDirectory(Mapping):
             stream: Object with a `write` method for writing the output.
         """
         self._file.show_streamers(classname=classname, stream=stream)
+
+    @property
+    def cache_key(self):
+        return self.file.hex_uuid + ":" + "/".join(self.path) + "/"
+
+    @property
+    def object_cache(self):
+        return self._file._object_cache
+
+    @object_cache.setter
+    def object_cache(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._file._object_cache = value
+        elif uproot4._util.isint(value):
+            self._file._object_cache = uproot4.cache.LRUCache(value)
+        else:
+            raise TypeError("object_cache must be None, a MutableMapping, or an int")
+
+    @property
+    def array_cache(self):
+        return self._file._array_cache
+
+    @array_cache.setter
+    def array_cache(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._file._array_cache = value
+        elif uproot4._util.isint(value) or uproot4._util.isstr(value):
+            self._file._array_cache = uproot4.cache.LRUArrayCache(value)
+        else:
+            raise TypeError(
+                "array_cache must be None, a MutableMapping, or a memory size"
+            )
 
     def iterclassnames(
         self,

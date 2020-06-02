@@ -9,6 +9,7 @@ import numpy
 import uproot4.model
 import uproot4.deserialization
 import uproot4.compression
+import uproot4.behaviors.TBranch
 
 
 _tbasket_format1 = struct.Struct(">ihiIhh")
@@ -17,10 +18,19 @@ _tbasket_offsets_dtype = numpy.dtype(">i4")
 
 
 class Model_TBasket(uproot4.model.Model):
+    def __repr__(self):
+        basket_num = self._basket_num if self._basket_num is not None else "(unknown)"
+        return "<TBasket {0} of {1} at 0x{2:012x}>".format(
+            basket_num, repr(self._parent.name), id(self)
+        )
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
     def read_members(self, chunk, cursor, context):
+        assert isinstance(self._parent, uproot4.behaviors.TBranch.TBranch)
+        self._basket_num = context.get("basket_num")
+
         (
             self._members["fNbytes"],
             self._key_version,
@@ -64,7 +74,7 @@ class Model_TBasket(uproot4.model.Model):
             cursor.skip(self._members["fKeylen"])
 
             self._raw_data = None
-            self._data = cursor.bytes(chunk, self.border)
+            self._data = cursor.bytes(chunk, self.border, copy_if_memmap=True)
 
         else:
             if self.compressed_bytes != self.uncompressed_bytes:
@@ -73,7 +83,9 @@ class Model_TBasket(uproot4.model.Model):
                 )
                 self._raw_data = uncompressed.get(0, self.uncompressed_bytes)
             else:
-                self._raw_data = cursor.bytes(chunk, self.uncompressed_bytes)
+                self._raw_data = cursor.bytes(
+                    chunk, self.uncompressed_bytes, copy_if_memmap=True
+                )
 
             if self.border != self.uncompressed_bytes:
                 self._data = self._raw_data[: self.border]
@@ -89,6 +101,10 @@ class Model_TBasket(uproot4.model.Model):
             else:
                 self._data = self._raw_data
                 self._byte_offsets = None
+
+    @property
+    def basket_num(self):
+        return self._basket_num
 
     @property
     def key_version(self):
@@ -137,6 +153,11 @@ class Model_TBasket(uproot4.model.Model):
     @property
     def byte_offsets(self):
         return self._byte_offsets
+
+    def array(self, interpretation=None):
+        if interpretation is None:
+            interpretation = self._parent.interpretation
+        return interpretation.basket_array(self, self.parent)
 
 
 uproot4.classes["TBasket"] = Model_TBasket

@@ -8,13 +8,6 @@ unknown_classes = {}
 from uproot4.cache import LRUCache
 from uproot4.cache import LRUArrayCache
 
-object_cache = LRUCache(100)
-array_cache = LRUArrayCache("100 MB")
-
-import uproot4.interpret
-
-library = "ak"
-
 from uproot4.source.memmap import MemmapSource
 from uproot4.source.file import FileSource
 from uproot4.source.http import HTTPSource
@@ -22,6 +15,11 @@ from uproot4.source.http import MultithreadedHTTPSource
 from uproot4.source.xrootd import XRootDSource
 from uproot4.source.xrootd import MultithreadedXRootDSource
 from uproot4.source.cursor import Cursor
+from uproot4.source.futures import TrivialExecutor
+from uproot4.source.futures import ThreadPoolExecutor
+
+decompression_executor = ThreadPoolExecutor()
+interpretation_executor = TrivialExecutor()
 
 from uproot4.reading import open
 from uproot4.reading import ReadOnlyFile
@@ -32,6 +30,11 @@ from uproot4.model import classname_decode
 from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
+
+import uproot4.interpret
+import uproot4.interpret.library
+
+default_library = "ak"
 
 import uproot4.models.TObject
 import uproot4.models.TString
