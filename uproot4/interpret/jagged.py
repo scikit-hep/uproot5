@@ -29,13 +29,20 @@ class JaggedArray(object):
     def __len__(self):
         return len(self._offsets) - 1
 
-    @property
-    def parents(self):
-        raise NotImplementedError
+    def parents_localindex(self):
+        counts = self._offsets[1:] - self._offsets[:-1]
+        if uproot4._util.win:
+            counts = counts.astype(numpy.int32)
+        indexes = numpy.arange(len(self._offsets) - 1, dtype=numpy.int64)
 
-    @property
-    def localindex(self):
-        raise NotImplementedError
+        parents = numpy.repeat(indexes, counts)
+
+        localindex = numpy.arange(
+            self._offsets[0], self._offsets[-1], dtype=numpy.int64
+        )
+        localindex -= self._offsets[parents]
+
+        return parents, localindex
 
 
 def fast_divide(array, divisor):
@@ -150,7 +157,7 @@ class AsJagged(uproot4.interpret.Interpretation):
             basket_content[k] = v.content
 
         if entry_start >= entry_stop:
-            offsets = library.zeros((1,), numpy.int32)
+            offsets = library.zeros((1,), numpy.int64)
             content = self._content.final_array(
                 basket_content, entry_start, entry_stop, entry_offsets, library, branch
             )
@@ -170,7 +177,7 @@ class AsJagged(uproot4.interpret.Interpretation):
                     length += stop - start
                 start = stop
 
-            offsets = numpy.ones((length + 1,), numpy.int32) * 999
+            offsets = numpy.empty((length + 1,), numpy.int64)
 
             before = 0
             start = entry_offsets[0]

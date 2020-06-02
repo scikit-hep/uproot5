@@ -87,8 +87,191 @@ def test_jagged():
         ]
 
 
+def test_jagged_awkward():
+    awkward1 = pytest.importorskip("awkward1")
+
+    interpretation = uproot4.interpret.jagged.AsJagged(
+        uproot4.interpret.numerical.AsDtype(">i2")
+    )
+
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample/Ai2"] as branch:
+        result = branch.array(interpretation)
+        assert awkward1.to_list(result) == [
+            [],
+            [-15],
+            [-15, -13],
+            [-15, -13, -11],
+            [-15, -13, -11, -9],
+            [],
+            [-10],
+            [-10, -8],
+            [-10, -8, -6],
+            [-10, -8, -6, -4],
+            [],
+            [-5],
+            [-5, -3],
+            [-5, -3, -1],
+            [-5, -3, -1, 1],
+            [],
+            [0],
+            [0, 2],
+            [0, 2, 4],
+            [0, 2, 4, 6],
+            [],
+            [5],
+            [5, 7],
+            [5, 7, 9],
+            [5, 7, 9, 11],
+            [],
+            [10],
+            [10, 12],
+            [10, 12, 14],
+            [10, 12, 14, 16],
+        ]
+
+
+def test_jagged_pandas():
+    pandas = pytest.importorskip("pandas")
+
+    interpretation = uproot4.interpret.jagged.AsJagged(
+        uproot4.interpret.numerical.AsDtype(">i2")
+    )
+
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample/Ai2"] as branch:
+        result = branch.array(interpretation, library="pd")
+        assert result.index.tolist() == [
+            (1, 0),
+            (2, 0),
+            (2, 1),
+            (3, 0),
+            (3, 1),
+            (3, 2),
+            (4, 0),
+            (4, 1),
+            (4, 2),
+            (4, 3),
+            (6, 0),
+            (7, 0),
+            (7, 1),
+            (8, 0),
+            (8, 1),
+            (8, 2),
+            (9, 0),
+            (9, 1),
+            (9, 2),
+            (9, 3),
+            (11, 0),
+            (12, 0),
+            (12, 1),
+            (13, 0),
+            (13, 1),
+            (13, 2),
+            (14, 0),
+            (14, 1),
+            (14, 2),
+            (14, 3),
+            (16, 0),
+            (17, 0),
+            (17, 1),
+            (18, 0),
+            (18, 1),
+            (18, 2),
+            (19, 0),
+            (19, 1),
+            (19, 2),
+            (19, 3),
+            (21, 0),
+            (22, 0),
+            (22, 1),
+            (23, 0),
+            (23, 1),
+            (23, 2),
+            (24, 0),
+            (24, 1),
+            (24, 2),
+            (24, 3),
+            (26, 0),
+            (27, 0),
+            (27, 1),
+            (28, 0),
+            (28, 1),
+            (28, 2),
+            (29, 0),
+            (29, 1),
+            (29, 2),
+            (29, 3),
+        ]
+        assert result.values.tolist() == [
+            -15,
+            -15,
+            -13,
+            -15,
+            -13,
+            -11,
+            -15,
+            -13,
+            -11,
+            -9,
+            -10,
+            -10,
+            -8,
+            -10,
+            -8,
+            -6,
+            -10,
+            -8,
+            -6,
+            -4,
+            -5,
+            -5,
+            -3,
+            -5,
+            -3,
+            -1,
+            -5,
+            -3,
+            -1,
+            1,
+            0,
+            0,
+            2,
+            0,
+            2,
+            4,
+            0,
+            2,
+            4,
+            6,
+            5,
+            5,
+            7,
+            5,
+            7,
+            9,
+            5,
+            7,
+            9,
+            11,
+            10,
+            10,
+            12,
+            10,
+            12,
+            14,
+            10,
+            12,
+            14,
+            16,
+        ]
+
+
 def test_pandas_merge():
     pandas = pytest.importorskip("pandas")
+
     group = uproot4.interpret.library.Pandas().group
 
     a = pandas.Series([1, 2, 3, 4, 5])

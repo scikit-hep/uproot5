@@ -28,7 +28,7 @@ class Library(object):
         raise AssertionError
 
     def empty(self, shape, dtype):
-        raise AssertionError
+        return numpy.empty(shape, dtype)
 
     def finalize(self, array, branch):
         raise AssertionError
@@ -61,9 +61,6 @@ class NumPy(Library):
         import numpy
 
         return numpy
-
-    def empty(self, shape, dtype):
-        return numpy.empty(shape, dtype)
 
     def finalize(self, array, branch):
         if isinstance(
@@ -99,6 +96,24 @@ class Awkward(Library):
         else:
             return awkward1
 
+    def finalize(self, array, branch):
+        awkward1 = self.imported
+
+        if isinstance(array, uproot4.interpret.jagged.JaggedArray):
+            offsets = awkward1.layout.Index32(array.offsets)
+            content = awkward1.from_numpy(array.content, highlevel=False)
+            layout = awkward1.layout.ListOffsetArray32(offsets, content)
+            return awkward1.Array(layout)
+
+        elif isinstance(array, uproot4.interpret.strings.StringArray):
+            raise NotImplementedError
+
+        elif isinstance(array, uproot4.interpret.objects.ObjectArray):
+            raise NotImplementedError
+
+        else:
+            return awkward1.from_numpy(array)
+
 
 class Pandas(Library):
     name = "pd"
@@ -120,9 +135,6 @@ or
         else:
             return pandas
 
-    def empty(self, shape, dtype):
-        return numpy.empty(shape, dtype)
-
     def finalize(self, array, branch):
         pandas = self.imported
 
@@ -135,7 +147,7 @@ or
             ),
         ):
             index = pandas.MultiIndex.from_arrays(
-                [array.parents, array.localindex], names=["entry", "subentry"]
+                array.parents_localindex(), names=["entry", "subentry"]
             )
             return pandas.Series(array.content, index=index)
 
@@ -287,7 +299,8 @@ or
             raise TypeError("jagged arrays and objects are not supported by CuPy")
 
         else:
-            return cupy.array(array)
+            assert isinstance(array, cupy.ndarray)
+            return array
 
 
 _libraries = {
