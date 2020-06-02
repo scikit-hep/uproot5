@@ -14,12 +14,12 @@ class Library(object):
 
        * `imported`: The imported library or raises a helpful "how to"
              message if it could not be imported.
-       * `wrap_numpy(array)`: Wraps a NumPy array into the native type for
-             this library.
-       * `wrap_jagged(array)`: Wraps a jagged array into the native type for
-             this library.
-       * `wrap_python(array)`: Wraps an array of Python objects into the native
-             type for this library.
+       * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
+       * `finalize(array, branch)`: Convert the internal storage form into one
+             appropriate for this library (NumPy array, Pandas Series, etc.).
+       * `group(arrays, names, how)`: Combine arrays into a group, either
+             a generic tuple or a grouping style appropriate for this library
+             (NumPy array dict, Awkward RecordArray, Pandas DataFrame, etc.).
     """
 
     @property
@@ -31,6 +31,19 @@ class Library(object):
 
     def finalize(self, array, branch):
         raise AssertionError
+
+    def group(self, arrays, names, how):
+        if how is tuple:
+            return tuple(arrays[name] for name in names)
+        elif how is list:
+            return [arrays[name] for name in names]
+        elif how is dict or how is None:
+            return arrays
+        else:
+            raise TypeError(
+                "for library {0}, how must be tuple, list, dict, or None (for "
+                "dict)".format(self.name)
+            )
 
     def __repr__(self):
         return repr(self.name)
@@ -120,6 +133,106 @@ or
 
         else:
             return pandas.Series(array)
+
+    def group(self, arrays, names, how):
+        pandas = self.imported
+        if how is tuple:
+            return tuple(arrays[name] for name in names)
+        elif how is list:
+            return [arrays[name] for name in names]
+        elif how is dict:
+            return arrays
+        elif uproot4._util.isstr(how) or how is None:
+            if all(isinstance(x.index, pandas.RangeIndex) for x in arrays.values()):
+                return pandas.DataFrame(data=arrays, columns=names)
+            indexes = []
+            groups = []
+            for name in names:
+                array = arrays[name]
+                if isinstance(array.index, pandas.MultiIndex):
+                    for index, group in zip(indexes, groups):
+                        if numpy.array_equal(array.index, index):
+                            group.append(name)
+                            break
+                    else:
+                        indexes.append(array.index)
+                        groups.append([name])
+            if how is None:
+                flat_index = None
+                dfs = [[] for x in indexes]
+                group_names = [[] for x in indexes]
+                for index, group, df, gn in zip(indexes, groups, dfs, group_names):
+                    for name in names:
+                        array = arrays[name]
+                        if isinstance(array.index, pandas.RangeIndex):
+                            if flat_index is None or len(flat_index) != len(
+                                array.index
+                            ):
+                                flat_index = pandas.MultiIndex.from_arrays(
+                                    [array.index]
+                                )
+                            df.append(
+                                pandas.Series(array.values, index=flat_index).reindex(
+                                    index
+                                )
+                            )
+                            gn.append(name)
+                        elif name in group:
+                            df.append(array)
+                            gn.append(name)
+                out = []
+                for index, df, gn in zip(indexes, dfs, group_names):
+                    out.append(
+                        pandas.DataFrame(
+                            data=dict(zip(gn, df)), index=index, columns=gn
+                        )
+                    )
+                if len(out) == 1:
+                    return out[0]
+                else:
+                    return tuple(out)
+            else:
+                out = None
+                for index, group in zip(indexes, groups):
+                    only = dict((name, arrays[name]) for name in group)
+                    df = pandas.DataFrame(data=only, index=index, columns=group)
+                    if out is None:
+                        out = df
+                    else:
+                        out = pandas.merge(
+                            out, df, how=how, left_index=True, right_index=True
+                        )
+                flat_names = [
+                    name
+                    for name in names
+                    if isinstance(arrays[name].index, pandas.RangeIndex)
+                ]
+                if len(flat_names) > 0:
+                    flat_index = pandas.MultiIndex.from_arrays(
+                        [arrays[flat_names[0]].index]
+                    )
+                    only = dict(
+                        (name, pandas.Series(arrays[name].values, index=flat_index))
+                        for name in flat_names
+                    )
+                    df = pandas.DataFrame(
+                        data=only, index=flat_index, columns=flat_names
+                    )
+                    out = pandas.merge(
+                        df.reindex(out.index),
+                        out,
+                        how=how,
+                        left_index=True,
+                        right_index=True,
+                    )
+                return out
+
+        else:
+            raise TypeError(
+                "for library {0}, how must be tuple, list, dict, str (for "
+                "pandas.merge's 'how' parameter, or None (for one or more"
+                "DataFrames without merging)".format(self.name)
+            )
 
 
 class CuPy(Library):
