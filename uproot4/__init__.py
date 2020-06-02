@@ -31,8 +31,8 @@ from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
 
-import uproot4.interpret
-import uproot4.interpret.library
+import uproot4.interpretation
+import uproot4.interpretation.library
 
 default_library = "ak"
 

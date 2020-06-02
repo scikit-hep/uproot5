@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import
 
-import uproot4.interpret
+import uproot4.interpretation
 
 import numpy
 
@@ -15,7 +15,7 @@ def _dtype_shape(dtype):
     return dtype, shape
 
 
-class Numerical(uproot4.interpret.Interpretation):
+class Numerical(uproot4.interpretation.Interpretation):
     @property
     def itemsize(self):
         raise AssertionError

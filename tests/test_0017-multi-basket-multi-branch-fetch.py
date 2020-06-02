@@ -15,13 +15,13 @@ import pytest
 import skhep_testdata
 
 import uproot4
-import uproot4.interpret.numerical
-import uproot4.interpret.library
+import uproot4.interpretation.numerical
+import uproot4.interpretation.library
 import uproot4.source.futures
 
 
 def test_any_basket():
-    interpretation = uproot4.interpret.numerical.AsDtype(">i4")
+    interpretation = uproot4.interpretation.numerical.AsDtype(">i4")
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
@@ -69,12 +69,12 @@ def test_any_basket():
 
 
 def test_stitching_arrays():
-    interpretation = uproot4.interpret.numerical.AsDtype("i8")
+    interpretation = uproot4.interpretation.numerical.AsDtype("i8")
     expectation = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     basket_arrays = [[0, 1, 2, 3, 4], [5, 6], [], [7, 8, 9], [10], [11, 12, 13, 14]]
     basket_arrays = [numpy.array(x) for x in basket_arrays]
     entry_offsets = numpy.array([0, 5, 7, 7, 10, 11, 15])
-    library = uproot4.interpret.library._libraries["np"]
+    library = uproot4.interpretation.library._libraries["np"]
 
     for start in range(16):
         for stop in range(15, -1, -1):
@@ -119,12 +119,12 @@ def test_ranges_or_baskets_to_arrays():
 
         ranges_or_baskets = _names_entries_to_ranges_or_baskets(sample, ["i4"], 0, 30)
         branchid_interpretation = {
-            id(branch): uproot4.interpret.numerical.AsDtype(">i4")
+            id(branch): uproot4.interpretation.numerical.AsDtype(">i4")
         }
         entry_start, entry_stop = (0, 30)
         decompression_executor = uproot4.source.futures.TrivialExecutor()
         interpretation_executor = uproot4.source.futures.TrivialExecutor()
-        library = uproot4.interpret.library._libraries["np"]
+        library = uproot4.interpretation.library._libraries["np"]
 
         output = {}
         sample._ranges_or_baskets_to_arrays(
@@ -176,7 +176,7 @@ def test_branch_array():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/i4"] as branch:
         assert branch.array(
-            uproot4.interpret.numerical.AsDtype(">i4"), library="np"
+            uproot4.interpretation.numerical.AsDtype(">i4"), library="np"
         ).tolist() == [
             -15,
             -14,
@@ -211,7 +211,7 @@ def test_branch_array():
         ]
 
         assert branch.array(
-            uproot4.interpret.numerical.AsDtype(">i4"),
+            uproot4.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
             library="np",
@@ -241,7 +241,7 @@ def test_branch_array():
         ]
 
         assert branch.array(
-            uproot4.interpret.numerical.AsDtype(">i4"),
+            uproot4.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
             interpretation_executor=uproot4.decompression_executor,
@@ -272,7 +272,7 @@ def test_branch_array():
         ]
 
         with pytest.raises(ValueError):
-            branch.array(uproot4.interpret.numerical.AsDtype(">i8"), library="np")
+            branch.array(uproot4.interpretation.numerical.AsDtype(">i8"), library="np")
 
 
 def test_cache():
@@ -287,17 +287,17 @@ def test_cache():
         )
         i4 = f["sample/i4"]
         assert list(f.array_cache) == []
-        i4.array(uproot4.interpret.numerical.AsDtype(">i4"), library="np")
+        i4.array(uproot4.interpretation.numerical.AsDtype(">i4"), library="np")
         assert list(f.array_cache) == [
             "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:i4:AsDtype(Bi4(),Li4()):0-30:np"
         ]
 
     with pytest.raises(OSError):
         i4.array(
-            uproot4.interpret.numerical.AsDtype(">i4"), entry_start=3, library="np"
+            uproot4.interpretation.numerical.AsDtype(">i4"), entry_start=3, library="np"
         )
 
-    i4.array(uproot4.interpret.numerical.AsDtype(">i4"), library="np")
+    i4.array(uproot4.interpretation.numerical.AsDtype(">i4"), library="np")
 
 
 def test_pandas():
@@ -306,7 +306,7 @@ def test_pandas():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/i4"] as branch:
         series = branch.array(
-            uproot4.interpret.numerical.AsDtype(">i4"),
+            uproot4.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
             interpretation_executor=uproot4.decompression_executor,

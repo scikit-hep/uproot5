@@ -4,9 +4,9 @@ from __future__ import absolute_import
 
 import numpy
 
-import uproot4.interpret.jagged
-import uproot4.interpret.strings
-import uproot4.interpret.objects
+import uproot4.interpretation.jagged
+import uproot4.interpretation.strings
+import uproot4.interpretation.objects
 
 
 class Library(object):
@@ -66,9 +66,9 @@ class NumPy(Library):
         if isinstance(
             array,
             (
-                uproot4.interpret.jagged.JaggedArray,
-                uproot4.interpret.strings.StringArray,
-                uproot4.interpret.objects.ObjectArray,
+                uproot4.interpretation.jagged.JaggedArray,
+                uproot4.interpretation.strings.StringArray,
+                uproot4.interpretation.objects.ObjectArray,
             ),
         ):
             out = numpy.zeros(len(array), dtype=numpy.object)
@@ -99,7 +99,7 @@ class Awkward(Library):
     def finalize(self, array, branch):
         awkward1 = self.imported
 
-        if isinstance(array, uproot4.interpret.jagged.JaggedArray):
+        if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             array_content = array.content.astype(
                 array.content.dtype.newbyteorder("="), copy=False
             )
@@ -108,10 +108,10 @@ class Awkward(Library):
             layout = awkward1.layout.ListOffsetArray32(offsets, content)
             return awkward1.Array(layout)
 
-        elif isinstance(array, uproot4.interpret.strings.StringArray):
+        elif isinstance(array, uproot4.interpretation.strings.StringArray):
             raise NotImplementedError
 
-        elif isinstance(array, uproot4.interpret.objects.ObjectArray):
+        elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             raise NotImplementedError
 
         else:
@@ -138,7 +138,7 @@ class Awkward(Library):
             jaggeds = []
             for name, interp, _ in name_interp_branch:
                 array = arrays[name]
-                if isinstance(interp, uproot4.interpret.jagged.AsJagged):
+                if isinstance(interp, uproot4.interpretation.jagged.AsJagged):
                     if len(offsets) == 0:
                         offsets.append(array.layout.offsets)
                         jaggeds.append([name])
@@ -215,9 +215,9 @@ or
         if isinstance(
             array,
             (
-                uproot4.interpret.jagged.JaggedArray,
-                uproot4.interpret.strings.StringArray,
-                uproot4.interpret.objects.ObjectArray,
+                uproot4.interpretation.jagged.JaggedArray,
+                uproot4.interpretation.strings.StringArray,
+                uproot4.interpretation.objects.ObjectArray,
             ),
         ):
             index = pandas.MultiIndex.from_arrays(
@@ -225,7 +225,7 @@ or
             )
             return pandas.Series(array.content, index=index)
 
-        elif isinstance(array, uproot4.interpret.objects.ObjectArray):
+        elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             out = numpy.zeros(len(array), dtype=numpy.object)
             for i, x in enumerate(array):
                 out[i] = x
@@ -366,9 +366,9 @@ or
         if isinstance(
             array,
             (
-                uproot4.interpret.jagged.JaggedArray,
-                uproot4.interpret.strings.StringArray,
-                uproot4.interpret.objects.ObjectArray,
+                uproot4.interpretation.jagged.JaggedArray,
+                uproot4.interpretation.strings.StringArray,
+                uproot4.interpretation.objects.ObjectArray,
             ),
         ):
             raise TypeError("jagged arrays and objects are not supported by CuPy")

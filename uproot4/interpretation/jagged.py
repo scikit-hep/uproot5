@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 import numpy
 
-import uproot4.interpret
+import uproot4.interpretation
 
 
 class JaggedArray(object):
@@ -58,9 +58,9 @@ def fast_divide(array, divisor):
         return numpy.floor_divide(array, divisor)
 
 
-class AsJagged(uproot4.interpret.Interpretation):
+class AsJagged(uproot4.interpretation.Interpretation):
     def __init__(self, content, header_bytes=0):
-        if not isinstance(content, uproot4.interpret.numerical.Numerical):
+        if not isinstance(content, uproot4.interpretation.numerical.Numerical):
             raise TypeError("AsJagged content can only be Numerical")
         self._content = content
         self._header_bytes = header_bytes

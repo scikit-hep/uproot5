@@ -19,7 +19,7 @@ except ImportError:
     import Queue as queue
 
 import uproot4.source.cursor
-import uproot4.interpret.library
+import uproot4.interpretation.library
 import uproot4.reading
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
@@ -562,7 +562,7 @@ class HasBranches(Mapping):
             decompression_executor, interpretation_executor
         )
         array_cache = _regularize_array_cache(array_cache, self._file)
-        library = uproot4.interpret.library._regularize_library(library)
+        library = uproot4.interpretation.library._regularize_library(library)
 
         print(name_interp_branch)
 
@@ -887,7 +887,7 @@ in file {3}""".format(
             decompression_executor, interpretation_executor
         )
         array_cache = _regularize_array_cache(array_cache, self._file)
-        library = uproot4.interpret.library._regularize_library(library)
+        library = uproot4.interpretation.library._regularize_library(library)
 
         cache_key = "{0}:{1}:{2}-{3}:{4}".format(
             self.cache_key,

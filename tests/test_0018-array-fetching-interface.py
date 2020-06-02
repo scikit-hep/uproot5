@@ -10,16 +10,16 @@ import pytest
 import skhep_testdata
 
 import uproot4
-import uproot4.interpret.library
-import uproot4.interpret.jagged
-import uproot4.interpret.numerical
+import uproot4.interpretation.library
+import uproot4.interpretation.jagged
+import uproot4.interpretation.numerical
 
 
 # def test_compute():
 #     awkward1 = pytest.importorskip("awkward1")
 
-#     interp_i4 = uproot4.interpret.numerical.AsDtype(">i4")
-#     interp_i8 = uproot4.interpret.numerical.AsDtype(">i8")
+#     interp_i4 = uproot4.interpretation.numerical.AsDtype(">i4")
+#     interp_i8 = uproot4.interpretation.numerical.AsDtype(">i8")
 
 #     with uproot4.open(
 #         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
@@ -35,13 +35,13 @@ import uproot4.interpret.numerical
 def test_arrays():
     awkward1 = pytest.importorskip("awkward1")
 
-    interp_i4 = uproot4.interpret.numerical.AsDtype(">i4")
-    interp_f4 = uproot4.interpret.numerical.AsDtype(">f4")
-    interp_Ai4 = uproot4.interpret.jagged.AsJagged(
-        uproot4.interpret.numerical.AsDtype(">i4")
+    interp_i4 = uproot4.interpretation.numerical.AsDtype(">i4")
+    interp_f4 = uproot4.interpretation.numerical.AsDtype(">f4")
+    interp_Ai4 = uproot4.interpretation.jagged.AsJagged(
+        uproot4.interpretation.numerical.AsDtype(">i4")
     )
-    interp_Af8 = uproot4.interpret.jagged.AsJagged(
-        uproot4.interpret.numerical.AsDtype(">f8")
+    interp_Af8 = uproot4.interpretation.jagged.AsJagged(
+        uproot4.interpretation.numerical.AsDtype(">f8")
     )
 
     with uproot4.open(
@@ -490,8 +490,8 @@ def test_arrays():
 
 
 def test_jagged():
-    interpretation = uproot4.interpret.jagged.AsJagged(
-        uproot4.interpret.numerical.AsDtype(">i2")
+    interpretation = uproot4.interpretation.jagged.AsJagged(
+        uproot4.interpretation.numerical.AsDtype(">i2")
     )
 
     with uproot4.open(
@@ -564,8 +564,8 @@ def test_jagged():
 def test_jagged_awkward():
     awkward1 = pytest.importorskip("awkward1")
 
-    interpretation = uproot4.interpret.jagged.AsJagged(
-        uproot4.interpret.numerical.AsDtype(">i2")
+    interpretation = uproot4.interpretation.jagged.AsJagged(
+        uproot4.interpretation.numerical.AsDtype(">i2")
     )
 
     with uproot4.open(
@@ -609,8 +609,8 @@ def test_jagged_awkward():
 def test_jagged_pandas():
     pandas = pytest.importorskip("pandas")
 
-    interpretation = uproot4.interpret.jagged.AsJagged(
-        uproot4.interpret.numerical.AsDtype(">i2")
+    interpretation = uproot4.interpretation.jagged.AsJagged(
+        uproot4.interpretation.numerical.AsDtype(">i2")
     )
 
     with uproot4.open(
@@ -744,8 +744,8 @@ def test_jagged_pandas():
 
 
 def test_stl_vector():
-    interpretation = uproot4.interpret.jagged.AsJagged(
-        uproot4.interpret.numerical.AsDtype(">i4"), header_bytes=10
+    interpretation = uproot4.interpretation.jagged.AsJagged(
+        uproot4.interpretation.numerical.AsDtype(">i4"), header_bytes=10
     )
 
     with uproot4.open(
@@ -860,7 +860,7 @@ def test_stl_vector():
 def test_pandas_merge():
     pandas = pytest.importorskip("pandas")
 
-    group = uproot4.interpret.library.Pandas().group
+    group = uproot4.interpretation.library.Pandas().group
     name_interp_branch = [("a", None, None), ("b", None, None), ("c", None, None)]
 
     a = pandas.Series([1, 2, 3, 4, 5])
