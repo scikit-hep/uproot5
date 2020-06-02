@@ -84,11 +84,22 @@ def test_stitching_arrays():
             assert expectation[start:stop] == actual.tolist()
 
 
+def _names_entries_to_ranges_or_baskets(self, branch_names, entry_start, entry_stop):
+    out = []
+    for name in branch_names:
+        branch = self[name]
+        for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+            entry_start, entry_stop
+        ):
+            out.append((name, branch, basket_num, range_or_basket))
+    return out
+
+
 def test_names_entries_to_ranges_or_baskets():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
-        out = sample._names_entries_to_ranges_or_baskets(["i4"], 0, 30)
+        out = _names_entries_to_ranges_or_baskets(sample, ["i4"], 0, 30)
         assert all(x[0] == "i4" for x in out)
         assert [x[2] for x in out] == [0, 1, 2, 3, 4]
         assert [x[3] for x in out] == [
@@ -106,25 +117,25 @@ def test_ranges_or_baskets_to_arrays():
     )["sample"] as sample:
         branch = sample["i4"]
 
-        ranges_or_baskets = sample._names_entries_to_ranges_or_baskets(["i4"], 0, 30)
+        ranges_or_baskets = _names_entries_to_ranges_or_baskets(sample, ["i4"], 0, 30)
         branchid_interpretation = {
             id(branch): uproot4.interpret.numerical.AsDtype(">i4")
         }
         entry_start, entry_stop = (0, 30)
         decompression_executor = uproot4.source.futures.TrivialExecutor()
         interpretation_executor = uproot4.source.futures.TrivialExecutor()
-        array_cache = None
         library = uproot4.interpret.library._libraries["np"]
 
-        output = sample._ranges_or_baskets_to_arrays(
+        output = {}
+        sample._ranges_or_baskets_to_arrays(
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
             entry_stop,
             decompression_executor,
             interpretation_executor,
-            array_cache,
             library,
+            output,
         )
         assert output["i4"].tolist() == [
             -15,

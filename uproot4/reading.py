@@ -790,6 +790,10 @@ class ReadOnlyKey(object):
     def cache_key(self):
         return "{0}:{1}".format(self._file.hex_uuid, self._fSeekKey)
 
+    @property
+    def object_path(self):
+        return ""
+
     def get(self):
         if self._file.object_cache is not None:
             out = self._file.object_cache.get(self.cache_key)
@@ -1036,6 +1040,10 @@ class ReadOnlyDirectory(Mapping):
     @property
     def cache_key(self):
         return self.file.hex_uuid + ":" + "/".join(self.path) + "/"
+
+    @property
+    def object_path(self):
+        return "/".join(self.path) + "/"
 
     @property
     def object_cache(self):

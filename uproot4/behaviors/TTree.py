@@ -14,6 +14,13 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
     def title(self):
         return self.member("fTitle")
 
+    @property
+    def aliases(self):
+        return dict(
+            (alias.member("fName"), alias.member("fTitle"))
+            for alias in self.member("fAliases")
+        )
+
     def __repr__(self):
         if len(self) == 0:
             return "<TTree {0} at 0x{1:012x}>".format(repr(self.name), id(self))
@@ -32,6 +39,10 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
     @property
     def cache_key(self):
         return self.parent.parent.cache_key + self.name
+
+    @property
+    def object_path(self):
+        return self.parent.parent.object_path + self.name
 
     @property
     def chunk(self):

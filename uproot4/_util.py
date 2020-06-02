@@ -6,6 +6,7 @@ Utilities for internal use.
 
 from __future__ import absolute_import
 
+import ast
 import os
 import sys
 import numbers
@@ -87,6 +88,26 @@ def no_filter(x):
     return True
 
 
+def exact_filter(filter):
+    if filter is None:
+        return False
+    elif callable(filter):
+        return False
+    if isstr(filter):
+        m = _regularize_filter_regex.match(filter)
+        if m is not None:
+            return False
+        elif "*" in filter or "?" in filter or "[" in filter:
+            return False
+        else:
+            return True
+    else:
+        raise TypeError(
+            "filter must be callable, a regex string between slashes, or a "
+            "glob pattern, not {0}".format(repr(filter))
+        )
+
+
 def regularize_filter(filter):
     if filter is None:
         return no_filter
@@ -109,6 +130,35 @@ def regularize_filter(filter):
             "filter must be callable, a regex string between slashes, or a "
             "glob pattern, not {0}".format(repr(filter))
         )
+
+
+def walk_ast_yield_symbols(node, functions):
+    if isinstance(node, ast.Name):
+        if node.id not in functions:
+            yield node.id
+    elif isinstance(node, ast.AST):
+        for field_name in node._fields:
+            x = getattr(node, field_name)
+            for y in walk_ast_yield_symbols(x, functions):
+                yield y
+    elif isinstance(node, list):
+        for x in node:
+            for y in walk_ast_yield_symbols(x, functions):
+                yield y
+    else:
+        pass
+
+
+def free_symbols(expression, functions, file_path, object_path):
+    try:
+        node = ast.parse(expression)
+    except SyntaxError as err:
+        raise SyntaxError(
+            err.args[0] + "\nin file {0} at {1}".format(file_path, object_path),
+            err.args[1],
+        )
+    else:
+        return list(walk_ast_yield_symbols(node, functions))
 
 
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
