@@ -66,7 +66,7 @@ def _regularize_name(
                 filter_typename,
                 filter_branch,
                 aliases,
-                functions,
+                None,
                 out,
             )
 
@@ -144,7 +144,7 @@ def _regularize_names(
                     filter_typename,
                     filter_branch,
                     aliases,
-                    functions,
+                    None,
                     out,
                 )
             else:
@@ -563,6 +563,8 @@ class HasBranches(Mapping):
         )
         array_cache = _regularize_array_cache(array_cache, self._file)
         library = uproot4.interpret.library._regularize_library(library)
+
+        print(name_interp_branch)
 
         output = {}
 

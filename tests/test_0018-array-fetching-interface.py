@@ -15,6 +15,23 @@ import uproot4.interpret.jagged
 import uproot4.interpret.numerical
 
 
+# def test_compute():
+#     awkward1 = pytest.importorskip("awkward1")
+
+#     interp_i4 = uproot4.interpret.numerical.AsDtype(">i4")
+#     interp_i8 = uproot4.interpret.numerical.AsDtype(">i8")
+
+#     with uproot4.open(
+#         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+#     )["sample"] as sample:
+#         result = sample.arrays(
+#             "stuff", aliases={"stuff": "abs(i4) + i8"}, functions={"abs": abs}
+#         )
+#         print(result.tolist())
+
+#     raise Exception
+
+
 def test_arrays():
     awkward1 = pytest.importorskip("awkward1")
 
