@@ -149,7 +149,7 @@ def _regularize_names(
                 )
             else:
                 raise TypeError(
-                    "keys of a {name: Interpretation} dict must be "
+                    "keys of a {{name: Interpretation}} dict must be "
                     "strings, not {0}".format(repr(original_key))
                 )
 
@@ -174,7 +174,7 @@ def _regularize_names(
     else:
         raise TypeError(
             "a names list must be a string, a list of strings, or a "
-            "{name: Interpretation} dict, not {0}".format(repr(names))
+            "{{name: Interpretation}} dict, not {0}".format(repr(names))
         )
 
     return out

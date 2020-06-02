@@ -129,7 +129,8 @@ class Awkward(Library):
             return dict((name, arrays[name]) for name, _, _ in name_interp_branch)
         elif how is None:
             return awkward1.zip(
-                dict((name, arrays[name]) for name, _, _ in name_interp_branch)
+                dict((name, arrays[name]) for name, _, _ in name_interp_branch),
+                depth_limit=1,
             )
         elif how == "zip":
             nonjagged = []
@@ -166,11 +167,14 @@ class Awkward(Library):
                         break
                 if cut == 0:
                     common = "jagged{0}".format(number)
+                    subarray = awkward1.zip(
+                        dict((name, arrays[name]) for name in jagged)
+                    )
                 else:
                     common = jagged[0][:cut].strip("_./")
-                subarray = awkward1.zip(
-                    dict((name[cut:].strip("_./"), arrays[name]) for name in jagged)
-                )
+                    subarray = awkward1.zip(
+                        dict((name[cut:].strip("_./"), arrays[name]) for name in jagged)
+                    )
                 if out is None:
                     out = awkward1.zip({common: subarray}, depth_limit=1)
                 else:
@@ -179,8 +183,9 @@ class Awkward(Library):
             return out
         else:
             raise TypeError(
-                "for library {0}, how must be tuple, list, dict, or None (for "
-                "an Awkward record array)".format(self.name)
+                'for library {0}, how must be tuple, list, dict, "zip" for '
+                "a record array with jagged arrays zipped, if possible, or "
+                "None, for an unzipped record array".format(self.name)
             )
 
 
