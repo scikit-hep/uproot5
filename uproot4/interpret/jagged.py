@@ -112,7 +112,7 @@ class AsJagged(uproot4.interpret.Interpretation):
             byte_stops = byte_offsets[1:]
 
             mask = numpy.zeros(len(data), dtype=numpy.int8)
-            mask[byte_starts < len(data)] = 1
+            mask[byte_starts[byte_starts < len(data)]] = 1
             numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
             numpy.cumsum(mask, out=mask)
             data = data[mask.view(numpy.bool_)]
