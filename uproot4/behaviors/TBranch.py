@@ -508,7 +508,7 @@ class HasBranches(Mapping):
             else:
                 notifications.put(None)
 
-        while len(output) < len(branchid_arrays):
+        while len(output) < len(branchid_interpretation):
             try:
                 obj = notifications.get(timeout=0.001)
             except queue.Empty:
