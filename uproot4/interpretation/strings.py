@@ -2,8 +2,8 @@
 
 from __future__ import absolute_import
 
-import uproot4.interpret.jagged
+import uproot4.interpretation
 
 
-class ObjectArray(uproot4.interpret.jagged.JaggedArray):
+class StringArray(uproot4.interpretation.Interpretation):
     pass

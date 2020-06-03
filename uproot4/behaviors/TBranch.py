@@ -8,16 +8,19 @@ import threading
 try:
     from collections.abc import Mapping
     from collections.abc import MutableMapping
+    from collections.abc import Iterable
 except ImportError:
     from collections import Mapping
     from collections import MutableMapping
+    from collections import Iterable
 try:
     import queue
 except ImportError:
     import Queue as queue
 
 import uproot4.source.cursor
-import uproot4.interpret.library
+import uproot4.interpretation.library
+import uproot4.interpretation.identify
 import uproot4.reading
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
@@ -34,6 +37,166 @@ def _get_recursive(hasbranches, where):
             return got
     else:
         return None
+
+
+def _regularize_name(
+    hasbranches,
+    original_key,
+    value,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    aliases,
+    functions,
+    name_interp_branch,
+    original_jagged,
+):
+    if aliases is not None and original_key in aliases:
+        key = aliases[original_key]
+    else:
+        key = original_key
+
+    if functions is not None:
+        start = len(name_interp_branch)
+        for symbol in uproot4._util.free_symbols(
+            key, functions, hasbranches.file.file_path, hasbranches.object_path
+        ):
+            _regularize_name(
+                hasbranches,
+                symbol,
+                value,
+                filter_name,
+                filter_typename,
+                filter_branch,
+                aliases,
+                None,
+                name_interp_branch,
+                [],
+            )
+
+        is_jagged = any(
+            isinstance(interp, uproot4.interpretation.jagged.AsJagged)
+            for _, interp, _ in name_interp_branch[start:]
+        )
+        original_jagged.append((original_key, is_jagged))
+
+    else:
+        if uproot4._util.exact_filter(key):
+            try:
+                branch = hasbranches[key]
+            except KeyError:
+                raise uproot4.KeyInFileError(
+                    key, hasbranches.file.file_path, object_path=hasbranches.object_path
+                )
+            else:
+                if value is None:
+                    value = branch.interpretation
+                is_jagged = isinstance(value, uproot4.interpretation.jagged.AsJagged)
+                name_interp_branch.append((original_key, value, branch))
+                original_jagged.append((original_key, is_jagged))
+
+        else:
+            filter = uproot4._util.regularize_filter(key)
+            for name, branch in hasbranches.iteritems(
+                recursive=True,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+            ):
+                if filter(name):
+                    if value is None:
+                        value = branch.interpretation
+                    is_jagged = isinstance(
+                        value, uproot4.interpretation.jagged.AsJagged
+                    )
+                    name_interp_branch.append((original_key, value, branch))
+                    original_jagged.append((original_key, is_jagged))
+
+
+def _regularize_names(
+    hasbranches, names, filter_name, filter_typename, filter_branch, aliases, functions
+):
+    filter_name = uproot4._util.regularize_filter(filter_name)
+    filter_typename = uproot4._util.regularize_filter(filter_typename)
+    if filter_branch is None:
+        filter_branch = no_filter
+    elif callable(filter_branch):
+        pass
+    else:
+        raise TypeError(
+            "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
+                repr(filter_branch)
+            )
+        )
+
+    if aliases is None:
+        aliases = hasbranches.aliases
+
+    name_interp_branch, original_jagged = [], []
+
+    if uproot4._util.isstr(names):
+        _regularize_name(
+            hasbranches,
+            names,
+            None,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            aliases,
+            functions,
+            name_interp_branch,
+            original_jagged,
+        )
+
+    elif isinstance(names, dict):
+        for original_key, value in names.items():
+            if uproot4._util.isstr(original_key):
+                _regularize_name(
+                    hasbranches,
+                    original_key,
+                    value,
+                    filter_name,
+                    filter_typename,
+                    filter_branch,
+                    aliases,
+                    None,
+                    name_interp_branch,
+                    original_jagged,
+                )
+            else:
+                raise TypeError(
+                    "keys of a {{name: Interpretation}} dict must be "
+                    "strings, not {0}".format(repr(original_key))
+                )
+
+    elif isinstance(names, Iterable):
+        for original_key in names:
+            if uproot4._util.isstr(original_key):
+                _regularize_name(
+                    hasbranches,
+                    original_key,
+                    None,
+                    filter_name,
+                    filter_typename,
+                    filter_branch,
+                    aliases,
+                    functions,
+                    name_interp_branch,
+                    original_jagged,
+                )
+            else:
+                raise TypeError(
+                    "items in a names list must be strings, not "
+                    "{0}".format(repr(original_key))
+                )
+
+    else:
+        raise TypeError(
+            "a names list must be a string, a list of strings, or a "
+            "{{name: Interpretation}} dict, not {0}".format(repr(names))
+        )
+
+    return name_interp_branch, original_jagged
 
 
 def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
@@ -70,6 +233,22 @@ def _regularize_array_cache(array_cache, file):
         return file._array_cache
     else:
         raise TypeError("array_cache must be None or a MutableMapping")
+
+
+def _compute_expressions(arrays, original_jagged, aliases, functions):
+    scope = dict(functions)
+    scope.update(arrays)
+
+    output = {}
+
+    for original_key, is_jagged in original_jagged:
+        if aliases is not None and original_key in aliases:
+            key = aliases[original_key]
+        else:
+            key = original_key
+        output[original_key] = eval(key, scope, {})
+
+    return output
 
 
 class HasBranches(Mapping):
@@ -282,18 +461,6 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
-    def _names_entries_to_ranges_or_baskets(
-        self, branch_names, entry_start, entry_stop
-    ):
-        out = []
-        for name in branch_names:
-            branch = self[name]
-            for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
-                entry_start, entry_stop
-            ):
-                out.append((name, branch, basket_num, range_or_basket))
-        return out
-
     def _ranges_or_baskets_to_arrays(
         self,
         ranges_or_baskets,
@@ -302,8 +469,8 @@ class HasBranches(Mapping):
         entry_stop,
         decompression_executor,
         interpretation_executor,
-        cache,
         library,
+        output,
     ):
         notifications = queue.Queue()
 
@@ -352,8 +519,6 @@ class HasBranches(Mapping):
             else:
                 notifications.put(basket)
 
-        output = {}
-
         def basket_to_array(basket):
             try:
                 assert basket.basket_num is not None
@@ -361,7 +526,7 @@ class HasBranches(Mapping):
                 interpretation = branchid_interpretation[id(branch)]
                 basket_arrays = branchid_arrays[id(branch)]
                 basket_arrays[basket.basket_num] = interpretation.basket_array(
-                    basket, branch
+                    basket.data, basket.byte_offsets, basket, branch
                 )
                 if len(basket_arrays) == branchid_num_baskets[id(branch)]:
                     name = branchid_name[id(branch)]
@@ -378,7 +543,7 @@ class HasBranches(Mapping):
             else:
                 notifications.put(None)
 
-        while len(output) < len(branchid_arrays):
+        while len(output) < len(branchid_interpretation):
             try:
                 obj = notifications.get(timeout=0.001)
             except queue.Empty:
@@ -402,7 +567,98 @@ class HasBranches(Mapping):
             else:
                 raise AssertionError(obj)
 
-        return dict((name, output[name]) for name, _, _, _ in ranges_or_baskets)
+    def arrays(
+        self,
+        names,
+        entry_start=None,
+        entry_stop=None,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        aliases=None,
+        functions=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache=None,
+        library="ak",
+        how=None,
+    ):
+        name_interp_branch, original_jagged = _regularize_names(
+            self, names, filter_name, filter_typename, filter_branch, aliases, functions
+        )
+        branchid_interpretation = {}
+        for name, interp, branch in name_interp_branch:
+            branchid_interpretation[id(branch)] = interp
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.tree.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+        library = uproot4.interpretation.library._regularize_library(library)
+
+        output = {}
+
+        branches_seen = set()
+        name_interp_branch_toget = []
+        if array_cache is not None:
+            for name, interp, branch in name_interp_branch:
+                if id(branch) not in branches_seen:
+                    branches_seen.add(id(branch))
+                    cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                        branch.cache_key,
+                        interp.cache_key,
+                        entry_start,
+                        entry_stop,
+                        library.name,
+                    )
+                    got = array_cache.get(cache_key)
+                    if got is None:
+                        name_interp_branch_toget.append((name, interp, branch))
+                    else:
+                        output[name] = got
+
+        else:
+            for name, interp, branch in name_interp_branch:
+                if id(branch) not in branches_seen:
+                    branches_seen.add(id(branch))
+                    name_interp_branch_toget.append((name, interp, branch))
+
+        ranges_or_baskets = []
+        for name, interp, branch in name_interp_branch_toget:
+            for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+                entry_start, entry_stop
+            ):
+                ranges_or_baskets.append((name, branch, basket_num, range_or_basket))
+
+        self._ranges_or_baskets_to_arrays(
+            ranges_or_baskets,
+            branchid_interpretation,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            library,
+            output,
+        )
+
+        if array_cache is not None:
+            for name, interp, branch in name_interp_branch_toget:
+                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                    branch.cache_key,
+                    interp.cache_key,
+                    entry_start,
+                    entry_stop,
+                    library.name,
+                )
+                array_cache[cache_key] = output[name]
+
+        if functions is not None:
+            output = _compute_expressions(output, original_jagged, aliases, functions)
+
+        return library.group(output, original_jagged, how)
 
 
 class TBranch(HasBranches):
@@ -413,6 +669,7 @@ class TBranch(HasBranches):
         self._interpretation = None
         self._count_branch = None
         self._count_leaf = None
+        self._streamer = None
 
         self._num_normal_baskets = 0
         for i, x in enumerate(self.member("fBasketSeek")):
@@ -456,11 +713,22 @@ class TBranch(HasBranches):
         return out
 
     @property
+    def aliases(self):
+        return self.tree.aliases
+
+    @property
     def cache_key(self):
         if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
             return self.parent.cache_key + ":" + self.name
         else:
             return self.parent.cache_key + "/" + self.name
+
+    @property
+    def object_path(self):
+        if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
+            return self.parent.object_path + ":" + self.name
+        else:
+            return self.parent.object_path + "/" + self.name
 
     @property
     def entry_offsets(self):
@@ -515,12 +783,31 @@ in file {3}""".format(
 
     @property
     def typename(self):
-        return "FIXME"
+        if self._streamer is not None:
+            return self._streamer.typename
+
+        def leaf_to_typename(leaf):
+            if leaf.classname == "TLeafElement":
+                return "???"
+            else:
+                return "{0}/{1}".format(leaf.member("fTitle"), leaf.classname[-1])
+
+        if len(self.member("fLeaves")) == 1:
+            return leaf_to_typename(self.member("fLeaves")[0])
+        else:
+            leaf_list = [leaf_to_typename(leaf) for leaf in self.member("fLeaves")]
+            return ":".join(leaf_list)
+
+    @property
+    def streamer(self):
+        return self._streamer
 
     @property
     def interpretation(self):
         if self._interpretation is None:
-            raise NotImplementedError
+            self._interpretation = uproot4.interpretation.identify.interpretation_of(
+                self, {}
+            )
         return self._interpretation
 
     @property
@@ -663,7 +950,7 @@ in file {3}""".format(
             decompression_executor, interpretation_executor
         )
         array_cache = _regularize_array_cache(array_cache, self._file)
-        library = uproot4.interpret.library._regularize_library(library)
+        library = uproot4.interpretation.library._regularize_library(library)
 
         cache_key = "{0}:{1}:{2}-{3}:{4}".format(
             self.cache_key,
@@ -683,18 +970,19 @@ in file {3}""".format(
         ):
             ranges_or_baskets.append((None, self, basket_num, range_or_basket))
 
-        out = self._ranges_or_baskets_to_arrays(
+        output = {}
+        self._ranges_or_baskets_to_arrays(
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
             entry_stop,
             decompression_executor,
             interpretation_executor,
-            array_cache,
             library,
-        )[None]
+            output,
+        )
 
         if array_cache is not None:
-            array_cache[cache_key] = out
+            array_cache[cache_key] = output[None]
 
-        return out
+        return output[None]

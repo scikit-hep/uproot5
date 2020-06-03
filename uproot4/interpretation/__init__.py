@@ -14,8 +14,8 @@ class Interpretation(object):
              dimension) of the NumPy array that would be created.
        * `awkward_form`: Form of the Awkward Array that would be created
              (requires `awkward1`); used by the `ak.type` function.
-       * `basket_array(data, byte_offsets)`: Create a basket_array from a
-             basket's `data` and `byte_offsets`.
+       * `basket_array(data, byte_offsets, basket, branch)`: Create a
+             basket_array from a basket's `data` and `byte_offsets`.
        * `final_array(basket_arrays, entry_start, entry_stop, entry_offsets, library)`:
              Combine basket_arrays with basket excess trimmed and in the form
              required by a given library.
@@ -33,7 +33,7 @@ class Interpretation(object):
     def awkward_form(self):
         raise AssertionError
 
-    def basket_array(self, data, byte_offsets):
+    def basket_array(self, data, byte_offsets, basket, branch):
         raise AssertionError
 
     def final_array(

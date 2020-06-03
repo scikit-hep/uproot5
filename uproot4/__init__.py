@@ -31,8 +31,8 @@ from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
 
-import uproot4.interpret
-import uproot4.interpret.library
+import uproot4.interpretation
+import uproot4.interpretation.library
 
 default_library = "ak"
 
@@ -92,32 +92,39 @@ del pkgutil
 
 
 class KeyInFileError(KeyError):
-    def __init__(self, key, file_path, cycle=None, because=""):
+    def __init__(self, key, file_path, cycle=None, because="", object_path=None):
         super(KeyInFileError, self).__init__(key)
         self.key = key
         self.file_path = file_path
         self.cycle = cycle
         self.because = because
+        self.object_path = object_path
 
     def __str__(self):
         if self.because == "":
             because = ""
         else:
             because = " because " + self.because
+
+        if self.object_path is None:
+            object_path = ""
+        else:
+            object_path = " at {0}".format(self.object_path)
+
         if self.cycle == "any":
             return """not found: {0} (with any cycle number){1}
-in file {2}""".format(
-                repr(self.key), because, self.file_path
+in file {2}{3}""".format(
+                repr(self.key), because, self.file_path, object_path
             )
         elif self.cycle is None:
             return """not found: {0}{1}
-in file {2}""".format(
-                repr(self.key), because, self.file_path
+in file {2}{3}""".format(
+                repr(self.key), because, self.file_path, object_path
             )
         else:
             return """not found: {0} with cycle {1}{2}
-in file {3}""".format(
-                repr(self.key), self.cycle, because, self.file_path
+in file {3}{4}""".format(
+                repr(self.key), self.cycle, because, self.file_path, object_path
             )
 
 
