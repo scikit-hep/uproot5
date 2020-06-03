@@ -192,7 +192,7 @@ class AsDtype(Numerical):
 
         dtype, shape = _dtype_shape(self._from_dtype)
         try:
-            output = data.view(self._from_dtype).reshape((-1,) + shape)
+            output = data.view(dtype).reshape((-1,) + shape)
         except ValueError:
             raise ValueError(
                 """basket {0} in branch {1} has the wrong number of bytes ({2}) """
