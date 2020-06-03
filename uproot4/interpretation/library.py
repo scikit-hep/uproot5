@@ -18,7 +18,7 @@ class Library(object):
        * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
        * `finalize(array, branch)`: Convert the internal storage form into one
              appropriate for this library (NumPy array, Pandas Series, etc.).
-       * `group(arrays, name_interp_branch, how)`: Combine arrays into a group,
+       * `group(arrays, original_jagged, how)`: Combine arrays into a group,
              either a generic tuple or a grouping style appropriate for this
              library (NumPy array dict, Awkward RecordArray, etc.).
     """
@@ -33,13 +33,13 @@ class Library(object):
     def finalize(self, array, branch):
         raise AssertionError
 
-    def group(self, arrays, name_interp_branch, how):
+    def group(self, arrays, original_jagged, how):
         if how is tuple:
-            return tuple(arrays[name] for name, _, _ in name_interp_branch)
+            return tuple(arrays[name] for name, _ in original_jagged)
         elif how is list:
-            return [arrays[name] for name, _, _ in name_interp_branch]
+            return [arrays[name] for name, _ in original_jagged]
         elif how is dict or how is None:
-            return dict((name, arrays[name]) for name, _, _ in name_interp_branch)
+            return dict((name, arrays[name]) for name, _ in original_jagged)
         else:
             raise TypeError(
                 "for library {0}, how must be tuple, list, dict, or None (for "
@@ -118,27 +118,27 @@ class Awkward(Library):
             array = array.astype(array.dtype.newbyteorder("="), copy=False)
             return awkward1.from_numpy(array)
 
-    def group(self, arrays, name_interp_branch, how):
+    def group(self, arrays, original_jagged, how):
         awkward1 = self.imported
 
         if how is tuple:
-            return tuple(arrays[name] for name, _, _ in name_interp_branch)
+            return tuple(arrays[name] for name, _ in original_jagged)
         elif how is list:
-            return [arrays[name] for name, _, _ in name_interp_branch]
+            return [arrays[name] for name, _ in original_jagged]
         elif how is dict:
-            return dict((name, arrays[name]) for name, _, _ in name_interp_branch)
+            return dict((name, arrays[name]) for name, _ in original_jagged)
         elif how is None:
             return awkward1.zip(
-                dict((name, arrays[name]) for name, _, _ in name_interp_branch),
+                dict((name, arrays[name]) for name, _ in original_jagged),
                 depth_limit=1,
             )
         elif how == "zip":
             nonjagged = []
             offsets = []
             jaggeds = []
-            for name, interp, _ in name_interp_branch:
+            for name, is_jagged in original_jagged:
                 array = arrays[name]
-                if isinstance(interp, uproot4.interpretation.jagged.AsJagged):
+                if is_jagged:
                     if len(offsets) == 0:
                         offsets.append(array.layout.offsets)
                         jaggeds.append([name])
@@ -234,8 +234,8 @@ or
         else:
             return pandas.Series(array)
 
-    def group(self, arrays, name_interp_branch, how):
-        names = [name for name, _, _ in name_interp_branch]
+    def group(self, arrays, original_jagged, how):
+        names = [name for name, _ in original_jagged]
         pandas = self.imported
         if how is tuple:
             return tuple(arrays[name] for name in names)

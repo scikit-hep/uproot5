@@ -45,6 +45,16 @@ def isint(x):
     )
 
 
+def isnum(x):
+    """
+    Returns True if and only if `x` is a number (including NumPy, not
+    including bool).
+    """
+    return isinstance(x, (int, float, numbers.Real, numpy.number)) and not isinstance(
+        x, (numpy.bool, numpy.bool_)
+    )
+
+
 def isstr(x):
     if py2:
         return isinstance(x, (bytes, unicode))

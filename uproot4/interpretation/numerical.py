@@ -123,7 +123,12 @@ class AsDtype(Numerical):
             self._to_dtype = numpy.dtype(to_dtype)
 
     def __repr__(self):
-        return "AsDtype({0}, {1})".format(repr(self._from_dtype), repr(self._to_dtype))
+        if self._to_dtype == self._from_dtype.newbyteorder("="):
+            return "AsDtype({0})".format(repr(str(self._from_dtype)))
+        else:
+            return "AsDtype({0}, {1})".format(
+                repr(str(self._from_dtype)), repr(str(self._to_dtype))
+            )
 
     @property
     def from_dtype(self):

@@ -15,21 +15,129 @@ import uproot4.interpretation.jagged
 import uproot4.interpretation.numerical
 
 
-# def test_compute():
-#     awkward1 = pytest.importorskip("awkward1")
+def test_leaf_interpretation():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        assert repr(sample["n"].interpretation) == """AsDtype('>i4')"""
+        assert repr(sample["b"].interpretation) == """AsDtype('bool')"""
+        assert repr(sample["ab"].interpretation) == """AsDtype("('?', (3,))")"""
+        assert repr(sample["Ab"].interpretation) == """AsJagged(AsDtype('bool'))"""
+        assert repr(sample["i1"].interpretation) == """AsDtype('int8')"""
+        assert repr(sample["ai1"].interpretation) == """AsDtype("('i1', (3,))")"""
+        assert repr(sample["Ai1"].interpretation) == """AsJagged(AsDtype('int8'))"""
+        assert repr(sample["u1"].interpretation) == """AsDtype('uint8')"""
+        assert repr(sample["au1"].interpretation) == """AsDtype("('u1', (3,))")"""
+        assert repr(sample["Au1"].interpretation) == """AsJagged(AsDtype('uint8'))"""
+        assert repr(sample["i2"].interpretation) == """AsDtype('>i2')"""
+        assert repr(sample["ai2"].interpretation) == """AsDtype("('>i2', (3,))")"""
+        assert repr(sample["Ai2"].interpretation) == """AsJagged(AsDtype('>i2'))"""
+        assert repr(sample["u2"].interpretation) == """AsDtype('>u2')"""
+        assert repr(sample["au2"].interpretation) == """AsDtype("('>u2', (3,))")"""
+        assert repr(sample["Au2"].interpretation) == """AsJagged(AsDtype('>u2'))"""
+        assert repr(sample["i4"].interpretation) == """AsDtype('>i4')"""
+        assert repr(sample["ai4"].interpretation) == """AsDtype("('>i4', (3,))")"""
+        assert repr(sample["Ai4"].interpretation) == """AsJagged(AsDtype('>i4'))"""
+        assert repr(sample["u4"].interpretation) == """AsDtype('>u4')"""
+        assert repr(sample["au4"].interpretation) == """AsDtype("('>u4', (3,))")"""
+        assert repr(sample["Au4"].interpretation) == """AsJagged(AsDtype('>u4'))"""
+        assert repr(sample["i8"].interpretation) == """AsDtype('>i8')"""
+        assert repr(sample["ai8"].interpretation) == """AsDtype("('>i8', (3,))")"""
+        assert repr(sample["Ai8"].interpretation) == """AsJagged(AsDtype('>i8'))"""
+        assert repr(sample["u8"].interpretation) == """AsDtype('>u8')"""
+        assert repr(sample["au8"].interpretation) == """AsDtype("('>u8', (3,))")"""
+        assert repr(sample["Au8"].interpretation) == """AsJagged(AsDtype('>u8'))"""
+        assert repr(sample["f4"].interpretation) == """AsDtype('>f4')"""
+        assert repr(sample["af4"].interpretation) == """AsDtype("('>f4', (3,))")"""
+        assert repr(sample["Af4"].interpretation) == """AsJagged(AsDtype('>f4'))"""
+        assert repr(sample["f8"].interpretation) == """AsDtype('>f8')"""
+        assert repr(sample["af8"].interpretation) == """AsDtype("('>f8', (3,))")"""
+        assert repr(sample["Af8"].interpretation) == """AsJagged(AsDtype('>f8'))"""
 
-#     interp_i4 = uproot4.interpretation.numerical.AsDtype(">i4")
-#     interp_i8 = uproot4.interpretation.numerical.AsDtype(">i8")
+        assert sample["n"].typename == "n/I"
+        assert sample["b"].typename == "b/O"
+        assert sample["ab"].typename == "ab[3]/O"
+        assert sample["Ab"].typename == "Ab[n]/O"
+        assert sample["i1"].typename == "i1/B"
+        assert sample["ai1"].typename == "ai1[3]/B"
+        assert sample["Ai1"].typename == "Ai1[n]/B"
+        assert sample["u1"].typename == "u1/B"
+        assert sample["au1"].typename == "au1[3]/B"
+        assert sample["Au1"].typename == "Au1[n]/B"
+        assert sample["i2"].typename == "i2/S"
+        assert sample["ai2"].typename == "ai2[3]/S"
+        assert sample["Ai2"].typename == "Ai2[n]/S"
+        assert sample["u2"].typename == "u2/S"
+        assert sample["au2"].typename == "au2[3]/S"
+        assert sample["Au2"].typename == "Au2[n]/S"
+        assert sample["i4"].typename == "i4/I"
+        assert sample["ai4"].typename == "ai4[3]/I"
+        assert sample["Ai4"].typename == "Ai4[n]/I"
+        assert sample["u4"].typename == "u4/I"
+        assert sample["au4"].typename == "au4[3]/I"
+        assert sample["Au4"].typename == "Au4[n]/I"
+        assert sample["i8"].typename == "i8/L"
+        assert sample["ai8"].typename == "ai8[3]/L"
+        assert sample["Ai8"].typename == "Ai8[n]/L"
+        assert sample["u8"].typename == "u8/L"
+        assert sample["au8"].typename == "au8[3]/L"
+        assert sample["Au8"].typename == "Au8[n]/L"
+        assert sample["f4"].typename == "f4/F"
+        assert sample["af4"].typename == "af4[3]/F"
+        assert sample["Af4"].typename == "Af4[n]/F"
+        assert sample["f8"].typename == "f8/D"
+        assert sample["af8"].typename == "af8[3]/D"
+        assert sample["Af8"].typename == "Af8[n]/D"
 
-#     with uproot4.open(
-#         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
-#     )["sample"] as sample:
-#         result = sample.arrays(
-#             "stuff", aliases={"stuff": "abs(i4) + i8"}, functions={"abs": abs}
-#         )
-#         print(result.tolist())
 
-#     raise Exception
+def test_compute():
+    awkward1 = pytest.importorskip("awkward1")
+
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        result = sample.arrays(
+            ["stuff", "i4"], aliases={"stuff": "abs(i4) + Ai8"}, functions={"abs": abs}
+        )
+        assert result.tolist() == [
+            {"stuff": [], "i4": -15},
+            {"stuff": [-1], "i4": -14},
+            {"stuff": [-2, 0], "i4": -13},
+            {"stuff": [-3, -1, 1], "i4": -12},
+            {"stuff": [-4, -2, 0, 2], "i4": -11},
+            {"stuff": [], "i4": -10},
+            {"stuff": [-1], "i4": -9},
+            {"stuff": [-2, 0], "i4": -8},
+            {"stuff": [-3, -1, 1], "i4": -7},
+            {"stuff": [-4, -2, 0, 2], "i4": -6},
+            {"stuff": [], "i4": -5},
+            {"stuff": [-1], "i4": -4},
+            {"stuff": [-2, 0], "i4": -3},
+            {"stuff": [-3, -1, 1], "i4": -2},
+            {"stuff": [-4, -2, 0, 2], "i4": -1},
+            {"stuff": [], "i4": 0},
+            {"stuff": [1], "i4": 1},
+            {"stuff": [2, 4], "i4": 2},
+            {"stuff": [3, 5, 7], "i4": 3},
+            {"stuff": [4, 6, 8, 10], "i4": 4},
+            {"stuff": [], "i4": 5},
+            {"stuff": [11], "i4": 6},
+            {"stuff": [12, 14], "i4": 7},
+            {"stuff": [13, 15, 17], "i4": 8},
+            {"stuff": [14, 16, 18, 20], "i4": 9},
+            {"stuff": [], "i4": 10},
+            {"stuff": [21], "i4": 11},
+            {"stuff": [22, 24], "i4": 12},
+            {"stuff": [23, 25, 27], "i4": 13},
+            {"stuff": [24, 26, 28, 30], "i4": 14},
+        ]
+
+        assert set(sample.file.array_cache) == set(
+            [
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:i4:AsDtype(Bi4(),Li4()):0-30:ak",
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:Ai8:AsJagged(AsDtype(Bi8(),Li8()),0):0-30:ak",
+            ]
+        )
 
 
 def test_arrays():
@@ -83,10 +191,12 @@ def test_arrays():
             {"I4": 14, "F4": 14.100000381469727},
         ]
 
-        assert list(sample.file.array_cache) == [
-            "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:i4:AsDtype(Bi4(),Li4()):0-30:ak",
-            "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:f4:AsDtype(Bf4(),Lf4()):0-30:ak",
-        ]
+        assert set(sample.file.array_cache) == set(
+            [
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:i4:AsDtype(Bi4(),Li4()):0-30:ak",
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:f4:AsDtype(Bf4(),Lf4()):0-30:ak",
+            ]
+        )
 
         result = sample.arrays({"i4": interp_i4, "f4": interp_f4})
         assert result.tolist() == [
@@ -861,7 +971,7 @@ def test_pandas_merge():
     pandas = pytest.importorskip("pandas")
 
     group = uproot4.interpretation.library.Pandas().group
-    name_interp_branch = [("a", None, None), ("b", None, None), ("c", None, None)]
+    name_interp_branch = [("a", None), ("b", None), ("c", None)]
 
     a = pandas.Series([1, 2, 3, 4, 5])
     b = pandas.Series([1.1, 2.2, 3.3, 4.4, 5.5])

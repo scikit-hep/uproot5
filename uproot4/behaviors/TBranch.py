@@ -20,6 +20,7 @@ except ImportError:
 
 import uproot4.source.cursor
 import uproot4.interpretation.library
+import uproot4.interpretation.identify
 import uproot4.reading
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
@@ -47,7 +48,8 @@ def _regularize_name(
     filter_branch,
     aliases,
     functions,
-    out,
+    name_interp_branch,
+    original_jagged,
 ):
     if aliases is not None and original_key in aliases:
         key = aliases[original_key]
@@ -55,6 +57,7 @@ def _regularize_name(
         key = original_key
 
     if functions is not None:
+        start = len(name_interp_branch)
         for symbol in uproot4._util.free_symbols(
             key, functions, hasbranches.file.file_path, hasbranches.object_path
         ):
@@ -67,8 +70,15 @@ def _regularize_name(
                 filter_branch,
                 aliases,
                 None,
-                out,
+                name_interp_branch,
+                [],
             )
+
+        is_jagged = any(
+            isinstance(interp, uproot4.interpretation.jagged.AsJagged)
+            for _, interp, _ in name_interp_branch[start:]
+        )
+        original_jagged.append((original_key, is_jagged))
 
     else:
         if uproot4._util.exact_filter(key):
@@ -80,9 +90,10 @@ def _regularize_name(
                 )
             else:
                 if value is None:
-                    out.append((original_key, branch.interpretation, branch))
-                else:
-                    out.append((original_key, value, branch))
+                    value = branch.interpretation
+                is_jagged = isinstance(value, uproot4.interpretation.jagged.AsJagged)
+                name_interp_branch.append((original_key, value, branch))
+                original_jagged.append((original_key, is_jagged))
 
         else:
             filter = uproot4._util.regularize_filter(key)
@@ -94,9 +105,12 @@ def _regularize_name(
             ):
                 if filter(name):
                     if value is None:
-                        out.append((name, branch.interpretation, branch))
-                    else:
-                        out.append((name, value, branch))
+                        value = branch.interpretation
+                    is_jagged = isinstance(
+                        value, uproot4.interpretation.jagged.AsJagged
+                    )
+                    name_interp_branch.append((original_key, value, branch))
+                    original_jagged.append((original_key, is_jagged))
 
 
 def _regularize_names(
@@ -118,7 +132,7 @@ def _regularize_names(
     if aliases is None:
         aliases = hasbranches.aliases
 
-    out = []
+    name_interp_branch, original_jagged = [], []
 
     if uproot4._util.isstr(names):
         _regularize_name(
@@ -130,7 +144,8 @@ def _regularize_names(
             filter_branch,
             aliases,
             functions,
-            out,
+            name_interp_branch,
+            original_jagged,
         )
 
     elif isinstance(names, dict):
@@ -145,7 +160,8 @@ def _regularize_names(
                     filter_branch,
                     aliases,
                     None,
-                    out,
+                    name_interp_branch,
+                    original_jagged,
                 )
             else:
                 raise TypeError(
@@ -165,19 +181,22 @@ def _regularize_names(
                     filter_branch,
                     aliases,
                     functions,
-                    out,
+                    name_interp_branch,
+                    original_jagged,
                 )
-            raise TypeError(
-                "items in a names list must be strings, not "
-                "{0}".format(repr(original_key))
-            )
+            else:
+                raise TypeError(
+                    "items in a names list must be strings, not "
+                    "{0}".format(repr(original_key))
+                )
+
     else:
         raise TypeError(
             "a names list must be a string, a list of strings, or a "
             "{{name: Interpretation}} dict, not {0}".format(repr(names))
         )
 
-    return out
+    return name_interp_branch, original_jagged
 
 
 def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
@@ -214,6 +233,22 @@ def _regularize_array_cache(array_cache, file):
         return file._array_cache
     else:
         raise TypeError("array_cache must be None or a MutableMapping")
+
+
+def _compute_expressions(arrays, original_jagged, aliases, functions):
+    scope = dict(functions)
+    scope.update(arrays)
+
+    output = {}
+
+    for original_key, is_jagged in original_jagged:
+        if aliases is not None and original_key in aliases:
+            key = aliases[original_key]
+        else:
+            key = original_key
+        output[original_key] = eval(key, scope, {})
+
+    return output
 
 
 class HasBranches(Mapping):
@@ -548,7 +583,7 @@ class HasBranches(Mapping):
         library="ak",
         how=None,
     ):
-        name_interp_branch = _regularize_names(
+        name_interp_branch, original_jagged = _regularize_names(
             self, names, filter_name, filter_typename, filter_branch, aliases, functions
         )
         branchid_interpretation = {}
@@ -564,27 +599,32 @@ class HasBranches(Mapping):
         array_cache = _regularize_array_cache(array_cache, self._file)
         library = uproot4.interpretation.library._regularize_library(library)
 
-        print(name_interp_branch)
-
         output = {}
 
+        branches_seen = set()
         name_interp_branch_toget = []
         if array_cache is not None:
             for name, interp, branch in name_interp_branch:
-                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-                    branch.cache_key,
-                    interp.cache_key,
-                    entry_start,
-                    entry_stop,
-                    library.name,
-                )
-                got = array_cache.get(cache_key)
-                if got is None:
-                    name_interp_branch_toget.append((name, interp, branch))
-                else:
-                    output[name] = got
+                if id(branch) not in branches_seen:
+                    branches_seen.add(id(branch))
+                    cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                        branch.cache_key,
+                        interp.cache_key,
+                        entry_start,
+                        entry_stop,
+                        library.name,
+                    )
+                    got = array_cache.get(cache_key)
+                    if got is None:
+                        name_interp_branch_toget.append((name, interp, branch))
+                    else:
+                        output[name] = got
+
         else:
-            name_interp_branch_toget = name_interp_branch
+            for name, interp, branch in name_interp_branch:
+                if id(branch) not in branches_seen:
+                    branches_seen.add(id(branch))
+                    name_interp_branch_toget.append((name, interp, branch))
 
         ranges_or_baskets = []
         for name, interp, branch in name_interp_branch_toget:
@@ -615,7 +655,10 @@ class HasBranches(Mapping):
                 )
                 array_cache[cache_key] = output[name]
 
-        return library.group(output, name_interp_branch, how)
+        if functions is not None:
+            output = _compute_expressions(output, original_jagged, aliases, functions)
+
+        return library.group(output, original_jagged, how)
 
 
 class TBranch(HasBranches):
@@ -626,6 +669,7 @@ class TBranch(HasBranches):
         self._interpretation = None
         self._count_branch = None
         self._count_leaf = None
+        self._streamer = None
 
         self._num_normal_baskets = 0
         for i, x in enumerate(self.member("fBasketSeek")):
@@ -739,12 +783,31 @@ in file {3}""".format(
 
     @property
     def typename(self):
-        return "FIXME"
+        if self._streamer is not None:
+            return self._streamer.typename
+
+        def leaf_to_typename(leaf):
+            if leaf.classname == "TLeafElement":
+                return "???"
+            else:
+                return "{0}/{1}".format(leaf.member("fTitle"), leaf.classname[-1])
+
+        if len(self.member("fLeaves")) == 1:
+            return leaf_to_typename(self.member("fLeaves")[0])
+        else:
+            leaf_list = [leaf_to_typename(leaf) for leaf in self.member("fLeaves")]
+            return ":".join(leaf_list)
+
+    @property
+    def streamer(self):
+        return self._streamer
 
     @property
     def interpretation(self):
         if self._interpretation is None:
-            raise NotImplementedError
+            self._interpretation = uproot4.interpretation.identify.interpretation_of(
+                self, {}
+            )
         return self._interpretation
 
     @property
