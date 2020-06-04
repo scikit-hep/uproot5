@@ -18,40 +18,17 @@ jobs:
     steps:
       - uses: "actions/checkout@v2"
 
-      - name: "setup all"
-        shell: bash
-        run: |
-          ${CONDA}/bin/conda init --all
-
       - name: "environment for ${{ matrix.python-version }}"
         run: |
-          conda create -n testing python=${{ matrix.python-version }}
-          conda config --add channels conda-forge
-          conda info
+          ${CONDA}/bin/conda create -n testing python=${{ matrix.python-version }}
+          ${CONDA}/bin/conda config --add channels conda-forge
+          ${CONDA}/bin/conda info
 
       - name: "install most dependencies"
         run: |
-          conda activate testing
+          source ${CONDA}/bin/activate testing
           conda env list
           conda install numpy pandas pytest flake8
           pip install scikit-hep-testdata
           conda list
 
-      - name: "install Awkward"
-        run: |
-          conda activate testing
-          conda env list
-          pip install awkward1
-          conda list
-
-      - name: "flake8"
-        run: |
-          conda activate testing
-          conda env list
-          python -m flake8
-
-      - name: "pytest"
-        run: |
-          conda activate testing
-          conda env list
-          python -m pytest -vv tests
