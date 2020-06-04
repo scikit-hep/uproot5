@@ -31,6 +31,7 @@ jobs:
 
       - name: "install most dependencies"
         run: |
+          conda init bash
           conda activate testing
           conda env list
           conda install numpy pandas pytest flake8
@@ -39,6 +40,7 @@ jobs:
 
       - name: "install Awkward"
         run: |
+          conda init bash
           conda activate testing
           conda env list
           pip install awkward1
@@ -47,6 +49,7 @@ jobs:
       - name: "install XRootD"
         if: "${{ matrix.python-version != 3.5 }}"
         run: |
+          conda init bash
           conda activate testing
           conda env list
           conda install xrootd
@@ -54,12 +57,14 @@ jobs:
 
       - name: "flake8"
         run: |
+          conda init bash
           conda activate testing
           conda env list
           python -m flake8
 
       - name: "pytest"
         run: |
+          conda init bash
           conda activate testing
           conda env list
           python -m pytest -vv tests
