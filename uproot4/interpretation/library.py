@@ -223,7 +223,9 @@ or
             index = pandas.MultiIndex.from_arrays(
                 array.parents_localindex(), names=["entry", "subentry"]
             )
-            content = array.content.astype(array.content.dtype.newbyteorder("="), copy=False)
+            content = array.content.astype(
+                array.content.dtype.newbyteorder("="), copy=False
+            )
             return pandas.Series(content, index=index)
 
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):

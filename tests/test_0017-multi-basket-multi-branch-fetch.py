@@ -171,9 +171,13 @@ def test_ranges_or_baskets_to_arrays():
         ]
 
 
-def test_branch_array_1():
+@pytest.mark.parametrize(
+    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+)
+def test_branch_array_1(file_handler):
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        file_handler=file_handler,
     )["sample/i4"] as branch:
         assert branch.array(
             uproot4.interpretation.numerical.AsDtype(">i4"), library="np"
@@ -210,9 +214,14 @@ def test_branch_array_1():
             14,
         ]
 
-def test_branch_array_2():
+
+@pytest.mark.parametrize(
+    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+)
+def test_branch_array_2(file_handler):
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        file_handler=file_handler
     )["sample/i4"] as branch:
         assert branch.array(
             uproot4.interpretation.numerical.AsDtype(">i4"),
@@ -244,9 +253,14 @@ def test_branch_array_2():
             9,
         ]
 
-def test_branch_array_3():
+
+@pytest.mark.parametrize(
+    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+)
+def test_branch_array_3(file_handler):
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        file_handler=file_handler
     )["sample/i4"] as branch:
         assert branch.array(
             uproot4.interpretation.numerical.AsDtype(">i4"),
@@ -279,9 +293,14 @@ def test_branch_array_3():
             9,
         ]
 
-def test_branch_array_4():
+
+@pytest.mark.parametrize(
+    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+)
+def test_branch_array_4(file_handler):
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        file_handler=file_handler
     )["sample/i4"] as branch:
         with pytest.raises(ValueError):
             branch.array(uproot4.interpretation.numerical.AsDtype(">i8"), library="np")
