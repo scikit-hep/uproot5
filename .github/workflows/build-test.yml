@@ -24,14 +24,12 @@ jobs:
 
       - name: "environment for ${{ matrix.python-version }}"
         run: |
-          eval "$(conda shell.bash hook)"
           conda create -n testing python=${{ matrix.python-version }}
           conda config --add channels conda-forge
           conda info
 
       - name: "install most dependencies"
         run: |
-          eval "$(conda shell.bash hook)"
           conda activate testing
           conda env list
           conda install numpy pandas pytest flake8
@@ -40,7 +38,6 @@ jobs:
 
       - name: "install Awkward"
         run: |
-          eval "$(conda shell.bash hook)"
           conda activate testing
           conda env list
           pip install awkward1
@@ -49,7 +46,6 @@ jobs:
       - name: "install XRootD"
         if: "${{ matrix.python-version != 3.5 }}"
         run: |
-          eval "$(conda shell.bash hook)"
           conda activate testing
           conda env list
           conda install xrootd
@@ -57,14 +53,12 @@ jobs:
 
       - name: "flake8"
         run: |
-          eval "$(conda shell.bash hook)"
           conda activate testing
           conda env list
           python -m flake8
 
       - name: "pytest"
         run: |
-          eval "$(conda shell.bash hook)"
           conda activate testing
           conda env list
           python -m pytest -vv tests
