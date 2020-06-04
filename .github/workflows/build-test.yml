@@ -47,7 +47,7 @@ jobs:
           conda list
 
       - name: "install XRootD"
-        if: "${{ matrix.python-version != 3.5 }}"
+        if: "${{ matrix.python-version != 3.5  &&  !contains(matrix.platform, 'windows') }}"
         shell: "bash -l {0}"
         run: |
           conda activate testing
