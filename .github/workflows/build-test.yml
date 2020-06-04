@@ -14,9 +14,13 @@ jobs:
         python-version: ["3.5", "3.6", "3.7", "3.8"]
         exclude:
           - platform: "macos-latest"
-            python-version: ["3.6", "3.7"]
+            python-version: "3.6"
+          - platform: "macos-latest"
+            python-version: "3.7"
           - platform: "windows-latest"
-            python-version: ["3.6", "3.7"]
+            python-version: "3.6"
+          - platform: "windows-latest"
+            python-version: "3.7"
     runs-on: "${{ matrix.platform }}"
 
     steps:
