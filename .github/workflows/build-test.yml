@@ -25,6 +25,7 @@ jobs:
       - name: "environment for ${{ matrix.python-version }}"
         run: |
           conda create -n testing python=${{ matrix.python-version }}
+          conda init bash
           conda config --add channels conda-forge
           conda info
 
