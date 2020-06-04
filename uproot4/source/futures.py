@@ -419,6 +419,7 @@ class ThreadResourceExecutor(Executor):
             resources (iterable of Resource): Resources, such as file handles,
                 to manage; spawns one Thread per Resource.
         """
+        self._closed = False
         self._work_queue = queue.Queue()
         self._workers = [ThreadResourceWorker(x, self._work_queue) for x in resources]
         for thread in self._workers:
@@ -461,7 +462,7 @@ class ThreadResourceExecutor(Executor):
         True if the associated file/connection/thread pool is closed; False
         otherwise.
         """
-        return any(thread.is_alive() for thread in self._workers)
+        return self._closed
 
     def _prepare(self, fn, *args, **kwargs):
         if len(args) != 0 or len(kwargs) != 0:
@@ -497,6 +498,7 @@ class ThreadResourceExecutor(Executor):
         Puts None on the `work_queue` until all Threads get the message and
         shut down.
         """
+        self._closed = True
         while any(thread.is_alive() for thread in self._workers):
             for x in range(len(self._workers)):
                 self._work_queue.put(None)

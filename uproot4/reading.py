@@ -204,7 +204,9 @@ in file {1}""".format(
             )
 
     def __repr__(self):
-        return "<ReadOnlyFile {0}>".format(repr(self._file_path))
+        return "<ReadOnlyFile {0} at 0x{1:012x}>".format(
+            repr(self._file_path), id(self)
+        )
 
     def hook_before_create_source(self, **kwargs):
         pass
@@ -665,7 +667,9 @@ class ReadOnlyKey(object):
             nameclass = ""
         else:
             nameclass = " {0}: {1}".format(self.name(cycle=True), self.classname())
-        return "<ReadOnlyKey{0} at byte {1}>".format(nameclass, self.data_cursor.index)
+        return "<ReadOnlyKey{0} at byte {1} at 0x{2:012x}>".format(
+            nameclass, self.data_cursor.index, id(self)
+        )
 
     def hook_before_read(self, **kwargs):
         pass
@@ -927,7 +931,9 @@ class ReadOnlyDirectory(Mapping):
             )
 
     def __repr__(self):
-        return "<ReadOnlyDirectory {0}>".format(repr("/" + "/".join(self._path)))
+        return "<ReadOnlyDirectory {0} at 0x{1:012x}>".format(
+            repr("/" + "/".join(self._path)), id(self)
+        )
 
     def hook_before_read(self, **kwargs):
         pass
