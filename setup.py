@@ -3,15 +3,9 @@
 from setuptools import setup
 from setuptools import find_packages
 
-install_requires = open("requirements.txt").read().strip().split()
-
-extras = {"test": open("requirements-test.txt").read().strip().split()}
-extras["all"] = sum(extras.values(), [])
-
-tests_require = extras["test"]
-
 setup(name = "uproot4",
       packages = find_packages(exclude = ["tests"]),
+      package_data={"": ["VERSION_INFO"]},
       scripts = [],
       version = open("VERSION_INFO").read().strip(),
       author = "Jim Pivarski",
@@ -26,14 +20,13 @@ setup(name = "uproot4",
       license = "BSD 3-clause",
       test_suite = "tests",
       python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
-      install_requires = install_requires,
-      tests_require = extras["test"],
-      extras_require = extras,
+      install_requires = ["numpy"],
+      tests_require = ["pytest", "flake8", "scikit-hep-testdata", "pandas", "awkward1"],
 
       classifiers = [
-          "Development Status :: 1 - Planning",
+#         "Development Status :: 1 - Planning",
 #         "Development Status :: 2 - Pre-Alpha",
-#         "Development Status :: 3 - Alpha",
+          "Development Status :: 3 - Alpha",
 #         "Development Status :: 4 - Beta",
 #         "Development Status :: 5 - Production/Stable",
 #         "Development Status :: 6 - Mature",
@@ -46,6 +39,7 @@ setup(name = "uproot4",
           "Operating System :: POSIX",
           "Operating System :: Unix",
           "Programming Language :: Python",
+          "Programming Language :: Python :: 2.6",
           "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3.5",
           "Programming Language :: Python :: 3.6",
