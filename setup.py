@@ -3,11 +3,15 @@
 from setuptools import setup
 from setuptools import find_packages
 
+def get_version():
+    g = {}
+    exec(open(os.path.join("uproot4", "version.py")).read(), g)
+    return g["__version__"]
+
 setup(name = "uproot4",
       packages = find_packages(exclude = ["tests"]),
-      package_data={"": ["VERSION_INFO"]},
       scripts = [],
-      version = open("VERSION_INFO").read().strip(),
+      version = get_version(),
       author = "Jim Pivarski",
       author_email = "pivarski@princeton.edu",
       maintainer = "Jim Pivarski",
