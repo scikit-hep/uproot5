@@ -32,7 +32,8 @@ jobs:
       - name: "get conda"
         uses: "goanpeca/setup-miniconda@v1"
         with:
-          python: ${{ matrix.python-version }}
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
           channels: conda-forge
 
       - name: "install most dependencies"
