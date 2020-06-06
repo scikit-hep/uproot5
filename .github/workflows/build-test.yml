@@ -34,12 +34,14 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          channels: conda-forge
 
       - name: "install most dependencies"
         shell: "bash -l {0}"
         run: |
           conda env list
-          conda install conda numpy pandas pytest flake8
+          conda update -n base -c defaults conda
+          conda install numpy pandas pytest flake8
           pip install scikit-hep-testdata
           conda list
 
