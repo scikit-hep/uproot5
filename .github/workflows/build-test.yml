@@ -39,8 +39,7 @@ jobs:
         shell: "bash -l {0}"
         run: |
           conda env list
-          conda update conda
-          conda install numpy pandas pytest flake8
+          conda install conda numpy pandas pytest flake8
           pip install scikit-hep-testdata
           conda list
 
