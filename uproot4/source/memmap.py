@@ -114,7 +114,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         else:
             return self._fallback.num_bytes
 
-    def chunk(self, start, stop, exact=True, long_lived=False):
+    def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
@@ -124,8 +124,6 @@ class MemmapSource(uproot4.source.chunk.Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
-            long_lived (bool): If True, ensure that the returned Chunk has
-                indefinite lifespan (i.e. not attached to an open memory map).
 
         Returns a single Chunk that has already been filled synchronously.
         """
@@ -137,17 +135,14 @@ class MemmapSource(uproot4.source.chunk.Source):
             if self.closed:
                 raise OSError("memmap is closed for file {0}".format(self._file_path))
 
-            data = self._file[start:stop]
-            if long_lived:
-                data = numpy.array(data)
-
+            data = numpy.array(self._file[start:stop], copy=True)
             future = uproot4.source.futures.TrivialFuture(data)
             return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
 
         else:
             return self._fallback(start, stop, exact=exact)
 
-    def chunks(self, ranges, exact=True, long_lived=False, notifications=None):
+    def chunks(self, ranges, exact=True, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
@@ -155,8 +150,6 @@ class MemmapSource(uproot4.source.chunk.Source):
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
-            long_lived (bool): If True, ensure that the returned Chunk has
-                indefinite lifespan (i.e. not attached to an open memory map).
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 
@@ -172,9 +165,7 @@ class MemmapSource(uproot4.source.chunk.Source):
 
             chunks = []
             for start, stop in ranges:
-                data = self._file[start:stop]
-                if long_lived:
-                    data = numpy.array(data, copy=True)
+                data = numpy.array(self._file[start:stop], copy=True)
                 future = uproot4.source.futures.TrivialFuture(data)
                 chunk = uproot4.source.chunk.Chunk(self, start, stop, future, exact)
                 if notifications is not None:

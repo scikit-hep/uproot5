@@ -142,6 +142,7 @@ class ComputePython(uproot4.compute.Compute):
         self, arrays, expression_context, aliases, file_path, object_path
     ):
         alias_values = {}
+
         def get_alias(alias_name):
             if alias_name not in alias_values:
                 alias_values[alias_name] = _expression_to_function(
@@ -162,8 +163,21 @@ class ComputePython(uproot4.compute.Compute):
 
         output = {}
         for expression, context in expression_context:
-            if context["is_primary"]:
+            if context["is_primary"] and not context["is_cut"]:
                 output[expression] = _expression_to_function(
                     expression, aliases, self._functions, scope, file_path, object_path,
                 )()
+
+        cut = None
+        for expression, context in expression_context:
+            if context["is_primary"] and context["is_cut"]:
+                cut = _expression_to_function(
+                    expression, aliases, self._functions, scope, file_path, object_path,
+                )()
+
+        if cut is not None:
+            cut = cut != 0
+            for name in output:
+                output[name] = output[name][cut]
+
         return output

@@ -111,19 +111,48 @@ def _regularize_branchname(
     expression_context,
     branchid_interpretation,
     is_primary,
+    is_cut,
 ):
     got = get_from_cache(branchname, interpretation)
     if got is not None:
         arrays[id(branch)] = got
 
     is_jagged = isinstance(interpretation, uproot4.interpretation.jagged.AsJagged)
-    expression_context.append(
-        (
-            branchname,
-            {"is_primary": is_primary, "is_jagged": is_jagged, "branch": branch},
+
+    if id(branch) in branchid_interpretation:
+        if branchid_interpretation[id(branch)].cache_key != interpretation.cache_key:
+            raise ValueError(
+                "a branch cannot be loaded with multiple interpretations: "
+                "{0} and {1}".format(repr(branchid_interpretation[id(branch)]), repr(interpretation))
+            )
+        else:
+            expression_context.append(
+                (
+                    branchname,
+                    {
+                        "is_primary": is_primary,
+                        "is_cut": is_cut,
+                        "is_duplicate": True,
+                        "is_jagged": is_jagged,
+                        "branch": branch,
+                    },
+                )
+            )
+
+    else:
+        expression_context.append(
+            (
+                branchname,
+                {
+                    "is_primary": is_primary,
+                    "is_cut": is_cut,
+                    "is_duplicate": False,
+                    "is_jagged": is_jagged,
+                    "branch": branch,
+                },
+            )
         )
-    )
-    branchid_interpretation[id(branch)] = interpretation
+        branchid_interpretation[id(branch)] = interpretation
 
 
 def _regularize_expression(
@@ -136,6 +165,7 @@ def _regularize_expression(
     expression_context,
     branchid_interpretation,
     symbol_path,
+    is_cut,
 ):
     is_primary = symbol_path == ()
 
@@ -151,6 +181,7 @@ def _regularize_expression(
             expression_context,
             branchid_interpretation,
             is_primary,
+            is_cut,
         )
 
     else:
@@ -189,18 +220,23 @@ in file {2} at {3}""".format(
                 expression_context,
                 branchid_interpretation,
                 symbol_path + (symbol,),
+                False,
             )
             if expression_context[-1][1]["is_jagged"]:
                 is_jagged = True
 
         expression_context.append(
-            (expression, {"is_primary": is_primary, "is_jagged": is_jagged})
+            (
+                expression,
+                {"is_primary": is_primary, "is_cut": is_cut, "is_jagged": is_jagged},
+            )
         )
 
 
 def _regularize_expressions(
     hasbranches,
     expressions,
+    cut,
     filter_name,
     filter_typename,
     filter_branch,
@@ -229,6 +265,7 @@ def _regularize_expressions(
                 expression_context,
                 branchid_interpretation,
                 True,
+                False,
             )
 
     elif uproot4._util.isstr(expressions):
@@ -242,6 +279,7 @@ def _regularize_expressions(
             expression_context,
             branchid_interpretation,
             (),
+            False,
         )
 
     elif isinstance(expressions, Iterable):
@@ -273,6 +311,7 @@ def _regularize_expressions(
                     expression_context,
                     branchid_interpretation,
                     (),
+                    False,
                 )
             else:
                 branch = hasbranches[expression]
@@ -287,6 +326,7 @@ def _regularize_expressions(
                     expression_context,
                     branchid_interpretation,
                     True,
+                    False,
                 )
 
     else:
@@ -295,6 +335,22 @@ def _regularize_expressions(
             "branch or expression), a list of strings (multiple), or a dict "
             "or list of name, Interpretation pairs (branch names and their "
             "new Interpretation), not {0}".format(repr(expressions))
+        )
+
+    if cut is None:
+        pass
+    elif uproot4._util.isstr(cut):
+        _regularize_expression(
+            hasbranches,
+            cut,
+            aliases,
+            compute,
+            get_from_cache,
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            (),
+            True,
         )
 
     return arrays, expression_context, branchid_interpretation
@@ -615,6 +671,7 @@ class HasBranches(Mapping):
     def arrays(
         self,
         expressions=None,
+        cut=None,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -655,6 +712,7 @@ class HasBranches(Mapping):
         arrays, expression_context, branchid_interpretation = _regularize_expressions(
             self,
             expressions,
+            cut,
             filter_name,
             filter_typename,
             filter_branch,
@@ -666,7 +724,7 @@ class HasBranches(Mapping):
         ranges_or_baskets = []
         for expression, context in expression_context:
             branch = context.get("branch")
-            if branch is not None:
+            if branch is not None and not context["is_duplicate"]:
                 for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
                     entry_start, entry_stop
                 ):
@@ -704,7 +762,9 @@ class HasBranches(Mapping):
             arrays, expression_context, aliases, self.file.file_path, self.object_path,
         )
 
-        expression_context = [(e, c) for e, c in expression_context if c["is_primary"]]
+        expression_context = [
+            (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
+        ]
 
         return library.group(output, expression_context, how)
 
