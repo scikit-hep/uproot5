@@ -22,9 +22,11 @@ except ImportError:
 import uproot4.source.cursor
 import uproot4.interpretation
 import uproot4.interpretation.numerical
+import uproot4.interpretation.jagged
 import uproot4.interpretation.library
 import uproot4.interpretation.identify
 import uproot4.reading
+import uproot4.compute.python
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
 import uproot4._util
@@ -40,6 +42,42 @@ def _get_recursive(hasbranches, where):
             return got
     else:
         return None
+
+
+def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
+    if entry_start is None:
+        entry_start = 0
+    elif entry_start < 0:
+        entry_start += num_entries
+    entry_start = min(num_entries, max(0, entry_start))
+
+    if entry_stop is None:
+        entry_stop = num_entries
+    elif entry_stop < 0:
+        entry_stop += num_entries
+    entry_stop = min(num_entries, max(0, entry_stop))
+
+    if entry_stop < entry_start:
+        entry_stop = entry_start
+
+    return int(entry_start), int(entry_stop)
+
+
+def _regularize_executors(decompression_executor, interpretation_executor):
+    if decompression_executor is None:
+        decompression_executor = uproot4.decompression_executor
+    if interpretation_executor is None:
+        interpretation_executor = uproot4.interpretation_executor
+    return decompression_executor, interpretation_executor
+
+
+def _regularize_array_cache(array_cache, file):
+    if isinstance(array_cache, MutableMapping):
+        return array_cache
+    elif array_cache is None:
+        return file._array_cache
+    else:
+        raise TypeError("array_cache must be None or a MutableMapping")
 
 
 def _regularize_interpretation(interpretation):
@@ -276,40 +314,268 @@ _expression_strip_dot_whitespace = re.compile(r"\s*\.\s*")
 #     return name_interp_branch, original_jagged
 
 
-def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
-    if entry_start is None:
-        entry_start = 0
-    elif entry_start < 0:
-        entry_start += num_entries
-    entry_start = min(num_entries, max(0, entry_start))
+def _regularize_branchname(
+    hasbranches,
+    branchname,
+    branch,
+    interp,
+    get_from_cache,
+    arrays,
+    expression_context,
+    name_branch_interp,
+):
+    got = get_from_cache(branchname, interp)
+    if got is not None:
+        arrays[id(branch)] = got
 
-    if entry_stop is None:
-        entry_stop = num_entries
-    elif entry_stop < 0:
-        entry_stop += num_entries
-    entry_stop = min(num_entries, max(0, entry_stop))
+    expression_context.append((branchname, {"is_jagged": isinstance(interp, uproot4.interpretation.jagged.AsJagged)}))
 
-    if entry_stop < entry_start:
-        entry_stop = entry_start
-
-    return int(entry_start), int(entry_stop)
-
-
-def _regularize_executors(decompression_executor, interpretation_executor):
-    if decompression_executor is None:
-        decompression_executor = uproot4.decompression_executor
-    if interpretation_executor is None:
-        interpretation_executor = uproot4.interpretation_executor
-    return decompression_executor, interpretation_executor
+    name_branch_interp.append((branchname, branch, interp))
 
 
-def _regularize_array_cache(array_cache, file):
-    if isinstance(array_cache, MutableMapping):
-        return array_cache
-    elif array_cache is None:
-        return file._array_cache
+def _regularize_expression(
+    hasbranches,
+    expressions,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    aliases,
+    compute,
+    get_from_cache,
+    arrays,
+    expression_context,
+    name_branch_interp,
+):
+    raise NotImplementedError
+
+
+def _regularize_expressions(
+    hasbranches,
+    expressions,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    aliases,
+    compute,
+    get_from_cache,
+):
+    filter_name = uproot4._util.regularize_filter(filter_name)
+    filter_typename = uproot4._util.regularize_filter(filter_typename)
+    if filter_branch is None:
+        filter_branch = no_filter
+    elif not callable(filter_branch):
+        raise TypeError(
+            "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
+                repr(filter_branch)
+            )
+        )
+    if aliases is None:
+        aliases = hasbranches.aliases
     else:
-        raise TypeError("array_cache must be None or a MutableMapping")
+        new_aliases = dict(hasbranches.aliases)
+        new_aliases.update(aliases)
+        aliases = new_aliases
+
+    arrays = {}
+    expression_context = []
+    name_branch_interp = []
+
+    if expressions is None:
+        for branchname, branch in hasbranches.iteritems(
+            recursive=True,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+        ):
+            _regularize_branchname(
+                hasbranches,
+                branchname,
+                branch,
+                branch.interpretation,
+                get_from_cache,
+                arrays,
+                expression_context,
+                name_branch_interp,
+            )
+
+    elif uproot4._util.isstr(expressions):
+        _regularize_expression(
+            hasbranches,
+            expressions,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            aliases,
+            compute,
+            get_from_cache,
+            arrays,
+            expression_context,
+            name_branch_interp,
+        )
+
+    elif isinstance(expressions, Iterable):
+        if isinstance(expressions, dict):
+            items = expressions.items()
+        else:
+            items = []
+            for expression in expressions:
+                if uproot4._util.isstr(expression):
+                    items.append((expression, None))
+                elif isinstance(expression, tuple) and len(tuple) == 2:
+                    items.append(expression)
+                else:
+                    raise TypeError(
+                        "iterable of expressions must be strings or "
+                        "name, Interpretation pairs (length-2 tuples), not "
+                        + repr(expression)
+                    )
+
+        for expression, interp in items:
+            if interp is None:
+                _regularize_expression(
+                    hasbranches,
+                    expression,
+                    filter_name,
+                    filter_typename,
+                    filter_branch,
+                    aliases,
+                    compute,
+                    get_from_cache,
+                    arrays,
+                    expression_context,
+                    name_branch_interp,
+                )
+            else:
+                branch = hasbranches[expression]
+                if (filter_name(expression) and
+                    filter_typename(branch.typename) and
+                    filter_branch(branch)
+                ):
+                    interp = _regularize_interpretation(interp)
+                    _regularize_branchname(
+                        hasbranches,
+                        expression,
+                        branch,
+                        interp,
+                        get_from_cache,
+                        arrays,
+                        expression_context,
+                        name_branch_interp,
+                    )
+
+    else:
+        raise TypeError(
+            "expressions must be None (for all branches), a string (single "
+            "branch or expression), a list of strings (multiple), or a dict "
+            "or list of name, Interpretation pairs (branch names and their "
+            "new Interpretation), not {0}".format(repr(expressions))
+        )
+
+    return arrays, expression_context, name_branch_interp
+
+
+def _ranges_or_baskets_to_arrays(
+    hasbranches,
+    ranges_or_baskets,
+    branchid_interpretation,
+    entry_start,
+    entry_stop,
+    decompression_executor,
+    interpretation_executor,
+    library,
+    arrays,
+):
+    notifications = queue.Queue()
+
+    branchid_arrays = {}
+    branchid_num_baskets = {}
+    ranges = []
+    range_args = {}
+    range_original_index = {}
+    original_index = 0
+
+    for branch, basket_num, range_or_basket in ranges_or_baskets:
+        if id(branch) not in branchid_arrays:
+            branchid_arrays[id(branch)] = {}
+            branchid_num_baskets[id(branch)] = 0
+        branchid_num_baskets[id(branch)] += 1
+
+        if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
+            ranges.append(range_or_basket)
+            range_args[range_or_basket] = (branch, basket_num)
+            range_original_index[range_or_basket] = original_index
+        else:
+            notifications.put(range_or_basket)
+
+        original_index += 1
+
+    hasbranches._file.source.chunks(ranges, notifications=notifications)
+
+    def replace(ranges_or_baskets, original_index, basket):
+        branch, basket_num, range_or_basket = ranges_or_baskets[
+            original_index
+        ]
+        ranges_or_baskets[original_index] = branch, basket_num, basket
+
+    def chunk_to_basket(chunk, branch, basket_num):
+        try:
+            cursor = uproot4.source.cursor.Cursor(chunk.start)
+            basket = uproot4.models.TBasket.Model_TBasket.read(
+                chunk, cursor, {"basket_num": basket_num}, hasbranches._file, branch
+            )
+            original_index = range_original_index[(chunk.start, chunk.stop)]
+            replace(ranges_or_baskets, original_index, basket)
+        except Exception:
+            notifications.put(sys.exc_info())
+        else:
+            notifications.put(basket)
+
+    def basket_to_array(basket):
+        try:
+            assert basket.basket_num is not None
+            branch = basket.parent
+            interpretation = branchid_interpretation[id(branch)]
+            basket_arrays = branchid_arrays[id(branch)]
+            basket_arrays[basket.basket_num] = interpretation.basket_array(
+                basket.data, basket.byte_offsets, basket, branch
+            )
+            if len(basket_arrays) == branchid_num_baskets[id(branch)]:
+                arrays[id(branch)] = interpretation.final_array(
+                    basket_arrays,
+                    entry_start,
+                    entry_stop,
+                    branch.entry_offsets,
+                    library,
+                    branch,
+                )
+        except Exception:
+            notifications.put(sys.exc_info())
+        else:
+            notifications.put(None)
+
+    while len(arrays) < len(branchid_interpretation):
+        try:
+            obj = notifications.get(timeout=0.001)
+        except queue.Empty:
+            continue
+
+        if isinstance(obj, uproot4.source.chunk.Chunk):
+            chunk = obj
+            args = range_args[(chunk.start, chunk.stop)]
+            decompression_executor.submit(chunk_to_basket, chunk, *args)
+
+        elif isinstance(obj, uproot4.models.TBasket.Model_TBasket):
+            basket = obj
+            interpretation_executor.submit(basket_to_array, basket)
+
+        elif obj is None:
+            pass
+
+        elif isinstance(obj, tuple) and len(obj) == 3:
+            uproot4.source.futures.delayed_raise(*obj)
+
+        else:
+            raise AssertionError(obj)
 
 
 # def _compute_expressions(
@@ -566,112 +832,6 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
-    def _ranges_or_baskets_to_arrays(
-        self,
-        ranges_or_baskets,
-        branchid_interpretation,
-        entry_start,
-        entry_stop,
-        decompression_executor,
-        interpretation_executor,
-        library,
-        output,
-    ):
-        notifications = queue.Queue()
-
-        branchid_name = {}
-        branchid_arrays = {}
-        branchid_num_baskets = {}
-        ranges = []
-        range_args = {}
-        range_original_index = {}
-        original_index = 0
-
-        for name, branch, basket_num, range_or_basket in ranges_or_baskets:
-            if id(branch) not in branchid_name:
-                branchid_name[id(branch)] = name
-                branchid_arrays[id(branch)] = {}
-                branchid_num_baskets[id(branch)] = 0
-            branchid_num_baskets[id(branch)] += 1
-
-            if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
-                ranges.append(range_or_basket)
-                range_args[range_or_basket] = (branch, basket_num)
-                range_original_index[range_or_basket] = original_index
-            else:
-                notifications.put(range_or_basket)
-
-            original_index += 1
-
-        self._file.source.chunks(ranges, notifications=notifications)
-
-        def replace(ranges_or_baskets, original_index, basket):
-            name, branch, basket_num, range_or_basket = ranges_or_baskets[
-                original_index
-            ]
-            ranges_or_baskets[original_index] = name, branch, basket_num, basket
-
-        def chunk_to_basket(chunk, branch, basket_num):
-            try:
-                cursor = uproot4.source.cursor.Cursor(chunk.start)
-                basket = uproot4.models.TBasket.Model_TBasket.read(
-                    chunk, cursor, {"basket_num": basket_num}, self._file, branch
-                )
-                original_index = range_original_index[(chunk.start, chunk.stop)]
-                replace(ranges_or_baskets, original_index, basket)
-            except Exception:
-                notifications.put(sys.exc_info())
-            else:
-                notifications.put(basket)
-
-        def basket_to_array(basket):
-            try:
-                assert basket.basket_num is not None
-                branch = basket.parent
-                interpretation = branchid_interpretation[id(branch)]
-                basket_arrays = branchid_arrays[id(branch)]
-                basket_arrays[basket.basket_num] = interpretation.basket_array(
-                    basket.data, basket.byte_offsets, basket, branch
-                )
-                if len(basket_arrays) == branchid_num_baskets[id(branch)]:
-                    name = branchid_name[id(branch)]
-                    output[name] = interpretation.final_array(
-                        basket_arrays,
-                        entry_start,
-                        entry_stop,
-                        branch.entry_offsets,
-                        library,
-                        branch,
-                    )
-            except Exception:
-                notifications.put(sys.exc_info())
-            else:
-                notifications.put(None)
-
-        while len(output) < len(branchid_interpretation):
-            try:
-                obj = notifications.get(timeout=0.001)
-            except queue.Empty:
-                continue
-
-            if isinstance(obj, uproot4.source.chunk.Chunk):
-                chunk = obj
-                args = range_args[(chunk.start, chunk.stop)]
-                decompression_executor.submit(chunk_to_basket, chunk, *args)
-
-            elif isinstance(obj, uproot4.models.TBasket.Model_TBasket):
-                basket = obj
-                interpretation_executor.submit(basket_to_array, basket)
-
-            elif obj is None:
-                pass
-
-            elif isinstance(obj, tuple) and len(obj) == 3:
-                uproot4.source.futures.delayed_raise(*obj)
-
-            else:
-                raise AssertionError(obj)
-
     # def arrays(
     #     self,
     #     names=None,
@@ -773,6 +933,54 @@ class HasBranches(Mapping):
     #         )
 
     #     return library.group(output, original_jagged, how)
+
+    def arrays(
+        self,
+        expressions=None,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        aliases=None,
+        compute=uproot4.compute.python.ComputePython(),
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache=None,
+        library="ak",
+        how=None,
+    ):
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.tree.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+        library = uproot4.interpretation.library._regularize_library(library)
+
+        def get_from_cache(branchname, interp):
+            cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                self.cache_key,
+                interp.cache_key,
+                entry_start,
+                entry_stop,
+                library.name,
+            )
+            return array_cache.get(cache_key)
+
+        arrays, expression_context, name_branch_interp = _regularize_expressions(
+            self,
+            expressions,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            aliases,
+            compute,
+            get_from_cache,
+        )
+
+        raise NotImplementedError
 
 
 class TBranch(HasBranches):
@@ -1082,10 +1290,11 @@ in file {3}""".format(
         for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
             entry_start, entry_stop
         ):
-            ranges_or_baskets.append((None, self, basket_num, range_or_basket))
+            ranges_or_baskets.append((self, basket_num, range_or_basket))
 
-        output = {}
-        self._ranges_or_baskets_to_arrays(
+        arrays = {}
+        _ranges_or_baskets_to_arrays(
+            self,
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
@@ -1093,10 +1302,10 @@ in file {3}""".format(
             decompression_executor,
             interpretation_executor,
             library,
-            output,
+            arrays,
         )
 
         if array_cache is not None:
-            array_cache[cache_key] = output[None]
+            array_cache[cache_key] = arrays[id(self)]
 
-        return output[None]
+        return arrays[id(self)]
