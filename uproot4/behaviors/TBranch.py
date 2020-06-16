@@ -252,7 +252,7 @@ def _regularize_expressions(
             for expression in expressions:
                 if uproot4._util.isstr(expression):
                     items.append((expression, None))
-                elif isinstance(expression, tuple) and len(tuple) == 2:
+                elif isinstance(expression, tuple) and len(expression) == 2:
                     items.append(expression)
                 else:
                     raise TypeError(
@@ -985,6 +985,8 @@ in file {3}""".format(
     ):
         if interpretation is None:
             interpretation = self.interpretation
+        else:
+            interpretation = _regularize_interpretation(interpretation)
         branchid_interpretation = {id(self): interpretation}
 
         entry_start, entry_stop = _regularize_entries_start_stop(

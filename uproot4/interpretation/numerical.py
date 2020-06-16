@@ -195,12 +195,26 @@ class AsDtype(Numerical):
             output = data.view(dtype).reshape((-1,) + shape)
         except ValueError:
             raise ValueError(
-                """basket {0} in branch {1} has the wrong number of bytes ({2}) """
+                """basket {0} in tree/branch {1} has the wrong number of bytes ({2}) """
                 """for interpretation {3}
 in file {4}""".format(
                     basket.basket_num,
-                    repr(branch.name),
+                    branch.object_path,
                     len(data),
+                    self,
+                    branch.file.file_path,
+                )
+            )
+
+        if basket.num_entries != len(output):
+            raise ValueError(
+                """basket {0} in tree/branch {1} has the wrong number of entries """
+                """(expected {2}, obtained {3}) when interpreted as {4}
+in file {5}""".format(
+                    basket.basket_num,
+                    branch.object_path,
+                    basket.num_entries,
+                    len(output),
                     self,
                     branch.file.file_path,
                 )
