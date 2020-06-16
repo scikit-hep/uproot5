@@ -897,10 +897,27 @@ in file {3}""".format(
             return self._streamer.typename
 
         def leaf_to_typename(leaf):
-            if leaf.classname == "TLeafElement":
-                return "???"
+            dim = leaf.member("fTitle").count("[")
+            u = "u" if leaf.member("fIsUnsigned") else ""
+
+            if leaf.classname == "TLeafO":
+                return "bool" + "[]" * dim
+            elif leaf.classname == "TLeafB":
+                return u + "int8_t" + "[]" * dim
+            elif leaf.classname == "TLeafS":
+                return u + "int16_t" + "[]" * dim
+            elif leaf.classname == "TLeafI":
+                return u + "int32_t" + "[]" * dim
+            elif leaf.classname == "TLeafL":
+                return u + "int64_t" + "[]" * dim
+            elif leaf.classname == "TLeafF":
+                return "float" + "[]" * dim
+            elif leaf.classname == "TLeafD":
+                return "double" + "[]" * dim
+            elif leaf.classname == "TLeafC":
+                return "char*" + "*" * dim
             else:
-                return "{0}/{1}".format(leaf.member("fTitle"), leaf.classname[-1])
+                return "???"
 
         if len(self.member("fLeaves")) == 1:
             return leaf_to_typename(self.member("fLeaves")[0])
