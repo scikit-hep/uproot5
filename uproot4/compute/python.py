@@ -141,7 +141,13 @@ class ComputePython(uproot4.compute.Compute):
     def compute_expressions(
         self, arrays, expression_context, aliases, file_path, object_path
     ):
-        scope = {"arrays": arrays, "aliases": {}, "functions": self._functions}
+        scope = {"arrays": {}, "aliases": {}, "functions": self._functions}
+
+        for expression, context in expression_context:
+            branch = context.get("branch")
+            if branch is not None:
+                scope["arrays"][expression] = arrays[id(branch)]
+
         for alias_name, alias_expression in aliases.items():
             scope["aliases"][alias_name] = _expression_to_function(
                 alias_expression,

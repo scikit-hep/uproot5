@@ -81,6 +81,15 @@ def _regularize_array_cache(array_cache, file):
         raise TypeError("array_cache must be None or a MutableMapping")
 
 
+def _regularize_aliases(hasbranches, aliases):
+    if aliases is None:
+        return hasbranches.aliases
+    else:
+        new_aliases = dict(hasbranches.aliases)
+        new_aliases.update(aliases)
+        return new_aliases
+
+
 def _regularize_interpretation(interpretation):
     if isinstance(interpretation, uproot4.interpretation.Interpretation):
         return interpretation
@@ -199,13 +208,6 @@ def _regularize_expressions(
     compute,
     get_from_cache,
 ):
-    if aliases is None:
-        aliases = hasbranches.aliases
-    else:
-        new_aliases = dict(hasbranches.aliases)
-        new_aliases.update(aliases)
-        aliases = new_aliases
-
     arrays = {}
     expression_context = []
     branchid_interpretation = {}
@@ -649,6 +651,7 @@ class HasBranches(Mapping):
             else:
                 return None
 
+        aliases = _regularize_aliases(self, aliases)
         arrays, expression_context, branchid_interpretation = _regularize_expressions(
             self,
             expressions,
@@ -670,6 +673,7 @@ class HasBranches(Mapping):
                     ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
         _ranges_or_baskets_to_arrays(
+            self,
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
@@ -698,8 +702,7 @@ class HasBranches(Mapping):
         output = compute.compute_expressions(
             arrays, expression_context, aliases, self.file.file_path, self.object_path,
         )
-
-        return library.group(output, expression_context)
+        return library.group(output, expression_context, how)
 
 
 class TBranch(HasBranches):
