@@ -157,9 +157,7 @@ def test_arrays():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
-        result = sample.arrays(
-            ["I4", "F4"], aliases={"I4": "i4", "F4": "f4"}
-        )
+        result = sample.arrays(["I4", "F4"], aliases={"I4": "i4", "F4": "f4"})
         assert result.tolist() == [
             {"I4": -15, "F4": -14.899999618530273},
             {"I4": -14, "F4": -13.899999618530273},

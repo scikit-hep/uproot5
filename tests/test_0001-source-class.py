@@ -182,7 +182,6 @@ def test_fallback():
 
 
 @pytest.mark.network
-@pytest.mark.skip(reason="Cannot open the file for some reason.")
 def test_xrootd():
     pytest.importorskip("pyxrootd")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
