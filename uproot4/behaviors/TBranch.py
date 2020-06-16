@@ -123,7 +123,9 @@ def _regularize_branchname(
         if branchid_interpretation[id(branch)].cache_key != interpretation.cache_key:
             raise ValueError(
                 "a branch cannot be loaded with multiple interpretations: "
-                "{0} and {1}".format(repr(branchid_interpretation[id(branch)]), repr(interpretation))
+                "{0} and {1}".format(
+                    repr(branchid_interpretation[id(branch)]), repr(interpretation)
+                )
             )
         else:
             expression_context.append(

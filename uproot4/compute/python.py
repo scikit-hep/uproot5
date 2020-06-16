@@ -174,6 +174,7 @@ class ComputePython(uproot4.compute.Compute):
                 cut = _expression_to_function(
                     expression, aliases, self._functions, scope, file_path, object_path,
                 )()
+                break
 
         if cut is not None:
             cut = cut != 0

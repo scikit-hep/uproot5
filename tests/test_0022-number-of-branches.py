@@ -94,6 +94,9 @@ def test_interpretation():
         assert arrays[0].tolist() == list(range(241, 256)) + list(range(0, 15))
         assert arrays[1].tolist() == list(range(-15, 15))
 
+        with pytest.raises(ValueError):
+            sample.arrays([("i1", ">u1"), ("i1", None)], library="np", how=tuple)
+
 
 def test_compute():
     with uproot4.open(
@@ -127,9 +130,9 @@ def test_cut():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
-        assert sample.arrays("i4 + 100", cut="i4 > 0", library="np")["i4 + 100"].tolist() == list(
-            range(101, 115)
-        )
+        assert sample.arrays("i4 + 100", cut="i4 > 0", library="np")[
+            "i4 + 100"
+        ].tolist() == list(range(101, 115))
 
         arrays = sample.arrays(["i4 + 100", "i8 + 100"], cut="i4 > 0", library="np")
         assert set(arrays.keys()) == set(["i4 + 100", "i8 + 100"])
@@ -140,3 +143,50 @@ def test_cut():
         assert set(arrays.keys()) == set(["i4", "i8"])
         assert arrays["i4"].tolist() == list(range(1, 15))
         assert arrays["i8"].tolist() == list(range(1, 15))
+
+
+def test_aliases():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        assert sample.arrays(
+            "whatever", aliases={"whatever": "i4 + 100"}, library="np"
+        )["whatever"].tolist() == list(range(85, 115))
+
+        arrays = sample.arrays(
+            ["one", "two"], aliases={"one": "i4 + 100", "two": "i8 + 100"}, library="np"
+        )
+        assert set(arrays.keys()) == set(["one", "two"])
+        assert arrays["one"].tolist() == list(range(85, 115))
+        assert arrays["two"].tolist() == list(range(85, 115))
+
+        arrays = sample.arrays(
+            ["one", "two"], aliases={"one": "i4 + 100", "two": "one"}, library="np"
+        )
+        assert set(arrays.keys()) == set(["one", "two"])
+        assert arrays["one"].tolist() == list(range(85, 115))
+        assert arrays["two"].tolist() == list(range(85, 115))
+
+        with pytest.raises(ValueError):
+            sample.arrays(
+                ["one", "two"], aliases={"one": "two", "two": "one"}, library="np"
+            )
+
+        arrays = sample.arrays(
+            ["one", "two"],
+            cut="one > 100",
+            aliases={"one": "i4 + 100", "two": "i8 + 100"},
+            library="np",
+        )
+        assert set(arrays.keys()) == set(["one", "two"])
+        assert arrays["one"].tolist() == list(range(101, 115))
+        assert arrays["two"].tolist() == list(range(101, 115))
+
+        arrays = sample.arrays(
+            ["i4"],
+            cut="one > 100",
+            aliases={"one": "i4 + 100", "two": "i8 + 100"},
+            library="np",
+        )
+        assert set(arrays.keys()) == set(["i4"])
+        assert arrays["i4"].tolist() == list(range(1, 15))
