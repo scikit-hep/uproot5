@@ -76,7 +76,7 @@ def _walk_ast_yield_symbols(node, aliases, functions):
 def _ast_as_branch_expression(node, aliases, functions):
     if isinstance(node, ast.Name):
         if node.id in aliases:
-            return ast.parse("aliases[{0}]()".format(repr(node.id))).body[0].value
+            return ast.parse("get_alias({0})".format(repr(node.id))).body[0].value
         elif node.id in functions:
             return ast.parse("functions[{0}]".format(repr(node.id))).body[0].value
         else:
@@ -87,8 +87,8 @@ def _ast_as_branch_expression(node, aliases, functions):
         if name is None:
             value = _ast_as_branch_expression(node.value, aliases, functions)
             new_node = ast.Attribute(value, node.attr, node.ctx)
-            new_node.lineno = node.lineno
-            new_node.col_offset = node.col_offset
+            new_node.lineno = getattr(node, "lineno", 1)
+            new_node.col_offset = getattr(node, "col_offset", 0)
             return new_node
         else:
             return ast.parse("arrays[{0}]".format(repr(name))).body[0].value
@@ -99,8 +99,8 @@ def _ast_as_branch_expression(node, aliases, functions):
             field_value = getattr(node, field_name)
             args.append(_ast_as_branch_expression(field_value, aliases, functions))
         new_node = type(node)(*args)
-        new_node.lineno = node.lineno
-        new_node.col_offset = node.col_offset
+        new_node.lineno = getattr(node, "lineno", 1)
+        new_node.col_offset = getattr(node, "col_offset", 0)
         return new_node
 
     elif isinstance(node, list):
@@ -118,8 +118,8 @@ def _expression_to_function(
     function = ast.parse("lambda: None").body[0].value
     function.body = expr
     expression = ast.Expression(function)
-    expression.lineno = function.lineno
-    expression.col_offset = function.col_offset
+    expression.lineno = getattr(function, "lineno", 1)
+    expression.col_offset = getattr(function, "col_offset", 0)
     return eval(compile(expression, "<dynamic>", "eval"), scope)
 
 
@@ -141,28 +141,29 @@ class ComputePython(uproot4.compute.Compute):
     def compute_expressions(
         self, arrays, expression_context, aliases, file_path, object_path
     ):
-        scope = {"arrays": {}, "aliases": {}, "functions": self._functions}
+        alias_values = {}
+        def get_alias(alias_name):
+            if alias_name not in alias_values:
+                alias_values[alias_name] = _expression_to_function(
+                    aliases[alias_name],
+                    aliases,
+                    self._functions,
+                    scope,
+                    file_path,
+                    object_path,
+                )()
+            return alias_values[alias_name]
 
+        scope = {"arrays": {}, "get_alias": get_alias, "functions": self._functions}
         for expression, context in expression_context:
             branch = context.get("branch")
             if branch is not None:
                 scope["arrays"][expression] = arrays[id(branch)]
 
-        for alias_name, alias_expression in aliases.items():
-            scope["aliases"][alias_name] = _expression_to_function(
-                alias_expression,
-                aliases,
-                self._functions,
-                scope,
-                file_path,
-                object_path,
-            )
-
         output = {}
-
         for expression, context in expression_context:
-            output[expression] = _expression_to_function(
-                expression, aliases, self._functions, scope, file_path, object_path,
-            )()
-
+            if context["is_primary"]:
+                output[expression] = _expression_to_function(
+                    expression, aliases, self._functions, scope, file_path, object_path,
+                )()
         return output

@@ -88,3 +88,14 @@ def test_interpretation():
         assert isinstance(arrays, tuple) and len(arrays) == 2
         assert arrays[0].tolist() == list(range(241, 256)) + list(range(0, 15))
         assert arrays[1].tolist() == list(range(-15, 15))
+
+def test_compute():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        assert sample.arrays("i4 + 100", library="np")["i4 + 100"].tolist() == list(range(85, 115))
+
+        arrays = sample.arrays(["i4 + 100", "i8 + 100"], library="np")
+        assert set(arrays.keys()) == set(["i4 + 100", "i8 + 100"])
+        assert arrays["i4 + 100"].tolist() == list(range(85, 115))
+        assert arrays["i8 + 100"].tolist() == list(range(85, 115))

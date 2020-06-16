@@ -687,21 +687,25 @@ class HasBranches(Mapping):
         if array_cache is not None:
             for expression, context in expression_context:
                 branch = context.get("branch")
-                interpretation = branchid_interpretation[id(branch)]
                 if branch is not None:
-                    cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
-                        self.cache_key,
-                        expression,
-                        interpretation.cache_key,
-                        entry_start,
-                        entry_stop,
-                        library.name,
-                    )
-                array_cache[cache_key] = arrays[id(branch)]
+                    interpretation = branchid_interpretation[id(branch)]
+                    if branch is not None:
+                        cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                            self.cache_key,
+                            expression,
+                            interpretation.cache_key,
+                            entry_start,
+                            entry_stop,
+                            library.name,
+                        )
+                    array_cache[cache_key] = arrays[id(branch)]
 
         output = compute.compute_expressions(
             arrays, expression_context, aliases, self.file.file_path, self.object_path,
         )
+
+        expression_context = [(e, c) for e, c in expression_context if c["is_primary"]]
+
         return library.group(output, expression_context, how)
 
 
