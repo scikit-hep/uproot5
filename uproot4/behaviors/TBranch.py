@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import re
 import sys
 import threading
 
@@ -19,6 +20,8 @@ except ImportError:
     import Queue as queue
 
 import uproot4.source.cursor
+import uproot4.interpretation
+import uproot4.interpretation.numerical
 import uproot4.interpretation.library
 import uproot4.interpretation.identify
 import uproot4.reading
@@ -39,164 +42,238 @@ def _get_recursive(hasbranches, where):
         return None
 
 
-def _regularize_name(
-    hasbranches,
-    original_key,
-    value,
-    filter_name,
-    filter_typename,
-    filter_branch,
-    aliases,
-    functions,
-    name_interp_branch,
-    original_jagged,
-):
-    if aliases is not None and original_key in aliases:
-        key = aliases[original_key]
+def _regularize_interpretation(interpretation):
+    if isinstance(interpretation, uproot4.interpretation.Interpretation):
+        return interpretation
+    elif isinstance(interpretation, numpy.dtype):
+        return uproot4.interpretation.numerical.AsDtype(interpretation)
     else:
-        key = original_key
-
-    if functions is not None:
-        start = len(name_interp_branch)
-        for symbol in uproot4._util.free_symbols(
-            key, functions, hasbranches.file.file_path, hasbranches.object_path
-        ):
-            _regularize_name(
-                hasbranches,
-                symbol,
-                value,
-                filter_name,
-                filter_typename,
-                filter_branch,
-                aliases,
-                None,
-                name_interp_branch,
-                [],
-            )
-
-        is_jagged = any(
-            isinstance(interp, uproot4.interpretation.jagged.AsJagged)
-            for _, interp, _ in name_interp_branch[start:]
-        )
-        original_jagged.append((original_key, is_jagged))
-
-    else:
-        if uproot4._util.exact_filter(key):
-            try:
-                branch = hasbranches[key]
-            except KeyError:
-                raise uproot4.KeyInFileError(
-                    key, hasbranches.file.file_path, object_path=hasbranches.object_path
-                )
-            else:
-                if value is None:
-                    value = branch.interpretation
-                is_jagged = isinstance(value, uproot4.interpretation.jagged.AsJagged)
-                name_interp_branch.append((original_key, value, branch))
-                original_jagged.append((original_key, is_jagged))
-
-        else:
-            filter = uproot4._util.regularize_filter(key)
-            for name, branch in hasbranches.iteritems(
-                recursive=True,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-            ):
-                if filter(name):
-                    if value is None:
-                        value = branch.interpretation
-                    is_jagged = isinstance(
-                        value, uproot4.interpretation.jagged.AsJagged
-                    )
-                    name_interp_branch.append((original_key, value, branch))
-                    original_jagged.append((original_key, is_jagged))
+        dtype = numpy.dtype(interpretation)
+        dtype = dtype.newbyteorder(">")
+        return uproot4.interpretation.numerical.AsDtype(interpretation)
 
 
-def _regularize_names(
-    hasbranches, names, filter_name, filter_typename, filter_branch, aliases, functions
-):
-    filter_name = uproot4._util.regularize_filter(filter_name)
-    filter_typename = uproot4._util.regularize_filter(filter_typename)
-    if filter_branch is None:
-        filter_branch = no_filter
-    elif callable(filter_branch):
-        pass
-    else:
-        raise TypeError(
-            "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
-                repr(filter_branch)
-            )
-        )
+_expression_is_branch = re.compile(
+    r"^\s*[A-Za-z_][A-Za-z_0-9]*(\s*\.\s*[A-Za-z_][A-Za-z_0-9]*)*\s*$"
+)
+_expression_strip_dot_whitespace = re.compile(r"\s*\.\s*")
 
-    if aliases is None:
-        aliases = hasbranches.aliases
 
-    name_interp_branch, original_jagged = [], []
 
-    if uproot4._util.isstr(names):
-        _regularize_name(
-            hasbranches,
-            names,
-            None,
-            filter_name,
-            filter_typename,
-            filter_branch,
-            aliases,
-            functions,
-            name_interp_branch,
-            original_jagged,
-        )
+# def _regularize_name(
+#     hasbranches,
+#     expression,
+#     value,
+#     filter_name,
+#     filter_typename,
+#     filter_branch,
+#     aliases,
+#     functions,
+#     name_interp_branch,
+#     original_jagged,
+#     symbol_path,
+# ):
+#     if symbol_path is not None:
+#         if aliases is not None and expression in aliases:
+#             aliased_expression = aliases[expression]
+#         else:
+#             aliased_expression = expression
 
-    elif isinstance(names, dict):
-        for original_key, value in names.items():
-            if uproot4._util.isstr(original_key):
-                _regularize_name(
-                    hasbranches,
-                    original_key,
-                    value,
-                    filter_name,
-                    filter_typename,
-                    filter_branch,
-                    aliases,
-                    None,
-                    name_interp_branch,
-                    original_jagged,
-                )
-            else:
-                raise TypeError(
-                    "keys of a {{name: Interpretation}} dict must be "
-                    "strings, not {0}".format(repr(original_key))
-                )
+#         if _expression_is_branch.match(aliased_expression):
+#             name = _expression_strip_dot_whitespace.sub(".", aliased_expression.strip())
+#             try:
+#                 branch = hasbranches[name]
+#             except KeyError:
+#                 raise uproot4.KeyInFileError(
+#                     name, hasbranches.file.file_path, object_path=hasbranches.object_path
+#                 )
+#             else:
+#                 if value is None:
+#                     value = branch.interpretation
+#                 is_jagged = isinstance(value, uproot4.interpretation.jagged.AsJagged)
+#                 name_interp_branch.append((expression, value, branch))
+#                 original_jagged.append((expression, is_jagged))
 
-    elif isinstance(names, Iterable):
-        for original_key in names:
-            if uproot4._util.isstr(original_key):
-                _regularize_name(
-                    hasbranches,
-                    original_key,
-                    None,
-                    filter_name,
-                    filter_typename,
-                    filter_branch,
-                    aliases,
-                    functions,
-                    name_interp_branch,
-                    original_jagged,
-                )
-            else:
-                raise TypeError(
-                    "items in a names list must be strings, not "
-                    "{0}".format(repr(original_key))
-                )
+#         else:
+#             start = len(name_interp_branch)
+#             for symbol in uproot4._util.free_symbols(
+#                 aliased_expression,
+#                 functions,
+#                 hasbranches.file.file_path,
+#                 hasbranches.object_path,
+#             ):
+#                 if symbol in symbol_path:
+#                     raise ValueError(
+#                         """symbol {0} is recursively defined with aliases:
 
-    else:
-        raise TypeError(
-            "a names list must be a string, a list of strings, or a "
-            "{{name: Interpretation}} dict, not {0}".format(repr(names))
-        )
+#     {1}
 
-    return name_interp_branch, original_jagged
+# in file {2} at {3}""".format(
+#                         repr(symbol),
+#                         "\n    ".join("{0}: {1}".format(k, v) for k, v in aliases.items()),
+#                         hasbranches.file.file_path,
+#                         hasbranches.object_path,
+#                     )
+#                 )
+
+#                 _regularize_name(
+#                     hasbranches,
+#                     symbol,
+#                     value,
+#                     filter_name,
+#                     filter_typename,
+#                     filter_branch,
+#                     aliases,
+#                     functions,
+#                     name_interp_branch,
+#                     [],
+#                     symbol_path + (symbol,),
+#                 )
+
+#             is_jagged = any(
+#                 isinstance(interp, uproot4.interpretation.jagged.AsJagged)
+#                 for _, interp, _ in name_interp_branch[start:]
+#             )
+#             original_jagged.append((expression, is_jagged))
+
+#     else:
+#         try:
+#             branch = hasbranches[expression]
+#         except KeyError:
+#             raise uproot4.KeyInFileError(
+#                 expression, hasbranches.file.file_path, object_path=hasbranches.object_path
+#             )
+#         else:
+#             if value is None:
+#                 value = branch.interpretation
+#             is_jagged = isinstance(value, uproot4.interpretation.jagged.AsJagged)
+#             name_interp_branch.append((expression, value, branch))
+#             original_jagged.append((expression, is_jagged))
+
+
+# def _regularize_names(
+#     hasbranches, names, filter_name, filter_typename, filter_branch, aliases, functions
+# ):
+#     filter_name = uproot4._util.regularize_filter(filter_name)
+#     filter_typename = uproot4._util.regularize_filter(filter_typename)
+#     if filter_branch is None:
+#         filter_branch = no_filter
+#     elif callable(filter_branch):
+#         pass
+#     else:
+#         raise TypeError(
+#             "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
+#                 repr(filter_branch)
+#             )
+#         )
+
+#     if aliases is None:
+#         aliases = hasbranches.aliases
+#     else:
+#         new_aliases = dict(hasbranches.aliases)
+#         new_aliases.update(aliases)
+#         aliases = new_aliases
+
+#     name_interp_branch, original_jagged = [], []
+
+#     if names is None:
+#         for name, branch in hasbranches.iteritems(recursive=True):
+#             _regularize_name(
+#                 hasbranches,
+#                 name,
+#                 branch.interpretation,
+#                 filter_name,
+#                 filter_typename,
+#                 filter_branch,
+#                 aliases,
+#                 functions,
+#                 name_interp_branch,
+#                 original_jagged,
+#                 None,
+#             )
+
+#     elif uproot4._util.isstr(names):
+#         _regularize_name(
+#             hasbranches,
+#             names,
+#             None,
+#             filter_name,
+#             filter_typename,
+#             filter_branch,
+#             aliases,
+#             functions,
+#             name_interp_branch,
+#             original_jagged,
+#             (),
+#         )
+
+#     elif isinstance(names, dict):
+#         for name, value in names.items():
+#             if uproot4._util.isstr(name):
+#                 _regularize_name(
+#                     hasbranches,
+#                     name,
+#                     _regularize_interpretation(value),
+#                     filter_name,
+#                     filter_typename,
+#                     filter_branch,
+#                     aliases,
+#                     functions,
+#                     name_interp_branch,
+#                     original_jagged,
+#                     None,
+#                 )
+#             else:
+#                 raise TypeError(
+#                     "keys of a {{name: Interpretation}} dict must be "
+#                     "strings, not {0}".format(repr(original_key))
+#                 )
+
+#     elif isinstance(names, Iterable):
+#         for item in names:
+#             if uproot4._util.isstr(item):
+#                 _regularize_name(
+#                     hasbranches,
+#                     item,
+#                     None,
+#                     filter_name,
+#                     filter_typename,
+#                     filter_branch,
+#                     aliases,
+#                     functions,
+#                     name_interp_branch,
+#                     original_jagged,
+#                     (),
+#                 )
+#             elif isinstance(item, tuple) and len(item) == 2 and uproot4._util.isstr(item[0]):
+#                 _regularize_name(
+#                     hasbranches,
+#                     item[0],
+#                     _regularize_interpretation(item[1]),
+#                     filter_name,
+#                     filter_typename,
+#                     filter_branch,
+#                     aliases,
+#                     functions,
+#                     name_interp_branch,
+#                     original_jagged,
+#                     None,
+#                 )
+#             else:
+#                 raise TypeError(
+#                     "items in a names list must be strings or "
+#                     "(name, Interpretation) pairs, not {0}".format(
+#                         repr(original_key)
+#                     )
+#                 )
+
+#     else:
+#         raise TypeError(
+#             "a names list must be a string, a list of strings, or a "
+#             "{{name: Interpretation}} dict, not {0}".format(repr(names))
+#         )
+
+#     return name_interp_branch, original_jagged
 
 
 def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
@@ -235,20 +312,48 @@ def _regularize_array_cache(array_cache, file):
         raise TypeError("array_cache must be None or a MutableMapping")
 
 
-def _compute_expressions(arrays, original_jagged, aliases, functions):
-    scope = dict(functions)
-    scope.update(arrays)
+# def _compute_expressions(
+#     arrays,
+#     original_jagged,
+#     aliases,
+#     functions,
+#     file_path,
+#     object_path,
+# ):
+#     print("arrays", list(arrays))
 
-    output = {}
+#     scope = {
+#         "arrays": arrays,
+#         "aliases": {},
+#         "functions": functions,
+#     }
+#     for k, v in aliases.items():
+#         print("alias", k)
+#         scope["aliases"][k] = uproot4._util.branch_expression(
+#             v,
+#             aliases,
+#             functions,
+#             scope,
+#             file_path,
+#             object_path,
+#         )
 
-    for original_key, is_jagged in original_jagged:
-        if aliases is not None and original_key in aliases:
-            key = aliases[original_key]
-        else:
-            key = original_key
-        output[original_key] = eval(key, scope, {})
+#     output = {}
 
-    return output
+#     for original_key, is_jagged in original_jagged:
+#         print("expression", original_key)
+
+#         expression = uproot4._util.branch_expression(
+#             original_key,
+#             aliases,
+#             functions,
+#             scope,
+#             file_path,
+#             object_path,
+#         )
+#         output[original_key] = expression()
+
+#     return output
 
 
 class HasBranches(Mapping):
@@ -567,98 +672,107 @@ class HasBranches(Mapping):
             else:
                 raise AssertionError(obj)
 
-    def arrays(
-        self,
-        names,
-        entry_start=None,
-        entry_stop=None,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        aliases=None,
-        functions=None,
-        decompression_executor=None,
-        interpretation_executor=None,
-        array_cache=None,
-        library="ak",
-        how=None,
-    ):
-        name_interp_branch, original_jagged = _regularize_names(
-            self, names, filter_name, filter_typename, filter_branch, aliases, functions
-        )
-        branchid_interpretation = {}
-        for name, interp, branch in name_interp_branch:
-            branchid_interpretation[id(branch)] = interp
+    # def arrays(
+    #     self,
+    #     names=None,
+    #     entry_start=None,
+    #     entry_stop=None,
+    #     filter_name=no_filter,
+    #     filter_typename=no_filter,
+    #     filter_branch=no_filter,
+    #     aliases=None,
+    #     functions=None,
+    #     decompression_executor=None,
+    #     interpretation_executor=None,
+    #     array_cache=None,
+    #     library="ak",
+    #     how=None,
+    # ):
+    #     if functions is None:
+    #         functions = {}
+    #     name_interp_branch, original_jagged = _regularize_names(
+    #         self, names, filter_name, filter_typename, filter_branch, aliases, functions
+    #     )
+    #     branchid_interpretation = {}
+    #     for name, interp, branch in name_interp_branch:
+    #         branchid_interpretation[id(branch)] = interp
 
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            self.tree.num_entries, entry_start, entry_stop
-        )
-        decompression_executor, interpretation_executor = _regularize_executors(
-            decompression_executor, interpretation_executor
-        )
-        array_cache = _regularize_array_cache(array_cache, self._file)
-        library = uproot4.interpretation.library._regularize_library(library)
+    #     entry_start, entry_stop = _regularize_entries_start_stop(
+    #         self.tree.num_entries, entry_start, entry_stop
+    #     )
+    #     decompression_executor, interpretation_executor = _regularize_executors(
+    #         decompression_executor, interpretation_executor
+    #     )
+    #     array_cache = _regularize_array_cache(array_cache, self._file)
+    #     library = uproot4.interpretation.library._regularize_library(library)
 
-        output = {}
+    #     output = {}
 
-        branches_seen = set()
-        name_interp_branch_toget = []
-        if array_cache is not None:
-            for name, interp, branch in name_interp_branch:
-                if id(branch) not in branches_seen:
-                    branches_seen.add(id(branch))
-                    cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-                        branch.cache_key,
-                        interp.cache_key,
-                        entry_start,
-                        entry_stop,
-                        library.name,
-                    )
-                    got = array_cache.get(cache_key)
-                    if got is None:
-                        name_interp_branch_toget.append((name, interp, branch))
-                    else:
-                        output[name] = got
+    #     branches_seen = set()
+    #     name_interp_branch_toget = []
+    #     if array_cache is not None:
+    #         for name, interp, branch in name_interp_branch:
+    #             if id(branch) not in branches_seen:
+    #                 branches_seen.add(id(branch))
+    #                 cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+    #                     branch.cache_key,
+    #                     interp.cache_key,
+    #                     entry_start,
+    #                     entry_stop,
+    #                     library.name,
+    #                 )
+    #                 got = array_cache.get(cache_key)
+    #                 if got is None:
+    #                     name_interp_branch_toget.append((name, interp, branch))
+    #                 else:
+    #                     output[name] = got
 
-        else:
-            for name, interp, branch in name_interp_branch:
-                if id(branch) not in branches_seen:
-                    branches_seen.add(id(branch))
-                    name_interp_branch_toget.append((name, interp, branch))
+    #     else:
+    #         for name, interp, branch in name_interp_branch:
+    #             if id(branch) not in branches_seen:
+    #                 branches_seen.add(id(branch))
+    #                 name_interp_branch_toget.append((name, interp, branch))
 
-        ranges_or_baskets = []
-        for name, interp, branch in name_interp_branch_toget:
-            for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
-                entry_start, entry_stop
-            ):
-                ranges_or_baskets.append((name, branch, basket_num, range_or_basket))
+    #     ranges_or_baskets = []
+    #     for name, interp, branch in name_interp_branch_toget:
+    #         for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+    #             entry_start, entry_stop
+    #         ):
+    #             ranges_or_baskets.append((name, branch, basket_num, range_or_basket))
 
-        self._ranges_or_baskets_to_arrays(
-            ranges_or_baskets,
-            branchid_interpretation,
-            entry_start,
-            entry_stop,
-            decompression_executor,
-            interpretation_executor,
-            library,
-            output,
-        )
+    #     self._ranges_or_baskets_to_arrays(
+    #         ranges_or_baskets,
+    #         branchid_interpretation,
+    #         entry_start,
+    #         entry_stop,
+    #         decompression_executor,
+    #         interpretation_executor,
+    #         library,
+    #         output,
+    #     )
 
-        if array_cache is not None:
-            for name, interp, branch in name_interp_branch_toget:
-                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-                    branch.cache_key,
-                    interp.cache_key,
-                    entry_start,
-                    entry_stop,
-                    library.name,
-                )
-                array_cache[cache_key] = output[name]
+    #     if array_cache is not None:
+    #         for name, interp, branch in name_interp_branch_toget:
+    #             cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+    #                 branch.cache_key,
+    #                 interp.cache_key,
+    #                 entry_start,
+    #                 entry_stop,
+    #                 library.name,
+    #             )
+    #             array_cache[cache_key] = output[name]
 
-        if functions is not None:
-            output = _compute_expressions(output, original_jagged, aliases, functions)
+    #     if functions is not None:
+    #         output = _compute_expressions(
+    #             output,
+    #             original_jagged,
+    #             aliases,
+    #             functions,
+    #             self.file.file_path,
+    #             self.object_path,
+    #         )
 
-        return library.group(output, original_jagged, how)
+    #     return library.group(output, original_jagged, how)
 
 
 class TBranch(HasBranches):

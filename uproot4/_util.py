@@ -14,6 +14,10 @@ import re
 import glob
 
 try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
+try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
@@ -135,6 +139,9 @@ def regularize_filter(filter):
             return lambda x: glob.fnmatch.fnmatchcase(x, filter)
         else:
             return lambda x: x == filter
+    elif isinstance(filter, Iterable) and not isinstance(filter, bytes):
+        filters = [regularize_filter(f) for f in filter]
+        return lambda x: any(f(x) for f in filters)
     else:
         raise TypeError(
             "filter must be callable, a regex string between slashes, or a "
@@ -142,10 +149,90 @@ def regularize_filter(filter):
         )
 
 
+def attribute_to_dotted_name(node):
+    if isinstance(node, ast.Attribute):
+        tmp = attribute_to_dotted_name(node.value)
+        if tmp is None:
+            return None
+        else:
+            return tmp + "." + node.attr
+    elif isinstance(node, ast.Name):
+        return node.id
+    else:
+        return None
+
+
+def ast_as_branch_expression(node, aliases, functions):
+    if isinstance(node, ast.Name):
+        if node.id in aliases:
+            return ast.parse("aliases[{0}]()".format(repr(node.id))).body[0].value
+        elif node.id in functions:
+            return ast.parse("functions[{0}]".format(repr(node.id))).body[0].value
+        else:
+            return ast.parse("arrays[{0}]".format(repr(node.id))).body[0].value
+    elif isinstance(node, ast.Attribute):
+        name = attribute_to_dotted_name(node)
+        if name is None:
+            value = ast_as_branch_expression(node.value, aliases, functions)
+            new_node = ast.Attribute(value, node.attr, node.ctx)
+            new_node.lineno = node.lineno
+            new_node.col_offset = node.col_offset
+            return new_node
+        else:
+            return ast.parse("arrays[{0}]".format(repr(name))).body[0].value
+    elif isinstance(node, ast.AST):
+        args = []
+        for field_name in node._fields:
+            field_value = getattr(node, field_name)
+            args.append(ast_as_branch_expression(value, aliases, functions))
+        new_node = type(node)(*args)
+        new_node.lineno = node.lineno
+        new_node.col_offset = node.col_offset
+        return new_node
+    elif isinstance(node, list):
+        return [ast_as_branch_expression(x, aliases, functions) for x in node]
+    else:
+        return node
+
+
+def branch_expression(expression, aliases, functions, scope, file_path, object_path):
+    try:
+        node = ast.parse(expression)
+    except SyntaxError as err:
+        raise SyntaxError(
+            err.args[0] + "\nin file {0} at {1}".format(file_path, object_path),
+            err.args[1],
+        )
+
+    if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
+        raise SyntaxError(
+            "expected a single expression\nin file {0} at {1}".format(file_path, object_path),
+            err.args[1],
+        )
+
+    expr = ast_as_branch_expression(node.body[0].value, aliases, functions)
+
+    print(ast.dump(expr))
+
+    function = ast.parse("lambda: None").body[0].value
+    function.body = expr
+    expression = ast.Expression(function)
+    expression.lineno = function.lineno
+    expression.col_offset = function.col_offset
+    return eval(compile(expression, "<dynamic>", "eval"), scope)
+
+
 def walk_ast_yield_symbols(node, functions):
     if isinstance(node, ast.Name):
         if node.id not in functions:
             yield node.id
+    elif isinstance(node, ast.Attribute):
+        name = attribute_to_dotted_name(node)
+        if name is None:
+            for y in walk_ast_yield_symbols(node.value):
+                yield y
+        else:
+            yield name
     elif isinstance(node, ast.AST):
         for field_name in node._fields:
             x = getattr(node, field_name)
