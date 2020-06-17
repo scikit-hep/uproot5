@@ -190,3 +190,41 @@ def test_aliases():
         )
         assert set(arrays.keys()) == set(["i4"])
         assert arrays["i4"].tolist() == list(range(1, 15))
+
+
+def test_jagged():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+    )["sample"] as sample:
+        assert [x.tolist() for x in sample.arrays("Ai4", library="np")["Ai4"]] == [
+            [],
+            [-15],
+            [-15, -13],
+            [-15, -13, -11],
+            [-15, -13, -11, -9],
+            [],
+            [-10],
+            [-10, -8],
+            [-10, -8, -6],
+            [-10, -8, -6, -4],
+            [],
+            [-5],
+            [-5, -3],
+            [-5, -3, -1],
+            [-5, -3, -1, 1],
+            [],
+            [0],
+            [0, 2],
+            [0, 2, 4],
+            [0, 2, 4, 6],
+            [],
+            [5],
+            [5, 7],
+            [5, 7, 9],
+            [5, 7, 9, 11],
+            [],
+            [10],
+            [10, 12],
+            [10, 12, 14],
+            [10, 12, 14, 16],
+        ]

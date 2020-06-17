@@ -90,16 +90,13 @@ def test_leaf_interpretation():
         assert sample["Af8"].typename == "double[]"
 
 
-@pytest.mark.skip(reason="Temporarily turn off while rethinking multibranch-reading.")
 def test_compute():
     awkward1 = pytest.importorskip("awkward1")
 
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
-        result = sample.arrays(
-            ["stuff", "i4"], aliases={"stuff": "abs(i4) + Ai8"}, functions={"abs": abs}
-        )
+        result = sample.arrays(["stuff", "i4"], aliases={"stuff": "abs(i4) + Ai8"})
         assert result.tolist() == [
             {"stuff": [], "i4": -15},
             {"stuff": [-1], "i4": -14},
@@ -141,7 +138,6 @@ def test_compute():
         )
 
 
-@pytest.mark.skip(reason="Temporarily turn off while rethinking multibranch-reading.")
 def test_arrays():
     awkward1 = pytest.importorskip("awkward1")
 
@@ -599,7 +595,6 @@ def test_arrays():
         ]
 
 
-@pytest.mark.skip(reason="Temporarily turn off while rethinking multibranch-reading.")
 def test_jagged():
     interpretation = uproot4.interpretation.jagged.AsJagged(
         uproot4.interpretation.numerical.AsDtype(">i2")
@@ -672,7 +667,6 @@ def test_jagged():
         ]
 
 
-@pytest.mark.skip(reason="Temporarily turn off while rethinking multibranch-reading.")
 def test_jagged_awkward():
     awkward1 = pytest.importorskip("awkward1")
 
@@ -718,7 +712,6 @@ def test_jagged_awkward():
         ]
 
 
-@pytest.mark.skip(reason="Temporarily turn off while rethinking multibranch-reading.")
 def test_jagged_pandas():
     pandas = pytest.importorskip("pandas")
 
@@ -856,7 +849,6 @@ def test_jagged_pandas():
         ]
 
 
-@pytest.mark.skip(reason="Temporarily turn off while rethinking multibranch-reading.")
 def test_stl_vector():
     interpretation = uproot4.interpretation.jagged.AsJagged(
         uproot4.interpretation.numerical.AsDtype(">i4"), header_bytes=10
@@ -971,7 +963,6 @@ def test_stl_vector():
         ]
 
 
-@pytest.mark.skip(reason="Temporarily turn off while rethinking multibranch-reading.")
 def test_pandas_merge():
     pandas = pytest.importorskip("pandas")
 

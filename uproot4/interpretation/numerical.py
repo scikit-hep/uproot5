@@ -185,7 +185,7 @@ class AsDtype(Numerical):
 
     def basket_array(self, data, byte_offsets, basket, branch):
         self.hook_before_basket_array(
-            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch
+            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch,
         )
 
         assert byte_offsets is None
@@ -201,20 +201,6 @@ in file {4}""".format(
                     basket.basket_num,
                     branch.object_path,
                     len(data),
-                    self,
-                    branch.file.file_path,
-                )
-            )
-
-        if basket.num_entries != len(output):
-            raise ValueError(
-                """basket {0} in tree/branch {1} has the wrong number of entries """
-                """(expected {2}, obtained {3}) when interpreted as {4}
-in file {5}""".format(
-                    basket.basket_num,
-                    branch.object_path,
-                    basket.num_entries,
-                    len(output),
                     self,
                     branch.file.file_path,
                 )

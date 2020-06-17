@@ -418,9 +418,24 @@ def _ranges_or_baskets_to_arrays(
             branch = basket.parent
             interpretation = branchid_interpretation[id(branch)]
             basket_arrays = branchid_arrays[id(branch)]
+
             basket_arrays[basket.basket_num] = interpretation.basket_array(
                 basket.data, basket.byte_offsets, basket, branch
             )
+            if basket.num_entries != len(basket_arrays[basket.basket_num]):
+                raise ValueError(
+                    """basket {0} in tree/branch {1} has the wrong number of entries """
+                    """(expected {2}, obtained {3}) when interpreted as {4}
+    in file {5}""".format(
+                        basket.basket_num,
+                        branch.object_path,
+                        basket.num_entries,
+                        len(basket_arrays[basket.basket_num]),
+                        interpretation,
+                        branch.file.file_path,
+                    )
+                )
+
             if len(basket_arrays) == branchid_num_baskets[id(branch)]:
                 arrays[id(branch)] = interpretation.final_array(
                     basket_arrays,
