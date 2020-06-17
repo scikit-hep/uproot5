@@ -22,3 +22,20 @@ def test_formula_with_dot():
         assert tree.arrays("P3.Py - 50", library="np")["P3.Py - 50"].tolist() == list(
             range(-50, 50)
         )
+
+
+def test_formula_with_slash():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
+    )["tree"] as tree:
+        assert tree.arrays("get('evt/P3/P3.Py') - 50", library="np")[
+            "get('evt/P3/P3.Py') - 50"
+        ].tolist() == list(range(-50, 50))
+
+
+def test_formula_with_missing():
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
+    )["tree"] as tree:
+        with pytest.raises(KeyError):
+            tree.arrays("wonky", library="np")

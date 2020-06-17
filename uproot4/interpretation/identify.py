@@ -28,7 +28,8 @@ class UnknownInterpretation(Exception):
 
     def __str__(self):
         return """{0}
-in file {1} at {2}""".format(
+in file {1}
+in object {2}""".format(
             self.reason, self.file_path, self.object_path
         )
 

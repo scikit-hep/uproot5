@@ -660,7 +660,7 @@ class ReadOnlyKey(object):
             nameclass = ""
         else:
             nameclass = " {0}: {1}".format(self.name(cycle=True), self.classname())
-        return "<ReadOnlyKey{0} at byte {1} at 0x{2:012x}>".format(
+        return "<ReadOnlyKey{0} (seek pos {1}) at 0x{2:012x}>".format(
             nameclass, self.data_cursor.index, id(self)
         )
 

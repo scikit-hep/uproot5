@@ -12,13 +12,13 @@ def _expression_to_node(expression, file_path, object_path):
         node = ast.parse(expression)
     except SyntaxError as err:
         raise SyntaxError(
-            err.args[0] + "\nin file {0} at {1}".format(file_path, object_path),
+            err.args[0] + "\nin file {0}\nin object {1}".format(file_path, object_path),
             err.args[1],
         )
 
     if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
         raise SyntaxError(
-            "expected a single expression\nin file {0} at {1}".format(
+            "expected a single expression\nin file {0}\nin object {1}".format(
                 file_path, object_path
             )
         )
@@ -41,76 +41,122 @@ def _attribute_to_dotted_name(node):
         return None
 
 
-def _walk_ast_yield_symbols(node, aliases, functions):
-    if isinstance(node, ast.Name):
-        if node.id not in functions:
+def _walk_ast_yield_symbols(node, keys, aliases, functions, getter):
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == getter
+    ):
+        if len(node.args) == 1 and isinstance(node.args[0], ast.Str):
+            yield node.args[0].s
+        else:
+            raise TypeError(
+                "expected a constant string as the only argument of {0}; "
+                "found {1}".format(repr(getter), ast.dump(node.args))
+            )
+
+    elif isinstance(node, ast.Name):
+        if node.id in keys or node.id in aliases:
             yield node.id
+        elif node.id in functions or node.id == getter:
+            pass
+        else:
+            raise KeyError(node.id)
 
     elif isinstance(node, ast.Attribute):
         name = _attribute_to_dotted_name(node)
         if name is None:
-            for y in _walk_ast_yield_symbols(node.value, aliases, functions):
+            for y in _walk_ast_yield_symbols(
+                node.value, keys, aliases, functions, getter
+            ):
                 yield y
-        else:
+        elif name in keys or name in aliases:
             yield name
+        else:
+            # implicitly means functions and getter can't have dots in their names
+            raise KeyError(name)
 
     elif isinstance(node, ast.AST):
         for field_name in node._fields:
             x = getattr(node, field_name)
-            for y in _walk_ast_yield_symbols(x, aliases, functions):
+            for y in _walk_ast_yield_symbols(x, keys, aliases, functions, getter):
                 yield y
 
     elif isinstance(node, list):
         for x in node:
-            for y in _walk_ast_yield_symbols(x, aliases, functions):
+            for y in _walk_ast_yield_symbols(x, keys, aliases, functions, getter):
                 yield y
 
     else:
         pass
 
 
-def _ast_as_branch_expression(node, aliases, functions):
-    if isinstance(node, ast.Name):
-        if node.id in aliases:
-            return ast.parse("get_alias({0})".format(repr(node.id))).body[0].value
+def _ast_as_branch_expression(node, keys, aliases, functions, getter):
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == getter
+        and len(node.args) == 1
+        and isinstance(node.args[0], ast.Str)
+    ):
+        return node
+
+    elif isinstance(node, ast.Name):
+        if node.id in keys or node.id in aliases:
+            return ast.parse("get({0})".format(repr(node.id))).body[0].value
         elif node.id in functions:
-            return ast.parse("functions[{0}]".format(repr(node.id))).body[0].value
+            return ast.parse("function[{0}]".format(repr(node.id))).body[0].value
         else:
-            return ast.parse("arrays[{0}]".format(repr(node.id))).body[0].value
+            raise KeyError(node.id)
 
     elif isinstance(node, ast.Attribute):
         name = _attribute_to_dotted_name(node)
         if name is None:
-            value = _ast_as_branch_expression(node.value, aliases, functions)
+            value = _ast_as_branch_expression(
+                node.value, keys, aliases, functions, getter
+            )
             new_node = ast.Attribute(value, node.attr, node.ctx)
             new_node.lineno = getattr(node, "lineno", 1)
             new_node.col_offset = getattr(node, "col_offset", 0)
             return new_node
+        elif name in keys or name in aliases:
+            return ast.parse("get({0})".format(repr(name))).body[0].value
         else:
-            return ast.parse("arrays[{0}]".format(repr(name))).body[0].value
+            # implicitly means functions and getter can't have dots in their names
+            raise KeyError(name)
 
     elif isinstance(node, ast.AST):
         args = []
         for field_name in node._fields:
             field_value = getattr(node, field_name)
-            args.append(_ast_as_branch_expression(field_value, aliases, functions))
+            args.append(
+                _ast_as_branch_expression(field_value, keys, aliases, functions, getter)
+            )
         new_node = type(node)(*args)
         new_node.lineno = getattr(node, "lineno", 1)
         new_node.col_offset = getattr(node, "col_offset", 0)
         return new_node
 
     elif isinstance(node, list):
-        return [_ast_as_branch_expression(x, aliases, functions) for x in node]
+        return [
+            _ast_as_branch_expression(x, keys, aliases, functions, getter) for x in node
+        ]
 
     else:
         return node
 
 
 def _expression_to_function(
-    expression, aliases, functions, scope, file_path, object_path
+    expression, keys, aliases, functions, getter, scope, file_path, object_path
 ):
     node = _expression_to_node(expression, file_path, object_path)
-    expr = _ast_as_branch_expression(node.body[0].value, aliases, functions)
+    try:
+        expr = _ast_as_branch_expression(
+            node.body[0].value, keys, aliases, functions, getter
+        )
+    except KeyError as err:
+        raise uproot4.KeyInFileError(err.args[0], file_path, object_path=object_path)
+
     function = ast.parse("lambda: None").body[0].value
     function.body = expr
     expression = ast.Expression(function)
@@ -237,55 +283,85 @@ class ComputePython(uproot4.compute.Compute):
         "where": numpy.where,
     }
 
-    def __init__(self, functions=None):
+    def __init__(self, functions=None, getter="get"):
         if functions is None:
             self._functions = self.default_functions
         else:
             self._functions = dict(functions)
+        self._getter = getter
 
     @property
     def functions(self):
         return self._functions
 
-    def free_symbols(self, expression, aliases, file_path, object_path):
+    @property
+    def getter(self):
+        return self._getter
+
+    def free_symbols(self, expression, keys, aliases, file_path, object_path):
         node = _expression_to_node(expression, file_path, object_path)
-        return _walk_ast_yield_symbols(node, aliases, self._functions)
+        try:
+            return list(
+                _walk_ast_yield_symbols(
+                    node, keys, aliases, self._functions, self._getter
+                )
+            )
+        except KeyError as err:
+            raise uproot4.KeyInFileError(
+                err.args[0], file_path, object_path=object_path
+            )
 
     def compute_expressions(
-        self, arrays, expression_context, aliases, file_path, object_path
+        self, arrays, expression_context, keys, aliases, file_path, object_path
     ):
-        alias_values = {}
+        values = {}
 
-        def get_alias(alias_name):
-            if alias_name not in alias_values:
-                alias_values[alias_name] = _expression_to_function(
-                    aliases[alias_name],
+        def getter(name):
+            if name not in values:
+                values[name] = _expression_to_function(
+                    aliases[name],
+                    keys,
                     aliases,
                     self._functions,
+                    self._getter,
                     scope,
                     file_path,
                     object_path,
                 )()
-            return alias_values[alias_name]
+            return values[name]
 
-        scope = {"arrays": {}, "get_alias": get_alias, "functions": self._functions}
+        scope = {self._getter: getter, "function": self._functions}
         for expression, context in expression_context:
             branch = context.get("branch")
             if branch is not None:
-                scope["arrays"][expression] = arrays[id(branch)]
+                values[expression] = arrays[id(branch)]
 
         output = {}
         for expression, context in expression_context:
             if context["is_primary"] and not context["is_cut"]:
                 output[expression] = _expression_to_function(
-                    expression, aliases, self._functions, scope, file_path, object_path,
+                    expression,
+                    keys,
+                    aliases,
+                    self._functions,
+                    self._getter,
+                    scope,
+                    file_path,
+                    object_path,
                 )()
 
         cut = None
         for expression, context in expression_context:
             if context["is_primary"] and context["is_cut"]:
                 cut = _expression_to_function(
-                    expression, aliases, self._functions, scope, file_path, object_path,
+                    expression,
+                    keys,
+                    aliases,
+                    self._functions,
+                    self._getter,
+                    scope,
+                    file_path,
+                    object_path,
                 )()
                 break
 
