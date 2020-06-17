@@ -354,8 +354,9 @@ for file path {2}""".format(
 
         Calling this function blocks until `raw_data` is filled.
         """
+        self.wait()
+
         if (start, stop) in self:
-            self.wait()
             local_start = start - self._start
             local_stop = stop - self._start
             return self._raw_data[local_start:local_stop]
@@ -385,8 +386,9 @@ of file path {4}""".format(
 
         Calling this function blocks until `raw_data` is filled.
         """
+        self.wait()
+
         if self._start <= start:
-            self.wait()
             local_start = start - self._start
             return self._raw_data[local_start:]
 

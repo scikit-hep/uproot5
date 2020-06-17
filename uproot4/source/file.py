@@ -21,7 +21,7 @@ class FileResource(uproot4.source.chunk.Resource):
     __slots__ = ["_file_path", "_file"]
 
     def __init__(self, file_path):
-        self._file_path = os.path.expanduser(file_path)
+        self._file_path = file_path
         self._file = open(self._file_path, "rb")
 
     @property

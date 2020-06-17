@@ -6,8 +6,6 @@ Source and Resource for a memory mapped file, which is never multithreaded.
 
 from __future__ import absolute_import
 
-import os.path
-
 import numpy
 
 import uproot4.source.chunk
@@ -37,7 +35,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
-        self._file_path = os.path.expanduser(file_path)
+        self._file_path = file_path
         try:
             self._file = numpy.memmap(self._file_path, dtype=self._dtype, mode="r")
             self._fallback = None

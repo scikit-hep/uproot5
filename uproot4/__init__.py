@@ -111,7 +111,7 @@ class KeyInFileError(KeyError):
         if self.object_path is None:
             object_path = ""
         else:
-            object_path = " at {0}".format(self.object_path)
+            object_path = "\nin object {0}".format(self.object_path)
 
         if self.cycle == "any":
             return """not found: {0} (with any cycle number){1}

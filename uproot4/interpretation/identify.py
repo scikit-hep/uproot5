@@ -28,9 +28,74 @@ class UnknownInterpretation(Exception):
 
     def __str__(self):
         return """{0}
-in file {1} at {2}""".format(
+in file {1}
+in object {2}""".format(
             self.reason, self.file_path, self.object_path
         )
+
+    @property
+    def cache_key(self):
+        raise self
+
+    @property
+    def numpy_dtype(self):
+        raise self
+
+    @property
+    def awkward_form(self):
+        raise self
+
+    @property
+    def basket_array(self):
+        raise self
+
+    @property
+    def final_array(self):
+        raise self
+
+    @property
+    def hook_before_basket_array(self):
+        raise self
+
+    @property
+    def hook_after_basket_array(self):
+        raise self
+
+    @property
+    def hook_before_final_array(self):
+        raise self
+
+    @property
+    def hook_before_library_finalize(self):
+        raise self
+
+    @property
+    def hook_after_final_array(self):
+        raise self
+
+    @property
+    def itemsize(self):
+        raise self
+
+    @property
+    def from_dtype(self):
+        raise self
+
+    @property
+    def to_dtype(self):
+        raise self
+
+    @property
+    def content(self):
+        raise self
+
+    @property
+    def header_bytes(self):
+        raise self
+
+    @property
+    def size_1to5_bytes(self):
+        raise self
 
 
 def _normalize_ftype(fType):
@@ -345,4 +410,21 @@ def interpretation_of(branch, context):
                 )
 
     except NotNumerical:
+        if len(branch.member("fLeaves")) != 1:
+            raise UnknownInterpretation(
+                "more or less than one TLeaf ({0}) in a non-numerical TBranch".format(
+                    len(branch.member("fLeaves"))
+                ),
+                branch.file.file_path,
+                branch.object_path,
+            )
+
+        leaf = branch.member("fLeaves")[0]
+
+        if leaf.classname == "TLeafC":
+            return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
+
+        if leaf.classname == "TLeafElement":
+            raise NotImplementedError
+
         raise NotImplementedError

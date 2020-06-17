@@ -160,6 +160,7 @@ def _regularize_branchname(
 def _regularize_expression(
     hasbranches,
     expression,
+    keys,
     aliases,
     compute,
     get_from_cache,
@@ -194,7 +195,11 @@ def _regularize_expression(
 
         is_jagged = False
         for symbol in compute.free_symbols(
-            to_compute, aliases, hasbranches.file.file_path, hasbranches.object_path,
+            to_compute,
+            keys,
+            aliases,
+            hasbranches.file.file_path,
+            hasbranches.object_path,
         ):
             if symbol in symbol_path:
                 raise ValueError(
@@ -215,6 +220,7 @@ in file {2} at {3}""".format(
             _regularize_expression(
                 hasbranches,
                 symbol,
+                keys,
                 aliases,
                 compute,
                 get_from_cache,
@@ -242,6 +248,7 @@ def _regularize_expressions(
     filter_name,
     filter_typename,
     filter_branch,
+    keys,
     aliases,
     compute,
     get_from_cache,
@@ -256,24 +263,30 @@ def _regularize_expressions(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            full_paths=True,
         ):
-            _regularize_branchname(
-                hasbranches,
-                branchname,
-                branch,
+            if not isinstance(
                 branch.interpretation,
-                get_from_cache,
-                arrays,
-                expression_context,
-                branchid_interpretation,
-                True,
-                False,
-            )
+                uproot4.interpretation.identify.UnknownInterpretation,
+            ):
+                _regularize_branchname(
+                    hasbranches,
+                    branchname,
+                    branch,
+                    branch.interpretation,
+                    get_from_cache,
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    True,
+                    False,
+                )
 
     elif uproot4._util.isstr(expressions):
         _regularize_expression(
             hasbranches,
             expressions,
+            keys,
             aliases,
             compute,
             get_from_cache,
@@ -306,6 +319,7 @@ def _regularize_expressions(
                 _regularize_expression(
                     hasbranches,
                     expression,
+                    keys,
                     aliases,
                     compute,
                     get_from_cache,
@@ -345,6 +359,7 @@ def _regularize_expressions(
         _regularize_expression(
             hasbranches,
             cut,
+            keys,
             aliases,
             compute,
             get_from_cache,
@@ -504,12 +519,14 @@ class HasBranches(Mapping):
 
         if "/" in where:
             where = "/".join([x for x in where.split("/") if x != ""])
-            for k, v in self.iteritems(recursive=True):
+            for k, v in self.iteritems(recursive=True, full_paths=True):
                 if where == k:
                     self._lookup[original_where] = v
                     return v
             else:
-                raise uproot4.KeyInFileError(original_where, self._file.file_path)
+                raise uproot4.KeyInFileError(
+                    original_where, self._file.file_path, object_path=self.object_path
+                )
 
         elif recursive:
             got = _get_recursive(self, where)
@@ -517,7 +534,9 @@ class HasBranches(Mapping):
                 self._lookup[original_where] = got
                 return got
             else:
-                raise uproot4.KeyInFileError(original_where, self._file.file_path)
+                raise uproot4.KeyInFileError(
+                    original_where, self._file.file_path, object_path=self.object_path
+                )
 
         else:
             for branch in self.branches:
@@ -525,7 +544,9 @@ class HasBranches(Mapping):
                     self._lookup[original_where] = branch
                     return branch
             else:
-                raise uproot4.KeyInFileError(original_where, self._file.file_path)
+                raise uproot4.KeyInFileError(
+                    original_where, self._file.file_path, object_path=self.object_path
+                )
 
     def iteritems(
         self,
@@ -533,6 +554,7 @@ class HasBranches(Mapping):
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        full_paths=True,
     ):
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_typename = uproot4._util.regularize_filter(filter_typename)
@@ -560,8 +582,12 @@ class HasBranches(Mapping):
                     filter_name=no_filter,
                     filter_typename=filter_typename,
                     filter_branch=filter_branch,
+                    full_paths=full_paths,
                 ):
-                    k2 = "{0}/{1}".format(branch.name, k1)
+                    if full_paths:
+                        k2 = "{0}/{1}".format(branch.name, k1)
+                    else:
+                        k2 = k1
                     if filter_name(k2):
                         yield k2, v
 
@@ -571,6 +597,7 @@ class HasBranches(Mapping):
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        full_paths=True,
     ):
         return list(
             self.iteritems(
@@ -578,6 +605,7 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                full_paths=full_paths,
             )
         )
 
@@ -587,12 +615,14 @@ class HasBranches(Mapping):
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        full_paths=True,
     ):
         for k, v in self.iteritems(
             recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            full_paths=full_paths,
         ):
             yield k
 
@@ -602,6 +632,7 @@ class HasBranches(Mapping):
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        full_paths=True,
     ):
         return list(
             self.iterkeys(
@@ -609,6 +640,7 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                full_paths=full_paths,
             )
         )
 
@@ -628,6 +660,7 @@ class HasBranches(Mapping):
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            full_paths=False,
         ):
             yield v
 
@@ -644,6 +677,7 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                full_paths=False,
             )
         )
 
@@ -653,12 +687,14 @@ class HasBranches(Mapping):
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        full_paths=True,
     ):
         for k, v in self.iteritems(
             recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            full_paths=full_paths,
         ):
             yield k, v.typename
 
@@ -668,6 +704,7 @@ class HasBranches(Mapping):
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        full_paths=True,
     ):
         return dict(
             self.itertypenames(
@@ -675,6 +712,7 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                full_paths=full_paths,
             )
         )
 
@@ -725,6 +763,7 @@ class HasBranches(Mapping):
             else:
                 return None
 
+        keys = set(self.keys(recursive=True, full_paths=False))
         aliases = _regularize_aliases(self, aliases)
         arrays, expression_context, branchid_interpretation = _regularize_expressions(
             self,
@@ -733,6 +772,7 @@ class HasBranches(Mapping):
             filter_name,
             filter_typename,
             filter_branch,
+            keys,
             aliases,
             compute,
             get_from_cache,
@@ -776,7 +816,12 @@ class HasBranches(Mapping):
                     array_cache[cache_key] = arrays[id(branch)]
 
         output = compute.compute_expressions(
-            arrays, expression_context, aliases, self.file.file_path, self.object_path,
+            arrays,
+            expression_context,
+            keys,
+            aliases,
+            self.file.file_path,
+            self.object_path,
         )
 
         expression_context = [
@@ -947,9 +992,12 @@ in file {3}""".format(
     @property
     def interpretation(self):
         if self._interpretation is None:
-            self._interpretation = uproot4.interpretation.identify.interpretation_of(
-                self, {}
-            )
+            try:
+                self._interpretation = uproot4.interpretation.identify.interpretation_of(
+                    self, {}
+                )
+            except uproot4.interpretation.identify.UnknownInterpretation as err:
+                self._interpretation = err
         return self._interpretation
 
     @property

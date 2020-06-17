@@ -33,15 +33,13 @@ from uproot4._util import no_filter
 
 
 def open(
-    file_path,
-    object_cache=100,
-    array_cache="100 MB",
-    classes=uproot4.classes,
-    **options
+    path, object_cache=100, array_cache="100 MB", classes=uproot4.classes, **options
 ):
     """
     Args:
-        file_path (str or Path): File path or URL to open.
+        path (str or Path): Path or URL to open, which may include a colon
+            separating a file path from an object-within-ROOT path, like
+            `"root://server/path/to/file.root : internal_directory/my_ttree"`.
         object_cache (None, MutableMapping, or int): Cache of objects drawn
             from ROOT directories (e.g histograms, TTrees, other directories);
             if None, do not use a cache; if an int, create a new cache of this
@@ -70,11 +68,7 @@ def open(
         * minimal_ttree_metadata (bool; True)
     """
 
-    if "|" in file_path:
-        i = file_path.index("|")
-        file_path, object_path = file_path[:i].rstrip(), file_path[i + 1 :].lstrip()
-    else:
-        object_path = None
+    file_path, object_path = uproot4._util.file_object_path_split(path)
 
     file = ReadOnlyFile(
         file_path,
@@ -132,11 +126,10 @@ class ReadOnlyFile(object):
 
         self.hook_before_create_source()
 
-        Source = uproot4._util.path_to_source_class(file_path, self._options)
-        if file_path.startswith("file:"):
-            self._source = Source(file_path[5:], **self._options)
-        else:
-            self._source = Source(file_path, **self._options)
+        Source, file_path = uproot4._util.file_path_to_source_class(
+            file_path, self._options
+        )
+        self._source = Source(file_path, **self._options)
 
         self.hook_before_get_chunks()
 
@@ -667,7 +660,7 @@ class ReadOnlyKey(object):
             nameclass = ""
         else:
             nameclass = " {0}: {1}".format(self.name(cycle=True), self.classname())
-        return "<ReadOnlyKey{0} at byte {1} at 0x{2:012x}>".format(
+        return "<ReadOnlyKey{0} (seek pos {1}) at 0x{2:012x}>".format(
             nameclass, self.data_cursor.index, id(self)
         )
 
