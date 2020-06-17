@@ -102,3 +102,33 @@ def test_strings4():
             [[20.0, -21.0, -22.0]],
             [[200.0], [-201.0], [202.0]],
         ]
+
+
+@pytest.mark.skip(reason="FIXME: implement Double32")
+def test_double32():
+    del uproot4.classes["TBranch"]
+    del uproot4.classes["TBranchElement"]
+
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-demo-double32.root"),
+    )["T"] as t:
+
+        print(t["fD64"].interpretation)
+        print(t["fF32"].interpretation)
+        print(t["fI32"].interpretation)
+        print(t["fI30"].interpretation)
+        print(t["fI28"].interpretation)
+
+        fD64 = t["fD64"].array(library="np")
+        fF32 = t["fF32"].array(library="np")
+        fI32 = t["fI32"].array(library="np")
+        fI30 = t["fI30"].array(library="np")
+        fI28 = t["fI28"].array(library="np")
+        ratio_fF32 = fF32 / fD64
+        ratio_fI32 = fI32 / fD64
+        ratio_fI30 = fI30 / fD64
+        ratio_fI28 = fI28 / fD64
+        assert ratio_fF32.min() > 0.9999 and ratio_fF32.max() < 1.0001
+        assert ratio_fI32.min() > 0.9999 and ratio_fI32.max() < 1.0001
+        assert ratio_fI30.min() > 0.9999 and ratio_fI30.max() < 1.0001
+        assert ratio_fI28.min() > 0.9999 and ratio_fI28.max() < 1.0001

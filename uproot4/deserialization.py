@@ -45,7 +45,8 @@ def compile_class(file, classes, class_code, class_name):
 
     behavior_cls = uproot4.behavior_of(uproot4.model.classname_decode(class_name)[0])
     if behavior_cls is not None:
-        out.__bases__ = (behavior_cls,) + out.__bases__
+        out = uproot4._util.new_class(out.__name__, (behavior_cls, out), {})
+        out.__module__ = "<dynamic>"
 
     return out
 
