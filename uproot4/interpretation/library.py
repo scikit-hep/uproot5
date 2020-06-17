@@ -18,7 +18,7 @@ class Library(object):
        * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
        * `finalize(array, branch)`: Convert the internal storage form into one
              appropriate for this library (NumPy array, Pandas Series, etc.).
-       * `group(arrays, original_jagged, how)`: Combine arrays into a group,
+       * `group(arrays, expression_context, how)`: Combine arrays into a group,
              either a generic tuple or a grouping style appropriate for this
              library (NumPy array dict, Awkward RecordArray, etc.).
     """
@@ -33,13 +33,13 @@ class Library(object):
     def finalize(self, array, branch):
         raise AssertionError
 
-    def group(self, arrays, original_jagged, how):
+    def group(self, arrays, expression_context, how):
         if how is tuple:
-            return tuple(arrays[name] for name, _ in original_jagged)
+            return tuple(arrays[name] for name, _ in expression_context)
         elif how is list:
-            return [arrays[name] for name, _ in original_jagged]
+            return [arrays[name] for name, _ in expression_context]
         elif how is dict or how is None:
-            return dict((name, arrays[name]) for name, _ in original_jagged)
+            return dict((name, arrays[name]) for name, _ in expression_context)
         else:
             raise TypeError(
                 "for library {0}, how must be tuple, list, dict, or None (for "
@@ -118,27 +118,27 @@ class Awkward(Library):
             array = array.astype(array.dtype.newbyteorder("="), copy=False)
             return awkward1.from_numpy(array)
 
-    def group(self, arrays, original_jagged, how):
+    def group(self, arrays, expression_context, how):
         awkward1 = self.imported
 
         if how is tuple:
-            return tuple(arrays[name] for name, _ in original_jagged)
+            return tuple(arrays[name] for name, _ in expression_context)
         elif how is list:
-            return [arrays[name] for name, _ in original_jagged]
+            return [arrays[name] for name, _ in expression_context]
         elif how is dict:
-            return dict((name, arrays[name]) for name, _ in original_jagged)
+            return dict((name, arrays[name]) for name, _ in expression_context)
         elif how is None:
             return awkward1.zip(
-                dict((name, arrays[name]) for name, _ in original_jagged),
+                dict((name, arrays[name]) for name, _ in expression_context),
                 depth_limit=1,
             )
         elif how == "zip":
             nonjagged = []
             offsets = []
             jaggeds = []
-            for name, is_jagged in original_jagged:
+            for name, context in expression_context:
                 array = arrays[name]
-                if is_jagged:
+                if context["is_jagged"]:
                     if len(offsets) == 0:
                         offsets.append(array.layout.offsets)
                         jaggeds.append([name])
@@ -238,8 +238,8 @@ or
             array = array.astype(array.dtype.newbyteorder("="), copy=False)
             return pandas.Series(array)
 
-    def group(self, arrays, original_jagged, how):
-        names = [name for name, _ in original_jagged]
+    def group(self, arrays, expression_context, how):
+        names = [name for name, _ in expression_context]
         pandas = self.imported
         if how is tuple:
             return tuple(arrays[name] for name in names)

@@ -18,10 +18,16 @@ try:
 except ImportError:
     import Queue as queue
 
+import numpy
+
 import uproot4.source.cursor
+import uproot4.interpretation
+import uproot4.interpretation.numerical
+import uproot4.interpretation.jagged
 import uproot4.interpretation.library
 import uproot4.interpretation.identify
 import uproot4.reading
+import uproot4.compute.python
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
 import uproot4._util
@@ -37,166 +43,6 @@ def _get_recursive(hasbranches, where):
             return got
     else:
         return None
-
-
-def _regularize_name(
-    hasbranches,
-    original_key,
-    value,
-    filter_name,
-    filter_typename,
-    filter_branch,
-    aliases,
-    functions,
-    name_interp_branch,
-    original_jagged,
-):
-    if aliases is not None and original_key in aliases:
-        key = aliases[original_key]
-    else:
-        key = original_key
-
-    if functions is not None:
-        start = len(name_interp_branch)
-        for symbol in uproot4._util.free_symbols(
-            key, functions, hasbranches.file.file_path, hasbranches.object_path
-        ):
-            _regularize_name(
-                hasbranches,
-                symbol,
-                value,
-                filter_name,
-                filter_typename,
-                filter_branch,
-                aliases,
-                None,
-                name_interp_branch,
-                [],
-            )
-
-        is_jagged = any(
-            isinstance(interp, uproot4.interpretation.jagged.AsJagged)
-            for _, interp, _ in name_interp_branch[start:]
-        )
-        original_jagged.append((original_key, is_jagged))
-
-    else:
-        if uproot4._util.exact_filter(key):
-            try:
-                branch = hasbranches[key]
-            except KeyError:
-                raise uproot4.KeyInFileError(
-                    key, hasbranches.file.file_path, object_path=hasbranches.object_path
-                )
-            else:
-                if value is None:
-                    value = branch.interpretation
-                is_jagged = isinstance(value, uproot4.interpretation.jagged.AsJagged)
-                name_interp_branch.append((original_key, value, branch))
-                original_jagged.append((original_key, is_jagged))
-
-        else:
-            filter = uproot4._util.regularize_filter(key)
-            for name, branch in hasbranches.iteritems(
-                recursive=True,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-            ):
-                if filter(name):
-                    if value is None:
-                        value = branch.interpretation
-                    is_jagged = isinstance(
-                        value, uproot4.interpretation.jagged.AsJagged
-                    )
-                    name_interp_branch.append((original_key, value, branch))
-                    original_jagged.append((original_key, is_jagged))
-
-
-def _regularize_names(
-    hasbranches, names, filter_name, filter_typename, filter_branch, aliases, functions
-):
-    filter_name = uproot4._util.regularize_filter(filter_name)
-    filter_typename = uproot4._util.regularize_filter(filter_typename)
-    if filter_branch is None:
-        filter_branch = no_filter
-    elif callable(filter_branch):
-        pass
-    else:
-        raise TypeError(
-            "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
-                repr(filter_branch)
-            )
-        )
-
-    if aliases is None:
-        aliases = hasbranches.aliases
-
-    name_interp_branch, original_jagged = [], []
-
-    if uproot4._util.isstr(names):
-        _regularize_name(
-            hasbranches,
-            names,
-            None,
-            filter_name,
-            filter_typename,
-            filter_branch,
-            aliases,
-            functions,
-            name_interp_branch,
-            original_jagged,
-        )
-
-    elif isinstance(names, dict):
-        for original_key, value in names.items():
-            if uproot4._util.isstr(original_key):
-                _regularize_name(
-                    hasbranches,
-                    original_key,
-                    value,
-                    filter_name,
-                    filter_typename,
-                    filter_branch,
-                    aliases,
-                    None,
-                    name_interp_branch,
-                    original_jagged,
-                )
-            else:
-                raise TypeError(
-                    "keys of a {{name: Interpretation}} dict must be "
-                    "strings, not {0}".format(repr(original_key))
-                )
-
-    elif isinstance(names, Iterable):
-        for original_key in names:
-            if uproot4._util.isstr(original_key):
-                _regularize_name(
-                    hasbranches,
-                    original_key,
-                    None,
-                    filter_name,
-                    filter_typename,
-                    filter_branch,
-                    aliases,
-                    functions,
-                    name_interp_branch,
-                    original_jagged,
-                )
-            else:
-                raise TypeError(
-                    "items in a names list must be strings, not "
-                    "{0}".format(repr(original_key))
-                )
-
-    else:
-        raise TypeError(
-            "a names list must be a string, a list of strings, or a "
-            "{{name: Interpretation}} dict, not {0}".format(repr(names))
-        )
-
-    return name_interp_branch, original_jagged
 
 
 def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
@@ -235,20 +81,398 @@ def _regularize_array_cache(array_cache, file):
         raise TypeError("array_cache must be None or a MutableMapping")
 
 
-def _compute_expressions(arrays, original_jagged, aliases, functions):
-    scope = dict(functions)
-    scope.update(arrays)
+def _regularize_aliases(hasbranches, aliases):
+    if aliases is None:
+        return hasbranches.aliases
+    else:
+        new_aliases = dict(hasbranches.aliases)
+        new_aliases.update(aliases)
+        return new_aliases
 
-    output = {}
 
-    for original_key, is_jagged in original_jagged:
-        if aliases is not None and original_key in aliases:
-            key = aliases[original_key]
+def _regularize_interpretation(interpretation):
+    if isinstance(interpretation, uproot4.interpretation.Interpretation):
+        return interpretation
+    elif isinstance(interpretation, numpy.dtype):
+        return uproot4.interpretation.numerical.AsDtype(interpretation)
+    else:
+        dtype = numpy.dtype(interpretation)
+        dtype = dtype.newbyteorder(">")
+        return uproot4.interpretation.numerical.AsDtype(interpretation)
+
+
+def _regularize_branchname(
+    hasbranches,
+    branchname,
+    branch,
+    interpretation,
+    get_from_cache,
+    arrays,
+    expression_context,
+    branchid_interpretation,
+    is_primary,
+    is_cut,
+):
+    got = get_from_cache(branchname, interpretation)
+    if got is not None:
+        arrays[id(branch)] = got
+
+    is_jagged = isinstance(interpretation, uproot4.interpretation.jagged.AsJagged)
+
+    if id(branch) in branchid_interpretation:
+        if branchid_interpretation[id(branch)].cache_key != interpretation.cache_key:
+            raise ValueError(
+                "a branch cannot be loaded with multiple interpretations: "
+                "{0} and {1}".format(
+                    repr(branchid_interpretation[id(branch)]), repr(interpretation)
+                )
+            )
         else:
-            key = original_key
-        output[original_key] = eval(key, scope, {})
+            expression_context.append(
+                (
+                    branchname,
+                    {
+                        "is_primary": is_primary,
+                        "is_cut": is_cut,
+                        "is_duplicate": True,
+                        "is_jagged": is_jagged,
+                        "branch": branch,
+                    },
+                )
+            )
 
-    return output
+    else:
+        expression_context.append(
+            (
+                branchname,
+                {
+                    "is_primary": is_primary,
+                    "is_cut": is_cut,
+                    "is_duplicate": False,
+                    "is_jagged": is_jagged,
+                    "branch": branch,
+                },
+            )
+        )
+        branchid_interpretation[id(branch)] = interpretation
+
+
+def _regularize_expression(
+    hasbranches,
+    expression,
+    aliases,
+    compute,
+    get_from_cache,
+    arrays,
+    expression_context,
+    branchid_interpretation,
+    symbol_path,
+    is_cut,
+):
+    is_primary = symbol_path == ()
+
+    branch = hasbranches.get(expression)
+    if branch is not None:
+        _regularize_branchname(
+            hasbranches,
+            expression,
+            branch,
+            branch.interpretation,
+            get_from_cache,
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            is_primary,
+            is_cut,
+        )
+
+    else:
+        if expression in aliases:
+            to_compute = aliases[expression]
+        else:
+            to_compute = expression
+
+        is_jagged = False
+        for symbol in compute.free_symbols(
+            to_compute, aliases, hasbranches.file.file_path, hasbranches.object_path,
+        ):
+            if symbol in symbol_path:
+                raise ValueError(
+                    """symbol {0} is recursively defined with aliases:
+
+    {1}
+
+in file {2} at {3}""".format(
+                        repr(symbol),
+                        "\n    ".join(
+                            "{0}: {1}".format(k, v) for k, v in aliases.items()
+                        ),
+                        hasbranches.file.file_path,
+                        hasbranches.object_path,
+                    )
+                )
+
+            _regularize_expression(
+                hasbranches,
+                symbol,
+                aliases,
+                compute,
+                get_from_cache,
+                arrays,
+                expression_context,
+                branchid_interpretation,
+                symbol_path + (symbol,),
+                False,
+            )
+            if expression_context[-1][1]["is_jagged"]:
+                is_jagged = True
+
+        expression_context.append(
+            (
+                expression,
+                {"is_primary": is_primary, "is_cut": is_cut, "is_jagged": is_jagged},
+            )
+        )
+
+
+def _regularize_expressions(
+    hasbranches,
+    expressions,
+    cut,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    aliases,
+    compute,
+    get_from_cache,
+):
+    arrays = {}
+    expression_context = []
+    branchid_interpretation = {}
+
+    if expressions is None:
+        for branchname, branch in hasbranches.iteritems(
+            recursive=True,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+        ):
+            _regularize_branchname(
+                hasbranches,
+                branchname,
+                branch,
+                branch.interpretation,
+                get_from_cache,
+                arrays,
+                expression_context,
+                branchid_interpretation,
+                True,
+                False,
+            )
+
+    elif uproot4._util.isstr(expressions):
+        _regularize_expression(
+            hasbranches,
+            expressions,
+            aliases,
+            compute,
+            get_from_cache,
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            (),
+            False,
+        )
+
+    elif isinstance(expressions, Iterable):
+        if isinstance(expressions, dict):
+            items = expressions.items()
+        else:
+            items = []
+            for expression in expressions:
+                if uproot4._util.isstr(expression):
+                    items.append((expression, None))
+                elif isinstance(expression, tuple) and len(expression) == 2:
+                    items.append(expression)
+                else:
+                    raise TypeError(
+                        "iterable of expressions must be strings or "
+                        "name, Interpretation pairs (length-2 tuples), not "
+                        + repr(expression)
+                    )
+
+        for expression, interp in items:
+            if interp is None:
+                _regularize_expression(
+                    hasbranches,
+                    expression,
+                    aliases,
+                    compute,
+                    get_from_cache,
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    (),
+                    False,
+                )
+            else:
+                branch = hasbranches[expression]
+                interp = _regularize_interpretation(interp)
+                _regularize_branchname(
+                    hasbranches,
+                    expression,
+                    branch,
+                    interp,
+                    get_from_cache,
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    True,
+                    False,
+                )
+
+    else:
+        raise TypeError(
+            "expressions must be None (for all branches), a string (single "
+            "branch or expression), a list of strings (multiple), or a dict "
+            "or list of name, Interpretation pairs (branch names and their "
+            "new Interpretation), not {0}".format(repr(expressions))
+        )
+
+    if cut is None:
+        pass
+    elif uproot4._util.isstr(cut):
+        _regularize_expression(
+            hasbranches,
+            cut,
+            aliases,
+            compute,
+            get_from_cache,
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            (),
+            True,
+        )
+
+    return arrays, expression_context, branchid_interpretation
+
+
+def _ranges_or_baskets_to_arrays(
+    hasbranches,
+    ranges_or_baskets,
+    branchid_interpretation,
+    entry_start,
+    entry_stop,
+    decompression_executor,
+    interpretation_executor,
+    library,
+    arrays,
+):
+    notifications = queue.Queue()
+
+    branchid_arrays = {}
+    branchid_num_baskets = {}
+    ranges = []
+    range_args = {}
+    range_original_index = {}
+    original_index = 0
+
+    for branch, basket_num, range_or_basket in ranges_or_baskets:
+        if id(branch) not in branchid_arrays:
+            branchid_arrays[id(branch)] = {}
+            branchid_num_baskets[id(branch)] = 0
+        branchid_num_baskets[id(branch)] += 1
+
+        if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
+            ranges.append(range_or_basket)
+            range_args[range_or_basket] = (branch, basket_num)
+            range_original_index[range_or_basket] = original_index
+        else:
+            notifications.put(range_or_basket)
+
+        original_index += 1
+
+    hasbranches._file.source.chunks(ranges, notifications=notifications)
+
+    def replace(ranges_or_baskets, original_index, basket):
+        branch, basket_num, range_or_basket = ranges_or_baskets[original_index]
+        ranges_or_baskets[original_index] = branch, basket_num, basket
+
+    def chunk_to_basket(chunk, branch, basket_num):
+        try:
+            cursor = uproot4.source.cursor.Cursor(chunk.start)
+            basket = uproot4.models.TBasket.Model_TBasket.read(
+                chunk, cursor, {"basket_num": basket_num}, hasbranches._file, branch
+            )
+            original_index = range_original_index[(chunk.start, chunk.stop)]
+            replace(ranges_or_baskets, original_index, basket)
+        except Exception:
+            notifications.put(sys.exc_info())
+        else:
+            notifications.put(basket)
+
+    def basket_to_array(basket):
+        try:
+            assert basket.basket_num is not None
+            branch = basket.parent
+            interpretation = branchid_interpretation[id(branch)]
+            basket_arrays = branchid_arrays[id(branch)]
+
+            basket_arrays[basket.basket_num] = interpretation.basket_array(
+                basket.data, basket.byte_offsets, basket, branch
+            )
+            if basket.num_entries != len(basket_arrays[basket.basket_num]):
+                raise ValueError(
+                    """basket {0} in tree/branch {1} has the wrong number of entries """
+                    """(expected {2}, obtained {3}) when interpreted as {4}
+    in file {5}""".format(
+                        basket.basket_num,
+                        branch.object_path,
+                        basket.num_entries,
+                        len(basket_arrays[basket.basket_num]),
+                        interpretation,
+                        branch.file.file_path,
+                    )
+                )
+
+            if len(basket_arrays) == branchid_num_baskets[id(branch)]:
+                arrays[id(branch)] = interpretation.final_array(
+                    basket_arrays,
+                    entry_start,
+                    entry_stop,
+                    branch.entry_offsets,
+                    library,
+                    branch,
+                )
+        except Exception:
+            notifications.put(sys.exc_info())
+        else:
+            notifications.put(None)
+
+    while len(arrays) < len(branchid_interpretation):
+        try:
+            obj = notifications.get(timeout=0.001)
+        except queue.Empty:
+            continue
+
+        if isinstance(obj, uproot4.source.chunk.Chunk):
+            chunk = obj
+            args = range_args[(chunk.start, chunk.stop)]
+            decompression_executor.submit(chunk_to_basket, chunk, *args)
+
+        elif isinstance(obj, uproot4.models.TBasket.Model_TBasket):
+            basket = obj
+            interpretation_executor.submit(basket_to_array, basket)
+
+        elif obj is None:
+            pass
+
+        elif isinstance(obj, tuple) and len(obj) == 3:
+            uproot4.source.futures.delayed_raise(*obj)
+
+        else:
+            raise AssertionError(obj)
 
 
 class HasBranches(Mapping):
@@ -461,135 +685,23 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
-    def _ranges_or_baskets_to_arrays(
-        self,
-        ranges_or_baskets,
-        branchid_interpretation,
-        entry_start,
-        entry_stop,
-        decompression_executor,
-        interpretation_executor,
-        library,
-        output,
-    ):
-        notifications = queue.Queue()
-
-        branchid_name = {}
-        branchid_arrays = {}
-        branchid_num_baskets = {}
-        ranges = []
-        range_args = {}
-        range_original_index = {}
-        original_index = 0
-
-        for name, branch, basket_num, range_or_basket in ranges_or_baskets:
-            if id(branch) not in branchid_name:
-                branchid_name[id(branch)] = name
-                branchid_arrays[id(branch)] = {}
-                branchid_num_baskets[id(branch)] = 0
-            branchid_num_baskets[id(branch)] += 1
-
-            if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
-                ranges.append(range_or_basket)
-                range_args[range_or_basket] = (branch, basket_num)
-                range_original_index[range_or_basket] = original_index
-            else:
-                notifications.put(range_or_basket)
-
-            original_index += 1
-
-        self._file.source.chunks(ranges, notifications=notifications)
-
-        def replace(ranges_or_baskets, original_index, basket):
-            name, branch, basket_num, range_or_basket = ranges_or_baskets[
-                original_index
-            ]
-            ranges_or_baskets[original_index] = name, branch, basket_num, basket
-
-        def chunk_to_basket(chunk, branch, basket_num):
-            try:
-                cursor = uproot4.source.cursor.Cursor(chunk.start)
-                basket = uproot4.models.TBasket.Model_TBasket.read(
-                    chunk, cursor, {"basket_num": basket_num}, self._file, branch
-                )
-                original_index = range_original_index[(chunk.start, chunk.stop)]
-                replace(ranges_or_baskets, original_index, basket)
-            except Exception:
-                notifications.put(sys.exc_info())
-            else:
-                notifications.put(basket)
-
-        def basket_to_array(basket):
-            try:
-                assert basket.basket_num is not None
-                branch = basket.parent
-                interpretation = branchid_interpretation[id(branch)]
-                basket_arrays = branchid_arrays[id(branch)]
-                basket_arrays[basket.basket_num] = interpretation.basket_array(
-                    basket.data, basket.byte_offsets, basket, branch
-                )
-                if len(basket_arrays) == branchid_num_baskets[id(branch)]:
-                    name = branchid_name[id(branch)]
-                    output[name] = interpretation.final_array(
-                        basket_arrays,
-                        entry_start,
-                        entry_stop,
-                        branch.entry_offsets,
-                        library,
-                        branch,
-                    )
-            except Exception:
-                notifications.put(sys.exc_info())
-            else:
-                notifications.put(None)
-
-        while len(output) < len(branchid_interpretation):
-            try:
-                obj = notifications.get(timeout=0.001)
-            except queue.Empty:
-                continue
-
-            if isinstance(obj, uproot4.source.chunk.Chunk):
-                chunk = obj
-                args = range_args[(chunk.start, chunk.stop)]
-                decompression_executor.submit(chunk_to_basket, chunk, *args)
-
-            elif isinstance(obj, uproot4.models.TBasket.Model_TBasket):
-                basket = obj
-                interpretation_executor.submit(basket_to_array, basket)
-
-            elif obj is None:
-                pass
-
-            elif isinstance(obj, tuple) and len(obj) == 3:
-                uproot4.source.futures.delayed_raise(*obj)
-
-            else:
-                raise AssertionError(obj)
-
     def arrays(
         self,
-        names,
-        entry_start=None,
-        entry_stop=None,
+        expressions=None,
+        cut=None,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
-        functions=None,
+        compute=uproot4.compute.python.ComputePython(),
+        entry_start=None,
+        entry_stop=None,
         decompression_executor=None,
         interpretation_executor=None,
         array_cache=None,
         library="ak",
         how=None,
     ):
-        name_interp_branch, original_jagged = _regularize_names(
-            self, names, filter_name, filter_typename, filter_branch, aliases, functions
-        )
-        branchid_interpretation = {}
-        for name, interp, branch in name_interp_branch:
-            branchid_interpretation[id(branch)] = interp
-
         entry_start, entry_stop = _regularize_entries_start_stop(
             self.tree.num_entries, entry_start, entry_stop
         )
@@ -599,41 +711,44 @@ class HasBranches(Mapping):
         array_cache = _regularize_array_cache(array_cache, self._file)
         library = uproot4.interpretation.library._regularize_library(library)
 
-        output = {}
+        def get_from_cache(branchname, interpretation):
+            if array_cache is not None:
+                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                    self.cache_key,
+                    branchname,
+                    interpretation.cache_key,
+                    entry_start,
+                    entry_stop,
+                    library.name,
+                )
+                return array_cache.get(cache_key)
+            else:
+                return None
 
-        branches_seen = set()
-        name_interp_branch_toget = []
-        if array_cache is not None:
-            for name, interp, branch in name_interp_branch:
-                if id(branch) not in branches_seen:
-                    branches_seen.add(id(branch))
-                    cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-                        branch.cache_key,
-                        interp.cache_key,
-                        entry_start,
-                        entry_stop,
-                        library.name,
-                    )
-                    got = array_cache.get(cache_key)
-                    if got is None:
-                        name_interp_branch_toget.append((name, interp, branch))
-                    else:
-                        output[name] = got
-
-        else:
-            for name, interp, branch in name_interp_branch:
-                if id(branch) not in branches_seen:
-                    branches_seen.add(id(branch))
-                    name_interp_branch_toget.append((name, interp, branch))
+        aliases = _regularize_aliases(self, aliases)
+        arrays, expression_context, branchid_interpretation = _regularize_expressions(
+            self,
+            expressions,
+            cut,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            aliases,
+            compute,
+            get_from_cache,
+        )
 
         ranges_or_baskets = []
-        for name, interp, branch in name_interp_branch_toget:
-            for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
-                entry_start, entry_stop
-            ):
-                ranges_or_baskets.append((name, branch, basket_num, range_or_basket))
+        for expression, context in expression_context:
+            branch = context.get("branch")
+            if branch is not None and not context["is_duplicate"]:
+                for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+                    entry_start, entry_stop
+                ):
+                    ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
-        self._ranges_or_baskets_to_arrays(
+        _ranges_or_baskets_to_arrays(
+            self,
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
@@ -641,24 +756,34 @@ class HasBranches(Mapping):
             decompression_executor,
             interpretation_executor,
             library,
-            output,
+            arrays,
         )
 
         if array_cache is not None:
-            for name, interp, branch in name_interp_branch_toget:
-                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-                    branch.cache_key,
-                    interp.cache_key,
-                    entry_start,
-                    entry_stop,
-                    library.name,
-                )
-                array_cache[cache_key] = output[name]
+            for expression, context in expression_context:
+                branch = context.get("branch")
+                if branch is not None:
+                    interpretation = branchid_interpretation[id(branch)]
+                    if branch is not None:
+                        cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                            self.cache_key,
+                            expression,
+                            interpretation.cache_key,
+                            entry_start,
+                            entry_stop,
+                            library.name,
+                        )
+                    array_cache[cache_key] = arrays[id(branch)]
 
-        if functions is not None:
-            output = _compute_expressions(output, original_jagged, aliases, functions)
+        output = compute.compute_expressions(
+            arrays, expression_context, aliases, self.file.file_path, self.object_path,
+        )
 
-        return library.group(output, original_jagged, how)
+        expression_context = [
+            (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
+        ]
+
+        return library.group(output, expression_context, how)
 
 
 class TBranch(HasBranches):
@@ -787,10 +912,27 @@ in file {3}""".format(
             return self._streamer.typename
 
         def leaf_to_typename(leaf):
-            if leaf.classname == "TLeafElement":
-                return "???"
+            dim = leaf.member("fTitle").count("[")
+            u = "u" if leaf.member("fIsUnsigned") else ""
+
+            if leaf.classname == "TLeafO":
+                return "bool" + "[]" * dim
+            elif leaf.classname == "TLeafB":
+                return u + "int8_t" + "[]" * dim
+            elif leaf.classname == "TLeafS":
+                return u + "int16_t" + "[]" * dim
+            elif leaf.classname == "TLeafI":
+                return u + "int32_t" + "[]" * dim
+            elif leaf.classname == "TLeafL":
+                return u + "int64_t" + "[]" * dim
+            elif leaf.classname == "TLeafF":
+                return "float" + "[]" * dim
+            elif leaf.classname == "TLeafD":
+                return "double" + "[]" * dim
+            elif leaf.classname == "TLeafC":
+                return "char*" + "*" * dim
             else:
-                return "{0}/{1}".format(leaf.member("fTitle"), leaf.classname[-1])
+                return "???"
 
         if len(self.member("fLeaves")) == 1:
             return leaf_to_typename(self.member("fLeaves")[0])
@@ -941,6 +1083,8 @@ in file {3}""".format(
     ):
         if interpretation is None:
             interpretation = self.interpretation
+        else:
+            interpretation = _regularize_interpretation(interpretation)
         branchid_interpretation = {id(self): interpretation}
 
         entry_start, entry_stop = _regularize_entries_start_stop(
@@ -968,10 +1112,11 @@ in file {3}""".format(
         for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
             entry_start, entry_stop
         ):
-            ranges_or_baskets.append((None, self, basket_num, range_or_basket))
+            ranges_or_baskets.append((self, basket_num, range_or_basket))
 
-        output = {}
-        self._ranges_or_baskets_to_arrays(
+        arrays = {}
+        _ranges_or_baskets_to_arrays(
+            self,
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
@@ -979,10 +1124,10 @@ in file {3}""".format(
             decompression_executor,
             interpretation_executor,
             library,
-            output,
+            arrays,
         )
 
         if array_cache is not None:
-            array_cache[cache_key] = output[None]
+            array_cache[cache_key] = arrays[id(self)]
 
-        return output[None]
+        return arrays[id(self)]

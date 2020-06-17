@@ -91,7 +91,7 @@ def _names_entries_to_ranges_or_baskets(self, branch_names, entry_start, entry_s
         for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
             entry_start, entry_stop
         ):
-            out.append((name, branch, basket_num, range_or_basket))
+            out.append((branch, basket_num, range_or_basket))
     return out
 
 
@@ -100,9 +100,8 @@ def test_names_entries_to_ranges_or_baskets():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         out = _names_entries_to_ranges_or_baskets(sample, ["i4"], 0, 30)
-        assert all(x[0] == "i4" for x in out)
-        assert [x[2] for x in out] == [0, 1, 2, 3, 4]
-        assert [x[3] for x in out] == [
+        assert [x[1] for x in out] == [0, 1, 2, 3, 4]
+        assert [x[2] for x in out] == [
             (6992, 7091),
             (16085, 16184),
             (25939, 26038),
@@ -126,8 +125,9 @@ def test_ranges_or_baskets_to_arrays():
         interpretation_executor = uproot4.source.futures.TrivialExecutor()
         library = uproot4.interpretation.library._libraries["np"]
 
-        output = {}
-        sample._ranges_or_baskets_to_arrays(
+        arrays = {}
+        uproot4.behaviors.TBranch._ranges_or_baskets_to_arrays(
+            sample,
             ranges_or_baskets,
             branchid_interpretation,
             entry_start,
@@ -135,9 +135,9 @@ def test_ranges_or_baskets_to_arrays():
             decompression_executor,
             interpretation_executor,
             library,
-            output,
+            arrays,
         )
-        assert output["i4"].tolist() == [
+        assert arrays[id(branch)].tolist() == [
             -15,
             -14,
             -13,
@@ -221,7 +221,7 @@ def test_branch_array_1(file_handler):
 def test_branch_array_2(file_handler):
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
-        file_handler=file_handler
+        file_handler=file_handler,
     )["sample/i4"] as branch:
         assert branch.array(
             uproot4.interpretation.numerical.AsDtype(">i4"),
@@ -260,7 +260,7 @@ def test_branch_array_2(file_handler):
 def test_branch_array_3(file_handler):
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
-        file_handler=file_handler
+        file_handler=file_handler,
     )["sample/i4"] as branch:
         assert branch.array(
             uproot4.interpretation.numerical.AsDtype(">i4"),
@@ -300,7 +300,7 @@ def test_branch_array_3(file_handler):
 def test_branch_array_4(file_handler):
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
-        file_handler=file_handler
+        file_handler=file_handler,
     )["sample/i4"] as branch:
         with pytest.raises(ValueError):
             branch.array(uproot4.interpretation.numerical.AsDtype(">i8"), library="np")

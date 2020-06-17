@@ -54,40 +54,40 @@ def test_leaf_interpretation():
         assert repr(sample["af8"].interpretation) == """AsDtype("('>f8', (3,))")"""
         assert repr(sample["Af8"].interpretation) == """AsJagged(AsDtype('>f8'))"""
 
-        assert sample["n"].typename == "n/I"
-        assert sample["b"].typename == "b/O"
-        assert sample["ab"].typename == "ab[3]/O"
-        assert sample["Ab"].typename == "Ab[n]/O"
-        assert sample["i1"].typename == "i1/B"
-        assert sample["ai1"].typename == "ai1[3]/B"
-        assert sample["Ai1"].typename == "Ai1[n]/B"
-        assert sample["u1"].typename == "u1/B"
-        assert sample["au1"].typename == "au1[3]/B"
-        assert sample["Au1"].typename == "Au1[n]/B"
-        assert sample["i2"].typename == "i2/S"
-        assert sample["ai2"].typename == "ai2[3]/S"
-        assert sample["Ai2"].typename == "Ai2[n]/S"
-        assert sample["u2"].typename == "u2/S"
-        assert sample["au2"].typename == "au2[3]/S"
-        assert sample["Au2"].typename == "Au2[n]/S"
-        assert sample["i4"].typename == "i4/I"
-        assert sample["ai4"].typename == "ai4[3]/I"
-        assert sample["Ai4"].typename == "Ai4[n]/I"
-        assert sample["u4"].typename == "u4/I"
-        assert sample["au4"].typename == "au4[3]/I"
-        assert sample["Au4"].typename == "Au4[n]/I"
-        assert sample["i8"].typename == "i8/L"
-        assert sample["ai8"].typename == "ai8[3]/L"
-        assert sample["Ai8"].typename == "Ai8[n]/L"
-        assert sample["u8"].typename == "u8/L"
-        assert sample["au8"].typename == "au8[3]/L"
-        assert sample["Au8"].typename == "Au8[n]/L"
-        assert sample["f4"].typename == "f4/F"
-        assert sample["af4"].typename == "af4[3]/F"
-        assert sample["Af4"].typename == "Af4[n]/F"
-        assert sample["f8"].typename == "f8/D"
-        assert sample["af8"].typename == "af8[3]/D"
-        assert sample["Af8"].typename == "Af8[n]/D"
+        assert sample["n"].typename == "int32_t"
+        assert sample["b"].typename == "bool"
+        assert sample["ab"].typename == "bool[]"
+        assert sample["Ab"].typename == "bool[]"
+        assert sample["i1"].typename == "int8_t"
+        assert sample["ai1"].typename == "int8_t[]"
+        assert sample["Ai1"].typename == "int8_t[]"
+        assert sample["u1"].typename == "uint8_t"
+        assert sample["au1"].typename == "uint8_t[]"
+        assert sample["Au1"].typename == "uint8_t[]"
+        assert sample["i2"].typename == "int16_t"
+        assert sample["ai2"].typename == "int16_t[]"
+        assert sample["Ai2"].typename == "int16_t[]"
+        assert sample["u2"].typename == "uint16_t"
+        assert sample["au2"].typename == "uint16_t[]"
+        assert sample["Au2"].typename == "uint16_t[]"
+        assert sample["i4"].typename == "int32_t"
+        assert sample["ai4"].typename == "int32_t[]"
+        assert sample["Ai4"].typename == "int32_t[]"
+        assert sample["u4"].typename == "uint32_t"
+        assert sample["au4"].typename == "uint32_t[]"
+        assert sample["Au4"].typename == "uint32_t[]"
+        assert sample["i8"].typename == "int64_t"
+        assert sample["ai8"].typename == "int64_t[]"
+        assert sample["Ai8"].typename == "int64_t[]"
+        assert sample["u8"].typename == "uint64_t"
+        assert sample["au8"].typename == "uint64_t[]"
+        assert sample["Au8"].typename == "uint64_t[]"
+        assert sample["f4"].typename == "float"
+        assert sample["af4"].typename == "float[]"
+        assert sample["Af4"].typename == "float[]"
+        assert sample["f8"].typename == "double"
+        assert sample["af8"].typename == "double[]"
+        assert sample["Af8"].typename == "double[]"
 
 
 def test_compute():
@@ -96,9 +96,7 @@ def test_compute():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
-        result = sample.arrays(
-            ["stuff", "i4"], aliases={"stuff": "abs(i4) + Ai8"}, functions={"abs": abs}
-        )
+        result = sample.arrays(["stuff", "i4"], aliases={"stuff": "abs(i4) + Ai8"})
         assert result.tolist() == [
             {"stuff": [], "i4": -15},
             {"stuff": [-1], "i4": -14},
@@ -155,9 +153,7 @@ def test_arrays():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
-        result = sample.arrays(
-            {"I4": interp_i4, "F4": interp_f4}, aliases={"I4": "i4", "F4": "f4"}
-        )
+        result = sample.arrays(["I4", "F4"], aliases={"I4": "i4", "F4": "f4"})
         assert result.tolist() == [
             {"I4": -15, "F4": -14.899999618530273},
             {"I4": -14, "F4": -13.899999618530273},

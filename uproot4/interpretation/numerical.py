@@ -185,7 +185,7 @@ class AsDtype(Numerical):
 
     def basket_array(self, data, byte_offsets, basket, branch):
         self.hook_before_basket_array(
-            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch
+            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch,
         )
 
         assert byte_offsets is None
@@ -195,11 +195,11 @@ class AsDtype(Numerical):
             output = data.view(dtype).reshape((-1,) + shape)
         except ValueError:
             raise ValueError(
-                """basket {0} in branch {1} has the wrong number of bytes ({2}) """
+                """basket {0} in tree/branch {1} has the wrong number of bytes ({2}) """
                 """for interpretation {3}
 in file {4}""".format(
                     basket.basket_num,
-                    repr(branch.name),
+                    branch.object_path,
                     len(data),
                     self,
                     branch.file.file_path,

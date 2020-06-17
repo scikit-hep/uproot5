@@ -6,13 +6,16 @@ Utilities for internal use.
 
 from __future__ import absolute_import
 
-import ast
 import os
 import sys
 import numbers
 import re
 import glob
 
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -135,40 +138,14 @@ def regularize_filter(filter):
             return lambda x: glob.fnmatch.fnmatchcase(x, filter)
         else:
             return lambda x: x == filter
+    elif isinstance(filter, Iterable) and not isinstance(filter, bytes):
+        filters = [regularize_filter(f) for f in filter]
+        return lambda x: any(f(x) for f in filters)
     else:
         raise TypeError(
             "filter must be callable, a regex string between slashes, or a "
             "glob pattern, not {0}".format(repr(filter))
         )
-
-
-def walk_ast_yield_symbols(node, functions):
-    if isinstance(node, ast.Name):
-        if node.id not in functions:
-            yield node.id
-    elif isinstance(node, ast.AST):
-        for field_name in node._fields:
-            x = getattr(node, field_name)
-            for y in walk_ast_yield_symbols(x, functions):
-                yield y
-    elif isinstance(node, list):
-        for x in node:
-            for y in walk_ast_yield_symbols(x, functions):
-                yield y
-    else:
-        pass
-
-
-def free_symbols(expression, functions, file_path, object_path):
-    try:
-        node = ast.parse(expression)
-    except SyntaxError as err:
-        raise SyntaxError(
-            err.args[0] + "\nin file {0} at {1}".format(file_path, object_path),
-            err.args[1],
-        )
-    else:
-        return list(walk_ast_yield_symbols(node, functions))
 
 
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")

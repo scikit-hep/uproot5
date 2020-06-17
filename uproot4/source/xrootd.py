@@ -238,7 +238,7 @@ in file {1}""".format(
 
         return self._num_bytes
 
-    def chunk(self, start, stop, exact=True, long_lived=False):
+    def chunk(self, start, stop, exact=True):
         """
         Args:
             start (int): The start (inclusive) byte position for the desired
@@ -248,8 +248,6 @@ in file {1}""".format(
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
-            long_lived (bool): If True, ensure that the returned Chunk has
-                indefinite lifespan (i.e. not attached to an open memory map).
 
         Returns a single Chunk that has already been filled synchronously.
         """
@@ -261,7 +259,7 @@ in file {1}""".format(
         future = uproot4.source.futures.TrivialFuture(data)
         return uproot4.source.chunk.Chunk(self, start, stop, future, exact)
 
-    def chunks(self, ranges, exact=True, long_lived=False, notifications=None):
+    def chunks(self, ranges, exact=True, notifications=None):
         """
         Args:
             ranges (iterable of (int, int)): The start (inclusive) and stop
@@ -269,8 +267,6 @@ in file {1}""".format(
             exact (bool): If False, attempts to access bytes beyond the
                 end of the Chunk raises a RefineChunk; if True, it raises
                 an OSError with an informative message.
-            long_lived (bool): If True, ensure that the returned Chunk has
-                indefinite lifespan (i.e. not attached to an open memory map).
             notifications (None or Queue): If not None, Chunks will be put
                 on this Queue immediately after they are ready.
 
