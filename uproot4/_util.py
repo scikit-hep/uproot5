@@ -148,22 +148,52 @@ def regularize_filter(filter):
         )
 
 
+def regularize_path(path):
+    if isinstance(path, getattr(os, "PathLike", ())):
+        path = os.fspath(path)
+
+    elif hasattr(path, "__fspath__"):
+        path = path.__fspath__()
+
+    elif path.__class__.__module__ == "pathlib":
+        import pathlib
+
+        if isinstance(path, pathlib.Path):
+            path = str(path)
+
+    return path
+
+
+_windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
 _windows_absolute_path_pattern_slash = re.compile(r"^/[A-Za-z]:\\")
 
 
-def path_to_source_class(file_path, options):
-    if isinstance(file_path, getattr(os, "PathLike", ())):
-        file_path = os.fspath(file_path)
+def file_object_path_split(path):
+    path = regularize_path(path)
 
-    elif hasattr(file_path, "__fspath__"):
-        file_path = file_path.__fspath__()
+    try:
+        index = path.rindex(":")
+    except ValueError:
+        return path, None
+    else:
+        file_path, object_path = path[:index], path[index + 1 :]
+        file_path = file_path.rstrip()
+        object_path = object_path.lstrip()
 
-    elif file_path.__class__.__module__ == "pathlib":
-        import pathlib
+        if file_path.upper() in ("FILE", "HTTP", "HTTPS", "ROOT"):
+            return path, None
+        elif (
+            os.name == "nt"
+            and _windows_drive_letter_ending.match(file_path) is not None
+        ):
+            return path, None
+        else:
+            return file_path, object_path
 
-        if isinstance(file_path, pathlib.Path):
-            file_path = str(file_path)
+
+def file_path_to_source_class(file_path, options):
+    file_path = regularize_path(file_path)
 
     windows_absolute_path = None
 
@@ -180,12 +210,12 @@ def path_to_source_class(file_path, options):
             windows_absolute_path = parsed_url.path[1:]
 
     if (
-        parsed_url.scheme == "file"
+        parsed_url.scheme.upper() == "FILE"
         or len(parsed_url.scheme) == 0
         or windows_absolute_path
     ):
         if windows_absolute_path is None:
-            if parsed_url.netloc == "localhost":
+            if parsed_url.netloc.upper() == "LOCALHOST":
                 file_path = parsed_url.path
             else:
                 file_path = parsed_url.netloc + parsed_url.path
@@ -194,10 +224,10 @@ def path_to_source_class(file_path, options):
 
         return options["file_handler"], os.path.expanduser(file_path)
 
-    elif parsed_url.scheme == "root":
+    elif parsed_url.scheme.upper() == "ROOT":
         return options["xrootd_handler"], file_path
 
-    elif parsed_url.scheme == "http" or parsed_url.scheme == "https":
+    elif parsed_url.scheme.upper() == "HTTP" or parsed_url.scheme.upper() == "HTTPS":
         return options["http_handler"], file_path
 
     else:

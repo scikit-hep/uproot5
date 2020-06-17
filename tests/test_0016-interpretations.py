@@ -81,7 +81,7 @@ def test_recovery(mini):
     # flat array to recover:
     filename = skhep_testdata.data_path("uproot-issue21.root")
     with uproot4.open(
-        "file:" + filename + " | nllscan/mH", minimal_ttree_metadata=mini
+        "file:" + filename + " : nllscan/mH", minimal_ttree_metadata=mini
     ) as branch:
         basket = branch.basket(0)
         assert basket.data.view(">f8").tolist()[:10] == [
@@ -107,7 +107,7 @@ def test_recovery(mini):
     # uproot-from-geant4.root Details: numgood, TrackedRays: Event phi
     filename = skhep_testdata.data_path("uproot-issue327.root")
     with uproot4.open(
-        "file:" + filename + " | DstTree/fTracks.fCharge", minimal_ttree_metadata=mini
+        "file:" + filename + " : DstTree/fTracks.fCharge", minimal_ttree_metadata=mini
     ) as branch:
         basket = branch.basket(0)
         assert basket.data.view("i1")[:10].tolist() == [
