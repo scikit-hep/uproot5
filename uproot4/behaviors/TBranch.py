@@ -265,18 +265,22 @@ def _regularize_expressions(
             filter_branch=filter_branch,
             full_paths=True,
         ):
-            _regularize_branchname(
-                hasbranches,
-                branchname,
-                branch,
+            if not isinstance(
                 branch.interpretation,
-                get_from_cache,
-                arrays,
-                expression_context,
-                branchid_interpretation,
-                True,
-                False,
-            )
+                uproot4.interpretation.identify.UnknownInterpretation,
+            ):
+                _regularize_branchname(
+                    hasbranches,
+                    branchname,
+                    branch,
+                    branch.interpretation,
+                    get_from_cache,
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    True,
+                    False,
+                )
 
     elif uproot4._util.isstr(expressions):
         _regularize_expression(
@@ -988,9 +992,12 @@ in file {3}""".format(
     @property
     def interpretation(self):
         if self._interpretation is None:
-            self._interpretation = uproot4.interpretation.identify.interpretation_of(
-                self, {}
-            )
+            try:
+                self._interpretation = uproot4.interpretation.identify.interpretation_of(
+                    self, {}
+                )
+            except uproot4.interpretation.identify.UnknownInterpretation as err:
+                self._interpretation = err
         return self._interpretation
 
     @property
