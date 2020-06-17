@@ -93,6 +93,10 @@ in object {2}""".format(
     def header_bytes(self):
         raise self
 
+    @property
+    def size_1to5_bytes(self):
+        raise self
+
 
 def _normalize_ftype(fType):
     if fType is not None and uproot4.const.kOffsetL < fType < uproot4.const.kOffsetP:
@@ -418,6 +422,9 @@ def interpretation_of(branch, context):
         leaf = branch.member("fLeaves")[0]
 
         if leaf.classname == "TLeafC":
-            return uproot4.interpretation.strings.AsStrings()
+            return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
+
+        if leaf.classname == "TLeafElement":
+            raise NotImplementedError
 
         raise NotImplementedError

@@ -36,18 +36,25 @@ class StringArray(uproot4.interpretation.Interpretation):
 
 
 class AsStrings(uproot4.interpretation.Interpretation):
-    def __init__(self, header_bytes=0):
+    def __init__(self, header_bytes=0, size_1to5_bytes=False):
         self._header_bytes = header_bytes
+        self._size_1to5_bytes = size_1to5_bytes
 
     @property
     def header_bytes(self):
         return self._header_bytes
 
+    @property
+    def size_1to5_bytes(self):
+        return self._size_1to5_bytes
+
     def __repr__(self):
-        if self._header_bytes == 0:
-            return "AsStrings()"
-        else:
-            return "AsStrings(header_bytes={0})".format(self._header_bytes)
+        args = []
+        if self._header_bytes != 0:
+            args.append("header_bytes={0}".format(self._header_bytes))
+        if self._size_1to5_bytes is not False:
+            args.append("size_1to5_bytes={0}".format(self._size_1to5_bytes))
+        return "AsStrings({0})".format(", ".join(args))
 
     @property
     def numpy_dtype(self):
@@ -59,7 +66,9 @@ class AsStrings(uproot4.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        return "{0}({1})".format(type(self).__name__, self._header_bytes)
+        return "{0}({1},{2})".format(
+            type(self).__name__, self._header_bytes, self._size_1to5_bytes
+        )
 
     def basket_array(self, data, byte_offsets, basket, branch):
         self.hook_before_basket_array(
@@ -71,10 +80,10 @@ class AsStrings(uproot4.interpretation.Interpretation):
         byte_starts = byte_offsets[:-1] + self._header_bytes
         byte_stops = byte_offsets[1:]
 
-        length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
-        length_header_size[data[byte_starts] == 255] += 4
-
-        byte_starts += length_header_size
+        if self._size_1to5_bytes:
+            length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
+            length_header_size[data[byte_starts] == 255] += 4
+            byte_starts += length_header_size
 
         mask = numpy.zeros(len(data), dtype=numpy.int8)
         mask[byte_starts[byte_starts < len(data)]] = 1
