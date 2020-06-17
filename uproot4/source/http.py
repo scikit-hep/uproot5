@@ -680,9 +680,9 @@ class HTTPSource(uproot4.source.chunk.Source):
     @staticmethod
     def _fix_start_stop(chunk):
         def fix(future):
-            chunk._start = future._start
-            chunk._stop = future._stop
-
+            if future._excinfo is None:
+                chunk._start = future._start
+                chunk._stop = future._stop
         return fix
 
     def begin_end_chunks(self, begin_guess_bytes, end_guess_bytes):

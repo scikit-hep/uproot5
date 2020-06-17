@@ -149,6 +149,7 @@ def regularize_filter(filter):
 
 
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
+_windows_absolute_path_pattern_slash = re.compile(r"^/[A-Za-z]:\\")
 
 
 def path_to_source_class(file_path, options):
@@ -164,25 +165,40 @@ def path_to_source_class(file_path, options):
         if isinstance(file_path, pathlib.Path):
             file_path = str(file_path)
 
-    windows_absolute_path = (
-        os.name == "nt" and _windows_absolute_path_pattern.match(file_path) is not None
-    )
+    windows_absolute_path = None
+
+    if os.name == "nt":
+        if _windows_absolute_path_pattern.match(file_path) is not None:
+            windows_absolute_path = file_path
+
     parsed_url = urlparse(file_path)
+
+    if os.name == "nt" and windows_absolute_path is None:
+        if _windows_absolute_path_pattern.match(parsed_url.path) is not None:
+            windows_absolute_path = parsed_url.path
+        elif _windows_absolute_path_pattern_slash.match(parsed_url.path) is not None:
+            windows_absolute_path = parsed_url.path[1:]
 
     if (
         parsed_url.scheme == "file"
         or len(parsed_url.scheme) == 0
         or windows_absolute_path
     ):
-        if not windows_absolute_path:
-            file_path = parsed_url.netloc + parsed_url.path
-        return options["file_handler"]
+        if windows_absolute_path is None:
+            if parsed_url.netloc == "localhost":
+                file_path = parsed_url.path
+            else:
+                file_path = parsed_url.netloc + parsed_url.path
+        else:
+            file_path = windows_absolute_path
+
+        return options["file_handler"], os.path.expanduser(file_path)
 
     elif parsed_url.scheme == "root":
-        return options["xrootd_handler"]
+        return options["xrootd_handler"], file_path
 
     elif parsed_url.scheme == "http" or parsed_url.scheme == "https":
-        return options["http_handler"]
+        return options["http_handler"], file_path
 
     else:
         raise ValueError("URI scheme not recognized: {0}".format(file_path))
