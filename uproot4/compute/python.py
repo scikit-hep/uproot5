@@ -155,7 +155,9 @@ def _expression_to_function(
             node.body[0].value, keys, aliases, functions, getter
         )
     except KeyError as err:
-        raise uproot4.KeyInFileError(err.args[0], file_path=file_path, object_path=object_path)
+        raise uproot4.KeyInFileError(
+            err.args[0], file_path=file_path, object_path=object_path
+        )
 
     function = ast.parse("lambda: None").body[0].value
     function.body = expr

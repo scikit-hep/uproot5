@@ -23,11 +23,25 @@ def test_strings1():
         assert result.tolist() == ["end-{0:03d}".format(i) for i in range(100)]
 
 
-def test_stdvector_in_object():
+def test_map_string_string_in_object():
     with uproot4.open(skhep_testdata.data_path("uproot-issue431.root")) as f:
         print(f["Head"])
 
     # raise Exception
+
+# def test_map_long_int_in_object():
+#     with uproot4.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue283.root") as f:
+#         try:
+#             f["config/detector"]
+#         except uproot4.DeserializationError as err:
+#             print(err)
+#             err.debug(limit_bytes=80)
+#             # print()
+#             # err.debug(3 + 14*4 + 5160*8 + 5160*4, limit_bytes=160)
+#             # print()
+#             # print(err.array(">i8", skip_bytes=3 + 14*4)[5160:].view(">i4")[5160:])
+
+#     raise Exception
 
 
 # has STL vectors at top-level:

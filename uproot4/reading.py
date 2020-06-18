@@ -792,7 +792,7 @@ class ReadOnlyKey(object):
         else:
             uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
                 chunk.source,
-                chunk.get(data_start, data_stop, {"breadcrumbs": (), "TKey": self}),
+                chunk.get(data_start, data_stop, self.data_cursor, {"breadcrumbs": (), "TKey": self}),
             )
 
         return uncompressed_chunk, cursor
@@ -1303,7 +1303,8 @@ class ReadOnlyDirectory(Mapping):
                             else:
                                 raise uproot4.KeyInFileError(
                                     where,
-                                    repr(head) + " is not a TDirectory, TTree, or TBranch",
+                                    repr(head)
+                                    + " is not a TDirectory, TTree, or TBranch",
                                     file_path=self._file.file_path,
                                 )
                         else:
@@ -1374,6 +1375,10 @@ class ReadOnlyDirectory(Mapping):
         if last is not None:
             return last
         elif cycle is None:
-            raise uproot4.KeyInFileError(item, cycle="any", file_path=self._file.file_path)
+            raise uproot4.KeyInFileError(
+                item, cycle="any", file_path=self._file.file_path
+            )
         else:
-            raise uproot4.KeyInFileError(item, cycle=cycle, file_path=self._file.file_path)
+            raise uproot4.KeyInFileError(
+                item, cycle=cycle, file_path=self._file.file_path
+            )

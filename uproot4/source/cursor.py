@@ -15,6 +15,11 @@ import uproot4
 import uproot4.deserialization
 
 
+_printable_characters = (
+    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM"
+    "NOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ "
+)
+
 class Cursor(object):
     """
     Represents a position in a ROOT file, which may be held for later reference
@@ -156,7 +161,7 @@ class Cursor(object):
         stop = start + format.size
         if move:
             self._index = stop
-        return format.unpack(chunk.get(start, stop, context))
+        return format.unpack(chunk.get(start, stop, self, context))
 
     def field(self, chunk, format, context, move=True):
         """
@@ -169,7 +174,7 @@ class Cursor(object):
         stop = start + format.size
         if move:
             self._index = stop
-        return format.unpack(chunk.get(start, stop, context))[0]
+        return format.unpack(chunk.get(start, stop, self, context))[0]
 
     def bytes(self, chunk, length, context, move=True, copy_if_memmap=False):
         """
@@ -184,7 +189,7 @@ class Cursor(object):
         stop = start + length
         if move:
             self._index = stop
-        out = chunk.get(start, stop, context)
+        out = chunk.get(start, stop, self, context)
         if copy_if_memmap:
             step = out
             while getattr(step, "base", None) is not None:
@@ -204,7 +209,7 @@ class Cursor(object):
         stop = start + length * dtype.itemsize
         if move:
             self._index = stop
-        return numpy.frombuffer(chunk.get(start, stop, context), dtype=dtype)
+        return numpy.frombuffer(chunk.get(start, stop, self, context), dtype=dtype)
 
     _u1 = numpy.dtype("u1")
     _i4 = numpy.dtype(">i4")
@@ -218,17 +223,17 @@ class Cursor(object):
         """
         start = self._index
         stop = start + 1
-        length = chunk.get(start, stop, context)[0]
+        length = chunk.get(start, stop, self, context)[0]
         if length == 255:
             start = stop
             stop = start + 4
-            length_data = chunk.get(start, stop, context)
+            length_data = chunk.get(start, stop, self, context)
             length = numpy.frombuffer(length_data, dtype=self._u1).view(self._i4)[0]
         start = stop
         stop = start + length
         if move:
             self._index = stop
-        return chunk.get(start, stop, context).tostring()
+        return chunk.get(start, stop, self, context).tostring()
 
     def string(self, chunk, context, move=True):
         """
@@ -255,7 +260,7 @@ class Cursor(object):
 
         If `move` is False, only peek: don't update the index.
         """
-        remainder = chunk.remainder(self._index, context)
+        remainder = chunk.remainder(self._index, self, context)
         local_stop = 0
         char = None
         while char != 0:
@@ -277,11 +282,6 @@ of file path {2}""".format(
             return out
         else:
             return out.decode(errors="surrogateescape")
-
-    _printable = (
-        "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM"
-        "NOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ "
-    )
 
     def debug(
         self,
@@ -321,7 +321,7 @@ of file path {2}""".format(
                 --- --- ---   C   J --- ---   C --- --- ---   {   {
                       101.0           202.0           303.0
         """
-        data = chunk.remainder(self._index, context)
+        data = chunk.remainder(self._index, self, context)
         if limit_bytes is not None:
             data = data[:limit_bytes]
 
@@ -365,7 +365,7 @@ of file path {2}""".format(
             stream.write(
                 prefix
                 + u" ".join(
-                    u"{0:>3s}".format(chr(x)) if chr(x) in self._printable else u"---"
+                    u"{0:>3s}".format(chr(x)) if chr(x) in _printable_characters else u"---"
                     for x in line_data
                 )
                 + u"\n"

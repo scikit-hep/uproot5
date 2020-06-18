@@ -810,17 +810,15 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         if self.is_string:
             read_members.append("        cursor.skip(6)")
             read_members.append(
-                "        self._members[{0}] = cursor.string(chunk, context)".format(
-                    repr(self.name)
-                )
+                "        self._members[{0}] = cursor.string(chunk, "
+                "context)".format(repr(self.name))
             )
 
         elif self.is_vector_dtype:
             read_members.append("        cursor.skip(6)")
             read_members.append(
-                "        tmp = cursor.field(chunk, self._format{0}, context)".format(
-                    len(formats)
-                )
+                "        tmp = cursor.field(chunk, self._format{0}, "
+                "context)".format(len(formats))
             )
             read_members.append(
                 "        self._members[{0}] = cursor.array(chunk, tmp, "
@@ -831,15 +829,15 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
         elif self.is_map_string_string:
             read_members.append(
-                "        self._members[{0}] = map_string_string(chunk, cursor, context)".format(
-                    repr(self.name)
-                )
+                "        self._members[{0}] = map_string_string(chunk, cursor, "
+                "context)".format(repr(self.name))
             )
 
         else:
             read_members.append(
-                "        raise NotImplementedError('class members defined by "
-                "{0} with type {1}')".format(type(self).__name__, self.typename)
+                "        raise DeserializationError('class members of type "
+                "{1} are not implemented yet', chunk, cursor.copy(), context, "
+                "self.file.file_path)".format(type(self).__name__, self.typename)
             )
         member_names.append(self.name)
 

@@ -23,6 +23,8 @@ from uproot4.source.futures import ThreadPoolExecutor
 decompression_executor = ThreadPoolExecutor()
 interpretation_executor = TrivialExecutor()
 
+from uproot4.deserialization import DeserializationError
+
 from uproot4.reading import open
 from uproot4.reading import ReadOnlyFile
 from uproot4.reading import ReadOnlyDirectory

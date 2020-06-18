@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import struct
+import sys
 
 import numpy
 
@@ -52,10 +53,12 @@ def compile_class(file, classes, class_code, class_name):
 
 
 class DeserializationError(Exception):
-    __slots__ = ["message", "context", "file_path"]
+    __slots__ = ["message", "chunk", "cursor", "context", "file_path"]
 
-    def __init__(self, message, context, file_path):
+    def __init__(self, message, chunk, cursor, context, file_path):
         self.message = message
+        self.chunk = chunk
+        self.cursor = cursor
         self.context = context
         self.file_path = file_path
 
@@ -99,6 +102,35 @@ in file {1}{2}""".format(
 in file {2}{3}""".format(
                 "\n".join(lines), self.message, self.file_path, in_parent
             )
+
+    def debug(self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout):
+        cursor = self.cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self.chunk,
+            context=self.context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream
+        )
+
+    def array(self, dtype, skip_bytes=0, limit_bytes=None):
+        dtype = numpy.dtype(dtype)
+        cursor = self.cursor.copy()
+        cursor.skip(skip_bytes)
+        out = self.chunk.remainder(cursor.index, cursor, self.context)[:limit_bytes]
+        return out[:(len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+
+    @property
+    def partial_object(self):
+        if "breadcrumbs" in self.context:
+            return self.context["breadcrumbs"][-1]
+        else:
+            return None
+
+
+scope["DeserializationError"] = DeserializationError
 
 
 _numbytes_version_1 = struct.Struct(">IH")
