@@ -201,11 +201,16 @@ class Model(object):
                     if name in base._members:
                         return base._members[name]
 
-        if self._file is None:
-            in_file = ""
-        else:
-            in_file = "\nin file {0}".format(self._file.file_path)
-        raise KeyError("C++ member {0} not found{1}".format(repr(name), in_file))
+        raise uproot4.KeyInFileError(
+            name,
+            self._file.file_path,
+            because="""{0}.{1} has only the following members:
+
+    {2}
+""".format(
+                type(self).__module__, type(self).__name__, "\n    ".join(self._members)
+            ),
+        )
 
     def tojson(self):
         out = {"_typename": self.classname}

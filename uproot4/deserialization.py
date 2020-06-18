@@ -64,12 +64,13 @@ class DeserializationError(Exception):
         indent = "    "
         for obj in self.context.get("breadcrumbs", ()):
             lines.append(
-                "{0}{1} version {2} as {3}.{4}".format(
+                "{0}{1} version {2} as {3}.{4} ({5} bytes)".format(
                     indent,
                     obj.classname,
                     obj.instance_version,
                     type(obj).__module__,
                     type(obj).__name__,
+                    obj.num_bytes,
                 )
             )
             indent = indent + "    "

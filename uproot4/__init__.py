@@ -108,25 +108,25 @@ class KeyInFileError(KeyError):
         else:
             because = " because " + self.because
 
-        if self.object_path is None:
-            object_path = ""
-        else:
-            object_path = "\nin object {0}".format(self.object_path)
+        in_file = ""
+        if self.file_path is not None:
+            in_file = "\nin file {0}".format(self.file_path)
+
+        in_object = ""
+        if self.object_path is not None:
+            in_object = "\nin object {0}".format(self.object_path)
 
         if self.cycle == "any":
-            return """not found: {0} (with any cycle number){1}
-in file {2}{3}""".format(
-                repr(self.key), because, self.file_path, object_path
+            return """not found: {0} (with any cycle number){1}{2}{3}""".format(
+                repr(self.key), because, in_file, in_object
             )
         elif self.cycle is None:
-            return """not found: {0}{1}
-in file {2}{3}""".format(
-                repr(self.key), because, self.file_path, object_path
+            return """not found: {0}{1}{2}{3}""".format(
+                repr(self.key), because, in_file, in_object
             )
         else:
-            return """not found: {0} with cycle {1}{2}
-in file {3}{4}""".format(
-                repr(self.key), self.cycle, because, self.file_path, object_path
+            return """not found: {0} with cycle {1}{2}{3}{4}""".format(
+                repr(self.key), self.cycle, because, in_file, in_object
             )
 
 

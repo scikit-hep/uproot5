@@ -831,7 +831,9 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
         elif self.is_map_string_string:
             read_members.append(
-                "        self._members[{0}] = map_string_string(chunk, cursor, context)"
+                "        self._members[{0}] = map_string_string(chunk, cursor, context)".format(
+                    repr(self.name)
+                )
             )
 
         else:
@@ -842,12 +844,10 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         member_names.append(self.name)
 
 
-class Model_TStreamerSTLstring(Model_TStreamerElement):
+class Model_TStreamerSTLstring(Model_TStreamerSTL):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
-            Model_TStreamerElement.read(
-                chunk, cursor, context, self._file, self._parent
-            )
+            Model_TStreamerSTL.read(chunk, cursor, context, self._file, self._parent)
         )
 
     def class_code(
