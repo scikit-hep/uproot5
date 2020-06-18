@@ -50,7 +50,7 @@ class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fMaxVirtualSize"],
             self._members["fAutoSave"],
             self._members["fEstimate"],
-        ) = cursor.fields(chunk, _ttree16_format1)
+        ) = cursor.fields(chunk, _ttree16_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
@@ -167,7 +167,7 @@ class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fMaxVirtualSize"],
             self._members["fAutoSave"],
             self._members["fEstimate"],
-        ) = cursor.fields(chunk, _ttree17_format1)
+        ) = cursor.fields(chunk, _ttree17_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
@@ -286,7 +286,7 @@ class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fAutoSave"],
             self._members["fAutoFlush"],
             self._members["fEstimate"],
-        ) = cursor.fields(chunk, _ttree18_format1)
+        ) = cursor.fields(chunk, _ttree18_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
@@ -410,18 +410,18 @@ class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fAutoSave"],
             self._members["fAutoFlush"],
             self._members["fEstimate"],
-        ) = cursor.fields(chunk, _ttree19_format1)
+        ) = cursor.fields(chunk, _ttree19_format1, context)
         tmp = _ttree19_dtype1
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fClusterRangeEnd"] = cursor.array(
-            chunk, self.member("fNClusterRange"), tmp
+            chunk, self.member("fNClusterRange"), tmp, context
         )
         tmp = _ttree19_dtype2
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fClusterSize"] = cursor.array(
-            chunk, self.member("fNClusterRange"), tmp
+            chunk, self.member("fNClusterRange"), tmp, context
         )
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
@@ -549,18 +549,18 @@ class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fAutoSave"],
             self._members["fAutoFlush"],
             self._members["fEstimate"],
-        ) = cursor.fields(chunk, _ttree20_format1)
+        ) = cursor.fields(chunk, _ttree20_format1, context)
         tmp = _ttree20_dtype1
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fClusterRangeEnd"] = cursor.array(
-            chunk, self.member("fNClusterRange"), tmp
+            chunk, self.member("fNClusterRange"), tmp, context
         )
         tmp = _ttree20_dtype2
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fClusterSize"] = cursor.array(
-            chunk, self.member("fNClusterRange"), tmp
+            chunk, self.member("fNClusterRange"), tmp, context
         )
         self._members["fIOFeatures"] = self.class_named("ROOT::TIOFeatures").read(
             chunk, cursor, context, self._file, self
@@ -663,7 +663,7 @@ _tiofeatures_format1 = struct.Struct(">B")
 class Model_ROOT_3a3a_TIOFeatures(uproot4.model.Model):
     def read_members(self, chunk, cursor, context):
         cursor.skip(4)
-        self._members["fIOBits"] = cursor.field(chunk, _tiofeatures_format1)
+        self._members["fIOBits"] = cursor.field(chunk, _tiofeatures_format1, context)
 
 
 uproot4.classes["TTree"] = Model_TTree

@@ -32,9 +32,7 @@ import uproot4._util
 from uproot4._util import no_filter
 
 
-def open(
-    path, object_cache=100, array_cache="100 MB", classes=uproot4.classes, **options
-):
+def open(path, object_cache=100, array_cache="100 MB", custom_classes=None, **options):
     """
     Args:
         path (str or Path): Path or URL to open, which may include a colon
@@ -47,9 +45,9 @@ def open(
         array_cache (None, MutableMapping, or memory size): Cache of arrays
             drawn from TTrees; if None, do not use a cache; if a memory size,
             create a new cache of this size.
-        classes (None or MutableMapping): If None, defaults to uproot4.classes;
-            otherwise, a container of class definitions that is both used to
-            fill with new classes and search for dependencies.
+        custom_classes (None or MutableMapping): If None, classes come from
+            uproot4.classes; otherwise, a container of class definitions that
+            is both used to fill with new classes and search for dependencies.
         options: see below.
 
     Opens a ROOT file, possibly through a remote protocol.
@@ -74,7 +72,7 @@ def open(
         file_path,
         object_cache=object_cache,
         array_cache=array_cache,
-        classes=classes,
+        custom_classes=custom_classes,
         **options
     )
 
@@ -108,13 +106,13 @@ class ReadOnlyFile(object):
         file_path,
         object_cache=100,
         array_cache="100 MB",
-        classes=uproot4.classes,
+        custom_classes=None,
         **options
     ):
         self._file_path = file_path
         self.object_cache = object_cache
         self.array_cache = array_cache
-        self.classes = classes
+        self.custom_classes = custom_classes
 
         self._options = dict(open.defaults)
         self._options.update(options)
@@ -163,7 +161,7 @@ class ReadOnlyFile(object):
             self._fUUID_version,
             self._fUUID,
         ) = uproot4.source.cursor.Cursor(0).fields(
-            self._begin_chunk, _file_header_fields_small
+            self._begin_chunk, _file_header_fields_small, {}
         )
 
         if self.is_64bit:
@@ -183,7 +181,7 @@ class ReadOnlyFile(object):
                 self._fUUID_version,
                 self._fUUID,
             ) = uproot4.source.cursor.Cursor(0).fields(
-                self._begin_chunk, _file_header_fields_big
+                self._begin_chunk, _file_header_fields_big, {}
             )
 
         self.hook_after_read(magic=magic)
@@ -258,17 +256,21 @@ in file {1}""".format(
             )
 
     @property
-    def classes(self):
-        return self._classes
+    def custom_classes(self):
+        return self._custom_classes
 
-    @classes.setter
-    def classes(self, value):
-        if value is None:
-            self._classes = uproot4.classes
-        elif isinstance(value, MutableMapping):
-            self._classes = value
+    @custom_classes.setter
+    def custom_classes(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._custom_classes = value
         else:
-            raise TypeError("classes must be None or a MutableMapping")
+            raise TypeError("custom_classes must be None or a MutableMapping")
+
+    def remove_class(self, classname):
+        if self._custom_classes is None:
+            self._custom_classes = dict(uproot4.classes)
+        if classname in self._custom_classes:
+            del self._custom_classes[classname]
 
     @property
     def options(self):
@@ -301,9 +303,18 @@ in file {1}""".format(
         return ReadOnlyDirectory(
             (),
             uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
+            {},
             self,
             self,
         )
+
+    def is_custom_class(self, classname):
+        if self._custom_classes is None:
+            return False
+        else:
+            mine = self._custom_classes.get(classname)
+            theirs = uproot4.classes.get(classname)
+            return mine is not None and mine is not theirs
 
     @property
     def streamers(self):
@@ -349,7 +360,8 @@ in file {1}""".format(
                     streamer_chunk=streamer_chunk,
                 )
 
-                tlist = self._classes["TList"].read(
+                classes = uproot4.model.maybe_custom_classes(self._custom_classes)
+                tlist = classes["TList"].read(
                     streamer_chunk, streamer_cursor, {}, self, self
                 )
 
@@ -440,7 +452,8 @@ in file {1}""".format(
         return list(self.streamers[classname].values())
 
     def class_named(self, classname, version=None):
-        cls = self._classes.get(classname)
+        classes = uproot4.model.maybe_custom_classes(self._custom_classes)
+        cls = classes.get(classname)
 
         if cls is None:
             streamers = self.streamers_named(classname)
@@ -462,7 +475,7 @@ in file {1}""".format(
                     (uproot4.model.DispatchByVersion,),
                     {"known_versions": {}},
                 )
-                self._classes[classname] = cls
+                classes[classname] = cls
 
         if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
             if not uproot4._util.isint(version):
@@ -610,7 +623,7 @@ class ReadOnlyKey(object):
             self._fCycle,
             self._fSeekKey,
             self._fSeekPdir,
-        ) = cursor.fields(chunk, self._format_small, move=False)
+        ) = cursor.fields(chunk, self._format_small, context, move=False)
 
         if self.is_64bit:
             (
@@ -622,7 +635,7 @@ class ReadOnlyKey(object):
                 self._fCycle,
                 self._fSeekKey,
                 self._fSeekPdir,
-            ) = cursor.fields(chunk, self._format_big)
+            ) = cursor.fields(chunk, self._format_big, context)
 
         else:
             cursor.skip(self._format_small.size)
@@ -637,9 +650,9 @@ class ReadOnlyKey(object):
                 read_strings=read_strings,
             )
 
-            self._fClassName = cursor.string(chunk)
-            self._fName = cursor.string(chunk)
-            self._fTitle = cursor.string(chunk)
+            self._fClassName = cursor.string(chunk, context)
+            self._fName = cursor.string(chunk, context)
+            self._fTitle = cursor.string(chunk, context)
 
         else:
             self._fClassName = None
@@ -778,7 +791,8 @@ class ReadOnlyKey(object):
             )
         else:
             uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
-                chunk.source, chunk.get(data_start, data_stop)
+                chunk.source,
+                chunk.get(data_start, data_stop, {"breadcrumbs": (), "TKey": self}),
             )
 
         return uncompressed_chunk, cursor
@@ -789,7 +803,10 @@ class ReadOnlyKey(object):
 
     @property
     def object_path(self):
-        return ""
+        if isinstance(self._parent, ReadOnlyDirectory):
+            return self._parent.object_path + self.name(False)
+        else:
+            return "(seek pos {0})/{1}".format(self.data_cursor.index, self.name(False))
 
     def get(self):
         if self._file.object_cache is not None:
@@ -805,13 +822,43 @@ class ReadOnlyKey(object):
             "TDirectoryFile",
         ):
             out = ReadOnlyDirectory(
-                self._parent.path + (self.fName,), self.data_cursor, self._file, self,
+                self._parent.path + (self.fName,),
+                self.data_cursor,
+                {},
+                self._file,
+                self,
             )
 
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
+            start_cursor = cursor.copy()
             cls = self._file.class_named(self._fClassName)
-            out = cls.read(chunk, cursor, {}, self._file, self)
+            context = {"breadcrumbs": (), "TKey": self}
+
+            try:
+                out = cls.read(chunk, cursor, context, self._file, self)
+
+            except uproot4.deserialization.DeserializationError:
+                breadcrumbs = context.get("breadcrumbs")
+                if breadcrumbs is None or all(
+                    breadcrumb_cls.classname in uproot4.model.bootstrap_classnames
+                    or self._file.is_custom_class(breadcrumb_cls.classname)
+                    for breadcrumb_cls in breadcrumbs
+                ):
+                    # we're already using the most specialized versions of each class
+                    raise
+
+                for breadcrumb_cls in breadcrumbs:
+                    if (
+                        breadcrumb_cls.classname
+                        not in uproot4.model.bootstrap_classnames
+                    ):
+                        self._file.remove_class(breadcrumb_cls.classname)
+
+                cursor = start_cursor
+                cls = self._file.class_named(self._fClassName)
+                context = {"breadcrumbs": (), "TKey": self}
+                out = cls.read(chunk, cursor, context, self._file, self)
 
         if self._file.object_cache is not None:
             self._file.object_cache[self.cache_key] = out
@@ -823,7 +870,7 @@ class ReadOnlyDirectory(Mapping):
     _format_big = struct.Struct(">hIIiiqqq")
     _format_num_keys = struct.Struct(">i")
 
-    def __init__(self, path, cursor, file, parent):
+    def __init__(self, path, cursor, context, file, parent):
         self._path = path
         self._cursor = cursor.copy()
         self._file = file
@@ -846,7 +893,7 @@ class ReadOnlyDirectory(Mapping):
             self._fSeekDir,
             self._fSeekParent,
             self._fSeekKeys,
-        ) = cursor.fields(chunk, self._format_small, move=False)
+        ) = cursor.fields(chunk, self._format_small, context, move=False)
 
         if self.is_64bit:
             (
@@ -858,7 +905,7 @@ class ReadOnlyDirectory(Mapping):
                 self._fSeekDir,
                 self._fSeekParent,
                 self._fSeekKeys,
-            ) = cursor.fields(chunk, self._format_big)
+            ) = cursor.fields(chunk, self._format_big, context)
 
         else:
             cursor.skip(self._format_small.size)
@@ -892,7 +939,7 @@ class ReadOnlyDirectory(Mapping):
                 keys_chunk, keys_cursor, {}, file, self, read_strings=True
             )
 
-            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys)
+            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys, context)
 
             self.hook_before_keys(
                 path=path,
@@ -1038,11 +1085,11 @@ class ReadOnlyDirectory(Mapping):
 
     @property
     def cache_key(self):
-        return self.file.hex_uuid + ":" + "/".join(self.path) + "/"
+        return self.file.hex_uuid + ":" + self.object_path
 
     @property
     def object_path(self):
-        return "/".join(self.path) + "/"
+        return "/".join(("",) + self._path + ("",)).replace("//", "/")
 
     @property
     def object_cache(self):
@@ -1240,15 +1287,32 @@ class ReadOnlyDirectory(Mapping):
         return self.iterkeys()
 
     def __getitem__(self, where):
-        if "/" in where:
+        if "/" in where or ":" in where:
             items = where.split("/")
             step = self
+
             for i, item in enumerate(items):
                 if item != "":
                     if isinstance(step, ReadOnlyDirectory):
-                        step = step = step[item]
+                        if ":" in item and item not in step:
+                            index = item.index(":")
+                            head, tail = item[:index], item[index + 1 :]
+                            step = step[head]
+                            if isinstance(step, uproot4.behaviors.TBranch.HasBranches):
+                                return step["/".join([tail] + items[i + 1 :])]
+                            else:
+                                raise uproot4.KeyInFileError(
+                                    where,
+                                    self._file.file_path,
+                                    because=repr(head)
+                                    + " is not a TDirectory, TTree, or TBranch",
+                                )
+                        else:
+                            step = step[item]
+
                     elif isinstance(step, uproot4.behaviors.TBranch.HasBranches):
                         return step["/".join(items[i:])]
+
                     else:
                         raise uproot4.KeyInFileError(
                             where,
@@ -1256,6 +1320,7 @@ class ReadOnlyDirectory(Mapping):
                             because=repr(item)
                             + " is not a TDirectory, TTree, or TBranch",
                         )
+
             return step
 
         else:

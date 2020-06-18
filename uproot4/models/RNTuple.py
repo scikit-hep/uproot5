@@ -24,7 +24,7 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot4.model.Model):
             self._members["fNBytesFooter"],
             self._members["fLenFooter"],
             self._members["fReserved"],
-        ) = cursor.fields(chunk, _rntuple_format1)
+        ) = cursor.fields(chunk, _rntuple_format1, context)
 
 
 uproot4.classes[

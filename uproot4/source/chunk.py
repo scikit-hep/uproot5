@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 import numpy
 
+import uproot4.deserialization
 import uproot4.source.futures
 import uproot4.source.cursor
 
@@ -339,13 +340,14 @@ for file path {2}""".format(
         self.wait()
         return self._raw_data
 
-    def get(self, start, stop):
+    def get(self, start, stop, context):
         """
         Args:
             start (int): Starting byte position to extract (inclusive, global
                 in Source).
             stop (int): Stopping byte position to extract (exclusive, global
                 in Source).
+            context (dict): Information about the current state of deserialization.
 
         Returns a subinterval of the `raw_data` using global coordinates as a
         NumPy array with dtype uint8.
@@ -362,22 +364,24 @@ for file path {2}""".format(
             return self._raw_data[local_start:local_stop]
 
         elif self._exact:
-            raise OSError(
+            raise uproot4.deserialization.DeserializationError(
                 """attempting to get bytes {0}:{1}
- outside expected range {2}:{3} for this Chunk
-of file path {4}""".format(
-                    start, stop, self._start, self._stop, self._source.file_path,
-                )
+outside expected range {2}:{3} for this Chunk""".format(
+                    start, stop, self._start, self._stop
+                ),
+                context,
+                self._source.file_path,
             )
 
         else:
             raise RefineChunk(start, stop, self._start, self._stop)
 
-    def remainder(self, start):
+    def remainder(self, start, context):
         """
         Args:
             start (int): Starting byte position to extract (inclusive, global
                 in Source).
+            context (dict): Information about the current state of deserialization.
 
         Returns a subinterval of the `raw_data` from `start` to the end of the
         Chunk as a NumPy array with dtype uint8.
@@ -393,10 +397,11 @@ of file path {4}""".format(
             return self._raw_data[local_start:]
 
         else:
-            raise OSError(
-                """attempting to get byte {0}
- outside expected range {1}:{2} for this Chunk
-of file path {3}""".format(
-                    start, self._start, self._stop, self._source.file_path,
-                )
+            raise uproot4.deserialization.DeserializationError(
+                """attempting to get bytes after {0}
+outside expected range {1}:{2} for this Chunk""".format(
+                    start, self._start, self._stop
+                ),
+                context,
+                self._source.file_path,
             )

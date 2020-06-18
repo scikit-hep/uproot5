@@ -10,6 +10,40 @@ import uproot4.const
 import uproot4._util
 
 
+bootstrap_classnames = [
+    "TStreamerInfo",
+    "TStreamerElement",
+    "TStreamerArtificial",
+    "TStreamerBase",
+    "TStreamerBasicPointer",
+    "TStreamerBasicType",
+    "TStreamerLoop",
+    "TStreamerObject",
+    "TStreamerObjectAny",
+    "TStreamerObjectAnyPointer",
+    "TStreamerObjectPointer",
+    "TStreamerSTL",
+    "TStreamerSTLstring",
+    "TStreamerString",
+    "TList",
+    "TObjArray",
+    "TObjString",
+]
+
+
+def bootstrap_classes():
+    import uproot4.streamers
+    import uproot4.models.TList
+    import uproot4.models.TObjArray
+    import uproot4.models.TObjString
+
+    custom_classes = {}
+    for classname in bootstrap_classnames:
+        custom_classes[classname] = uproot4.classes[classname]
+
+    return custom_classes
+
+
 class Model(object):
     @classmethod
     def read(cls, chunk, cursor, context, file, parent):
@@ -21,6 +55,9 @@ class Model(object):
         self._bases = []
         self._num_bytes = None
         self._instance_version = None
+
+        old_breadcrumbs = context.get("breadcrumbs", ())
+        context["breadcrumbs"] = old_breadcrumbs + (self,)
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context)
 
@@ -36,7 +73,11 @@ class Model(object):
 
         self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context)
 
-        return self.postprocess(chunk, cursor, context)
+        out = self.postprocess(chunk, cursor, context)
+
+        context["breadcrumbs"] = old_breadcrumbs
+
+        return out
 
     def __repr__(self):
         return "<{0} at 0x{1:012x}>".format(
@@ -49,7 +90,7 @@ class Model(object):
         (
             self._num_bytes,
             self._instance_version,
-        ) = uproot4.deserialization.numbytes_version(chunk, cursor)
+        ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
 
     def read_members(self, chunk, cursor, context):
         pass
@@ -61,7 +102,8 @@ class Model(object):
             self._cursor,
             cursor,
             self._num_bytes,
-            classname_pretty(self.classname, self.class_version),
+            self.classname,
+            context,
             getattr(self._file, "file_path"),
         )
 
@@ -259,7 +301,7 @@ class DispatchByVersion(object):
         import uproot4.deserialization
 
         num_bytes, version = uproot4.deserialization.numbytes_version(
-            chunk, cursor, move=False
+            chunk, cursor, context, move=False
         )
 
         versioned_cls = cls.known_versions.get(version)
@@ -399,11 +441,15 @@ def classname_pretty(classname, version):
         return "{0} (version {1})".format(classname, version)
 
 
-def has_class_named(classname, version=None, classes=None):
-    if classes is None:
-        classes = uproot4.classes
+def maybe_custom_classes(custom_classes):
+    if custom_classes is None:
+        return uproot4.classes
+    else:
+        return custom_classes
 
-    cls = classes.get(classname)
+
+def has_class_named(classname, version=None, custom_classes=None):
+    cls = maybe_custom_classes(custom_classes).get(classname)
     if cls is None:
         return False
 
@@ -413,10 +459,10 @@ def has_class_named(classname, version=None, classes=None):
         return True
 
 
-def class_named(classname, version=None, classes=None):
-    if classes is None:
+def class_named(classname, version=None, custom_classes=None):
+    if custom_classes is None:
         classes = uproot4.classes
-        where = "the given 'classes' dict"
+        where = "the 'custom_classes' dict"
     else:
         where = "uproot4.classes"
 

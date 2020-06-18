@@ -13,7 +13,7 @@ class Model_TObjString(uproot4.model.Model, str):
                 chunk, cursor, context, self._file, self._parent
             )
         )
-        self._data = cursor.string(chunk)
+        self._data = cursor.string(chunk, context)
 
     def postprocess(self, chunk, cursor, context):
         out = Model_TObjString(self._data)

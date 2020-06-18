@@ -130,13 +130,13 @@ class Cursor(object):
             )
         self._index = start_cursor.index + num_bytes
 
-    def skip_over(self, chunk):
+    def skip_over(self, chunk, context):
         """
         Move the index after serialized data for an object with
         numbytes_version.
         """
         num_bytes, version = uproot4.deserialization.numbytes_version(
-            chunk, self, move=False
+            chunk, self, context, move=False
         )
         if num_bytes is None:
             raise TypeError(
@@ -145,7 +145,7 @@ class Cursor(object):
             )
         self._index += num_bytes
 
-    def fields(self, chunk, format, move=True):
+    def fields(self, chunk, format, context, move=True):
         """
         Interpret data at this index of the Chunk with a `struct.Struct`
         format. Returns a tuple (length determined by `format`).
@@ -156,9 +156,9 @@ class Cursor(object):
         stop = start + format.size
         if move:
             self._index = stop
-        return format.unpack(chunk.get(start, stop))
+        return format.unpack(chunk.get(start, stop, context))
 
-    def field(self, chunk, format, move=True):
+    def field(self, chunk, format, context, move=True):
         """
         Interpret data at this index of the Chunk with a `struct.Struct`
         format, returning a single item instead of a tuple (the first).
@@ -169,9 +169,9 @@ class Cursor(object):
         stop = start + format.size
         if move:
             self._index = stop
-        return format.unpack(chunk.get(start, stop))[0]
+        return format.unpack(chunk.get(start, stop, context))[0]
 
-    def bytes(self, chunk, length, move=True, copy_if_memmap=False):
+    def bytes(self, chunk, length, context, move=True, copy_if_memmap=False):
         """
         Interpret data at this index of the Chunk as raw bytes with a
         given `length`.
@@ -184,7 +184,7 @@ class Cursor(object):
         stop = start + length
         if move:
             self._index = stop
-        out = chunk.get(start, stop)
+        out = chunk.get(start, stop, context)
         if copy_if_memmap:
             step = out
             while getattr(step, "base", None) is not None:
@@ -193,7 +193,7 @@ class Cursor(object):
                 step = step.base
         return out
 
-    def array(self, chunk, length, dtype, move=True):
+    def array(self, chunk, length, dtype, context, move=True):
         """
         Interpret data at this index of the Chunk as an array with a
         given `length` and `dtype`.
@@ -204,12 +204,12 @@ class Cursor(object):
         stop = start + length * dtype.itemsize
         if move:
             self._index = stop
-        return numpy.frombuffer(chunk.get(start, stop), dtype=dtype)
+        return numpy.frombuffer(chunk.get(start, stop, context), dtype=dtype)
 
     _u1 = numpy.dtype("u1")
     _i4 = numpy.dtype(">i4")
 
-    def bytestring(self, chunk, move=True):
+    def bytestring(self, chunk, context, move=True):
         """
         Interpret data at this index of the Chunk as a ROOT bytestring
         (first 1 or 5 bytes indicate size).
@@ -218,20 +218,19 @@ class Cursor(object):
         """
         start = self._index
         stop = start + 1
-        length = chunk.get(start, stop)[0]
+        length = chunk.get(start, stop, context)[0]
         if length == 255:
             start = stop
             stop = start + 4
-            length = numpy.frombuffer(chunk.get(start, stop), dtype=self._u1).view(
-                self._i4
-            )[0]
+            length_data = chunk.get(start, stop, context)
+            length = numpy.frombuffer(length_data, dtype=self._u1).view(self._i4)[0]
         start = stop
         stop = start + length
         if move:
             self._index = stop
-        return chunk.get(start, stop).tostring()
+        return chunk.get(start, stop, context).tostring()
 
-    def string(self, chunk, move=True):
+    def string(self, chunk, context, move=True):
         """
         Interpret data at this index of the Chunk as a Python str
         (first 1 or 5 bytes indicate size).
@@ -240,13 +239,13 @@ class Cursor(object):
 
         If `move` is False, only peek: don't update the index.
         """
-        out = self.bytestring(chunk, move=move)
+        out = self.bytestring(chunk, context, move=move)
         if uproot4._util.py2:
             return out
         else:
             return out.decode(errors="surrogateescape")
 
-    def classname(self, chunk, move=True):
+    def classname(self, chunk, context, move=True):
         """
         Interpret data at this index of the Chunk as a ROOT class
         name, which is the only usage of null-terminated strings (rather than
@@ -256,7 +255,7 @@ class Cursor(object):
 
         If `move` is False, only peek: don't update the index.
         """
-        remainder = chunk.remainder(self._index)
+        remainder = chunk.remainder(self._index, context)
         local_stop = 0
         char = None
         while char != 0:
@@ -285,7 +284,13 @@ of file path {2}""".format(
     )
 
     def debug(
-        self, chunk, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout,
+        self,
+        chunk,
+        context={},
+        limit_bytes=None,
+        dtype=None,
+        offset=0,
+        stream=sys.stdout,
     ):
         """
         Args:
@@ -316,7 +321,7 @@ of file path {2}""".format(
                 --- --- ---   C   J --- ---   C --- --- ---   {   {
                       101.0           202.0           303.0
         """
-        data = chunk.remainder(self._index)
+        data = chunk.remainder(self._index, context)
         if limit_bytes is not None:
             data = data[:limit_bytes]
 

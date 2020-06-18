@@ -43,7 +43,7 @@ class Model_TBranch_v10(
             self._members["fEntries"],
             self._members["fTotBytes"],
             self._members["fZipBytes"],
-        ) = cursor.fields(chunk, _tbranch10_format1)
+        ) = cursor.fields(chunk, _tbranch10_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
@@ -52,7 +52,7 @@ class Model_TBranch_v10(
         )
         self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk)
+            cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, self._file, self
@@ -61,20 +61,20 @@ class Model_TBranch_v10(
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketBytes"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch10_dtype2
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketEntry"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch10_dtype3
         if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1)[0] == 2:
+            if cursor.bytes(chunk, 1, context)[0] == 2:
                 tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
@@ -149,7 +149,7 @@ class Model_TBranch_v11(
             self._members["fFirstEntry"],
             self._members["fTotBytes"],
             self._members["fZipBytes"],
-        ) = cursor.fields(chunk, _tbranch11_format1)
+        ) = cursor.fields(chunk, _tbranch11_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
@@ -158,7 +158,7 @@ class Model_TBranch_v11(
         )
         self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk)
+            cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, self._file, self
@@ -167,20 +167,20 @@ class Model_TBranch_v11(
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketBytes"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch11_dtype2
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketEntry"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch11_dtype3
         if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1)[0] == 2:
+            if cursor.bytes(chunk, 1, context)[0] == 2:
                 tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
@@ -256,7 +256,7 @@ class Model_TBranch_v12(
             self._members["fFirstEntry"],
             self._members["fTotBytes"],
             self._members["fZipBytes"],
-        ) = cursor.fields(chunk, _tbranch12_format1)
+        ) = cursor.fields(chunk, _tbranch12_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
@@ -265,7 +265,7 @@ class Model_TBranch_v12(
         )
         self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk)
+            cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, self._file, self
@@ -274,20 +274,20 @@ class Model_TBranch_v12(
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketBytes"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch12_dtype2
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketEntry"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch12_dtype3
         if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1)[0] == 2:
+            if cursor.bytes(chunk, 1, context)[0] == 2:
                 tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
@@ -357,7 +357,7 @@ class Model_TBranch_v13(
             self._members["fEntryOffsetLen"],
             self._members["fWriteBasket"],
             self._members["fEntryNumber"],
-        ) = cursor.fields(chunk, _tbranch13_format1)
+        ) = cursor.fields(chunk, _tbranch13_format1, context)
         self._members["fIOFeatures"] = self.class_named("ROOT::TIOFeatures").read(
             chunk, cursor, context, self._file, self
         )
@@ -369,7 +369,7 @@ class Model_TBranch_v13(
             self._members["fFirstEntry"],
             self._members["fTotBytes"],
             self._members["fZipBytes"],
-        ) = cursor.fields(chunk, _tbranch13_format2)
+        ) = cursor.fields(chunk, _tbranch13_format2, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
             chunk, cursor, context, self._file, self
         )
@@ -378,7 +378,7 @@ class Model_TBranch_v13(
         )
         self._cursor_baskets = cursor.copy()
         if self._file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk)
+            cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, self._file, self
@@ -387,20 +387,20 @@ class Model_TBranch_v13(
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketBytes"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch13_dtype2
         if context.get("speedbump", True):
             cursor.skip(1)
         self._members["fBasketEntry"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch13_dtype3
         if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1)[0] == 2:
+            if cursor.bytes(chunk, 1, context)[0] == 2:
                 tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
-            chunk, self.member("fMaxBaskets"), tmp
+            chunk, self.member("fMaxBaskets"), tmp, context
         )
         if self._file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
@@ -482,7 +482,7 @@ class Model_TBranchElement_v8(
             self._members["fType"],
             self._members["fStreamerType"],
             self._members["fMaximum"],
-        ) = cursor.fields(chunk, _tbranchelement8_format1)
+        ) = cursor.fields(chunk, _tbranchelement8_format1, context)
         self._members["fBranchCount"] = uproot4.deserialization.read_object_any(
             chunk, cursor, context, self._file, self._parent
         )
@@ -538,7 +538,7 @@ class Model_TBranchElement_v9(
             self._members["fType"],
             self._members["fStreamerType"],
             self._members["fMaximum"],
-        ) = cursor.fields(chunk, _tbranchelement9_format1)
+        ) = cursor.fields(chunk, _tbranchelement9_format1, context)
         self._members["fBranchCount"] = uproot4.deserialization.read_object_any(
             chunk, cursor, context, self._file, self._parent
         )
@@ -594,7 +594,7 @@ class Model_TBranchElement_v10(
             self._members["fType"],
             self._members["fStreamerType"],
             self._members["fMaximum"],
-        ) = cursor.fields(chunk, _tbranchelement10_format1)
+        ) = cursor.fields(chunk, _tbranchelement10_format1, context)
         self._members["fBranchCount"] = uproot4.deserialization.read_object_any(
             chunk, cursor, context, self._file, self._parent
         )

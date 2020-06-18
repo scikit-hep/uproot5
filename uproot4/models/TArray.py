@@ -22,8 +22,8 @@ class Model_TArray(uproot4.model.Model, Sequence):
         pass
 
     def read_members(self, chunk, cursor, context):
-        self._members["fN"] = cursor.field(chunk, _tarray_format1)
-        self._data = cursor.array(chunk, self._members["fN"], self.dtype)
+        self._members["fN"] = cursor.field(chunk, _tarray_format1, context)
+        self._data = cursor.array(chunk, self._members["fN"], self.dtype, context)
 
     def __array__(self):
         return self._data

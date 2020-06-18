@@ -135,7 +135,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
 
         self._members["fCheckSum"], self._members["fClassVersion"] = cursor.fields(
-            chunk, _tstreamerinfo_format1
+            chunk, _tstreamerinfo_format1, context
         )
 
         self._members["fElements"] = uproot4.deserialization.read_object_any(
@@ -190,8 +190,9 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def new_class(self, file):
         class_code = self.class_code()
         class_name = uproot4.model.classname_encode(self.name, self.class_version)
+        classes = uproot4.model.maybe_custom_classes(file.custom_classes)
         return uproot4.deserialization.compile_class(
-            file, file.classes, class_code, class_name
+            file, classes, class_code, class_name
         )
 
     def class_code(self):
@@ -289,19 +290,19 @@ class Model_TStreamerElement(uproot4.model.Model):
             self._members["fSize"],
             self._members["fArrayLength"],
             self._members["fArrayDim"],
-        ) = cursor.fields(chunk, _tstreamerelement_format1)
+        ) = cursor.fields(chunk, _tstreamerelement_format1, context)
 
         if self._instance_version == 1:
-            n = cursor.field(chunk, _tstreamerelement_format2)
+            n = cursor.field(chunk, _tstreamerelement_format2, context)
             self._members["fMaxIndex"] = cursor.array(
-                chunk, n, _tstreamerelement_dtype1
+                chunk, n, _tstreamerelement_dtype1, context
             )
         else:
             self._members["fMaxIndex"] = cursor.array(
-                chunk, 5, _tstreamerelement_dtype1
+                chunk, 5, _tstreamerelement_dtype1, context
             )
 
-        self._members["fTypeName"] = _canonical_typename(cursor.string(chunk))
+        self._members["fTypeName"] = _canonical_typename(cursor.string(chunk, context))
 
         if self._members["fType"] == 11 and self._members["fTypeName"] in (
             "Bool_t" or "bool"
@@ -394,7 +395,9 @@ class Model_TStreamerBase(Model_TStreamerElement):
             )
         )
         if self._instance_version >= 2:
-            self._members["fBaseVersion"] = cursor.field(chunk, _tstreamerbase_format1)
+            self._members["fBaseVersion"] = cursor.field(
+                chunk, _tstreamerbase_format1, context
+            )
 
     @property
     def base_version(self):
@@ -449,10 +452,10 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             )
         )
         self._members["fCountVersion"] = cursor.field(
-            chunk, _tstreamerbasicpointer_format1
+            chunk, _tstreamerbasicpointer_format1, context
         )
-        self._members["fCountName"] = cursor.string(chunk)
-        self._members["fCountClass"] = cursor.string(chunk)
+        self._members["fCountName"] = cursor.string(chunk, context)
+        self._members["fCountClass"] = cursor.string(chunk, context)
 
     @property
     def count_name(self):
@@ -474,13 +477,15 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         read_members.append("        tmp = self._dtype{0}".format(len(dtypes)))
         if streamerinfo.name == "TBranch" and self.name == "fBasketSeek":
             read_members.append("        if context.get('speedbump', True):")
-            read_members.append("            if cursor.bytes(chunk, 1)[0] == 2:")
+            read_members.append(
+                "            if cursor.bytes(chunk, 1, context)[0] == 2:"
+            )
             read_members.append("                tmp = numpy.dtype('>i8')")
         else:
             read_members.append("        if context.get('speedbump', True):")
             read_members.append("            cursor.skip(1)")
         read_members.append(
-            "        self._members[{0}] = cursor.array(chunk, self.member({1}), tmp)".format(
+            "        self._members[{0}] = cursor.array(chunk, self.member({1}), tmp, context)".format(
                 repr(self.name), repr(self.count_name)
             )
         )
@@ -592,11 +597,13 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 if len(fields[-1]) == 1:
                     read_members.append(
                         "        self._members['{0}'] = cursor.field(chunk, "
-                        "self._format{1})".format(fields[-1][0], len(formats) - 1)
+                        "self._format{1}, context)".format(
+                            fields[-1][0], len(formats) - 1
+                        )
                     )
                 else:
                     read_members.append(
-                        "        {0} = cursor.fields(chunk, self._format{1})".format(
+                        "        {0} = cursor.fields(chunk, self._format{1}, context)".format(
                             ", ".join(
                                 "self._members[{0}]".format(repr(x)) for x in fields[-1]
                             ),
@@ -607,7 +614,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         else:
             read_members.append(
                 "        self._members[{0}] = cursor.array(chunk, {1}, "
-                "self._dtype{2})".format(
+                "self._dtype{2}, context)".format(
                     repr(self.name), self.array_length, len(dtypes)
                 )
             )
@@ -626,9 +633,11 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 chunk, cursor, context, self._file, self._parent
             )
         )
-        self._members["fCountVersion"] = cursor.field(chunk, _tstreamerloop_format1)
-        self._members["fCountName"] = cursor.string(chunk)
-        self._members["fCountClass"] = cursor.string(chunk)
+        self._members["fCountVersion"] = cursor.field(
+            chunk, _tstreamerloop_format1, context
+        )
+        self._members["fCountName"] = cursor.string(chunk, context)
+        self._members["fCountClass"] = cursor.string(chunk, context)
 
     @property
     def count_name(self):
@@ -678,7 +687,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             )
         )
         self._members["fSTLtype"], self._members["fCtype"] = cursor.fields(
-            chunk, _tstreamerstl_format1
+            chunk, _tstreamerstl_format1, context
         )
 
         if self._members["fSTLtype"] in (
@@ -801,7 +810,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         if self.is_string:
             read_members.append("        cursor.skip(6)")
             read_members.append(
-                "        self._members[{0}] = cursor.string(chunk)".format(
+                "        self._members[{0}] = cursor.string(chunk, context)".format(
                     repr(self.name)
                 )
             )
@@ -809,20 +818,20 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         elif self.is_vector_dtype:
             read_members.append("        cursor.skip(6)")
             read_members.append(
-                "        tmp = cursor.field(chunk, self._format{0})".format(
+                "        tmp = cursor.field(chunk, self._format{0}, context)".format(
                     len(formats)
                 )
             )
             read_members.append(
                 "        self._members[{0}] = cursor.array(chunk, tmp, "
-                "self._dtype{1})".format(repr(self.name), len(dtypes))
+                "self._dtype{1}, context)".format(repr(self.name), len(dtypes))
             )
             formats.append(["i"])
             dtypes.append(self.vector_dtype)
 
         elif self.is_map_string_string:
             read_members.append(
-                "        self._members[{0}] = map_string_string(chunk, cursor)"
+                "        self._members[{0}] = map_string_string(chunk, cursor, context)"
             )
 
         else:

@@ -24,7 +24,7 @@ class Model_TLeaf_v2(uproot4.model.VersionedModel):
             self._members["fOffset"],
             self._members["fIsRange"],
             self._members["fIsUnsigned"],
-        ) = cursor.fields(chunk, _tleaf2_format0)
+        ) = cursor.fields(chunk, _tleaf2_format0, context)
         self._members["fLeafCount"] = uproot4.deserialization.read_object_any(
             chunk, cursor, context, self._file, self._parent
         )
@@ -58,7 +58,7 @@ class Model_TLeafB_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafb1_format1
+            chunk, _tleafb1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -83,7 +83,7 @@ class Model_TLeafC_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafc1_format1
+            chunk, _tleafc1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -108,7 +108,7 @@ class Model_TLeafD_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafd1_format1
+            chunk, _tleafd1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -133,7 +133,7 @@ class Model_TLeafF_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleaff1_format1
+            chunk, _tleaff1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -158,7 +158,7 @@ class Model_TLeafI_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafi1_format1
+            chunk, _tleafi1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -183,7 +183,7 @@ class Model_TLeafL_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafl1_format0
+            chunk, _tleafl1_format0, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -208,7 +208,7 @@ class Model_TLeafO_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafO1_format1
+            chunk, _tleafO1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -233,7 +233,7 @@ class Model_TLeafS_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafs1_format1
+            chunk, _tleafs1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]
@@ -258,7 +258,7 @@ class Model_TLeafElement_v1(uproot4.model.VersionedModel):
             )
         )
         self._members["fID"], self._members["fType"] = cursor.fields(
-            chunk, _tleafelement1_format1
+            chunk, _tleafelement1_format1, context
         )
 
     base_names_versions = [("TLeaf", 2)]

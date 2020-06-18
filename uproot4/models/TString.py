@@ -10,7 +10,7 @@ class Model_TString(uproot4.model.Model, str):
         pass
 
     def read_members(self, chunk, cursor, context):
-        self._data = cursor.string(chunk)
+        self._data = cursor.string(chunk, context)
 
     def postprocess(self, chunk, cursor, context):
         out = Model_TString(self._data)
