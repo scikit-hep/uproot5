@@ -203,13 +203,13 @@ class Model(object):
 
         raise uproot4.KeyInFileError(
             name,
-            self._file.file_path,
-            because="""{0}.{1} has only the following members:
+            """{0}.{1} has only the following members:
 
     {2}
 """.format(
                 type(self).__module__, type(self).__name__, "\n    ".join(self._members)
             ),
+            file_path=self._file.file_path,
         )
 
     def tojson(self):

@@ -1303,9 +1303,8 @@ class ReadOnlyDirectory(Mapping):
                             else:
                                 raise uproot4.KeyInFileError(
                                     where,
-                                    self._file.file_path,
-                                    because=repr(head)
-                                    + " is not a TDirectory, TTree, or TBranch",
+                                    repr(head) + " is not a TDirectory, TTree, or TBranch",
+                                    file_path=self._file.file_path,
                                 )
                         else:
                             step = step[item]
@@ -1316,9 +1315,8 @@ class ReadOnlyDirectory(Mapping):
                     else:
                         raise uproot4.KeyInFileError(
                             where,
-                            self._file.file_path,
-                            because=repr(item)
-                            + " is not a TDirectory, TTree, or TBranch",
+                            repr(item) + " is not a TDirectory, TTree, or TBranch",
+                            file_path=self._file.file_path,
                         )
 
             return step
@@ -1351,8 +1349,8 @@ class ReadOnlyDirectory(Mapping):
                     else:
                         raise uproot4.KeyInFileError(
                             where,
-                            self._file.file_path,
-                            because=repr(item) + " is not a TDirectory",
+                            repr(item) + " is not a TDirectory",
+                            file_path=self._file.file_path,
                         )
             return step.key(items[-1])
 
@@ -1376,6 +1374,6 @@ class ReadOnlyDirectory(Mapping):
         if last is not None:
             return last
         elif cycle is None:
-            raise uproot4.KeyInFileError(item, self._file.file_path, cycle="any")
+            raise uproot4.KeyInFileError(item, cycle="any", file_path=self._file.file_path)
         else:
-            raise uproot4.KeyInFileError(item, self._file.file_path, cycle=cycle)
+            raise uproot4.KeyInFileError(item, cycle=cycle, file_path=self._file.file_path)

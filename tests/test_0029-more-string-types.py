@@ -30,6 +30,10 @@ def test_stdvector_in_object():
     # raise Exception
 
 
+# has STL vectors at top-level:
+# python -c 'import uproot; t = uproot.open("../uproot/tests/samples/issue38a.root")["ntupler/tree"]; print("\n".join(str((x._fName, getattr(x, "_fStreamerType", None), getattr(x, "_fClassName", None), getattr(x, "_fType", None), x.interpretation)) for x in t.allvalues()))'
+
+
 # def test_strings1():
 #     with uproot4.open(
 #         skhep_testdata.data_path("uproot-issue31.root")

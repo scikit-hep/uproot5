@@ -525,7 +525,7 @@ class HasBranches(Mapping):
                     return v
             else:
                 raise uproot4.KeyInFileError(
-                    original_where, self._file.file_path, object_path=self.object_path
+                    original_where, file_path=self._file.file_path, object_path=self.object_path
                 )
 
         elif recursive:
@@ -535,7 +535,7 @@ class HasBranches(Mapping):
                 return got
             else:
                 raise uproot4.KeyInFileError(
-                    original_where, self._file.file_path, object_path=self.object_path
+                    original_where, file_path=self._file.file_path, object_path=self.object_path
                 )
 
         else:
@@ -545,7 +545,7 @@ class HasBranches(Mapping):
                     return branch
             else:
                 raise uproot4.KeyInFileError(
-                    original_where, self._file.file_path, object_path=self.object_path
+                    original_where, file_path=self._file.file_path, object_path=self.object_path
                 )
 
     def iteritems(

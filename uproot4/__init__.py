@@ -94,12 +94,14 @@ del pkgutil
 
 
 class KeyInFileError(KeyError):
-    def __init__(self, key, file_path, cycle=None, because="", object_path=None):
+    __slots__ = ["key", "because", "cycle", "file_path", "object_path"]
+
+    def __init__(self, key, because="", cycle=None, file_path=None, object_path=None):
         super(KeyInFileError, self).__init__(key)
         self.key = key
-        self.file_path = file_path
-        self.cycle = cycle
         self.because = because
+        self.cycle = cycle
+        self.file_path = file_path
         self.object_path = object_path
 
     def __str__(self):
