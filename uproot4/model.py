@@ -22,6 +22,9 @@ class Model(object):
         self._num_bytes = None
         self._instance_version = None
 
+        old_breadcrumbs = context.get("breadcrumbs", ())
+        context["breadcrumbs"] = old_breadcrumbs + (self,)
+
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context)
 
         self.read_numbytes_version(chunk, cursor, context)
@@ -36,7 +39,11 @@ class Model(object):
 
         self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context)
 
-        return self.postprocess(chunk, cursor, context)
+        out = self.postprocess(chunk, cursor, context)
+
+        context["breadcrumbs"] = old_breadcrumbs
+
+        return out
 
     def __repr__(self):
         return "<{0} at 0x{1:012x}>".format(
@@ -61,8 +68,9 @@ class Model(object):
             self._cursor,
             cursor,
             self._num_bytes,
-            classname_pretty(self.classname, self.class_version),
+            self.classname,
             context,
+            getattr(self._file, "file_path"),
         )
 
     def postprocess(self, chunk, cursor, context):

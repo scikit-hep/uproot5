@@ -51,6 +51,47 @@ def compile_class(file, classes, class_code, class_name):
     return out
 
 
+class DeserializationError(Exception):
+    __slots__ = ["message", "context", "file_path"]
+
+    def __init__(self, message, context, file_path):
+        self.message = message
+        self.context = context
+        self.file_path = file_path
+
+    def __str__(self):
+        lines = []
+        indent = "    "
+        for obj in self.context.get("breadcrumbs", ()):
+            lines.append(
+                "{0}{1} version {2} as {3}.{4}".format(
+                    indent,
+                    obj.classname,
+                    obj.instance_version,
+                    type(obj).__module__,
+                    type(obj).__name__,
+                )
+            )
+            indent = indent + "    "
+            for v in getattr(obj, "_bases", []):
+                lines.append("{0}(base): {1}".format(indent, repr(v)))
+            for k, v in getattr(obj, "_members", {}).items():
+                lines.append("{0}{1}: {2}".format(indent, k, repr(v)))
+        in_parent = ""
+        if "TBranch" in self.context:
+            in_parent = "\nin TBranch {0}".format(self.context["TBranch"].object_path)
+        elif "TKey" in self.context:
+            in_parent = "\nin object {0}".format(self.context["TKey"].object_path)
+        return """while reading
+
+{0}
+
+{1}
+in file {2}{3}""".format(
+            "\n".join(lines), self.message, self.file_path, in_parent
+        )
+
+
 _numbytes_version_1 = struct.Struct(">IH")
 _numbytes_version_2 = struct.Struct(">H")
 
@@ -71,20 +112,16 @@ def numbytes_version(chunk, cursor, context, move=True):
     return num_bytes, version
 
 
-def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context):
+def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context, file_path):
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
-            in_file = ""
-            tkey = context.get("TKey")
-            file = getattr(tkey, "file")
-            file_path = getattr(file, "file_path")
-            if file_path is not None:
-                in_file = "\nin file {0}".format(file_path)
-            raise ValueError(
-                """instance of ROOT class {0} has {1} bytes; expected {2}{3}""".format(
-                    classname, observed, num_bytes, in_file
-                )
+            raise uproot4.deserialization.DeserializationError(
+                """expected {0} bytes but cursor moved by {1} bytes (through {2})""".format(
+                    num_bytes, observed, classname
+                ),
+                context,
+                file_path,
             )
 
 

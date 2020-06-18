@@ -9,10 +9,8 @@ import skhep_testdata
 import uproot4
 
 
-# def test_formula_with_dot():
-#     with uproot4.open(
-#         skhep_testdata.data_path("uproot-demo-double32.root"),
-#     )["T"] as t:
-#         print(t)
+def test_formula_with_dot():
+    with uproot4.open(skhep_testdata.data_path("uproot-demo-double32.root"),)["T"] as t:
+        print(t)
 
-#     raise Exception
+    raise Exception

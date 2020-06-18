@@ -780,7 +780,7 @@ class ReadOnlyKey(object):
         else:
             uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
                 chunk.source,
-                chunk.get(data_start, data_stop, {"breadcrumbs": [], "TKey": self}),
+                chunk.get(data_start, data_stop, {"breadcrumbs": (), "TKey": self}),
             )
 
         return uncompressed_chunk, cursor
@@ -821,7 +821,7 @@ class ReadOnlyKey(object):
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             cls = self._file.class_named(self._fClassName)
             out = cls.read(
-                chunk, cursor, {"breadcrumbs": [], "TKey": self}, self._file, self
+                chunk, cursor, {"breadcrumbs": (), "TKey": self}, self._file, self
             )
 
         if self._file.object_cache is not None:
@@ -1049,11 +1049,11 @@ class ReadOnlyDirectory(Mapping):
 
     @property
     def cache_key(self):
-        return self.file.hex_uuid + ":" + "/".join(self.path) + "/"
+        return self.file.hex_uuid + ":" + self.object_path
 
     @property
     def object_path(self):
-        return "/".join(self.path) + "/"
+        return "/".join(("",) + self._path + ("",)).replace("//", "/")
 
     @property
     def object_cache(self):
@@ -1251,15 +1251,32 @@ class ReadOnlyDirectory(Mapping):
         return self.iterkeys()
 
     def __getitem__(self, where):
-        if "/" in where:
+        if "/" in where or ":" in where:
             items = where.split("/")
             step = self
+
             for i, item in enumerate(items):
                 if item != "":
                     if isinstance(step, ReadOnlyDirectory):
-                        step = step = step[item]
+                        if ":" in item and item not in step:
+                            index = item.index(":")
+                            head, tail = item[:index], item[index + 1 :]
+                            step = step[head]
+                            if isinstance(step, uproot4.behaviors.TBranch.HasBranches):
+                                return step["/".join([tail] + items[i + 1 :])]
+                            else:
+                                raise uproot4.KeyInFileError(
+                                    where,
+                                    self._file.file_path,
+                                    because=repr(head)
+                                    + " is not a TDirectory, TTree, or TBranch",
+                                )
+                        else:
+                            step = step[item]
+
                     elif isinstance(step, uproot4.behaviors.TBranch.HasBranches):
                         return step["/".join(items[i:])]
+
                     else:
                         raise uproot4.KeyInFileError(
                             where,
@@ -1267,6 +1284,7 @@ class ReadOnlyDirectory(Mapping):
                             because=repr(item)
                             + " is not a TDirectory, TTree, or TBranch",
                         )
+
             return step
 
         else:
