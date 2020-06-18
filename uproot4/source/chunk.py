@@ -339,13 +339,14 @@ for file path {2}""".format(
         self.wait()
         return self._raw_data
 
-    def get(self, start, stop):
+    def get(self, start, stop, context):
         """
         Args:
             start (int): Starting byte position to extract (inclusive, global
                 in Source).
             stop (int): Stopping byte position to extract (exclusive, global
                 in Source).
+            context (dict): Information about the current state of deserialization.
 
         Returns a subinterval of the `raw_data` using global coordinates as a
         NumPy array with dtype uint8.
@@ -373,11 +374,12 @@ of file path {4}""".format(
         else:
             raise RefineChunk(start, stop, self._start, self._stop)
 
-    def remainder(self, start):
+    def remainder(self, start, context):
         """
         Args:
             start (int): Starting byte position to extract (inclusive, global
                 in Source).
+            context (dict): Information about the current state of deserialization.
 
         Returns a subinterval of the `raw_data` from `start` to the end of the
         Chunk as a NumPy array with dtype uint8.

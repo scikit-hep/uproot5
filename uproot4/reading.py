@@ -779,7 +779,8 @@ class ReadOnlyKey(object):
             )
         else:
             uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
-                chunk.source, chunk.get(data_start, data_stop)
+                chunk.source,
+                chunk.get(data_start, data_stop, {"breadcrumbs": [], "TKey": self}),
             )
 
         return uncompressed_chunk, cursor

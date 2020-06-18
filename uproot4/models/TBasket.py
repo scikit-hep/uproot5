@@ -81,7 +81,7 @@ class Model_TBasket(uproot4.model.Model):
                 uncompressed = uproot4.compression.decompress(
                     chunk, cursor, {}, self.compressed_bytes, self.uncompressed_bytes,
                 )
-                self._raw_data = uncompressed.get(0, self.uncompressed_bytes)
+                self._raw_data = uncompressed.get(0, self.uncompressed_bytes, context)
             else:
                 self._raw_data = cursor.bytes(
                     chunk, self.uncompressed_bytes, context, copy_if_memmap=True
