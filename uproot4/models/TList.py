@@ -26,8 +26,8 @@ class Model_TList(uproot4.model.Model, Sequence):
             )
         )
 
-        self._members["fName"] = cursor.string(chunk)
-        self._members["fSize"] = cursor.field(chunk, _tlist_format1)
+        self._members["fName"] = cursor.string(chunk, context)
+        self._members["fSize"] = cursor.field(chunk, _tlist_format1, context)
 
         self._data = []
         for i in range(self._members["fSize"]):
@@ -37,7 +37,7 @@ class Model_TList(uproot4.model.Model, Sequence):
             self._data.append(item)
 
             # ignore "option"
-            n = cursor.field(chunk, _tlist_format2)
+            n = cursor.field(chunk, _tlist_format2, context)
             cursor.skip(n)
 
     def __getitem__(self, where):

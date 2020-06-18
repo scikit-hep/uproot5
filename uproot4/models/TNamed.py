@@ -14,8 +14,8 @@ class Model_TNamed(uproot4.model.Model):
             )
         )
 
-        self._members["fName"] = cursor.string(chunk)
-        self._members["fTitle"] = cursor.string(chunk)
+        self._members["fName"] = cursor.string(chunk, context)
+        self._members["fTitle"] = cursor.string(chunk, context)
 
 
 uproot4.classes["TNamed"] = Model_TNamed

@@ -163,7 +163,7 @@ class ReadOnlyFile(object):
             self._fUUID_version,
             self._fUUID,
         ) = uproot4.source.cursor.Cursor(0).fields(
-            self._begin_chunk, _file_header_fields_small
+            self._begin_chunk, _file_header_fields_small, {}
         )
 
         if self.is_64bit:
@@ -183,7 +183,7 @@ class ReadOnlyFile(object):
                 self._fUUID_version,
                 self._fUUID,
             ) = uproot4.source.cursor.Cursor(0).fields(
-                self._begin_chunk, _file_header_fields_big
+                self._begin_chunk, _file_header_fields_big, {}
             )
 
         self.hook_after_read(magic=magic)
@@ -301,6 +301,7 @@ in file {1}""".format(
         return ReadOnlyDirectory(
             (),
             uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
+            {},
             self,
             self,
         )
@@ -610,7 +611,7 @@ class ReadOnlyKey(object):
             self._fCycle,
             self._fSeekKey,
             self._fSeekPdir,
-        ) = cursor.fields(chunk, self._format_small, move=False)
+        ) = cursor.fields(chunk, self._format_small, context, move=False)
 
         if self.is_64bit:
             (
@@ -622,7 +623,7 @@ class ReadOnlyKey(object):
                 self._fCycle,
                 self._fSeekKey,
                 self._fSeekPdir,
-            ) = cursor.fields(chunk, self._format_big)
+            ) = cursor.fields(chunk, self._format_big, context)
 
         else:
             cursor.skip(self._format_small.size)
@@ -637,9 +638,9 @@ class ReadOnlyKey(object):
                 read_strings=read_strings,
             )
 
-            self._fClassName = cursor.string(chunk)
-            self._fName = cursor.string(chunk)
-            self._fTitle = cursor.string(chunk)
+            self._fClassName = cursor.string(chunk, context)
+            self._fName = cursor.string(chunk, context)
+            self._fTitle = cursor.string(chunk, context)
 
         else:
             self._fClassName = None
@@ -789,7 +790,10 @@ class ReadOnlyKey(object):
 
     @property
     def object_path(self):
-        return ""
+        if isinstance(self._parent, ReadOnlyDirectory):
+            return self._parent.object_path + self.name(False)
+        else:
+            return "(seek pos {0})/{1}".format(self.data_cursor.index, self.name(False))
 
     def get(self):
         if self._file.object_cache is not None:
@@ -805,13 +809,18 @@ class ReadOnlyKey(object):
             "TDirectoryFile",
         ):
             out = ReadOnlyDirectory(
-                self._parent.path + (self.fName,), self.data_cursor, self._file, self,
+                self._parent.path + (self.fName,), self.data_cursor, {}, self._file, self,
             )
 
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             cls = self._file.class_named(self._fClassName)
-            out = cls.read(chunk, cursor, {}, self._file, self)
+            out = cls.read(
+                chunk,
+                cursor,
+                {"breadcrumbs": [], "TKey": self},
+                self._file,
+                self)
 
         if self._file.object_cache is not None:
             self._file.object_cache[self.cache_key] = out
@@ -823,7 +832,7 @@ class ReadOnlyDirectory(Mapping):
     _format_big = struct.Struct(">hIIiiqqq")
     _format_num_keys = struct.Struct(">i")
 
-    def __init__(self, path, cursor, file, parent):
+    def __init__(self, path, cursor, context, file, parent):
         self._path = path
         self._cursor = cursor.copy()
         self._file = file
@@ -846,7 +855,7 @@ class ReadOnlyDirectory(Mapping):
             self._fSeekDir,
             self._fSeekParent,
             self._fSeekKeys,
-        ) = cursor.fields(chunk, self._format_small, move=False)
+        ) = cursor.fields(chunk, self._format_small, context, move=False)
 
         if self.is_64bit:
             (
@@ -858,7 +867,7 @@ class ReadOnlyDirectory(Mapping):
                 self._fSeekDir,
                 self._fSeekParent,
                 self._fSeekKeys,
-            ) = cursor.fields(chunk, self._format_big)
+            ) = cursor.fields(chunk, self._format_big, context)
 
         else:
             cursor.skip(self._format_small.size)
@@ -892,7 +901,7 @@ class ReadOnlyDirectory(Mapping):
                 keys_chunk, keys_cursor, {}, file, self, read_strings=True
             )
 
-            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys)
+            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys, context)
 
             self.hook_before_keys(
                 path=path,

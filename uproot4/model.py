@@ -49,7 +49,7 @@ class Model(object):
         (
             self._num_bytes,
             self._instance_version,
-        ) = uproot4.deserialization.numbytes_version(chunk, cursor)
+        ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
 
     def read_members(self, chunk, cursor, context):
         pass
@@ -62,7 +62,7 @@ class Model(object):
             cursor,
             self._num_bytes,
             classname_pretty(self.classname, self.class_version),
-            getattr(self._file, "file_path"),
+            context,
         )
 
     def postprocess(self, chunk, cursor, context):
@@ -259,7 +259,7 @@ class DispatchByVersion(object):
         import uproot4.deserialization
 
         num_bytes, version = uproot4.deserialization.numbytes_version(
-            chunk, cursor, move=False
+            chunk, cursor, context, move=False
         )
 
         versioned_cls = cls.known_versions.get(version)

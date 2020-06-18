@@ -19,11 +19,11 @@ class Model_TObject(uproot4.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context):
-        self._instance_version = cursor.field(chunk, _tobject_format1)
+        self._instance_version = cursor.field(chunk, _tobject_format1, context)
         if numpy.int64(self._instance_version) & uproot4.const.kByteCountVMask:
             cursor.skip(4)
         self._members["fUniqueID"], self._members["fBits"] = cursor.fields(
-            chunk, _tobject_format2
+            chunk, _tobject_format2, context
         )
         self._members["fBits"] = (
             numpy.uint32(self._members["fBits"]) | uproot4.const.kIsOnHeap

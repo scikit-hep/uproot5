@@ -17,7 +17,7 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
             self._members["fLineColor"],
             self._members["fLineStyle"],
             self._members["fLineWidth"],
-        ) = cursor.fields(chunk, _tattline1_format1)
+        ) = cursor.fields(chunk, _tattline1_format1, context)
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -32,7 +32,7 @@ class Model_TAttLine_v2(uproot4.model.VersionedModel):
             self._members["fLineColor"],
             self._members["fLineStyle"],
             self._members["fLineWidth"],
-        ) = cursor.fields(chunk, _tattline2_format1)
+        ) = cursor.fields(chunk, _tattline2_format1, context)
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -48,7 +48,7 @@ _tattfill2_format1 = struct.Struct(">hh")
 class Model_TAttFill_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._members["fFillColor"], self._members["fFillStyle"] = cursor.fields(
-            chunk, _tattfill1_format1
+            chunk, _tattfill1_format1, context
         )
 
     base_names_versions = []
@@ -61,7 +61,7 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
 class Model_TAttFill_v2(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._members["fFillColor"], self._members["fFillStyle"] = cursor.fields(
-            chunk, _tattfill2_format1
+            chunk, _tattfill2_format1, context
         )
 
     base_names_versions = []
@@ -80,7 +80,7 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
             self._members["fMarkerColor"],
             self._members["fMarkerStyle"],
             self._members["fMarkerSize"],
-        ) = cursor.fields(chunk, _tattmarker2_format1)
+        ) = cursor.fields(chunk, _tattmarker2_format1, context)
 
     base_names_versions = []
     member_names = ["fMarkerColor", "fMarkerStyle", "fMarkserSize"]

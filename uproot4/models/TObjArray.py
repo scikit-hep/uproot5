@@ -26,9 +26,9 @@ class Model_TObjArray(uproot4.model.Model, Sequence):
             )
         )
 
-        self._members["fName"] = cursor.string(chunk)
+        self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"], self._members["fLowerBound"] = cursor.fields(
-            chunk, _tobjarray_format1
+            chunk, _tobjarray_format1, context
         )
 
         self._data = []
@@ -63,9 +63,9 @@ class Model_TObjArrayOfTBaskets(Model_TObjArray):
             )
         )
 
-        self._members["fName"] = cursor.string(chunk)
+        self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"], self._members["fLowerBound"] = cursor.fields(
-            chunk, _tobjarray_format1
+            chunk, _tobjarray_format1, context
         )
 
         self._data = []

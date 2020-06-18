@@ -156,24 +156,24 @@ def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
         # https://github.com/root-project/root/blob/master/core/lzma/src/ZipLZMA.c#L81
         # https://github.com/root-project/root/blob/master/core/lz4/src/ZipLZ4.cxx#L38
         algo, method, c1, c2, c3, u1, u2, u3 = cursor.fields(
-            chunk, _decompress_header_format
+            chunk, _decompress_header_format, context
         )
         block_compressed_bytes = c1 + (c2 << 8) + (c3 << 16)
         block_uncompressed_bytes = u1 + (u2 << 8) + (u3 << 16)
 
         if algo == b"ZL":
             cls = ZLIB
-            data = cursor.bytes(chunk, block_compressed_bytes)
+            data = cursor.bytes(chunk, block_compressed_bytes, context)
 
         elif algo == b"XZ":
             cls = LZMA
-            data = cursor.bytes(chunk, block_compressed_bytes)
+            data = cursor.bytes(chunk, block_compressed_bytes, context)
 
         elif algo == b"L4":
             cls = LZ4
             block_compressed_bytes -= 8
-            expected_checksum = cursor.field(chunk, _decompress_checksum_format)
-            data = cursor.bytes(chunk, block_compressed_bytes)
+            expected_checksum = cursor.field(chunk, _decompress_checksum_format, context)
+            data = cursor.bytes(chunk, block_compressed_bytes, context)
             try:
                 import xxhash
             except ImportError:
@@ -197,7 +197,7 @@ in file {2}""".format(
 
         elif algo == b"ZS":
             cls = ZSTD
-            data = cursor.bytes(chunk, block_compressed_bytes)
+            data = cursor.bytes(chunk, block_compressed_bytes, context)
 
         elif algo == b"CS":
             raise ValueError(

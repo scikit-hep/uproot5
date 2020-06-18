@@ -55,8 +55,8 @@ _numbytes_version_1 = struct.Struct(">IH")
 _numbytes_version_2 = struct.Struct(">H")
 
 
-def numbytes_version(chunk, cursor, move=True):
-    num_bytes, version = cursor.fields(chunk, _numbytes_version_1, move=False)
+def numbytes_version(chunk, cursor, context, move=True):
+    num_bytes, version = cursor.fields(chunk, _numbytes_version_1, context, move=False)
     num_bytes = numpy.int64(num_bytes)
 
     if num_bytes & uproot4.const.kByteCountMask:
@@ -66,18 +66,20 @@ def numbytes_version(chunk, cursor, move=True):
 
     else:
         num_bytes = None
-        version = cursor.field(chunk, _numbytes_version_2, move=move)
+        version = cursor.field(chunk, _numbytes_version_2, context, move=move)
 
     return num_bytes, version
 
 
-def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, file_path):
+def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context):
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
-            if file_path is None:
-                in_file = ""
-            else:
+            in_file = ""
+            tkey = context.get("TKey")
+            file = getattr(tkey, "file")
+            file_path = getattr(file, "file_path")
+            if file_path is not None:
                 in_file = "\nin file {0}".format(file_path)
             raise ValueError(
                 """instance of ROOT class {0} has {1} bytes; expected {2}{3}""".format(
@@ -91,11 +93,11 @@ _map_string_string_format1 = struct.Struct(">I")
 
 def map_string_string(chunk, cursor):
     cursor.skip(12)
-    size = cursor.field(chunk, _map_string_string_format1)
+    size = cursor.field(chunk, _map_string_string_format1, context)
     cursor.skip(6)
-    keys = [cursor.string(chunk) for i in range(size)]
+    keys = [cursor.string(chunk, context) for i in range(size)]
     cursor.skip(6)
-    values = [cursor.string(chunk) for i in range(size)]
+    values = [cursor.string(chunk, context) for i in range(size)]
     return dict(zip(keys, values))
 
 
@@ -111,7 +113,7 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2404
 
     beg = cursor.displacement()
-    bcnt = numpy.int64(cursor.field(chunk, _read_object_any_format1))
+    bcnt = numpy.int64(cursor.field(chunk, _read_object_any_format1, context))
 
     if (bcnt & uproot4.const.kByteCountMask) == 0 or (
         bcnt == uproot4.const.kNewClassTag
@@ -123,7 +125,7 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
     else:
         vers = 1
         start = cursor.displacement()
-        tag = numpy.int64(cursor.field(chunk, _read_object_any_format1))
+        tag = numpy.int64(cursor.field(chunk, _read_object_any_format1, context))
         bcnt = int(bcnt)
 
     if tag & uproot4.const.kClassMask == 0:
@@ -146,7 +148,7 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
     elif tag == uproot4.const.kNewClassTag:
         # new class and object
 
-        classname = cursor.classname(chunk)
+        classname = cursor.classname(chunk, context)
 
         cls = file.class_named(classname)
 

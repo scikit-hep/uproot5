@@ -130,13 +130,13 @@ class Cursor(object):
             )
         self._index = start_cursor.index + num_bytes
 
-    def skip_over(self, chunk):
+    def skip_over(self, chunk, context):
         """
         Move the index after serialized data for an object with
         numbytes_version.
         """
         num_bytes, version = uproot4.deserialization.numbytes_version(
-            chunk, self, move=False
+            chunk, self, context, move=False
         )
         if num_bytes is None:
             raise TypeError(
@@ -145,7 +145,7 @@ class Cursor(object):
             )
         self._index += num_bytes
 
-    def fields(self, chunk, format, move=True):
+    def fields(self, chunk, format, context, move=True):
         """
         Interpret data at this index of the Chunk with a `struct.Struct`
         format. Returns a tuple (length determined by `format`).
@@ -158,7 +158,7 @@ class Cursor(object):
             self._index = stop
         return format.unpack(chunk.get(start, stop))
 
-    def field(self, chunk, format, move=True):
+    def field(self, chunk, format, context, move=True):
         """
         Interpret data at this index of the Chunk with a `struct.Struct`
         format, returning a single item instead of a tuple (the first).
@@ -171,7 +171,7 @@ class Cursor(object):
             self._index = stop
         return format.unpack(chunk.get(start, stop))[0]
 
-    def bytes(self, chunk, length, move=True, copy_if_memmap=False):
+    def bytes(self, chunk, length, context, move=True, copy_if_memmap=False):
         """
         Interpret data at this index of the Chunk as raw bytes with a
         given `length`.
@@ -193,7 +193,7 @@ class Cursor(object):
                 step = step.base
         return out
 
-    def array(self, chunk, length, dtype, move=True):
+    def array(self, chunk, length, dtype, context, move=True):
         """
         Interpret data at this index of the Chunk as an array with a
         given `length` and `dtype`.
@@ -209,7 +209,7 @@ class Cursor(object):
     _u1 = numpy.dtype("u1")
     _i4 = numpy.dtype(">i4")
 
-    def bytestring(self, chunk, move=True):
+    def bytestring(self, chunk, context, move=True):
         """
         Interpret data at this index of the Chunk as a ROOT bytestring
         (first 1 or 5 bytes indicate size).
@@ -231,7 +231,7 @@ class Cursor(object):
             self._index = stop
         return chunk.get(start, stop).tostring()
 
-    def string(self, chunk, move=True):
+    def string(self, chunk, context, move=True):
         """
         Interpret data at this index of the Chunk as a Python str
         (first 1 or 5 bytes indicate size).
@@ -240,13 +240,13 @@ class Cursor(object):
 
         If `move` is False, only peek: don't update the index.
         """
-        out = self.bytestring(chunk, move=move)
+        out = self.bytestring(chunk, context, move=move)
         if uproot4._util.py2:
             return out
         else:
             return out.decode(errors="surrogateescape")
 
-    def classname(self, chunk, move=True):
+    def classname(self, chunk, context, move=True):
         """
         Interpret data at this index of the Chunk as a ROOT class
         name, which is the only usage of null-terminated strings (rather than

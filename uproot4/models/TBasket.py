@@ -38,7 +38,7 @@ class Model_TBasket(uproot4.model.Model):
             self._members["fDatime"],
             self._members["fKeylen"],
             self._members["fCycle"],
-        ) = cursor.fields(chunk, _tbasket_format1)
+        ) = cursor.fields(chunk, _tbasket_format1, context)
 
         # skip the class name, name, and title
         cursor.move_to(
@@ -51,13 +51,13 @@ class Model_TBasket(uproot4.model.Model):
             self._members["fNevBufSize"],
             self._members["fNevBuf"],
             self._members["fLast"],
-        ) = cursor.fields(chunk, _tbasket_format2)
+        ) = cursor.fields(chunk, _tbasket_format2, context)
 
         cursor.skip(1)
 
         if self.is_embedded:
             if self._members["fNevBufSize"] > 8:
-                raw_byte_offsets = cursor.bytes(chunk, 8 + self.num_entries * 4).view(
+                raw_byte_offsets = cursor.bytes(chunk, 8 + self.num_entries * 4, context).view(
                     _tbasket_offsets_dtype
                 )
                 cursor.skip(-4)
@@ -74,7 +74,7 @@ class Model_TBasket(uproot4.model.Model):
             cursor.skip(self._members["fKeylen"])
 
             self._raw_data = None
-            self._data = cursor.bytes(chunk, self.border, copy_if_memmap=True)
+            self._data = cursor.bytes(chunk, self.border, context, copy_if_memmap=True)
 
         else:
             if self.compressed_bytes != self.uncompressed_bytes:
@@ -84,7 +84,7 @@ class Model_TBasket(uproot4.model.Model):
                 self._raw_data = uncompressed.get(0, self.uncompressed_bytes)
             else:
                 self._raw_data = cursor.bytes(
-                    chunk, self.uncompressed_bytes, copy_if_memmap=True
+                    chunk, self.uncompressed_bytes, context, copy_if_memmap=True
                 )
 
             if self.border != self.uncompressed_bytes:
