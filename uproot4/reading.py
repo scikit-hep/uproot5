@@ -809,18 +809,19 @@ class ReadOnlyKey(object):
             "TDirectoryFile",
         ):
             out = ReadOnlyDirectory(
-                self._parent.path + (self.fName,), self.data_cursor, {}, self._file, self,
+                self._parent.path + (self.fName,),
+                self.data_cursor,
+                {},
+                self._file,
+                self,
             )
 
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
             cls = self._file.class_named(self._fClassName)
             out = cls.read(
-                chunk,
-                cursor,
-                {"breadcrumbs": [], "TKey": self},
-                self._file,
-                self)
+                chunk, cursor, {"breadcrumbs": [], "TKey": self}, self._file, self
+            )
 
         if self._file.object_cache is not None:
             self._file.object_cache[self.cache_key] = out

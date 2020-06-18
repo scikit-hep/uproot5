@@ -57,9 +57,9 @@ class Model_TBasket(uproot4.model.Model):
 
         if self.is_embedded:
             if self._members["fNevBufSize"] > 8:
-                raw_byte_offsets = cursor.bytes(chunk, 8 + self.num_entries * 4, context).view(
-                    _tbasket_offsets_dtype
-                )
+                raw_byte_offsets = cursor.bytes(
+                    chunk, 8 + self.num_entries * 4, context
+                ).view(_tbasket_offsets_dtype)
                 cursor.skip(-4)
 
                 # subtracting fKeylen makes a new buffer and converts to native endian

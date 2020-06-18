@@ -91,7 +91,7 @@ def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context):
 _map_string_string_format1 = struct.Struct(">I")
 
 
-def map_string_string(chunk, cursor):
+def map_string_string(chunk, cursor, context):
     cursor.skip(12)
     size = cursor.field(chunk, _map_string_string_format1, context)
     cursor.skip(6)

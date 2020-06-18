@@ -109,9 +109,7 @@ def test_double32():
     del uproot4.classes["TBranch"]
     del uproot4.classes["TBranchElement"]
 
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-demo-double32.root"),
-    )["T"] as t:
+    with uproot4.open(skhep_testdata.data_path("uproot-demo-double32.root"),)["T"] as t:
 
         print(t["fD64"].interpretation)
         print(t["fF32"].interpretation)

@@ -172,7 +172,9 @@ def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
         elif algo == b"L4":
             cls = LZ4
             block_compressed_bytes -= 8
-            expected_checksum = cursor.field(chunk, _decompress_checksum_format, context)
+            expected_checksum = cursor.field(
+                chunk, _decompress_checksum_format, context
+            )
             data = cursor.bytes(chunk, block_compressed_bytes, context)
             try:
                 import xxhash
