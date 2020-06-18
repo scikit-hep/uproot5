@@ -836,8 +836,8 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         else:
             read_members.append(
                 "        raise DeserializationError('class members of type "
-                "{1} are not implemented yet', chunk, cursor.copy(), context, "
-                "self.file.file_path)".format(type(self).__name__, self.typename)
+                "{0} are not implemented yet', chunk, cursor.copy(), context, "
+                "self.file.file_path)".format(self.typename)
             )
         member_names.append(self.name)
 

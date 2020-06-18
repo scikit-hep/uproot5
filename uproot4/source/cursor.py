@@ -20,6 +20,7 @@ _printable_characters = (
     "NOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ "
 )
 
+
 class Cursor(object):
     """
     Represents a position in a ROOT file, which may be held for later reference
@@ -365,7 +366,9 @@ of file path {2}""".format(
             stream.write(
                 prefix
                 + u" ".join(
-                    u"{0:>3s}".format(chr(x)) if chr(x) in _printable_characters else u"---"
+                    u"{0:>3s}".format(chr(x))
+                    if chr(x) in _printable_characters
+                    else u"---"
                     for x in line_data
                 )
                 + u"\n"

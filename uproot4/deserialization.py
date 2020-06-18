@@ -103,7 +103,9 @@ in file {2}{3}""".format(
                 "\n".join(lines), self.message, self.file_path, in_parent
             )
 
-    def debug(self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout):
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
+    ):
         cursor = self.cursor.copy()
         cursor.skip(skip_bytes)
         cursor.debug(
@@ -112,7 +114,7 @@ in file {2}{3}""".format(
             limit_bytes=limit_bytes,
             dtype=dtype,
             offset=offset,
-            stream=stream
+            stream=stream,
         )
 
     def array(self, dtype, skip_bytes=0, limit_bytes=None):
@@ -120,7 +122,7 @@ in file {2}{3}""".format(
         cursor = self.cursor.copy()
         cursor.skip(skip_bytes)
         out = self.chunk.remainder(cursor.index, cursor, self.context)[:limit_bytes]
-        return out[:(len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
 
     @property
     def partial_object(self):

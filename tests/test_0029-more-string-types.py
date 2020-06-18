@@ -29,6 +29,7 @@ def test_map_string_string_in_object():
 
     # raise Exception
 
+
 # def test_map_long_int_in_object():
 #     with uproot4.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue283.root") as f:
 #         try:
