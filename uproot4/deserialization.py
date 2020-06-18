@@ -77,19 +77,27 @@ class DeserializationError(Exception):
                 lines.append("{0}(base): {1}".format(indent, repr(v)))
             for k, v in getattr(obj, "_members", {}).items():
                 lines.append("{0}{1}: {2}".format(indent, k, repr(v)))
+
         in_parent = ""
         if "TBranch" in self.context:
             in_parent = "\nin TBranch {0}".format(self.context["TBranch"].object_path)
         elif "TKey" in self.context:
             in_parent = "\nin object {0}".format(self.context["TKey"].object_path)
-        return """while reading
+
+        if len(lines) == 0:
+            return """{0}
+in file {1}{2}""".format(
+                self.message, self.file_path, in_parent
+            )
+        else:
+            return """while reading
 
 {0}
 
 {1}
 in file {2}{3}""".format(
-            "\n".join(lines), self.message, self.file_path, in_parent
-        )
+                "\n".join(lines), self.message, self.file_path, in_parent
+            )
 
 
 _numbytes_version_1 = struct.Struct(">IH")

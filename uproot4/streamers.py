@@ -190,8 +190,9 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def new_class(self, file):
         class_code = self.class_code()
         class_name = uproot4.model.classname_encode(self.name, self.class_version)
+        classes = uproot4.model.maybe_custom_classes(file.custom_classes)
         return uproot4.deserialization.compile_class(
-            file, file.classes, class_code, class_name
+            file, classes, class_code, class_name
         )
 
     def class_code(self):

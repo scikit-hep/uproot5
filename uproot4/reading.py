@@ -32,9 +32,7 @@ import uproot4._util
 from uproot4._util import no_filter
 
 
-def open(
-    path, object_cache=100, array_cache="100 MB", classes=uproot4.classes, **options
-):
+def open(path, object_cache=100, array_cache="100 MB", custom_classes=None, **options):
     """
     Args:
         path (str or Path): Path or URL to open, which may include a colon
@@ -47,9 +45,9 @@ def open(
         array_cache (None, MutableMapping, or memory size): Cache of arrays
             drawn from TTrees; if None, do not use a cache; if a memory size,
             create a new cache of this size.
-        classes (None or MutableMapping): If None, defaults to uproot4.classes;
-            otherwise, a container of class definitions that is both used to
-            fill with new classes and search for dependencies.
+        custom_classes (None or MutableMapping): If None, classes come from
+            uproot4.classes; otherwise, a container of class definitions that
+            is both used to fill with new classes and search for dependencies.
         options: see below.
 
     Opens a ROOT file, possibly through a remote protocol.
@@ -74,7 +72,7 @@ def open(
         file_path,
         object_cache=object_cache,
         array_cache=array_cache,
-        classes=classes,
+        custom_classes=custom_classes,
         **options
     )
 
@@ -108,13 +106,13 @@ class ReadOnlyFile(object):
         file_path,
         object_cache=100,
         array_cache="100 MB",
-        classes=uproot4.classes,
+        custom_classes=None,
         **options
     ):
         self._file_path = file_path
         self.object_cache = object_cache
         self.array_cache = array_cache
-        self.classes = classes
+        self.custom_classes = custom_classes
 
         self._options = dict(open.defaults)
         self._options.update(options)
@@ -258,17 +256,21 @@ in file {1}""".format(
             )
 
     @property
-    def classes(self):
-        return self._classes
+    def custom_classes(self):
+        return self._custom_classes
 
-    @classes.setter
-    def classes(self, value):
-        if value is None:
-            self._classes = uproot4.classes
-        elif isinstance(value, MutableMapping):
-            self._classes = value
+    @custom_classes.setter
+    def custom_classes(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._custom_classes = value
         else:
-            raise TypeError("classes must be None or a MutableMapping")
+            raise TypeError("custom_classes must be None or a MutableMapping")
+
+    def remove_class(self, classname):
+        if self._custom_classes is None:
+            self._custom_classes = dict(uproot4.classes)
+        if classname in self._custom_classes:
+            del self._custom_classes[classname]
 
     @property
     def options(self):
@@ -305,6 +307,14 @@ in file {1}""".format(
             self,
             self,
         )
+
+    def is_custom_class(self, classname):
+        if self._custom_classes is None:
+            return False
+        else:
+            mine = self._custom_classes.get(classname)
+            theirs = uproot4.classes.get(classname)
+            return mine is not None and mine is not theirs
 
     @property
     def streamers(self):
@@ -350,7 +360,8 @@ in file {1}""".format(
                     streamer_chunk=streamer_chunk,
                 )
 
-                tlist = self._classes["TList"].read(
+                classes = uproot4.model.maybe_custom_classes(self._custom_classes)
+                tlist = classes["TList"].read(
                     streamer_chunk, streamer_cursor, {}, self, self
                 )
 
@@ -441,7 +452,8 @@ in file {1}""".format(
         return list(self.streamers[classname].values())
 
     def class_named(self, classname, version=None):
-        cls = self._classes.get(classname)
+        classes = uproot4.model.maybe_custom_classes(self._custom_classes)
+        cls = classes.get(classname)
 
         if cls is None:
             streamers = self.streamers_named(classname)
@@ -463,7 +475,7 @@ in file {1}""".format(
                     (uproot4.model.DispatchByVersion,),
                     {"known_versions": {}},
                 )
-                self._classes[classname] = cls
+                classes[classname] = cls
 
         if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
             if not uproot4._util.isint(version):
@@ -819,10 +831,34 @@ class ReadOnlyKey(object):
 
         else:
             chunk, cursor = self.get_uncompressed_chunk_cursor()
+            start_cursor = cursor.copy()
             cls = self._file.class_named(self._fClassName)
-            out = cls.read(
-                chunk, cursor, {"breadcrumbs": (), "TKey": self}, self._file, self
-            )
+            context = {"breadcrumbs": (), "TKey": self}
+
+            try:
+                out = cls.read(chunk, cursor, context, self._file, self)
+
+            except uproot4.deserialization.DeserializationError:
+                breadcrumbs = context.get("breadcrumbs")
+                if breadcrumbs is None or all(
+                    breadcrumb_cls.classname in uproot4.model.bootstrap_classnames
+                    or self._file.is_custom_class(breadcrumb_cls.classname)
+                    for breadcrumb_cls in breadcrumbs
+                ):
+                    # we're already using the most specialized versions of each class
+                    raise
+
+                for breadcrumb_cls in breadcrumbs:
+                    if (
+                        breadcrumb_cls.classname
+                        not in uproot4.model.bootstrap_classnames
+                    ):
+                        self._file.remove_class(breadcrumb_cls.classname)
+
+                cursor = start_cursor
+                cls = self._file.class_named(self._fClassName)
+                context = {"breadcrumbs": (), "TKey": self}
+                out = cls.read(chunk, cursor, context, self._file, self)
 
         if self._file.object_cache is not None:
             self._file.object_cache[self.cache_key] = out

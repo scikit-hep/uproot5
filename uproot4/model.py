@@ -10,6 +10,40 @@ import uproot4.const
 import uproot4._util
 
 
+bootstrap_classnames = [
+    "TStreamerInfo",
+    "TStreamerElement",
+    "TStreamerArtificial",
+    "TStreamerBase",
+    "TStreamerBasicPointer",
+    "TStreamerBasicType",
+    "TStreamerLoop",
+    "TStreamerObject",
+    "TStreamerObjectAny",
+    "TStreamerObjectAnyPointer",
+    "TStreamerObjectPointer",
+    "TStreamerSTL",
+    "TStreamerSTLstring",
+    "TStreamerString",
+    "TList",
+    "TObjArray",
+    "TObjString",
+]
+
+
+def bootstrap_classes():
+    import uproot4.streamers
+    import uproot4.models.TList
+    import uproot4.models.TObjArray
+    import uproot4.models.TObjString
+
+    custom_classes = {}
+    for classname in bootstrap_classnames:
+        custom_classes[classname] = uproot4.classes[classname]
+
+    return custom_classes
+
+
 class Model(object):
     @classmethod
     def read(cls, chunk, cursor, context, file, parent):
@@ -407,11 +441,15 @@ def classname_pretty(classname, version):
         return "{0} (version {1})".format(classname, version)
 
 
-def has_class_named(classname, version=None, classes=None):
-    if classes is None:
-        classes = uproot4.classes
+def maybe_custom_classes(custom_classes):
+    if custom_classes is None:
+        return uproot4.classes
+    else:
+        return custom_classes
 
-    cls = classes.get(classname)
+
+def has_class_named(classname, version=None, custom_classes=None):
+    cls = maybe_custom_classes(custom_classes).get(classname)
     if cls is None:
         return False
 
@@ -421,10 +459,10 @@ def has_class_named(classname, version=None, classes=None):
         return True
 
 
-def class_named(classname, version=None, classes=None):
-    if classes is None:
+def class_named(classname, version=None, custom_classes=None):
+    if custom_classes is None:
         classes = uproot4.classes
-        where = "the given 'classes' dict"
+        where = "the 'custom_classes' dict"
     else:
         where = "uproot4.classes"
 
