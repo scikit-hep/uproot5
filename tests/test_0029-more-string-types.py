@@ -30,24 +30,27 @@ def test_map_string_string_in_object():
     # raise Exception
 
 
-# def test_map_long_int_in_object():
-#     with uproot4.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue283.root") as f:
-#         try:
-#             f["config/detector"]
-#         except uproot4.DeserializationError as err:
-#             print(err)
-#             err.debug(limit_bytes=80)
-#             # print()
-#             # err.debug(3 + 14*4 + 5160*8 + 5160*4, limit_bytes=160)
-#             # print()
-#             # print(err.array(">i8", skip_bytes=3 + 14*4)[5160:].view(">i4")[5160:])
+@pytest.mark.skip(
+    reason="FIXME: test works, but the file is not in scikit-hep-testdata yet"
+)
+def test_map_long_int_in_object():
+    with uproot4.open(
+        "/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue283.root"
+    ) as f:
+        print(f["config/detector"])
 
-#     raise Exception
+    # raise Exception
 
 
 # has STL vectors at top-level:
-# python -c 'import uproot; t = uproot.open("../uproot/tests/samples/issue38a.root")["ntupler/tree"]; print("\n".join(str((x._fName, getattr(x, "_fStreamerType", None), getattr(x, "_fClassName", None), getattr(x, "_fType", None), x.interpretation)) for x in t.allvalues()))'
+#
+# python -c 'import uproot; t = uproot.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue38a.root")["ntupler/tree"]; print("\n".join(str((x._fName, getattr(x, "_fStreamerType", None), getattr(x, "_fClassName", None), getattr(x, "_fType", None), x.interpretation)) for x in t.allvalues()))'
 
+# has STL map<int,struct> as described here:
+#
+# https://github.com/scikit-hep/uproot/issues/468#issuecomment-646325842
+#
+# python -c 'import uproot; t = uproot.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue468.root")["Geant4Data/Geant4Data./Geant4Data.particles"]; print(t.array(uproot.asdebug)[0][:1000])'
 
 # def test_strings1():
 #     with uproot4.open(

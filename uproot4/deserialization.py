@@ -184,6 +184,27 @@ def map_string_string(chunk, cursor, context):
 scope["map_string_string"] = map_string_string
 
 
+def map_long_int(chunk, cursor, context):
+    cursor.skip(12)
+    size = cursor.field(chunk, _map_string_string_format1, context)
+    keys = cursor.array(chunk, size, numpy.dtype(">i8"), context)
+    values = cursor.array(chunk, size, numpy.dtype(">i4"), context)
+    return dict(zip(keys, values))
+
+
+scope["map_long_int"] = map_long_int
+
+
+def set_long(chunk, cursor, context):
+    cursor.skip(6)
+    size = cursor.field(chunk, _map_string_string_format1, context)
+    values = cursor.array(chunk, size, numpy.dtype(">i8"), context)
+    return set(values)
+
+
+scope["set_long"] = set_long
+
+
 _read_object_any_format1 = struct.Struct(">I")
 
 

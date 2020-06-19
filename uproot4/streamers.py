@@ -8,6 +8,7 @@ import re
 
 import numpy
 
+import uproot4._util
 import uproot4.model
 import uproot4.const
 import uproot4.deserialization
@@ -89,6 +90,16 @@ def _ftype_to_dtype(fType):
         return None
 
 
+def _long_to_struct(is_signed):
+    if uproot4._util.win:
+        if uproot4._util.py2:
+            return "q" if is_signed else "Q"
+        else:
+            return "i" if is_signed else "I"  # FIXME: probably wrong, need to check
+    else:
+        return "q" if is_signed else "Q"
+
+
 def _ftype_to_struct(fType):
     if fType == uproot4.const.kBool:
         return "?"
@@ -105,9 +116,9 @@ def _ftype_to_struct(fType):
     elif fType in (uproot4.const.kBits, uproot4.const.kUInt, uproot4.const.kCounter):
         return "I"
     elif fType == uproot4.const.kLong:
-        return "l"
+        return _long_to_struct(True)
     elif fType == uproot4.const.kULong:
-        return "L"
+        return _long_to_struct(False)
     elif fType == uproot4.const.kLong64:
         return "q"
     elif fType == uproot4.const.kULong64:
@@ -790,10 +801,6 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         else:
             return None
 
-    @property
-    def is_map_string_string(self):
-        return self.typename == "map<string,string>"
-
     def class_code(
         self,
         streamerinfo,
@@ -827,9 +834,21 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             formats.append(["i"])
             dtypes.append(self.vector_dtype)
 
-        elif self.is_map_string_string:
+        elif self.typename == "map<string,string>":
             read_members.append(
                 "        self._members[{0}] = map_string_string(chunk, cursor, "
+                "context)".format(repr(self.name))
+            )
+
+        elif self.typename == "map<long,int>":
+            read_members.append(
+                "        self._members[{0}] = map_long_int(chunk, cursor, "
+                "context)".format(repr(self.name))
+            )
+
+        elif self.typename == "set<long>":
+            read_members.append(
+                "        self._members[{0}] = set_long(chunk, cursor, "
                 "context)".format(repr(self.name))
             )
 
