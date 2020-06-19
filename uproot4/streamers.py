@@ -145,6 +145,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def postprocess(self, chunk, cursor, context):
         # prevent circular dependencies and long-lived references to files
+        self._file_uuid = self._file.uuid
         self._file = None
         self._parent = None
         return self
@@ -165,6 +166,10 @@ class Model_TStreamerInfo(uproot4.model.Model):
     @property
     def elements(self):
         return self._members["fElements"]
+
+    @property
+    def file_uuid(self):
+        return self._file_uuid
 
     def _dependencies(self, streamers, out):
         out.append((self.name, self.class_version))
@@ -825,9 +830,17 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             dtypes.append(self.vector_dtype)
 
         elif self.typename == "map<string,string>":
+            # read_members.append(
+            #     "        self._members[{0}] = map_string_string(chunk, cursor, "
+            #     "context)".format(repr(self.name))
+            # )
             read_members.append(
-                "        self._members[{0}] = map_string_string(chunk, cursor, "
-                "context)".format(repr(self.name))
+                "        self._members[{0}] = "
+                "uproot4.stl_containers.AsMap(uproot4.stl_containers.AsString(), "
+                "uproot4.stl_containers.AsString()).read_with_header"
+                "(chunk, cursor, context, self._file, self._parent)".format(
+                    repr(self.name)
+                )
             )
 
         elif self.typename == "map<long,int>":

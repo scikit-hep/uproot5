@@ -15,6 +15,7 @@ except ImportError:
     from collections import Sequence
     from collections import Set
     from collections import Mapping
+
     KeysView = None
     ValuesView = None
 
@@ -79,75 +80,121 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
 _stl_container_size = struct.Struct(">I")
 _stl_primitive_types = {
     numpy.dtype("bool"): "bool",
-
     numpy.dtype("i1"): "int8_t",
     numpy.dtype("u1"): "uint8_t",
-
     numpy.dtype("i2"): "int16_t",
     numpy.dtype(">i2"): "int16_t",
     numpy.dtype("u2"): "unt16_t",
     numpy.dtype(">u2"): "unt16_t",
-
     numpy.dtype("i4"): "int32_t",
     numpy.dtype(">i4"): "int32_t",
     numpy.dtype("u4"): "unt32_t",
     numpy.dtype(">u4"): "unt32_t",
-
     numpy.dtype("i8"): "int64_t",
     numpy.dtype(">i8"): "int64_t",
     numpy.dtype("u8"): "unt64_t",
     numpy.dtype(">u8"): "unt64_t",
-
     numpy.dtype("f4"): "float",
     numpy.dtype(">f4"): "float",
-
     numpy.dtype("f8"): "double",
     numpy.dtype(">f8"): "double",
 }
 _stl_object_type = numpy.dtype(numpy.object)
 
 
-class AsVector(object):
-    def __init__(self, model):
-        if isinstance(model, type) and issubclass(model, uproot4.model.Model):
-            self._model = model
-        else:
-            self._model = numpy.dtype(model)
+class AsSTLContainer(object):
+    @property
+    def classname(self):
+        raise AssertionError
+
+    def read_with_header(self, chunk, cursor, context, file, parent):
+        raise AssertionError
+
+    def read(self, chunk, cursor, context, file, parent):
+        raise AssertionError
+
+
+class AsString(AsSTLContainer):
+    def __init__(self, is_stl=True):
+        self._is_stl = is_stl
 
     @property
-    def model(self):
-        return self._model
+    def is_stl(self):
+        return self._is_stl
 
     def __repr__(self):
-        return "AsVector({0})".format(repr(self._model))
+        is_stl = ""
+        if not self._is_stl:
+            is_stl = "is_stl=False"
+        return "AsString({0})".format(is_stl)
 
     @property
     def classname(self):
-        typename = _stl_primitive_types.get(self._model)
-        if typename is None:
-            return "std::vector<{0}>".format(self._model.classname)
+        if self._is_stl:
+            return "std::string"
         else:
-            return "std::vector<{0}>".format(typename)
+            return "const char*"
+
+    def read_with_header(self, chunk, cursor, context, file, parent):
+        if not self._is_stl:
+            return self.read(chunk, cursor, context, file, parent)
+
+        start_cursor = cursor.copy()
+        num_bytes, instance_version = uproot4.deserialization.numbytes_version(
+            chunk, cursor, context
+        )
+
+        out = cursor.string(chunk, context)
+
+        uproot4.deserialization.numbytes_check(
+            start_cursor, cursor, num_bytes, self.classname, context, file.file_path,
+        )
+
+        return out
+
+    def read(self, chunk, cursor, context, file, parent):
+        return cursor.string(chunk, context)
+
+
+class AsVector(AsSTLContainer):
+    def __init__(self, values):
+        if isinstance(values, AsSTLContainer):
+            self._values = values
+        elif isinstance(values, type) and issubclass(values, uproot4.model.Model):
+            self._values = values
+        else:
+            self._values = numpy.dtype(values)
+
+    @property
+    def values(self):
+        return self._values
+
+    def __repr__(self):
+        return "AsVector({0})".format(repr(self._values))
+
+    @property
+    def classname(self):
+        values = _stl_primitive_types.get(self._values)
+        if values is None:
+            values = self._values.classname
+        return "std::vector<{0}>".format(values)
 
     def read_with_header(self, chunk, cursor, context, file, parent):
         start_cursor = cursor.copy()
-        num_bytes, instance_version = uproot4.deserialization.numbytes_version(chunk, cursor, context)
+        num_bytes, instance_version = uproot4.deserialization.numbytes_version(
+            chunk, cursor, context
+        )
         length = cursor.field(chunk, _stl_container_size, context)
 
-        if isinstance(self._model, numpy.dtype):
-            values = cursor.array(chunk, length, self._model, context)
+        if isinstance(self._values, numpy.dtype):
+            values = cursor.array(chunk, length, self._values, context)
         else:
             values = numpy.empty(length, dtype=_stl_object_type)
             for i in range(length):
-                values[i] = self._model.read(chunk, cursor, contxt, file, parent)
+                values[i] = self._values.read(chunk, cursor, context, file, parent)
 
         uproot4.deserialization.numbytes_check(
-            start_cursor,
-            cursor,
-            num_bytes,
-            self.classname,
-            context,
-            file.file_path,
+            start_cursor, cursor, num_bytes, self.classname, context, file.file_path,
         )
 
         return STLVector(values)
@@ -155,12 +202,12 @@ class AsVector(object):
     def read(self, chunk, cursor, context, file, parent):
         length = cursor.field(chunk, _stl_container_size, context)
 
-        if isinstance(self._model, numpy.dtype):
-            values = cursor.array(chunk, length, self._model, context)
+        if isinstance(self._values, numpy.dtype):
+            values = cursor.array(chunk, length, self._values, context)
         else:
             values = numpy.empty(length, dtype=_stl_object_type)
             for i in range(length):
-                values[i] = self._model.read(chunk, cursor, contxt, file, parent)
+                values[i] = self._values.read(chunk, cursor, context, file, parent)
 
         return STLVector(values)
 
@@ -273,6 +320,98 @@ class STLSet(STLContainer, Set):
 
     def __ne__(self, other):
         return not self == other
+
+
+class AsMap(AsSTLContainer):
+    def __init__(self, keys, values):
+        if isinstance(keys, AsSTLContainer):
+            self._keys = keys
+        else:
+            self._keys = numpy.dtype(keys)
+
+        if isinstance(values, AsSTLContainer):
+            self._values = values
+        elif isinstance(values, type) and issubclass(values, uproot4.model.Model):
+            self._values = values
+        else:
+            self._values = numpy.dtype(values)
+
+        print("constructed", self)
+
+    @property
+    def keys(self):
+        return self._keys
+
+    @property
+    def values(self):
+        return self._values
+
+    def __repr__(self):
+        return "AsMap({0}, {1})".format(repr(self._keys), repr(self._values))
+
+    @property
+    def classname(self):
+        keys = _stl_primitive_types.get(self._keys)
+        if keys is None:
+            keys = self._keys.classname
+        values = _stl_primitive_types.get(self._values)
+        if values is None:
+            values = self._values.classname
+        return "std::map<{0}, {1}>".format(keys, values)
+
+    def read_with_header(self, chunk, cursor, context, file, parent):
+        print(cursor)
+        cursor.debug(chunk, limit_bytes=80)
+
+        start_cursor = cursor.copy()
+        num_bytes, instance_version = uproot4.deserialization.numbytes_version(
+            chunk, cursor, context
+        )
+
+        cursor.skip(6)
+
+        length = cursor.field(chunk, _stl_container_size, context)
+
+        print("size", length)
+
+        if isinstance(self._keys, numpy.dtype):
+            keys = cursor.array(chunk, length, self._keys, context)
+        else:
+            keys = numpy.empty(length, dtype=_stl_object_type)
+            for i in range(length):
+                keys[i] = self._keys.read(chunk, cursor, context, file, parent)
+
+        if isinstance(self._values, numpy.dtype):
+            values = cursor.array(chunk, length, self._values, context)
+        else:
+            values = numpy.empty(length, dtype=_stl_object_type)
+            for i in range(length):
+                values[i] = self._values.read(chunk, cursor, context, file, parent)
+
+        uproot4.deserialization.numbytes_check(
+            start_cursor, cursor, num_bytes, self.classname, context, file.file_path,
+        )
+
+        return STLMap(keys, values)
+
+    def read(self, chunk, cursor, context, file, parent):
+        length = cursor.field(chunk, _stl_container_size, context)
+
+        if isinstance(self._keys, numpy.dtype):
+            keys = cursor.array(chunk, length, self._keys, context)
+        else:
+            keys = numpy.empty(length, dtype=_stl_object_type)
+            for i in range(length):
+                keys[i] = self._keys.read(chunk, cursor, context, file, parent)
+
+        if isinstance(self._values, numpy.dtype):
+            values = cursor.array(chunk, length, self._values, context)
+        else:
+            values = numpy.empty(length, dtype=_stl_object_type)
+            for i in range(length):
+                values[i] = self._values.read(chunk, cursor, context, file, parent)
+
+        return STLMap(keys, values)
 
 
 class STLMap(STLContainer, Mapping):

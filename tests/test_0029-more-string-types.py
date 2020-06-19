@@ -23,11 +23,11 @@ def test_strings1():
         assert result.tolist() == ["end-{0:03d}".format(i) for i in range(100)]
 
 
-def test_map_string_string_in_object():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue431.root")) as f:
-        print(f["Head"])
+# def test_map_string_string_in_object():
+#     with uproot4.open(skhep_testdata.data_path("uproot-issue431.root")) as f:
+#         print(f["Head"])
 
-    # raise Exception
+#     raise Exception
 
 
 @pytest.mark.skip(

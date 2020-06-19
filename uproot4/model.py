@@ -4,6 +4,11 @@ from __future__ import absolute_import
 
 import re
 
+# try:
+#     from collections.abc import MutableMapping
+# except ImportError:
+#     from collections import MutableMapping
+
 import numpy
 
 import uproot4.const
@@ -44,7 +49,68 @@ def bootstrap_classes():
     return custom_classes
 
 
+# class PassThroughClasses(MutableMapping):
+#     def __init__(self):
+#         self._own_classes = {}
+
+#     def __repr__(self):
+#         return "uproot4.classes | " + repr(self._own_classes)
+
+#     @property
+#     def own_classes(self):
+#         return self._own_classes
+
+#     def __getitem__(self, where):
+#         try:
+#             return self._own_classes[where]
+#         except KeyError:
+#             return uproot4.classes[where]
+
+#     def __setitem__(self, where, what):
+#         self._own_classes[where] = what
+#         if where not in uproot.classes:
+#             uproot.classes[where] = what
+
+#     def __delitem__(self, where):
+#         del self._own_classes[where]
+
+#     def __iter__(self):
+#         def generator():
+#             seen = set()
+#             for x in self._own_classes:
+#                 seen.add(x)
+#                 yield x
+#             for x in uproot4.classes:
+#                 if x not in seen:
+#                     yield x
+#         return generator()
+
+#     def __len__(self):
+#         return len(set(self._own_classes).union(uproot4.classes))
+
+#     def pop(self, key, *default):
+#         if len(default) == 0:
+#             out = self[key]
+#             if key in self._own_classes:
+#                 del self._own_classes[key]
+#             return out
+#         elif len(default) == 1:
+#             out = self.get(key)
+#             if key in self._own_classes:
+#                 del self._own_classes[key]
+#                 return out
+#             if key in uproot4.classes:
+#                 return uproot4.classes[key]
+#             return default[0]
+#         else:
+#             raise TypeError(
+#                 "pop expected at most 2 arguments, got {1}".format(1 + len(default))
+#             )
+
+
 class Model(object):
+    class_streamer = None
+
     @classmethod
     def read(cls, chunk, cursor, context, file, parent):
         self = cls.__new__(cls)
@@ -340,7 +406,7 @@ class DispatchByVersion(object):
 
         if streamer is not None:
             versioned_cls = streamer.new_class(file)
-            versioned_cls.streamer = streamer
+            versioned_cls.class_streamer = streamer
             cls.known_versions[streamer.class_version] = versioned_cls
             return versioned_cls
 

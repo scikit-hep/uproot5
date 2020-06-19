@@ -261,6 +261,8 @@ in file {1}""".format(
 
     @custom_classes.setter
     def custom_classes(self, value):
+        # if value is None:
+        #     self._custom_classes = uproot4.model.PassThroughClasses()
         if value is None or isinstance(value, MutableMapping):
             self._custom_classes = value
         else:
@@ -309,12 +311,14 @@ in file {1}""".format(
         )
 
     def is_custom_class(self, classname):
+        # if isinstance(self._custom_classes, uproot4.model.PassThroughClasses):
+        #     return classname in self._custom_classes.own_classes
         if self._custom_classes is None:
             return False
         else:
-            mine = self._custom_classes.get(classname)
-            theirs = uproot4.classes.get(classname)
-            return mine is not None and mine is not theirs
+            custom = self._custom_classes.get(classname)
+            standard = uproot4.classes.get(classname)
+            return custom is not None and custom is not standard
 
     @property
     def streamers(self):
@@ -845,9 +849,12 @@ class ReadOnlyKey(object):
 
             except uproot4.deserialization.DeserializationError:
                 breadcrumbs = context.get("breadcrumbs")
+
                 if breadcrumbs is None or all(
                     breadcrumb_cls.classname in uproot4.model.bootstrap_classnames
-                    or self._file.is_custom_class(breadcrumb_cls.classname)
+                    or isinstance(breadcrumb_cls, uproot4.stl_containers.AsSTLContainer)
+                    or getattr(breadcrumb_cls.class_streamer, "file_uuid", None)
+                    == self._file.uuid
                     for breadcrumb_cls in breadcrumbs
                 ):
                     # we're already using the most specialized versions of each class
@@ -858,11 +865,13 @@ class ReadOnlyKey(object):
                         breadcrumb_cls.classname
                         not in uproot4.model.bootstrap_classnames
                     ):
+                        # self._file.custom_classes.pop(breadcrumb_cls.classname, None)
                         self._file.remove_class(breadcrumb_cls.classname)
 
                 cursor = start_cursor
                 cls = self._file.class_named(self._fClassName)
                 context = {"breadcrumbs": (), "TKey": self}
+
                 out = cls.read(chunk, cursor, context, self._file, self)
 
         if self._file.object_cache is not None:
