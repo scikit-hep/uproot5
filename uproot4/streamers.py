@@ -75,9 +75,9 @@ def _ftype_to_dtype(fType):
     elif fType in (uproot4.const.kBits, uproot4.const.kUInt, uproot4.const.kCounter):
         return "numpy.dtype('>u4')"
     elif fType == uproot4.const.kLong:
-        return "numpy.dtype(numpy.long).newbyteorder('>')"
+        return "numpy.dtype('>i8')"
     elif fType == uproot4.const.kULong:
-        return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
+        return "numpy.dtype('>u8')"
     elif fType == uproot4.const.kLong64:
         return "numpy.dtype('>i8')"
     elif fType == uproot4.const.kULong64:
@@ -88,16 +88,6 @@ def _ftype_to_dtype(fType):
         return "numpy.dtype('>f8')"
     else:
         return None
-
-
-def _long_to_struct(is_signed):
-    if uproot4._util.win:
-        if uproot4._util.py2:
-            return "q" if is_signed else "Q"
-        else:
-            return "i" if is_signed else "I"  # FIXME: probably wrong, need to check
-    else:
-        return "q" if is_signed else "Q"
 
 
 def _ftype_to_struct(fType):
@@ -116,9 +106,9 @@ def _ftype_to_struct(fType):
     elif fType in (uproot4.const.kBits, uproot4.const.kUInt, uproot4.const.kCounter):
         return "I"
     elif fType == uproot4.const.kLong:
-        return _long_to_struct(True)
+        return "q"
     elif fType == uproot4.const.kULong:
-        return _long_to_struct(False)
+        return "Q"
     elif fType == uproot4.const.kLong64:
         return "q"
     elif fType == uproot4.const.kULong64:

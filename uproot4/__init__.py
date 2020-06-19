@@ -35,6 +35,10 @@ from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
 
+from uproot4.stl_containers import STLVector
+from uproot4.stl_containers import STLSet
+from uproot4.stl_containers import STLMap
+
 import uproot4.interpretation
 import uproot4.interpretation.library
 
