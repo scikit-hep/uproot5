@@ -261,14 +261,12 @@ in file {1}""".format(
 
     @custom_classes.setter
     def custom_classes(self, value):
-        # if value is None:
-        #     self._custom_classes = uproot4.model.PassThroughClasses()
         if value is None or isinstance(value, MutableMapping):
             self._custom_classes = value
         else:
             raise TypeError("custom_classes must be None or a MutableMapping")
 
-    def remove_class(self, classname):
+    def remove_class_definition(self, classname):
         if self._custom_classes is None:
             self._custom_classes = dict(uproot4.classes)
         if classname in self._custom_classes:
@@ -309,16 +307,6 @@ in file {1}""".format(
             self,
             self,
         )
-
-    def is_custom_class(self, classname):
-        # if isinstance(self._custom_classes, uproot4.model.PassThroughClasses):
-        #     return classname in self._custom_classes.own_classes
-        if self._custom_classes is None:
-            return False
-        else:
-            custom = self._custom_classes.get(classname)
-            standard = uproot4.classes.get(classname)
-            return custom is not None and custom is not standard
 
     @property
     def streamers(self):
@@ -865,8 +853,7 @@ class ReadOnlyKey(object):
                         breadcrumb_cls.classname
                         not in uproot4.model.bootstrap_classnames
                     ):
-                        # self._file.custom_classes.pop(breadcrumb_cls.classname, None)
-                        self._file.remove_class(breadcrumb_cls.classname)
+                        self._file.remove_class_definition(breadcrumb_cls.classname)
 
                 cursor = start_cursor
                 cls = self._file.class_named(self._fClassName)
