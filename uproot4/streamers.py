@@ -206,6 +206,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         fields = []
         formats = []
         dtypes = []
+        stl_containers = []
         base_names_versions = []
         member_names = []
         class_flags = {}
@@ -225,6 +226,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 fields,
                 formats,
                 dtypes,
+                stl_containers,
                 base_names_versions,
                 member_names,
                 class_flags,
@@ -240,12 +242,18 @@ class Model_TStreamerInfo(uproot4.model.Model):
         read_members.append("")
 
         class_data = []
+
         for i, format in enumerate(formats):
             class_data.append(
                 "    _format{0} = struct.Struct('>{1}')".format(i, "".join(format))
             )
+
         for i, dt in enumerate(dtypes):
             class_data.append("    _dtype{0} = {1}".format(i, dt))
+
+        for i, stl in enumerate(stl_containers):
+            class_data.append("    _stl_container{0} = {1}".format(i, stl))
+
         class_data.append(
             "    base_names_versions = [{0}]".format(
                 ", ".join(
@@ -254,14 +262,17 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 )
             )
         )
+
         class_data.append(
             "    member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
         )
+
         class_data.append(
             "    class_flags = {{{0}}}".format(
                 ", ".join(repr(k) + ": " + repr(v) for k, v in class_flags.items())
             )
         )
+
         class_data.append("    hooks = {}")
 
         return "\n".join(
@@ -379,6 +390,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -434,6 +446,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -476,6 +489,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -579,6 +593,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -665,6 +680,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -805,6 +821,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -830,17 +847,14 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             dtypes.append(self.vector_dtype)
 
         elif self.typename == "map<string,string>":
-            # read_members.append(
-            #     "        self._members[{0}] = map_string_string(chunk, cursor, "
-            #     "context)".format(repr(self.name))
-            # )
             read_members.append(
-                "        self._members[{0}] = "
+                "        self._members[{0}] = self._stl_container{1}.read("
+                "chunk, cursor, context, self._file, self._parent, multiplicity=1)"
+                "".format(repr(self.name), len(stl_containers))
+            )
+            stl_containers.append(
                 "uproot4.stl_containers.AsMap(uproot4.stl_containers.AsString(), "
-                "uproot4.stl_containers.AsString()).read_with_header"
-                "(chunk, cursor, context, self._file, self._parent)".format(
-                    repr(self.name)
-                )
+                "uproot4.stl_containers.AsString())"
             )
 
         elif self.typename == "map<long,int>":
@@ -879,6 +893,7 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -907,6 +922,7 @@ class pointer_types(object):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -967,6 +983,7 @@ class object_types(object):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,

@@ -172,28 +172,6 @@ def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context, fil
 _map_string_string_format1 = struct.Struct(">I")
 
 
-def map_string_string(chunk, cursor, context):
-    print(cursor)
-    cursor.debug(chunk, limit_bytes=80)
-
-    cursor.skip(12)
-    size = cursor.field(chunk, _map_string_string_format1, context)
-
-    print("size", size)
-
-    cursor.skip(6)
-    keys = [cursor.string(chunk, context) for i in range(size)]
-    cursor.skip(6)
-    values = [cursor.string(chunk, context) for i in range(size)]
-
-    print(cursor)
-
-    return dict(zip(keys, values))
-
-
-scope["map_string_string"] = map_string_string
-
-
 def map_long_int(chunk, cursor, context):
     cursor.skip(12)
     size = cursor.field(chunk, _map_string_string_format1, context)

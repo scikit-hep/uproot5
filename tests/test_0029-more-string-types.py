@@ -23,11 +23,45 @@ def test_strings1():
         assert result.tolist() == ["end-{0:03d}".format(i) for i in range(100)]
 
 
-# def test_map_string_string_in_object():
-#     with uproot4.open(skhep_testdata.data_path("uproot-issue431.root")) as f:
-#         print(f["Head"])
-
-#     raise Exception
+def test_map_string_string_in_object():
+    with uproot4.open(skhep_testdata.data_path("uproot-issue431.root")) as f:
+        head = f["Head"]
+        assert head.member("map<string,string>") == {
+            "DAQ": "394",
+            "PDF": "4      58",
+            "XSecFile": "",
+            "can": "0 1027 888.4",
+            "can_user": "0.00 1027.00  888.40",
+            "coord_origin": "0 0 0",
+            "cut_in": "0 0 0 0",
+            "cut_nu": "100 1e+08 -1 1",
+            "cut_primary": "0 0 0 0",
+            "cut_seamuon": "0 0 0 0",
+            "decay": "doesnt happen",
+            "detector": "NOT",
+            "drawing": "Volume",
+            "end_event": "",
+            "genhencut": "2000 0",
+            "genvol": "0 1027 888.4 2.649e+09 100000",
+            "kcut": "2",
+            "livetime": "0 0",
+            "model": "1       2       0       1      12",
+            "muon_desc_file": "",
+            "ngen": "0.1000E+06",
+            "norma": "0 0",
+            "nuflux": "0       3       0 0.500E+00 0.000E+00 0.100E+01 0.300E+01",
+            "physics": "GENHEN 7.2-220514 181116 1138",
+            "seed": "GENHEN 3  305765867         0         0",
+            "simul": "JSirene 11012 11/17/18 07",
+            "sourcemode": "diffuse",
+            "spectrum": "-1.4",
+            "start_run": "1",
+            "target": "isoscalar",
+            "usedetfile": "false",
+            "xlat_user": "0.63297",
+            "xparam": "OFF",
+            "zed_user": "0.00 3450.00",
+        }
 
 
 @pytest.mark.skip(
