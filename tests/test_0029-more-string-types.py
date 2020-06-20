@@ -33,7 +33,9 @@ def test_parse_typename():
     assert parse_typename("std::vector<std::string>") == AsVector(AsString())
     assert parse_typename("vector<vector<int>>") == AsVector(AsVector(">i4"))
     assert parse_typename("vector<vector<string>>") == AsVector(AsVector(AsString()))
-    assert parse_typename("vector<vector<char*>>") == AsVector(AsVector(AsString(is_stl=False)))
+    assert parse_typename("vector<vector<char*>>") == AsVector(
+        AsVector(AsString(is_stl=False))
+    )
     assert parse_typename("set<unsigned short>") == AsSet(">u2")
     assert parse_typename("std::set<unsigned short>") == AsSet(">u2")
     assert parse_typename("set<string>") == AsSet(AsString())
@@ -45,10 +47,18 @@ def test_parse_typename():
     assert parse_typename("map<string, string>") == AsMap(AsString(), AsString())
     assert parse_typename("map<string,string>") == AsMap(AsString(), AsString())
     assert parse_typename("map<   string,string   >") == AsMap(AsString(), AsString())
-    assert parse_typename("map<string,vector<int>>") == AsMap(AsString(), AsVector(">i4"))
-    assert parse_typename("map<vector<int>, string>") == AsMap(AsVector(">i4"), AsString())
-    assert parse_typename("map<vector<int>, set<float>>") == AsMap(AsVector(">i4"), AsSet(">f4"))
-    assert parse_typename("map<vector<int>, set<set<float>>>") == AsMap(AsVector(">i4"), AsSet(AsSet(">f4")))
+    assert parse_typename("map<string,vector<int>>") == AsMap(
+        AsString(), AsVector(">i4")
+    )
+    assert parse_typename("map<vector<int>, string>") == AsMap(
+        AsVector(">i4"), AsString()
+    )
+    assert parse_typename("map<vector<int>, set<float>>") == AsMap(
+        AsVector(">i4"), AsSet(">f4")
+    )
+    assert parse_typename("map<vector<int>, set<set<float>>>") == AsMap(
+        AsVector(">i4"), AsSet(AsSet(">f4"))
+    )
 
     with pytest.raises(ValueError):
         parse_typename("string  <")

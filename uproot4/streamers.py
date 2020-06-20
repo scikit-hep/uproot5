@@ -195,6 +195,9 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def new_class(self, file):
         class_code = self.class_code()
+
+        print(class_code)
+
         class_name = uproot4.model.classname_encode(self.name, self.class_version)
         classes = uproot4.model.maybe_custom_classes(file.custom_classes)
         return uproot4.deserialization.compile_class(
@@ -338,6 +341,7 @@ class Model_TStreamerElement(uproot4.model.Model):
 
     def postprocess(self, chunk, cursor, context):
         # prevent circular dependencies and long-lived references to files
+        self._file_uuid = self._file.uuid
         self._file = None
         self._parent = None
         return self
@@ -361,6 +365,10 @@ class Model_TStreamerElement(uproot4.model.Model):
     @property
     def fType(self):
         return self.member("fType")
+
+    @property
+    def file_uuid(self):
+        return self._file_uuid
 
     def _dependencies(self, streamers, out):
         pass
@@ -734,84 +742,6 @@ class Model_TStreamerSTL(Model_TStreamerElement):
     def fCtype(self):
         return self._members["fCtype"]
 
-    @property
-    def is_string(self):
-        return self.stl_type == uproot4.const.kSTLstring or self.typename == "string"
-
-    @property
-    def is_vector_dtype(self):
-        return self.vector_dtype is not None
-
-    @property
-    def vector_dtype(self):
-        if self.stl_type == uproot4.const.kSTLvector:
-            if self.fCtype == uproot4.const.kBool:
-                return "numpy.dtype('?')"
-            elif self.fCtype == uproot4.const.kChar:
-                return "numpy.dtype('i1')"
-            elif self.fCtype == uproot4.const.kShort:
-                return "numpy.dtype('>i2')"
-            elif self.fCtype == uproot4.const.kInt:
-                return "numpy.dtype('>i4')"
-            elif self.fCtype == uproot4.const.kLong:
-                return "numpy.dtype(numpy.long).newbyteorder('>')"
-            elif self.fCtype == uproot4.const.kLong64:
-                return "numpy.dtype('>i8')"
-            elif self.fCtype == uproot4.const.kUChar:
-                return "numpy.dtype('u1')"
-            elif self.fCtype == uproot4.const.kUShort:
-                return "numpy.dtype('>u2')"
-            elif self.fCtype == uproot4.const.kUInt:
-                return "numpy.dtype('>u4')"
-            elif self.fCtype == uproot4.const.kULong:
-                return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
-            elif self.fCtype == uproot4.const.kULong64:
-                return "numpy.dtype('>u8')"
-            elif self.fCtype == uproot4.const.kFloat:
-                return "numpy.dtype('>f4')"
-            elif self.fCtype == uproot4.const.kDouble:
-                return "numpy.dtype('>f8')"
-
-        if self.typename == "vector<bool>" or self.typename == "vector<Bool_t>":
-            return "numpy.dtype('?')"
-        elif self.typename == "vector<char>" or self.typename == "vector<Char_t>":
-            return "numpy.dtype('i1')"
-        elif self.typename == "vector<short>" or self.typename == "vector<Short_t>":
-            return "numpy.dtype('>i2')"
-        elif self.typename == "vector<int>" or self.typename == "vector<Int_t>":
-            return "numpy.dtype('>i4')"
-        elif self.typename == "vector<long>" or self.typename == "vector<Long_t>":
-            return "numpy.dtype(numpy.long).newbyteorder('>')"
-        elif self.typename == "vector<Long64_t>":
-            return "numpy.dtype('>i8')"
-        elif (
-            self.typename == "vector<unsigned char>"
-            or self.typename == "vector<UChar_t>"
-        ):
-            return "numpy.dtype('u1')"
-        elif (
-            self.typename == "vector<unsigned short>"
-            or self.typename == "vector<UShort_t>"
-        ):
-            return "numpy.dtype('>u2')"
-        elif (
-            self.typename == "vector<unsigned int>" or self.typename == "vector<UInt_t>"
-        ):
-            return "numpy.dtype('>u4')"
-        elif (
-            self.typename == "vector<unsigned long>"
-            or self.typename == "vector<ULong_t>"
-        ):
-            return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
-        elif self.typename == "vector<ULong64_t>":
-            return "numpy.dtype('>u8')"
-        elif self.typename == "vector<float>" or self.typename == "vector<Float_t>":
-            return "numpy.dtype('>f4')"
-        elif self.typename == "vector<double>" or self.typename == "vector<Double_t>":
-            return "numpy.dtype('>f8')"
-        else:
-            return None
-
     def class_code(
         self,
         streamerinfo,
@@ -826,55 +756,14 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        if self.is_string:
-            read_members.append("        cursor.skip(6)")
-            read_members.append(
-                "        self._members[{0}] = cursor.string(chunk, "
-                "context)".format(repr(self.name))
-            )
+        stl_container = uproot4.stl_containers.parse_typename(self.typename, quote=True)
+        read_members.append(
+            "        self._members[{0}] = self._stl_container{1}.read("
+            "chunk, cursor, context, self._file, self._parent, multiplicity=1)"
+            "".format(repr(self.name), len(stl_containers))
+        )
+        stl_containers.append(stl_container)
 
-        elif self.is_vector_dtype:
-            read_members.append("        cursor.skip(6)")
-            read_members.append(
-                "        tmp = cursor.field(chunk, self._format{0}, "
-                "context)".format(len(formats))
-            )
-            read_members.append(
-                "        self._members[{0}] = cursor.array(chunk, tmp, "
-                "self._dtype{1}, context)".format(repr(self.name), len(dtypes))
-            )
-            formats.append(["i"])
-            dtypes.append(self.vector_dtype)
-
-        elif self.typename == "map<string,string>":
-            read_members.append(
-                "        self._members[{0}] = self._stl_container{1}.read("
-                "chunk, cursor, context, self._file, self._parent, multiplicity=1)"
-                "".format(repr(self.name), len(stl_containers))
-            )
-            stl_containers.append(
-                "uproot4.stl_containers.AsMap(uproot4.stl_containers.AsString(), "
-                "uproot4.stl_containers.AsString())"
-            )
-
-        elif self.typename == "map<long,int>":
-            read_members.append(
-                "        self._members[{0}] = map_long_int(chunk, cursor, "
-                "context)".format(repr(self.name))
-            )
-
-        elif self.typename == "set<long>":
-            read_members.append(
-                "        self._members[{0}] = set_long(chunk, cursor, "
-                "context)".format(repr(self.name))
-            )
-
-        else:
-            read_members.append(
-                "        raise uproot4.deserialization.DeserializationError("
-                "'class members of type {0} are not implemented yet', chunk, "
-                "cursor.copy(), context, self.file.file_path)".format(self.typename)
-            )
         member_names.append(self.name)
 
 
