@@ -8,6 +8,7 @@ import re
 
 import numpy
 
+import uproot4._util
 import uproot4.model
 import uproot4.const
 import uproot4.deserialization
@@ -74,9 +75,9 @@ def _ftype_to_dtype(fType):
     elif fType in (uproot4.const.kBits, uproot4.const.kUInt, uproot4.const.kCounter):
         return "numpy.dtype('>u4')"
     elif fType == uproot4.const.kLong:
-        return "numpy.dtype(numpy.long).newbyteorder('>')"
+        return "numpy.dtype('>i8')"
     elif fType == uproot4.const.kULong:
-        return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
+        return "numpy.dtype('>u8')"
     elif fType == uproot4.const.kLong64:
         return "numpy.dtype('>i8')"
     elif fType == uproot4.const.kULong64:
@@ -105,9 +106,9 @@ def _ftype_to_struct(fType):
     elif fType in (uproot4.const.kBits, uproot4.const.kUInt, uproot4.const.kCounter):
         return "I"
     elif fType == uproot4.const.kLong:
-        return "l"
+        return "q"
     elif fType == uproot4.const.kULong:
-        return "L"
+        return "Q"
     elif fType == uproot4.const.kLong64:
         return "q"
     elif fType == uproot4.const.kULong64:
@@ -144,6 +145,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def postprocess(self, chunk, cursor, context):
         # prevent circular dependencies and long-lived references to files
+        self._file_uuid = self._file.uuid
         self._file = None
         self._parent = None
         return self
@@ -164,6 +166,10 @@ class Model_TStreamerInfo(uproot4.model.Model):
     @property
     def elements(self):
         return self._members["fElements"]
+
+    @property
+    def file_uuid(self):
+        return self._file_uuid
 
     def _dependencies(self, streamers, out):
         out.append((self.name, self.class_version))
@@ -189,6 +195,9 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def new_class(self, file):
         class_code = self.class_code()
+
+        print(class_code)
+
         class_name = uproot4.model.classname_encode(self.name, self.class_version)
         classes = uproot4.model.maybe_custom_classes(file.custom_classes)
         return uproot4.deserialization.compile_class(
@@ -200,6 +209,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         fields = []
         formats = []
         dtypes = []
+        stl_containers = []
         base_names_versions = []
         member_names = []
         class_flags = {}
@@ -219,6 +229,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 fields,
                 formats,
                 dtypes,
+                stl_containers,
                 base_names_versions,
                 member_names,
                 class_flags,
@@ -234,12 +245,18 @@ class Model_TStreamerInfo(uproot4.model.Model):
         read_members.append("")
 
         class_data = []
+
         for i, format in enumerate(formats):
             class_data.append(
                 "    _format{0} = struct.Struct('>{1}')".format(i, "".join(format))
             )
+
         for i, dt in enumerate(dtypes):
             class_data.append("    _dtype{0} = {1}".format(i, dt))
+
+        for i, stl in enumerate(stl_containers):
+            class_data.append("    _stl_container{0} = {1}".format(i, stl))
+
         class_data.append(
             "    base_names_versions = [{0}]".format(
                 ", ".join(
@@ -248,19 +265,22 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 )
             )
         )
+
         class_data.append(
             "    member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
         )
+
         class_data.append(
             "    class_flags = {{{0}}}".format(
                 ", ".join(repr(k) + ": " + repr(v) for k, v in class_flags.items())
             )
         )
+
         class_data.append("    hooks = {}")
 
         return "\n".join(
             [
-                "class {0}(VersionedModel):".format(
+                "class {0}(uproot4.model.VersionedModel):".format(
                     uproot4.model.classname_encode(self.name, self.class_version)
                 )
             ]
@@ -321,6 +341,7 @@ class Model_TStreamerElement(uproot4.model.Model):
 
     def postprocess(self, chunk, cursor, context):
         # prevent circular dependencies and long-lived references to files
+        self._file_uuid = self._file.uuid
         self._file = None
         self._parent = None
         return self
@@ -344,6 +365,10 @@ class Model_TStreamerElement(uproot4.model.Model):
     @property
     def fType(self):
         return self.member("fType")
+
+    @property
+    def file_uuid(self):
+        return self._file_uuid
 
     def _dependencies(self, streamers, out):
         pass
@@ -373,6 +398,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -428,6 +454,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -470,6 +497,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -573,6 +601,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -659,6 +688,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -712,88 +742,6 @@ class Model_TStreamerSTL(Model_TStreamerElement):
     def fCtype(self):
         return self._members["fCtype"]
 
-    @property
-    def is_string(self):
-        return self.stl_type == uproot4.const.kSTLstring or self.typename == "string"
-
-    @property
-    def is_vector_dtype(self):
-        return self.vector_dtype is not None
-
-    @property
-    def vector_dtype(self):
-        if self.stl_type == uproot4.const.kSTLvector:
-            if self.fCtype == uproot4.const.kBool:
-                return "numpy.dtype('?')"
-            elif self.fCtype == uproot4.const.kChar:
-                return "numpy.dtype('i1')"
-            elif self.fCtype == uproot4.const.kShort:
-                return "numpy.dtype('>i2')"
-            elif self.fCtype == uproot4.const.kInt:
-                return "numpy.dtype('>i4')"
-            elif self.fCtype == uproot4.const.kLong:
-                return "numpy.dtype(numpy.long).newbyteorder('>')"
-            elif self.fCtype == uproot4.const.kLong64:
-                return "numpy.dtype('>i8')"
-            elif self.fCtype == uproot4.const.kUChar:
-                return "numpy.dtype('u1')"
-            elif self.fCtype == uproot4.const.kUShort:
-                return "numpy.dtype('>u2')"
-            elif self.fCtype == uproot4.const.kUInt:
-                return "numpy.dtype('>u4')"
-            elif self.fCtype == uproot4.const.kULong:
-                return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
-            elif self.fCtype == uproot4.const.kULong64:
-                return "numpy.dtype('>u8')"
-            elif self.fCtype == uproot4.const.kFloat:
-                return "numpy.dtype('>f4')"
-            elif self.fCtype == uproot4.const.kDouble:
-                return "numpy.dtype('>f8')"
-
-        if self.typename == "vector<bool>" or self.typename == "vector<Bool_t>":
-            return "numpy.dtype('?')"
-        elif self.typename == "vector<char>" or self.typename == "vector<Char_t>":
-            return "numpy.dtype('i1')"
-        elif self.typename == "vector<short>" or self.typename == "vector<Short_t>":
-            return "numpy.dtype('>i2')"
-        elif self.typename == "vector<int>" or self.typename == "vector<Int_t>":
-            return "numpy.dtype('>i4')"
-        elif self.typename == "vector<long>" or self.typename == "vector<Long_t>":
-            return "numpy.dtype(numpy.long).newbyteorder('>')"
-        elif self.typename == "vector<Long64_t>":
-            return "numpy.dtype('>i8')"
-        elif (
-            self.typename == "vector<unsigned char>"
-            or self.typename == "vector<UChar_t>"
-        ):
-            return "numpy.dtype('u1')"
-        elif (
-            self.typename == "vector<unsigned short>"
-            or self.typename == "vector<UShort_t>"
-        ):
-            return "numpy.dtype('>u2')"
-        elif (
-            self.typename == "vector<unsigned int>" or self.typename == "vector<UInt_t>"
-        ):
-            return "numpy.dtype('>u4')"
-        elif (
-            self.typename == "vector<unsigned long>"
-            or self.typename == "vector<ULong_t>"
-        ):
-            return "numpy.dtype('>u' + repr(numpy.dtype(numpy.long).itemsize))"
-        elif self.typename == "vector<ULong64_t>":
-            return "numpy.dtype('>u8')"
-        elif self.typename == "vector<float>" or self.typename == "vector<Float_t>":
-            return "numpy.dtype('>f4')"
-        elif self.typename == "vector<double>" or self.typename == "vector<Double_t>":
-            return "numpy.dtype('>f8')"
-        else:
-            return None
-
-    @property
-    def is_map_string_string(self):
-        return self.typename == "map<string,string>"
-
     def class_code(
         self,
         streamerinfo,
@@ -803,51 +751,26 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
-        if self.is_string:
-            read_members.append("        cursor.skip(6)")
-            read_members.append(
-                "        self._members[{0}] = cursor.string(chunk, context)".format(
-                    repr(self.name)
-                )
-            )
+        stl_container = uproot4.stl_containers.parse_typename(self.typename, quote=True)
+        read_members.append(
+            "        self._members[{0}] = self._stl_container{1}.read("
+            "chunk, cursor, context, self._file, self._parent, multiplicity=1)"
+            "".format(repr(self.name), len(stl_containers))
+        )
+        stl_containers.append(stl_container)
 
-        elif self.is_vector_dtype:
-            read_members.append("        cursor.skip(6)")
-            read_members.append(
-                "        tmp = cursor.field(chunk, self._format{0}, context)".format(
-                    len(formats)
-                )
-            )
-            read_members.append(
-                "        self._members[{0}] = cursor.array(chunk, tmp, "
-                "self._dtype{1}, context)".format(repr(self.name), len(dtypes))
-            )
-            formats.append(["i"])
-            dtypes.append(self.vector_dtype)
-
-        elif self.is_map_string_string:
-            read_members.append(
-                "        self._members[{0}] = map_string_string(chunk, cursor, context)"
-            )
-
-        else:
-            read_members.append(
-                "        raise NotImplementedError('class members defined by "
-                "{0} with type {1}')".format(type(self).__name__, self.typename)
-            )
         member_names.append(self.name)
 
 
-class Model_TStreamerSTLstring(Model_TStreamerElement):
+class Model_TStreamerSTLstring(Model_TStreamerSTL):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
-            Model_TStreamerElement.read(
-                chunk, cursor, context, self._file, self._parent
-            )
+            Model_TStreamerSTL.read(chunk, cursor, context, self._file, self._parent)
         )
 
     def class_code(
@@ -859,6 +782,7 @@ class Model_TStreamerSTLstring(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -887,6 +811,7 @@ class pointer_types(object):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -947,6 +872,7 @@ class object_types(object):
         fields,
         formats,
         dtypes,
+        stl_containers,
         base_names_versions,
         member_names,
         class_flags,

@@ -23,6 +23,8 @@ from uproot4.source.futures import ThreadPoolExecutor
 decompression_executor = ThreadPoolExecutor()
 interpretation_executor = TrivialExecutor()
 
+from uproot4.deserialization import DeserializationError
+
 from uproot4.reading import open
 from uproot4.reading import ReadOnlyFile
 from uproot4.reading import ReadOnlyDirectory
@@ -32,6 +34,10 @@ from uproot4.model import classname_decode
 from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
+
+from uproot4.stl_containers import STLVector
+from uproot4.stl_containers import STLSet
+from uproot4.stl_containers import STLMap
 
 import uproot4.interpretation
 import uproot4.interpretation.library
@@ -94,12 +100,14 @@ del pkgutil
 
 
 class KeyInFileError(KeyError):
-    def __init__(self, key, file_path, cycle=None, because="", object_path=None):
+    __slots__ = ["key", "because", "cycle", "file_path", "object_path"]
+
+    def __init__(self, key, because="", cycle=None, file_path=None, object_path=None):
         super(KeyInFileError, self).__init__(key)
         self.key = key
-        self.file_path = file_path
-        self.cycle = cycle
         self.because = because
+        self.cycle = cycle
+        self.file_path = file_path
         self.object_path = object_path
 
     def __str__(self):
@@ -108,25 +116,25 @@ class KeyInFileError(KeyError):
         else:
             because = " because " + self.because
 
-        if self.object_path is None:
-            object_path = ""
-        else:
-            object_path = "\nin object {0}".format(self.object_path)
+        in_file = ""
+        if self.file_path is not None:
+            in_file = "\nin file {0}".format(self.file_path)
+
+        in_object = ""
+        if self.object_path is not None:
+            in_object = "\nin object {0}".format(self.object_path)
 
         if self.cycle == "any":
-            return """not found: {0} (with any cycle number){1}
-in file {2}{3}""".format(
-                repr(self.key), because, self.file_path, object_path
+            return """not found: {0} (with any cycle number){1}{2}{3}""".format(
+                repr(self.key), because, in_file, in_object
             )
         elif self.cycle is None:
-            return """not found: {0}{1}
-in file {2}{3}""".format(
-                repr(self.key), because, self.file_path, object_path
+            return """not found: {0}{1}{2}{3}""".format(
+                repr(self.key), because, in_file, in_object
             )
         else:
-            return """not found: {0} with cycle {1}{2}
-in file {3}{4}""".format(
-                repr(self.key), self.cycle, because, self.file_path, object_path
+            return """not found: {0} with cycle {1}{2}{3}{4}""".format(
+                repr(self.key), self.cycle, because, in_file, in_object
             )
 
 

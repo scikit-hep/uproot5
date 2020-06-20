@@ -340,13 +340,14 @@ for file path {2}""".format(
         self.wait()
         return self._raw_data
 
-    def get(self, start, stop, context):
+    def get(self, start, stop, cursor, context):
         """
         Args:
             start (int): Starting byte position to extract (inclusive, global
                 in Source).
             stop (int): Stopping byte position to extract (exclusive, global
                 in Source).
+            cursor (Cursor): The Cursor that is currently reading this Chunk.
             context (dict): Information about the current state of deserialization.
 
         Returns a subinterval of the `raw_data` using global coordinates as a
@@ -369,6 +370,8 @@ for file path {2}""".format(
 outside expected range {2}:{3} for this Chunk""".format(
                     start, stop, self._start, self._stop
                 ),
+                self,
+                cursor.copy(),
                 context,
                 self._source.file_path,
             )
@@ -376,7 +379,7 @@ outside expected range {2}:{3} for this Chunk""".format(
         else:
             raise RefineChunk(start, stop, self._start, self._stop)
 
-    def remainder(self, start, context):
+    def remainder(self, start, cursor, context):
         """
         Args:
             start (int): Starting byte position to extract (inclusive, global
@@ -402,6 +405,8 @@ outside expected range {2}:{3} for this Chunk""".format(
 outside expected range {1}:{2} for this Chunk""".format(
                     start, self._start, self._stop
                 ),
+                self,
+                cursor.copy(),
                 context,
                 self._source.file_path,
             )

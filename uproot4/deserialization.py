@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import struct
+import sys
 
 import numpy
 
@@ -14,7 +15,7 @@ import uproot4._util
 scope = {
     "struct": struct,
     "numpy": numpy,
-    "VersionedModel": uproot4.model.VersionedModel,
+    "uproot4": uproot4,
 }
 
 
@@ -52,10 +53,12 @@ def compile_class(file, classes, class_code, class_name):
 
 
 class DeserializationError(Exception):
-    __slots__ = ["message", "context", "file_path"]
+    __slots__ = ["message", "chunk", "cursor", "context", "file_path"]
 
-    def __init__(self, message, context, file_path):
+    def __init__(self, message, chunk, cursor, context, file_path):
         self.message = message
+        self.chunk = chunk
+        self.cursor = cursor
         self.context = context
         self.file_path = file_path
 
@@ -64,12 +67,13 @@ class DeserializationError(Exception):
         indent = "    "
         for obj in self.context.get("breadcrumbs", ()):
             lines.append(
-                "{0}{1} version {2} as {3}.{4}".format(
+                "{0}{1} version {2} as {3}.{4} ({5} bytes)".format(
                     indent,
                     obj.classname,
                     obj.instance_version,
                     type(obj).__module__,
                     type(obj).__name__,
+                    obj.num_bytes,
                 )
             )
             indent = indent + "    "
@@ -98,6 +102,34 @@ in file {1}{2}""".format(
 in file {2}{3}""".format(
                 "\n".join(lines), self.message, self.file_path, in_parent
             )
+
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
+    ):
+        cursor = self.cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self.chunk,
+            context=self.context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream,
+        )
+
+    def array(self, dtype, skip_bytes=0, limit_bytes=None):
+        dtype = numpy.dtype(dtype)
+        cursor = self.cursor.copy()
+        cursor.skip(skip_bytes)
+        out = self.chunk.remainder(cursor.index, cursor, self.context)[:limit_bytes]
+        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+
+    @property
+    def partial_object(self):
+        if "breadcrumbs" in self.context:
+            return self.context["breadcrumbs"][-1]
+        else:
+            return None
 
 
 _numbytes_version_1 = struct.Struct(">IH")
@@ -133,20 +165,21 @@ def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context, fil
             )
 
 
-_map_string_string_format1 = struct.Struct(">I")
+# _map_string_string_format1 = struct.Struct(">I")
+# def map_long_int(chunk, cursor, context):
+#     cursor.skip(12)
+#     size = cursor.field(chunk, _map_string_string_format1, context)
+#     keys = cursor.array(chunk, size, numpy.dtype(">i8"), context)
+#     values = cursor.array(chunk, size, numpy.dtype(">i4"), context)
+#     return dict(zip(keys, values))
+# scope["map_long_int"] = map_long_int
 
-
-def map_string_string(chunk, cursor, context):
-    cursor.skip(12)
-    size = cursor.field(chunk, _map_string_string_format1, context)
-    cursor.skip(6)
-    keys = [cursor.string(chunk, context) for i in range(size)]
-    cursor.skip(6)
-    values = [cursor.string(chunk, context) for i in range(size)]
-    return dict(zip(keys, values))
-
-
-scope["map_string_string"] = map_string_string
+# def set_long(chunk, cursor, context):
+#     cursor.skip(6)
+#     size = cursor.field(chunk, _map_string_string_format1, context)
+#     values = cursor.array(chunk, size, numpy.dtype(">i8"), context)
+#     return set(values)
+# scope["set_long"] = set_long
 
 
 _read_object_any_format1 = struct.Struct(">I")

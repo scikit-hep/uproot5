@@ -32,5 +32,10 @@ class Model_TObject(uproot4.model.Model):
             cursor.skip(2)
         self._members["fBits"] = int(self._members["fBits"])
 
+    def __repr__(self):
+        return "<TObject {0} {1} at 0x{2:012x}>".format(
+            self._members.get("fUniqueID"), self._members.get("fBits"), id(self)
+        )
+
 
 uproot4.classes["TObject"] = Model_TObject

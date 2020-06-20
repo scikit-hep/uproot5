@@ -266,7 +266,7 @@ in file {1}""".format(
         else:
             raise TypeError("custom_classes must be None or a MutableMapping")
 
-    def remove_class(self, classname):
+    def remove_class_definition(self, classname):
         if self._custom_classes is None:
             self._custom_classes = dict(uproot4.classes)
         if classname in self._custom_classes:
@@ -307,14 +307,6 @@ in file {1}""".format(
             self,
             self,
         )
-
-    def is_custom_class(self, classname):
-        if self._custom_classes is None:
-            return False
-        else:
-            mine = self._custom_classes.get(classname)
-            theirs = uproot4.classes.get(classname)
-            return mine is not None and mine is not theirs
 
     @property
     def streamers(self):
@@ -792,7 +784,12 @@ class ReadOnlyKey(object):
         else:
             uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
                 chunk.source,
-                chunk.get(data_start, data_stop, {"breadcrumbs": (), "TKey": self}),
+                chunk.get(
+                    data_start,
+                    data_stop,
+                    self.data_cursor,
+                    {"breadcrumbs": (), "TKey": self},
+                ),
             )
 
         return uncompressed_chunk, cursor
@@ -840,9 +837,12 @@ class ReadOnlyKey(object):
 
             except uproot4.deserialization.DeserializationError:
                 breadcrumbs = context.get("breadcrumbs")
+
                 if breadcrumbs is None or all(
                     breadcrumb_cls.classname in uproot4.model.bootstrap_classnames
-                    or self._file.is_custom_class(breadcrumb_cls.classname)
+                    or isinstance(breadcrumb_cls, uproot4.stl_containers.AsSTLContainer)
+                    or getattr(breadcrumb_cls.class_streamer, "file_uuid", None)
+                    == self._file.uuid
                     for breadcrumb_cls in breadcrumbs
                 ):
                     # we're already using the most specialized versions of each class
@@ -853,11 +853,12 @@ class ReadOnlyKey(object):
                         breadcrumb_cls.classname
                         not in uproot4.model.bootstrap_classnames
                     ):
-                        self._file.remove_class(breadcrumb_cls.classname)
+                        self._file.remove_class_definition(breadcrumb_cls.classname)
 
                 cursor = start_cursor
                 cls = self._file.class_named(self._fClassName)
                 context = {"breadcrumbs": (), "TKey": self}
+
                 out = cls.read(chunk, cursor, context, self._file, self)
 
         if self._file.object_cache is not None:
@@ -1303,9 +1304,9 @@ class ReadOnlyDirectory(Mapping):
                             else:
                                 raise uproot4.KeyInFileError(
                                     where,
-                                    self._file.file_path,
-                                    because=repr(head)
+                                    repr(head)
                                     + " is not a TDirectory, TTree, or TBranch",
+                                    file_path=self._file.file_path,
                                 )
                         else:
                             step = step[item]
@@ -1316,9 +1317,8 @@ class ReadOnlyDirectory(Mapping):
                     else:
                         raise uproot4.KeyInFileError(
                             where,
-                            self._file.file_path,
-                            because=repr(item)
-                            + " is not a TDirectory, TTree, or TBranch",
+                            repr(item) + " is not a TDirectory, TTree, or TBranch",
+                            file_path=self._file.file_path,
                         )
 
             return step
@@ -1351,8 +1351,8 @@ class ReadOnlyDirectory(Mapping):
                     else:
                         raise uproot4.KeyInFileError(
                             where,
-                            self._file.file_path,
-                            because=repr(item) + " is not a TDirectory",
+                            repr(item) + " is not a TDirectory",
+                            file_path=self._file.file_path,
                         )
             return step.key(items[-1])
 
@@ -1376,6 +1376,10 @@ class ReadOnlyDirectory(Mapping):
         if last is not None:
             return last
         elif cycle is None:
-            raise uproot4.KeyInFileError(item, self._file.file_path, cycle="any")
+            raise uproot4.KeyInFileError(
+                item, cycle="any", file_path=self._file.file_path
+            )
         else:
-            raise uproot4.KeyInFileError(item, self._file.file_path, cycle=cycle)
+            raise uproot4.KeyInFileError(
+                item, cycle=cycle, file_path=self._file.file_path
+            )

@@ -17,5 +17,13 @@ class Model_TNamed(uproot4.model.Model):
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fTitle"] = cursor.string(chunk, context)
 
+    def __repr__(self):
+        title = ""
+        if self._members["fTitle"] != "":
+            title = " title=" + repr(self._members["fTitle"])
+        return "<TNamed {0}{1} at 0x{2:012x}>".format(
+            repr(self._members["fName"]), title, id(self)
+        )
+
 
 uproot4.classes["TNamed"] = Model_TNamed

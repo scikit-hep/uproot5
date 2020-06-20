@@ -45,6 +45,8 @@ def bootstrap_classes():
 
 
 class Model(object):
+    class_streamer = None
+
     @classmethod
     def read(cls, chunk, cursor, context, file, parent):
         self = cls.__new__(cls)
@@ -201,11 +203,16 @@ class Model(object):
                     if name in base._members:
                         return base._members[name]
 
-        if self._file is None:
-            in_file = ""
-        else:
-            in_file = "\nin file {0}".format(self._file.file_path)
-        raise KeyError("C++ member {0} not found{1}".format(repr(name), in_file))
+        raise uproot4.KeyInFileError(
+            name,
+            """{0}.{1} has only the following members:
+
+    {2}
+""".format(
+                type(self).__module__, type(self).__name__, "\n    ".join(self._members)
+            ),
+            file_path=self._file.file_path,
+        )
 
     def tojson(self):
         out = {"_typename": self.classname}
@@ -335,7 +342,7 @@ class DispatchByVersion(object):
 
         if streamer is not None:
             versioned_cls = streamer.new_class(file)
-            versioned_cls.streamer = streamer
+            versioned_cls.class_streamer = streamer
             cls.known_versions[streamer.class_version] = versioned_cls
             return versioned_cls
 

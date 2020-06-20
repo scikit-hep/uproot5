@@ -410,6 +410,12 @@ def interpretation_of(branch, context):
                 )
 
     except NotNumerical:
+        if (
+            branch.has_member("fStreamerType")
+            and branch.member("fStreamerType") == uproot4.const.kTString
+        ):
+            return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
+
         if len(branch.member("fLeaves")) != 1:
             raise UnknownInterpretation(
                 "more or less than one TLeaf ({0}) in a non-numerical TBranch".format(

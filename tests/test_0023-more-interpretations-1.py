@@ -49,24 +49,6 @@ def test_strings1():
         assert result.tolist() == ["hey-{0}".format(i) for i in range(30)]
 
 
-@pytest.mark.skip(reason="FIXME: implement strings specified by a TStreamer")
-def test_strings2():
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/Str"] as branch:
-        result = branch.array(library="np")
-        assert result.tolist() == ["evt-{0:03d}".format(i) for i in range(100)]
-
-
-@pytest.mark.skip(reason="FIXME: implement std::string")
-def test_strings3():
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/StdStr"] as branch:
-        result = branch.array(library="np")
-        assert result.tolist() == ["std-{0:03d}".format(i) for i in range(100)]
-
-
 @pytest.mark.skip(reason="FIXME: implement std::vector<std::string>")
 def test_strings4():
     with uproot4.open(
