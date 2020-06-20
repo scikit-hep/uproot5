@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import re
 import types
 import struct
 
@@ -28,7 +29,7 @@ import uproot4.deserialization
 
 _stl_container_size = struct.Struct(">I")
 _stl_primitive_types = {
-    numpy.dtype("bool"): "bool",
+    numpy.dtype("?"): "bool",
     numpy.dtype("i1"): "int8_t",
     numpy.dtype("u1"): "uint8_t",
     numpy.dtype("i2"): "int16_t",
@@ -49,6 +50,161 @@ _stl_primitive_types = {
     numpy.dtype(">f8"): "double",
 }
 _stl_object_type = numpy.dtype(numpy.object)
+
+
+_tokenize_typename_pattern = re.compile(
+    r"(\b([A-Za-z_][A-Za-z_0-9]*)(\s*::\s*[A-Za-z_][A-Za-z_0-9]*)*\b(\s*\*)*|<|>|,)"
+)
+
+_simplify_token_1 = re.compile(r"\s*\*")
+_simplify_token_2 = re.compile(r"\s*::\s*")
+
+
+def _simplify_token(token):
+    return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token.group(0)))
+
+
+def _parse_error(pos, typename, file):
+    in_file = ""
+    if file is not None:
+        in_file = "\nin file {0}".format(file.file_path)
+    raise ValueError(
+            """invalid C++ type name syntax at char {0}
+
+    {1}
+{2}{3}""".format(pos, typename, "-" * (4 + pos) + "^", in_file)
+    )
+
+
+def _parse_expect(what, tokens, i, typename, file):
+    if i >= len(tokens):
+        _parse_error(len(typename), typename, file)
+
+    if what is not None and tokens[i].group(0) != what:
+        _parse_error(tokens[i].start() + 1, typename, file)
+
+
+def _parse_node(tokens, i, typename, file):
+    _parse_expect(None, tokens, i, typename, file)
+
+    has2 = i + 1 < len(tokens)
+
+    if tokens[i].group(0) == ",":
+        _parse_error(tokens[i].start() + 1, typename, file)
+
+    elif tokens[i].group(0) == "Bool_t":
+        return i + 1, numpy.dtype("?")
+    elif tokens[i].group(0) == "bool":
+        return i + 1, numpy.dtype("?")
+
+    elif tokens[i].group(0) == "Char_t":
+        return i + 1, numpy.dtype("i1")
+    elif tokens[i].group(0) == "char":
+        return i + 1, numpy.dtype("i1")
+    elif tokens[i].group(0) == "UChar_t":
+        return i + 1, numpy.dtype("u1")
+    elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "char":
+        return i + 2, numpy.dtype("u1")
+
+    elif tokens[i].group(0) == "Short_t":
+        return i + 1, numpy.dtype(">i2")
+    elif tokens[i].group(0) == "short":
+        return i + 1, numpy.dtype(">i2")
+    elif tokens[i].group(0) == "UShort_t":
+        return i + 1, numpy.dtype(">u2")
+    elif (
+        has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "short"
+    ):
+        return i + 2, numpy.dtype(">u2")
+
+    elif tokens[i].group(0) == "Int_t":
+        return i + 1, numpy.dtype(">i4")
+    elif tokens[i].group(0) == "int":
+        return i + 1, numpy.dtype(">i4")
+    elif tokens[i].group(0) == "UInt_t":
+        return i + 1, numpy.dtype(">u4")
+    elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "int":
+        return i + 2, numpy.dtype(">u4")
+
+    elif tokens[i].group(0) == "Long_t":
+        return i + 1, numpy.dtype(">i8")
+    elif tokens[i].group(0) == "Long64_t":
+        return i + 1, numpy.dtype(">i8")
+    elif tokens[i].group(0) == "long":
+        return i + 1, numpy.dtype(">i8")
+    elif tokens[i].group(0) == "ULong_t":
+        return i + 1, numpy.dtype(">u8")
+    elif tokens[i].group(0) == "ULong64_t":
+        return i + 1, numpy.dtype(">u8")
+    elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "long":
+        return i + 2, numpy.dtype(">u8")
+
+    elif tokens[i].group(0) == "Float_t":
+        return i + 1, numpy.dtype(">f4")
+    elif tokens[i].group(0) == "float":
+        return i + 1, numpy.dtype(">f4")
+
+    elif tokens[i].group(0) == "Double_t":
+        return i + 1, numpy.dtype(">f8")
+    elif tokens[i].group(0) == "double":
+        return i + 1, numpy.dtype(">f8")
+
+    elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
+        return i + 1, AsString()
+    elif tokens[i].group(0) == "TString":
+        return i + 1, AsString(is_stl=False)
+    elif _simplify_token(tokens[i]) == "char*":
+        return i + 1, AsString(is_stl=False)
+    elif has2 and tokens[i].group(0) == "const" and _simplify_token(tokens[i + 1]) == "char*":
+        return i + 2, AsString(is_stl=False)
+
+    elif tokens[i].group(0) == "vector" or _simplify_token(tokens[i]) == "std::vector":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, values = _parse_node(tokens, i + 2, typename, file)
+        _parse_expect(">", tokens, i, typename, file)
+        return i + 1, AsVector(values)
+
+    elif tokens[i].group(0) == "set" or _simplify_token(tokens[i]) == "std::set":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, keys = _parse_node(tokens, i + 2, typename, file)
+        _parse_expect(">", tokens, i, typename, file)
+        return i + 1, AsSet(keys)
+
+    elif tokens[i].group(0) == "map" or _simplify_token(tokens[i]) == "std::map":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, keys = _parse_node(tokens, i + 2, typename, file)
+        _parse_expect(",", tokens, i, typename, file)
+        i, values = _parse_node(tokens, i + 1, typename, file)
+        _parse_expect(">", tokens, i, typename, file)
+        return i + 1, AsMap(keys, values)
+
+    else:
+        start, stop = tokens[i].span()
+
+        if has2 and tokens[i + 1].group(0) == "<":
+            i, keys = _parse_node(tokens, i + 1, typename, file)
+            _parse_expect(">", tokens, i + 1, typename, file)
+            stop = tokens[i + 1].span()[1]
+            i += 1
+
+        classname = typename[start : stop]
+
+        if file is None:
+            cls = uproot4.classes[classname]
+        else:
+            cls = file.class_named(classname)
+
+        return i + 1, cls
+
+
+def parse_typename(typename, file=None):
+    tokens = list(_tokenize_typename_pattern.finditer(typename))
+    i, out = _parse_node(tokens, 0, typename, file)
+
+    if i < len(tokens):
+        _parse_error(tokens[i].start(), typename, file)
+
+    return out
 
 
 def _read_nested(model, length, chunk, cursor, context, file, parent):
@@ -120,6 +276,12 @@ class AsSTLContainer(object):
     def read(self, chunk, cursor, context, file, parent, multiplicity=None):
         raise AssertionError
 
+    def __eq__(self, other):
+        raise AssertionError
+
+    def __ne__(self, other):
+        return not self == other
+
 
 class STLContainer(object):
     pass
@@ -166,6 +328,9 @@ class AsString(AsSTLContainer):
             )
 
         return out
+
+    def __eq__(self, other):
+        return isinstance(other, AsString) and self.is_stl == other.is_stl
 
 
 class AsVector(AsSTLContainer):
@@ -218,6 +383,9 @@ class AsVector(AsSTLContainer):
         )
 
         return out
+
+    def __eq__(self, other):
+        return isinstance(other, AsVector) and self.values == other.values
 
 
 class STLVector(STLContainer, Sequence):
@@ -319,6 +487,9 @@ class AsSet(AsSTLContainer):
         )
 
         return out
+
+    def __eq__(self, other):
+        return isinstance(other, AsSet) and self.keys == other.keys
 
 
 class STLSet(STLContainer, Set):
@@ -452,6 +623,9 @@ class AsMap(AsSTLContainer):
         )
 
         return out
+
+    def __eq__(self, other):
+        return isinstance(other, AsMap) and self.keys == other.keys and self.values == other.values
 
 
 class STLMap(STLContainer, Mapping):

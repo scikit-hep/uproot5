@@ -15,7 +15,6 @@ import uproot4._util
 scope = {
     "struct": struct,
     "numpy": numpy,
-    "VersionedModel": uproot4.model.VersionedModel,
     "uproot4": uproot4,
 }
 
@@ -133,9 +132,6 @@ in file {2}{3}""".format(
             return None
 
 
-scope["DeserializationError"] = DeserializationError
-
-
 _numbytes_version_1 = struct.Struct(">IH")
 _numbytes_version_2 = struct.Struct(">H")
 
@@ -169,28 +165,21 @@ def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context, fil
             )
 
 
-_map_string_string_format1 = struct.Struct(">I")
+# _map_string_string_format1 = struct.Struct(">I")
+# def map_long_int(chunk, cursor, context):
+#     cursor.skip(12)
+#     size = cursor.field(chunk, _map_string_string_format1, context)
+#     keys = cursor.array(chunk, size, numpy.dtype(">i8"), context)
+#     values = cursor.array(chunk, size, numpy.dtype(">i4"), context)
+#     return dict(zip(keys, values))
+# scope["map_long_int"] = map_long_int
 
-
-def map_long_int(chunk, cursor, context):
-    cursor.skip(12)
-    size = cursor.field(chunk, _map_string_string_format1, context)
-    keys = cursor.array(chunk, size, numpy.dtype(">i8"), context)
-    values = cursor.array(chunk, size, numpy.dtype(">i4"), context)
-    return dict(zip(keys, values))
-
-
-scope["map_long_int"] = map_long_int
-
-
-def set_long(chunk, cursor, context):
-    cursor.skip(6)
-    size = cursor.field(chunk, _map_string_string_format1, context)
-    values = cursor.array(chunk, size, numpy.dtype(">i8"), context)
-    return set(values)
-
-
-scope["set_long"] = set_long
+# def set_long(chunk, cursor, context):
+#     cursor.skip(6)
+#     size = cursor.field(chunk, _map_string_string_format1, context)
+#     values = cursor.array(chunk, size, numpy.dtype(">i8"), context)
+#     return set(values)
+# scope["set_long"] = set_long
 
 
 _read_object_any_format1 = struct.Struct(">I")

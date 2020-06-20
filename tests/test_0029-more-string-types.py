@@ -10,6 +10,57 @@ import pytest
 import skhep_testdata
 
 import uproot4
+from uproot4.stl_containers import parse_typename
+from uproot4.stl_containers import AsString
+from uproot4.stl_containers import AsVector
+from uproot4.stl_containers import AsSet
+from uproot4.stl_containers import AsMap
+
+
+def test_parse_typename():
+    assert parse_typename("TTree") is uproot4.classes["TTree"]
+    assert parse_typename("string") == AsString()
+    assert parse_typename("std::string") == AsString()
+    assert parse_typename("std :: string") == AsString()
+    assert parse_typename("char*") == AsString(is_stl=False)
+    assert parse_typename("char *") == AsString(is_stl=False)
+    assert parse_typename("TString") == AsString(is_stl=False)
+    assert parse_typename("vector<TTree>") == AsVector(uproot4.classes["TTree"])
+    assert parse_typename("vector<int>") == AsVector(">i4")
+    assert parse_typename("vector<bool>") == AsVector("?")
+    assert parse_typename("vector<string>") == AsVector(AsString())
+    assert parse_typename("vector  <   string   >") == AsVector(AsString())
+    assert parse_typename("std::vector<std::string>") == AsVector(AsString())
+    assert parse_typename("vector<vector<int>>") == AsVector(AsVector(">i4"))
+    assert parse_typename("vector<vector<string>>") == AsVector(AsVector(AsString()))
+    assert parse_typename("vector<vector<char*>>") == AsVector(AsVector(AsString(is_stl=False)))
+    assert parse_typename("set<unsigned short>") == AsSet(">u2")
+    assert parse_typename("std::set<unsigned short>") == AsSet(">u2")
+    assert parse_typename("set<string>") == AsSet(AsString())
+    assert parse_typename("set<vector<string>>") == AsSet(AsVector(AsString()))
+    assert parse_typename("set<vector<string> >") == AsSet(AsVector(AsString()))
+    assert parse_typename("map<int, double>") == AsMap(">i4", ">f8")
+    assert parse_typename("map<string, double>") == AsMap(AsString(), ">f8")
+    assert parse_typename("map<int, string>") == AsMap(">i4", AsString())
+    assert parse_typename("map<string, string>") == AsMap(AsString(), AsString())
+    assert parse_typename("map<string,string>") == AsMap(AsString(), AsString())
+    assert parse_typename("map<   string,string   >") == AsMap(AsString(), AsString())
+    assert parse_typename("map<string,vector<int>>") == AsMap(AsString(), AsVector(">i4"))
+    assert parse_typename("map<vector<int>, string>") == AsMap(AsVector(">i4"), AsString())
+    assert parse_typename("map<vector<int>, set<float>>") == AsMap(AsVector(">i4"), AsSet(">f4"))
+    assert parse_typename("map<vector<int>, set<set<float>>>") == AsMap(AsVector(">i4"), AsSet(AsSet(">f4")))
+
+    with pytest.raises(ValueError):
+        parse_typename("string  <")
+
+    with pytest.raises(ValueError):
+        parse_typename("vector  <")
+
+    with pytest.raises(ValueError):
+        parse_typename("map<string<int>>")
+
+    with pytest.raises(ValueError):
+        parse_typename("map<string, int>>")
 
 
 def test_strings1():

@@ -277,7 +277,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
         return "\n".join(
             [
-                "class {0}(VersionedModel):".format(
+                "class {0}(uproot4.model.VersionedModel):".format(
                     uproot4.model.classname_encode(self.name, self.class_version)
                 )
             ]
@@ -871,9 +871,9 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
         else:
             read_members.append(
-                "        raise DeserializationError('class members of type "
-                "{0} are not implemented yet', chunk, cursor.copy(), context, "
-                "self.file.file_path)".format(self.typename)
+                "        raise uproot4.deserialization.DeserializationError("
+                "'class members of type {0} are not implemented yet', chunk, "
+                "cursor.copy(), context, self.file.file_path)".format(self.typename)
             )
         member_names.append(self.name)
 
