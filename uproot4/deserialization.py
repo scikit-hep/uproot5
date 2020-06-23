@@ -152,7 +152,9 @@ def numbytes_version(chunk, cursor, context, move=True):
     return num_bytes, version
 
 
-def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context, file_path):
+def numbytes_check(
+    chunk, start_cursor, stop_cursor, num_bytes, classname, context, file_path
+):
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
@@ -160,6 +162,8 @@ def numbytes_check(start_cursor, stop_cursor, num_bytes, classname, context, fil
                 """expected {0} bytes but cursor moved by {1} bytes (through {2})""".format(
                     num_bytes, observed, classname
                 ),
+                chunk,
+                stop_cursor,
                 context,
                 file_path,
             )

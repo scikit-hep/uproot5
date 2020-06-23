@@ -71,7 +71,7 @@ class Model(object):
 
         self.hook_after_read_members(chunk=chunk, cursor=cursor, context=context)
 
-        self.check_numbytes(cursor, context)
+        self.check_numbytes(chunk, cursor, context)
 
         self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context)
 
@@ -97,10 +97,11 @@ class Model(object):
     def read_members(self, chunk, cursor, context):
         pass
 
-    def check_numbytes(self, cursor, context):
+    def check_numbytes(self, chunk, cursor, context):
         import uproot4.deserialization
 
         uproot4.deserialization.numbytes_check(
+            chunk,
             self._cursor,
             cursor,
             self._num_bytes,

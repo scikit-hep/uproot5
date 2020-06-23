@@ -890,7 +890,9 @@ class TBranch(HasBranches):
 
     @property
     def context(self):
-        return self._context
+        out = dict(self._context)
+        out["in_TBranch"] = True
+        return out
 
     @property
     def aliases(self):

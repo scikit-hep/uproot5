@@ -23,17 +23,11 @@ def test_typename():
             AsVector(numpy.dtype(">i4"))
         )
         assert tree["vector_string"].interpretation == AsObjects(AsVector(AsString()))
-        assert tree["vector_charstar"].interpretation == AsObjects(
-            AsVector(AsString(is_stl=False))
-        )
         assert tree["vector_vector_int32"].interpretation == AsObjects(
             AsVector(AsVector(numpy.dtype(">i4")))
         )
         assert tree["vector_vector_string"].interpretation == AsObjects(
             AsVector(AsVector(AsString()))
-        )
-        assert tree["vector_vector_charstar"].interpretation == AsObjects(
-            AsVector(AsVector(AsString(is_stl=False)))
         )
         assert tree["vector_set_int32"].interpretation == AsObjects(
             AsVector(AsSet(numpy.dtype(">i4")))
@@ -91,14 +85,141 @@ def test_typename():
         assert tree["map_string_string"].interpretation == AsObjects(
             AsMap(AsString(), AsString())
         )
-        assert tree["map_string_charstar"].interpretation == AsObjects(
-            AsMap(AsString(), AsString(is_stl=False))
-        )
 
-# def test_simple():
-#     with uproot4.open(
-#         "stl_containers.root"
-#     )["tree"] as tree:
-#         print(tree["vector_int32"].array())
 
-#     raise Exception
+def test_vector_int32():
+    with uproot4.open("stl_containers.root")["tree"] as tree:
+        assert tree["vector_int32"].array().tolist() == [
+            [1],
+            [1, 2],
+            [1, 2, 3],
+            [1, 2, 3, 4],
+            [1, 2, 3, 4, 5],
+        ]
+
+
+def test_vector_string():
+    with uproot4.open("stl_containers.root")["tree"] as tree:
+        assert tree["vector_string"].array().tolist() == [
+            ["one"],
+            ["one", "two"],
+            ["one", "two", "three"],
+            ["one", "two", "three", "four"],
+            ["one", "two", "three", "four", "five"],
+        ]
+
+
+# def test_vector_vector_int32():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["vector_vector_int32"].array().tolist() == [
+#             [[1]],
+#             [[1], [1, 2]],
+#             [[1], [1, 2], [1, 2, 3]],
+#             [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4]],
+#             [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5]],
+#         ]
+
+
+# def test_vector_vector_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["vector_vector_string"].array().tolist() == []
+
+
+# def test_vector_set_int32():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["vector_set_int32"].array().tolist() == []
+
+
+# def test_vector_set_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["vector_set_string"].array().tolist() == []
+
+
+# def test_set_int32():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["set_int32"].array().tolist() == []
+
+
+# def test_set_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["set_string"].array().tolist() == []
+
+
+# def test_map_int32_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_int32_int16"].array().tolist() == []
+
+
+# def test_map_int32_vector_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_int32_vector_int16"].array().tolist() == []
+
+
+# def test_map_int32_vector_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_int32_vector_string"].array().tolist() == []
+
+
+# def test_map_int32_set_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_int32_set_int16"].array().tolist() == []
+
+
+# def test_map_int32_set_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_int32_set_string"].array().tolist() == []
+
+
+# def test_map_string_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_string_int16"].array().tolist() == []
+
+
+# def test_map_string_vector_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_string_vector_int16"].array().tolist() == []
+
+
+# def test_map_string_vector_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_string_vector_string"].array().tolist() == []
+
+
+# def test_map_string_set_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_string_set_int16"].array().tolist() == []
+
+
+# def test_map_string_set_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_string_set_string"].array().tolist() == []
+
+
+# def test_map_int32_vector_vector_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_int32_vector_vector_int16"].array().tolist() == []
+
+
+# def test_map_int32_vector_set_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_int32_vector_set_int16"].array().tolist() == []
+
+
+# def test_vector_map_int32_int16():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["vector_map_int32_int16"].array().tolist() == []
+
+
+# def test_vector_map_int32_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["vector_map_int32_string"].array().tolist() == []
+
+
+# def test_vector_map_string_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["vector_map_string_string"].array().tolist() == []
+
+
+# def test_map_string_string():
+#     with uproot4.open("stl_containers.root")["tree"] as tree:
+#         assert tree["map_string_string"].array().tolist() == []
