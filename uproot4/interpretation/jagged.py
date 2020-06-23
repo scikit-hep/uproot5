@@ -81,6 +81,13 @@ class AsJagged(uproot4.interpretation.Interpretation):
                 repr(self._content), self._header_bytes
             )
 
+    def __eq__(self, other):
+        return (
+            isinstance(other, AsJagged)
+            and self._content == other._content
+            and self._header_bytes == other._header_bytes
+        )
+
     @property
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)

@@ -86,6 +86,9 @@ class AsObjects(uproot4.interpretation.Interpretation):
     def __repr__(self):
         return "AsObjects({0})".format(repr(self._model))
 
+    def __eq__(self, other):
+        return isinstance(other, AsObjects) and self._model == other._model
+
     @property
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)
@@ -118,6 +121,71 @@ class AsObjects(uproot4.interpretation.Interpretation):
             basket=basket,
             branch=branch,
             context=context,
+            output=output,
+        )
+
+        return output
+
+    def final_array(
+        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+    ):
+        self.hook_before_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+        )
+
+        output = numpy.empty(entry_stop - entry_start, dtype=numpy.dtype(numpy.object))
+
+        start = entry_offsets[0]
+        for basket_num, stop in enumerate(entry_offsets[1:]):
+            if start <= entry_start and entry_stop <= stop:
+                basket_array = basket_arrays[basket_num]
+                for global_i in range(entry_start, entry_stop):
+                    local_i = global_i - start
+                    output[global_i] = basket_array[local_i]
+
+            elif start <= entry_start < stop:
+                basket_array = basket_arrays[basket_num]
+                for global_i in range(entry_start, stop):
+                    local_i = global_i - start
+                    output[global_i] = basket_array[local_i]
+
+            elif start <= entry_stop <= stop:
+                basket_array = basket_arrays[basket_num]
+                for global_i in range(start, entry_stop):
+                    local_i = global_i - start
+                    output[global_i] = basket_array[local_i]
+
+            elif entry_start < stop and start <= entry_stop:
+                for global_i in range(start, stop):
+                    local_i = global_i - start
+                    output[global_i] = basket_array[local_i]
+
+            start = stop
+
+        self.hook_before_library_finalize(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+            output=output,
+        )
+
+        output = library.finalize(output, branch)
+
+        self.hook_after_final_array(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
             output=output,
         )
 

@@ -56,6 +56,13 @@ class AsStrings(uproot4.interpretation.Interpretation):
             args.append("size_1to5_bytes={0}".format(self._size_1to5_bytes))
         return "AsStrings({0})".format(", ".join(args))
 
+    def __eq__(self, other):
+        return (
+            isinstance(other, AsStrings)
+            and self._header_bytes == other._header_bytes
+            and self._size_1to5_bytes == other._size_1to5_bytes
+        )
+
     @property
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)

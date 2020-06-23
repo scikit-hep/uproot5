@@ -9,6 +9,8 @@ import numpy
 
 import uproot4.const
 import uproot4.interpretation.numerical
+import uproot4.interpretation.strings
+import uproot4.interpretation.objects
 import uproot4.stl_containers
 import uproot4.streamers
 import uproot4._util
@@ -621,7 +623,7 @@ def interpretation_of(branch, context):
 
         if branch.has_member("fClassName"):
             model_cls = parse_typename(branch.member("fClassName"), file=branch.file)
-            return model_cls
+            return uproot4.interpretation.objects.AsObjects(model_cls)
 
         if leaf.classname == "TLeafElement":
             raise NotImplementedError

@@ -139,6 +139,13 @@ class AsDtype(Numerical):
                 repr(str(self._from_dtype)), repr(str(self._to_dtype))
             )
 
+    def __eq__(self, other):
+        return (
+            type(other) is AsDtype
+            and self._from_dtype == other._from_dtype
+            and self._to_dtype == other._to_dtype
+        )
+
     @property
     def from_dtype(self):
         return self._from_dtype
