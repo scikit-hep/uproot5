@@ -623,7 +623,6 @@ def interpretation_of(branch, context):
             model_cls = parse_typename(branch.member("fClassName"), file=branch.file)
             return model_cls
 
-
         if leaf.classname == "TLeafElement":
             raise NotImplementedError
 

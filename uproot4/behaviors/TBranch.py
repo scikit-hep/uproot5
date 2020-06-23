@@ -435,7 +435,7 @@ def _ranges_or_baskets_to_arrays(
             basket_arrays = branchid_arrays[id(branch)]
 
             basket_arrays[basket.basket_num] = interpretation.basket_array(
-                basket.data, basket.byte_offsets, basket, branch
+                basket.data, basket.byte_offsets, basket, branch, branch.context
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(
@@ -845,6 +845,7 @@ class TBranch(HasBranches):
         self._count_branch = None
         self._count_leaf = None
         self._streamer = None
+        self._context = context
 
         self._num_normal_baskets = 0
         for i, x in enumerate(self.member("fBasketSeek")):
@@ -886,6 +887,10 @@ class TBranch(HasBranches):
         while not isinstance(out, uproot4.behaviors.TTree.TTree):
             out = out.parent
         return out
+
+    @property
+    def context(self):
+        return self._context
 
     @property
     def aliases(self):

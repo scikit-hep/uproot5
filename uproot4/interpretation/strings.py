@@ -70,9 +70,13 @@ class AsStrings(uproot4.interpretation.Interpretation):
             type(self).__name__, self._header_bytes, self._size_1to5_bytes
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch):
+    def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(
-            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
         )
 
         assert basket.byte_offsets is not None
@@ -98,11 +102,12 @@ class AsStrings(uproot4.interpretation.Interpretation):
 
         output = StringArray(offsets, uproot4._util.ensure_str(data.tostring()))
 
-        self.hook_before_basket_array(
+        self.hook_after_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
+            context=context,
             output=output,
         )
 

@@ -114,6 +114,15 @@ class Numerical(uproot4.interpretation.Interpretation):
         return output
 
 
+_numpy_byteorder_to_cache_key = {
+    "!": "B",
+    ">": "B",
+    "<": "L",
+    "|": "L",
+    "=": "B" if numpy.dtype(">f8").isnative else "L",
+}
+
+
 class AsDtype(Numerical):
     def __init__(self, from_dtype, to_dtype=None):
         self._from_dtype = numpy.dtype(from_dtype)
@@ -138,20 +147,12 @@ class AsDtype(Numerical):
     def itemsize(self):
         return self._from_dtype.itemsize
 
-    _numpy_byteorder_to_cache_key = {
-        "!": "B",
-        ">": "B",
-        "<": "L",
-        "|": "L",
-        "=": "B" if numpy.dtype(">f8").isnative else "L",
-    }
-
     @property
     def cache_key(self):
         def form(dtype, name):
             d, s = _dtype_shape(dtype)
             return "{0}{1}{2}({3}{4})".format(
-                self._numpy_byteorder_to_cache_key[d.byteorder],
+                _numpy_byteorder_to_cache_key[d.byteorder],
                 d.kind,
                 d.itemsize,
                 ",".join(repr(x) for x in s),
@@ -183,9 +184,13 @@ class AsDtype(Numerical):
 
         return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
 
-    def basket_array(self, data, byte_offsets, basket, branch):
+    def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(
-            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch,
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
         )
 
         assert byte_offsets is None
@@ -206,11 +211,12 @@ in file {4}""".format(
                 )
             )
 
-        self.hook_before_basket_array(
+        self.hook_after_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
+            context=context,
             output=output,
         )
 

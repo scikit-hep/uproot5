@@ -754,7 +754,9 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        stl_container = uproot4.interpretation.identify.parse_typename(self.typename, quote=True)
+        stl_container = uproot4.interpretation.identify.parse_typename(
+            self.typename, quote=True
+        )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
             "chunk, cursor, context, self._file, self._parent, multiplicity=1)"

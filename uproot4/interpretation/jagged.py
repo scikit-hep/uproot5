@@ -95,16 +95,20 @@ class AsJagged(uproot4.interpretation.Interpretation):
             type(self).__name__, self._content.cache_key, self._header_bytes
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch):
+    def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(
-            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
         )
 
         assert basket.byte_offsets is not None
 
         if self._header_bytes == 0:
             offsets = fast_divide(basket.byte_offsets, self._content.itemsize)
-            content = self._content.basket_array(data, None, basket, branch)
+            content = self._content.basket_array(data, None, basket, branch, context)
             output = JaggedArray(offsets, content)
 
         else:
@@ -117,7 +121,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
             numpy.cumsum(mask, out=mask)
             data = data[mask.view(numpy.bool_)]
 
-            content = self._content.basket_array(data, None, basket, branch)
+            content = self._content.basket_array(data, None, basket, branch, context)
 
             byte_counts = byte_stops - byte_starts
             counts = fast_divide(byte_counts, self._content.itemsize)
@@ -128,11 +132,12 @@ class AsJagged(uproot4.interpretation.Interpretation):
 
             output = JaggedArray(offsets, content)
 
-        self.hook_before_basket_array(
+        self.hook_after_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
+            context=context,
             output=output,
         )
 

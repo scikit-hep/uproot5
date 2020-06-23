@@ -23,3 +23,12 @@ from uproot4.stl_containers import AsMap
 #         print("\n".join("{}:\t{}\t{}".format(branch.name, branch.typename, branch.interpretation) for branch in tree.values()))
 
 #     raise Exception
+
+
+# def test_simple():
+#     with uproot4.open(
+#         "stl_containers.root"
+#     )["tree"] as tree:
+#         print(tree["vector_int32"].array())
+
+#     raise Exception

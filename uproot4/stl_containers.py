@@ -2,7 +2,6 @@
 
 from __future__ import absolute_import
 
-import re
 import types
 import struct
 
@@ -24,6 +23,7 @@ import numpy
 
 import uproot4._util
 import uproot4.model
+import uproot4.interpretation.numerical
 import uproot4.deserialization
 
 
@@ -50,6 +50,18 @@ _stl_primitive_types = {
     numpy.dtype(">f8"): "double",
 }
 _stl_object_type = numpy.dtype(numpy.object)
+
+
+def _content_cache_key(content):
+    if isinstance(content, numpy.dtype):
+        bo = uproot4.interpretation.numerical._numpy_byteorder_to_cache_key[
+            content.byteorder
+        ]
+        return "{0}{1}{2}".format(bo, content.kind, content.itemsize)
+    elif isinstance(content, type):
+        return content.__name__
+    else:
+        return content.cache_key
 
 
 def _read_nested(model, length, chunk, cursor, context, file, parent):
@@ -115,6 +127,10 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
 
 class AsSTLContainer(object):
     @property
+    def cache_key(self):
+        raise AssertionError
+
+    @property
     def classname(self):
         raise AssertionError
 
@@ -148,6 +164,10 @@ class AsString(AsSTLContainer):
         if not self._is_stl:
             is_stl = "is_stl=False"
         return "AsString({0})".format(is_stl)
+
+    @property
+    def cache_key(self):
+        return "AsString({0})".format(self._is_stl)
 
     @property
     def classname(self):
@@ -199,6 +219,10 @@ class AsVector(AsSTLContainer):
 
     def __repr__(self):
         return "AsVector({0})".format(repr(self._values))
+
+    @property
+    def cache_key(self):
+        return "AsVector({0})".format(_content_cache_key(self._values))
 
     @property
     def classname(self):
@@ -306,6 +330,10 @@ class AsSet(AsSTLContainer):
 
     def __repr__(self):
         return "AsSet({0})".format(repr(self._keys))
+
+    @property
+    def cache_key(self):
+        return "AsSet({0})".format(_content_cache_key(self._keys))
 
     @property
     def classname(self):
@@ -434,6 +462,12 @@ class AsMap(AsSTLContainer):
 
     def __repr__(self):
         return "AsMap({0}, {1})".format(repr(self._keys), repr(self._values))
+
+    @property
+    def cache_key(self):
+        return "AsMap({0},{1})".format(
+            _content_cache_key(self._keys), _content_cache_key(self._values),
+        )
 
     @property
     def classname(self):

@@ -163,7 +163,7 @@ class Model_TBasket(uproot4.model.Model):
         if interpretation is None:
             interpretation = self._parent.interpretation
         return interpretation.basket_array(
-            self.data, self.byte_offsets, self, self.parent
+            self.data, self.byte_offsets, self, self.parent, self.parent.context
         )
 
 
