@@ -759,7 +759,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
-            "chunk, cursor, context, self._file, self._parent, multiplicity=1)"
+            "chunk, cursor, context, self._file, self._parent)"
             "".format(repr(self.name), len(stl_containers))
         )
         stl_containers.append(stl_container)

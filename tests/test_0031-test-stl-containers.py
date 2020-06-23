@@ -17,6 +17,7 @@ from uproot4.stl_containers import AsSet
 from uproot4.stl_containers import AsMap
 
 
+@pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_typename():
     with uproot4.open("stl_containers.root")["tree"] as tree:
         assert tree["vector_int32"].interpretation == AsObjects(
@@ -87,6 +88,7 @@ def test_typename():
         )
 
 
+@pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_int32():
     with uproot4.open("stl_containers.root")["tree"] as tree:
         assert tree["vector_int32"].array().tolist() == [
@@ -98,6 +100,7 @@ def test_vector_int32():
         ]
 
 
+@pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_string():
     with uproot4.open("stl_containers.root")["tree"] as tree:
         assert tree["vector_string"].array().tolist() == [
@@ -109,15 +112,16 @@ def test_vector_string():
         ]
 
 
-# def test_vector_vector_int32():
-#     with uproot4.open("stl_containers.root")["tree"] as tree:
-#         assert tree["vector_vector_int32"].array().tolist() == [
-#             [[1]],
-#             [[1], [1, 2]],
-#             [[1], [1, 2], [1, 2, 3]],
-#             [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4]],
-#             [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5]],
-#         ]
+@pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
+def test_vector_vector_int32():
+    with uproot4.open("stl_containers.root")["tree"] as tree:
+        assert tree["vector_vector_int32"].array().tolist() == [
+            [[1]],
+            [[1], [1, 2]],
+            [[1], [1, 2], [1, 2, 3]],
+            [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4]],
+            [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5]],
+        ]
 
 
 # def test_vector_vector_string():

@@ -65,20 +65,14 @@ def _content_cache_key(content):
 
 
 def _nested_context(context):
-    if context.get("in_TBranch", False):
-        out = dict(context)
-        out["read_stl_header"] = False
-        return out
-    else:
-        return context
+    out = dict(context)
+    out["read_stl_header"] = False
+    return out
 
 
 def _read_nested(model, length, chunk, cursor, context, file, parent):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
-
-    elif isinstance(model, AsSTLContainer):
-        return model.read(chunk, cursor, context, file, parent, multiplicity=length)
 
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
@@ -143,7 +137,7 @@ class AsSTLContainer(object):
     def classname(self):
         raise AssertionError
 
-    def read(self, chunk, cursor, context, file, parent, multiplicity=None):
+    def read(self, chunk, cursor, context, file, parent):
         raise AssertionError
 
     def __eq__(self, other):
@@ -189,19 +183,16 @@ class AsString(AsSTLContainer):
         else:
             return "const char*"
 
-    def read(self, chunk, cursor, context, file, parent, multiplicity=None):
+    def read(self, chunk, cursor, context, file, parent):
+        print(self, context)
+
         if self._is_stl and context.get("read_stl_header", True):
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
                 chunk, cursor, context
             )
 
-        if multiplicity is None:
-            out = cursor.string(chunk, context)
-        else:
-            out = numpy.empty(multiplicity, dtype=_stl_object_type)
-            for i in range(multiplicity):
-                out[i] = cursor.string(chunk, context)
+        out = cursor.string(chunk, context)
 
         if self._is_stl and context.get("read_stl_header", True):
             uproot4.deserialization.numbytes_check(
@@ -250,9 +241,7 @@ class AsVector(AsSTLContainer):
             values = self._values.classname
         return "std::vector<{0}>".format(values)
 
-    def read(self, chunk, cursor, context, file, parent, multiplicity=None):
-        print(context)
-
+    def read(self, chunk, cursor, context, file, parent):
         if context.get("read_stl_header", True):
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
@@ -263,19 +252,10 @@ class AsVector(AsSTLContainer):
 
         nested_context = _nested_context(context)
 
-        if multiplicity is None:
-            values = _read_nested(
-                self._values, length, chunk, cursor, nested_context, file, parent
-            )
-            out = STLVector(values)
-
-        else:
-            out = numpy.empty(multiplicity, dtype=_stl_object_type)
-            for i in range(multiplicity):
-                values = _read_nested(
-                    self._values, length, chunk, cursor, nested_context, file, parent
-                )
-                out[i] = STLVector(values)
+        values = _read_nested(
+            self._values, length, chunk, cursor, nested_context, file, parent
+        )
+        out = STLVector(values)
 
         if context.get("read_stl_header", True):
             uproot4.deserialization.numbytes_check(
@@ -291,7 +271,19 @@ class AsVector(AsSTLContainer):
         return out
 
     def __eq__(self, other):
-        return isinstance(other, AsVector) and self.values == other.values
+        if not isinstance(other, AsVector):
+            return False
+
+        if isinstance(self.values, numpy.dtype) and isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        elif not isinstance(self.values, numpy.dtype) and not isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        else:
+            return False
 
 
 class STLVector(STLContainer, Sequence):
@@ -376,7 +368,7 @@ class AsSet(AsSTLContainer):
             keys = self._keys.classname
         return "std::set<{0}>".format(keys)
 
-    def read(self, chunk, cursor, context, file, parent, multiplicity=None):
+    def read(self, chunk, cursor, context, file, parent):
         if context.get("read_stl_header", True):
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
@@ -387,19 +379,10 @@ class AsSet(AsSTLContainer):
 
         nested_context = _nested_context(context)
 
-        if multiplicity is None:
-            keys = _read_nested(
-                self._keys, length, chunk, cursor, nested_context, file, parent
-            )
-            out = STLSet(keys)
-
-        else:
-            out = numpy.empty(multiplicity, dtype=_stl_object_type)
-            for i in range(multiplicity):
-                keys = _read_nested(
-                    self._keys, length, chunk, cursor, nested_context, file, parent
-                )
-                out[i] = STLSet(keys)
+        keys = _read_nested(
+            self._keys, length, chunk, cursor, nested_context, file, parent
+        )
+        out = STLSet(keys)
 
         if context.get("read_stl_header", True):
             uproot4.deserialization.numbytes_check(
@@ -415,7 +398,17 @@ class AsSet(AsSTLContainer):
         return out
 
     def __eq__(self, other):
-        return isinstance(other, AsSet) and self.keys == other.keys
+        if not isinstance(other, AsSet):
+            return False
+
+        if isinstance(self.keys, numpy.dtype) and isinstance(other.keys, numpy.dtype):
+            return self.keys == other.keys
+        elif not isinstance(self.keys, numpy.dtype) and not isinstance(
+            other.keys, numpy.dtype
+        ):
+            return self.keys == other.keys
+        else:
+            return False
 
 
 class STLSet(STLContainer, Set):
@@ -526,7 +519,9 @@ class AsMap(AsSTLContainer):
             values = self._values.classname
         return "std::map<{0}, {1}>".format(keys, values)
 
-    def read(self, chunk, cursor, context, file, parent, multiplicity=None):
+    def read(self, chunk, cursor, context, file, parent):
+        print(self, context)
+
         if context.get("read_stl_header", True):
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
@@ -539,25 +534,19 @@ class AsMap(AsSTLContainer):
 
         nested_context = _nested_context(context)
 
-        if multiplicity is None:
-            keys = _read_nested(
-                self._keys, length, chunk, cursor, nested_context, file, parent
-            )
-            values = _read_nested(
-                self._values, length, chunk, cursor, nested_context, file, parent
-            )
-            out = STLMap(keys, values)
+        if context.get("read_stl_header", True):
+            cursor.skip(6)
+        keys = _read_nested(
+            self._keys, length, chunk, cursor, nested_context, file, parent
+        )
 
-        else:
-            out = numpy.empty(multiplicity, dtype=_stl_object_type)
-            for i in range(multiplicity):
-                keys = _read_nested(
-                    self._keys, length, chunk, cursor, nested_context, file, parent
-                )
-                values = _read_nested(
-                    self._values, length, chunk, cursor, nested_context, file, parent
-                )
-                out[i] = STLMap(keys, values)
+        if context.get("read_stl_header", True):
+            cursor.skip(6)
+        values = _read_nested(
+            self._values, length, chunk, cursor, nested_context, file, parent
+        )
+
+        out = STLMap(keys, values)
 
         if context.get("read_stl_header", True):
             uproot4.deserialization.numbytes_check(
@@ -573,11 +562,30 @@ class AsMap(AsSTLContainer):
         return out
 
     def __eq__(self, other):
-        return (
-            isinstance(other, AsMap)
-            and self.keys == other.keys
-            and self.values == other.values
-        )
+        if not isinstance(other, AsMap):
+            return False
+
+        if isinstance(self.keys, numpy.dtype) and isinstance(other.keys, numpy.dtype):
+            if self.keys != other.keys:
+                return False
+        elif not isinstance(self.keys, numpy.dtype) and not isinstance(
+            other.keys, numpy.dtype
+        ):
+            if self.keys != other.keys:
+                return False
+        else:
+            return False
+
+        if isinstance(self.values, numpy.dtype) and isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        elif not isinstance(self.values, numpy.dtype) and not isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        else:
+            return False
 
 
 class STLMap(STLContainer, Mapping):
