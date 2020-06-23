@@ -10,7 +10,7 @@ import pytest
 import skhep_testdata
 
 import uproot4
-from uproot4.stl_containers import parse_typename
+from uproot4.interpretation.identify import parse_typename
 from uproot4.stl_containers import AsString
 from uproot4.stl_containers import AsVector
 from uproot4.stl_containers import AsSet

@@ -9,6 +9,7 @@ import numpy
 
 import uproot4.const
 import uproot4.interpretation.numerical
+import uproot4.stl_containers
 import uproot4.streamers
 import uproot4._util
 
@@ -168,6 +169,194 @@ def _leaf_to_dtype(leaf):
         return _ftype_to_dtype(leaf.member("fType"))
     else:
         raise NotNumerical()
+
+
+_tokenize_typename_pattern = re.compile(
+    r"(\b([A-Za-z_][A-Za-z_0-9]*)(\s*::\s*[A-Za-z_][A-Za-z_0-9]*)*\b(\s*\*)*|<|>|,)"
+)
+
+_simplify_token_1 = re.compile(r"\s*\*")
+_simplify_token_2 = re.compile(r"\s*::\s*")
+
+
+def _simplify_token(token):
+    return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token.group(0)))
+
+
+def _parse_error(pos, typename, file):
+    in_file = ""
+    if file is not None:
+        in_file = "\nin file {0}".format(file.file_path)
+    raise ValueError(
+        """invalid C++ type name syntax at char {0}
+
+    {1}
+{2}{3}""".format(
+            pos, typename, "-" * (4 + pos) + "^", in_file
+        )
+    )
+
+
+def _parse_expect(what, tokens, i, typename, file):
+    if i >= len(tokens):
+        _parse_error(len(typename), typename, file)
+
+    if what is not None and tokens[i].group(0) != what:
+        _parse_error(tokens[i].start() + 1, typename, file)
+
+
+def _parse_maybe_quote(quoted, quote):
+    if quote:
+        return quoted
+    else:
+        return eval(quoted)
+
+
+def _parse_node(tokens, i, typename, file, quote):
+    _parse_expect(None, tokens, i, typename, file)
+
+    has2 = i + 1 < len(tokens)
+
+    if tokens[i].group(0) == ",":
+        _parse_error(tokens[i].start() + 1, typename, file)
+
+    elif tokens[i].group(0) == "Bool_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype("?")', quote)
+    elif tokens[i].group(0) == "bool":
+        return i + 1, _parse_maybe_quote('numpy.dtype("?")', quote)
+
+    elif tokens[i].group(0) == "Char_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype("i1")', quote)
+    elif tokens[i].group(0) == "char":
+        return i + 1, _parse_maybe_quote('numpy.dtype("i1")', quote)
+    elif tokens[i].group(0) == "UChar_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype("u1")', quote)
+    elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "char":
+        return i + 2, _parse_maybe_quote('numpy.dtype("u1")', quote)
+
+    elif tokens[i].group(0) == "Short_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">i2")', quote)
+    elif tokens[i].group(0) == "short":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">i2")', quote)
+    elif tokens[i].group(0) == "UShort_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">u2")', quote)
+    elif (
+        has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "short"
+    ):
+        return i + 2, _parse_maybe_quote('numpy.dtype(">u2")', quote)
+
+    elif tokens[i].group(0) == "Int_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">i4")', quote)
+    elif tokens[i].group(0) == "int":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">i4")', quote)
+    elif tokens[i].group(0) == "UInt_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">u4")', quote)
+    elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "int":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">u4")', quote)
+
+    elif tokens[i].group(0) == "Long_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
+    elif tokens[i].group(0) == "Long64_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
+    elif tokens[i].group(0) == "long":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
+    elif tokens[i].group(0) == "ULong_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">u8")', quote)
+    elif tokens[i].group(0) == "ULong64_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">u8")', quote)
+    elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "long":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">u8")', quote)
+
+    elif tokens[i].group(0) == "Float_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">f4")', quote)
+    elif tokens[i].group(0) == "float":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">f4")', quote)
+
+    elif tokens[i].group(0) == "Double_t":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">f8")', quote)
+    elif tokens[i].group(0) == "double":
+        return i + 1, _parse_maybe_quote('numpy.dtype(">f8")', quote)
+
+    elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
+        return i + 1, _parse_maybe_quote("uproot4.stl_containers.AsString()", quote)
+    elif tokens[i].group(0) == "TString":
+        return (
+            i + 1,
+            _parse_maybe_quote("uproot4.stl_containers.AsString(is_stl=False)", quote),
+        )
+    elif _simplify_token(tokens[i]) == "char*":
+        return (
+            i + 1,
+            _parse_maybe_quote("uproot4.stl_containers.AsString(is_stl=False)", quote),
+        )
+    elif (
+        has2
+        and tokens[i].group(0) == "const"
+        and _simplify_token(tokens[i + 1]) == "char*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote("uproot4.stl_containers.AsString(is_stl=False)", quote),
+        )
+
+    elif tokens[i].group(0) == "vector" or _simplify_token(tokens[i]) == "std::vector":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, values = _parse_node(tokens, i + 2, typename, file, quote)
+        _parse_expect(">", tokens, i, typename, file)
+        if quote:
+            return i + 1, "uproot4.stl_containers.AsVector({0})".format(values)
+        else:
+            return i + 1, uproot4.stl_containers.AsVector(values)
+
+    elif tokens[i].group(0) == "set" or _simplify_token(tokens[i]) == "std::set":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, keys = _parse_node(tokens, i + 2, typename, file, quote)
+        _parse_expect(">", tokens, i, typename, file)
+        if quote:
+            return i + 1, "uproot4.stl_containers.AsSet({0})".format(keys)
+        else:
+            return i + 1, uproot4.stl_containers.AsSet(keys)
+
+    elif tokens[i].group(0) == "map" or _simplify_token(tokens[i]) == "std::map":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, keys = _parse_node(tokens, i + 2, typename, file, quote)
+        _parse_expect(",", tokens, i, typename, file)
+        i, values = _parse_node(tokens, i + 1, typename, file, quote)
+        _parse_expect(">", tokens, i, typename, file)
+        if quote:
+            return i + 1, "uproot4.stl_containers.AsMap({0}, {1})".format(keys, values)
+        else:
+            return i + 1, uproot4.stl_containers.AsMap(keys, values)
+
+    else:
+        start, stop = tokens[i].span()
+
+        if has2 and tokens[i + 1].group(0) == "<":
+            i, keys = _parse_node(tokens, i + 1, typename, file, quote)
+            _parse_expect(">", tokens, i + 1, typename, file)
+            stop = tokens[i + 1].span()[1]
+            i += 1
+
+        classname = typename[start:stop]
+
+        if quote:
+            return "c({0})".format(repr(classname))
+        elif file is None:
+            cls = uproot4.classes[classname]
+        else:
+            cls = file.class_named(classname)
+
+        return i + 1, cls
+
+
+def parse_typename(typename, file=None, quote=False):
+    tokens = list(_tokenize_typename_pattern.finditer(typename))
+    i, out = _parse_node(tokens, 0, typename, file, quote)
+
+    if i < len(tokens):
+        _parse_error(tokens[i].start(), typename, file)
+
+    return out
 
 
 _title_has_dims = re.compile(r"^([^\[\]]+)(\[[^\[\]]+\])+")
@@ -429,6 +618,11 @@ def interpretation_of(branch, context):
 
         if leaf.classname == "TLeafC":
             return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
+
+        if branch.has_member("fClassName"):
+            model_cls = parse_typename(branch.member("fClassName"), file=branch.file)
+            return model_cls
+
 
         if leaf.classname == "TLeafElement":
             raise NotImplementedError

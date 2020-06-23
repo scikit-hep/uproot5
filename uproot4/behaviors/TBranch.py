@@ -683,7 +683,6 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
-                full_paths=False,
             )
         )
 
@@ -961,6 +960,9 @@ in file {3}""".format(
     def typename(self):
         if self._streamer is not None:
             return self._streamer.typename
+
+        if self.has_member("fClassName"):
+            return self.member("fClassName")
 
         def leaf_to_typename(leaf):
             dim = leaf.member("fTitle").count("[")
