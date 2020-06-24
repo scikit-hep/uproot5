@@ -65,6 +65,7 @@ class DeserializationError(Exception):
     def __str__(self):
         lines = []
         indent = "    "
+        last = None
         for obj in self.context.get("breadcrumbs", ()):
             lines.append(
                 "{0}{1} version {2} as {3}.{4} ({5} bytes)".format(
@@ -81,6 +82,34 @@ class DeserializationError(Exception):
                 lines.append("{0}(base): {1}".format(indent, repr(v)))
             for k, v in getattr(obj, "_members", {}).items():
                 lines.append("{0}{1}: {2}".format(indent, k, repr(v)))
+            last = obj
+
+        if last is not None:
+            base_names_versions = getattr(last, "base_names_versions", None)
+            bases = getattr(last, "_bases", None)
+            if base_names_versions is not None and bases is not None:
+                base_names = [n for n, v in base_names_versions]
+                for c in bases:
+                    classname = getattr(c, "classname", None)
+                    if classname is not None:
+                        if classname in base_names:
+                            base_names[base_names.index(classname)] = "(" + classname + ")"
+                        else:
+                            base_names.append(classname + "?")
+                if len(base_names) != 0:
+                    lines.append("Base classes for {0}: {1}".format(last.classname, ", ".join(base_names)))
+
+            member_names = getattr(last, "member_names", None)
+            members = getattr(last, "_members", None)
+            if member_names is not None and members is not None:
+                member_names = list(member_names)
+                for n in members:
+                    if n in member_names:
+                        member_names[member_names.index(n)] = "(" + n + ")"
+                    else:
+                        member_names.append(n + "?")
+                if len(member_names) != 0:
+                    lines.append("Members for {0}: {1}".format(last.classname, ", ".join(member_names)))
 
         in_parent = ""
         if "TBranch" in self.context:

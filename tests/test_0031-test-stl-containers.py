@@ -48,44 +48,44 @@ def test_typename():
             AsMap(True, numpy.dtype(">i4"), numpy.dtype(">i2"))
         )
         assert tree["map_int32_vector_int16"].interpretation == AsObjects(
-            AsMap(True, numpy.dtype(">i4"), AsVector(False, numpy.dtype(">i2")))
+            AsMap(True, numpy.dtype(">i4"), AsVector(True, numpy.dtype(">i2")))
         )
         assert tree["map_int32_vector_string"].interpretation == AsObjects(
-            AsMap(True, numpy.dtype(">i4"), AsVector(False, AsString(False)))
+            AsMap(True, numpy.dtype(">i4"), AsVector(True, AsString(False)))
         )
         assert tree["map_int32_set_int16"].interpretation == AsObjects(
-            AsMap(True, numpy.dtype(">i4"), AsSet(False, numpy.dtype(">i2")))
+            AsMap(True, numpy.dtype(">i4"), AsSet(True, numpy.dtype(">i2")))
         )
         assert tree["map_int32_set_string"].interpretation == AsObjects(
-            AsMap(True, numpy.dtype(">i4"), AsSet(False, AsString(False)))
+            AsMap(True, numpy.dtype(">i4"), AsSet(True, AsString(False)))
         )
         assert tree["map_string_int16"].interpretation == AsObjects(
-            AsMap(True, AsString(False), numpy.dtype(">i2"))
+            AsMap(True, AsString(True), numpy.dtype(">i2"))
         )
         assert tree["map_string_vector_int16"].interpretation == AsObjects(
-            AsMap(True, AsString(False), AsVector(False, numpy.dtype(">i2")))
+            AsMap(True, AsString(True), AsVector(True, numpy.dtype(">i2")))
         )
         assert tree["map_string_vector_string"].interpretation == AsObjects(
-            AsMap(True, AsString(False), AsVector(False, AsString(False)))
+            AsMap(True, AsString(True), AsVector(True, AsString(False)))
         )
         assert tree["map_string_set_int16"].interpretation == AsObjects(
-            AsMap(True, AsString(False), AsSet(False, numpy.dtype(">i2")))
+            AsMap(True, AsString(True), AsSet(True, numpy.dtype(">i2")))
         )
         assert tree["map_string_set_string"].interpretation == AsObjects(
-            AsMap(True, AsString(False), AsSet(False, AsString(False)))
+            AsMap(True, AsString(True), AsSet(True, AsString(False)))
         )
         assert tree["map_int32_vector_vector_int16"].interpretation == AsObjects(
             AsMap(
                 True,
                 numpy.dtype(">i4"),
-                AsVector(False, AsVector(False, numpy.dtype(">i2"))),
+                AsVector(True, AsVector(False, numpy.dtype(">i2"))),
             )
         )
         assert tree["map_int32_vector_set_int16"].interpretation == AsObjects(
             AsMap(
                 True,
                 numpy.dtype(">i4"),
-                AsVector(False, AsSet(False, numpy.dtype(">i2"))),
+                AsVector(True, AsSet(False, numpy.dtype(">i2"))),
             )
         )
         assert tree["vector_map_int32_int16"].interpretation == AsObjects(
@@ -98,7 +98,7 @@ def test_typename():
             AsVector(True, AsMap(False, AsString(False), AsString(False)))
         )
         assert tree["map_string_string"].interpretation == AsObjects(
-            AsMap(True, AsString(False), AsString(False))
+            AsMap(True, AsString(True), AsString(True))
         )
 
 
@@ -254,16 +254,24 @@ def test_set_int32():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
-# def test_set_string():
-#     with uproot4.open("stl_containers.root")["tree"] as tree:
-#         assert [x.tolist() for x in tree["set_string"].array(library="np")] == []
+@pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
+def test_set_string():
+    with uproot4.open("stl_containers.root")["tree"] as tree:
+        assert [x.tolist() for x in tree["set_string"].array(library="np")] == [
+            set(["one"]),
+            set(["one", "two"]),
+            set(["one", "two", "three"]),
+            set(["one", "two", "three", "four"]),
+            set(["one", "two", "three", "four", "five"]),
+        ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
-# def test_map_int32_int16():
-#     with uproot4.open("stl_containers.root")["tree"] as tree:
-#         assert [x.tolist() for x in tree["map_int32_int16"].array(library="np")] == []
+@pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
+def test_map_int32_int16():
+    with uproot4.open("stl_containers.root")["tree"] as tree:
+        assert [x.tolist() for x in tree["map_int32_int16"].array(library="np")] == [
+            {1: 1}, {1: 1, 2: 2}, {1: 1, 2: 2, 3: 3}, {1: 1, 2: 2, 3: 3, 4: 4}, {1: 1, 2: 2, 3: 3, 4: 4, 5: 5}
+        ]
 
 
 # @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")

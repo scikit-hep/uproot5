@@ -50,28 +50,28 @@ def test_parse_typename():
         True, AsVector(False, AsString(False))
     )
     assert parse_typename("map<int, double>") == AsMap(True, ">i4", ">f8")
-    assert parse_typename("map<string, double>") == AsMap(True, AsString(False), ">f8")
-    assert parse_typename("map<int, string>") == AsMap(True, ">i4", AsString(False))
+    assert parse_typename("map<string, double>") == AsMap(True, AsString(True), ">f8")
+    assert parse_typename("map<int, string>") == AsMap(True, ">i4", AsString(True))
     assert parse_typename("map<string, string>") == AsMap(
-        True, AsString(False), AsString(False)
+        True, AsString(True), AsString(True)
     )
     assert parse_typename("map<string,string>") == AsMap(
-        True, AsString(False), AsString(False)
+        True, AsString(True), AsString(True)
     )
     assert parse_typename("map<   string,string   >") == AsMap(
-        True, AsString(False), AsString(False)
+        True, AsString(True), AsString(True)
     )
     assert parse_typename("map<string,vector<int>>") == AsMap(
-        True, AsString(False), AsVector(False, ">i4")
+        True, AsString(True), AsVector(True, ">i4")
     )
     assert parse_typename("map<vector<int>, string>") == AsMap(
-        True, AsVector(False, ">i4"), AsString(False)
+        True, AsVector(True, ">i4"), AsString(True)
     )
     assert parse_typename("map<vector<int>, set<float>>") == AsMap(
-        True, AsVector(False, ">i4"), AsSet(False, ">f4")
+        True, AsVector(True, ">i4"), AsSet(True, ">f4")
     )
     assert parse_typename("map<vector<int>, set<set<float>>>") == AsMap(
-        True, AsVector(False, ">i4"), AsSet(False, AsSet(False, ">f4"))
+        True, AsVector(True, ">i4"), AsSet(True, AsSet(False, ">f4"))
     )
 
     with pytest.raises(ValueError):

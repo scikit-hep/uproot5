@@ -846,6 +846,7 @@ class TBranch(HasBranches):
         self._count_leaf = None
         self._streamer = None
         self._context = dict(context)
+        self._context["breadcrumbs"] = ()
         self._context["in_TBranch"] = True
 
         self._num_normal_baskets = 0

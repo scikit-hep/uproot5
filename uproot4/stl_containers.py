@@ -70,14 +70,14 @@ def _nested_context(context):
     return out
 
 
-def _read_nested(model, length, chunk, cursor, context, file, parent):
+def _read_nested(model, length, chunk, cursor, context, file, parent, header=True):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
 
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         for i in range(length):
-            values[i] = model.read(chunk, cursor, context, file, parent)
+            values[i] = model.read(chunk, cursor, context, file, parent, header=header)
         return values
 
 
@@ -138,7 +138,7 @@ class AsSTLContainer(object):
         if value is True or value is False:
             self._header = value
         else:
-            raise TypeError("STLContainer.header must be True or False")
+            raise TypeError("{0}.header must be True or False".format(type(self).__name__))
 
     @property
     def cache_key(self):
@@ -148,7 +148,7 @@ class AsSTLContainer(object):
     def classname(self):
         raise AssertionError
 
-    def read(self, chunk, cursor, context, file, parent):
+    def read(self, chunk, cursor, context, file, parent, header=True):
         raise AssertionError
 
     def __eq__(self, other):
@@ -184,8 +184,8 @@ class AsString(AsSTLContainer):
     def classname(self):
         return "std::string"
 
-    def read(self, chunk, cursor, context, file, parent):
-        if self._header:
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
                 chunk, cursor, context
@@ -193,7 +193,7 @@ class AsString(AsSTLContainer):
 
         out = cursor.string(chunk, context)
 
-        if self._header:
+        if self._header and header:
             uproot4.deserialization.numbytes_check(
                 chunk,
                 start_cursor,
@@ -243,8 +243,8 @@ class AsVector(AsSTLContainer):
             values = self._values.classname
         return "std::vector<{0}>".format(values)
 
-    def read(self, chunk, cursor, context, file, parent):
-        if self._header:
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
                 chunk, cursor, context
@@ -257,7 +257,7 @@ class AsVector(AsSTLContainer):
         )
         out = STLVector(values)
 
-        if self._header:
+        if self._header and header:
             uproot4.deserialization.numbytes_check(
                 chunk,
                 start_cursor,
@@ -372,8 +372,8 @@ class AsSet(AsSTLContainer):
             keys = self._keys.classname
         return "std::set<{0}>".format(keys)
 
-    def read(self, chunk, cursor, context, file, parent):
-        if self._header:
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
                 chunk, cursor, context
@@ -384,7 +384,7 @@ class AsSet(AsSTLContainer):
         keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent)
         out = STLSet(keys)
 
-        if self._header:
+        if self._header and header:
             uproot4.deserialization.numbytes_check(
                 chunk,
                 start_cursor,
@@ -478,6 +478,13 @@ class STLSet(STLContainer, Set):
         )
 
 
+def _has_nested_header(obj):
+    if isinstance(obj, AsSTLContainer):
+        return obj.header
+    else:
+        return False
+
+
 class AsMap(AsSTLContainer):
     def __init__(self, header, keys, values):
         self.header = header
@@ -528,30 +535,29 @@ class AsMap(AsSTLContainer):
             values = self._values.classname
         return "std::map<{0}, {1}>".format(keys, values)
 
-    def read(self, chunk, cursor, context, file, parent):
-        if self._header:
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
                 chunk, cursor, context
             )
-
-        cursor.skip(6)
+            cursor.skip(6)
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        if self._header:
+        if _has_nested_header(self._keys) and header:
             cursor.skip(6)
-        keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent)
+        keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent, header=False)
 
-        if self._header:
+        if _has_nested_header(self._values) and header:
             cursor.skip(6)
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, parent
+            self._values, length, chunk, cursor, context, file, parent, header=False
         )
 
         out = STLMap(keys, values)
 
-        if self._header:
+        if self._header and header:
             uproot4.deserialization.numbytes_check(
                 chunk,
                 start_cursor,
@@ -721,7 +727,7 @@ class STLMap(STLContainer, Mapping):
             return numpy.logical_and(keys_same, values_same).all()
 
     def tolist(self):
-        return dict(
-            (k, v.tolist() if isinstance(v, (STLContainer, numpy.ndarray)) else v)
-            for k, v in self
-        )
+        out = {}
+        for i in range(len(self)):
+            out[self._keys[i]] = self._values[i]
+        return out

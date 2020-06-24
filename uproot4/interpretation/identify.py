@@ -334,11 +334,11 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif tokens[i].group(0) == "map" or _simplify_token(tokens[i]) == "std::map":
         _parse_expect("<", tokens, i + 1, typename, file)
         i, keys = _parse_node(
-            tokens, i + 2, typename, file, quote, inner_header, inner_header
+            tokens, i + 2, typename, file, quote, header, inner_header
         )
         _parse_expect(",", tokens, i, typename, file)
         i, values = _parse_node(
-            tokens, i + 1, typename, file, quote, inner_header, inner_header
+            tokens, i + 1, typename, file, quote, header, inner_header
         )
         _parse_expect(">", tokens, i, typename, file)
         if quote:
