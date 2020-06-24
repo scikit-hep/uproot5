@@ -214,7 +214,7 @@ def _parse_maybe_quote(quoted, quote):
         return eval(quoted)
 
 
-def _parse_node(tokens, i, typename, file, quote):
+def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     _parse_expect(None, tokens, i, typename, file)
 
     has2 = i + 1 < len(tokens)
@@ -280,16 +280,21 @@ def _parse_node(tokens, i, typename, file, quote):
         return i + 1, _parse_maybe_quote('numpy.dtype(">f8")', quote)
 
     elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
-        return i + 1, _parse_maybe_quote("uproot4.stl_containers.AsString()", quote)
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                "uproot4.stl_containers.AsString({0})".format(header), quote
+            ),
+        )
     elif tokens[i].group(0) == "TString":
         return (
             i + 1,
-            _parse_maybe_quote("uproot4.stl_containers.AsString(is_stl=False)", quote),
+            _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote),
         )
     elif _simplify_token(tokens[i]) == "char*":
         return (
             i + 1,
-            _parse_maybe_quote("uproot4.stl_containers.AsString(is_stl=False)", quote),
+            _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote),
         )
     elif (
         has2
@@ -298,43 +303,61 @@ def _parse_node(tokens, i, typename, file, quote):
     ):
         return (
             i + 2,
-            _parse_maybe_quote("uproot4.stl_containers.AsString(is_stl=False)", quote),
+            _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote),
         )
 
     elif tokens[i].group(0) == "vector" or _simplify_token(tokens[i]) == "std::vector":
         _parse_expect("<", tokens, i + 1, typename, file)
-        i, values = _parse_node(tokens, i + 2, typename, file, quote)
+        i, values = _parse_node(
+            tokens, i + 2, typename, file, quote, inner_header, inner_header
+        )
         _parse_expect(">", tokens, i, typename, file)
         if quote:
-            return i + 1, "uproot4.stl_containers.AsVector({0})".format(values)
+            return (
+                i + 1,
+                "uproot4.stl_containers.AsVector({0}, {1})".format(header, values),
+            )
         else:
-            return i + 1, uproot4.stl_containers.AsVector(values)
+            return i + 1, uproot4.stl_containers.AsVector(header, values)
 
     elif tokens[i].group(0) == "set" or _simplify_token(tokens[i]) == "std::set":
         _parse_expect("<", tokens, i + 1, typename, file)
-        i, keys = _parse_node(tokens, i + 2, typename, file, quote)
+        i, keys = _parse_node(
+            tokens, i + 2, typename, file, quote, inner_header, inner_header
+        )
         _parse_expect(">", tokens, i, typename, file)
         if quote:
-            return i + 1, "uproot4.stl_containers.AsSet({0})".format(keys)
+            return i + 1, "uproot4.stl_containers.AsSet({0}, {1})".format(header, keys)
         else:
-            return i + 1, uproot4.stl_containers.AsSet(keys)
+            return i + 1, uproot4.stl_containers.AsSet(header, keys)
 
     elif tokens[i].group(0) == "map" or _simplify_token(tokens[i]) == "std::map":
         _parse_expect("<", tokens, i + 1, typename, file)
-        i, keys = _parse_node(tokens, i + 2, typename, file, quote)
+        i, keys = _parse_node(
+            tokens, i + 2, typename, file, quote, inner_header, inner_header
+        )
         _parse_expect(",", tokens, i, typename, file)
-        i, values = _parse_node(tokens, i + 1, typename, file, quote)
+        i, values = _parse_node(
+            tokens, i + 1, typename, file, quote, inner_header, inner_header
+        )
         _parse_expect(">", tokens, i, typename, file)
         if quote:
-            return i + 1, "uproot4.stl_containers.AsMap({0}, {1})".format(keys, values)
+            return (
+                i + 1,
+                "uproot4.stl_containers.AsMap({0}, {1}, {2})".format(
+                    header, keys, values
+                ),
+            )
         else:
-            return i + 1, uproot4.stl_containers.AsMap(keys, values)
+            return i + 1, uproot4.stl_containers.AsMap(header, keys, values)
 
     else:
         start, stop = tokens[i].span()
 
         if has2 and tokens[i + 1].group(0) == "<":
-            i, keys = _parse_node(tokens, i + 1, typename, file, quote)
+            i, keys = _parse_node(
+                tokens, i + 1, typename, file, quote, inner_header, inner_header
+            )
             _parse_expect(">", tokens, i + 1, typename, file)
             stop = tokens[i + 1].span()[1]
             i += 1
@@ -351,9 +374,20 @@ def _parse_node(tokens, i, typename, file, quote):
         return i + 1, cls
 
 
-def parse_typename(typename, file=None, quote=False):
+def parse_typename(
+    typename, file=None, quote=False, outer_header=True, inner_header=False
+):
     tokens = list(_tokenize_typename_pattern.finditer(typename))
-    i, out = _parse_node(tokens, 0, typename, file, quote)
+
+    if len(tokens) != 0 and (
+        tokens[0].group(0) == "string" or _simplify_token(tokens[0]) == "std::string"
+    ):
+        i, out = 1, _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote)
+
+    else:
+        i, out = _parse_node(
+            tokens, 0, typename, file, quote, outer_header, inner_header
+        )
 
     if i < len(tokens):
         _parse_error(tokens[i].start(), typename, file)

@@ -845,7 +845,8 @@ class TBranch(HasBranches):
         self._count_branch = None
         self._count_leaf = None
         self._streamer = None
-        self._context = context
+        self._context = dict(context)
+        self._context["in_TBranch"] = True
 
         self._num_normal_baskets = 0
         for i, x in enumerate(self.member("fBasketSeek")):
@@ -890,9 +891,7 @@ class TBranch(HasBranches):
 
     @property
     def context(self):
-        out = dict(self._context)
-        out["in_TBranch"] = True
-        return out
+        return self._context
 
     @property
     def aliases(self):
