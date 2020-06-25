@@ -886,8 +886,6 @@ class TBranch(HasBranches):
 
     @property
     def tree(self):
-        import uproot4.behaviors.TTree
-
         out = self
         while not isinstance(out, uproot4.behaviors.TTree.TTree):
             out = out.parent
@@ -1018,16 +1016,23 @@ in file {3}""".format(
 
     @property
     def streamer(self):
-        import uproot4.behaviors.TTree
-
         if self._streamer is None:
+            nodotname = self.name.split(".")[-1]
             fParentName = self.member("fParentName", none_if_missing=True)
             fClassName = self.member("fClassName", none_if_missing=True)
+
             if fParentName is not None and fParentName != "":
-                matches = self._file.streamers.get()
+                matches = self._file.streamers.get(fParentName)
+                if matches is not None:
+                    for element in matches[max(matches)].elements:
+                        if element.name == nodotname:
+                            self._streamer = element
+                            break
 
-
-
+            elif fClassName is not None and fClassName != "":
+                matches = self._file.streamers.get(fClassName)
+                if matches is not None:
+                    self._streamer = matches[max(matches)]
 
         # if self._streamer is None and self._has_member("fClassName"):
         #     matches = self._file.streamers.get(self.member("fClassName"))

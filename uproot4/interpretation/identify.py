@@ -649,14 +649,6 @@ def interpretation_of(branch, context):
         elif len(branch.member("fLeaves")) == 1:
             leaf = branch.member("fLeaves")[0]
 
-            if isinstance(
-                branch.streamer, uproot4.streamers.Model_TStreamerObjectPointer
-            ):
-                typename = branch.streamer.typename
-                if typename.endswith("*"):
-                    typename = typename[:-1]
-                raise NotImplementedError("obj_or_genobj")
-
             leaftype = uproot4.const.kBase
             if leaf.classname == "TLeafElement":
                 leaftype = _normalize_ftype(leaf.member("fType"))
@@ -710,8 +702,8 @@ def interpretation_of(branch, context):
 
     except NotNumerical:
         if (
-            branch.has_member("fStreamerType")
-            and branch.member("fStreamerType") == uproot4.const.kTString
+            branch.member("fStreamerType", none_if_missing=True)
+            == uproot4.const.kTString
         ):
             return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
 
@@ -729,7 +721,7 @@ def interpretation_of(branch, context):
         if leaf.classname == "TLeafC":
             return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
 
-        if len(branch.branch_path) == 0 and branch.has_member("fClassName"):
+        if branch.top_level and branch.has_member("fClassName"):
             model_cls = parse_typename(
                 branch.member("fClassName"),
                 file=branch.file,
@@ -751,5 +743,11 @@ def interpretation_of(branch, context):
 
         if leaf.classname == "TLeafElement":
             raise NotImplementedError
+
+        if isinstance(branch.streamer, uproot4.streamers.Model_TStreamerObjectPointer):
+            typename = branch.streamer.typename
+            if typename.endswith("*"):
+                typename = typename[:-1]
+            raise NotImplementedError("obj_or_genobj")
 
         raise NotImplementedError

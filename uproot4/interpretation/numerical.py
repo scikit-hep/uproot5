@@ -200,8 +200,6 @@ class AsDtype(Numerical):
             context=context,
         )
 
-        assert byte_offsets is None
-
         dtype, shape = _dtype_shape(self._from_dtype)
         try:
             output = data.view(dtype).reshape((-1,) + shape)
