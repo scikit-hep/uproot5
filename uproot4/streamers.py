@@ -125,30 +125,6 @@ def _ftype_to_struct(fType):
 _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 
-# class MissingStreamerException(Exception):
-#     def __init__(self, message, names, file_path, object_path):
-#         self.message = message
-#         self.names = names
-#         self.file_path = file_path
-#         self.object_path = object_path
-
-#     def __str__(self):
-#         names = ""
-#         if self.names is not None:
-#             for label, list_of_names in self.names.items():
-#                 names = names + """
-
-#     Known {0}: {1}
-
-# """.format(label, ", ".join(list_of_names))
-#         in_object = ""
-#         if self.object_path is not None:
-#             in_object = "\nin object {0}".format(self.object_path)
-#         return """{0}{1}in file {2}{3}""".format(
-#             self.message, names, self.file_path, in_object
-#         )
-
-
 class Model_TStreamerInfo(uproot4.model.Model):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
@@ -204,52 +180,6 @@ class Model_TStreamerInfo(uproot4.model.Model):
         out.append((self.name, self.class_version))
         for element in self.elements:
             element._dependencies(streamers, out)
-
-    # def find(self, streamers, path, file, object_path):
-    #     if len(path) == 0:
-    #         raise MissingStreamerException(
-    #             "cannot search for streamer with an empty path",
-    #             {},
-    #             file.file_path,
-    #             object_path,
-    #         )
-
-    #     print("path", path)
-    #     print("self", self)
-    #     print("elements", [element.name for element in self.elements])
-
-    #     for element in self.elements:
-    #         if element.name == path[0]:
-    #             stripped = uproot4.interpretation.identify.parse_typename_for_streamer(
-    #                 element.typename, file
-    #             )
-
-    #             matches = streamers.get(stripped)
-    #             if matches is None:
-    #                 if len(path) == 1:
-    #                     return element
-    #                 else:
-    #                     raise MissingStreamerException(
-    #                         "cannot find typename {0}".format(element.typename),
-    #                         {"streamers": list(streamers)},
-    #                         file.file_path,
-    #                         object_path,
-    #                     )
-
-    #             next_streamer = matches[max(matches)]
-
-    #             if len(path) == 1:
-    #                 return next_streamer
-    #             else:
-    #                 return next_streamer.find(streamers, path[1:], file, object_path)
-
-    #     else:
-    #         raise MissingStreamerException(
-    #             "cannot find field {0} in {1}".format(path[0], self.name),
-    #             {"fields": [element.name for element in self.elements]},
-    #             file.file_path,
-    #             object_path,
-    #         )
 
     def show(self, stream=sys.stdout):
         """

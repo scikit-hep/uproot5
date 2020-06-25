@@ -140,9 +140,7 @@ def test_map_string_string_in_object():
 
 
 def test_map_long_int_in_object():
-    with uproot4.open(
-        "/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue283.root"
-    ) as f:
+    with uproot4.open(skhep_testdata.data_path("uproot-issue283.root")) as f:
         map_long_int = f["config/detector"].member("ChannelIDMap")
         assert (map_long_int.keys().min(), map_long_int.keys().max()) == (
             46612627560,

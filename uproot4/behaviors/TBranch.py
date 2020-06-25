@@ -1005,15 +1005,6 @@ in file {3}""".format(
     def top_level(self):
         return isinstance(self.parent, uproot4.behaviors.TTree.TTree)
 
-    # @property
-    # def branch_path(self):
-    #     step = self
-    #     path = ()
-    #     while not isinstance(step.parent, uproot4.behaviors.TTree.TTree):
-    #         path = (step.name.split(".")[-1],) + path
-    #         step = step.parent
-    #     return path
-
     @property
     def streamer(self):
         if self._streamer is None:
@@ -1033,28 +1024,6 @@ in file {3}""".format(
                 matches = self._file.streamers.get(fClassName)
                 if matches is not None:
                     self._streamer = matches[max(matches)]
-
-        # if self._streamer is None and self._has_member("fClassName"):
-        #     matches = self._file.streamers.get(self.member("fClassName"))
-        #     if matches is not None:
-        #         streamer = HERE
-
-        # if (
-        #     self._streamer is None
-        #     and self._interpretation is None
-        #     and self.has_member("fClassName")
-        # ):
-        #     path = self.branch_path
-        #     streamers = self._file.streamers
-
-        #     print(self.member("fClassName"))
-
-        #     matches = streamers.get(self.member("fClassName"))
-        #     if matches is not None:
-        #         streamer = matches[max(matches)]
-        #         if len(path) != 0:
-        #             streamer = streamer.find(streamers, path, self._file, self.object_path)
-        #         self._streamer = streamer
 
         return self._streamer
 
