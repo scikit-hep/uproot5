@@ -375,12 +375,22 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
 
 
 def parse_typename(
-    typename, file=None, quote=False, outer_header=True, inner_header=False
+    typename,
+    file=None,
+    quote=False,
+    outer_header=True,
+    inner_header=False,
+    string_header=True,
 ):
     tokens = list(_tokenize_typename_pattern.finditer(typename))
 
-    if len(tokens) != 0 and (
-        tokens[0].group(0) == "string" or _simplify_token(tokens[0]) == "std::string"
+    if (
+        string_header
+        and len(tokens) != 0
+        and (
+            tokens[0].group(0) == "string"
+            or _simplify_token(tokens[0]) == "std::string"
+        )
     ):
         i, out = 1, _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote)
 
@@ -391,6 +401,70 @@ def parse_typename(
 
     if i < len(tokens):
         _parse_error(tokens[i].start(), typename, file)
+
+    return out
+
+
+def _parse_node_for_streamer(tokens, i, typename, file):
+    _parse_expect(None, tokens, i, typename, file)
+
+    has2 = i + 1 < len(tokens)
+
+    if tokens[i].group(0) == ",":
+        _parse_error(tokens[i].start() + 1, typename, file)
+
+    elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
+        return i + 1, "string"
+    elif tokens[i].group(0) == "TString":
+        return i + 1, "TString"
+    elif _simplify_token(tokens[i]) == "char*":
+        return i + 1, "char*"
+    elif (
+        has2
+        and tokens[i].group(0) == "const"
+        and _simplify_token(tokens[i + 1]) == "char*"
+    ):
+        return i + 2, "const char*"
+
+    elif tokens[i].group(0) == "vector" or _simplify_token(tokens[i]) == "std::vector":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, values = _parse_node_for_streamer(tokens, i + 2, typename, file)
+        _parse_expect(">", tokens, i, typename, file)
+        return i + 1, values
+
+    elif tokens[i].group(0) == "set" or _simplify_token(tokens[i]) == "std::set":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, keys = _parse_node_for_streamer(tokens, i + 2, typename, file)
+        _parse_expect(">", tokens, i, typename, file)
+        return i + 1, keys
+
+    elif tokens[i].group(0) == "map" or _simplify_token(tokens[i]) == "std::map":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, keys = _parse_node_for_streamer(tokens, i + 2, typename, file)
+        _parse_expect(",", tokens, i, typename, file)
+        i, values = _parse_node_for_streamer(tokens, i + 1, typename, file)
+        _parse_expect(">", tokens, i, typename, file)
+        return i + 1, values
+
+    else:
+        start, stop = tokens[i].span()
+
+        if has2 and tokens[i + 1].group(0) == "<":
+            i, keys = _parse_node_for_streamer(tokens, i + 1, typename, file)
+            _parse_expect(">", tokens, i + 1, typename, file)
+            stop = tokens[i + 1].span()[1]
+            i += 1
+
+        return typename[start:stop]
+
+
+def parse_typename_for_streamer(typename, file):
+    tokens = list(_tokenize_typename_pattern.finditer(typename))
+
+    i, out = _parse_node_for_streamer(tokens, 0, typename, file)
+
+    if i < len(tokens):
+        _parse_error(tokens[i].start(), typename, None)
 
     return out
 
@@ -655,8 +729,24 @@ def interpretation_of(branch, context):
         if leaf.classname == "TLeafC":
             return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
 
-        if branch.has_member("fClassName"):
-            model_cls = parse_typename(branch.member("fClassName"), file=branch.file)
+        if len(branch.branch_path) == 0 and branch.has_member("fClassName"):
+            model_cls = parse_typename(
+                branch.member("fClassName"),
+                file=branch.file,
+                outer_header=True,
+                inner_header=False,
+                string_header=True,
+            )
+            return uproot4.interpretation.objects.AsObjects(model_cls)
+
+        if branch.streamer is not None:
+            model_cls = parse_typename(
+                branch.streamer.typename,
+                file=branch.file,
+                outer_header=True,
+                inner_header=False,
+                string_header=False,
+            )
             return uproot4.interpretation.objects.AsObjects(model_cls)
 
         if leaf.classname == "TLeafElement":

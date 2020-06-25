@@ -21,6 +21,8 @@ except ImportError:
 import numpy
 
 import uproot4.source.cursor
+import uproot4.streamers
+import uproot4.stl_containers
 import uproot4.interpretation
 import uproot4.interpretation.numerical
 import uproot4.interpretation.jagged
@@ -844,6 +846,7 @@ class TBranch(HasBranches):
         self._interpretation = None
         self._count_branch = None
         self._count_leaf = None
+        self._typename = None
         self._streamer = None
         self._context = dict(context)
         self._context["breadcrumbs"] = ()
@@ -1001,7 +1004,53 @@ in file {3}""".format(
             return ":".join(leaf_list)
 
     @property
+    def top_level(self):
+        return isinstance(self.parent, uproot4.behaviors.TTree.TTree)
+
+    # @property
+    # def branch_path(self):
+    #     step = self
+    #     path = ()
+    #     while not isinstance(step.parent, uproot4.behaviors.TTree.TTree):
+    #         path = (step.name.split(".")[-1],) + path
+    #         step = step.parent
+    #     return path
+
+    @property
     def streamer(self):
+        import uproot4.behaviors.TTree
+
+        if self._streamer is None:
+            fParentName = self.member("fParentName", none_if_missing=True)
+            fClassName = self.member("fClassName", none_if_missing=True)
+            if fParentName is not None and fParentName != "":
+                matches = self._file.streamers.get()
+
+
+
+
+        # if self._streamer is None and self._has_member("fClassName"):
+        #     matches = self._file.streamers.get(self.member("fClassName"))
+        #     if matches is not None:
+        #         streamer = HERE
+
+        # if (
+        #     self._streamer is None
+        #     and self._interpretation is None
+        #     and self.has_member("fClassName")
+        # ):
+        #     path = self.branch_path
+        #     streamers = self._file.streamers
+
+        #     print(self.member("fClassName"))
+
+        #     matches = streamers.get(self.member("fClassName"))
+        #     if matches is not None:
+        #         streamer = matches[max(matches)]
+        #         if len(path) != 0:
+        #             streamer = streamer.find(streamers, path, self._file, self.object_path)
+        #         self._streamer = streamer
+
         return self._streamer
 
     @property

@@ -139,16 +139,16 @@ def test_map_string_string_in_object():
         }
 
 
-@pytest.mark.skip(
-    reason="FIXME: test works, but the file is not in scikit-hep-testdata yet"
-)
 def test_map_long_int_in_object():
     with uproot4.open(
         "/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue283.root"
     ) as f:
-        print(f["config/detector"])
-
-    # raise Exception
+        map_long_int = f["config/detector"].member("ChannelIDMap")
+        assert (map_long_int.keys().min(), map_long_int.keys().max()) == (
+            46612627560,
+            281410180683757,
+        )
+        assert (map_long_int.values().min(), map_long_int.values().max()) == (0, 5159)
 
 
 # has STL vectors at top-level:
@@ -178,7 +178,6 @@ def test_strings2():
         assert result.tolist() == ["evt-{0:03d}".format(i) for i in range(100)]
 
 
-@pytest.mark.skip(reason="FIXME: implement std::string")
 def test_strings3():
     with uproot4.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")

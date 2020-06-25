@@ -17,9 +17,10 @@ from uproot4.stl_containers import AsSet
 from uproot4.stl_containers import AsMap
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_typename():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert tree["vector_int32"].interpretation == AsObjects(
             AsVector(True, numpy.dtype(">i4"))
         )
@@ -93,9 +94,10 @@ def test_typename():
         )
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert tree["string"].array(library="np").tolist() == [
             "one",
             "two",
@@ -105,9 +107,10 @@ def test_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_tstring():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert tree["tstring"].array(library="np").tolist() == [
             "one",
             "two",
@@ -117,9 +120,10 @@ def test_tstring():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_int32():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["vector_int32"].array(library="np")] == [
             [1],
             [1, 2],
@@ -129,9 +133,10 @@ def test_vector_int32():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["vector_string"].array(library="np")] == [
             ["one"],
             ["one", "two"],
@@ -141,9 +146,10 @@ def test_vector_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_tstring():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["vector_tstring"].array(library="np")] == [
             ["one"],
             ["one", "two"],
@@ -153,9 +159,10 @@ def test_vector_tstring():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_vector_int32():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["vector_vector_int32"].array(library="np")
         ] == [
@@ -167,9 +174,10 @@ def test_vector_vector_int32():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_vector_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["vector_vector_string"].array(library="np")
         ] == [
@@ -192,9 +200,10 @@ def test_vector_vector_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_set_int32():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["vector_set_int32"].array(library="np")] == [
             [set([1])],
             [set([1]), set([1, 2])],
@@ -210,9 +219,10 @@ def test_vector_set_int32():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_vector_set_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["vector_set_string"].array(library="np")] == [
             [set(["one"])],
             [set(["one"]), set(["one", "two"])],
@@ -233,9 +243,10 @@ def test_vector_set_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_set_int32():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["set_int32"].array(library="np")] == [
             set([1]),
             set([1, 2]),
@@ -245,9 +256,10 @@ def test_set_int32():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_set_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["set_string"].array(library="np")] == [
             set(["one"]),
             set(["one", "two"]),
@@ -257,9 +269,10 @@ def test_set_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_int32_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["map_int32_int16"].array(library="np")] == [
             {1: 1},
             {1: 1, 2: 2},
@@ -269,9 +282,10 @@ def test_map_int32_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_int32_vector_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_int32_vector_int16"].array(library="np")
         ] == [
@@ -283,9 +297,10 @@ def test_map_int32_vector_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_int32_vector_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_int32_vector_string"].array(library="np")
         ] == [
@@ -308,9 +323,10 @@ def test_map_int32_vector_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_int32_set_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_int32_set_int16"].array(library="np")
         ] == [
@@ -328,9 +344,10 @@ def test_map_int32_set_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_int32_set_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_int32_set_string"].array(library="np")
         ] == [
@@ -353,9 +370,10 @@ def test_map_int32_set_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_string_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["map_string_int16"].array(library="np")] == [
             {"one": 1},
             {"one": 1, "two": 2},
@@ -365,9 +383,10 @@ def test_map_string_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_string_vector_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_string_vector_int16"].array(library="np")
         ] == [
@@ -385,9 +404,10 @@ def test_map_string_vector_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_string_vector_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_string_vector_string"].array(library="np")
         ] == [
@@ -410,9 +430,10 @@ def test_map_string_vector_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_string_set_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_string_set_int16"].array(library="np")
         ] == [
@@ -435,9 +456,10 @@ def test_map_string_set_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_string_set_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_string_set_string"].array(library="np")
         ] == [
@@ -464,9 +486,10 @@ def test_map_string_set_string():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_int32_vector_vector_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist()
             for x in tree["map_int32_vector_vector_int16"].array(library="np")
@@ -490,9 +513,10 @@ def test_map_int32_vector_vector_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_int32_vector_set_int16():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [
             x.tolist() for x in tree["map_int32_vector_set_int16"].array(library="np")
         ] == [
@@ -525,24 +549,39 @@ def test_map_int32_vector_set_int16():
         ]
 
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
 def test_map_string_string():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["map_string_string"].array(library="np")] == [
             {"one": "ONE"},
             {"one": "ONE", "two": "TWO"},
             {"one": "ONE", "two": "TWO", "three": "THREE"},
             {"one": "ONE", "two": "TWO", "three": "THREE", "four": "FOUR"},
-            {"one": "ONE", "two": "TWO", "three": "THREE", "four": "FOUR", "five": "FIVE"},
+            {
+                "one": "ONE",
+                "two": "TWO",
+                "three": "THREE",
+                "four": "FOUR",
+                "five": "FIVE",
+            },
         ]
 
-# @pytest.mark.skip(reason="FIXME: stl_containers.root doesn't exist yet")
+
 def test_map_string_tstring():
-    with uproot4.open("stl_containers.root")["tree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
         assert [x.tolist() for x in tree["map_string_tstring"].array(library="np")] == [
             {"one": "ONE"},
             {"one": "ONE", "two": "TWO"},
             {"one": "ONE", "two": "TWO", "three": "THREE"},
             {"one": "ONE", "two": "TWO", "three": "THREE", "four": "FOUR"},
-            {"one": "ONE", "two": "TWO", "three": "THREE", "four": "FOUR", "five": "FIVE"},
+            {
+                "one": "ONE",
+                "two": "TWO",
+                "three": "THREE",
+                "four": "FOUR",
+                "five": "FIVE",
+            },
         ]

@@ -188,7 +188,7 @@ class Model(object):
                         return True
         return False
 
-    def member(self, name, bases=True, recursive_bases=True):
+    def member(self, name, bases=True, recursive_bases=True, none_if_missing=False):
         if name in self._members:
             return self._members[name]
         if bases:
@@ -204,16 +204,21 @@ class Model(object):
                     if name in base._members:
                         return base._members[name]
 
-        raise uproot4.KeyInFileError(
-            name,
+        if none_if_missing:
+            return None
+        else:
+            raise uproot4.KeyInFileError(
+                name,
             """{0}.{1} has only the following members:
 
     {2}
 """.format(
-                type(self).__module__, type(self).__name__, "\n    ".join(self._members)
-            ),
-            file_path=self._file.file_path,
-        )
+                    type(self).__module__,
+                    type(self).__name__,
+                    "\n    ".join(self.all_members),
+                ),
+                file_path=self._file.file_path,
+            )
 
     def tojson(self):
         out = {"_typename": self.classname}
