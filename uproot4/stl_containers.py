@@ -138,7 +138,9 @@ class AsSTLContainer(object):
         if value is True or value is False:
             self._header = value
         else:
-            raise TypeError("{0}.header must be True or False".format(type(self).__name__))
+            raise TypeError(
+                "{0}.header must be True or False".format(type(self).__name__)
+            )
 
     @property
     def cache_key(self):
@@ -547,7 +549,9 @@ class AsMap(AsSTLContainer):
 
         if _has_nested_header(self._keys) and header:
             cursor.skip(6)
-        keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent, header=False)
+        keys = _read_nested(
+            self._keys, length, chunk, cursor, context, file, parent, header=False
+        )
 
         if _has_nested_header(self._values) and header:
             cursor.skip(6)
@@ -729,5 +733,9 @@ class STLMap(STLContainer, Mapping):
     def tolist(self):
         out = {}
         for i in range(len(self)):
-            out[self._keys[i]] = self._values[i]
+            x = self._values[i]
+            if isinstance(x, (STLContainer, numpy.ndarray)):
+                out[self._keys[i]] = x.tolist()
+            else:
+                out[self._keys[i]] = x
         return out

@@ -93,11 +93,17 @@ class DeserializationError(Exception):
                     classname = getattr(c, "classname", None)
                     if classname is not None:
                         if classname in base_names:
-                            base_names[base_names.index(classname)] = "(" + classname + ")"
+                            base_names[base_names.index(classname)] = (
+                                "(" + classname + ")"
+                            )
                         else:
                             base_names.append(classname + "?")
                 if len(base_names) != 0:
-                    lines.append("Base classes for {0}: {1}".format(last.classname, ", ".join(base_names)))
+                    lines.append(
+                        "Base classes for {0}: {1}".format(
+                            last.classname, ", ".join(base_names)
+                        )
+                    )
 
             member_names = getattr(last, "member_names", None)
             members = getattr(last, "_members", None)
@@ -109,7 +115,11 @@ class DeserializationError(Exception):
                     else:
                         member_names.append(n + "?")
                 if len(member_names) != 0:
-                    lines.append("Members for {0}: {1}".format(last.classname, ", ".join(member_names)))
+                    lines.append(
+                        "Members for {0}: {1}".format(
+                            last.classname, ", ".join(member_names)
+                        )
+                    )
 
         in_parent = ""
         if "TBranch" in self.context:
