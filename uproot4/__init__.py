@@ -100,21 +100,39 @@ del pkgutil
 
 
 class KeyInFileError(KeyError):
-    __slots__ = ["key", "because", "cycle", "file_path", "object_path"]
+    __slots__ = ["key", "because", "cycle", "keys", "file_path", "object_path"]
 
-    def __init__(self, key, because="", cycle=None, file_path=None, object_path=None):
+    def __init__(
+        self, key, because="", cycle=None, keys=None, file_path=None, object_path=None
+    ):
         super(KeyInFileError, self).__init__(key)
         self.key = key
         self.because = because
         self.cycle = cycle
         self.file_path = file_path
         self.object_path = object_path
+        self.keys = keys
 
     def __str__(self):
         if self.because == "":
             because = ""
         else:
             because = " because " + self.because
+
+        with_keys = ""
+        if self.keys is not None:
+            to_show = None
+            for key in self.keys:
+                if to_show is None:
+                    to_show = key
+                else:
+                    to_show += ", " + key
+                if len(to_show) > 200:
+                    to_show += "..."
+                    break
+            if to_show is None:
+                to_show = "(none!)"
+            with_keys = "\n\n    Known keys: {0}\n".format(to_show)
 
         in_file = ""
         if self.file_path is not None:
@@ -125,16 +143,16 @@ class KeyInFileError(KeyError):
             in_object = "\nin object {0}".format(self.object_path)
 
         if self.cycle == "any":
-            return """not found: {0} (with any cycle number){1}{2}{3}""".format(
-                repr(self.key), because, in_file, in_object
+            return """not found: {0} (with any cycle number){1}{2}{3}{4}""".format(
+                repr(self.key), because, with_keys, in_file, in_object
             )
         elif self.cycle is None:
-            return """not found: {0}{1}{2}{3}""".format(
-                repr(self.key), because, in_file, in_object
+            return """not found: {0}{1}{2}{3}{4}""".format(
+                repr(self.key), because, with_keys, in_file, in_object
             )
         else:
-            return """not found: {0} with cycle {1}{2}{3}{4}""".format(
-                repr(self.key), self.cycle, because, in_file, in_object
+            return """not found: {0} with cycle {1}{2}{3}{4}{5}""".format(
+                repr(self.key), self.cycle, because, with_keys, in_file, in_object
             )
 
 

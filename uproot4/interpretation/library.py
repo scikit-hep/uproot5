@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+import itertools
+
 import numpy
 
 import uproot4.interpretation.jagged
@@ -263,11 +265,17 @@ or
 
         elif array.dtype.names is not None:
             names = [":" + x for x in array.dtype.names]
-            array = dict((":" + x, array[x]) for x in array.dtype.names)
-            return pandas.DataFrame(array, columns=names)
+            arrays = dict((":" + x, array[x]) for x in array.dtype.names)
+            return pandas.DataFrame(arrays, columns=names)
 
         elif len(array.shape) != 1:
-            raise NotImplementedError
+            names = []
+            arrays = {}
+            for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
+                name = "".join("[" + str(x) + "]" for x in tup)
+                names.append(name)
+                arrays[name] = array[(slice(None),) + tup]
+            return pandas.DataFrame(arrays, columns=names)
 
         else:
             return pandas.Series(array)
