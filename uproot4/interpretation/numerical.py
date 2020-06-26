@@ -122,6 +122,20 @@ _numpy_byteorder_to_cache_key = {
     "=": "B" if numpy.dtype(">f8").isnative else "L",
 }
 
+_dtype_kind_itemsize_to_typename = {
+    ("b", 1): "bool",
+    ("i", 1): "int8_t",
+    ("u", 1): "uint8_t",
+    ("i", 2): "int16_t",
+    ("u", 2): "uint16_t",
+    ("i", 4): "int32_t",
+    ("u", 4): "uint32_t",
+    ("i", 8): "int64_t",
+    ("u", 8): "uint64_t",
+    ("f", 4): "float",
+    ("f", 8): "double",
+}
+
 
 class AsDtype(Numerical):
     def __init__(self, from_dtype, to_dtype=None):
@@ -166,30 +180,50 @@ class AsDtype(Numerical):
                 name,
             )
 
-        if self._from_dtype.names is None:
-            from_dtype = form(self._from_dtype, "")
+        if self.from_dtype.names is None:
+            from_dtype = form(self.from_dtype, "")
         else:
             from_dtype = (
                 "["
                 + ",".join(
-                    form(self._from_dtype[n], "," + repr(n))
-                    for n in self._from_dtype.names
+                    form(self.from_dtype[n], "," + repr(n))
+                    for n in self.from_dtype.names
                 )
                 + "]"
             )
 
-        if self._to_dtype.names is None:
-            to_dtype = form(self._to_dtype, "")
+        if self.to_dtype.names is None:
+            to_dtype = form(self.to_dtype, "")
         else:
             to_dtype = (
                 "["
                 + ",".join(
-                    form(self._to_dtype[n], "," + repr(n)) for n in self._to_dtype.names
+                    form(self.to_dtype[n], "," + repr(n)) for n in self.to_dtype.names
                 )
                 + "]"
             )
 
         return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
+
+    @property
+    def typename(self):
+        def form(dtype):
+            d, s = _dtype_shape(dtype)
+            return _dtype_kind_itemsize_to_typename[d.kind, d.itemsize] + "".join(
+                "[" + str(dim) + "]" for dim in s
+            )
+
+        if self.from_dtype.names is None:
+            return form(self.from_dtype)
+        else:
+            return (
+                "struct {"
+                + " ".join(
+                    "{0} {1};".format(form(self.from_dtype[n]), n)
+                    for n in self.from_dtype.names
+                )
+                + "}"
+            )
 
     def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(

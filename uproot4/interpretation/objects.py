@@ -5,6 +5,8 @@ from __future__ import absolute_import
 import numpy
 
 import uproot4.interpretation
+import uproot4.stl_containers
+import uproot4.model
 import uproot4.source.chunk
 import uproot4.source.cursor
 import uproot4._util
@@ -101,6 +103,13 @@ class AsObjects(uproot4.interpretation.Interpretation):
     def cache_key(self):
         content_key = uproot4.stl_containers._content_cache_key(self._model)
         return "{0}({1})".format(type(self).__name__, content_key)
+
+    @property
+    def typename(self):
+        if isinstance(self._model, uproot4.stl_containers.AsSTLContainer):
+            return self._model.typename
+        else:
+            return uproot4.model.classname_decode(self._model.__name__)[0]
 
     def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(

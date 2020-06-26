@@ -101,26 +101,6 @@ def no_filter(x):
     return True
 
 
-def exact_filter(filter):
-    if filter is None:
-        return False
-    elif callable(filter):
-        return False
-    if isstr(filter):
-        m = _regularize_filter_regex.match(filter)
-        if m is not None:
-            return False
-        elif "*" in filter or "?" in filter or "[" in filter:
-            return False
-        else:
-            return True
-    else:
-        raise TypeError(
-            "filter must be callable, a regex string between slashes, or a "
-            "glob pattern, not {0}".format(repr(filter))
-        )
-
-
 def regularize_filter(filter):
     if filter is None:
         return no_filter

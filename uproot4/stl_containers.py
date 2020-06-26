@@ -28,28 +28,18 @@ import uproot4.deserialization
 
 
 _stl_container_size = struct.Struct(">I")
-_stl_primitive_types = {
-    numpy.dtype("?"): "bool",
-    numpy.dtype("i1"): "int8_t",
-    numpy.dtype("u1"): "uint8_t",
-    numpy.dtype("i2"): "int16_t",
-    numpy.dtype(">i2"): "int16_t",
-    numpy.dtype("u2"): "unt16_t",
-    numpy.dtype(">u2"): "unt16_t",
-    numpy.dtype("i4"): "int32_t",
-    numpy.dtype(">i4"): "int32_t",
-    numpy.dtype("u4"): "unt32_t",
-    numpy.dtype(">u4"): "unt32_t",
-    numpy.dtype("i8"): "int64_t",
-    numpy.dtype(">i8"): "int64_t",
-    numpy.dtype("u8"): "unt64_t",
-    numpy.dtype(">u8"): "unt64_t",
-    numpy.dtype("f4"): "float",
-    numpy.dtype(">f4"): "float",
-    numpy.dtype("f8"): "double",
-    numpy.dtype(">f8"): "double",
-}
 _stl_object_type = numpy.dtype(numpy.object)
+
+
+def _content_typename(content):
+    if isinstance(content, numpy.dtype):
+        return uproot4.interpretation.numerical._dtype_kind_itemsize_to_typename[
+            content.kind, content.itemsize
+        ]
+    elif isinstance(content, type):
+        return content.classname
+    else:
+        return content.typename
 
 
 def _content_cache_key(content):
@@ -147,7 +137,7 @@ class AsSTLContainer(object):
         raise AssertionError
 
     @property
-    def classname(self):
+    def typename(self):
         raise AssertionError
 
     def read(self, chunk, cursor, context, file, parent, header=True):
@@ -169,8 +159,9 @@ class STLContainer(object):
 
 
 class AsString(AsSTLContainer):
-    def __init__(self, header):
+    def __init__(self, header, typename=None):
         self.header = header
+        self._typename = typename
 
     def __hash__(self):
         return hash((AsString, self._header))
@@ -183,8 +174,11 @@ class AsString(AsSTLContainer):
         return "AsString({0})".format(self._header)
 
     @property
-    def classname(self):
-        return "std::string"
+    def typename(self):
+        if self._typename is None:
+            return "std::string"
+        else:
+            return self._typename
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -201,7 +195,7 @@ class AsString(AsSTLContainer):
                 start_cursor,
                 cursor,
                 num_bytes,
-                self.classname,
+                self.typename,
                 context,
                 file.file_path,
             )
@@ -239,11 +233,8 @@ class AsVector(AsSTLContainer):
         )
 
     @property
-    def classname(self):
-        values = _stl_primitive_types.get(self._values)
-        if values is None:
-            values = self._values.classname
-        return "std::vector<{0}>".format(values)
+    def typename(self):
+        return "std::vector<{0}>".format(_content_typename(self._values))
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -265,7 +256,7 @@ class AsVector(AsSTLContainer):
                 start_cursor,
                 cursor,
                 num_bytes,
-                self.classname,
+                self.typename,
                 context,
                 file.file_path,
             )
@@ -368,11 +359,8 @@ class AsSet(AsSTLContainer):
         return "AsSet({0},{1})".format(self._header, _content_cache_key(self._keys))
 
     @property
-    def classname(self):
-        keys = _stl_primitive_types.get(self._keys)
-        if keys is None:
-            keys = self._keys.classname
-        return "std::set<{0}>".format(keys)
+    def typename(self):
+        return "std::set<{0}>".format(_content_typename(self._keys))
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -392,7 +380,7 @@ class AsSet(AsSTLContainer):
                 start_cursor,
                 cursor,
                 num_bytes,
-                self.classname,
+                self.typename,
                 context,
                 file.file_path,
             )
@@ -528,14 +516,10 @@ class AsMap(AsSTLContainer):
         )
 
     @property
-    def classname(self):
-        keys = _stl_primitive_types.get(self._keys)
-        if keys is None:
-            keys = self._keys.classname
-        values = _stl_primitive_types.get(self._values)
-        if values is None:
-            values = self._values.classname
-        return "std::map<{0}, {1}>".format(keys, values)
+    def typename(self):
+        return "std::map<{0}, {1}>".format(
+            _content_typename(self._keys), _content_typename(self._values)
+        )
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -567,7 +551,7 @@ class AsMap(AsSTLContainer):
                 start_cursor,
                 cursor,
                 num_bytes,
-                self.classname,
+                self.typename,
                 context,
                 file.file_path,
             )

@@ -59,11 +59,12 @@ def fast_divide(array, divisor):
 
 
 class AsJagged(uproot4.interpretation.Interpretation):
-    def __init__(self, content, header_bytes=0):
+    def __init__(self, content, header_bytes=0, typename=None):
         if not isinstance(content, uproot4.interpretation.numerical.Numerical):
             raise TypeError("AsJagged content can only be Numerical")
         self._content = content
         self._header_bytes = header_bytes
+        self._typename = typename
 
     @property
     def content(self):
@@ -101,6 +102,18 @@ class AsJagged(uproot4.interpretation.Interpretation):
         return "{0}({1},{2})".format(
             type(self).__name__, self._content.cache_key, self._header_bytes
         )
+
+    @property
+    def typename(self):
+        if self._typename is None:
+            content = self._content.typename
+            try:
+                i = content.index("[")
+                return content[:i] + "[]" + content[i:]
+            except ValueError:
+                return content + "[]"
+        else:
+            return self._typename
 
     def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(

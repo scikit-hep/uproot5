@@ -10,6 +10,8 @@ class Interpretation(object):
 
        * `cache_key`: Used to distinguish the same array read with different
              interpretations in a cache.
+       * `typename`: Name of the C++ data type from which this Interpretation
+             was derived.
        * `numpy_dtype`: Data type (including any shape elements after the first
              dimension) of the NumPy array that would be created.
        * `awkward_form`: Form of the Awkward Array that would be created
@@ -23,6 +25,10 @@ class Interpretation(object):
 
     @property
     def cache_key(self):
+        raise AssertionError
+
+    @property
+    def typename(self):
         raise AssertionError
 
     @property

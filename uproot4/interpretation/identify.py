@@ -37,6 +37,10 @@ in object {2}""".format(
         )
 
     @property
+    def typename(self):
+        return "unknown"
+
+    @property
     def cache_key(self):
         raise self
 

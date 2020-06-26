@@ -578,9 +578,9 @@ class HasBranches(Mapping):
             )
         for branch in self.branches:
             if (
-                filter_name(branch.name)
-                and filter_typename(branch.typename)
-                and filter_branch(branch)
+                (filter_name is no_filter or filter_name(branch.name))
+                and (filter_typename is no_filter or filter_typename(branch.typename))
+                and (filter_branch is no_filter or filter_branch(branch))
             ):
                 yield branch.name, branch
 
@@ -596,7 +596,7 @@ class HasBranches(Mapping):
                         k2 = "{0}/{1}".format(branch.name, k1)
                     else:
                         k2 = k1
-                    if filter_name(k2):
+                    if filter_name is no_filter or filter_name(k2):
                         yield k2, v
 
     def items(
@@ -966,40 +966,10 @@ in file {3}""".format(
 
     @property
     def typename(self):
-        if self._streamer is not None:
-            return self._streamer.typename
-
-        if self.has_member("fClassName"):
-            return self.member("fClassName")
-
-        def leaf_to_typename(leaf):
-            dim = leaf.member("fTitle").count("[")
-            u = "u" if leaf.member("fIsUnsigned") else ""
-
-            if leaf.classname == "TLeafO":
-                return "bool" + "[]" * dim
-            elif leaf.classname == "TLeafB":
-                return u + "int8_t" + "[]" * dim
-            elif leaf.classname == "TLeafS":
-                return u + "int16_t" + "[]" * dim
-            elif leaf.classname == "TLeafI":
-                return u + "int32_t" + "[]" * dim
-            elif leaf.classname == "TLeafL":
-                return u + "int64_t" + "[]" * dim
-            elif leaf.classname == "TLeafF":
-                return "float" + "[]" * dim
-            elif leaf.classname == "TLeafD":
-                return "double" + "[]" * dim
-            elif leaf.classname == "TLeafC":
-                return "char*" + "*" * dim
-            else:
-                return "???"
-
-        if len(self.member("fLeaves")) == 1:
-            return leaf_to_typename(self.member("fLeaves")[0])
+        if self.interpretation is None:
+            return "unknown"
         else:
-            leaf_list = [leaf_to_typename(leaf) for leaf in self.member("fLeaves")]
-            return ":".join(leaf_list)
+            return self.interpretation.typename
 
     @property
     def top_level(self):

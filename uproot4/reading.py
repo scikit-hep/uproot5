@@ -1130,7 +1130,9 @@ class ReadOnlyDirectory(Mapping):
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_classname = uproot4._util.regularize_filter(filter_classname)
         for key in self._keys:
-            if filter_name(key.fName) and filter_classname(key.fClassName):
+            if (filter_name is no_filter or filter_name(key.fName)) and (
+                filter_classname is no_filter or filter_classname(key.fClassName)
+            ):
                 yield key.name(cycle=cycle), key.fClassName
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
@@ -1142,7 +1144,7 @@ class ReadOnlyDirectory(Mapping):
                 ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name(k3):
+                    if filter_name is no_filter or filter_name(k3):
                         yield k2, v
 
     def classnames(
@@ -1171,7 +1173,9 @@ class ReadOnlyDirectory(Mapping):
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_classname = uproot4._util.regularize_filter(filter_classname)
         for key in self._keys:
-            if filter_name(key.fName) and filter_classname(key.fClassName):
+            if (filter_name is no_filter or filter_name(key.fName)) and (
+                filter_classname is no_filter or filter_classname(key.fClassName)
+            ):
                 yield key.name(cycle=cycle)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
@@ -1183,7 +1187,7 @@ class ReadOnlyDirectory(Mapping):
                 ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name(k3):
+                    if filter_name is no_filter or filter_name(k3):
                         yield k2
 
     def keys(
@@ -1212,7 +1216,9 @@ class ReadOnlyDirectory(Mapping):
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_classname = uproot4._util.regularize_filter(filter_classname)
         for key in self._keys:
-            if filter_name(key.fName) and filter_classname(key.fClassName):
+            if (filter_name is no_filter or filter_name(key.fName)) and (
+                filter_classname is no_filter or filter_classname(key.fClassName)
+            ):
                 yield key.name(cycle=cycle), key.get()
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
@@ -1224,7 +1230,7 @@ class ReadOnlyDirectory(Mapping):
                 ):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name(k3):
+                    if filter_name is no_filter or filter_name(k3):
                         yield k2, v
 
     def items(
