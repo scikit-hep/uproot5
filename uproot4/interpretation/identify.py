@@ -301,7 +301,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString(False, size_1to5_bytes=False, typename='char*')",
+                "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
                 quote,
             ),
         )
@@ -313,7 +313,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 2,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString(False, size_1to5_bytes=False, typename='char*')",
+                "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
                 quote,
             ),
         )

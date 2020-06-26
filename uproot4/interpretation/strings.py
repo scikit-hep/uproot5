@@ -36,9 +36,12 @@ class StringArray(uproot4.interpretation.Interpretation):
 
 
 class AsStrings(uproot4.interpretation.Interpretation):
-    def __init__(self, header_bytes=0, size_1to5_bytes=True, typename=None):
+    def __init__(self, header_bytes=0, length_bytes="1-5", typename=None):
         self._header_bytes = header_bytes
-        self._size_1to5_bytes = size_1to5_bytes
+        if length_bytes in ("1-5", "4"):
+            self._length_bytes = length_bytes
+        else:
+            raise ValueError("length_bytes must be '1-5' or '4'")
         self._typename = typename
 
     @property
@@ -46,22 +49,22 @@ class AsStrings(uproot4.interpretation.Interpretation):
         return self._header_bytes
 
     @property
-    def size_1to5_bytes(self):
-        return self._size_1to5_bytes
+    def length_bytes(self):
+        return self._length_bytes
 
     def __repr__(self):
         args = []
         if self._header_bytes != 0:
             args.append("header_bytes={0}".format(self._header_bytes))
-        if self._size_1to5_bytes is not True:
-            args.append("size_1to5_bytes={0}".format(self._size_1to5_bytes))
+        if self._length_bytes != "1-5":
+            args.append("length_bytes={0}".format(repr(self._length_bytes)))
         return "AsStrings({0})".format(", ".join(args))
 
     def __eq__(self, other):
         return (
             isinstance(other, AsStrings)
             and self._header_bytes == other._header_bytes
-            and self._size_1to5_bytes == other._size_1to5_bytes
+            and self._length_bytes == other._length_bytes
         )
 
     @property
@@ -82,7 +85,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
     @property
     def cache_key(self):
         return "{0}({1},{2})".format(
-            type(self).__name__, self._header_bytes, self._size_1to5_bytes
+            type(self).__name__, self._header_bytes, repr(self._length_bytes)
         )
 
     def basket_array(self, data, byte_offsets, basket, branch, context):
@@ -99,10 +102,14 @@ class AsStrings(uproot4.interpretation.Interpretation):
         byte_starts = byte_offsets[:-1] + self._header_bytes
         byte_stops = byte_offsets[1:]
 
-        if self._size_1to5_bytes:
+        if self._length_bytes == "1-5":
             length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
             length_header_size[data[byte_starts] == 255] += 4
-            byte_starts += length_header_size
+        elif self._length_bytes == "4":
+            length_header_size = numpy.full(len(byte_starts), 4, dtype=numpy.int32)
+        else:
+            raise AssertionError(repr(self._length_bytes))
+        byte_starts += length_header_size
 
         mask = numpy.zeros(len(data), dtype=numpy.int8)
         mask[byte_starts[byte_starts < len(data)]] = 1
