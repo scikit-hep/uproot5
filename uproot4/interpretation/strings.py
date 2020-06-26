@@ -36,9 +36,10 @@ class StringArray(uproot4.interpretation.Interpretation):
 
 
 class AsStrings(uproot4.interpretation.Interpretation):
-    def __init__(self, header_bytes=0, size_1to5_bytes=False):
+    def __init__(self, header_bytes=0, size_1to5_bytes=True, typename=None):
         self._header_bytes = header_bytes
         self._size_1to5_bytes = size_1to5_bytes
+        self._typename = typename
 
     @property
     def header_bytes(self):
@@ -52,9 +53,23 @@ class AsStrings(uproot4.interpretation.Interpretation):
         args = []
         if self._header_bytes != 0:
             args.append("header_bytes={0}".format(self._header_bytes))
-        if self._size_1to5_bytes is not False:
+        if self._size_1to5_bytes is not True:
             args.append("size_1to5_bytes={0}".format(self._size_1to5_bytes))
         return "AsStrings({0})".format(", ".join(args))
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, AsStrings)
+            and self._header_bytes == other._header_bytes
+            and self._size_1to5_bytes == other._size_1to5_bytes
+        )
+
+    @property
+    def typename(self):
+        if self._typename is None:
+            return "char*"
+        else:
+            return self._typename
 
     @property
     def numpy_dtype(self):
@@ -70,9 +85,13 @@ class AsStrings(uproot4.interpretation.Interpretation):
             type(self).__name__, self._header_bytes, self._size_1to5_bytes
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch):
+    def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(
-            data=data, byte_offsets=byte_offsets, basket=basket, branch=branch
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
         )
 
         assert basket.byte_offsets is not None
@@ -96,13 +115,18 @@ class AsStrings(uproot4.interpretation.Interpretation):
         offsets[0] = 0
         numpy.cumsum(counts, out=offsets[1:])
 
-        output = StringArray(offsets, uproot4._util.ensure_str(data.tostring()))
+        if hasattr(data, "tobytes"):
+            data = data.tobytes()
+        else:
+            data = data.tostring()
+        output = StringArray(offsets, uproot4._util.ensure_str(data))
 
-        self.hook_before_basket_array(
+        self.hook_after_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
+            context=context,
             output=output,
         )
 

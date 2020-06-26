@@ -21,6 +21,8 @@ except ImportError:
 import numpy
 
 import uproot4.source.cursor
+import uproot4.streamers
+import uproot4.stl_containers
 import uproot4.interpretation
 import uproot4.interpretation.numerical
 import uproot4.interpretation.jagged
@@ -435,7 +437,7 @@ def _ranges_or_baskets_to_arrays(
             basket_arrays = branchid_arrays[id(branch)]
 
             basket_arrays[basket.basket_num] = interpretation.basket_array(
-                basket.data, basket.byte_offsets, basket, branch
+                basket.data, basket.byte_offsets, basket, branch, branch.context
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(
@@ -576,9 +578,9 @@ class HasBranches(Mapping):
             )
         for branch in self.branches:
             if (
-                filter_name(branch.name)
-                and filter_typename(branch.typename)
-                and filter_branch(branch)
+                (filter_name is no_filter or filter_name(branch.name))
+                and (filter_typename is no_filter or filter_typename(branch.typename))
+                and (filter_branch is no_filter or filter_branch(branch))
             ):
                 yield branch.name, branch
 
@@ -594,7 +596,7 @@ class HasBranches(Mapping):
                         k2 = "{0}/{1}".format(branch.name, k1)
                     else:
                         k2 = k1
-                    if filter_name(k2):
+                    if filter_name is no_filter or filter_name(k2):
                         yield k2, v
 
     def items(
@@ -683,7 +685,6 @@ class HasBranches(Mapping):
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
-                full_paths=False,
             )
         )
 
@@ -845,7 +846,11 @@ class TBranch(HasBranches):
         self._interpretation = None
         self._count_branch = None
         self._count_leaf = None
+        self._typename = None
         self._streamer = None
+        self._context = dict(context)
+        self._context["breadcrumbs"] = ()
+        self._context["in_TBranch"] = True
 
         self._num_normal_baskets = 0
         for i, x in enumerate(self.member("fBasketSeek")):
@@ -881,12 +886,14 @@ class TBranch(HasBranches):
 
     @property
     def tree(self):
-        import uproot4.behaviors.TTree
-
         out = self
         while not isinstance(out, uproot4.behaviors.TTree.TTree):
             out = out.parent
         return out
+
+    @property
+    def context(self):
+        return self._context
 
     @property
     def aliases(self):
@@ -959,40 +966,35 @@ in file {3}""".format(
 
     @property
     def typename(self):
-        if self._streamer is not None:
-            return self._streamer.typename
-
-        def leaf_to_typename(leaf):
-            dim = leaf.member("fTitle").count("[")
-            u = "u" if leaf.member("fIsUnsigned") else ""
-
-            if leaf.classname == "TLeafO":
-                return "bool" + "[]" * dim
-            elif leaf.classname == "TLeafB":
-                return u + "int8_t" + "[]" * dim
-            elif leaf.classname == "TLeafS":
-                return u + "int16_t" + "[]" * dim
-            elif leaf.classname == "TLeafI":
-                return u + "int32_t" + "[]" * dim
-            elif leaf.classname == "TLeafL":
-                return u + "int64_t" + "[]" * dim
-            elif leaf.classname == "TLeafF":
-                return "float" + "[]" * dim
-            elif leaf.classname == "TLeafD":
-                return "double" + "[]" * dim
-            elif leaf.classname == "TLeafC":
-                return "char*" + "*" * dim
-            else:
-                return "???"
-
-        if len(self.member("fLeaves")) == 1:
-            return leaf_to_typename(self.member("fLeaves")[0])
+        if self.interpretation is None:
+            return "unknown"
         else:
-            leaf_list = [leaf_to_typename(leaf) for leaf in self.member("fLeaves")]
-            return ":".join(leaf_list)
+            return self.interpretation.typename
+
+    @property
+    def top_level(self):
+        return isinstance(self.parent, uproot4.behaviors.TTree.TTree)
 
     @property
     def streamer(self):
+        if self._streamer is None:
+            nodotname = self.name.split(".")[-1]
+            fParentName = self.member("fParentName", none_if_missing=True)
+            fClassName = self.member("fClassName", none_if_missing=True)
+
+            if fParentName is not None and fParentName != "":
+                matches = self._file.streamers.get(fParentName)
+                if matches is not None:
+                    for element in matches[max(matches)].elements:
+                        if element.name == nodotname:
+                            self._streamer = element
+                            break
+
+            elif fClassName is not None and fClassName != "":
+                matches = self._file.streamers.get(fClassName)
+                if matches is not None:
+                    self._streamer = matches[max(matches)]
+
         return self._streamer
 
     @property

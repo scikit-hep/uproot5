@@ -13,6 +13,7 @@ import uproot4.model
 import uproot4.const
 import uproot4.deserialization
 import uproot4.models.TNamed
+import uproot4.interpretation.identify
 
 
 _canonical_typename_patterns = [
@@ -160,6 +161,10 @@ class Model_TStreamerInfo(uproot4.model.Model):
         return self.member("fName")
 
     @property
+    def typename(self):
+        return self.member("fName")
+
+    @property
     def class_version(self):
         return self._members["fClassVersion"]
 
@@ -195,9 +200,6 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def new_class(self, file):
         class_code = self.class_code()
-
-        print(class_code)
-
         class_name = uproot4.model.classname_encode(self.name, self.class_version)
         classes = uproot4.model.maybe_custom_classes(file.custom_classes)
         return uproot4.deserialization.compile_class(
@@ -756,10 +758,12 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        stl_container = uproot4.stl_containers.parse_typename(self.typename, quote=True)
+        stl_container = uproot4.interpretation.identify.parse_typename(
+            self.typename, quote=True, outer_header=True, inner_header=False
+        )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
-            "chunk, cursor, context, self._file, self._parent, multiplicity=1)"
+            "chunk, cursor, context, self._file, self._parent)"
             "".format(repr(self.name), len(stl_containers))
         )
         stl_containers.append(stl_container)

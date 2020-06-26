@@ -10,11 +10,13 @@ class Interpretation(object):
 
        * `cache_key`: Used to distinguish the same array read with different
              interpretations in a cache.
+       * `typename`: Name of the C++ data type from which this Interpretation
+             was derived.
        * `numpy_dtype`: Data type (including any shape elements after the first
              dimension) of the NumPy array that would be created.
        * `awkward_form`: Form of the Awkward Array that would be created
              (requires `awkward1`); used by the `ak.type` function.
-       * `basket_array(data, byte_offsets, basket, branch)`: Create a
+       * `basket_array(data, byte_offsets, basket, branch, context)`: Create a
              basket_array from a basket's `data` and `byte_offsets`.
        * `final_array(basket_arrays, entry_start, entry_stop, entry_offsets, library)`:
              Combine basket_arrays with basket excess trimmed and in the form
@@ -26,6 +28,10 @@ class Interpretation(object):
         raise AssertionError
 
     @property
+    def typename(self):
+        raise AssertionError
+
+    @property
     def numpy_dtype(self):
         raise AssertionError
 
@@ -33,13 +39,19 @@ class Interpretation(object):
     def awkward_form(self):
         raise AssertionError
 
-    def basket_array(self, data, byte_offsets, basket, branch):
+    def basket_array(self, data, byte_offsets, basket, branch, context):
         raise AssertionError
 
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library
     ):
         raise AssertionError
+
+    def __eq__(self, other):
+        raise AssertionError
+
+    def __ne__(self, other):
+        raise not self == other
 
     def hook_before_basket_array(self, *args, **kwargs):
         pass

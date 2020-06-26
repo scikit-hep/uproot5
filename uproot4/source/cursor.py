@@ -234,7 +234,11 @@ class Cursor(object):
         stop = start + length
         if move:
             self._index = stop
-        return chunk.get(start, stop, self, context).tostring()
+        data = chunk.get(start, stop, self, context)
+        if hasattr(data, "tobytes"):
+            return data.tobytes()
+        else:
+            return data.tostring()
 
     def string(self, chunk, context, move=True):
         """
@@ -246,6 +250,36 @@ class Cursor(object):
         If `move` is False, only peek: don't update the index.
         """
         out = self.bytestring(chunk, context, move=move)
+        if uproot4._util.py2:
+            return out
+        else:
+            return out.decode(errors="surrogateescape")
+
+    def bytestring_with_length(self, chunk, context, length, move=True):
+        """
+        Interpret data at this index of the Chunk as an unprefixed, unsuffixed
+        bytestring with a given length.
+
+        If `move` is False, only peek: don't update the index.
+        """
+        start = self._index
+        stop = start + length
+        if move:
+            self._index = stop
+        data = chunk.get(start, stop, self, context)
+        if hasattr(data, "tobytes"):
+            return data.tobytes()
+        else:
+            return data.tostring()
+
+    def string_with_length(self, chunk, context, length, move=True):
+        """
+        Interpret data at this index of the Chunk as an unprefixed, unsuffixed
+        Python str with a given length.
+
+        If `move` is False, only peek: don't update the index.
+        """
+        out = self.bytestring_with_length(chunk, context, length, move=move)
         if uproot4._util.py2:
             return out
         else:
