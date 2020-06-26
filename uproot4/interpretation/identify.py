@@ -293,12 +293,17 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif tokens[i].group(0) == "TString":
         return (
             i + 1,
-            _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote),
+            _parse_maybe_quote(
+                "uproot4.stl_containers.AsString(False, typename='TString')", quote
+            ),
         )
     elif _simplify_token(tokens[i]) == "char*":
         return (
             i + 1,
-            _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote),
+            _parse_maybe_quote(
+                "uproot4.stl_containers.AsString(False, size_1to5_bytes=False, typename='char*')",
+                quote,
+            ),
         )
     elif (
         has2
@@ -307,7 +312,10 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     ):
         return (
             i + 2,
-            _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote),
+            _parse_maybe_quote(
+                "uproot4.stl_containers.AsString(False, size_1to5_bytes=False, typename='char*')",
+                quote,
+            ),
         )
 
     elif tokens[i].group(0) == "vector" or _simplify_token(tokens[i]) == "std::vector":
@@ -428,7 +436,7 @@ def _parse_node_for_streamer(tokens, i, typename, file):
         and tokens[i].group(0) == "const"
         and _simplify_token(tokens[i + 1]) == "char*"
     ):
-        return i + 2, "const char*"
+        return i + 2, "char*"
 
     elif tokens[i].group(0) == "vector" or _simplify_token(tokens[i]) == "std::vector":
         _parse_expect("<", tokens, i + 1, typename, file)
@@ -709,7 +717,7 @@ def interpretation_of(branch, context):
             branch.member("fStreamerType", none_if_missing=True)
             == uproot4.const.kTString
         ):
-            return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
+            return uproot4.interpretation.strings.AsStrings(typename="TString")
 
         if len(branch.member("fLeaves")) != 1:
             raise UnknownInterpretation(
@@ -723,7 +731,7 @@ def interpretation_of(branch, context):
         leaf = branch.member("fLeaves")[0]
 
         if leaf.classname == "TLeafC":
-            return uproot4.interpretation.strings.AsStrings(size_1to5_bytes=True)
+            return uproot4.interpretation.strings.AsStrings()
 
         if branch.top_level and branch.has_member("fClassName"):
             model_cls = parse_typename(

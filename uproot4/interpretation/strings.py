@@ -36,7 +36,7 @@ class StringArray(uproot4.interpretation.Interpretation):
 
 
 class AsStrings(uproot4.interpretation.Interpretation):
-    def __init__(self, header_bytes=0, size_1to5_bytes=False, typename=None):
+    def __init__(self, header_bytes=0, size_1to5_bytes=True, typename=None):
         self._header_bytes = header_bytes
         self._size_1to5_bytes = size_1to5_bytes
         self._typename = typename
@@ -53,7 +53,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
         args = []
         if self._header_bytes != 0:
             args.append("header_bytes={0}".format(self._header_bytes))
-        if self._size_1to5_bytes is not False:
+        if self._size_1to5_bytes is not True:
             args.append("size_1to5_bytes={0}".format(self._size_1to5_bytes))
         return "AsStrings({0})".format(", ".join(args))
 
@@ -115,7 +115,11 @@ class AsStrings(uproot4.interpretation.Interpretation):
         offsets[0] = 0
         numpy.cumsum(counts, out=offsets[1:])
 
-        output = StringArray(offsets, uproot4._util.ensure_str(data.tostring()))
+        if hasattr(data, "tobytes"):
+            data = data.tobytes()
+        else:
+            data = data.tostring()
+        output = StringArray(offsets, uproot4._util.ensure_str(data))
 
         self.hook_after_basket_array(
             data=data,

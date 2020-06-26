@@ -159,19 +159,27 @@ class STLContainer(object):
 
 
 class AsString(AsSTLContainer):
-    def __init__(self, header, typename=None):
+    def __init__(self, header, size_1to5_bytes=True, typename=None):
         self.header = header
         self._typename = typename
+        self._size_1to5_bytes = size_1to5_bytes
+
+    @property
+    def size_1to5_bytes(self):
+        return self._size_1to5_bytes
 
     def __hash__(self):
-        return hash((AsString, self._header))
+        return hash((AsString, self._header, self._size_1to5_bytes))
 
     def __repr__(self):
-        return "AsString({0})".format(self._header)
+        args = [repr(self._header)]
+        if self._size_1to5_bytes is not True:
+            args.append("size_1to5_bytes={0}".format(self._size_1to5_bytes))
+        return "AsString({0})".format(", ".join(args))
 
     @property
     def cache_key(self):
-        return "AsString({0})".format(self._header)
+        return "AsString({0},{1})".format(self._header, self._size_1to5_bytes)
 
     @property
     def typename(self):
@@ -181,13 +189,22 @@ class AsString(AsSTLContainer):
             return self._typename
 
     def read(self, chunk, cursor, context, file, parent, header=True):
+        print("header", header, "self._header", self._header, "typename", self.typename)
+
+        cursor.debug(chunk)
+        print()
+
         if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
                 chunk, cursor, context
             )
 
-        out = cursor.string(chunk, context)
+        if self._size_1to5_bytes:
+            out = cursor.string(chunk, context)
+        else:
+            length = cursor.field(chunk, _stl_container_size, context)
+            out = cursor.string_with_length(chunk, context, length)
 
         if self._header and header:
             uproot4.deserialization.numbytes_check(

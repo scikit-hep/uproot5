@@ -159,12 +159,13 @@ def test_map_long_int_in_object():
 #
 # python -c 'import uproot; t = uproot.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue468.root")["Geant4Data/Geant4Data./Geant4Data.particles"]; print(t.array(uproot.asdebug)[0][:1000])'
 
-# def test_strings1():
-#     with uproot4.open(
-#         skhep_testdata.data_path("uproot-issue31.root")
-#     )["T/name"] as branch:
-#         result = branch.array(library="np")
-#         assert result.tolist() == ["one", "two", "three", "four", "five"]
+
+def test_strings1():
+    with uproot4.open(skhep_testdata.data_path("uproot-issue31.root"))[
+        "T/name"
+    ] as branch:
+        result = branch.array(library="np")
+        assert result.tolist() == ["one", "two", "three", "four", "five"]
 
 
 @pytest.mark.skip(reason="FIXME: implement strings specified by a TStreamer")
