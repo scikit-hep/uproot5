@@ -233,14 +233,7 @@ or
     def finalize(self, array, branch):
         pandas = self.imported
 
-        if isinstance(
-            array,
-            (
-                uproot4.interpretation.jagged.JaggedArray,
-                uproot4.interpretation.strings.StringArray,
-                uproot4.interpretation.objects.ObjectArray,
-            ),
-        ):
+        if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             index = pandas.MultiIndex.from_arrays(
                 array.parents_localindex(), names=["entry", "subentry"]
             )
@@ -248,6 +241,12 @@ or
                 array.content.dtype.newbyteorder("="), copy=False
             )
             return pandas.Series(content, index=index)
+
+        elif isinstance(array, uproot4.interpretation.strings.StringArray):
+            out = numpy.zeros(len(array), dtype=numpy.object)
+            for i, x in enumerate(array):
+                out[i] = x
+            return pandas.Series(out)
 
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             out = numpy.zeros(len(array), dtype=numpy.object)
