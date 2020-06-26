@@ -6,6 +6,8 @@ import numpy
 
 import uproot4.interpretation
 import uproot4.interpretation.strings
+import uproot4.interpretation.jagged
+import uproot4.interpretation.numerical
 import uproot4.stl_containers
 import uproot4.model
 import uproot4.source.chunk
@@ -209,5 +211,15 @@ class AsObjects(uproot4.interpretation.Interpretation):
             return uproot4.interpretation.strings.AsStrings(
                 header_bytes, self._model.length_bytes, self._model.typename
             )
+
+        if isinstance(self._model, uproot4.stl_containers.AsVector):
+            if isinstance(self._model.values, numpy.dtype):
+                header_bytes = 0
+                if self._model.header:
+                    header_bytes = 10
+                content = uproot4.interpretation.numerical.AsDtype(self._model.values)
+                return uproot4.interpretation.jagged.AsJagged(
+                    content, header_bytes, self._model.typename
+                )
 
         return self
