@@ -109,7 +109,28 @@ class Awkward(Library):
             return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.strings.StringArray):
-            raise NotImplementedError
+            content = awkward1.layout.NumpyArray(
+                numpy.frombuffer(array.content, dtype=numpy.dtype(numpy.uint8)),
+                parameters={"__array__": "char"},
+            )
+            if issubclass(array.offsets.dtype.type, numpy.int32):
+                offsets = awkward1.layout.Index32(array.offsets)
+                layout = awkward1.layout.ListOffsetArray32(
+                    offsets, content, parameters={"__array__": "string"}
+                )
+            elif issubclass(array.offsets.dtype.type, numpy.uint32):
+                offsets = awkward1.layout.IndexU32(array.offsets)
+                layout = awkward1.layout.ListOffsetArrayU32(
+                    offsets, content, parameters={"__array__": "string"}
+                )
+            elif issubclass(array.offsets.dtype.type, numpy.int64):
+                offsets = awkward1.layout.Index64(array.offsets)
+                layout = awkward1.layout.ListOffsetArray64(
+                    offsets, content, parameters={"__array__": "string"}
+                )
+            else:
+                raise AssertionError(repr(array.offsets.dtype))
+            return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             raise NotImplementedError

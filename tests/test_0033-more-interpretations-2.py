@@ -12,5 +12,15 @@ import skhep_testdata
 import uproot4
 
 
-def test():
-    pass
+def test_string():
+    awkward1 = pytest.importorskip("awkward1")
+    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
+        assert awkward1.to_list(tree["string"].array(library="ak")) == [
+            "one",
+            "two",
+            "three",
+            "four",
+            "five",
+        ]

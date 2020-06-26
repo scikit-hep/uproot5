@@ -29,7 +29,8 @@ class StringArray(uproot4.interpretation.Interpretation):
         return self._content
 
     def __getitem__(self, where):
-        return self._content[self._offsets[where] : self._offsets[where + 1]]
+        data = self._content[self._offsets[where] : self._offsets[where + 1]]
+        return uproot4._util.ensure_str(data)
 
     def __len__(self):
         return len(self._offsets) - 1
@@ -126,7 +127,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
             data = data.tobytes()
         else:
             data = data.tostring()
-        output = StringArray(offsets, uproot4._util.ensure_str(data))
+        output = StringArray(offsets, data)
 
         self.hook_after_basket_array(
             data=data,
@@ -158,7 +159,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
             basket_content[k] = v.content
 
         if entry_start >= entry_stop:
-            return StringArray(library.zeros((1,), numpy.int64), "")
+            return StringArray(library.zeros((1,), numpy.int64), b"")
 
         else:
             length = 0
@@ -216,7 +217,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
 
                 start = stop
 
-            output = StringArray(offsets, "".join(contents))
+            output = StringArray(offsets, b"".join(contents))
 
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,
