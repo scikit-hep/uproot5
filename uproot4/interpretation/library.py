@@ -132,22 +132,19 @@ class Awkward(Library):
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             raise NotImplementedError
 
-        else:
-            if array.dtype.names is not None:
-                length, shape = array.shape[0], array.shape[1:]
-                array = array.reshape(-1)
-                contents = []
-                for name in array.dtype.names:
-                    contents.append(awkward1.layout.NumpyArray(numpy.array(array[name])))
-                out = awkward1.layout.RecordArray(
-                    contents, array.dtype.names, length
-                )
-                for size in shape[::-1]:
-                    out = awkward1.layout.RegularArray(out, size)
-                return awkward1.Array(out)
+        elif array.dtype.names is not None:
+            length, shape = array.shape[0], array.shape[1:]
+            array = array.reshape(-1)
+            contents = []
+            for name in array.dtype.names:
+                contents.append(awkward1.layout.NumpyArray(numpy.array(array[name])))
+            out = awkward1.layout.RecordArray(contents, array.dtype.names, length)
+            for size in shape[::-1]:
+                out = awkward1.layout.RegularArray(out, size)
+            return awkward1.Array(out)
 
-            else:
-                return awkward1.from_numpy(array)
+        else:
+            return awkward1.from_numpy(array)
 
     def group(self, arrays, expression_context, how):
         awkward1 = self.imported
@@ -261,12 +258,39 @@ or
                 out[i] = x
             return pandas.Series(out)
 
+        elif array.dtype.names is not None and len(array.shape) != 1:
+            raise NotImplementedError
+
+        elif array.dtype.names is not None:
+            names = [":" + x for x in array.dtype.names]
+            array = dict((":" + x, array[x]) for x in array.dtype.names)
+            return pandas.DataFrame(array, columns=names)
+
+        elif len(array.shape) != 1:
+            raise NotImplementedError
+
         else:
             return pandas.Series(array)
 
-    def group(self, arrays, expression_context, how):
-        names = [name for name, _ in expression_context]
+    def _only_series(self, original_arrays, original_names):
         pandas = self.imported
+        arrays = {}
+        names = []
+        for name in original_names:
+            if isinstance(original_arrays[name], pandas.Series):
+                arrays[name] = original_arrays[name]
+                names.append(name)
+            else:
+                df = original_arrays[name]
+                for subname in df.columns:
+                    path = name + subname
+                    arrays[path] = df[subname]
+                    names.append(path)
+        return arrays, names
+
+    def group(self, arrays, expression_context, how):
+        pandas = self.imported
+        names = [name for name, _ in expression_context]
         if how is tuple:
             return tuple(arrays[name] for name in names)
         elif how is list:
@@ -274,6 +298,7 @@ or
         elif how is dict:
             return dict((name, arrays[name]) for name in names)
         elif uproot4._util.isstr(how) or how is None:
+            arrays, names = self._only_series(arrays, names)
             if all(isinstance(x.index, pandas.RangeIndex) for x in arrays.values()):
                 return pandas.DataFrame(data=arrays, columns=names)
             indexes = []

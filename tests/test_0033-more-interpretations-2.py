@@ -54,6 +54,7 @@ def test_leaflist_numpy():
             (5.5, 5, 101),
         ]
 
+
 def test_leaflist_awkward():
     awkward1 = pytest.importorskip("awkward1")
     with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))[
@@ -68,3 +69,19 @@ def test_leaflist_awkward():
             {"x": 4.0, "y": 4, "z": 100},
             {"x": 5.5, "y": 5, "z": 101},
         ]
+
+
+def test_leaflist_pandas():
+    pandas = pytest.importorskip("pandas")
+    with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
+        result = tree["leaflist"].array(library="pd")
+        assert list(result.columns) == [":x", ":y", ":z"]
+        assert result[":x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+        assert result[":y"].values.tolist() == [1, 2, 3, 4, 5]
+        assert result[":z"].values.tolist() == [97, 98, 99, 100, 101]
+
+        result = tree.arrays("leaflist", library="pd")
+        assert list(result.columns) == ["leaflist:x", "leaflist:y", "leaflist:z"]
+        assert result["leaflist:x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+        assert result["leaflist:y"].values.tolist() == [1, 2, 3, 4, 5]
+        assert result["leaflist:z"].values.tolist() == [97, 98, 99, 100, 101]
