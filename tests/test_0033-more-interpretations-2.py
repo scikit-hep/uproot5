@@ -53,6 +53,7 @@ def test_leaflist_numpy():
             (4.0, 4, 100),
             (5.5, 5, 101),
         ]
+        assert branch.typename == "struct {double x; int32_t y; int8_t z;}"
 
 
 def test_leaflist_awkward():
@@ -94,6 +95,7 @@ def test_fixed_width():
         assert tree["ai4"].array(library="np").tolist() == [
             [i, i + 1, i + 2] for i in range(-14, 16)
         ]
+        assert tree["ai4"].typename == "int32_t[3]"
 
 
 def test_fixed_width_awkward():

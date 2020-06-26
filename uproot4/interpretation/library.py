@@ -261,7 +261,14 @@ or
             return pandas.Series(out)
 
         elif array.dtype.names is not None and len(array.shape) != 1:
-            raise NotImplementedError
+            names = []
+            arrays = {}
+            for n in array.dtype.names:
+                for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
+                    name = ":" + n + "".join("[" + str(x) + "]" for x in tup)
+                    names.append(name)
+                    arrays[name] = array[n][(slice(None),) + tup]
+            return pandas.DataFrame(arrays, columns=names)
 
         elif array.dtype.names is not None:
             names = [":" + x for x in array.dtype.names]

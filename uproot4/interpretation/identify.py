@@ -605,7 +605,6 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
 
         transformed = ast.Expression(_float16_double32_walk_ast(parsed, branch, source))
         spec = eval(compile(transformed, repr(branch.streamer.title), "eval"))
-
         if (
             len(spec) == 2
             and uproot4._util.isnum(spec[0])
@@ -618,7 +617,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             len(spec) == 3
             and uproot4._util.isnum(spec[0])
             and uproot4._util.isnum(spec[1])
-            and uproot4._util.isint(spec[1])
+            and uproot4._util.isint(spec[2])
         ):
             low, high, num_bits = spec
 

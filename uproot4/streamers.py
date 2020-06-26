@@ -216,12 +216,6 @@ class Model_TStreamerInfo(uproot4.model.Model):
         member_names = []
         class_flags = {}
 
-        read_members.append(
-            "        if 0 in self.hooks: self.hooks[0](self, chunk, cursor, context)"
-        )
-
-        num_hooks = 0
-        last_length = len(read_members)
         for i in range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
                 self,
@@ -236,14 +230,9 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 member_names,
                 class_flags,
             )
-            if len(read_members) != last_length:
-                num_hooks += 1
-                read_members.append(
-                    "        if {0} in self.hooks: self.hooks[{0}](self, "
-                    "chunk, cursor, context)".format(num_hooks)
-                )
-            last_length = len(read_members)
 
+        if len(read_members) == 1:
+            read_members.append("        pass")
         read_members.append("")
 
         class_data = []
@@ -277,8 +266,6 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 ", ".join(repr(k) + ": " + repr(v) for k, v in class_flags.items())
             )
         )
-
-        class_data.append("    hooks = {}")
 
         return "\n".join(
             [

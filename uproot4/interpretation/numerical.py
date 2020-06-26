@@ -16,22 +16,6 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpretation.Interpretation):
-    @property
-    def itemsize(self):
-        raise AssertionError
-
-    @property
-    def to_dtype(self):
-        return self._to_dtype
-
-    @property
-    def numpy_dtype(self):
-        return self._to_dtype
-
-    @property
-    def awkward_form(self):
-        raise NotImplementedError
-
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
@@ -165,8 +149,16 @@ class AsDtype(Numerical):
         return self._from_dtype
 
     @property
+    def to_dtype(self):
+        return self._to_dtype
+
+    @property
     def itemsize(self):
         return self._from_dtype.itemsize
+
+    @property
+    def numpy_dtype(self):
+        return self._to_dtype
 
     @property
     def cache_key(self):
@@ -267,14 +259,161 @@ class AsArray(AsDtype):
         raise NotImplementedError
 
 
-class AsDouble32(Numerical):
-    def __init__(self):
-        raise NotImplementedError
+class TruncatedNumerical(Numerical):
+    @property
+    def low(self):
+        return self._low
+
+    @property
+    def high(self):
+        return self._high
+
+    @property
+    def num_bits(self):
+        return self._num_bits
+
+    @property
+    def truncated(self):
+        return self._low == 0.0 and self._high == 0.0
+
+    @property
+    def to_dims(self):
+        return self._to_dims
+
+    @property
+    def from_dtype(self):
+        if self.truncated:
+            return numpy.dtype(({"exponent": (">u1", 0), "mantissa": (">u2", 1)}, ()))
+        else:
+            return numpy.dtype(">u4")
+
+    def __repr__(self):
+        args = [repr(self._low), repr(self._high), repr(self._num_bits)]
+        if self._to_dims != ():
+            args.append("to_dims={0}".format(repr(self._to_dims)))
+        return "{0}({1})".format(type(self).__name__, ", ".join(args))
+
+    def __eq__(self, other):
+        return (
+            type(self) == type(other)
+            and self._low == other._low
+            and self._high == other._high
+            and self._num_bits == other._num_bits
+            and self._to_dims == other._to_dims
+        )
+
+    @property
+    def itemsize(self):
+        return self.from_dtype.itemsize
+
+    @property
+    def numpy_dtype(self):
+        return self.to_dtype
+
+    @property
+    def cache_key(self):
+        return "{0}({1},{2},{3},{4})".format(
+            type(self).__name__,
+            self._low,
+            self._high,
+            self._num_bits,
+            self._to_dims
+        )
+
+    def basket_array(self, data, byte_offsets, basket, branch, context):
+        self.hook_before_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+        )
+
+        try:
+            raw = data.view(self.from_dtype)
+        except ValueError:
+            raise ValueError(
+                """basket {0} in tree/branch {1} has the wrong number of bytes ({2}) """
+                """for interpretation {3} (expecting raw array of {4})
+in file {5}""".format(
+                    basket.basket_num,
+                    branch.object_path,
+                    len(data),
+                    self,
+                    repr(self._from_dtype),
+                    branch.file.file_path,
+                )
+            )
+
+        if self.truncated:
+            exponent = raw["exponent"].astype(numpy.int32)
+            mantissa = raw["mantissa"].astype(numpy.int32)
+
+            exponent <<= 23
+            exponent |= (mantissa & ((1 << (self.num_bits + 1)) - 1)) << (23 - self.num_bits)
+            sign = ((1 << (self.num_bits + 1)) & mantissa != 0) * -2 + 1
+
+            output = exponent.view(numpy.float32) * sign
+            output = output.astype(self.to_dtype)
+
+        else:
+            output = raw.astype(self.to_dtype)
+            numpy.multiply(output, float(self._high - self._low) / (1 << self._num_bits), out=output)
+            numpy.add(output, self.low, out=output)
+
+        self.hook_after_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            raw=raw,
+            output=output,
+        )
+
+        return output
 
 
-class AsFloat16(Numerical):
-    def __init__(self):
-        raise NotImplementedError
+class AsDouble32(TruncatedNumerical):
+    def __init__(self, low, high, num_bits, to_dims=()):
+        if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 32:
+            raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
+        if high <= low and not self.truncated:
+            raise ValueError("high ({0}) must be strictly greater than low ({1})".format(high, low))
+
+        self._low = low
+        self._high = high
+        self._num_bits = num_bits
+        self._to_dims = to_dims
+
+    @property
+    def to_dtype(self):
+        return numpy.dtype((numpy.float64, self.to_dims))
+
+    @property
+    def typename(self):
+        return "double"
+
+
+class AsFloat16(TruncatedNumerical):
+    def __init__(self, low, high, num_bits, to_dims=()):
+        if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 16:
+            raise TypeError("num_bits must be an integer between 2 and 16 (inclusive)")
+        if high <= low and not self.truncated:
+            raise ValueError("high ({0}) must be strictly greater than low ({1})".format(high, low))
+
+        self._low = low
+        self._high = high
+        self._num_bits = num_bits
+        self._to_dims = to_dims
+
+    @property
+    def to_dtype(self):
+        return numpy.dtype((numpy.float64, self.to_dims))
+
+    @property
+    def typename(self):
+        return "float"
 
 
 class AsSTLBits(Numerical):

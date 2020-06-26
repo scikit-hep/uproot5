@@ -84,19 +84,8 @@ def test_strings4():
         ]
 
 
-@pytest.mark.skip(reason="FIXME: implement Double32")
 def test_double32():
-    del uproot4.classes["TBranch"]
-    del uproot4.classes["TBranchElement"]
-
     with uproot4.open(skhep_testdata.data_path("uproot-demo-double32.root"))["T"] as t:
-
-        print(t["fD64"].interpretation)
-        print(t["fF32"].interpretation)
-        print(t["fI32"].interpretation)
-        print(t["fI30"].interpretation)
-        print(t["fI28"].interpretation)
-
         fD64 = t["fD64"].array(library="np")
         fF32 = t["fF32"].array(library="np")
         fI32 = t["fI32"].array(library="np")
@@ -110,3 +99,13 @@ def test_double32():
         assert ratio_fI32.min() > 0.9999 and ratio_fI32.max() < 1.0001
         assert ratio_fI30.min() > 0.9999 and ratio_fI30.max() < 1.0001
         assert ratio_fI28.min() > 0.9999 and ratio_fI28.max() < 1.0001
+
+def test_double32_2():
+    with uproot4.open(skhep_testdata.data_path("uproot-issue187.root"))["fTreeV0"] as t:
+        assert numpy.all(t["fMultiplicity"].array(library="np") == -1)
+        assert t["V0s.fEtaPos"].array(library="np")[-3].tolist() == [-0.390625, 0.046875]
+
+def test_double32_3():
+    with uproot4.open(skhep_testdata.data_path("uproot-issue232.root"))["fTreeV0"] as t:
+        assert t["V0Hyper.fNsigmaHe3Pos"].array(library="np")[-1].tolist() == [19.38658905029297, 999.0]
+        assert t["V0Hyper.fDcaPos2PrimaryVertex"].array(library="np")[-1].tolist() == [0.256, 0.256]
