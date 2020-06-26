@@ -44,6 +44,9 @@ class Numerical(uproot4.interpretation.Interpretation):
             branch=branch,
         )
 
+        print("from_dtype", self.from_dtype)
+        print("to_dtype  ", self.to_dtype)
+
         if entry_start >= entry_stop:
             output = library.empty((0,), self.to_dtype)
 
@@ -98,6 +101,8 @@ class Numerical(uproot4.interpretation.Interpretation):
             branch=branch,
             output=output,
         )
+
+        print("output", output)
 
         output = library.finalize(output, branch)
 

@@ -38,3 +38,33 @@ def test_pandas_strings():
             "four",
             "five",
         ]
+
+
+def test_leaflist_numpy():
+    with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))[
+        "tree/leaflist"
+    ] as branch:
+        result = branch.array(library="np")
+        assert result.dtype.names == ("x", "y", "z")
+        assert result.tolist() == [
+            (1.1, 1, 97),
+            (2.2, 2, 98),
+            (3.3, 3, 99),
+            (4.0, 4, 100),
+            (5.5, 5, 101),
+        ]
+
+def test_leaflist_awkward():
+    awkward1 = pytest.importorskip("awkward1")
+    with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))[
+        "tree/leaflist"
+    ] as branch:
+        result = branch.array(library="ak")
+        assert str(awkward1.type(result)) == '5 * {"x": float64, "y": int32, "z": int8}'
+        assert awkward1.to_list(result) == [
+            {"x": 1.1, "y": 1, "z": 97},
+            {"x": 2.2, "y": 2, "z": 98},
+            {"x": 3.3, "y": 3, "z": 99},
+            {"x": 4.0, "y": 4, "z": 100},
+            {"x": 5.5, "y": 5, "z": 101},
+        ]

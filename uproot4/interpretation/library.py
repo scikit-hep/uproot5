@@ -100,10 +100,7 @@ class Awkward(Library):
         awkward1 = self.imported
 
         if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
-            array_content = array.content.astype(
-                array.content.dtype.newbyteorder("="), copy=False
-            )
-            content = awkward1.from_numpy(array_content, highlevel=False)
+            content = awkward1.from_numpy(array.content, highlevel=False)
             offsets = awkward1.layout.Index32(array.offsets)
             layout = awkward1.layout.ListOffsetArray32(offsets, content)
             return awkward1.Array(layout)
@@ -136,8 +133,21 @@ class Awkward(Library):
             raise NotImplementedError
 
         else:
-            array = array.astype(array.dtype.newbyteorder("="), copy=False)
-            return awkward1.from_numpy(array)
+            if array.dtype.names is not None:
+                length, shape = array.shape[0], array.shape[1:]
+                array = array.reshape(-1)
+                contents = []
+                for name in array.dtype.names:
+                    contents.append(awkward1.layout.NumpyArray(numpy.array(array[name])))
+                out = awkward1.layout.RecordArray(
+                    contents, array.dtype.names, length
+                )
+                for size in shape[::-1]:
+                    out = awkward1.layout.RegularArray(out, size)
+                return awkward1.Array(out)
+
+            else:
+                return awkward1.from_numpy(array)
 
     def group(self, arrays, expression_context, how):
         awkward1 = self.imported
@@ -237,10 +247,7 @@ or
             index = pandas.MultiIndex.from_arrays(
                 array.parents_localindex(), names=["entry", "subentry"]
             )
-            content = array.content.astype(
-                array.content.dtype.newbyteorder("="), copy=False
-            )
-            return pandas.Series(content, index=index)
+            return pandas.Series(array.content, index=index)
 
         elif isinstance(array, uproot4.interpretation.strings.StringArray):
             out = numpy.zeros(len(array), dtype=numpy.object)
@@ -255,7 +262,6 @@ or
             return pandas.Series(out)
 
         else:
-            array = array.astype(array.dtype.newbyteorder("="), copy=False)
             return pandas.Series(array)
 
     def group(self, arrays, expression_context, how):
