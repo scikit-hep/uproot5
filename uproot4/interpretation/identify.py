@@ -741,7 +741,7 @@ def interpretation_of(branch, context):
                 inner_header=False,
                 string_header=True,
             )
-            return uproot4.interpretation.objects.AsObjects(model_cls)
+            return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
         if branch.streamer is not None:
             model_cls = parse_typename(
@@ -751,7 +751,7 @@ def interpretation_of(branch, context):
                 inner_header=False,
                 string_header=False,
             )
-            return uproot4.interpretation.objects.AsObjects(model_cls)
+            return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
         if leaf.classname == "TLeafElement":
             raise NotImplementedError

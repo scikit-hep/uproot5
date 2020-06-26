@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import numpy
 
 import uproot4.interpretation
+import uproot4.interpretation.strings
 import uproot4.stl_containers
 import uproot4.model
 import uproot4.source.chunk
@@ -199,3 +200,14 @@ class AsObjects(uproot4.interpretation.Interpretation):
         )
 
         return output
+
+    def simplify(self):
+        if isinstance(self._model, uproot4.stl_containers.AsString):
+            header_bytes = 0
+            if self._model.header:
+                header_bytes = 6
+            return uproot4.interpretation.strings.AsStrings(
+                header_bytes, self._model.length_bytes, self._model.typename
+            )
+
+        return self
