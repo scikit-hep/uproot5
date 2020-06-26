@@ -49,7 +49,6 @@ def test_strings1():
         assert result.tolist() == ["hey-{0}".format(i) for i in range(30)]
 
 
-@pytest.mark.skip(reason="FIXME: implement std::vector<std::string>")
 def test_strings4():
     with uproot4.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
@@ -71,7 +70,6 @@ def test_strings4():
         ]
 
 
-@pytest.mark.skip(reason="FIXME: implement std::vector<std::vector<double>>")
 def test_strings4():
     with uproot4.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root"))[
         "t/x"

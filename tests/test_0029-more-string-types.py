@@ -149,15 +149,26 @@ def test_map_long_int_in_object():
         assert (map_long_int.values().min(), map_long_int.values().max()) == (0, 5159)
 
 
-# has STL vectors at top-level:
-#
-# python -c 'import uproot; t = uproot.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue38a.root")["ntupler/tree"]; print("\n".join(str((x._fName, getattr(x, "_fStreamerType", None), getattr(x, "_fClassName", None), getattr(x, "_fType", None), x.interpretation)) for x in t.allvalues()))'
-
-# has STL map<int,struct> as described here:
-#
-# https://github.com/scikit-hep/uproot/issues/468#issuecomment-646325842
-#
-# python -c 'import uproot; t = uproot.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue468.root")["Geant4Data/Geant4Data./Geant4Data.particles"]; print(t.array(uproot.asdebug)[0][:1000])'
+def test_top_level_vectors():
+    with uproot4.open(skhep_testdata.data_path("uproot-issue38a.root"))[
+        "ntupler/tree"
+    ] as tree:
+        assert [x.tolist() for x in tree["v_int16"].array(library="np")] == [[1, 2, 3]]
+        assert [x.tolist() for x in tree["v_int16"].array(library="np")] == [[1, 2, 3]]
+        assert [x.tolist() for x in tree["v_int32"].array(library="np")] == [[1, 2, 3]]
+        assert [x.tolist() for x in tree["v_int64"].array(library="np")] == [[1, 2, 3]]
+        assert [x.tolist() for x in tree["v_uint16"].array(library="np")] == [[1, 2, 3]]
+        assert [x.tolist() for x in tree["v_uint32"].array(library="np")] == [[1, 2, 3]]
+        assert [x.tolist() for x in tree["v_uint64"].array(library="np")] == [[1, 2, 3]]
+        assert [x.tolist() for x in tree["v_bool"].array(library="np")] == [
+            [False, True]
+        ]
+        assert [x.tolist() for x in tree["v_float"].array(library="np")] == [
+            [999.0, -999.0]
+        ]
+        assert [x.tolist() for x in tree["v_double"].array(library="np")] == [
+            [999.0, -999.0]
+        ]
 
 
 def test_strings1():
@@ -168,7 +179,6 @@ def test_strings1():
         assert result.tolist() == ["one", "two", "three", "four", "five"]
 
 
-@pytest.mark.skip(reason="FIXME: implement strings specified by a TStreamer")
 def test_strings2():
     with uproot4.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")

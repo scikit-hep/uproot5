@@ -585,3 +585,13 @@ def test_map_string_tstring():
                 "five": "FIVE",
             },
         ]
+
+
+@pytest.mark.skip(reason="FIXME: implement map<int,struct>")
+def test_map_int_struct():
+    # as described here:
+    #
+    # https://github.com/scikit-hep/uproot/issues/468#issuecomment-646325842
+    #
+    # python -c 'import uproot; t = uproot.open("/home/pivarski/irishep/scikit-hep-testdata/src/skhep_testdata/data/uproot-issue468.root")["Geant4Data/Geant4Data./Geant4Data.particles"]; print(t.array(uproot.asdebug)[0][:1000])'
+    pass

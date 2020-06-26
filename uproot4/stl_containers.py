@@ -189,11 +189,6 @@ class AsString(AsSTLContainer):
             return self._typename
 
     def read(self, chunk, cursor, context, file, parent, header=True):
-        print("header", header, "self._header", self._header, "typename", self.typename)
-
-        cursor.debug(chunk)
-        print()
-
         if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
