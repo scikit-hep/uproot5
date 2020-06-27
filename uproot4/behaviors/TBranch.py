@@ -528,6 +528,7 @@ class HasBranches(Mapping):
             else:
                 raise uproot4.KeyInFileError(
                     original_where,
+                    keys=self.keys(recursive=recursive),
                     file_path=self._file.file_path,
                     object_path=self.object_path,
                 )
@@ -541,6 +542,7 @@ class HasBranches(Mapping):
                 raise uproot4.KeyInFileError(
                     original_where,
                     file_path=self._file.file_path,
+                    keys=self.keys(recursive=recursive),
                     object_path=self.object_path,
                 )
 
@@ -552,6 +554,7 @@ class HasBranches(Mapping):
             else:
                 raise uproot4.KeyInFileError(
                     original_where,
+                    keys=self.keys(recursive=recursive),
                     file_path=self._file.file_path,
                     object_path=self.object_path,
                 )

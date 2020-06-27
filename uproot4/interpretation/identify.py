@@ -301,7 +301,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString(False, size_1to5_bytes=False, typename='char*')",
+                "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
                 quote,
             ),
         )
@@ -313,7 +313,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 2,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString(False, size_1to5_bytes=False, typename='char*')",
+                "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
                 quote,
             ),
         )
@@ -524,9 +524,15 @@ def _float16_double32_walk_ast(node, branch, source):
         if (
             isinstance(node, ast.Name)
             and isinstance(node.ctx, ast.Load)
-            and node.id == "pi"
+            and node.id.lower() == "pi"
         ):
             out = ast.Num(3.141592653589793)  # TMath::Pi()
+        elif (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id.lower() == "twopi"
+        ):
+            out = ast.Num(6.283185307179586)  # TMath::TwoPi()
         elif isinstance(node, ast.Num):
             out = ast.Num(float(node.n))
         elif isinstance(node, ast.BinOp) and isinstance(
@@ -585,15 +591,20 @@ def _float16_double32_walk_ast(node, branch, source):
 
 
 def _float16_or_double32(branch, context, leaf, is_float16, dims):
+    if leaf.classname in ("TLeafF16", "TLeafD32"):
+        title = leaf.member("fTitle")
+    else:
+        title = branch.streamer.title
+
     try:
-        left = branch.streamer.title.index("[")
-        right = branch.streamer.title.index("]")
+        left = title.index("[")
+        right = title.index("]")
 
     except (ValueError, AttributeError):
         low, high, num_bits = 0, 0, 0
 
     else:
-        source = branch.streamer.title[left : right + 1]
+        source = title[left : right + 1]
         try:
             parsed = ast.parse(source).body[0].value
         except SyntaxError:
@@ -604,8 +615,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             )
 
         transformed = ast.Expression(_float16_double32_walk_ast(parsed, branch, source))
-        spec = eval(compile(transformed, repr(branch.streamer.title), "eval"))
-
+        spec = eval(compile(transformed, repr(title), "eval"))
         if (
             len(spec) == 2
             and uproot4._util.isnum(spec[0])
@@ -618,7 +628,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             len(spec) == 3
             and uproot4._util.isnum(spec[0])
             and uproot4._util.isnum(spec[1])
-            and uproot4._util.isint(spec[1])
+            and uproot4._util.isint(spec[2])
         ):
             low, high, num_bits = spec
 
@@ -665,8 +675,12 @@ def interpretation_of(branch, context):
             if leaf.classname == "TLeafElement":
                 leaftype = _normalize_ftype(leaf.member("fType"))
 
-            is_float16 = leaftype == uproot4.const.kFloat16
-            is_double32 = leaftype == uproot4.const.kDouble32
+            is_float16 = (
+                leaftype == uproot4.const.kFloat16 or leaf.classname == "TLeafF16"
+            )
+            is_double32 = (
+                leaftype == uproot4.const.kDouble32 or leaf.classname == "TLeafD32"
+            )
             if is_float16 or is_double32:
                 out = _float16_or_double32(branch, context, leaf, is_float16, dims)
 
@@ -741,7 +755,7 @@ def interpretation_of(branch, context):
                 inner_header=False,
                 string_header=True,
             )
-            return uproot4.interpretation.objects.AsObjects(model_cls)
+            return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
         if branch.streamer is not None:
             model_cls = parse_typename(
@@ -751,7 +765,7 @@ def interpretation_of(branch, context):
                 inner_header=False,
                 string_header=False,
             )
-            return uproot4.interpretation.objects.AsObjects(model_cls)
+            return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
         if leaf.classname == "TLeafElement":
             raise NotImplementedError

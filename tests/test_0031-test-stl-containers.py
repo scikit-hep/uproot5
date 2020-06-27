@@ -10,6 +10,8 @@ import pytest
 import skhep_testdata
 
 import uproot4
+from uproot4.interpretation.numerical import AsDtype
+from uproot4.interpretation.jagged import AsJagged
 from uproot4.interpretation.objects import AsObjects
 from uproot4.stl_containers import AsString
 from uproot4.stl_containers import AsVector
@@ -21,9 +23,7 @@ def test_typename():
     with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert tree["vector_int32"].interpretation == AsObjects(
-            AsVector(True, numpy.dtype(">i4"))
-        )
+        assert tree["vector_int32"].interpretation == AsJagged(AsDtype(">i4"), 10)
         assert tree["vector_string"].interpretation == AsObjects(
             AsVector(True, AsString(False))
         )

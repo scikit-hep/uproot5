@@ -1296,7 +1296,7 @@ class ReadOnlyDirectory(Mapping):
     def __getitem__(self, where):
         if "/" in where or ":" in where:
             items = where.split("/")
-            step = self
+            step = last = self
 
             for i, item in enumerate(items):
                 if item != "":
@@ -1304,6 +1304,7 @@ class ReadOnlyDirectory(Mapping):
                         if ":" in item and item not in step:
                             index = item.index(":")
                             head, tail = item[:index], item[index + 1 :]
+                            last = step
                             step = step[head]
                             if isinstance(step, uproot4.behaviors.TBranch.HasBranches):
                                 return step["/".join([tail] + items[i + 1 :])]
@@ -1312,9 +1313,11 @@ class ReadOnlyDirectory(Mapping):
                                     where,
                                     repr(head)
                                     + " is not a TDirectory, TTree, or TBranch",
+                                    keys=[key.fName for key in last._keys],
                                     file_path=self._file.file_path,
                                 )
                         else:
+                            last = step
                             step = step[item]
 
                     elif isinstance(step, uproot4.behaviors.TBranch.HasBranches):
@@ -1324,6 +1327,7 @@ class ReadOnlyDirectory(Mapping):
                         raise uproot4.KeyInFileError(
                             where,
                             repr(item) + " is not a TDirectory, TTree, or TBranch",
+                            keys=[key.fName for key in last._keys],
                             file_path=self._file.file_path,
                         )
 
@@ -1349,15 +1353,17 @@ class ReadOnlyDirectory(Mapping):
 
         if "/" in where:
             items = where.split("/")
-            step = self
+            step = last = self
             for item in items[:-1]:
                 if item != "":
                     if isinstance(step, ReadOnlyDirectory):
+                        last = step
                         step = step[item]
                     else:
                         raise uproot4.KeyInFileError(
                             where,
                             repr(item) + " is not a TDirectory",
+                            keys=[key.fName for key in last._keys],
                             file_path=self._file.file_path,
                         )
             return step.key(items[-1])
@@ -1383,9 +1389,9 @@ class ReadOnlyDirectory(Mapping):
             return last
         elif cycle is None:
             raise uproot4.KeyInFileError(
-                item, cycle="any", file_path=self._file.file_path
+                item, cycle="any", keys=self.keys(), file_path=self._file.file_path
             )
         else:
             raise uproot4.KeyInFileError(
-                item, cycle=cycle, file_path=self._file.file_path
+                item, cycle=cycle, keys=self.keys(), file_path=self._file.file_path
             )

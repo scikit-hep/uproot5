@@ -159,27 +159,30 @@ class STLContainer(object):
 
 
 class AsString(AsSTLContainer):
-    def __init__(self, header, size_1to5_bytes=True, typename=None):
+    def __init__(self, header, length_bytes="1-5", typename=None):
         self.header = header
+        if length_bytes in ("1-5", "4"):
+            self._length_bytes = length_bytes
+        else:
+            raise ValueError("length_bytes must be '1-5' or '4'")
         self._typename = typename
-        self._size_1to5_bytes = size_1to5_bytes
 
     @property
-    def size_1to5_bytes(self):
-        return self._size_1to5_bytes
+    def length_bytes(self):
+        return self._length_bytes
 
     def __hash__(self):
-        return hash((AsString, self._header, self._size_1to5_bytes))
+        return hash((AsString, self._header, self._length_bytes))
 
     def __repr__(self):
         args = [repr(self._header)]
-        if self._size_1to5_bytes is not True:
-            args.append("size_1to5_bytes={0}".format(self._size_1to5_bytes))
+        if self._length_bytes != "1-5":
+            args.append("length_bytes={0}".format(repr(self._length_bytes)))
         return "AsString({0})".format(", ".join(args))
 
     @property
     def cache_key(self):
-        return "AsString({0},{1})".format(self._header, self._size_1to5_bytes)
+        return "AsString({0},{1})".format(self._header, repr(self._length_bytes))
 
     @property
     def typename(self):
@@ -195,11 +198,13 @@ class AsString(AsSTLContainer):
                 chunk, cursor, context
             )
 
-        if self._size_1to5_bytes:
+        if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
-        else:
+        elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
+        else:
+            raise AssertionError(repr(self._length_bytes))
 
         if self._header and header:
             uproot4.deserialization.numbytes_check(
@@ -215,7 +220,11 @@ class AsString(AsSTLContainer):
         return out
 
     def __eq__(self, other):
-        return isinstance(other, AsString) and self.header == other.header
+        return (
+            isinstance(other, AsString)
+            and self.header == other.header
+            and self.length_bytes == other.length_bytes
+        )
 
 
 class AsVector(AsSTLContainer):

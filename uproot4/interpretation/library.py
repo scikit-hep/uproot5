@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+import itertools
+
 import numpy
 
 import uproot4.interpretation.jagged
@@ -100,22 +102,50 @@ class Awkward(Library):
         awkward1 = self.imported
 
         if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
-            array_content = array.content.astype(
-                array.content.dtype.newbyteorder("="), copy=False
-            )
-            content = awkward1.from_numpy(array_content, highlevel=False)
+            content = awkward1.from_numpy(array.content, highlevel=False)
             offsets = awkward1.layout.Index32(array.offsets)
             layout = awkward1.layout.ListOffsetArray32(offsets, content)
             return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.strings.StringArray):
-            raise NotImplementedError
+            content = awkward1.layout.NumpyArray(
+                numpy.frombuffer(array.content, dtype=numpy.dtype(numpy.uint8)),
+                parameters={"__array__": "char"},
+            )
+            if issubclass(array.offsets.dtype.type, numpy.int32):
+                offsets = awkward1.layout.Index32(array.offsets)
+                layout = awkward1.layout.ListOffsetArray32(
+                    offsets, content, parameters={"__array__": "string"}
+                )
+            elif issubclass(array.offsets.dtype.type, numpy.uint32):
+                offsets = awkward1.layout.IndexU32(array.offsets)
+                layout = awkward1.layout.ListOffsetArrayU32(
+                    offsets, content, parameters={"__array__": "string"}
+                )
+            elif issubclass(array.offsets.dtype.type, numpy.int64):
+                offsets = awkward1.layout.Index64(array.offsets)
+                layout = awkward1.layout.ListOffsetArray64(
+                    offsets, content, parameters={"__array__": "string"}
+                )
+            else:
+                raise AssertionError(repr(array.offsets.dtype))
+            return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             raise NotImplementedError
 
+        elif array.dtype.names is not None:
+            length, shape = array.shape[0], array.shape[1:]
+            array = array.reshape(-1)
+            contents = []
+            for name in array.dtype.names:
+                contents.append(awkward1.layout.NumpyArray(numpy.array(array[name])))
+            out = awkward1.layout.RecordArray(contents, array.dtype.names, length)
+            for size in shape[::-1]:
+                out = awkward1.layout.RegularArray(out, size)
+            return awkward1.Array(out)
+
         else:
-            array = array.astype(array.dtype.newbyteorder("="), copy=False)
             return awkward1.from_numpy(array)
 
     def group(self, arrays, expression_context, how):
@@ -212,21 +242,17 @@ or
     def finalize(self, array, branch):
         pandas = self.imported
 
-        if isinstance(
-            array,
-            (
-                uproot4.interpretation.jagged.JaggedArray,
-                uproot4.interpretation.strings.StringArray,
-                uproot4.interpretation.objects.ObjectArray,
-            ),
-        ):
+        if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             index = pandas.MultiIndex.from_arrays(
                 array.parents_localindex(), names=["entry", "subentry"]
             )
-            content = array.content.astype(
-                array.content.dtype.newbyteorder("="), copy=False
-            )
-            return pandas.Series(content, index=index)
+            return pandas.Series(array.content, index=index)
+
+        elif isinstance(array, uproot4.interpretation.strings.StringArray):
+            out = numpy.zeros(len(array), dtype=numpy.object)
+            for i, x in enumerate(array):
+                out[i] = x
+            return pandas.Series(out)
 
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             out = numpy.zeros(len(array), dtype=numpy.object)
@@ -234,13 +260,52 @@ or
                 out[i] = x
             return pandas.Series(out)
 
+        elif array.dtype.names is not None and len(array.shape) != 1:
+            names = []
+            arrays = {}
+            for n in array.dtype.names:
+                for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
+                    name = ":" + n + "".join("[" + str(x) + "]" for x in tup)
+                    names.append(name)
+                    arrays[name] = array[n][(slice(None),) + tup]
+            return pandas.DataFrame(arrays, columns=names)
+
+        elif array.dtype.names is not None:
+            names = [":" + x for x in array.dtype.names]
+            arrays = dict((":" + x, array[x]) for x in array.dtype.names)
+            return pandas.DataFrame(arrays, columns=names)
+
+        elif len(array.shape) != 1:
+            names = []
+            arrays = {}
+            for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
+                name = "".join("[" + str(x) + "]" for x in tup)
+                names.append(name)
+                arrays[name] = array[(slice(None),) + tup]
+            return pandas.DataFrame(arrays, columns=names)
+
         else:
-            array = array.astype(array.dtype.newbyteorder("="), copy=False)
             return pandas.Series(array)
 
-    def group(self, arrays, expression_context, how):
-        names = [name for name, _ in expression_context]
+    def _only_series(self, original_arrays, original_names):
         pandas = self.imported
+        arrays = {}
+        names = []
+        for name in original_names:
+            if isinstance(original_arrays[name], pandas.Series):
+                arrays[name] = original_arrays[name]
+                names.append(name)
+            else:
+                df = original_arrays[name]
+                for subname in df.columns:
+                    path = name + subname
+                    arrays[path] = df[subname]
+                    names.append(path)
+        return arrays, names
+
+    def group(self, arrays, expression_context, how):
+        pandas = self.imported
+        names = [name for name, _ in expression_context]
         if how is tuple:
             return tuple(arrays[name] for name in names)
         elif how is list:
@@ -248,6 +313,7 @@ or
         elif how is dict:
             return dict((name, arrays[name]) for name in names)
         elif uproot4._util.isstr(how) or how is None:
+            arrays, names = self._only_series(arrays, names)
             if all(isinstance(x.index, pandas.RangeIndex) for x in arrays.values()):
                 return pandas.DataFrame(data=arrays, columns=names)
             indexes = []

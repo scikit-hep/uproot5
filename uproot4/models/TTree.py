@@ -123,7 +123,6 @@ class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 
@@ -240,7 +239,6 @@ class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 
@@ -361,7 +359,6 @@ class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 
@@ -500,7 +497,6 @@ class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 
@@ -643,7 +639,6 @@ class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
         ("TAttMarker", 2),
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 

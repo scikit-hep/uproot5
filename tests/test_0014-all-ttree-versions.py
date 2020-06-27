@@ -234,11 +234,11 @@ def test_list_streamers():
             == """TString (v2)
 
 TObject (v1)
-    fUniqueID: unsigned int
-    fBits: unsigned int
+    fUniqueID: unsigned int (TStreamerBasicType)
+    fBits: unsigned int (TStreamerBasicType)
 
 TNamed (v1): TObject (v1)
-    fName: TString
-    fTitle: TString
+    fName: TString (TStreamerString)
+    fTitle: TString (TStreamerString)
 """
         )

@@ -8,6 +8,7 @@ in a ROOT file.
 from __future__ import absolute_import
 
 import sys
+import struct
 
 import numpy
 
@@ -19,6 +20,8 @@ _printable_characters = (
     "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM"
     "NOPQRSTUVWXYZ!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~ "
 )
+_raw_double32 = struct.Struct(">f")
+_raw_float16 = struct.Struct(">BH")
 
 
 class Cursor(object):
@@ -176,6 +179,34 @@ class Cursor(object):
         if move:
             self._index = stop
         return format.unpack(chunk.get(start, stop, self, context))[0]
+
+    def double32(self, chunk, context, move=True):
+        # https://github.com/root-project/root/blob/e87a6311278f859ca749b491af4e9a2caed39161/io/io/src/TBufferFile.cxx#L448-L464
+        start = self._index
+        stop = start + _raw_double32.size
+        if move:
+            self._index = stop
+        return _raw_double32.unpack(chunk.get(start, stop, self, context))[0]
+
+    def float16(self, chunk, num_bits, context, move=True):
+        # https://github.com/root-project/root/blob/e87a6311278f859ca749b491af4e9a2caed39161/io/io/src/TBufferFile.cxx#L432-L442
+        # https://github.com/root-project/root/blob/e87a6311278f859ca749b491af4e9a2caed39161/io/io/src/TBufferFile.cxx#L482-L499
+
+        start = self._index
+        stop = start + _raw_float16.size
+        if move:
+            self._index = stop
+
+        exponent, mantissa = _raw_float16.unpack(chunk.get(start, stop, self, context))
+        out = numpy.array([exponent], numpy.int32)
+        out <<= 23
+        out |= (mantissa & ((1 << (num_bits + 1)) - 1)) << (23 - num_bits)
+        out = out.view(numpy.float32)
+
+        if (1 << (num_bits + 1) & mantissa) != 0:
+            out = -out
+
+        return out.item()
 
     def bytes(self, chunk, length, context, move=True, copy_if_memmap=False):
         """

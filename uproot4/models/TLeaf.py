@@ -39,7 +39,6 @@ class Model_TLeaf_v2(uproot4.model.VersionedModel):
         "fLeafCount",
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 
@@ -64,7 +63,6 @@ class Model_TLeafB_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -89,7 +87,6 @@ class Model_TLeafC_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -114,7 +111,6 @@ class Model_TLeafD_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -139,7 +135,6 @@ class Model_TLeafF_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -164,7 +159,6 @@ class Model_TLeafI_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -189,7 +183,6 @@ class Model_TLeafL_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -214,7 +207,6 @@ class Model_TLeafO_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -239,7 +231,6 @@ class Model_TLeafS_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -264,12 +255,49 @@ class Model_TLeafElement_v1(uproot4.model.VersionedModel):
     base_names_versions = [("TLeaf", 2)]
     member_names = ["fID", "fType"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
 class Model_TLeafElement(uproot4.model.DispatchByVersion):
     known_versions = {1: Model_TLeafElement_v1}
+
+
+class Model_TLeafD32_v1(uproot4.model.VersionedModel):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            self.class_named("TLeaf", 2).read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+        self._members["fMinimum"] = cursor.double32(chunk, context)
+        self._members["fMaximum"] = cursor.double32(chunk, context)
+
+    base_names_versions = [("TLeaf", 2)]
+    member_names = ["fMinimum", "fMaximum"]
+    class_flags = {}
+
+
+class Model_TLeafD32(uproot4.model.DispatchByVersion):
+    known_versions = {1: Model_TLeafD32_v1}
+
+
+class Model_TLeafF16_v1(uproot4.model.VersionedModel):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            self.class_named("TLeaf", 2).read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+        self._members["fMinimum"] = cursor.float16(chunk, 12, context)
+        self._members["fMaximum"] = cursor.float16(chunk, 12, context)
+
+    base_names_versions = [("TLeaf", 2)]
+    member_names = ["fMinimum", "fMaximum"]
+    class_flags = {}
+
+
+class Model_TLeafF16(uproot4.model.DispatchByVersion):
+    known_versions = {1: Model_TLeafF16_v1}
 
 
 uproot4.classes["TLeaf"] = Model_TLeaf
@@ -282,3 +310,5 @@ uproot4.classes["TLeafL"] = Model_TLeafL
 uproot4.classes["TLeafO"] = Model_TLeafO
 uproot4.classes["TLeafS"] = Model_TLeafS
 uproot4.classes["TLeafElement"] = Model_TLeafElement
+uproot4.classes["TLeafD32"] = Model_TLeafD32
+uproot4.classes["TLeafF16"] = Model_TLeafF16
