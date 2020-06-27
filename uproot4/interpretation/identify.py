@@ -591,15 +591,20 @@ def _float16_double32_walk_ast(node, branch, source):
 
 
 def _float16_or_double32(branch, context, leaf, is_float16, dims):
+    if leaf.classname in ("TLeafF16", "TLeafD32"):
+        title = leaf.member("fTitle")
+    else:
+        title = branch.streamer.title
+
     try:
-        left = branch.streamer.title.index("[")
-        right = branch.streamer.title.index("]")
+        left = title.index("[")
+        right = title.index("]")
 
     except (ValueError, AttributeError):
         low, high, num_bits = 0, 0, 0
 
     else:
-        source = branch.streamer.title[left : right + 1]
+        source = title[left : right + 1]
         try:
             parsed = ast.parse(source).body[0].value
         except SyntaxError:
@@ -610,7 +615,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             )
 
         transformed = ast.Expression(_float16_double32_walk_ast(parsed, branch, source))
-        spec = eval(compile(transformed, repr(branch.streamer.title), "eval"))
+        spec = eval(compile(transformed, repr(title), "eval"))
         if (
             len(spec) == 2
             and uproot4._util.isnum(spec[0])

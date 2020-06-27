@@ -355,7 +355,8 @@ in file {5}""".format(
             output = output.astype(self.to_dtype)
 
         else:
-            output = raw.astype(self.to_dtype)
+            d, s = _dtype_shape(self.to_dtype)
+            output = raw.astype(d).reshape((-1,) + s)
             numpy.multiply(
                 output,
                 float(self._high - self._low) / (1 << self._num_bits),
@@ -378,17 +379,17 @@ in file {5}""".format(
 
 class AsDouble32(TruncatedNumerical):
     def __init__(self, low, high, num_bits, to_dims=()):
+        self._low = low
+        self._high = high
+        self._num_bits = num_bits
+        self._to_dims = to_dims
+
         if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 32:
             raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
         if high <= low and not self.truncated:
             raise ValueError(
                 "high ({0}) must be strictly greater than low ({1})".format(high, low)
             )
-
-        self._low = low
-        self._high = high
-        self._num_bits = num_bits
-        self._to_dims = to_dims
 
     @property
     def to_dtype(self):
@@ -401,17 +402,17 @@ class AsDouble32(TruncatedNumerical):
 
 class AsFloat16(TruncatedNumerical):
     def __init__(self, low, high, num_bits, to_dims=()):
+        self._low = low
+        self._high = high
+        self._num_bits = num_bits
+        self._to_dims = to_dims
+
         if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 16:
             raise TypeError("num_bits must be an integer between 2 and 16 (inclusive)")
         if high <= low and not self.truncated:
             raise ValueError(
                 "high ({0}) must be strictly greater than low ({1})".format(high, low)
             )
-
-        self._low = low
-        self._high = high
-        self._num_bits = num_bits
-        self._to_dims = to_dims
 
     @property
     def to_dtype(self):
