@@ -22,7 +22,6 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -37,7 +36,6 @@ class Model_TAttLine_v2(uproot4.model.VersionedModel):
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -54,7 +52,6 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -67,7 +64,6 @@ class Model_TAttFill_v2(uproot4.model.VersionedModel):
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -85,7 +81,6 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
     base_names_versions = []
     member_names = ["fMarkerColor", "fMarkerStyle", "fMarkserSize"]
     class_flags = {}
-    hooks = None
     class_code = None
 
 

@@ -112,7 +112,6 @@ class Model_TBranch_v10(
 
     base_names_versions = [("TNamed", 1), ("TAttFill", 1)]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -219,7 +218,6 @@ class Model_TBranch_v11(
 
     base_names_versions = [("TNamed", 1), ("TAttFill", 1)]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -326,7 +324,6 @@ class Model_TBranch_v12(
 
     base_names_versions = [("TNamed", 1), ("TAttFill", 1)]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -440,7 +437,6 @@ class Model_TBranch_v13(
 
     base_names_versions = [("TNamed", 1), ("TAttFill", 2)]
     class_flags = {}
-    hooks = None
     class_code = None
 
 
@@ -505,7 +501,6 @@ class Model_TBranchElement_v8(
         "fBranchCount2",
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 
@@ -561,7 +556,6 @@ class Model_TBranchElement_v9(
         "fBranchCount2",
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 
@@ -617,7 +611,6 @@ class Model_TBranchElement_v10(
         "fBranchCount2",
     ]
     class_flags = {"has_read_object_any": True}
-    hooks = None
     class_code = None
 
 

@@ -313,11 +313,7 @@ class TruncatedNumerical(Numerical):
     @property
     def cache_key(self):
         return "{0}({1},{2},{3},{4})".format(
-            type(self).__name__,
-            self._low,
-            self._high,
-            self._num_bits,
-            self._to_dims
+            type(self).__name__, self._low, self._high, self._num_bits, self._to_dims
         )
 
     def basket_array(self, data, byte_offsets, basket, branch, context):
@@ -350,7 +346,9 @@ in file {5}""".format(
             mantissa = raw["mantissa"].astype(numpy.int32)
 
             exponent <<= 23
-            exponent |= (mantissa & ((1 << (self.num_bits + 1)) - 1)) << (23 - self.num_bits)
+            exponent |= (mantissa & ((1 << (self.num_bits + 1)) - 1)) << (
+                23 - self.num_bits
+            )
             sign = ((1 << (self.num_bits + 1)) & mantissa != 0) * -2 + 1
 
             output = exponent.view(numpy.float32) * sign
@@ -358,7 +356,11 @@ in file {5}""".format(
 
         else:
             output = raw.astype(self.to_dtype)
-            numpy.multiply(output, float(self._high - self._low) / (1 << self._num_bits), out=output)
+            numpy.multiply(
+                output,
+                float(self._high - self._low) / (1 << self._num_bits),
+                out=output,
+            )
             numpy.add(output, self.low, out=output)
 
         self.hook_after_basket_array(
@@ -379,7 +381,9 @@ class AsDouble32(TruncatedNumerical):
         if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 32:
             raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
         if high <= low and not self.truncated:
-            raise ValueError("high ({0}) must be strictly greater than low ({1})".format(high, low))
+            raise ValueError(
+                "high ({0}) must be strictly greater than low ({1})".format(high, low)
+            )
 
         self._low = low
         self._high = high
@@ -392,7 +396,7 @@ class AsDouble32(TruncatedNumerical):
 
     @property
     def typename(self):
-        return "double"
+        return "Double32_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
 
 class AsFloat16(TruncatedNumerical):
@@ -400,7 +404,9 @@ class AsFloat16(TruncatedNumerical):
         if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 16:
             raise TypeError("num_bits must be an integer between 2 and 16 (inclusive)")
         if high <= low and not self.truncated:
-            raise ValueError("high ({0}) must be strictly greater than low ({1})".format(high, low))
+            raise ValueError(
+                "high ({0}) must be strictly greater than low ({1})".format(high, low)
+            )
 
         self._low = low
         self._high = high
@@ -409,11 +415,11 @@ class AsFloat16(TruncatedNumerical):
 
     @property
     def to_dtype(self):
-        return numpy.dtype((numpy.float64, self.to_dims))
+        return numpy.dtype((numpy.float32, self.to_dims))
 
     @property
     def typename(self):
-        return "float"
+        return "Float16_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
 
 class AsSTLBits(Numerical):

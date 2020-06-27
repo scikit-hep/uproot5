@@ -524,9 +524,15 @@ def _float16_double32_walk_ast(node, branch, source):
         if (
             isinstance(node, ast.Name)
             and isinstance(node.ctx, ast.Load)
-            and node.id == "pi"
+            and node.id.lower() == "pi"
         ):
             out = ast.Num(3.141592653589793)  # TMath::Pi()
+        elif (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id.lower() == "twopi"
+        ):
+            out = ast.Num(6.283185307179586)  # TMath::TwoPi()
         elif isinstance(node, ast.Num):
             out = ast.Num(float(node.n))
         elif isinstance(node, ast.BinOp) and isinstance(
@@ -664,8 +670,12 @@ def interpretation_of(branch, context):
             if leaf.classname == "TLeafElement":
                 leaftype = _normalize_ftype(leaf.member("fType"))
 
-            is_float16 = leaftype == uproot4.const.kFloat16
-            is_double32 = leaftype == uproot4.const.kDouble32
+            is_float16 = (
+                leaftype == uproot4.const.kFloat16 or leaf.classname == "TLeafF16"
+            )
+            is_double32 = (
+                leaftype == uproot4.const.kDouble32 or leaf.classname == "TLeafD32"
+            )
             if is_float16 or is_double32:
                 out = _float16_or_double32(branch, context, leaf, is_float16, dims)
 

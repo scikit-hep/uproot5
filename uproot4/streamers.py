@@ -27,9 +27,12 @@ _canonical_typename_patterns = [
     (re.compile(r"\bLong_t\b"), "long"),
     (re.compile(r"\bULong_t\b"), "unsigned long"),
     (re.compile(r"\bFloat_t\b"), "float"),
-    (re.compile(r"\bFloat16_t\b"), "float"),  # 32-bit, written as 16, trunc mantissa
+    (
+        re.compile(r"\bFloat16_t\b"),
+        "Float16_t",
+    ),  # 32-bit, written as 16, trunc mantissa
     (re.compile(r"\bDouble_t\b"), "double"),
-    (re.compile(r"\bDouble32_t\b"), "double"),  # 64-bit, written as 32
+    (re.compile(r"\bDouble32_t\b"), "Double32_t"),  # 64-bit, written as 32
     (re.compile(r"\bLongDouble_t\b"), "long double"),
     (re.compile(r"\bText_t\b"), "char"),
     (re.compile(r"\bBool_t\b"), "bool"),
@@ -367,7 +370,13 @@ class Model_TStreamerElement(uproot4.model.Model):
         Args:
             stream: Object with a `write` method for writing the output.
         """
-        stream.write(u"    {0}: {1}\n".format(self.name, self.typename))
+        stream.write(
+            u"    {0}: {1} ({2})\n".format(
+                self.name,
+                self.typename,
+                uproot4.model.classname_decode(type(self).__name__)[0],
+            )
+        )
 
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
@@ -595,11 +604,24 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        if self.array_length == 0:
+        if self.typename == "Double32_t":
+            read_members.append(
+                "        self._members[{0}] = cursor.double32(chunk, "
+                "context)".format(repr(self.name))
+            )
+
+        elif self.typename == "Float16_t":
+            read_members.append(
+                "        self._members[{0}] = cursor.float16(chunk, 12, "
+                "context)".format(repr(self.name))
+            )
+
+        elif self.array_length == 0:
             if (
                 i == 0
                 or not isinstance(elements[i - 1], Model_TStreamerBasicType)
                 or elements[i - 1].array_length != 0
+                or elements[i - 1].typename in ("Double32_t", "Float16_t")
             ):
                 fields.append([])
                 formats.append([])
