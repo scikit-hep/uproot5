@@ -41,7 +41,7 @@ jobs:
         run: |
           conda env list
           conda update -n base -c defaults conda
-          conda install numpy pandas pytest flake8 lz4 xxhash
+          conda install numpy pandas pytest flake8 lz4 xxhash python-xxhash
           pip install scikit-hep-testdata
           conda list
 
