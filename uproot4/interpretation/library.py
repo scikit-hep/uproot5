@@ -18,8 +18,9 @@ class Library(object):
        * `imported`: The imported library or raises a helpful "how to"
              message if it could not be imported.
        * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
-       * `finalize(array, branch)`: Convert the internal storage form into one
-             appropriate for this library (NumPy array, Pandas Series, etc.).
+       * `finalize(array, branch, interpretation)`: Convert the internal
+             storage form into one appropriate for this library (NumPy array,
+             Pandas Series, etc.).
        * `group(arrays, expression_context, how)`: Combine arrays into a group,
              either a generic tuple or a grouping style appropriate for this
              library (NumPy array dict, Awkward RecordArray, etc.).
@@ -32,7 +33,7 @@ class Library(object):
     def empty(self, shape, dtype):
         return numpy.empty(shape, dtype)
 
-    def finalize(self, array, branch):
+    def finalize(self, array, branch, interpretation):
         raise AssertionError
 
     def group(self, arrays, expression_context, how):
@@ -64,13 +65,30 @@ class NumPy(Library):
 
         return numpy
 
-    def finalize(self, array, branch):
-        if isinstance(
+    def finalize(self, array, branch, interpretation):
+        if isinstance(array, uproot4.interpretation.jagged.JaggedArray) and isinstance(
+            array.content,
+            (
+                uproot4.interpretation.jagged.JaggedArray,
+                uproot4.interpretation.strings.StringArray,
+                uproot4.interpretation.objects.ObjectArray,
+                uproot4.interpretation.objects.StridedObjectArray,
+            ),
+        ):
+            out = numpy.zeros(len(array), dtype=numpy.object)
+            for i, x in enumerate(array):
+                out[i] = numpy.zeros(len(x), dtype=numpy.object)
+                for j, y in enumerate(x):
+                    out[i][j] = y
+            return out
+
+        elif isinstance(
             array,
             (
                 uproot4.interpretation.jagged.JaggedArray,
                 uproot4.interpretation.strings.StringArray,
                 uproot4.interpretation.objects.ObjectArray,
+                uproot4.interpretation.objects.StridedObjectArray,
             ),
         ):
             out = numpy.zeros(len(array), dtype=numpy.object)
@@ -98,7 +116,7 @@ class Awkward(Library):
         else:
             return awkward1
 
-    def finalize(self, array, branch):
+    def finalize(self, array, branch, interpretation):
         awkward1 = self.imported
 
         if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
@@ -130,6 +148,11 @@ class Awkward(Library):
             else:
                 raise AssertionError(repr(array.offsets.dtype))
             return awkward1.Array(layout)
+
+        elif isinstance(
+            interpretation, uproot4.interpretation.objects.AsStridedObjects
+        ):
+            raise NotImplementedError
 
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             raise NotImplementedError
@@ -239,7 +262,7 @@ or
         else:
             return pandas
 
-    def finalize(self, array, branch):
+    def finalize(self, array, branch, interpretation):
         pandas = self.imported
 
         if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
@@ -248,13 +271,13 @@ or
             )
             return pandas.Series(array.content, index=index)
 
-        elif isinstance(array, uproot4.interpretation.strings.StringArray):
-            out = numpy.zeros(len(array), dtype=numpy.object)
-            for i, x in enumerate(array):
-                out[i] = x
-            return pandas.Series(out)
-
-        elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
+        elif isinstance(
+            array,
+            (
+                uproot4.interpretation.strings.StringArray,
+                uproot4.interpretation.objects.ObjectArray,
+            ),
+        ):
             out = numpy.zeros(len(array), dtype=numpy.object)
             for i, x in enumerate(array):
                 out[i] = x
@@ -430,7 +453,7 @@ or
         cupy = self.imported
         return cupy.empty(shape, dtype)
 
-    def finalize(self, array, branch):
+    def finalize(self, array, branch, interpretation):
         cupy = self.imported
 
         if isinstance(

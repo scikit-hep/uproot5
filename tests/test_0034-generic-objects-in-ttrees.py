@@ -146,6 +146,7 @@ def test_vector_TLorentzVector():
         "events"
     ] as tree:
         result = tree["muonp4"].array(library="np", entry_stop=1)[0]
+        assert len(result) == 2
         assert (
             result[0].member("fE"),
             result[0].member("fP").member("fX"),
@@ -167,10 +168,16 @@ def test_strided():
             tree.file
         ).from_dtype == numpy.dtype(
             [
-                ("fUniqueID", ">u4"),
-                ("fBits", ">u4"),
-                ("fP/fUniqueID", ">u4"),
-                ("fP/fBits", ">u4"),
+                ("@instance_version", numpy.dtype(">u2")),
+                ("@num_bytes", numpy.dtype(">u4")),
+                ("fUniqueID", numpy.dtype(">u4")),
+                ("fBits", numpy.dtype(">u4")),
+                ("@pidf", numpy.dtype(">u2")),
+                ("fP/@instance_version", numpy.dtype(">u2")),
+                ("fP/@num_bytes", numpy.dtype(">u4")),
+                ("fP/fUniqueID", numpy.dtype(">u4")),
+                ("fP/fBits", numpy.dtype(">u4")),
+                ("fP/@pidf", numpy.dtype(">u2")),
                 ("fP/fX", ">f8"),
                 ("fP/fY", ">f8"),
                 ("fP/fZ", ">f8"),
@@ -179,16 +186,38 @@ def test_strided():
         )
 
 
-# def test_read_strided_TVector2():
-#     with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
-#         "events"
-#     ] as tree:
-#         interp = tree.file.class_named("TVector2", "max").strided_interpretation(
-#             tree.file
-#         )
-#         print(interp)
-#         print(interp.from_dtype)
+def test_read_strided_TVector2():
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        interp = tree.file.class_named("TVector2", "max").strided_interpretation(
+            tree.file
+        )
+        result = tree["MET"].array(interp, entry_stop=1, library="np")[0]
+        assert (result.member("fX"), result.member("fY")) == (
+            5.912771224975586,
+            2.5636332035064697,
+        )
 
-#         print(tree["MET"].array(interp, entry_start=3*798, entry_stop=3*798 + 27, library="np"))
 
-#     raise Exception
+def test_read_strided_TLorentzVector():
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        interp = tree.file.class_named("TLorentzVector", "max").strided_interpretation(
+            tree.file
+        )
+        interp = uproot4.interpretation.jagged.AsJagged(interp, header_bytes=10)
+        result = tree["muonp4"].array(interp, library="np", entry_stop=1)[0]
+        assert len(result) == 2
+        assert (
+            result[0].member("fE"),
+            result[0].member("fP").member("fX"),
+            result[0].member("fP").member("fY"),
+            result[0].member("fP").member("fZ"),
+        ) == (
+            54.77949905395508,
+            -52.89945602416992,
+            -11.654671669006348,
+            -8.16079330444336,
+        )

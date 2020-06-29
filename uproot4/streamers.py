@@ -213,8 +213,11 @@ class Model_TStreamerInfo(uproot4.model.Model):
         read_members = ["    def read_members(self, chunk, cursor, context):"]
         strided_interpretation = [
             "    @classmethod",
-            "    def strided_interpretation(cls, file):",
+            "    def strided_interpretation(cls, file, header=False, tobject_header=True):",
             "        members = []",
+            "        if header:",
+            "            members.append(('@num_bytes', numpy.dtype('>u4')))",
+            "            members.append(('@instance_version', numpy.dtype('>u2')))",
         ]
         fields = []
         formats = []
@@ -479,7 +482,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         )
         strided_interpretation.append(
             "        members.extend(file.class_named({0}, {1})."
-            "strided_interpretation(file).members)".format(
+            "strided_interpretation(file, header, tobject_header).members)".format(
                 repr(self.name), self.base_version
             )
         )
@@ -523,15 +526,18 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         class_flags,
     ):
         read_members.append("        tmp = self._dtype{0}".format(len(dtypes)))
+
         if streamerinfo.name == "TBranch" and self.name == "fBasketSeek":
             read_members.append("        if context.get('speedbump', True):")
             read_members.append(
                 "            if cursor.bytes(chunk, 1, context)[0] == 2:"
             )
             read_members.append("                tmp = numpy.dtype('>i8')")
+
         else:
             read_members.append("        if context.get('speedbump', True):")
             read_members.append("            cursor.skip(1)")
+
         read_members.append(
             "        self._members[{0}] = cursor.array(chunk, self.member({1}), tmp, context)".format(
                 repr(self.name), repr(self.count_name)
@@ -832,7 +838,8 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            "        members.append(({0}, self._stl_container{1}.strided_interpretation(file)))".format(
+            "        members.append(({0}, self._stl_container{1}."
+            "strided_interpretation(file, header, tobject_header)))".format(
                 repr(self.name), len(stl_containers)
             )
         )
@@ -880,7 +887,7 @@ class pointer_types(object):
             )
             strided_interpretation.append(
                 "        members.append(({0}, file.class_named({1}, 'max')."
-                "strided_interpretation(file)))".format(
+                "strided_interpretation(file, header, tobject_header)))".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -957,7 +964,7 @@ class object_types(object):
 
         strided_interpretation.append(
             "        members.append(({0}, file.class_named({1}, 'max')."
-            "strided_interpretation(file)))".format(
+            "strided_interpretation(file, header, tobject_header)))".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )

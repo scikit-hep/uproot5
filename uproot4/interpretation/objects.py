@@ -70,66 +70,13 @@ class ObjectArray(object):
             )
 
         elif isinstance(where, slice):
-            wheres = range(*where.indicies(len(self)))
-            out = numpy.empty(len(wheres), dtype=numpy.object)
-            for i in wheres:
-                out[i] = self[i]
-            return out
-
-        else:
-            raise NotImplementedError(repr(where))
-
-
-class StridedObjectArray(object):
-    def __init__(self, model, bases, members, context, file, parent):
-        for base in bases:
-            assert len(base) == len(members)
-        self._model = model
-        self._bases = bases
-        self._members = members
-        self._context = context
-        self._file = file
-        self._parent = parent
-
-    @property
-    def model(self):
-        return self._model
-
-    @property
-    def bases(self):
-        return self._bases
-
-    @property
-    def members(self):
-        return self._members
-
-    @property
-    def context(self):
-        return self._context
-
-    @property
-    def file(self):
-        return self._file
-
-    @property
-    def parent(self):
-        return self._parent
-
-    def __len__(self):
-        return len(self._members)
-
-    @property
-    def num_bytes(self):
-        return self._members.itemsize + sum(x.num_bytes for x in self._bases)
-
-    def __getitem__(self, where):
-        if uproot4._util.isint(where):
-            out = self._model.empty(self._context, self._file, self._parent)
-            for base in self._bases:
-                out._bases.append(base[where])
-            for name in out.member_names:
-                out._members[name] = self._members[name][where]
-            return out
+            return ObjectArray(
+                self._model,
+                self._branch,
+                self._context,
+                self._byte_offsets[where],
+                self._byte_content,
+            )
 
         else:
             raise NotImplementedError(repr(where))
@@ -248,7 +195,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             output=output,
         )
 
-        output = library.finalize(output, branch)
+        output = library.finalize(output, branch, self)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -284,6 +231,46 @@ class AsObjects(uproot4.interpretation.Interpretation):
         return self
 
 
+def _strided_object(path, interpretation, data):
+    out = interpretation._model.empty()
+    for name, member in interpretation._members:
+        p = name
+        if len(path) != 0:
+            p = path + "/" + name
+        if isinstance(member, AsStridedObjects):
+            out._members[name] = _strided_object(p, member, data)
+        else:
+            out._members[name] = data[p]
+    return out
+
+
+class StridedObjectArray(object):
+    def __init__(self, interpretation, array):
+        self._interpretation = interpretation
+        self._array = array
+
+    @property
+    def interpretation(self):
+        return self._interpretation
+
+    @property
+    def array(self):
+        return self._array
+
+    def __repr__(self):
+        return "StridedObjectArray({0}, {1})".format(self._interpretation, self._array)
+
+    def __len__(self):
+        return len(self._array)
+
+    def __getitem__(self, where):
+        if uproot4._util.isint(where):
+            return _strided_object("", self._interpretation, self._array[where])
+
+        else:
+            return StridedObjectArray(self._interpretation, self._array[where])
+
+
 class CannotBeStrided(Exception):
     pass
 
@@ -300,6 +287,8 @@ def _unravel_members(members):
 
 
 class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
+    __slots__ = ["_model", "_members"]
+
     def __init__(self, model, members):
         self._model = model
         self._members = members
@@ -334,3 +323,6 @@ class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
     @property
     def typename(self):
         return uproot4.model.classname_decode(self._model.__name__)[0]
+
+    def _wrap_almost_finalized(self, array):
+        return StridedObjectArray(self, array)

@@ -50,11 +50,11 @@ class Model(object):
     class_streamer = None
 
     @classmethod
-    def empty(cls, context, file, parent):
+    def empty(cls):
         self = cls.__new__(cls)
         self._cursor = None
-        self._file = file
-        self._parent = parent
+        self._file = None
+        self._parent = None
         self._members = {}
         self._bases = []
         self._num_bytes = None
@@ -245,7 +245,7 @@ class Model(object):
                     type(self).__name__,
                     ", ".join(repr(x) for x in self.all_members),
                 ),
-                file_path=self._file.file_path,
+                file_path=getattr(self._file, "file_path"),
             )
 
     def tojson(self):

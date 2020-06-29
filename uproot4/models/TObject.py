@@ -33,10 +33,15 @@ class Model_TObject(uproot4.model.Model):
         self._members["fBits"] = int(self._members["fBits"])
 
     @classmethod
-    def strided_interpretation(cls, file):
-        return uproot4.interpretation.objects.AsStridedObjects(
-            cls, [("fUniqueID", numpy.dtype(">u4")), ("fBits", numpy.dtype(">u4"))]
-        )
+    def strided_interpretation(cls, file, header=False, tobject_header=True):
+        members = []
+        if tobject_header:
+            members.append(("@instance_version", numpy.dtype(">u2")))
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("fUniqueID", numpy.dtype(">u4")))
+            members.append(("fBits", numpy.dtype(">u4")))
+            members.append(("@pidf", numpy.dtype(">u2")))
+        return uproot4.interpretation.objects.AsStridedObjects(cls, members)
 
     def __repr__(self):
         return "<TObject {0} {1} at 0x{2:012x}>".format(

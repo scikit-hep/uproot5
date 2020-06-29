@@ -229,7 +229,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
                 output=output,
             )
 
-        output = library.finalize(output, branch)
+        output = library.finalize(output, branch, self)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,

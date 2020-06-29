@@ -21,15 +21,15 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
         ) = cursor.fields(chunk, _tattline1_format1, context)
 
     @classmethod
-    def strided_interpretation(cls, file):
-        return uproot4.interpretation.objects.AsStridedObjects(
-            cls,
-            [
-                ("fLineColor", numpy.dtype(">i2")),
-                ("fLineStyle", numpy.dtype(">i2")),
-                ("fLineWidth", numpy.dtype(">i2")),
-            ],
-        )
+    def strided_interpretation(cls, file, header=False, tobject_header=True):
+        members = []
+        if header:
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("@instance_version", numpy.dtype(">u2")))
+        members.append(("fLineColor", numpy.dtype(">i2")))
+        members.append(("fLineStyle", numpy.dtype(">i2")))
+        members.append(("fLineWidth", numpy.dtype(">i2")))
+        return uproot4.interpretation.objects.AsStridedObjects(cls, members)
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -46,15 +46,15 @@ class Model_TAttLine_v2(uproot4.model.VersionedModel):
         ) = cursor.fields(chunk, _tattline1_format1, context)
 
     @classmethod
-    def strided_interpretation(cls, file):
-        return uproot4.interpretation.objects.AsStridedObjects(
-            cls,
-            [
-                ("fLineColor", numpy.dtype(">i2")),
-                ("fLineStyle", numpy.dtype(">i2")),
-                ("fLineWidth", numpy.dtype(">i2")),
-            ],
-        )
+    def strided_interpretation(cls, file, header=False, tobject_header=True):
+        members = []
+        if header:
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("@instance_version", numpy.dtype(">u2")))
+        members.append(("fLineColor", numpy.dtype(">i2")))
+        members.append(("fLineStyle", numpy.dtype(">i2")))
+        members.append(("fLineWidth", numpy.dtype(">i2")))
+        return uproot4.interpretation.objects.AsStridedObjects(cls, members)
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -73,11 +73,14 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
         )
 
     @classmethod
-    def strided_interpretation(cls, file):
-        return uproot4.interpretation.objects.AsStridedObjects(
-            cls,
-            [("fFillColor", numpy.dtype(">i2")), ("fFillStyle", numpy.dtype(">i2"))],
-        )
+    def strided_interpretation(cls, file, header=False, tobject_header=True):
+        members = []
+        if header:
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("@instance_version", numpy.dtype(">u2")))
+        members.append(("fFillColor", numpy.dtype(">i2")))
+        members.append(("fFillStyle", numpy.dtype(">i2")))
+        return uproot4.interpretation.objects.AsStridedObjects(cls, members)
 
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
@@ -92,11 +95,14 @@ class Model_TAttFill_v2(uproot4.model.VersionedModel):
         )
 
     @classmethod
-    def strided_interpretation(cls, file):
-        return uproot4.interpretation.objects.AsStridedObjects(
-            cls,
-            [("fFillColor", numpy.dtype(">i2")), ("fFillStyle", numpy.dtype(">i2"))],
-        )
+    def strided_interpretation(cls, file, header=False, tobject_header=True):
+        members = []
+        if header:
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("@instance_version", numpy.dtype(">u2")))
+        members.append(("fFillColor", numpy.dtype(">i2")))
+        members.append(("fFillStyle", numpy.dtype(">i2")))
+        return uproot4.interpretation.objects.AsStridedObjects(cls, members)
 
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
@@ -116,15 +122,15 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
         ) = cursor.fields(chunk, _tattmarker2_format1, context)
 
     @classmethod
-    def strided_interpretation(cls, file):
-        return uproot4.interpretation.objects.AsStridedObjects(
-            cls,
-            [
-                ("fMarkerColor", numpy.dtype(">i2")),
-                ("fMarkerStyle", numpy.dtype(">i2")),
-                ("fMarkerSize", numpy.dtype(">f4")),
-            ],
-        )
+    def strided_interpretation(cls, file, header=False, tobject_header=True):
+        members = []
+        if header:
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("@instance_version", numpy.dtype(">u2")))
+        members.append(("fMarkerColor", numpy.dtype(">i2")))
+        members.append(("fMarkerStyle", numpy.dtype(">i2")))
+        members.append(("fMarkerSize", numpy.dtype(">f4")))
+        return uproot4.interpretation.objects.AsStridedObjects(cls, members)
 
     base_names_versions = []
     member_names = ["fMarkerColor", "fMarkerStyle", "fMarkserSize"]

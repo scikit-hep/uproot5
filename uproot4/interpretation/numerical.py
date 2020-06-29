@@ -16,6 +16,9 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpretation.Interpretation):
+    def _wrap_almost_finalized(self, array):
+        return array
+
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
@@ -83,7 +86,9 @@ class Numerical(uproot4.interpretation.Interpretation):
             output=output,
         )
 
-        output = library.finalize(output, branch)
+        output = self._wrap_almost_finalized(output)
+
+        output = library.finalize(output, branch, self)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,

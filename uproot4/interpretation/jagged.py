@@ -250,6 +250,8 @@ class AsJagged(uproot4.interpretation.Interpretation):
                 content[before : before + len(cnt)] = cnt
                 before += len(cnt)
 
+            content = self._content._wrap_almost_finalized(content)
+
             output = JaggedArray(offsets, content)
 
             self.hook_before_library_finalize(
@@ -262,7 +264,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
                 output=output,
             )
 
-        output = library.finalize(output, branch)
+        output = library.finalize(output, branch, self)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
