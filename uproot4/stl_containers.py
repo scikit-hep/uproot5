@@ -267,7 +267,7 @@ class AsVector(AsSTLContainer):
         length = cursor.field(chunk, _stl_container_size, context)
 
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, parent
+            self._values, length, chunk, cursor, context, file, self
         )
         out = STLVector(values)
 
@@ -392,7 +392,7 @@ class AsSet(AsSTLContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent)
+        keys = _read_nested(self._keys, length, chunk, cursor, context, file, self)
         out = STLSet(keys)
 
         if self._header and header:
@@ -555,13 +555,13 @@ class AsMap(AsSTLContainer):
         if _has_nested_header(self._keys) and header:
             cursor.skip(6)
         keys = _read_nested(
-            self._keys, length, chunk, cursor, context, file, parent, header=False
+            self._keys, length, chunk, cursor, context, file, self, header=False
         )
 
         if _has_nested_header(self._values) and header:
             cursor.skip(6)
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, parent, header=False
+            self._values, length, chunk, cursor, context, file, self, header=False
         )
 
         out = STLMap(keys, values)

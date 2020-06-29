@@ -65,6 +65,14 @@ class Model(object):
 
         self.read_numbytes_version(chunk, cursor, context)
 
+        if (
+            self._num_bytes is None
+            and self._instance_version != self.class_version
+            and context.get("in_TBranch", False)
+        ):
+            self._instance_version = None
+            cursor = self._cursor
+
         self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context)
 
         self.read_members(chunk, cursor, context)
@@ -313,11 +321,19 @@ class DispatchByVersion(object):
     def read(cls, chunk, cursor, context, file, parent):
         import uproot4.deserialization
 
+        print()
+        print(f"{cls.__name__} {context.get('in_TBranch')}")
+
+        start_cursor = cursor.copy()
         num_bytes, version = uproot4.deserialization.numbytes_version(
             chunk, cursor, context, move=False
         )
 
+        print(f"num_bytes {num_bytes} version {version}")
+
         versioned_cls = cls.known_versions.get(version)
+
+        print(f"versioned_cls {versioned_cls}")
 
         if versioned_cls is not None:
             pass
@@ -325,14 +341,20 @@ class DispatchByVersion(object):
         elif num_bytes is not None:
             versioned_cls = cls.new_class(file, version)
 
+        elif context.get("in_TBranch", False):
+            versioned_cls = cls.new_class(file, "max")
+            cursor = start_cursor
+
         else:
             raise ValueError(
                 """Unknown version {0} for class {1} that cannot be skipped """
                 """because its number of bytes is unknown.
 """.format(
-                    version, classname_decode(type(cls).__name__)[0],
+                    version, classname_decode(cls.__name__)[0],
                 )
             )
+
+        print(f"versioned_cls {versioned_cls}")
 
         return cls.postprocess(
             versioned_cls.read(chunk, cursor, context, file, parent),

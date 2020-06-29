@@ -24,3 +24,10 @@ def test_histograms_outside_of_ttrees():
         assert (contents.min(), contents.max()) == (0.0, 3054.7299575805664)
 
         numpy.asarray(f["ntuple"])
+
+
+# def test_gohep_nosplit_file():
+#     with uproot4.open(skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root"))["tree/evt"] as branch:
+#         print(branch.array(library="np", entry_start=5))
+
+#     raise Exception

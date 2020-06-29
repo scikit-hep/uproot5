@@ -144,7 +144,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
 
         self._members["fElements"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._parent
+            chunk, cursor, context, self._file, self
         )
 
     def postprocess(self, chunk, cursor, context):
@@ -402,9 +402,9 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         class_flags,
     ):
         read_members.append(
-            "        raise NotImplementedError('class members defined by {0}')".format(
-                type(self).__name__
-            )
+            "        raise uproot4.deserialization.DeserializationError("
+            "'not implemented: class members defined by {0}', chunk, cursor, "
+            "context, self._file.file_path)".format(type(self).__name__)
         )
 
 
@@ -772,7 +772,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
-            "chunk, cursor, context, self._file, self._parent)"
+            "chunk, cursor, context, self._file, self)"
             "".format(repr(self.name), len(stl_containers))
         )
         stl_containers.append(stl_container)
@@ -801,9 +801,9 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
         class_flags,
     ):
         read_members.append(
-            "        raise NotImplementedError('class members defined by {0}')".format(
-                type(self).__name__
-            )
+            "        raise uproot4.deserialization.DeserializationError("
+            "'not implemented: class members defined by {0}', chunk, cursor, "
+            "context, self._file.file_path)".format(type(self).__name__)
         )
 
 
@@ -839,13 +839,16 @@ class pointer_types(object):
         elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
             read_members.append(
                 "        self._members[{0}] = read_object_any(chunk, cursor, "
-                "context, self._file, self._parent)".format(repr(self.name))
+                "context, self._file, self)".format(repr(self.name))
             )
             class_flags["has_read_object_any"] = True
         else:
             read_members.append(
-                "        raise NotImplementedError('class members defined by "
-                "{0} with fType {1}')".format(type(self).__name__, self.fType)
+                "        raise uproot4.deserialization.DeserializationError("
+                "'not implemented: class members defined by {0} with fType {1}', "
+                "chunk, cursor, context, self._file.file_path)".format(
+                    type(self).__name__, self.fType,
+                )
             )
         member_names.append(self.name)
 

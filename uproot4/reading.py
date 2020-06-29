@@ -431,6 +431,9 @@ in file {1}""".format(
 
     def streamer_named(self, classname, version="max"):
         streamer_versions = self.streamers.get(classname)
+
+        print("HERE", streamer_versions)
+
         if streamer_versions is None or len(streamer_versions) == 0:
             return None
         elif version == "min":
