@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import re
+import sys
 
 import numpy
 
@@ -65,13 +66,13 @@ class Model(object):
 
         self.read_numbytes_version(chunk, cursor, context)
 
-        if (
-            self._num_bytes is None
-            and self._instance_version != self.class_version
-            and context.get("in_TBranch", False)
-        ):
-            self._instance_version = None
-            cursor = self._cursor
+        if context.get("in_TBranch", False):
+            if self._num_bytes is None and self._instance_version != self.class_version:
+                self._instance_version = None
+                cursor = self._cursor
+
+            elif self._instance_version == 0:
+                cursor.skip(4)
 
         self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context)
 
@@ -275,6 +276,9 @@ class Model(object):
 
 class UnknownClass(Model):
     def read_members(self, chunk, cursor, context):
+        self._chunk = chunk
+        self._context = context
+
         if self._num_bytes is not None:
             cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
@@ -287,8 +291,30 @@ class UnknownClass(Model):
                 )
             )
 
+    @property
+    def chunk(self):
+        return self._chunk
+
+    @property
+    def context(self):
+        return self._context
+
     def __repr__(self):
         return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
+
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
+    ):
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self._chunk,
+            context=self._context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream,
+        )
 
 
 class VersionedModel(Model):
@@ -298,6 +324,9 @@ class VersionedModel(Model):
 
 class UnknownClassVersion(VersionedModel):
     def read_members(self, chunk, cursor, context):
+        self._chunk = chunk
+        self._context = context
+
         if self._num_bytes is not None:
             cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
@@ -310,9 +339,31 @@ class UnknownClassVersion(VersionedModel):
                 )
             )
 
+    @property
+    def chunk(self):
+        return self._chunk
+
+    @property
+    def context(self):
+        return self._context
+
     def __repr__(self):
         return "<{0} with unknown version {1} at 0x{2:012x}>".format(
             self.classname, self._instance_version, id(self)
+        )
+
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
+    ):
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self._chunk,
+            context=self._context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream,
         )
 
 
@@ -358,6 +409,9 @@ class DispatchByVersion(object):
     def new_class(cls, file, version):
         classname, _ = classname_decode(cls.__name__)
         streamer = file.streamer_named(classname, version)
+
+        if streamer is None:
+            streamer = file.streamer_named(classname, "max")
 
         if streamer is not None:
             versioned_cls = streamer.new_class(file)

@@ -41,7 +41,9 @@ def test_gohep_nosplit_file():
         assert result.member("F32") == 5.0
         assert result.member("F64") == 5.0
         assert result.member("Str") == "evt-005"
-        # assert result.member("P3")
+        assert result.member("P3").member("Px") == 4
+        assert result.member("P3").member("Py") == 5.0
+        assert result.member("P3").member("Pz") == 4
         assert result.member("ArrayI16").tolist() == [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
         assert result.member("ArrayU16").tolist() == [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
         assert result.member("ArrayI32").tolist() == [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
