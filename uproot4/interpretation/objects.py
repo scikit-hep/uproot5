@@ -83,12 +83,17 @@ class ObjectArray(object):
 
 
 class AsObjects(uproot4.interpretation.Interpretation):
-    def __init__(self, model):
+    def __init__(self, model, branch=None):
         self._model = model
+        self._branch = branch
 
     @property
     def model(self):
         return self._model
+
+    @property
+    def branch(self):
+        return self._branch
 
     def __repr__(self):
         if isinstance(self._model, type):
@@ -210,6 +215,14 @@ class AsObjects(uproot4.interpretation.Interpretation):
         return output
 
     def simplify(self):
+        if self._branch is not None:
+            try:
+                return self._model.strided_interpretation(
+                    self._branch.file, header=False, tobject_header=True
+                )
+            except CannotBeStrided:
+                pass
+
         if isinstance(self._model, uproot4.stl_containers.AsString):
             header_bytes = 0
             if self._model.header:
@@ -228,7 +241,23 @@ class AsObjects(uproot4.interpretation.Interpretation):
                     content, header_bytes, self._model.typename
                 )
 
+            if self._branch is not None:
+                try:
+                    content = self._model.values.strided_interpretation(
+                        self._branch.file, header=False, tobject_header=True
+                    )
+                    header_bytes = 10
+                    return uproot4.interpretation.jagged.AsJagged(
+                        content, header_bytes, self._model.typename
+                    )
+                except CannotBeStrided:
+                    pass
+
         return self
+
+
+class CannotBeStrided(Exception):
+    pass
 
 
 def _strided_object(path, interpretation, data):
@@ -269,10 +298,6 @@ class StridedObjectArray(object):
 
         else:
             return StridedObjectArray(self._interpretation, self._array[where])
-
-
-class CannotBeStrided(Exception):
-    pass
 
 
 def _unravel_members(members):

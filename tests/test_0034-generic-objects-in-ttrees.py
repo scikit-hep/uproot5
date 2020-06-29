@@ -193,7 +193,10 @@ def test_read_strided_TVector2():
         interp = tree.file.class_named("TVector2", "max").strided_interpretation(
             tree.file
         )
-        result = tree["MET"].array(interp, entry_stop=1, library="np")[0]
+
+        assert tree["MET"].interpretation == interp
+
+        result = tree["MET"].array(entry_stop=1, library="np")[0]
         assert (result.member("fX"), result.member("fY")) == (
             5.912771224975586,
             2.5636332035064697,
@@ -208,7 +211,10 @@ def test_read_strided_TLorentzVector():
             tree.file
         )
         interp = uproot4.interpretation.jagged.AsJagged(interp, header_bytes=10)
-        result = tree["muonp4"].array(interp, library="np", entry_stop=1)[0]
+
+        assert tree["muonp4"].interpretation == interp
+
+        result = tree["muonp4"].array(library="np", entry_stop=1)[0]
         assert len(result) == 2
         assert (
             result[0].member("fE"),

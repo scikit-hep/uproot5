@@ -67,13 +67,7 @@ class NumPy(Library):
 
     def finalize(self, array, branch, interpretation):
         if isinstance(array, uproot4.interpretation.jagged.JaggedArray) and isinstance(
-            array.content,
-            (
-                uproot4.interpretation.jagged.JaggedArray,
-                uproot4.interpretation.strings.StringArray,
-                uproot4.interpretation.objects.ObjectArray,
-                uproot4.interpretation.objects.StridedObjectArray,
-            ),
+            array.content, uproot4.interpretation.objects.StridedObjectArray,
         ):
             out = numpy.zeros(len(array), dtype=numpy.object)
             for i, x in enumerate(array):
@@ -119,7 +113,17 @@ class Awkward(Library):
     def finalize(self, array, branch, interpretation):
         awkward1 = self.imported
 
-        if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
+        if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
+            raise NotImplementedError
+
+        elif isinstance(
+            array, uproot4.interpretation.jagged.JaggedArray
+        ) and isinstance(
+            array.content, uproot4.interpretation.objects.StridedObjectArray
+        ):
+            raise NotImplementedError
+
+        elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             content = awkward1.from_numpy(array.content, highlevel=False)
             offsets = awkward1.layout.Index32(array.offsets)
             layout = awkward1.layout.ListOffsetArray32(offsets, content)
@@ -148,11 +152,6 @@ class Awkward(Library):
             else:
                 raise AssertionError(repr(array.offsets.dtype))
             return awkward1.Array(layout)
-
-        elif isinstance(
-            interpretation, uproot4.interpretation.objects.AsStridedObjects
-        ):
-            raise NotImplementedError
 
         elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
             raise NotImplementedError
@@ -265,7 +264,15 @@ or
     def finalize(self, array, branch, interpretation):
         pandas = self.imported
 
-        if isinstance(array, uproot4.interpretation.jagged.JaggedArray):
+        if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
+            raise NotImplementedError
+
+        elif isinstance(
+            array, uproot4.interpretation.jagged.JaggedArray
+        ) and isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
+            raise NotImplementedError
+
+        elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             index = pandas.MultiIndex.from_arrays(
                 array.parents_localindex(), names=["entry", "subentry"]
             )

@@ -132,9 +132,7 @@ class AsSTLContainer(object):
                 "{0}.header must be True or False".format(type(self).__name__)
             )
 
-    def strided_interpretation(
-        self, file, header=False, tobject_header=True, speedbump=True
-    ):
+    def strided_interpretation(self, file, header=False, tobject_header=True):
         raise uproot4.interpretation.objects.CannotBeStrided(self.typename)
 
     @property
