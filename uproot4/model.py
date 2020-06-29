@@ -223,7 +223,7 @@ class Model(object):
 """.format(
                     type(self).__module__,
                     type(self).__name__,
-                    "\n    ".join(self.all_members),
+                    ", ".join(repr(x) for x in self.all_members),
                 ),
                 file_path=self._file.file_path,
             )
@@ -321,19 +321,12 @@ class DispatchByVersion(object):
     def read(cls, chunk, cursor, context, file, parent):
         import uproot4.deserialization
 
-        print()
-        print(f"{cls.__name__} {context.get('in_TBranch')}")
-
         start_cursor = cursor.copy()
         num_bytes, version = uproot4.deserialization.numbytes_version(
             chunk, cursor, context, move=False
         )
 
-        print(f"num_bytes {num_bytes} version {version}")
-
         versioned_cls = cls.known_versions.get(version)
-
-        print(f"versioned_cls {versioned_cls}")
 
         if versioned_cls is not None:
             pass
@@ -353,8 +346,6 @@ class DispatchByVersion(object):
                     version, classname_decode(cls.__name__)[0],
                 )
             )
-
-        print(f"versioned_cls {versioned_cls}")
 
         return cls.postprocess(
             versioned_cls.read(chunk, cursor, context, file, parent),

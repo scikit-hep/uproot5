@@ -266,9 +266,7 @@ class AsVector(AsSTLContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        values = _read_nested(
-            self._values, length, chunk, cursor, context, file, self
-        )
+        values = _read_nested(self._values, length, chunk, cursor, context, file, self)
         out = STLVector(values)
 
         if self._header and header:

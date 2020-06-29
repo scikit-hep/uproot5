@@ -768,7 +768,11 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         class_flags,
     ):
         stl_container = uproot4.interpretation.identify.parse_typename(
-            self.typename, quote=True, outer_header=True, inner_header=False
+            self.typename,
+            quote=True,
+            outer_header=True,
+            inner_header=False,
+            string_header=True,
         )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
@@ -784,26 +788,6 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             Model_TStreamerSTL.read(chunk, cursor, context, self._file, self._parent)
-        )
-
-    def class_code(
-        self,
-        streamerinfo,
-        i,
-        elements,
-        read_members,
-        fields,
-        formats,
-        dtypes,
-        stl_containers,
-        base_names_versions,
-        member_names,
-        class_flags,
-    ):
-        read_members.append(
-            "        raise uproot4.deserialization.DeserializationError("
-            "'not implemented: class members defined by {0}', chunk, cursor, "
-            "context, self._file.file_path)".format(type(self).__name__)
         )
 
 

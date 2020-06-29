@@ -392,12 +392,12 @@ def parse_typename(
     quote=False,
     outer_header=True,
     inner_header=False,
-    string_header=True,
+    string_header=False,
 ):
     tokens = list(_tokenize_typename_pattern.finditer(typename))
 
     if (
-        string_header
+        not string_header
         and len(tokens) != 0
         and (
             tokens[0].group(0) == "string"
@@ -753,7 +753,7 @@ def interpretation_of(branch, context):
                 file=branch.file,
                 outer_header=True,
                 inner_header=False,
-                string_header=True,
+                string_header=False,
             )
             return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
@@ -763,7 +763,7 @@ def interpretation_of(branch, context):
                 file=branch.file,
                 outer_header=True,
                 inner_header=False,
-                string_header=False,
+                string_header=True,
             )
             return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
