@@ -733,6 +733,40 @@ class HasBranches(Mapping):
     def __len__(self):
         return len(self.branches)
 
+    def show(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+        name_width=20,
+        typename_width=20,
+        interpretation_width=38,
+        stream=sys.stdout,
+    ):
+        """
+        Args:
+            stream: Object with a `write` method for writing the output.
+        """
+        formatter = "{{0:{0}.{0}}} {{1:{1}.{1}}} {{2:{2}.{2}}}\n".format(
+            name_width, typename_width, interpretation_width,
+        )
+
+        stream.write(formatter.format("name", "typename", "interpretation"))
+        stream.write("-" * (name_width + typename_width + interpretation_width + 2))
+
+        for name, branch in self.iteritems(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            full_paths=full_paths,
+        ):
+            stream.write(
+                formatter.format(name, branch.typename, repr(branch.interpretation),)
+            )
+
     def arrays(
         self,
         expressions=None,

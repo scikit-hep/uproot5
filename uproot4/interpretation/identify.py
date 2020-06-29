@@ -755,6 +755,7 @@ def interpretation_of(branch, context):
                 inner_header=False,
                 string_header=False,
             )
+
             return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
         if branch.streamer is not None:
@@ -767,13 +768,6 @@ def interpretation_of(branch, context):
             )
             return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
 
-        if leaf.classname == "TLeafElement":
-            raise NotImplementedError
-
-        if isinstance(branch.streamer, uproot4.streamers.Model_TStreamerObjectPointer):
-            typename = branch.streamer.typename
-            if typename.endswith("*"):
-                typename = typename[:-1]
-            raise NotImplementedError("obj_or_genobj")
-
-        raise NotImplementedError
+        raise UnknownInterpretation(
+            "none of the rules matched", branch.file.file_path, branch.object_path,
+        )

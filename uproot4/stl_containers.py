@@ -37,7 +37,7 @@ def _content_typename(content):
             content.kind, content.itemsize
         ]
     elif isinstance(content, type):
-        return content.classname
+        return uproot4.model.classname_decode(content.__name__)[0]
     else:
         return content.typename
 
@@ -54,20 +54,20 @@ def _content_cache_key(content):
         return content.cache_key
 
 
-def _nested_context(context):
-    out = dict(context)
-    out["read_stl_header"] = False
-    return out
-
-
 def _read_nested(model, length, chunk, cursor, context, file, parent, header=True):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
 
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
-        for i in range(length):
-            values[i] = model.read(chunk, cursor, context, file, parent, header=header)
+        if isinstance(model, AsSTLContainer):
+            for i in range(length):
+                values[i] = model.read(
+                    chunk, cursor, context, file, parent, header=header
+                )
+        else:
+            for i in range(length):
+                values[i] = model.read(chunk, cursor, context, file, parent)
         return values
 
 
@@ -232,7 +232,9 @@ class AsVector(AsSTLContainer):
         self.header = header
         if isinstance(values, AsSTLContainer):
             self._values = values
-        elif isinstance(values, type) and issubclass(values, uproot4.model.Model):
+        elif isinstance(values, type) and issubclass(
+            values, (uproot4.model.Model, uproot4.model.DispatchByVersion)
+        ):
             self._values = values
         else:
             self._values = numpy.dtype(values)
@@ -245,7 +247,11 @@ class AsVector(AsSTLContainer):
         return self._values
 
     def __repr__(self):
-        return "AsVector({0}, {1})".format(self._header, repr(self._values))
+        if isinstance(self._values, type):
+            values = self._values.__name__
+        else:
+            values = repr(self._values)
+        return "AsVector({0}, {1})".format(self._header, values)
 
     @property
     def cache_key(self):
@@ -358,7 +364,9 @@ class AsSet(AsSTLContainer):
         self.header = header
         if isinstance(keys, AsSTLContainer):
             self._keys = keys
-        elif isinstance(keys, type) and issubclass(keys, uproot4.model.Model):
+        elif isinstance(keys, type) and issubclass(
+            keys, (uproot4.model.Model, uproot4.model.DispatchByVersion)
+        ):
             self._keys = keys
         else:
             self._keys = numpy.dtype(keys)
@@ -371,7 +379,11 @@ class AsSet(AsSTLContainer):
         return self._keys
 
     def __repr__(self):
-        return "AsSet({0}, {1})".format(self._header, repr(self._keys))
+        if isinstance(self._keys, type):
+            keys = self._keys.__name__
+        else:
+            keys = repr(self._keys)
+        return "AsSet({0}, {1})".format(self._header, keys)
 
     @property
     def cache_key(self):
@@ -505,7 +517,9 @@ class AsMap(AsSTLContainer):
 
         if isinstance(values, AsSTLContainer):
             self._values = values
-        elif isinstance(values, type) and issubclass(values, uproot4.model.Model):
+        elif isinstance(values, type) and issubclass(
+            values, (uproot4.model.Model, uproot4.model.DispatchByVersion)
+        ):
             self._values = values
         else:
             self._values = numpy.dtype(values)
@@ -522,9 +536,15 @@ class AsMap(AsSTLContainer):
         return self._values
 
     def __repr__(self):
-        return "AsMap({0}, {1}, {2})".format(
-            self._header, repr(self._keys), repr(self._values)
-        )
+        if isinstance(self._keys, type):
+            keys = self._keys.__name__
+        else:
+            keys = repr(self._keys)
+        if isinstance(self._values, type):
+            values = self._values.__name__
+        else:
+            values = repr(self._values)
+        return "AsMap({0}, {1}, {2})".format(self._header, keys, values)
 
     @property
     def cache_key(self):

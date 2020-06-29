@@ -121,3 +121,39 @@ def test_gohep_nosplit_file():
             "vec-005",
         ]
         assert result.member("End") == "end-005"
+
+
+def test_TLorentzVectors_show():
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        tree.show()
+
+
+def test_TVector2():
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        result = tree["MET"].array(library="np", entry_stop=1)[0]
+        assert (result.member("fX"), result.member("fY")) == (
+            5.912771224975586,
+            2.5636332035064697,
+        )
+
+
+def test_vector_TLorentzVector():
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        result = tree["muonp4"].array(library="np", entry_stop=1)[0]
+        assert (
+            result[0].member("fE"),
+            result[0].member("fP").member("fX"),
+            result[0].member("fP").member("fY"),
+            result[0].member("fP").member("fZ"),
+        ) == (
+            54.77949905395508,
+            -52.89945602416992,
+            -11.654671669006348,
+            -8.16079330444336,
+        )

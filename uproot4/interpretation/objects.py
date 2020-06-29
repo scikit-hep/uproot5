@@ -89,7 +89,11 @@ class AsObjects(uproot4.interpretation.Interpretation):
         return self._model
 
     def __repr__(self):
-        return "AsObjects({0})".format(repr(self._model))
+        if isinstance(self._model, type):
+            model = self._model.__name__
+        else:
+            model = repr(self._model)
+        return "AsObjects({0})".format(model)
 
     def __eq__(self, other):
         return isinstance(other, AsObjects) and self._model == other._model
