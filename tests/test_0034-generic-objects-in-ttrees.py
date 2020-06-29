@@ -183,12 +183,12 @@ def test_strided():
 #     with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
 #         "events"
 #     ] as tree:
-#         interp = tree.file.class_named("MET", "max").strided_interpretation(
+#         interp = tree.file.class_named("TVector2", "max").strided_interpretation(
 #             tree.file
 #         )
 #         print(interp)
 #         print(interp.from_dtype)
 
-#         print(tree[""])
+#         print(tree["MET"].array(interp, entry_start=3*798, entry_stop=3*798 + 27, library="np"))
 
 #     raise Exception
