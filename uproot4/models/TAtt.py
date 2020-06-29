@@ -4,11 +4,12 @@ from __future__ import absolute_import
 
 import struct
 
+import numpy
+
 import uproot4.model
 
 
 _tattline1_format1 = struct.Struct(">hhh")
-_tattline2_format1 = struct.Struct(">hhh")
 
 
 class Model_TAttLine_v1(uproot4.model.VersionedModel):
@@ -18,6 +19,17 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
             self._members["fLineStyle"],
             self._members["fLineWidth"],
         ) = cursor.fields(chunk, _tattline1_format1, context)
+
+    @classmethod
+    def strided_interpretation(cls, file):
+        return uproot4.interpretation.objects.AsStridedObjects(
+            cls,
+            [
+                ("fLineColor", numpy.dtype(">i2")),
+                ("fLineStyle", numpy.dtype(">i2")),
+                ("fLineWidth", numpy.dtype(">i2")),
+            ],
+        )
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -31,7 +43,18 @@ class Model_TAttLine_v2(uproot4.model.VersionedModel):
             self._members["fLineColor"],
             self._members["fLineStyle"],
             self._members["fLineWidth"],
-        ) = cursor.fields(chunk, _tattline2_format1, context)
+        ) = cursor.fields(chunk, _tattline1_format1, context)
+
+    @classmethod
+    def strided_interpretation(cls, file):
+        return uproot4.interpretation.objects.AsStridedObjects(
+            cls,
+            [
+                ("fLineColor", numpy.dtype(">i2")),
+                ("fLineStyle", numpy.dtype(">i2")),
+                ("fLineWidth", numpy.dtype(">i2")),
+            ],
+        )
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -49,6 +72,13 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
             chunk, _tattfill1_format1, context
         )
 
+    @classmethod
+    def strided_interpretation(cls, file):
+        return uproot4.interpretation.objects.AsStridedObjects(
+            cls,
+            [("fFillColor", numpy.dtype(">i2")), ("fFillStyle", numpy.dtype(">i2"))],
+        )
+
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
     class_flags = {}
@@ -59,6 +89,13 @@ class Model_TAttFill_v2(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context):
         self._members["fFillColor"], self._members["fFillStyle"] = cursor.fields(
             chunk, _tattfill2_format1, context
+        )
+
+    @classmethod
+    def strided_interpretation(cls, file):
+        return uproot4.interpretation.objects.AsStridedObjects(
+            cls,
+            [("fFillColor", numpy.dtype(">i2")), ("fFillStyle", numpy.dtype(">i2"))],
         )
 
     base_names_versions = []
@@ -77,6 +114,17 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
             self._members["fMarkerStyle"],
             self._members["fMarkerSize"],
         ) = cursor.fields(chunk, _tattmarker2_format1, context)
+
+    @classmethod
+    def strided_interpretation(cls, file):
+        return uproot4.interpretation.objects.AsStridedObjects(
+            cls,
+            [
+                ("fMarkerColor", numpy.dtype(">i2")),
+                ("fMarkerStyle", numpy.dtype(">i2")),
+                ("fMarkerSize", numpy.dtype(">f4")),
+            ],
+        )
 
     base_names_versions = []
     member_names = ["fMarkerColor", "fMarkerStyle", "fMarkserSize"]

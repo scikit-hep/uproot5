@@ -211,6 +211,11 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     def class_code(self):
         read_members = ["    def read_members(self, chunk, cursor, context):"]
+        strided_interpretation = [
+            "    @classmethod",
+            "    def strided_interpretation(cls, file):",
+            "        members = []",
+        ]
         fields = []
         formats = []
         dtypes = []
@@ -225,6 +230,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 i,
                 self._members["fElements"],
                 read_members,
+                strided_interpretation,
                 fields,
                 formats,
                 dtypes,
@@ -237,6 +243,11 @@ class Model_TStreamerInfo(uproot4.model.Model):
         if len(read_members) == 1:
             read_members.append("        pass")
         read_members.append("")
+
+        strided_interpretation.append(
+            "        return uproot4.interpretation.objects.AsStridedObjects(cls, members)"
+        )
+        strided_interpretation.append("")
 
         class_data = []
 
@@ -277,6 +288,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 )
             ]
             + read_members
+            + strided_interpretation
             + class_data
         )
 
@@ -393,6 +405,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -449,6 +462,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -463,6 +477,13 @@ class Model_TStreamerBase(Model_TStreamerElement):
                 repr(self.name), self.base_version
             )
         )
+        strided_interpretation.append(
+            "        members.extend(file.class_named({0}, {1})."
+            "strided_interpretation(file).members)".format(
+                repr(self.name), self.base_version
+            )
+        )
+
         base_names_versions.append((self.name, self.base_version))
 
 
@@ -492,6 +513,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -515,7 +537,13 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 repr(self.name), repr(self.count_name)
             )
         )
-        base_names_versions,
+
+        strided_interpretation.append(
+            "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
+                repr(self.typename)
+            )
+        )
+
         member_names.append(self.name)
         dtypes.append(_ftype_to_dtype(self.fType - uproot4.const.kOffsetP))
 
@@ -596,6 +624,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -660,6 +689,19 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
             dtypes.append(_ftype_to_dtype(self.fType))
 
+        if self.array_length == 0 and self.typename not in ("Double32_t", "Float16_t"):
+            strided_interpretation.append(
+                "        members.append(({0}, {1}))".format(
+                    repr(self.name), _ftype_to_dtype(self.fType)
+                )
+            )
+        else:
+            strided_interpretation.append(
+                "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
+                    repr(self.typename)
+                )
+            )
+
         member_names.append(self.name)
 
 
@@ -696,6 +738,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -714,6 +757,13 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 ),
             ]
         )
+
+        strided_interpretation.append(
+            "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
+                repr(self.typename)
+            )
+        )
+
         member_names.append(self.name)
 
 
@@ -759,6 +809,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -779,8 +830,14 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             "chunk, cursor, context, self._file, self)"
             "".format(repr(self.name), len(stl_containers))
         )
-        stl_containers.append(stl_container)
 
+        strided_interpretation.append(
+            "        members.append(({0}, self._stl_container{1}.strided_interpretation(file)))".format(
+                repr(self.name), len(stl_containers)
+            )
+        )
+
+        stl_containers.append(stl_container)
         member_names.append(self.name)
 
 
@@ -805,6 +862,7 @@ class pointer_types(object):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -820,12 +878,25 @@ class pointer_types(object):
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
+            strided_interpretation.append(
+                "        members.append(({0}, file.class_named({1}, 'max')."
+                "strided_interpretation(file)))".format(
+                    repr(self.name), repr(self.typename.rstrip("*"))
+                )
+            )
+
         elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
             read_members.append(
                 "        self._members[{0}] = read_object_any(chunk, cursor, "
                 "context, self._file, self)".format(repr(self.name))
             )
+            strided_interpretation.append(
+                "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
+                    repr(self.typename)
+                )
+            )
             class_flags["has_read_object_any"] = True
+
         else:
             read_members.append(
                 "        raise uproot4.deserialization.DeserializationError("
@@ -834,6 +905,7 @@ class pointer_types(object):
                     type(self).__name__, self.fType,
                 )
             )
+
         member_names.append(self.name)
 
 
@@ -869,6 +941,7 @@ class object_types(object):
         i,
         elements,
         read_members,
+        strided_interpretation,
         fields,
         formats,
         dtypes,
@@ -881,6 +954,14 @@ class object_types(object):
             "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
             "self._file, self)".format(repr(self.name), repr(self.typename.rstrip("*")))
         )
+
+        strided_interpretation.append(
+            "        members.append(({0}, file.class_named({1}, 'max')."
+            "strided_interpretation(file)))".format(
+                repr(self.name), repr(self.typename.rstrip("*"))
+            )
+        )
+
         member_names.append(self.name)
 
 

@@ -15,7 +15,7 @@ import uproot4.source.cursor
 import uproot4._util
 
 
-class ObjectArray(uproot4.interpretation.Interpretation):
+class ObjectArray(object):
     def __init__(self, model, branch, context, byte_offsets, byte_content):
         self._model = model
         self._branch = branch
@@ -74,6 +74,61 @@ class ObjectArray(uproot4.interpretation.Interpretation):
             out = numpy.empty(len(wheres), dtype=numpy.object)
             for i in wheres:
                 out[i] = self[i]
+            return out
+
+        else:
+            raise NotImplementedError(repr(where))
+
+
+class StridedObjectArray(object):
+    def __init__(self, model, bases, members, context, file, parent):
+        for base in bases:
+            assert len(base) == len(members)
+        self._model = model
+        self._bases = bases
+        self._members = members
+        self._context = context
+        self._file = file
+        self._parent = parent
+
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def bases(self):
+        return self._bases
+
+    @property
+    def members(self):
+        return self._members
+
+    @property
+    def context(self):
+        return self._context
+
+    @property
+    def file(self):
+        return self._file
+
+    @property
+    def parent(self):
+        return self._parent
+
+    def __len__(self):
+        return len(self._members)
+
+    @property
+    def num_bytes(self):
+        return self._members.itemsize + sum(x.num_bytes for x in self._bases)
+
+    def __getitem__(self, where):
+        if uproot4._util.isint(where):
+            out = self._model.empty(self._context, self._file, self._parent)
+            for base in self._bases:
+                out._bases.append(base[where])
+            for name in out.member_names:
+                out._members[name] = self._members[name][where]
             return out
 
         else:
@@ -227,3 +282,55 @@ class AsObjects(uproot4.interpretation.Interpretation):
                 )
 
         return self
+
+
+class CannotBeStrided(Exception):
+    pass
+
+
+def _unravel_members(members):
+    out = []
+    for name, member in members:
+        if isinstance(member, AsStridedObjects):
+            for n, m in _unravel_members(member.members):
+                out.append((name + "/" + n, m))
+        else:
+            out.append((name, member))
+    return out
+
+
+class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
+    def __init__(self, model, members):
+        self._model = model
+        self._members = members
+        super(AsStridedObjects, self).__init__(_unravel_members(members))
+
+    @property
+    def model(self):
+        return self._model
+
+    @property
+    def members(self):
+        return self._members
+
+    def __repr__(self):
+        return "AsStridedObjects({0})".format(self._model.__name__)
+
+    def __eq__(self, other):
+        return isinstance(other, AsStridedObjects) and self._model == other._model
+
+    @property
+    def numpy_dtype(self):
+        return numpy.dtype(numpy.object)
+
+    @property
+    def awkward_form(self):
+        raise NotImplementedError
+
+    @property
+    def cache_key(self):
+        return "{0}({1})".format(type(self).__name__, self._model.__name__)
+
+    @property
+    def typename(self):
+        return uproot4.model.classname_decode(self._model.__name__)[0]

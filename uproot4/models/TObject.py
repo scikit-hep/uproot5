@@ -32,6 +32,12 @@ class Model_TObject(uproot4.model.Model):
             cursor.skip(2)
         self._members["fBits"] = int(self._members["fBits"])
 
+    @classmethod
+    def strided_interpretation(cls, file):
+        return uproot4.interpretation.objects.AsStridedObjects(
+            cls, [("fUniqueID", numpy.dtype(">u4")), ("fBits", numpy.dtype(">u4"))]
+        )
+
     def __repr__(self):
         return "<TObject {0} {1} at 0x{2:012x}>".format(
             self._members.get("fUniqueID"), self._members.get("fBits"), id(self)

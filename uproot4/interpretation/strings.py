@@ -7,7 +7,7 @@ import numpy
 import uproot4.interpretation
 
 
-class StringArray(uproot4.interpretation.Interpretation):
+class StringArray(object):
     def __init__(self, offsets, content):
         self._offsets = offsets
         self._content = content

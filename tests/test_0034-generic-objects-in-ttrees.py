@@ -157,3 +157,23 @@ def test_vector_TLorentzVector():
             -11.654671669006348,
             -8.16079330444336,
         )
+
+
+def test_strided():
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        assert tree.file.class_named("TLorentzVector", "max").strided_interpretation(
+            tree.file
+        ).from_dtype == numpy.dtype(
+            [
+                ("fUniqueID", ">u4"),
+                ("fBits", ">u4"),
+                ("fP/fUniqueID", ">u4"),
+                ("fP/fBits", ">u4"),
+                ("fP/fX", ">f8"),
+                ("fP/fY", ">f8"),
+                ("fP/fZ", ">f8"),
+                ("fE", ">f8"),
+            ]
+        )

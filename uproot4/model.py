@@ -9,6 +9,7 @@ import numpy
 
 import uproot4.const
 import uproot4._util
+import uproot4.interpretation.objects
 
 
 bootstrap_classnames = [
@@ -47,6 +48,18 @@ def bootstrap_classes():
 
 class Model(object):
     class_streamer = None
+
+    @classmethod
+    def empty(cls, context, file, parent):
+        self = cls.__new__(cls)
+        self._cursor = None
+        self._file = file
+        self._parent = parent
+        self._members = {}
+        self._bases = []
+        self._num_bytes = None
+        self._instance_version = None
+        return self
 
     @classmethod
     def read(cls, chunk, cursor, context, file, parent):
@@ -105,6 +118,12 @@ class Model(object):
 
     def read_members(self, chunk, cursor, context):
         pass
+
+    @classmethod
+    def strided_interpretation(cls):
+        raise uproot4.interpretation.objects.CannotBeStrided(
+            uproot4.model.decoded_classname(cls.__name__)[0]
+        )
 
     def check_numbytes(self, chunk, cursor, context):
         import uproot4.deserialization
