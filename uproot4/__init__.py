@@ -124,9 +124,9 @@ class KeyInFileError(KeyError):
             to_show = None
             for key in self.keys:
                 if to_show is None:
-                    to_show = key
+                    to_show = repr(key)
                 else:
-                    to_show += ", " + key
+                    to_show += ", " + repr(key)
                 if len(to_show) > 200:
                     to_show += "..."
                     break
