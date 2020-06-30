@@ -121,7 +121,9 @@ class Model(object):
 
     @classmethod
     def strided_interpretation(cls, file, header=False, tobject_header=True):
-        raise uproot4.interpretation.objects.CannotBeStrided(classname_decode(cls.__name__)[0])
+        raise uproot4.interpretation.objects.CannotBeStrided(
+            classname_decode(cls.__name__)[0]
+        )
 
     def check_numbytes(self, chunk, cursor, context):
         import uproot4.deserialization
@@ -462,10 +464,9 @@ class DispatchByVersion(object):
     @classmethod
     def strided_interpretation(cls, file, header=False, tobject_header=True):
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
-
-        print("versioned_cls", versioned_cls)
-
-        return versioned_cls.strided_interpretation(file, header=header, tobject_header=tobject_header)
+        return versioned_cls.strided_interpretation(
+            file, header=header, tobject_header=tobject_header
+        )
 
 
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")

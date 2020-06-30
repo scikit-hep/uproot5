@@ -94,6 +94,26 @@ class NumPy(Library):
             return array
 
 
+def _strided_to_awkward(awkward1, path, interpretation, data):
+    contents = []
+    names = []
+    for name, member in interpretation.members:
+        p = name
+        if len(path) != 0:
+            p = path + "/" + name
+        if isinstance(member, uproot4.interpretation.objects.AsStridedObjects):
+            contents.append(_strided_to_awkward(awkward1, p, member, data))
+        else:
+            contents.append(awkward1.layout.NumpyArray(numpy.array(data[p])))
+        names.append(name)
+    parameters = {
+        "__record__": uproot4.model.classname_decode(interpretation.model.__name__)[0]
+    }
+    return awkward1.layout.RecordArray(
+        contents, names, len(data), parameters=parameters
+    )
+
+
 class Awkward(Library):
     name = "ak"
 
@@ -114,19 +134,34 @@ class Awkward(Library):
         awkward1 = self.imported
 
         if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
-            raise NotImplementedError
+            return awkward1.Array(
+                _strided_to_awkward(awkward1, "", array.interpretation, array.array)
+            )
 
         elif isinstance(
             array, uproot4.interpretation.jagged.JaggedArray
         ) and isinstance(
             array.content, uproot4.interpretation.objects.StridedObjectArray
         ):
-            raise NotImplementedError
+            content = _strided_to_awkward(
+                awkward1, "", array.content.interpretation, array.content.array
+            )
+            if issubclass(array.offsets.dtype.type, numpy.int32):
+                offsets = awkward1.layout.Index32(array.offsets)
+                layout = awkward1.layout.ListOffsetArray32(offsets, content)
+            else:
+                offsets = awkward1.layout.Index64(array.offsets)
+                layout = awkward1.layout.ListOffsetArray64(offsets, content)
+            return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             content = awkward1.from_numpy(array.content, highlevel=False)
-            offsets = awkward1.layout.Index32(array.offsets)
-            layout = awkward1.layout.ListOffsetArray32(offsets, content)
+            if issubclass(array.offsets.dtype.type, numpy.int32):
+                offsets = awkward1.layout.Index32(array.offsets)
+                layout = awkward1.layout.ListOffsetArray32(offsets, content)
+            else:
+                offsets = awkward1.layout.Index64(array.offsets)
+                layout = awkward1.layout.ListOffsetArray64(offsets, content)
             return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.strings.StringArray):

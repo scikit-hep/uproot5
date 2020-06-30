@@ -244,7 +244,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
 
                 start = stop
 
-            content = numpy.empty((before,), contents[0].dtype)
+            content = numpy.empty((before,), self.content.to_dtype)
             before = 0
             for cnt in contents:
                 content[before : before + len(cnt)] = cnt

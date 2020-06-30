@@ -227,3 +227,66 @@ def test_read_strided_TLorentzVector():
             -11.654671669006348,
             -8.16079330444336,
         )
+
+
+def test_strided_awkward():
+    awkward1 = pytest.importorskip("awkward1")
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        result = tree["MET"].array(library="ak")
+
+        assert (
+            repr(awkward1.type(result))
+            == '2421 * TVector2["@instance_version": uint16, '
+            '"@num_bytes": uint32, "fUniqueID": uint32, "fBits": uint32, '
+            '"@pidf": uint16, "fX": float64, "fY": float64]'
+        )
+
+        assert awkward1.to_list(result["fX"][:10]) == [
+            5.912771224975586,
+            24.76520347595215,
+            -25.78508758544922,
+            8.619895935058594,
+            5.393138885498047,
+            -3.7594752311706543,
+            23.962148666381836,
+            -57.533348083496094,
+            42.416194915771484,
+            -1.9144694805145264,
+        ]
+        assert awkward1.to_list(result["fY"][:10]) == [
+            2.5636332035064697,
+            -16.349109649658203,
+            16.237131118774414,
+            -22.78654670715332,
+            -1.3100523948669434,
+            -19.417020797729492,
+            -9.049156188964844,
+            -20.48767852783203,
+            -94.35086059570312,
+            -23.96303367614746,
+        ]
+
+
+def test_jagged_strided_awkward():
+    awkward1 = pytest.importorskip("awkward1")
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        result = tree["muonp4"].array(library="ak")
+
+        assert (
+            repr(awkward1.type(result))
+            == '2421 * var * TLorentzVector["@instance_version": uint16, '
+            '"@num_bytes": uint32, "fUniqueID": uint32, "fBits": uint32, '
+            '"@pidf": uint16, "fP": TVector3["@instance_version": uint16, '
+            '"@num_bytes": uint32, "fUniqueID": uint32, "fBits": uint32, '
+            '"@pidf": uint16, "fX": float64, "fY": float64, "fZ": float64], '
+            '"fE": float64]'
+        )
+
+        assert result[0, 0, "fE"] == 54.77949905395508
+        assert result[0, 0, "fP", "fX"] == -52.89945602416992
+        assert result[0, 0, "fP", "fY"] == -11.654671669006348
+        assert result[0, 0, "fP", "fZ"] == -8.16079330444336
