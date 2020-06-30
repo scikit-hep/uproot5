@@ -213,7 +213,8 @@ class Model_TStreamerInfo(uproot4.model.Model):
         read_members = ["    def read_members(self, chunk, cursor, context):"]
         strided_interpretation = [
             "    @classmethod",
-            "    def strided_interpretation(cls, file, header=False, tobject_header=True):",
+            "    def strided_interpretation(cls, file, header=False, "
+            "tobject_header=True, original=None):",
             "        members = []",
             "        if header:",
             "            members.append(('@num_bytes', numpy.dtype('>u4')))",
@@ -248,7 +249,8 @@ class Model_TStreamerInfo(uproot4.model.Model):
         read_members.append("")
 
         strided_interpretation.append(
-            "        return uproot4.interpretation.objects.AsStridedObjects(cls, members)"
+            "        return uproot4.interpretation.objects.AsStridedObjects"
+            "(cls, members, original=original)"
         )
         strided_interpretation.append("")
 

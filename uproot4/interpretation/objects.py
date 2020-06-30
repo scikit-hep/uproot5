@@ -218,7 +218,10 @@ class AsObjects(uproot4.interpretation.Interpretation):
         if self._branch is not None:
             try:
                 return self._model.strided_interpretation(
-                    self._branch.file, header=False, tobject_header=True
+                    self._branch.file,
+                    header=False,
+                    tobject_header=True,
+                    original=self._model,
                 )
             except CannotBeStrided:
                 pass
@@ -228,27 +231,42 @@ class AsObjects(uproot4.interpretation.Interpretation):
             if self._model.header:
                 header_bytes = 6
             return uproot4.interpretation.strings.AsStrings(
-                header_bytes, self._model.length_bytes, self._model.typename
+                header_bytes,
+                self._model.length_bytes,
+                self._model.typename,
+                original=self._model,
             )
 
-        if isinstance(self._model, uproot4.stl_containers.AsVector):
-            if isinstance(self._model.values, numpy.dtype):
+        if isinstance(
+            self._model,
+            (uproot4.stl_containers.AsArray, uproot4.stl_containers.AsVector),
+        ):
+            if not self._model.header:
                 header_bytes = 0
-                if self._model.header:
-                    header_bytes = 10
+            elif isinstance(self._model, uproot4.stl_containers.AsArray):
+                header_bytes = 1
+            else:
+                header_bytes = 10
+
+            if isinstance(self._model.values, numpy.dtype):
                 content = uproot4.interpretation.numerical.AsDtype(self._model.values)
                 return uproot4.interpretation.jagged.AsJagged(
-                    content, header_bytes, self._model.typename
+                    content, header_bytes, self._model.typename, original=self._model
                 )
 
             if self._branch is not None:
                 try:
                     content = self._model.values.strided_interpretation(
-                        self._branch.file, header=False, tobject_header=True
+                        self._branch.file,
+                        header=False,
+                        tobject_header=True,
+                        original=self._model.values,
                     )
-                    header_bytes = 10
                     return uproot4.interpretation.jagged.AsJagged(
-                        content, header_bytes, self._model.typename
+                        content,
+                        header_bytes,
+                        self._model.typename,
+                        original=self._model,
                     )
                 except CannotBeStrided:
                     pass
@@ -312,11 +330,10 @@ def _unravel_members(members):
 
 
 class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
-    __slots__ = ["_model", "_members"]
-
-    def __init__(self, model, members):
+    def __init__(self, model, members, original=None):
         self._model = model
         self._members = members
+        self._original = original
         super(AsStridedObjects, self).__init__(_unravel_members(members))
 
     @property
@@ -326,6 +343,10 @@ class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
     @property
     def members(self):
         return self._members
+
+    @property
+    def original(self):
+        return self._original
 
     def __repr__(self):
         return "AsStridedObjects({0})".format(self._model.__name__)

@@ -9,6 +9,7 @@ import numpy
 import uproot4.interpretation.jagged
 import uproot4.interpretation.strings
 import uproot4.interpretation.objects
+import uproot4.stl_containers
 
 
 class Library(object):
@@ -188,7 +189,7 @@ class Awkward(Library):
                 raise AssertionError(repr(array.offsets.dtype))
             return awkward1.Array(layout)
 
-        elif isinstance(array, uproot4.interpretation.objects.ObjectArray):
+        elif isinstance(interpretation, uproot4.interpretation.objects.AsObjects):
             raise NotImplementedError
 
         elif array.dtype.names is not None:

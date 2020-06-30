@@ -290,3 +290,20 @@ def test_jagged_strided_awkward():
         assert result[0, 0, "fP", "fX"] == -52.89945602416992
         assert result[0, 0, "fP", "fY"] == -11.654671669006348
         assert result[0, 0, "fP", "fZ"] == -8.16079330444336
+
+
+def test_jagged_awkward():
+    awkward1 = pytest.importorskip("awkward1")
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
+    )["tree/evt/SliceU64"] as branch:
+        result = branch.array(library="ak", entry_stop=6)
+
+        assert awkward1.to_list(result) == [
+            [],
+            [1],
+            [2, 2],
+            [3, 3, 3],
+            [4, 4, 4, 4],
+            [5, 5, 5, 5, 5],
+        ]

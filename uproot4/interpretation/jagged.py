@@ -59,12 +59,13 @@ def fast_divide(array, divisor):
 
 
 class AsJagged(uproot4.interpretation.Interpretation):
-    def __init__(self, content, header_bytes=0, typename=None):
+    def __init__(self, content, header_bytes=0, typename=None, original=None):
         if not isinstance(content, uproot4.interpretation.numerical.Numerical):
             raise TypeError("AsJagged content can only be Numerical")
         self._content = content
         self._header_bytes = header_bytes
         self._typename = typename
+        self._original = original
 
     @property
     def content(self):
@@ -73,6 +74,10 @@ class AsJagged(uproot4.interpretation.Interpretation):
     @property
     def header_bytes(self):
         return self._header_bytes
+
+    @property
+    def original(self):
+        return self._original
 
     def __repr__(self):
         if self._header_bytes == 0:

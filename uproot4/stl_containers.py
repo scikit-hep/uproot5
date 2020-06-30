@@ -132,7 +132,9 @@ class AsSTLContainer(object):
                 "{0}.header must be True or False".format(type(self).__name__)
             )
 
-    def strided_interpretation(self, file, header=False, tobject_header=True):
+    def strided_interpretation(
+        self, file, header=False, tobject_header=True, original=None
+    ):
         raise uproot4.interpretation.objects.CannotBeStrided(self.typename)
 
     @property
@@ -152,13 +154,48 @@ class AsSTLContainer(object):
     def __ne__(self, other):
         return not self == other
 
-    def tolist(self):
-        raise AssertionError
-
 
 class STLContainer(object):
     def __ne__(self, other):
         return not self == other
+
+    def tolist(self):
+        raise AssertionError
+
+
+class AsArray(AsSTLContainer):
+    def __init__(self, header, values):
+        self._header = header
+        self._values = values
+
+    @property
+    def values(self):
+        return self._values
+
+    def __repr__(self):
+        return "AsArray({0}, {1})".format(self.header, repr(self._values))
+
+    @property
+    def cache_key(self):
+        return "AsArray({0},{1})".format(self.header, _content_cache_key(self._values))
+
+    @property
+    def typename(self):
+        return _content_typename(self._values) + "*"
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        if self._header and header:
+            cursor.skip(1)
+
+        if isinstance(self._values, numpy.dtype):
+            remainder = chunk.remainder(cursor.index, cursor, context)
+            return remainder.view(self._values)
+
+        else:
+            out = []
+            while cursor.index < chunk.stop:
+                out.append(self._values.read(chunk, cursor, context, file, self))
+            return numpy.array(out, dtype=numpy.dtype(numpy.object))
 
 
 class AsString(AsSTLContainer):

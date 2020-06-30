@@ -120,7 +120,9 @@ class Model(object):
         pass
 
     @classmethod
-    def strided_interpretation(cls, file, header=False, tobject_header=True):
+    def strided_interpretation(
+        cls, file, header=False, tobject_header=True, original=None
+    ):
         raise uproot4.interpretation.objects.CannotBeStrided(
             classname_decode(cls.__name__)[0]
         )
@@ -462,7 +464,9 @@ class DispatchByVersion(object):
         return cls.known_versions.get(version)
 
     @classmethod
-    def strided_interpretation(cls, file, header=False, tobject_header=True):
+    def strided_interpretation(
+        cls, file, header=False, tobject_header=True, original=None
+    ):
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.strided_interpretation(
             file, header=header, tobject_header=tobject_header

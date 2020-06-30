@@ -37,13 +37,16 @@ class StringArray(object):
 
 
 class AsStrings(uproot4.interpretation.Interpretation):
-    def __init__(self, header_bytes=0, length_bytes="1-5", typename=None):
+    def __init__(
+        self, header_bytes=0, length_bytes="1-5", typename=None, original=None
+    ):
         self._header_bytes = header_bytes
         if length_bytes in ("1-5", "4"):
             self._length_bytes = length_bytes
         else:
             raise ValueError("length_bytes must be '1-5' or '4'")
         self._typename = typename
+        self._original = original
 
     @property
     def header_bytes(self):
@@ -74,6 +77,10 @@ class AsStrings(uproot4.interpretation.Interpretation):
             return "char*"
         else:
             return self._typename
+
+    @property
+    def original(self):
+        return self._original
 
     @property
     def numpy_dtype(self):
