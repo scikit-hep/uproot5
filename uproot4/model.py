@@ -257,14 +257,19 @@ class Model(object):
             )
 
     def tojson(self):
-        out = {"_typename": self.classname}
-        for k, v in self.all_members.items():
+        out = {}
+        for base in self._bases:
+            tmp = base.tojson()
+            if isinstance(tmp, dict):
+                out.update(tmp)
+        for k, v in self.members.items():
             if isinstance(v, Model):
                 out[k] = v.tojson()
             elif isinstance(v, (numpy.number, numpy.ndarray)):
                 out[k] = v.tolist()
             else:
                 out[k] = v
+        out["_typename"] = self.classname
         return out
 
     def __enter__(self):

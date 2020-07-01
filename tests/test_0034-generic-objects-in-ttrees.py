@@ -172,13 +172,13 @@ def test_strided():
             [
                 ("@instance_version", numpy.dtype(">u2")),
                 ("@num_bytes", numpy.dtype(">u4")),
-                ("fUniqueID", numpy.dtype(">u4")),
-                ("fBits", numpy.dtype(">u4")),
+                ("@fUniqueID", numpy.dtype(">u4")),
+                ("@fBits", numpy.dtype(">u4")),
                 ("@pidf", numpy.dtype(">u2")),
                 ("fP/@instance_version", numpy.dtype(">u2")),
                 ("fP/@num_bytes", numpy.dtype(">u4")),
-                ("fP/fUniqueID", numpy.dtype(">u4")),
-                ("fP/fBits", numpy.dtype(">u4")),
+                ("fP/@fUniqueID", numpy.dtype(">u4")),
+                ("fP/@fBits", numpy.dtype(">u4")),
                 ("fP/@pidf", numpy.dtype(">u2")),
                 ("fP/fX", ">f8"),
                 ("fP/fY", ">f8"),
@@ -240,9 +240,7 @@ def test_strided_awkward():
 
         assert (
             repr(awkward1.type(result))
-            == '2421 * TVector2["@instance_version": uint16, '
-            '"@num_bytes": uint32, "fUniqueID": uint32, "fBits": uint32, '
-            '"@pidf": uint16, "fX": float64, "fY": float64]'
+            == '2421 * TVector2["fX": float64, "fY": float64]'
         )
 
         assert awkward1.to_list(result["fX"][:10]) == [
@@ -280,12 +278,8 @@ def test_jagged_strided_awkward():
 
         assert (
             repr(awkward1.type(result))
-            == '2421 * var * TLorentzVector["@instance_version": uint16, '
-            '"@num_bytes": uint32, "fUniqueID": uint32, "fBits": uint32, '
-            '"@pidf": uint16, "fP": TVector3["@instance_version": uint16, '
-            '"@num_bytes": uint32, "fUniqueID": uint32, "fBits": uint32, '
-            '"@pidf": uint16, "fX": float64, "fY": float64, "fZ": float64], '
-            '"fE": float64]'
+            == '2421 * var * TLorentzVector["fP": TVector3["fX": float64, '
+            '"fY": float64, "fZ": float64], "fE": float64]'
         )
 
         assert result[0, 0, "fE"] == 54.77949905395508

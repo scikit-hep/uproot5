@@ -22,15 +22,15 @@ class Model_TObject(uproot4.model.Model):
         self._instance_version = cursor.field(chunk, _tobject_format1, context)
         if numpy.int64(self._instance_version) & uproot4.const.kByteCountVMask:
             cursor.skip(4)
-        self._members["fUniqueID"], self._members["fBits"] = cursor.fields(
+        self._members["@fUniqueID"], self._members["@fBits"] = cursor.fields(
             chunk, _tobject_format2, context
         )
-        self._members["fBits"] = (
-            numpy.uint32(self._members["fBits"]) | uproot4.const.kIsOnHeap
+        self._members["@fBits"] = (
+            numpy.uint32(self._members["@fBits"]) | uproot4.const.kIsOnHeap
         )
-        if self._members["fBits"] & uproot4.const.kIsReferenced:
+        if self._members["@fBits"] & uproot4.const.kIsReferenced:
             cursor.skip(2)
-        self._members["fBits"] = int(self._members["fBits"])
+        self._members["@fBits"] = int(self._members["@fBits"])
 
     @classmethod
     def strided_interpretation(
@@ -40,8 +40,8 @@ class Model_TObject(uproot4.model.Model):
         if tobject_header:
             members.append(("@instance_version", numpy.dtype(">u2")))
             members.append(("@num_bytes", numpy.dtype(">u4")))
-            members.append(("fUniqueID", numpy.dtype(">u4")))
-            members.append(("fBits", numpy.dtype(">u4")))
+            members.append(("@fUniqueID", numpy.dtype(">u4")))
+            members.append(("@fBits", numpy.dtype(">u4")))
             members.append(("@pidf", numpy.dtype(">u2")))
         return uproot4.interpretation.objects.AsStridedObjects(
             cls, members, original=original
@@ -57,8 +57,8 @@ class Model_TObject(uproot4.model.Model):
                 numpy.dtype("u2")
             )
             contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
-            contents["fUniqueID"] = uproot4._util.awkward_form(numpy.dtype("u4"))
-            contents["fBits"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@fUniqueID"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@fBits"] = uproot4._util.awkward_form(numpy.dtype("u4"))
             contents["@pidf"] = uproot4._util.awkward_form(numpy.dtype("u2"))
         return awkward1.forms.RecordForm(
             contents, parameters={"__record__": "TObject", "__hidden_prefix__": "@"},
@@ -68,6 +68,13 @@ class Model_TObject(uproot4.model.Model):
         return "<TObject {0} {1} at 0x{2:012x}>".format(
             self._members.get("fUniqueID"), self._members.get("fBits"), id(self)
         )
+
+    def tojson(self):
+        return {
+            "_typename": self.classname,
+            "fUniqueID": self.member("@fUniqueID"),
+            "fBits": self.member("@fBits"),
+        }
 
 
 uproot4.classes["TObject"] = Model_TObject

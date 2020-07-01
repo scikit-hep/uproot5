@@ -100,14 +100,15 @@ def _strided_to_awkward(awkward1, path, interpretation, data):
     contents = []
     names = []
     for name, member in interpretation.members:
-        p = name
-        if len(path) != 0:
-            p = path + "/" + name
-        if isinstance(member, uproot4.interpretation.objects.AsStridedObjects):
-            contents.append(_strided_to_awkward(awkward1, p, member, data))
-        else:
-            contents.append(awkward1.layout.NumpyArray(numpy.array(data[p])))
-        names.append(name)
+        if not name.startswith("@"):
+            p = name
+            if len(path) != 0:
+                p = path + "/" + name
+            if isinstance(member, uproot4.interpretation.objects.AsStridedObjects):
+                contents.append(_strided_to_awkward(awkward1, p, member, data))
+            else:
+                contents.append(awkward1.layout.NumpyArray(numpy.array(data[p])))
+            names.append(name)
     parameters = {
         "__record__": uproot4.model.classname_decode(interpretation.model.__name__)[0]
     }
