@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+import struct
+
 import numpy
 
 import uproot4.interpretation
@@ -41,6 +43,9 @@ class StringArray(object):
         for stop in self._offsets[1:]:
             yield uproot4._util.ensure_str(content[start:stop])
             start = stop
+
+
+_string_4byte_size = struct.Struct(">I")
 
 
 class AsStrings(uproot4.interpretation.Interpretation):
@@ -124,27 +129,68 @@ class AsStrings(uproot4.interpretation.Interpretation):
             context=context,
         )
 
-        assert basket.byte_offsets is not None
+        if byte_offsets is None:
+            counts = numpy.empty(len(data), dtype=numpy.int32)
+            outdata = numpy.empty(len(data), dtype=data.dtype)
 
-        byte_starts = byte_offsets[:-1] + self._header_bytes
-        byte_stops = byte_offsets[1:]
+            pos = 0
+            entry_num = 0
+            len_outdata = 0
 
-        if self._length_bytes == "1-5":
-            length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
-            length_header_size[data[byte_starts] == 255] += 4
-        elif self._length_bytes == "4":
-            length_header_size = numpy.full(len(byte_starts), 4, dtype=numpy.int32)
+            if self._length_bytes == "1-5":
+                while True:
+                    if pos >= len(data):
+                        break
+                    size = data[pos]
+                    pos += 1
+                    if size == 255:
+                        size, = _string_4byte_size.unpack(data[pos:pos + 4])
+                        pos += 4
+                    counts[entry_num] = size
+                    entry_num += 1
+                    outdata[len_outdata:len_outdata + size] = data[pos:pos + size]
+                    len_outdata += size
+                    pos += size
+
+            elif self._length_bytes == "4":
+                while True:
+                    if pos >= len(data):
+                        break
+                    size, = _string_4byte_size.unpack(data[pos:pos + 4])
+                    pos += 4
+                    counts[entry_num] = size
+                    entry_num += 1
+                    outdata[len_outdata:len_outdata + size] = data[pos:pos + size]
+                    len_outdata += size
+                    pos += size
+
+            else:
+                raise AssertionError(repr(self._length_bytes))
+
+            counts = counts[:entry_num]
+            data = outdata[:len_outdata]
+
         else:
-            raise AssertionError(repr(self._length_bytes))
-        byte_starts += length_header_size
+            byte_starts = byte_offsets[:-1] + self._header_bytes
+            byte_stops = byte_offsets[1:]
 
-        mask = numpy.zeros(len(data), dtype=numpy.int8)
-        mask[byte_starts[byte_starts < len(data)]] = 1
-        numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
-        numpy.cumsum(mask, out=mask)
-        data = data[mask.view(numpy.bool_)]
+            if self._length_bytes == "1-5":
+                length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
+                length_header_size[data[byte_starts] == 255] += 4
+            elif self._length_bytes == "4":
+                length_header_size = numpy.full(len(byte_starts), 4, dtype=numpy.int32)
+            else:
+                raise AssertionError(repr(self._length_bytes))
+            byte_starts += length_header_size
 
-        counts = byte_stops - byte_starts
+            mask = numpy.zeros(len(data), dtype=numpy.int8)
+            mask[byte_starts[byte_starts < len(data)]] = 1
+            numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
+            numpy.cumsum(mask, out=mask)
+            data = data[mask.view(numpy.bool_)]
+
+            counts = byte_stops - byte_starts
+
         offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
         offsets[0] = 0
         numpy.cumsum(counts, out=offsets[1:])
