@@ -1297,10 +1297,30 @@ def test_map_string_TVector3():
 
 def test_gohep_output_file():
     awkward1 = pytest.importorskip("awkward1")
-    with uproot4.open(skhep_testdata.data_path("uproot-issue413.root"))["mytree"] as tree:
+    with uproot4.open(skhep_testdata.data_path("uproot-issue413.root"))[
+        "mytree"
+    ] as tree:
         assert awkward1.to_list(tree["I32"].array()) == [0, 1, 2, 3, 4]
         assert awkward1.to_list(tree["F64"].array()) == [0.0, 1.0, 2.0, 3.0, 4.0]
-        assert awkward1.to_list(tree["Str"].array()) == ["evt-0", "evt-1", "evt-2", "evt-3", "evt-4"]
-        assert awkward1.to_list(tree["ArrF64"].array()) == [[0.0, 1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0, 5.0], [2.0, 3.0, 4.0, 5.0, 6.0], [3.0, 4.0, 5.0, 6.0, 7.0], [4.0, 5.0, 6.0, 7.0, 8.0]]
+        assert awkward1.to_list(tree["Str"].array()) == [
+            "evt-0",
+            "evt-1",
+            "evt-2",
+            "evt-3",
+            "evt-4",
+        ]
+        assert awkward1.to_list(tree["ArrF64"].array()) == [
+            [0.0, 1.0, 2.0, 3.0, 4.0],
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [2.0, 3.0, 4.0, 5.0, 6.0],
+            [3.0, 4.0, 5.0, 6.0, 7.0],
+            [4.0, 5.0, 6.0, 7.0, 8.0],
+        ]
         assert awkward1.to_list(tree["N"].array()) == [0, 1, 2, 3, 4]
-        assert awkward1.to_list(tree["SliF64"].array()) == [[], [1.0], [2.0, 3.0], [3.0, 4.0, 5.0], [4.0, 5.0, 6.0, 7.0]]
+        assert awkward1.to_list(tree["SliF64"].array()) == [
+            [],
+            [1.0],
+            [2.0, 3.0],
+            [3.0, 4.0, 5.0],
+            [4.0, 5.0, 6.0, 7.0],
+        ]

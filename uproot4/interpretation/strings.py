@@ -144,11 +144,11 @@ class AsStrings(uproot4.interpretation.Interpretation):
                     size = data[pos]
                     pos += 1
                     if size == 255:
-                        size, = _string_4byte_size.unpack(data[pos:pos + 4])
+                        (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
                         pos += 4
                     counts[entry_num] = size
                     entry_num += 1
-                    outdata[len_outdata:len_outdata + size] = data[pos:pos + size]
+                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
                     len_outdata += size
                     pos += size
 
@@ -156,11 +156,11 @@ class AsStrings(uproot4.interpretation.Interpretation):
                 while True:
                     if pos >= len(data):
                         break
-                    size, = _string_4byte_size.unpack(data[pos:pos + 4])
+                    (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
                     pos += 4
                     counts[entry_num] = size
                     entry_num += 1
-                    outdata[len_outdata:len_outdata + size] = data[pos:pos + size]
+                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
                     len_outdata += size
                     pos += size
 
