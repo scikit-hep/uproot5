@@ -42,7 +42,7 @@ class Model_TObjString(uproot4.model.Model, str):
             awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
-                "uproot": {"as": "TObjString", "header": True, "length_bytes": "1-5",},
+                "uproot": {"as": "TObjString", "header": True, "length_bytes": "1-5"},
             },
         )
 
