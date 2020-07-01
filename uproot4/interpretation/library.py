@@ -176,7 +176,9 @@ def _awkward_json_to_array(awkward1, form, array):
             if not name.startswith("@"):
                 contents.append(_awkward_json_to_array(awkward1, subform, array[name]))
                 names.append(name)
-        return awkward1.layout.RecordArray(contents, names, len(array), parameters=_awkward_p(form))
+        return awkward1.layout.RecordArray(
+            contents, names, len(array), parameters=_awkward_p(form)
+        )
 
     elif form["class"][:15] == "ListOffsetArray":
         if form["parameters"].get("__array__") == "string":
@@ -188,7 +190,12 @@ def _awkward_json_to_array(awkward1, form, array):
             value_form = form["content"]["contents"][1]
             keys = _awkward_json_to_array(awkward1, key_form, array.content["0"])
             values = _awkward_json_to_array(awkward1, value_form, array.content["1"])
-            content = awkward1.layout.RecordArray((keys, values), None, len(array), parameters=_awkward_p(form["content"]))
+            content = awkward1.layout.RecordArray(
+                (keys, values),
+                None,
+                len(array.content),
+                parameters=_awkward_p(form["content"]),
+            )
             return type(array)(array.offsets, content, parameters=_awkward_p(form))
 
         else:
@@ -197,7 +204,9 @@ def _awkward_json_to_array(awkward1, form, array):
 
     elif form["class"] == "RegularArray":
         content = _awkward_json_to_array(awkward1, form["content"], array.content)
-        return awkward1.layout.RegularArray(content, form["size"], parameters=_awkward_p(form))
+        return awkward1.layout.RegularArray(
+            content, form["size"], parameters=_awkward_p(form)
+        )
 
     else:
         raise AssertionError(form["class"])
@@ -304,14 +313,7 @@ in object {3}""".format(
             unlabeled = awkward1.from_iter(
                 (_object_to_awkward_json(form, x) for x in array), highlevel=False
             )
-
-            return awkward1.Array(unlabeled)
-
-            # tmp = _awkward_json_to_array(awkward1, form, unlabeled)
-
-            # print(tmp)
-
-            # return awkward1.Array(tmp)
+            return awkward1.Array(_awkward_json_to_array(awkward1, form, unlabeled))
 
         elif array.dtype.names is not None:
             length, shape = array.shape[0], array.shape[1:]
@@ -396,6 +398,12 @@ in object {3}""".format(
                 "a record array with jagged arrays zipped, if possible, or "
                 "None, for an unzipped record array".format(self.name)
             )
+
+
+def _pandas_rangeindex():
+    import pandas
+
+    return getattr(pandas, "RangeIndex", pandas.Int64Index)
 
 
 class Pandas(Library):
@@ -501,7 +509,7 @@ or
             return dict((name, arrays[name]) for name in names)
         elif uproot4._util.isstr(how) or how is None:
             arrays, names = self._only_series(arrays, names)
-            if all(isinstance(x.index, pandas.RangeIndex) for x in arrays.values()):
+            if all(isinstance(x.index, _pandas_rangeindex()) for x in arrays.values()):
                 return pandas.DataFrame(data=arrays, columns=names)
             indexes = []
             groups = []
@@ -522,7 +530,7 @@ or
                 for index, group, df, gn in zip(indexes, groups, dfs, group_names):
                     for name in names:
                         array = arrays[name]
-                        if isinstance(array.index, pandas.RangeIndex):
+                        if isinstance(array.index, _pandas_rangeindex()):
                             if flat_index is None or len(flat_index) != len(
                                 array.index
                             ):
@@ -563,7 +571,7 @@ or
                 flat_names = [
                     name
                     for name in names
-                    if isinstance(arrays[name].index, pandas.RangeIndex)
+                    if isinstance(arrays[name].index, _pandas_rangeindex())
                 ]
                 if len(flat_names) > 0:
                     flat_index = pandas.MultiIndex.from_arrays(
