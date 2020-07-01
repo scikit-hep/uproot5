@@ -88,7 +88,20 @@ class AsStrings(uproot4.interpretation.Interpretation):
 
     @property
     def awkward_form(self):
-        raise NotImplementedError
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            parameters={
+                "__array__": "string",
+                "uproot": {
+                    "as": "strings",
+                    "header_bytes": self._header_bytes,
+                    "length_bytes": self._length_bytes,
+                },
+            },
+        )
 
     @property
     def cache_key(self):

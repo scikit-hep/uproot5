@@ -110,10 +110,6 @@ class AsObjects(uproot4.interpretation.Interpretation):
         return numpy.dtype(numpy.object)
 
     @property
-    def awkward_form(self):
-        raise NotImplementedError
-
-    @property
     def cache_key(self):
         content_key = uproot4.stl_containers._content_cache_key(self._model)
         return "{0}({1})".format(type(self).__name__, content_key)
@@ -124,6 +120,15 @@ class AsObjects(uproot4.interpretation.Interpretation):
             return self._model.typename
         else:
             return uproot4.model.classname_decode(self._model.__name__)[0]
+
+    @property
+    def awkward_form(self):
+        if isinstance(self._model, type):
+            return self._model.awkward_form(
+                self._branch.file, header=False, tobject_header=True
+            )
+        else:
+            return self._model.awkward_form
 
     def basket_array(self, data, byte_offsets, basket, branch, context):
         self.hook_before_basket_array(
@@ -278,6 +283,10 @@ class CannotBeStrided(Exception):
     pass
 
 
+class CannotBeAwkward(Exception):
+    pass
+
+
 def _strided_object(path, interpretation, data):
     out = interpretation._model.empty()
     for name, member in interpretation._members:
@@ -329,6 +338,17 @@ def _unravel_members(members):
     return out
 
 
+def _strided_awkward_form(awkward1, classname, members):
+    contents = {}
+    for name, member in members:
+        if isinstance(member, AsStridedObjects):
+            cname = uproot4.model.classname_decode(member._model.__name__)[0]
+            contents[name] = _strided_awkward_form(awkward1, cname, member._members)
+        else:
+            contents[name] = uproot4._util.awkward_form(member)
+    return awkward1.forms.RecordForm(contents, parameters={"__record__": classname})
+
+
 class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
     def __init__(self, model, members, original=None):
         self._model = model
@@ -360,7 +380,10 @@ class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
 
     @property
     def awkward_form(self):
-        raise NotImplementedError
+        import awkward1
+
+        cname = uproot4.model.classname_decode(self._model.__name__)[0]
+        return _strided_awkward_form(awkward1, cname, self._members)
 
     @property
     def cache_key(self):

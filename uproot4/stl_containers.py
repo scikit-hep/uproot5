@@ -145,6 +145,10 @@ class AsSTLContainer(object):
     def typename(self):
         raise AssertionError
 
+    @property
+    def awkward_form(self):
+        raise AssertionError
+
     def read(self, chunk, cursor, context, file, parent, header=True):
         raise AssertionError
 
@@ -161,41 +165,6 @@ class STLContainer(object):
 
     def tolist(self):
         raise AssertionError
-
-
-class AsArray(AsSTLContainer):
-    def __init__(self, header, values):
-        self._header = header
-        self._values = values
-
-    @property
-    def values(self):
-        return self._values
-
-    def __repr__(self):
-        return "AsArray({0}, {1})".format(self.header, repr(self._values))
-
-    @property
-    def cache_key(self):
-        return "AsArray({0},{1})".format(self.header, _content_cache_key(self._values))
-
-    @property
-    def typename(self):
-        return _content_typename(self._values) + "*"
-
-    def read(self, chunk, cursor, context, file, parent, header=True):
-        if self._header and header:
-            cursor.skip(1)
-
-        if isinstance(self._values, numpy.dtype):
-            remainder = chunk.remainder(cursor.index, cursor, context)
-            return remainder.view(self._values)
-
-        else:
-            out = []
-            while cursor.index < chunk.stop:
-                out.append(self._values.read(chunk, cursor, context, file, self))
-            return numpy.array(out, dtype=numpy.dtype(numpy.object))
 
 
 class AsString(AsSTLContainer):
@@ -230,6 +199,23 @@ class AsString(AsSTLContainer):
             return "std::string"
         else:
             return self._typename
+
+    @property
+    def awkward_form(self):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            parameters={
+                "__array__": "string",
+                "uproot": {
+                    "as": "string",
+                    "header": self._header,
+                    "length_bytes": self._length_bytes,
+                },
+            },
+        )
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -267,6 +253,51 @@ class AsString(AsSTLContainer):
         )
 
 
+class AsArray(AsSTLContainer):
+    def __init__(self, header, values):
+        self._header = header
+        self._values = values
+
+    @property
+    def values(self):
+        return self._values
+
+    def __repr__(self):
+        return "AsArray({0}, {1})".format(self.header, repr(self._values))
+
+    @property
+    def cache_key(self):
+        return "AsArray({0},{1})".format(self.header, _content_cache_key(self._values))
+
+    @property
+    def typename(self):
+        return _content_typename(self._values) + "*"
+
+    @property
+    def awkward_form(self):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._values),
+            parameters={"uproot": {"as": "array", "header": self._header}},
+        )
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        if self._header and header:
+            cursor.skip(1)
+
+        if isinstance(self._values, numpy.dtype):
+            remainder = chunk.remainder(cursor.index, cursor, context)
+            return remainder.view(self._values)
+
+        else:
+            out = []
+            while cursor.index < chunk.stop:
+                out.append(self._values.read(chunk, cursor, context, file, self))
+            return numpy.array(out, dtype=numpy.dtype(numpy.object))
+
+
 class AsVector(AsSTLContainer):
     def __init__(self, header, values):
         self.header = header
@@ -302,6 +333,16 @@ class AsVector(AsSTLContainer):
     @property
     def typename(self):
         return "std::vector<{0}>".format(_content_typename(self._values))
+
+    @property
+    def awkward_form(self):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._values),
+            parameters={"uproot": {"as": "vector", "header": self._header}},
+        )
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -432,6 +473,19 @@ class AsSet(AsSTLContainer):
     @property
     def typename(self):
         return "std::set<{0}>".format(_content_typename(self._keys))
+
+    @property
+    def awkward_form(self):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._keys),
+            parameters={
+                "__array__": "set",
+                "uproot": {"as": "set", "header": self._header},
+            },
+        )
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -598,6 +652,24 @@ class AsMap(AsSTLContainer):
     def typename(self):
         return "std::map<{0}, {1}>".format(
             _content_typename(self._keys), _content_typename(self._values)
+        )
+
+    @property
+    def awkward_form(self):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            awkward1.forms.RecordForm(
+                (
+                    uproot4._util.awkward_form(self._keys),
+                    uproot4._util.awkward_form(self._values),
+                )
+            ),
+            parameters={
+                "__array__": "map",
+                "uproot": {"as": "map", "header": self._header},
+            },
         )
 
     def read(self, chunk, cursor, context, file, parent, header=True):

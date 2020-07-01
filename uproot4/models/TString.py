@@ -33,5 +33,9 @@ class Model_TString(uproot4.model.Model, str):
     def tojson(self):
         return str(self)
 
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        return uproot4.stl_containers.AsString(False, typename="TString").awkward_form
+
 
 uproot4.classes["TString"] = Model_TString

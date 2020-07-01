@@ -12,6 +12,7 @@ except ImportError:
 import numpy
 
 import uproot4.model
+import uproot4._util
 
 
 _tarray_format1 = struct.Struct(">i")
@@ -43,6 +44,16 @@ class Model_TArray(uproot4.model.Model, Sequence):
 
     def tojson(self):
         return self._data.tolist()
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(cls.dtype),
+            parameters={"uproot": {"as": "TArray"}},
+        )
 
 
 class Model_TArrayC(Model_TArray):

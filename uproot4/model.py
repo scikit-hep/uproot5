@@ -127,6 +127,12 @@ class Model(object):
             classname_decode(cls.__name__)[0]
         )
 
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        raise uproot4.interpretation.objects.CannotBeAwkward(
+            classname_decode(cls.__name__)[0]
+        )
+
     def check_numbytes(self, chunk, cursor, context):
         import uproot4.deserialization
 
@@ -469,6 +475,13 @@ class DispatchByVersion(object):
     ):
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.strided_interpretation(
+            file, header=header, tobject_header=tobject_header
+        )
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
+        return versioned_cls.awkward_form(
             file, header=header, tobject_header=tobject_header
         )
 

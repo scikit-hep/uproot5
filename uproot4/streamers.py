@@ -220,6 +220,18 @@ class Model_TStreamerInfo(uproot4.model.Model):
             "            members.append(('@num_bytes', numpy.dtype('>u4')))",
             "            members.append(('@instance_version', numpy.dtype('>u2')))",
         ]
+        awkward_form = [
+            "    @classmethod",
+            "    def awkward_form(cls, file, header=False, tobject_header=True):",
+            "        from awkward1.forms import NumpyForm, ListOffsetForm, "
+            "RegularForm, RecordForm",
+            "        contents = {}",
+            "        if header:",
+            "            contents['@num_bytes'] = "
+            "uproot4._util.awkward_form(numpy.dtype('u4'))",
+            "            contents['@instance_version'] = "
+            "uproot4._util.awkward_form(numpy.dtype('u2'))",
+        ]
         fields = []
         formats = []
         dtypes = []
@@ -235,6 +247,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 self._members["fElements"],
                 read_members,
                 strided_interpretation,
+                awkward_form,
                 fields,
                 formats,
                 dtypes,
@@ -253,6 +266,16 @@ class Model_TStreamerInfo(uproot4.model.Model):
             "(cls, members, original=original)"
         )
         strided_interpretation.append("")
+
+        awkward_form.extend(
+            [
+                "        return RecordForm(contents, parameters={",
+                "            '__record__': {0},".format(repr(self.name)),
+                "            '__hidden_prefix__': '@'",
+                "        })",
+                "",
+            ]
+        )
 
         class_data = []
 
@@ -294,6 +317,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
             ]
             + read_members
             + strided_interpretation
+            + awkward_form
             + class_data
         )
 
@@ -411,6 +435,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -468,6 +493,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -485,6 +511,12 @@ class Model_TStreamerBase(Model_TStreamerElement):
         strided_interpretation.append(
             "        members.extend(file.class_named({0}, {1})."
             "strided_interpretation(file, header, tobject_header).members)".format(
+                repr(self.name), self.base_version
+            )
+        )
+        awkward_form.append(
+            "        contents.update(file.class_named({0}, {1}).awkward_form(file, "
+            "header, tobject_header).contents)".format(
                 repr(self.name), self.base_version
             )
         )
@@ -519,6 +551,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -550,6 +583,18 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
                 repr(self.typename)
             )
+        )
+
+        awkward_form.extend(
+            [
+                "        contents[{0}] = ListOffsetForm('i32', "
+                "uproot4._util.awkward_form(cls._dtype{1}),".format(
+                    repr(self.name), len(dtypes)
+                ),
+                "            parameters={'uproot': {'as': 'TStreamerBasicPointer', "
+                "'count_name': " + repr(self.count_name) + "}}",
+                "        )",
+            ]
         )
 
         member_names.append(self.name)
@@ -633,6 +678,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -710,6 +756,43 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 )
             )
 
+        if self.array_length == 0:
+            if self.typename == "Double32_t":
+                awkward_form.extend(
+                    [
+                        "        contents[{0}] = NumpyForm((), 8, 'd',".format(
+                            repr(self.name)
+                        ),
+                        "            parameters={'uproot': {'as': 'Double32'}})",
+                        "        )",
+                    ]
+                )
+
+            elif self.typename == "Float16_t":
+                awkward_form.extend(
+                    [
+                        "        contents[{0}] = NumpyForm((), 4, 'f',".format(
+                            repr(self.name)
+                        ),
+                        "            parameters={'uproot': {'as': 'Float16'}})",
+                        "        )",
+                    ]
+                )
+
+            else:
+                awkward_form.append(
+                    "        contents[{0}] = uproot4._util.awkward_form({1})".format(
+                        repr(self.name), _ftype_to_dtype(self.fType)
+                    )
+                )
+
+        else:
+            awkward_form.append(
+                "        contents[{0}] = RegularForm(uproot4._util.awkward_form({1}), {2})".format(
+                    repr(self.name), _ftype_to_dtype(self.fType), self.array_length
+                )
+            )
+
         member_names.append(self.name)
 
 
@@ -747,6 +830,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -770,6 +854,17 @@ class Model_TStreamerLoop(Model_TStreamerElement):
             "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
                 repr(self.typename)
             )
+        )
+
+        awkward_form.extend(
+            [
+                "        tmp = file.class_named({0}, 'max').awkward_form(file, "
+                "header, tobject_header)".format(repr(self.typename.rstrip("*"))),
+                "        contents[" + repr(self.name) + "] = ListOffsetForm('i32', "
+                "tmp, parameters={'uproot': {'as': TStreamerLoop, 'count_name': "
+                + repr(self.count_name)
+                + "}})",
+            ]
         )
 
         member_names.append(self.name)
@@ -818,6 +913,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -840,8 +936,14 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            "        members.append(({0}, self._stl_container{1}."
+            "        members.append(({0}, cls._stl_container{1}."
             "strided_interpretation(file, header, tobject_header)))".format(
+                repr(self.name), len(stl_containers)
+            )
+        )
+
+        awkward_form.append(
+            "        contents[{0}] = cls._stl_container{1}.awkward_form".format(
                 repr(self.name), len(stl_containers)
             )
         )
@@ -872,6 +974,7 @@ class pointer_types(object):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -890,6 +993,12 @@ class pointer_types(object):
             strided_interpretation.append(
                 "        members.append(({0}, file.class_named({1}, 'max')."
                 "strided_interpretation(file, header, tobject_header)))".format(
+                    repr(self.name), repr(self.typename.rstrip("*"))
+                )
+            )
+            awkward_form.append(
+                "        contents[{0}] = file.class_named({1}, 'max').awkward_form(file, "
+                "header, tobject_header)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -951,6 +1060,7 @@ class object_types(object):
         elements,
         read_members,
         strided_interpretation,
+        awkward_form,
         fields,
         formats,
         dtypes,
@@ -967,6 +1077,12 @@ class object_types(object):
         strided_interpretation.append(
             "        members.append(({0}, file.class_named({1}, 'max')."
             "strided_interpretation(file, header, tobject_header)))".format(
+                repr(self.name), repr(self.typename.rstrip("*"))
+            )
+        )
+        awkward_form.append(
+            "        contents[{0}] = file.class_named({1}, 'max').awkward_form(file, "
+            "header, tobject_header)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )

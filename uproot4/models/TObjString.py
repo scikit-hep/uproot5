@@ -33,5 +33,18 @@ class Model_TObjString(uproot4.model.Model, str):
             id(self),
         )
 
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            parameters={
+                "__array__": "string",
+                "uproot": {"as": "TObjString", "header": True, "length_bytes": "1-5",},
+            },
+        )
+
 
 uproot4.classes["TObjString"] = Model_TObjString

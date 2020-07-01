@@ -259,3 +259,52 @@ def new_class(name, bases, members):
     out = type(ensure_str(name), bases, members)
     out.__module__ = "<dynamic>"
     return out
+
+
+_primitive_awkward_form = {}
+
+
+def awkward_form(model):
+    import awkward1
+
+    if isinstance(model, numpy.dtype):
+        model = model.newbyteorder("=")
+
+        if model not in _primitive_awkward_form:
+            if model == numpy.dtype(numpy.int8):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"int8"')
+            elif model == numpy.dtype(numpy.uint8):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"uint8"')
+            elif model == numpy.dtype(numpy.int16):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"int16"')
+            elif model == numpy.dtype(numpy.uint16):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson(
+                    '"uint16"'
+                )
+            elif model == numpy.dtype(numpy.int32):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"int32"')
+            elif model == numpy.dtype(numpy.uint32):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson(
+                    '"uint32"'
+                )
+            elif model == numpy.dtype(numpy.int64):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"int64"')
+            elif model == numpy.dtype(numpy.uint64):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson(
+                    '"uint64"'
+                )
+            elif model == numpy.dtype(numpy.float32):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson(
+                    '"float32"'
+                )
+            elif model == numpy.dtype(numpy.float64):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson(
+                    '"float64"'
+                )
+            else:
+                raise AssertionError(model)
+
+        return _primitive_awkward_form[model]
+
+    else:
+        return model.awkward_form

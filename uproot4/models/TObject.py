@@ -47,6 +47,23 @@ class Model_TObject(uproot4.model.Model):
             cls, members, original=original
         )
 
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        contents = {}
+        if tobject_header:
+            contents["@instance_version"] = uproot4._util.awkward_form(
+                numpy.dtype("u2")
+            )
+            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["fUniqueID"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["fBits"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@pidf"] = uproot4._util.awkward_form(numpy.dtype("u2"))
+        return awkward1.forms.RecordForm(
+            contents, parameters={"__record__": "TObject", "__hidden_prefix__": "@"},
+        )
+
     def __repr__(self):
         return "<TObject {0} {1} at 0x{2:012x}>".format(
             self._members.get("fUniqueID"), self._members.get("fBits"), id(self)

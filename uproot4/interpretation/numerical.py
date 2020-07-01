@@ -166,6 +166,16 @@ class AsDtype(Numerical):
         return self._to_dtype
 
     @property
+    def awkward_form(self):
+        import awkward1
+
+        d, s = _dtype_shape(self._to_dtype)
+        out = uproot4._util.awkward_form(d)
+        for size in s[::-1]:
+            out = awkward1.forms.RegularForm(out, size)
+        return out
+
+    @property
     def cache_key(self):
         def form(dtype, name):
             d, s = _dtype_shape(dtype)
@@ -404,6 +414,27 @@ class AsDouble32(TruncatedNumerical):
     def typename(self):
         return "Double32_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
+    @property
+    def awkward_form(self):
+        import awkward1
+
+        out = awkward1.forms.NumpyForm(
+            (),
+            8,
+            "d",
+            parameters={
+                "uproot": {
+                    "as": "Double32",
+                    "low": self._low,
+                    "high": self._high,
+                    "num_bits": self._num_bits,
+                }
+            },
+        )
+        for size in self._to_dims[::-1]:
+            out = awkward1.forms.RegularForm(out, size)
+        return out
+
 
 class AsFloat16(TruncatedNumerical):
     def __init__(self, low, high, num_bits, to_dims=()):
@@ -426,6 +457,27 @@ class AsFloat16(TruncatedNumerical):
     @property
     def typename(self):
         return "Float16_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
+
+    @property
+    def awkward_form(self):
+        import awkward1
+
+        out = awkward1.forms.NumpyForm(
+            (),
+            4,
+            "f",
+            parameters={
+                "uproot": {
+                    "as": "Float16",
+                    "low": self._low,
+                    "high": self._high,
+                    "num_bits": self._num_bits,
+                }
+            },
+        )
+        for size in self._to_dims[::-1]:
+            out = awkward1.forms.RegularForm(out, size)
+        return out
 
 
 class AsSTLBits(Numerical):

@@ -10,6 +10,8 @@ import pytest
 import skhep_testdata
 
 import uproot4
+from uproot4.interpretation.numerical import AsDtype
+from uproot4.interpretation.jagged import AsJagged
 
 
 def test_histograms_outside_of_ttrees():
@@ -292,13 +294,13 @@ def test_jagged_strided_awkward():
         assert result[0, 0, "fP", "fZ"] == -8.16079330444336
 
 
-def test_jagged_awkward():
+def test_jagged_awkward_1():
     awkward1 = pytest.importorskip("awkward1")
     with uproot4.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
     )["tree/evt/SliceU64"] as branch:
+        assert branch.interpretation == AsJagged(AsDtype(">u8"), header_bytes=1)
         result = branch.array(library="ak", entry_stop=6)
-
         assert awkward1.to_list(result) == [
             [],
             [1],
@@ -307,3 +309,361 @@ def test_jagged_awkward():
             [4, 4, 4, 4],
             [5, 5, 5, 5, 5],
         ]
+
+
+def test_jagged_awkward_2():
+    awkward1 = pytest.importorskip("awkward1")
+    with uproot4.open(
+        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
+    )["tree/evt/StlVecF64"] as branch:
+        assert branch.interpretation == AsJagged(AsDtype(">f8"), header_bytes=10)
+        result = branch.array(library="ak", entry_stop=6)
+        assert awkward1.to_list(result) == [
+            [],
+            [1],
+            [2, 2],
+            [3, 3, 3],
+            [4, 4, 4, 4],
+            [5, 5, 5, 5, 5],
+        ]
+
+
+def test_general_awkward_form():
+    with uproot4.open(skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root"))[
+        "tree/evt"
+    ] as branch:
+        assert json.loads(repr(branch.interpretation.awkward_form)) == json.loads(
+            """{
+    "class": "RecordArray",
+    "contents": {
+        "ArrayF32": {
+            "class": "RegularArray",
+            "content": "float32",
+            "size": 10
+        },
+        "ArrayF64": {
+            "class": "RegularArray",
+            "content": "float64",
+            "size": 10
+        },
+        "ArrayI16": {
+            "class": "RegularArray",
+            "content": "int16",
+            "size": 10
+        },
+        "ArrayI32": {
+            "class": "RegularArray",
+            "content": "int32",
+            "size": 10
+        },
+        "ArrayI64": {
+            "class": "RegularArray",
+            "content": "int64",
+            "size": 10
+        },
+        "ArrayU16": {
+            "class": "RegularArray",
+            "content": "uint16",
+            "size": 10
+        },
+        "ArrayU32": {
+            "class": "RegularArray",
+            "content": "uint32",
+            "size": 10
+        },
+        "ArrayU64": {
+            "class": "RegularArray",
+            "content": "uint64",
+            "size": 10
+        },
+        "Beg": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint8",
+            "parameters": {
+                "__array__": "string",
+                "uproot": {
+                    "as": "string",
+                    "header": false,
+                    "length_bytes": "1-5"
+                }
+            }
+        },
+        "End": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint8",
+            "parameters": {
+                "__array__": "string",
+                "uproot": {
+                    "as": "string",
+                    "header": false,
+                    "length_bytes": "1-5"
+                }
+            }
+        },
+        "F32": "float32",
+        "F64": "float64",
+        "I16": "int16",
+        "I32": "int32",
+        "I64": "int64",
+        "N": "uint32",
+        "P3": {
+            "class": "RecordArray",
+            "contents": {
+                "Px": "int32",
+                "Py": "float64",
+                "Pz": "int32"
+            },
+            "parameters": {
+                "__hidden_prefix__": "@",
+                "__record__": "P3"
+            }
+        },
+        "SliceF32": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "float32",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "SliceF64": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "float64",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "SliceI16": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "int16",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "SliceI32": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "int32",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "SliceI64": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "int64",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "SliceU16": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint16",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "SliceU32": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint32",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "SliceU64": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint64",
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            }
+        },
+        "StdStr": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint8",
+            "parameters": {
+                "__array__": "string",
+                "uproot": {
+                    "as": "string",
+                    "header": true,
+                    "length_bytes": "1-5"
+                }
+            }
+        },
+        "StlVecF32": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "float32",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecF64": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "float64",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecI16": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "int16",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecI32": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "int32",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecI64": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "int64",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecStr": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": {
+                "class": "ListOffsetArray32",
+                "offsets": "i32",
+                "content": "uint8",
+                "parameters": {
+                    "__array__": "string",
+                    "uproot": {
+                        "as": "string",
+                        "header": false,
+                        "length_bytes": "1-5"
+                    }
+                }
+            },
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecU16": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint16",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecU32": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint32",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "StlVecU64": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint64",
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            }
+        },
+        "Str": {
+            "class": "ListOffsetArray32",
+            "offsets": "i32",
+            "content": "uint8",
+            "parameters": {
+                "__array__": "string",
+                "uproot": {
+                    "as": "string",
+                    "header": false,
+                    "length_bytes": "1-5"
+                }
+            }
+        },
+        "U16": "uint16",
+        "U32": "uint32",
+        "U64": "uint64"
+    },
+    "parameters": {
+        "__hidden_prefix__": "@",
+        "__record__": "Event"
+    }
+}"""
+        )
+
+
+# def test_jagged_awkward_3():
+#     awkward1 = pytest.importorskip("awkward1")
+#     with uproot4.open(
+#         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
+#     )["tree/evt/StlVecStr"] as branch:
+#         print(branch.interpretation)
+
+#         print(branch.array(library="ak"))
+
+#     raise Exception

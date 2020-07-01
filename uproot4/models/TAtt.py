@@ -7,6 +7,7 @@ import struct
 import numpy
 
 import uproot4.model
+import uproot4._util
 
 
 _tattline1_format1 = struct.Struct(">hhh")
@@ -33,6 +34,23 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
         members.append(("fLineWidth", numpy.dtype(">i2")))
         return uproot4.interpretation.objects.AsStridedObjects(
             cls, members, original=original
+        )
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        contents = {}
+        if header:
+            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@instance_version"] = uproot4._util.awkward_form(
+                numpy.dtype("u2")
+            )
+        contents["fLineColor"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fLineStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fLineWidth"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        return awkward1.forms.RecordForm(
+            contents, parameters={"__record__": "TAttLine", "__hidden_prefix__": "@"},
         )
 
     base_names_versions = []
@@ -62,6 +80,23 @@ class Model_TAttLine_v2(uproot4.model.VersionedModel):
         members.append(("fLineWidth", numpy.dtype(">i2")))
         return uproot4.interpretation.objects.AsStridedObjects(
             cls, members, original=original
+        )
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        contents = {}
+        if header:
+            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@instance_version"] = uproot4._util.awkward_form(
+                numpy.dtype("u2")
+            )
+        contents["fLineColor"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fLineStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fLineWidth"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        return awkward1.forms.RecordForm(
+            contents, parameters={"__record__": "TAttLine", "__hidden_prefix__": "@"},
         )
 
     base_names_versions = []
@@ -94,6 +129,22 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
             cls, members, original=original
         )
 
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        contents = {}
+        if header:
+            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@instance_version"] = uproot4._util.awkward_form(
+                numpy.dtype("u2")
+            )
+        contents["fFillColor"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fFillStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        return awkward1.forms.RecordForm(
+            contents, parameters={"__record__": "TAttFill", "__hidden_prefix__": "@"},
+        )
+
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
     class_flags = {}
@@ -118,6 +169,22 @@ class Model_TAttFill_v2(uproot4.model.VersionedModel):
         members.append(("fFillStyle", numpy.dtype(">i2")))
         return uproot4.interpretation.objects.AsStridedObjects(
             cls, members, original=original
+        )
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        contents = {}
+        if header:
+            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@instance_version"] = uproot4._util.awkward_form(
+                numpy.dtype("u2")
+            )
+        contents["fFillColor"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fFillStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        return awkward1.forms.RecordForm(
+            contents, parameters={"__record__": "TAttFill", "__hidden_prefix__": "@"},
         )
 
     base_names_versions = []
@@ -150,6 +217,23 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
         members.append(("fMarkerSize", numpy.dtype(">f4")))
         return uproot4.interpretation.objects.AsStridedObjects(
             cls, members, original=original
+        )
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        import awkward1
+
+        contents = {}
+        if header:
+            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@instance_version"] = uproot4._util.awkward_form(
+                numpy.dtype("u2")
+            )
+        contents["fMarkerColor"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fMarkerStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
+        contents["fMarkerSize"] = uproot4._util.awkward_form(numpy.dtype("f4"))
+        return awkward1.forms.RecordForm(
+            contents, parameters={"__record__": "TAttMarker", "__hidden_prefix__": "@"},
         )
 
     base_names_versions = []

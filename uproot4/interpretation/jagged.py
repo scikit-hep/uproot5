@@ -100,7 +100,13 @@ class AsJagged(uproot4.interpretation.Interpretation):
 
     @property
     def awkward_form(self):
-        raise NotImplementedError
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._content),
+            parameters={"uproot": {"as": "jagged", "header_bytes": self._header_bytes}},
+        )
 
     @property
     def cache_key(self):
