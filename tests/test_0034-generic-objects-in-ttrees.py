@@ -1239,3 +1239,57 @@ def test_pandas_vector_TLorentzVector():
             54.77949905395508,
             39.401695251464844,
         ]
+
+
+def test_map_string_TVector3():
+    awkward1 = pytest.importorskip("awkward1")
+    with uproot4.open(skhep_testdata.data_path("uproot-issue494.root"))[
+        "Model/Model.scoringMeshTranslation"
+    ] as branch:
+        result = branch.array(library="ak")
+        assert awkward1.to_list(result["0"]) == [
+            [
+                "global_mesh",
+                "mesh_foil1",
+                "mesh_foil10",
+                "mesh_foil11",
+                "mesh_foil2",
+                "mesh_foil3",
+                "mesh_foil4",
+                "mesh_foil5",
+                "mesh_foil6",
+                "mesh_foil7",
+                "mesh_foil8",
+                "mesh_foil9",
+                "mesh_t1",
+                "mesh_t2",
+                "mesh_t3",
+                "mesh_t4",
+                "mesh_t5",
+                "mesh_t6",
+                "mesh_t7",
+            ]
+        ]
+        assert awkward1.to_list(result["1"]) == [
+            [
+                {"fX": 0.0, "fY": 0.0, "fZ": 0.074},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.048509515},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.09400956000000006},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.09500956300000007},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.049509518},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.050509521},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.079009536},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.08000953900000002},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.08100954200000002},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.08200954500000003},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.09200955400000005},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.09300955700000006},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.038000009},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.054000023999999994},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.06850002999999999},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.08550004800000004},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.09850006600000008},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.11300007200000009},
+                {"fX": 0.0, "fY": 0.04, "fZ": 0.13600007800000008},
+            ]
+        ]

@@ -742,19 +742,31 @@ class HasBranches(Mapping):
         full_paths=True,
         name_width=20,
         typename_width=20,
-        interpretation_width=38,
+        interpretation_width=34,
         stream=sys.stdout,
     ):
         """
         Args:
             stream: Object with a `write` method for writing the output.
         """
-        formatter = "{{0:{0}.{0}}} {{1:{1}.{1}}} {{2:{2}.{2}}}\n".format(
+        formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}\n".format(
             name_width, typename_width, interpretation_width,
         )
 
         stream.write(formatter.format("name", "typename", "interpretation"))
-        stream.write("-" * (name_width + typename_width + interpretation_width + 2))
+        stream.write(
+            "-" * name_width
+            + "-+-"
+            + "-" * typename_width
+            + "-+-"
+            + "-" * interpretation_width
+            + "\n"
+        )
+
+        if isinstance(self, TBranch):
+            stream.write(
+                formatter.format(self.name, self.typename, repr(self.interpretation))
+            )
 
         for name, branch in self.iteritems(
             recursive=recursive,
@@ -764,7 +776,7 @@ class HasBranches(Mapping):
             full_paths=full_paths,
         ):
             stream.write(
-                formatter.format(name, branch.typename, repr(branch.interpretation),)
+                formatter.format(name, branch.typename, repr(branch.interpretation))
             )
 
     def arrays(

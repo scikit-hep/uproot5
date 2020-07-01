@@ -54,12 +54,20 @@ class Model_TObject(uproot4.model.Model):
         contents = {}
         if tobject_header:
             contents["@instance_version"] = uproot4._util.awkward_form(
-                numpy.dtype("u2")
+                numpy.dtype("u2"), file, header, tobject_header
             )
-            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
-            contents["@fUniqueID"] = uproot4._util.awkward_form(numpy.dtype("u4"))
-            contents["@fBits"] = uproot4._util.awkward_form(numpy.dtype("u4"))
-            contents["@pidf"] = uproot4._util.awkward_form(numpy.dtype("u2"))
+            contents["@num_bytes"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
+            contents["@fUniqueID"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
+            contents["@fBits"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
+            contents["@pidf"] = uproot4._util.awkward_form(
+                numpy.dtype("u2"), file, header, tobject_header
+            )
         return awkward1.forms.RecordForm(
             contents, parameters={"__record__": "TObject"},
         )

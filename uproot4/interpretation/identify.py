@@ -611,7 +611,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         classname = typename[start:stop]
 
         if quote:
-            return "c({0})".format(repr(classname))
+            cls = "c({0})".format(repr(classname))
         elif file is None:
             cls = uproot4.classes[classname]
         else:
