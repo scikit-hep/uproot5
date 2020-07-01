@@ -165,12 +165,11 @@ class AsDtype(Numerical):
     def numpy_dtype(self):
         return self._to_dtype
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         d, s = _dtype_shape(self._to_dtype)
-        out = uproot4._util.awkward_form(d)
+        out = uproot4._util.awkward_form(d, file, header, tobject_header)
         for size in s[::-1]:
             out = awkward1.forms.RegularForm(out, size)
         return out
@@ -414,8 +413,7 @@ class AsDouble32(TruncatedNumerical):
     def typename(self):
         return "Double32_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         out = awkward1.forms.NumpyForm(
@@ -458,8 +456,7 @@ class AsFloat16(TruncatedNumerical):
     def typename(self):
         return "Float16_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         out = awkward1.forms.NumpyForm(

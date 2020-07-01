@@ -61,7 +61,7 @@ class Model_TObject(uproot4.model.Model):
             contents["@fBits"] = uproot4._util.awkward_form(numpy.dtype("u4"))
             contents["@pidf"] = uproot4._util.awkward_form(numpy.dtype("u2"))
         return awkward1.forms.RecordForm(
-            contents, parameters={"__record__": "TObject", "__hidden_prefix__": "@"},
+            contents, parameters={"__record__": "TObject"},
         )
 
     def __repr__(self):

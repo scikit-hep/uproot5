@@ -50,7 +50,7 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
         contents["fLineStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         contents["fLineWidth"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         return awkward1.forms.RecordForm(
-            contents, parameters={"__record__": "TAttLine", "__hidden_prefix__": "@"},
+            contents, parameters={"__record__": "TAttLine"}
         )
 
     base_names_versions = []
@@ -96,7 +96,7 @@ class Model_TAttLine_v2(uproot4.model.VersionedModel):
         contents["fLineStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         contents["fLineWidth"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         return awkward1.forms.RecordForm(
-            contents, parameters={"__record__": "TAttLine", "__hidden_prefix__": "@"},
+            contents, parameters={"__record__": "TAttLine"}
         )
 
     base_names_versions = []
@@ -142,7 +142,7 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
         contents["fFillColor"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         contents["fFillStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         return awkward1.forms.RecordForm(
-            contents, parameters={"__record__": "TAttFill", "__hidden_prefix__": "@"},
+            contents, parameters={"__record__": "TAttFill"}
         )
 
     base_names_versions = []
@@ -184,7 +184,7 @@ class Model_TAttFill_v2(uproot4.model.VersionedModel):
         contents["fFillColor"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         contents["fFillStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         return awkward1.forms.RecordForm(
-            contents, parameters={"__record__": "TAttFill", "__hidden_prefix__": "@"},
+            contents, parameters={"__record__": "TAttFill"}
         )
 
     base_names_versions = []
@@ -233,7 +233,7 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
         contents["fMarkerStyle"] = uproot4._util.awkward_form(numpy.dtype("i2"))
         contents["fMarkerSize"] = uproot4._util.awkward_form(numpy.dtype("f4"))
         return awkward1.forms.RecordForm(
-            contents, parameters={"__record__": "TAttMarker", "__hidden_prefix__": "@"},
+            contents, parameters={"__record__": "TAttMarker"}
         )
 
     base_names_versions = []

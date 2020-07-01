@@ -228,9 +228,9 @@ class Model_TStreamerInfo(uproot4.model.Model):
             "        contents = {}",
             "        if header:",
             "            contents['@num_bytes'] = "
-            "uproot4._util.awkward_form(numpy.dtype('u4'))",
+            "uproot4._util.awkward_form(numpy.dtype('u4'), file, header, tobject_header)",
             "            contents['@instance_version'] = "
-            "uproot4._util.awkward_form(numpy.dtype('u2'))",
+            "uproot4._util.awkward_form(numpy.dtype('u2'), file, header, tobject_header)",
         ]
         fields = []
         formats = []
@@ -267,15 +267,12 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
         strided_interpretation.append("")
 
-        awkward_form.extend(
-            [
-                "        return RecordForm(contents, parameters={",
-                "            '__record__': {0},".format(repr(self.name)),
-                "            '__hidden_prefix__': '@'",
-                "        })",
-                "",
-            ]
+        awkward_form.append(
+            "        return RecordForm(contents, parameters={'__record__': "
+            + repr(self.name)
+            + "})"
         )
+        awkward_form.append("")
 
         class_data = []
 
@@ -592,9 +589,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             read_members.append("            cursor.skip(1)")
 
         read_members.append(
-            "        self._members[{0}] = cursor.array(chunk, self.member({1}), tmp, context)".format(
-                repr(self.name), repr(self.count_name)
-            )
+            "        self._members[{0}] = cursor.array(chunk, self.member({1}), "
+            "tmp, context)".format(repr(self.name), repr(self.count_name))
         )
 
         strided_interpretation.append(
@@ -608,9 +604,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         awkward_form.extend(
             [
                 "        contents[{0}] = ListOffsetForm('i32', "
-                "uproot4._util.awkward_form(cls._dtype{1}),".format(
-                    repr(self.name), len(dtypes)
-                ),
+                "uproot4._util.awkward_form(cls._dtype{1}, file, header, "
+                "tobject_header),".format(repr(self.name), len(dtypes)),
                 "            parameters={'uproot': {'as': 'TStreamerBasicPointer', "
                 "'count_name': " + repr(self.count_name) + "}}",
                 "        )",
@@ -803,14 +798,16 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
             else:
                 awkward_form.append(
-                    "        contents[{0}] = uproot4._util.awkward_form({1})".format(
+                    "        contents[{0}] = uproot4._util.awkward_form({1}, "
+                    "file, header, tobject_header)".format(
                         repr(self.name), _ftype_to_dtype(self.fType)
                     )
                 )
 
         else:
             awkward_form.append(
-                "        contents[{0}] = RegularForm(uproot4._util.awkward_form({1}), {2})".format(
+                "        contents[{0}] = RegularForm(uproot4._util.awkward_form({1}, "
+                "file, header, tobject_header), {2})".format(
                     repr(self.name), _ftype_to_dtype(self.fType), self.array_length
                 )
             )
@@ -967,9 +964,8 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
 
         awkward_form.append(
-            "        contents[{0}] = cls._stl_container{1}.awkward_form".format(
-                repr(self.name), len(stl_containers)
-            )
+            "        contents[{0}] = cls._stl_container{1}.awkward_form(file, "
+            "header, tobject_header)".format(repr(self.name), len(stl_containers))
         )
 
         stl_containers.append(stl_container)

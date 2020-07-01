@@ -40,13 +40,11 @@ class Model_TNamed(uproot4.model.Model):
             )
         contents["fName"] = uproot4.stl_containers.AsString(
             False, typename="TString"
-        ).awkward_form
+        ).awkward_form(file, header, tobject_header)
         contents["fTitle"] = uproot4.stl_containers.AsString(
             False, typename="TString"
-        ).awkward_form
-        return awkward1.forms.RecordForm(
-            contents, parameters={"__record__": "TNamed", "__hidden_prefix__": "@"},
-        )
+        ).awkward_form(file, header, tobject_header)
+        return awkward1.forms.RecordForm(contents, parameters={"__record__": "TNamed"},)
 
 
 uproot4.classes["TNamed"] = Model_TNamed

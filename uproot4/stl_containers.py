@@ -145,8 +145,7 @@ class AsSTLContainer(object):
     def typename(self):
         raise AssertionError
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         raise AssertionError
 
     def read(self, chunk, cursor, context, file, parent, header=True):
@@ -200,8 +199,7 @@ class AsString(AsSTLContainer):
         else:
             return self._typename
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
@@ -273,13 +271,12 @@ class AsArray(AsSTLContainer):
     def typename(self):
         return _content_typename(self._values) + "*"
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
             "i32",
-            uproot4._util.awkward_form(self._values),
+            uproot4._util.awkward_form(self._values, file, header, tobject_header),
             parameters={"uproot": {"as": "array", "header": self._header}},
         )
 
@@ -334,13 +331,12 @@ class AsVector(AsSTLContainer):
     def typename(self):
         return "std::vector<{0}>".format(_content_typename(self._values))
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
             "i32",
-            uproot4._util.awkward_form(self._values),
+            uproot4._util.awkward_form(self._values, file, header, tobject_header),
             parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
@@ -474,13 +470,12 @@ class AsSet(AsSTLContainer):
     def typename(self):
         return "std::set<{0}>".format(_content_typename(self._keys))
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
             "i32",
-            uproot4._util.awkward_form(self._keys),
+            uproot4._util.awkward_form(self._keys, file, header, tobject_header),
             parameters={
                 "__array__": "set",
                 "uproot": {"as": "set", "header": self._header},
@@ -654,16 +649,19 @@ class AsMap(AsSTLContainer):
             _content_typename(self._keys), _content_typename(self._values)
         )
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
             "i32",
             awkward1.forms.RecordForm(
                 (
-                    uproot4._util.awkward_form(self._keys),
-                    uproot4._util.awkward_form(self._values),
+                    uproot4._util.awkward_form(
+                        self._keys, file, header, tobject_header
+                    ),
+                    uproot4._util.awkward_form(
+                        self._values, file, header, tobject_header
+                    ),
                 )
             ),
             parameters={

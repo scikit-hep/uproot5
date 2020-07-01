@@ -327,7 +327,7 @@ def test_general_awkward_form():
         "tree/evt"
     ] as branch:
         assert json.loads(
-            branch.interpretation.awkward_form.tojson(verbose=False)
+            branch.interpretation.awkward_form(branch.file).tojson(verbose=False)
         ) == json.loads(
             """{
     "class": "RecordArray",
@@ -412,7 +412,6 @@ def test_general_awkward_form():
                 "Pz": "int32"
             },
             "parameters": {
-                "__hidden_prefix__": "@",
                 "__record__": "P3"
             }
         },
@@ -646,7 +645,6 @@ def test_general_awkward_form():
         "U64": "uint64"
     },
     "parameters": {
-        "__hidden_prefix__": "@",
         "__record__": "Event"
     }
 }"""
@@ -992,3 +990,151 @@ def test_awkward_map_string_tstring():
             ["FOUR", "ONE", "THREE", "TWO"],
             ["FIVE", "FOUR", "ONE", "THREE", "TWO"],
         ]
+
+
+# def test_awkward_map_int_struct():
+#     awkward1 = pytest.importorskip("awkward1")
+#     with uproot4.open(skhep_testdata.data_path("uproot-issue468.root"))[
+#         "Geant4Data/Geant4Data./Geant4Data.particles"
+#     ] as branch:
+#         assert (
+#             repr(branch.interpretation) == "AsObjects(AsMap(True, dtype('>i4'), "
+#             "Model_BDSOutputROOTGeant4Data_3a3a_ParticleInfo))"
+#         )
+#         result = branch.array(library="ak")
+
+#         print(repr(result.layout))
+
+#         raise Exception
+
+#         assert result[0, "0"] == [
+#             -1000020040,
+#             -1000020030,
+#             -1000010030,
+#             -1000010020,
+#             -2212,
+#             -2112,
+#             -321,
+#             -211,
+#             -16,
+#             -15,
+#             -14,
+#             -13,
+#             -12,
+#             -11,
+#             0,
+#             11,
+#             12,
+#             13,
+#             14,
+#             15,
+#             16,
+#             22,
+#             211,
+#             321,
+#             2112,
+#             2212,
+#             1000010020,
+#             1000010030,
+#             1000020030,
+#             1000020040,
+#         ]
+
+#         raise Exception
+
+#         assert [x.member("name") for x in result.values()] == [
+#             "anti_alpha",
+#             "anti_He3",
+#             "anti_triton",
+#             "anti_deuteron",
+#             "anti_proton",
+#             "anti_neutron",
+#             "kaon-",
+#             "pi-",
+#             "anti_nu_tau",
+#             "tau+",
+#             "anti_nu_mu",
+#             "mu+",
+#             "anti_nu_e",
+#             "e+",
+#             "geantino",
+#             "e-",
+#             "nu_e",
+#             "mu-",
+#             "nu_mu",
+#             "tau-",
+#             "nu_tau",
+#             "gamma",
+#             "pi+",
+#             "kaon+",
+#             "neutron",
+#             "proton",
+#             "deuteron",
+#             "triton",
+#             "He3",
+#             "alpha",
+#         ]
+#         assert [x.member("charge") for x in result.values()] == [
+#             -2,
+#             -2,
+#             -1,
+#             -1,
+#             -1,
+#             0,
+#             -1,
+#             -1,
+#             0,
+#             1,
+#             0,
+#             1,
+#             0,
+#             1,
+#             0,
+#             -1,
+#             0,
+#             -1,
+#             0,
+#             -1,
+#             0,
+#             0,
+#             1,
+#             1,
+#             0,
+#             1,
+#             1,
+#             1,
+#             2,
+#             2,
+#         ]
+#         assert [x.member("mass") for x in result.values()] == [
+#             3.727379,
+#             2.808391,
+#             2.808921,
+#             1.875613,
+#             0.938272013,
+#             0.93956536,
+#             0.493677,
+#             0.1395701,
+#             0.0,
+#             1.77686,
+#             0.0,
+#             0.1056583715,
+#             0.0,
+#             0.00051099891,
+#             0.0,
+#             0.00051099891,
+#             0.0,
+#             0.1056583715,
+#             0.0,
+#             1.77686,
+#             0.0,
+#             0.0,
+#             0.1395701,
+#             0.493677,
+#             0.93956536,
+#             0.938272013,
+#             1.875613,
+#             2.808921,
+#             2.808391,
+#             3.727379,
+#         ]

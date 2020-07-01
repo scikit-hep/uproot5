@@ -93,8 +93,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(

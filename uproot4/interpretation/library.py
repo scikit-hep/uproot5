@@ -126,10 +126,9 @@ def _object_to_awkward_json(form, obj):
         return obj
 
     elif form["class"] == "RecordArray":
-        hidden_prefix = form["parameters"].get("__hidden_prefix__")
         out = {}
         for name, subform in form["contents"].items():
-            if hidden_prefix is None or not name.startswith(hidden_prefix):
+            if not name.startswith("@"):
                 out[name] = _object_to_awkward_json(subform, obj.member(name))
         return out
 
@@ -160,10 +159,48 @@ def _object_to_awkward_json(form, obj):
         raise AssertionError(form["class"])
 
 
-def _awkward_json_to_array(awkward1, form, as_json):
-    original = awkward1.from_iter(as_json)
+def _awkward_p(form):
+    out = form["parameters"]
+    out.pop("uproot", None)
+    return out
 
-    return original
+
+def _awkward_json_to_array(awkward1, form, array):
+    if form["class"] == "NumpyArray":
+        return array
+
+    elif form["class"] == "RecordArray":
+        contents = []
+        names = []
+        for name, subform in form["contents"].items():
+            if not name.startswith("@"):
+                contents.append(_awkward_json_to_array(awkward1, subform, array[name]))
+                names.append(name)
+        return awkward1.layout.RecordArray(contents, names, len(array), parameters=_awkward_p(form))
+
+    elif form["class"][:15] == "ListOffsetArray":
+        if form["parameters"].get("__array__") == "string":
+            content = _awkward_json_to_array(awkward1, form["content"], array.content)
+            return type(array)(array.offsets, content, parameters=_awkward_p(form))
+
+        elif form["parameters"].get("__array__") == "sorted_map":
+            key_form = form["content"]["contents"][0]
+            value_form = form["content"]["contents"][1]
+            keys = _awkward_json_to_array(awkward1, key_form, array.content["0"])
+            values = _awkward_json_to_array(awkward1, value_form, array.content["1"])
+            content = awkward1.layout.RecordArray((keys, values), None, len(array), parameters=_awkward_p(form["content"]))
+            return type(array)(array.offsets, content, parameters=_awkward_p(form))
+
+        else:
+            content = _awkward_json_to_array(awkward1, form["content"], array.content)
+            return type(array)(array.offsets, content, parameters=_awkward_p(form))
+
+    elif form["class"] == "RegularArray":
+        content = _awkward_json_to_array(awkward1, form["content"], array.content)
+        return awkward1.layout.RegularArray(content, form["size"], parameters=_awkward_p(form))
+
+    else:
+        raise AssertionError(form["class"])
 
 
 class Awkward(Library):
@@ -242,7 +279,11 @@ class Awkward(Library):
 
         elif isinstance(interpretation, uproot4.interpretation.objects.AsObjects):
             try:
-                form = json.loads(interpretation.awkward_form.tojson(verbose=True))
+                form = json.loads(
+                    interpretation.awkward_form(interpretation.branch.file).tojson(
+                        verbose=True
+                    )
+                )
             except uproot4.interpretation.objects.CannotBeAwkward as err:
                 raise ValueError(
                     """cannot produce Awkward Arrays for interpretation {0} because
@@ -260,9 +301,17 @@ in object {3}""".format(
                     )
                 )
 
-            return _awkward_json_to_array(
-                awkward1, form, (_object_to_awkward_json(form, x) for x in array)
+            unlabeled = awkward1.from_iter(
+                (_object_to_awkward_json(form, x) for x in array), highlevel=False
             )
+
+            return awkward1.Array(unlabeled)
+
+            # tmp = _awkward_json_to_array(awkward1, form, unlabeled)
+
+            # print(tmp)
+
+            # return awkward1.Array(tmp)
 
         elif array.dtype.names is not None:
             length, shape = array.shape[0], array.shape[1:]

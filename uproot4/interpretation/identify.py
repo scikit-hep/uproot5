@@ -48,8 +48,7 @@ in object {2}""".format(
     def numpy_dtype(self):
         raise self
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         raise self
 
     @property
