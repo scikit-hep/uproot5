@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import sys
 import json
+import distutils.version
 
 import numpy
 import pytest
@@ -76,16 +77,40 @@ def test_leaflist_pandas():
     pandas = pytest.importorskip("pandas")
     with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
         result = tree["leaflist"].array(library="pd")
-        assert list(result.columns) == [":x", ":y", ":z"]
-        assert result[":x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
-        assert result[":y"].values.tolist() == [1, 2, 3, 4, 5]
-        assert result[":z"].values.tolist() == [97, 98, 99, 100, 101]
 
-        result = tree.arrays("leaflist", library="pd")
-        assert list(result.columns) == ["leaflist:x", "leaflist:y", "leaflist:z"]
-        assert result["leaflist:x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
-        assert result["leaflist:y"].values.tolist() == [1, 2, 3, 4, 5]
-        assert result["leaflist:z"].values.tolist() == [97, 98, 99, 100, 101]
+        if distutils.version.LooseVersion(
+            pandas.__version__
+        ) < distutils.version.LooseVersion("0.21"):
+            assert list(result.columns) == ["x", "y", "z"]
+            assert result["x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+            assert result["y"].values.tolist() == [1, 2, 3, 4, 5]
+            assert result["z"].values.tolist() == [97, 98, 99, 100, 101]
+
+            result = tree.arrays("leaflist", library="pd")
+            assert list(result.columns) == [
+                ("leaflist", "x"),
+                ("leaflist", "y"),
+                ("leaflist", "z"),
+            ]
+            assert result["leaflist", "x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+            assert result["leaflist", "y"].values.tolist() == [1, 2, 3, 4, 5]
+            assert result["leaflist", "z"].values.tolist() == [97, 98, 99, 100, 101]
+
+        else:
+            assert list(result.columns) == [("x",), ("y",), ("z",)]
+            assert result["x",].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+            assert result["y",].values.tolist() == [1, 2, 3, 4, 5]
+            assert result["z",].values.tolist() == [97, 98, 99, 100, 101]
+
+            result = tree.arrays("leaflist", library="pd")
+            assert list(result.columns) == [
+                ("leaflist", "x"),
+                ("leaflist", "y"),
+                ("leaflist", "z"),
+            ]
+            assert result["leaflist", "x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+            assert result["leaflist", "y"].values.tolist() == [1, 2, 3, 4, 5]
+            assert result["leaflist", "z"].values.tolist() == [97, 98, 99, 100, 101]
 
 
 def test_fixed_width():

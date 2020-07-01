@@ -406,6 +406,17 @@ def _pandas_rangeindex():
     return getattr(pandas, "RangeIndex", pandas.Int64Index)
 
 
+def _strided_to_pandas(path, interpretation, data, arrays, columns):
+    for name, member in interpretation.members:
+        if not name.startswith("@"):
+            p = path + (name,)
+            if isinstance(member, uproot4.interpretation.objects.AsStridedObjects):
+                _strided_to_pandas(p, member, data, arrays, columns)
+            else:
+                arrays.append(data["/".join(p)])
+                columns.append(p)
+
+
 class Pandas(Library):
     name = "pd"
 
@@ -430,12 +441,45 @@ or
         pandas = self.imported
 
         if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
-            raise NotImplementedError
+            arrays = []
+            columns = []
+            _strided_to_pandas((), array.interpretation, array.array, arrays, columns)
+            maxlen = max(len(x) for x in columns)
+            if maxlen == 1:
+                columns = [x[0] for x in columns]
+            else:
+                columns = pandas.MultiIndex.from_tuples(
+                    [x + ("",) * (maxlen - len(x)) for x in columns]
+                )
+            out = pandas.DataFrame(dict(zip(columns, arrays)), columns=columns)
+            out.leaflist = maxlen != 1
+            return out
 
         elif isinstance(
             array, uproot4.interpretation.jagged.JaggedArray
-        ) and isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
-            raise NotImplementedError
+        ) and isinstance(
+            array.content, uproot4.interpretation.objects.StridedObjectArray
+        ):
+            index = pandas.MultiIndex.from_arrays(
+                array.parents_localindex(), names=["entry", "subentry"]
+            )
+            arrays = []
+            columns = []
+            _strided_to_pandas(
+                (), array.content.interpretation, array.content.array, arrays, columns
+            )
+            maxlen = max(len(x) for x in columns)
+            if maxlen == 1:
+                columns = [x[0] for x in columns]
+            else:
+                columns = pandas.MultiIndex.from_tuples(
+                    [x + ("",) * (maxlen - len(x)) for x in columns]
+                )
+            out = pandas.DataFrame(
+                dict(zip(columns, arrays)), columns=columns, index=index
+            )
+            out.leaflist = maxlen != 1
+            return out
 
         elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             index = pandas.MultiIndex.from_arrays(
@@ -460,15 +504,19 @@ or
             arrays = {}
             for n in array.dtype.names:
                 for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
-                    name = ":" + n + "".join("[" + str(x) + "]" for x in tup)
+                    name = (n + "".join("[" + str(x) + "]" for x in tup),)
                     names.append(name)
                     arrays[name] = array[n][(slice(None),) + tup]
-            return pandas.DataFrame(arrays, columns=names)
+            out = pandas.DataFrame(arrays, columns=names)
+            out.leaflist = True
+            return out
 
         elif array.dtype.names is not None:
-            names = [":" + x for x in array.dtype.names]
-            arrays = dict((":" + x, array[x]) for x in array.dtype.names)
-            return pandas.DataFrame(arrays, columns=names)
+            columns = pandas.MultiIndex.from_tuples([(x,) for x in array.dtype.names])
+            arrays = dict((y, array[x]) for x, y in zip(array.dtype.names, columns))
+            out = pandas.DataFrame(arrays, columns=columns)
+            out.leaflist = True
+            return out
 
         elif len(array.shape) != 1:
             names = []
@@ -477,7 +525,9 @@ or
                 name = "".join("[" + str(x) + "]" for x in tup)
                 names.append(name)
                 arrays[name] = array[(slice(None),) + tup]
-            return pandas.DataFrame(arrays, columns=names)
+            out = pandas.DataFrame(arrays, columns=names)
+            out.leaflist = False
+            return out
 
         else:
             return pandas.Series(array)
@@ -493,7 +543,13 @@ or
             else:
                 df = original_arrays[name]
                 for subname in df.columns:
-                    path = name + subname
+                    if df.leaflist:
+                        if isinstance(subname, tuple):
+                            path = (name,) + subname
+                        else:
+                            path = (name, subname)
+                    else:
+                        path = name + subname
                     arrays[path] = df[subname]
                     names.append(path)
         return arrays, names
@@ -509,6 +565,8 @@ or
             return dict((name, arrays[name]) for name in names)
         elif uproot4._util.isstr(how) or how is None:
             arrays, names = self._only_series(arrays, names)
+            if any(isinstance(x, tuple) for x in names):
+                names = pandas.MultiIndex.from_tuples(names)
             if all(isinstance(x.index, _pandas_rangeindex()) for x in arrays.values()):
                 return pandas.DataFrame(data=arrays, columns=names)
             indexes = []

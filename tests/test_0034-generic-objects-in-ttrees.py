@@ -238,10 +238,11 @@ def test_strided_awkward():
     ] as tree:
         result = tree["MET"].array(library="ak")
 
-        assert (
-            repr(awkward1.type(result))
-            == '2421 * TVector2["fX": float64, "fY": float64]'
-        )
+        if not uproot4._util.py35 and not uproot4._util.py2:
+            assert (
+                repr(awkward1.type(result))
+                == '2421 * TVector2["fX": float64, "fY": float64]'
+            )
 
         assert awkward1.to_list(result["fX"][:10]) == [
             5.912771224975586,
@@ -276,11 +277,12 @@ def test_jagged_strided_awkward():
     ] as tree:
         result = tree["muonp4"].array(library="ak")
 
-        assert (
-            repr(awkward1.type(result))
-            == '2421 * var * TLorentzVector["fP": TVector3["fX": float64, '
-            '"fY": float64, "fZ": float64], "fE": float64]'
-        )
+        if not uproot4._util.py35 and not uproot4._util.py2:
+            assert (
+                repr(awkward1.type(result))
+                == '2421 * var * TLorentzVector["fP": TVector3["fX": float64, '
+                '"fY": float64, "fZ": float64], "fE": float64]'
+            )
 
         assert result[0, 0, "fE"] == 54.77949905395508
         assert result[0, 0, "fP", "fX"] == -52.89945602416992
@@ -1003,13 +1005,14 @@ def test_awkward_map_int_struct():
             "Model_BDSOutputROOTGeant4Data_3a3a_ParticleInfo))"
         )
         result = branch.array(library="ak")
-        assert (
-            repr(awkward1.type(result))
-            == '1 * [var * (int64, struct[["charge", "mass", "name"], '
-            '[int64, float64, string], parameters={"__record__": '
-            '"BDSOutputROOTGeant4Data::ParticleInfo"}]), '
-            'parameters={"__array__": "sorted_map"}]'
-        )
+        if not uproot4._util.py35 and not uproot4._util.py2:
+            assert (
+                repr(awkward1.type(result))
+                == '1 * [var * (int64, struct[["charge", "mass", "name"], '
+                '[int64, float64, string], parameters={"__record__": '
+                '"BDSOutputROOTGeant4Data::ParticleInfo"}]), '
+                'parameters={"__array__": "sorted_map"}]'
+            )
         assert awkward1.to_list(result[0, "0"]) == [
             -1000020040,
             -1000020030,
@@ -1199,4 +1202,40 @@ def test_awkward_nosplit_file():
             "end-002",
             "end-003",
             "end-004",
+        ]
+
+
+def test_pandas_TVector2():
+    pandas = pytest.importorskip("pandas")
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        result = tree["MET"].array(library="pd")
+
+        assert result["fX"].values[0] == 5.912771224975586
+        assert result["fY"].values[0] == 2.5636332035064697
+
+
+def test_pandas_vector_TLorentzVector():
+    pandas = pytest.importorskip("pandas")
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events"
+    ] as tree:
+        result = tree["muonp4"].array(library="pd")
+
+        assert result["fP", "fX"][0].values.tolist() == [
+            -52.89945602416992,
+            37.7377815246582,
+        ]
+        assert result["fP", "fY"][0].values.tolist() == [
+            -11.654671669006348,
+            0.6934735774993896,
+        ]
+        assert result["fP", "fZ"][0].values.tolist() == [
+            -8.16079330444336,
+            -11.307581901550293,
+        ]
+        assert result["fE"][0].values.tolist() == [
+            54.77949905395508,
+            39.401695251464844,
         ]
