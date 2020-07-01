@@ -29,6 +29,13 @@ class JaggedArray(object):
     def __len__(self):
         return len(self._offsets) - 1
 
+    def __iter__(self):
+        start = self._offsets[0]
+        content = self._content
+        for stop in self._offsets[1:]:
+            yield content[start:stop]
+            start = stop
+
     def parents_localindex(self):
         counts = self._offsets[1:] - self._offsets[:-1]
         if uproot4._util.win:

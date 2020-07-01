@@ -35,6 +35,13 @@ class StringArray(object):
     def __len__(self):
         return len(self._offsets) - 1
 
+    def __iter__(self):
+        start = self._offsets[0]
+        content = self._content
+        for stop in self._offsets[1:]:
+            yield uproot4._util.ensure_str(content[start:stop])
+            start = stop
+
 
 class AsStrings(uproot4.interpretation.Interpretation):
     def __init__(

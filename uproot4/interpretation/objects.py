@@ -81,6 +81,19 @@ class ObjectArray(object):
         else:
             raise NotImplementedError(repr(where))
 
+    def __iter__(self):
+        cursor = uproot4.source.cursor.Cursor(0)
+        source = self._branch.file.source
+        context = self._context
+        file = self._branch.file
+        branch = self._branch
+        byte_start = self._byte_offsets[0]
+        for byte_stop in self._byte_offsets[1:]:
+            data = self._byte_content[byte_start:byte_stop]
+            chunk = uproot4.source.chunk.Chunk.wrap(source, data)
+            yield self._model.read(chunk, cursor, context, file, branch)
+            byte_start = byte_stop
+
 
 class AsObjects(uproot4.interpretation.Interpretation):
     def __init__(self, model, branch=None):
@@ -284,7 +297,8 @@ class CannotBeStrided(Exception):
 
 
 class CannotBeAwkward(Exception):
-    pass
+    def __init__(self, because):
+        self.because = because
 
 
 def _strided_object(path, interpretation, data):
@@ -325,6 +339,11 @@ class StridedObjectArray(object):
 
         else:
             return StridedObjectArray(self._interpretation, self._array[where])
+
+    def __iter__(self):
+        interpretation = self._interpretation
+        for x in self._array:
+            yield _strided_object("", interpretation, x)
 
 
 def _unravel_members(members):

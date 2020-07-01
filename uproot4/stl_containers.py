@@ -667,7 +667,7 @@ class AsMap(AsSTLContainer):
                 )
             ),
             parameters={
-                "__array__": "map",
+                "__array__": "sorted_map",
                 "uproot": {"as": "map", "header": self._header},
             },
         )

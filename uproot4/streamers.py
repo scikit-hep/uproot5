@@ -446,8 +446,26 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
     ):
         read_members.append(
             "        raise uproot4.deserialization.DeserializationError("
-            "'not implemented: class members defined by {0}', chunk, cursor, "
-            "context, self._file.file_path)".format(type(self).__name__)
+            "'not implemented: class members defined by {0} of type {1} in member "
+            "{2} of class {3}', chunk, cursor, context, self._file.file_path)".format(
+                type(self).__name__, self.typename, self.name, streamerinfo.name
+            )
+        )
+
+        strided_interpretation.append(
+            "        raise uproot4.deserialization.CannotBeStrided("
+            "'not implemented: class members defined by {0} of type {1} in member "
+            "{2} of class {3}')".format(
+                type(self).__name__, self.typename, self.name, streamerinfo.name
+            )
+        )
+
+        awkward_form.append(
+            "        raise uproot4.deserialization.CannotBeAwkward("
+            "'not implemented: class members defined by {0} of type {1} in member "
+            "{2} of class {3}')".format(
+                type(self).__name__, self.typename, self.name, streamerinfo.name
+            )
         )
 
 
@@ -580,8 +598,10 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
-                repr(self.typename)
+            "        raise uproot4.deserialization.CannotBeStrided("
+            "'class members defined by {0} of type {1} in member "
+            "{2} of class {3}')".format(
+                type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
 
@@ -751,8 +771,10 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
         else:
             strided_interpretation.append(
-                "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
-                    repr(self.typename)
+                "        raise uproot4.deserialization.CannotBeStrided("
+                "'class members defined by {0} of type {1} in member "
+                "{2} of class {3}')".format(
+                    type(self).__name__, self.typename, self.name, streamerinfo.name
                 )
             )
 
@@ -851,8 +873,10 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
-                repr(self.typename)
+            "        raise uproot4.deserialization.CannotBeStrided("
+            "'class members defined by {0} of type {1} in member "
+            "{2} of class {3}')".format(
+                type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
 
@@ -1009,8 +1033,10 @@ class pointer_types(object):
                 "context, self._file, self)".format(repr(self.name))
             )
             strided_interpretation.append(
-                "        raise uproot4.interpretation.objects.CannotBeStrided({0})".format(
-                    repr(self.typename)
+                "        raise uproot4.deserialization.CannotBeStrided("
+                "'class members defined by {0} of type {1} in member "
+                "{2} of class {3}')".format(
+                    type(self).__name__, self.typename, self.name, streamerinfo.name
                 )
             )
             class_flags["has_read_object_any"] = True

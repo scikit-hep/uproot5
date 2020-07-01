@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import itertools
+import json
 
 import numpy
 
@@ -115,6 +116,55 @@ def _strided_to_awkward(awkward1, path, interpretation, data):
     )
 
 
+# FIXME: _object_to_awkward_json and _awkward_json_to_array are slow functions
+# with the right outputs to be replaced by compiled versions in awkward1._io.
+
+
+def _object_to_awkward_json(form, obj):
+    if form["class"] == "NumpyArray":
+        return obj
+
+    elif form["class"] == "RecordArray":
+        hidden_prefix = form["parameters"].get("__hidden_prefix__")
+        out = {}
+        for name, subform in form["contents"].items():
+            if hidden_prefix is None or not name.startswith(hidden_prefix):
+                out[name] = _object_to_awkward_json(subform, obj.member(name))
+        return out
+
+    elif form["class"][:15] == "ListOffsetArray":
+        if form["parameters"].get("__array__") == "string":
+            return obj
+
+        elif form["parameters"].get("__array__") == "sorted_map":
+            key_form = form["content"]["contents"][0]
+            value_form = form["content"]["contents"][1]
+            return [
+                (
+                    _object_to_awkward_json(key_form, x),
+                    _object_to_awkward_json(value_form, y),
+                )
+                for x, y in obj.items()
+            ]
+
+        else:
+            subform = form["content"]
+            return [_object_to_awkward_json(subform, x) for x in obj]
+
+    elif form["class"] == "RegularArray":
+        subform = form["content"]
+        return [_object_to_awkward_json(subform, x) for x in obj]
+
+    else:
+        raise AssertionError(form["class"])
+
+
+def _awkward_json_to_array(awkward1, form, as_json):
+    original = awkward1.from_iter(as_json)
+
+    return original
+
+
 class Awkward(Library):
     name = "ak"
 
@@ -190,7 +240,28 @@ class Awkward(Library):
             return awkward1.Array(layout)
 
         elif isinstance(interpretation, uproot4.interpretation.objects.AsObjects):
-            raise NotImplementedError
+            try:
+                form = json.loads(interpretation.awkward_form.tojson(verbose=True))
+            except uproot4.interpretation.objects.CannotBeAwkward as err:
+                raise ValueError(
+                    """cannot produce Awkward Arrays for interpretation {0} because
+
+    {1}
+
+instead, try library="np" instead of library="ak"
+
+in file {2}
+in object {3}""".format(
+                        repr(interpretation),
+                        err.because,
+                        interpretation.branch.file.file_path,
+                        interpretation.branch.object_path,
+                    )
+                )
+
+            return _awkward_json_to_array(
+                awkward1, form, (_object_to_awkward_json(form, x) for x in array)
+            )
 
         elif array.dtype.names is not None:
             length, shape = array.shape[0], array.shape[1:]
