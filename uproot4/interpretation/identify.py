@@ -11,7 +11,7 @@ import uproot4.const
 import uproot4.interpretation.numerical
 import uproot4.interpretation.strings
 import uproot4.interpretation.objects
-import uproot4.stl_containers
+import uproot4.containers
 import uproot4.streamers
 import uproot4._util
 
@@ -244,7 +244,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype("?"))'.format(header),
+                'uproot4.containers.AsArray({0}, numpy.dtype("?"))'.format(header),
                 quote,
             ),
         )
@@ -252,7 +252,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype("?"))'.format(header),
+                'uproot4.containers.AsArray({0}, numpy.dtype("?"))'.format(header),
                 quote,
             ),
         )
@@ -270,7 +270,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype("u1"))'.format(header),
+                'uproot4.containers.AsArray({0}, numpy.dtype("u1"))'.format(header),
                 quote,
             ),
         )
@@ -282,7 +282,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 2,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype("u1"))'.format(header),
+                'uproot4.containers.AsArray({0}, numpy.dtype("u1"))'.format(header),
                 quote,
             ),
         )
@@ -302,7 +302,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i2"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i2"))'.format(
                     header
                 ),
                 quote,
@@ -312,7 +312,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i2"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i2"))'.format(
                     header
                 ),
                 quote,
@@ -322,7 +322,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u2"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u2"))'.format(
                     header
                 ),
                 quote,
@@ -336,7 +336,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 2,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u2"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u2"))'.format(
                     header
                 ),
                 quote,
@@ -356,7 +356,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i4"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i4"))'.format(
                     header
                 ),
                 quote,
@@ -366,7 +366,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i4"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i4"))'.format(
                     header
                 ),
                 quote,
@@ -376,7 +376,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u4"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u4"))'.format(
                     header
                 ),
                 quote,
@@ -390,7 +390,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 2,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u4"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u4"))'.format(
                     header
                 ),
                 quote,
@@ -414,7 +414,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i8"))'.format(
                     header
                 ),
                 quote,
@@ -424,7 +424,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i8"))'.format(
                     header
                 ),
                 quote,
@@ -434,7 +434,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i8"))'.format(
                     header
                 ),
                 quote,
@@ -444,7 +444,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u8"))'.format(
                     header
                 ),
                 quote,
@@ -454,7 +454,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u8"))'.format(
                     header
                 ),
                 quote,
@@ -468,7 +468,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 2,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u8"))'.format(
                     header
                 ),
                 quote,
@@ -484,7 +484,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f4"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">f4"))'.format(
                     header
                 ),
                 quote,
@@ -494,7 +494,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f4"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">f4"))'.format(
                     header
                 ),
                 quote,
@@ -510,7 +510,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">f8"))'.format(
                     header
                 ),
                 quote,
@@ -520,7 +520,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f8"))'.format(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">f8"))'.format(
                     header
                 ),
                 quote,
@@ -531,7 +531,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsFIXME("Float16_t in another context")', quote
+                'uproot4.containers.AsFIXME("Float16_t in another context")', quote
             ),
         )
 
@@ -539,8 +539,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsArray({0}, "
-                'uproot4.stl_containers.AsFIXME("Float16_t in array"))'.format(header),
+                "uproot4.containers.AsArray({0}, "
+                'uproot4.containers.AsFIXME("Float16_t in array"))'.format(header),
                 quote,
             ),
         )
@@ -549,7 +549,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsFIXME("Double32_t in another context")', quote
+                'uproot4.containers.AsFIXME("Double32_t in another context")', quote
             ),
         )
 
@@ -557,8 +557,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsArray({0}, "
-                'uproot4.stl_containers.AsFIXME("Double32_t in array '
+                "uproot4.containers.AsArray({0}, "
+                'uproot4.containers.AsFIXME("Double32_t in array '
                 '(note: Event.root fClosestDistance has an example)"))'.format(header),
                 quote,
             ),
@@ -568,21 +568,21 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString({0})".format(header), quote
+                "uproot4.containers.AsString({0})".format(header), quote
             ),
         )
     elif tokens[i].group(0) == "TString":
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString(False, typename='TString')", quote
+                "uproot4.containers.AsString(False, typename='TString')", quote
             ),
         )
     elif _simplify_token(tokens[i]) == "char*":
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
+                "uproot4.containers.AsString(False, length_bytes='4', typename='char*')",
                 quote,
             ),
         )
@@ -594,7 +594,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 2,
             _parse_maybe_quote(
-                "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
+                "uproot4.containers.AsString(False, length_bytes='4', typename='char*')",
                 quote,
             ),
         )
@@ -610,7 +610,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 4,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsFIXME("std::bitset<{0}>")'.format(num_bits),
+                'uproot4.containers.AsFIXME("std::bitset<{0}>")'.format(num_bits),
                 quote,
             ),
         )
@@ -624,10 +624,10 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         if quote:
             return (
                 i + 1,
-                "uproot4.stl_containers.AsVector({0}, {1})".format(header, values),
+                "uproot4.containers.AsVector({0}, {1})".format(header, values),
             )
         else:
-            return i + 1, uproot4.stl_containers.AsVector(header, values)
+            return i + 1, uproot4.containers.AsVector(header, values)
 
     elif tokens[i].group(0) == "set" or _simplify_token(tokens[i]) == "std::set":
         _parse_expect("<", tokens, i + 1, typename, file)
@@ -636,9 +636,9 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         )
         _parse_expect(">", tokens, i, typename, file)
         if quote:
-            return i + 1, "uproot4.stl_containers.AsSet({0}, {1})".format(header, keys)
+            return i + 1, "uproot4.containers.AsSet({0}, {1})".format(header, keys)
         else:
-            return i + 1, uproot4.stl_containers.AsSet(header, keys)
+            return i + 1, uproot4.containers.AsSet(header, keys)
 
     elif tokens[i].group(0) == "map" or _simplify_token(tokens[i]) == "std::map":
         _parse_expect("<", tokens, i + 1, typename, file)
@@ -653,12 +653,12 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         if quote:
             return (
                 i + 1,
-                "uproot4.stl_containers.AsMap({0}, {1}, {2})".format(
+                "uproot4.containers.AsMap({0}, {1}, {2})".format(
                     header, keys, values
                 ),
             )
         else:
-            return i + 1, uproot4.stl_containers.AsMap(header, keys, values)
+            return i + 1, uproot4.containers.AsMap(header, keys, values)
 
     else:
         start, stop = tokens[i].span()
@@ -680,15 +680,15 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         if quote:
             cls = "c({0})".format(repr(classname))
             for x in range(pointers):
-                cls = "uproot4.stl_containers.AsPointer({0})".format(cls)
+                cls = "uproot4.containers.AsPointer({0})".format(cls)
         elif file is None:
             cls = uproot4.classes[classname]
             for x in range(pointers):
-                cls = uproot4.stl_containers.AsPointer(cls)
+                cls = uproot4.containers.AsPointer(cls)
         else:
             cls = file.class_named(classname)
             for x in range(pointers):
-                cls = uproot4.stl_containers.AsPointer(cls)
+                cls = uproot4.containers.AsPointer(cls)
 
         return i + 1, cls
 
@@ -711,7 +711,7 @@ def parse_typename(
             or _simplify_token(tokens[0]) == "std::string"
         )
     ):
-        i, out = 1, _parse_maybe_quote("uproot4.stl_containers.AsString(False)", quote)
+        i, out = 1, _parse_maybe_quote("uproot4.containers.AsString(False)", quote)
 
     else:
         i, out = _parse_node(
@@ -971,7 +971,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
 def interpretation_of(branch, context, simplify=True):
     if branch.classname == "TBranchObject":
         return uproot4.interpretation.objects.AsObjects(
-            uproot4.stl_containers.AsDynamic(), branch
+            uproot4.containers.AsDynamic(), branch
         )
 
     dims, is_jagged = _from_leaves(branch, context)
@@ -1085,12 +1085,12 @@ def interpretation_of(branch, context, simplify=True):
 
             # kObjectp/kAnyp (as opposed to kObjectP/kAnyP) are stored inline
             if isinstance(
-                model_cls, uproot4.stl_containers.AsPointer
+                model_cls, uproot4.containers.AsPointer
             ) and branch.streamer.member("fType") in (
                 uproot4.const.kObjectp,
                 uproot4.const.kAnyp,
             ):
-                while isinstance(model_cls, uproot4.stl_containers.AsPointer):
+                while isinstance(model_cls, uproot4.containers.AsPointer):
                     model_cls = model_cls.pointee
 
             out = uproot4.interpretation.objects.AsObjects(model_cls, branch)

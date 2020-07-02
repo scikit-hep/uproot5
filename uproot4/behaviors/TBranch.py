@@ -23,7 +23,7 @@ import numpy
 
 import uproot4.source.cursor
 import uproot4.streamers
-import uproot4.stl_containers
+import uproot4.containers
 import uproot4.interpretation
 import uproot4.interpretation.numerical
 import uproot4.interpretation.jagged

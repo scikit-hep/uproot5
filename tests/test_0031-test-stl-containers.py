@@ -13,10 +13,10 @@ import uproot4
 from uproot4.interpretation.numerical import AsDtype
 from uproot4.interpretation.jagged import AsJagged
 from uproot4.interpretation.objects import AsObjects
-from uproot4.stl_containers import AsString
-from uproot4.stl_containers import AsVector
-from uproot4.stl_containers import AsSet
-from uproot4.stl_containers import AsMap
+from uproot4.containers import AsString
+from uproot4.containers import AsVector
+from uproot4.containers import AsSet
+from uproot4.containers import AsMap
 
 
 def test_typename():

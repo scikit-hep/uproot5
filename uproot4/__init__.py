@@ -53,9 +53,9 @@ import uproot4.models.TLeaf
 import uproot4.models.TBasket
 import uproot4.models.RNTuple
 
-from uproot4.stl_containers import STLVector
-from uproot4.stl_containers import STLSet
-from uproot4.stl_containers import STLMap
+from uproot4.containers import STLVector
+from uproot4.containers import STLSet
+from uproot4.containers import STLMap
 
 import uproot4.interpretation
 import uproot4.interpretation.library

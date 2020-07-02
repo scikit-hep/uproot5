@@ -863,7 +863,7 @@ class ReadOnlyKey(object):
 
                 if breadcrumbs is None or all(
                     breadcrumb_cls.classname in uproot4.model.bootstrap_classnames
-                    or isinstance(breadcrumb_cls, uproot4.stl_containers.AsSTLContainer)
+                    or isinstance(breadcrumb_cls, uproot4.containers.AsContainer)
                     or getattr(breadcrumb_cls.class_streamer, "file_uuid", None)
                     == self._file.uuid
                     for breadcrumb_cls in breadcrumbs

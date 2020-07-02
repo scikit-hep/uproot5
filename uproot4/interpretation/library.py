@@ -10,7 +10,7 @@ import numpy
 import uproot4.interpretation.jagged
 import uproot4.interpretation.strings
 import uproot4.interpretation.objects
-import uproot4.stl_containers
+import uproot4.containers
 
 
 class Library(object):

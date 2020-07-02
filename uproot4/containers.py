@@ -60,7 +60,7 @@ def _read_nested(model, length, chunk, cursor, context, file, parent, header=Tru
 
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
-        if isinstance(model, AsSTLContainer):
+        if isinstance(model, AsContainer):
             for i in range(length):
                 values[i] = model.read(
                     chunk, cursor, context, file, parent, header=header
@@ -118,7 +118,7 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
         return lbracket + "".join(left) + "..., " + "".join(right) + rbracket
 
 
-class AsSTLContainer(object):
+class AsContainer(object):
     @property
     def header(self):
         return self._header
@@ -158,7 +158,7 @@ class AsSTLContainer(object):
         return not self == other
 
 
-class STLContainer(object):
+class Container(object):
     def __ne__(self, other):
         return not self == other
 
@@ -166,7 +166,7 @@ class STLContainer(object):
         raise AssertionError
 
 
-class AsFIXME(AsSTLContainer):
+class AsFIXME(AsContainer):
     def __init__(self, message):
         self.message = message
 
@@ -199,7 +199,7 @@ class AsFIXME(AsSTLContainer):
             return False
 
 
-class AsString(AsSTLContainer):
+class AsString(AsContainer):
     def __init__(self, header, length_bytes="1-5", typename=None):
         self.header = header
         if length_bytes in ("1-5", "4"):
@@ -284,7 +284,7 @@ class AsString(AsSTLContainer):
         )
 
 
-class AsPointer(AsSTLContainer):
+class AsPointer(AsContainer):
     def __init__(self, pointee):
         self._pointee = pointee
 
@@ -325,7 +325,7 @@ class AsPointer(AsSTLContainer):
             return False
 
 
-class AsArray(AsSTLContainer):
+class AsArray(AsContainer):
     def __init__(self, header, values):
         self._header = header
         self._values = values
@@ -373,7 +373,7 @@ class AsArray(AsSTLContainer):
             return numpy.array(out, dtype=numpy.dtype(numpy.object))
 
 
-class AsDynamic(AsSTLContainer):
+class AsDynamic(AsContainer):
     def __init__(self, model=None):
         self._model = model
 
@@ -423,10 +423,10 @@ class AsDynamic(AsSTLContainer):
         return cls.read(chunk, cursor, context, file, parent)
 
 
-class AsVector(AsSTLContainer):
+class AsVector(AsContainer):
     def __init__(self, header, values):
         self.header = header
-        if isinstance(values, AsSTLContainer):
+        if isinstance(values, AsContainer):
             self._values = values
         elif isinstance(values, type) and issubclass(
             values, (uproot4.model.Model, uproot4.model.DispatchByVersion)
@@ -514,7 +514,7 @@ class AsVector(AsSTLContainer):
             return False
 
 
-class STLVector(STLContainer, Sequence):
+class STLVector(Container, Sequence):
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
@@ -561,15 +561,15 @@ class STLVector(STLContainer, Sequence):
 
     def tolist(self):
         return [
-            x.tolist() if isinstance(x, (STLContainer, numpy.ndarray)) else x
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x
             for x in self
         ]
 
 
-class AsSet(AsSTLContainer):
+class AsSet(AsContainer):
     def __init__(self, header, keys):
         self.header = header
-        if isinstance(keys, AsSTLContainer):
+        if isinstance(keys, AsContainer):
             self._keys = keys
         elif isinstance(keys, type) and issubclass(
             keys, (uproot4.model.Model, uproot4.model.DispatchByVersion)
@@ -654,7 +654,7 @@ class AsSet(AsSTLContainer):
             return False
 
 
-class STLSet(STLContainer, Set):
+class STLSet(Container, Set):
     def __init__(self, keys):
         if isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))
@@ -713,28 +713,28 @@ class STLSet(STLContainer, Set):
 
     def tolist(self):
         return set(
-            x.tolist() if isinstance(x, (STLContainer, numpy.ndarray)) else x
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x
             for x in self
         )
 
 
 def _has_nested_header(obj):
-    if isinstance(obj, AsSTLContainer):
+    if isinstance(obj, AsContainer):
         return obj.header
     else:
         return False
 
 
-class AsMap(AsSTLContainer):
+class AsMap(AsContainer):
     def __init__(self, header, keys, values):
         self.header = header
 
-        if isinstance(keys, AsSTLContainer):
+        if isinstance(keys, AsContainer):
             self._keys = keys
         else:
             self._keys = numpy.dtype(keys)
 
-        if isinstance(values, AsSTLContainer):
+        if isinstance(values, AsContainer):
             self._values = values
         elif isinstance(values, type) and issubclass(
             values, (uproot4.model.Model, uproot4.model.DispatchByVersion)
@@ -867,7 +867,7 @@ class AsMap(AsSTLContainer):
             return False
 
 
-class STLMap(STLContainer, Mapping):
+class STLMap(Container, Mapping):
     @classmethod
     def from_mapping(cls, mapping):
         return STLMap(mapping.keys(), mapping.values())
@@ -997,7 +997,7 @@ class STLMap(STLContainer, Mapping):
         out = {}
         for i in range(len(self)):
             x = self._values[i]
-            if isinstance(x, (STLContainer, numpy.ndarray)):
+            if isinstance(x, (Container, numpy.ndarray)):
                 out[self._keys[i]] = x.tolist()
             else:
                 out[self._keys[i]] = x

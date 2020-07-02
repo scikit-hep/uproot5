@@ -8,7 +8,7 @@ import uproot4.interpretation
 import uproot4.interpretation.strings
 import uproot4.interpretation.jagged
 import uproot4.interpretation.numerical
-import uproot4.stl_containers
+import uproot4.containers
 import uproot4.model
 import uproot4.source.chunk
 import uproot4.source.cursor
@@ -133,12 +133,12 @@ class AsObjects(uproot4.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        content_key = uproot4.stl_containers._content_cache_key(self._model)
+        content_key = uproot4.containers._content_cache_key(self._model)
         return "{0}({1})".format(type(self).__name__, content_key)
 
     @property
     def typename(self):
-        if isinstance(self._model, uproot4.stl_containers.AsSTLContainer):
+        if isinstance(self._model, uproot4.containers.AsContainer):
             return self._model.typename
         else:
             return uproot4.model.classname_decode(self._model.__name__)[0]
@@ -258,7 +258,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             except CannotBeStrided:
                 pass
 
-        if isinstance(self._model, uproot4.stl_containers.AsString):
+        if isinstance(self._model, uproot4.containers.AsString):
             header_bytes = 0
             if self._model.header:
                 header_bytes = 6
@@ -271,11 +271,11 @@ class AsObjects(uproot4.interpretation.Interpretation):
 
         if isinstance(
             self._model,
-            (uproot4.stl_containers.AsArray, uproot4.stl_containers.AsVector),
+            (uproot4.containers.AsArray, uproot4.containers.AsVector),
         ):
             if not self._model.header:
                 header_bytes = 0
-            elif isinstance(self._model, uproot4.stl_containers.AsArray):
+            elif isinstance(self._model, uproot4.containers.AsArray):
                 header_bytes = 1
             else:
                 header_bytes = 10
