@@ -3,11 +3,13 @@
 from __future__ import absolute_import
 
 import re
+import sys
 
 import numpy
 
 import uproot4.const
 import uproot4._util
+import uproot4.interpretation.objects
 
 
 bootstrap_classnames = [
@@ -48,6 +50,18 @@ class Model(object):
     class_streamer = None
 
     @classmethod
+    def empty(cls):
+        self = cls.__new__(cls)
+        self._cursor = None
+        self._file = None
+        self._parent = None
+        self._members = {}
+        self._bases = []
+        self._num_bytes = None
+        self._instance_version = None
+        return self
+
+    @classmethod
     def read(cls, chunk, cursor, context, file, parent):
         self = cls.__new__(cls)
         self._cursor = cursor.copy()
@@ -64,6 +78,14 @@ class Model(object):
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context)
 
         self.read_numbytes_version(chunk, cursor, context)
+
+        if context.get("in_TBranch", False):
+            if self._num_bytes is None and self._instance_version != self.class_version:
+                self._instance_version = None
+                cursor = self._cursor
+
+            elif self._instance_version == 0:
+                cursor.skip(4)
 
         self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context)
 
@@ -96,6 +118,20 @@ class Model(object):
 
     def read_members(self, chunk, cursor, context):
         pass
+
+    @classmethod
+    def strided_interpretation(
+        cls, file, header=False, tobject_header=True, original=None
+    ):
+        raise uproot4.interpretation.objects.CannotBeStrided(
+            classname_decode(cls.__name__)[0]
+        )
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        raise uproot4.interpretation.objects.CannotBeAwkward(
+            classname_decode(cls.__name__)[0]
+        )
 
     def check_numbytes(self, chunk, cursor, context):
         import uproot4.deserialization
@@ -215,20 +251,25 @@ class Model(object):
 """.format(
                     type(self).__module__,
                     type(self).__name__,
-                    "\n    ".join(self.all_members),
+                    ", ".join(repr(x) for x in self.all_members),
                 ),
-                file_path=self._file.file_path,
+                file_path=getattr(self._file, "file_path"),
             )
 
     def tojson(self):
-        out = {"_typename": self.classname}
-        for k, v in self.all_members.items():
+        out = {}
+        for base in self._bases:
+            tmp = base.tojson()
+            if isinstance(tmp, dict):
+                out.update(tmp)
+        for k, v in self.members.items():
             if isinstance(v, Model):
                 out[k] = v.tojson()
             elif isinstance(v, (numpy.number, numpy.ndarray)):
                 out[k] = v.tolist()
             else:
                 out[k] = v
+        out["_typename"] = self.classname
         return out
 
     def __enter__(self):
@@ -267,6 +308,9 @@ class Model(object):
 
 class UnknownClass(Model):
     def read_members(self, chunk, cursor, context):
+        self._chunk = chunk
+        self._context = context
+
         if self._num_bytes is not None:
             cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
@@ -279,8 +323,30 @@ class UnknownClass(Model):
                 )
             )
 
+    @property
+    def chunk(self):
+        return self._chunk
+
+    @property
+    def context(self):
+        return self._context
+
     def __repr__(self):
         return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
+
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
+    ):
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self._chunk,
+            context=self._context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream,
+        )
 
 
 class VersionedModel(Model):
@@ -290,6 +356,9 @@ class VersionedModel(Model):
 
 class UnknownClassVersion(VersionedModel):
     def read_members(self, chunk, cursor, context):
+        self._chunk = chunk
+        self._context = context
+
         if self._num_bytes is not None:
             cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
 
@@ -302,9 +371,31 @@ class UnknownClassVersion(VersionedModel):
                 )
             )
 
+    @property
+    def chunk(self):
+        return self._chunk
+
+    @property
+    def context(self):
+        return self._context
+
     def __repr__(self):
         return "<{0} with unknown version {1} at 0x{2:012x}>".format(
             self.classname, self._instance_version, id(self)
+        )
+
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
+    ):
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self._chunk,
+            context=self._context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream,
         )
 
 
@@ -313,6 +404,7 @@ class DispatchByVersion(object):
     def read(cls, chunk, cursor, context, file, parent):
         import uproot4.deserialization
 
+        start_cursor = cursor.copy()
         num_bytes, version = uproot4.deserialization.numbytes_version(
             chunk, cursor, context, move=False
         )
@@ -325,12 +417,16 @@ class DispatchByVersion(object):
         elif num_bytes is not None:
             versioned_cls = cls.new_class(file, version)
 
+        elif context.get("in_TBranch", False):
+            versioned_cls = cls.new_class(file, "max")
+            cursor = start_cursor
+
         else:
             raise ValueError(
                 """Unknown version {0} for class {1} that cannot be skipped """
                 """because its number of bytes is unknown.
 """.format(
-                    version, classname_decode(type(cls).__name__)[0],
+                    version, classname_decode(cls.__name__)[0],
                 )
             )
 
@@ -345,6 +441,9 @@ class DispatchByVersion(object):
     def new_class(cls, file, version):
         classname, _ = classname_decode(cls.__name__)
         streamer = file.streamer_named(classname, version)
+
+        if streamer is None:
+            streamer = file.streamer_named(classname, "max")
 
         if streamer is not None:
             versioned_cls = streamer.new_class(file)
@@ -374,6 +473,22 @@ class DispatchByVersion(object):
     @classmethod
     def class_of_version(cls, version):
         return cls.known_versions.get(version)
+
+    @classmethod
+    def strided_interpretation(
+        cls, file, header=False, tobject_header=True, original=None
+    ):
+        versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
+        return versioned_cls.strided_interpretation(
+            file, header=header, tobject_header=tobject_header
+        )
+
+    @classmethod
+    def awkward_form(cls, file, header=False, tobject_header=True):
+        versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
+        return versioned_cls.awkward_form(
+            file, header=header, tobject_header=tobject_header
+        )
 
 
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")

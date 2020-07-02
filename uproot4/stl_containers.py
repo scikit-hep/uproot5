@@ -37,7 +37,7 @@ def _content_typename(content):
             content.kind, content.itemsize
         ]
     elif isinstance(content, type):
-        return content.classname
+        return uproot4.model.classname_decode(content.__name__)[0]
     else:
         return content.typename
 
@@ -54,20 +54,20 @@ def _content_cache_key(content):
         return content.cache_key
 
 
-def _nested_context(context):
-    out = dict(context)
-    out["read_stl_header"] = False
-    return out
-
-
 def _read_nested(model, length, chunk, cursor, context, file, parent, header=True):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
 
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
-        for i in range(length):
-            values[i] = model.read(chunk, cursor, context, file, parent, header=header)
+        if isinstance(model, AsSTLContainer):
+            for i in range(length):
+                values[i] = model.read(
+                    chunk, cursor, context, file, parent, header=header
+                )
+        else:
+            for i in range(length):
+                values[i] = model.read(chunk, cursor, context, file, parent)
         return values
 
 
@@ -132,12 +132,20 @@ class AsSTLContainer(object):
                 "{0}.header must be True or False".format(type(self).__name__)
             )
 
+    def strided_interpretation(
+        self, file, header=False, tobject_header=True, original=None
+    ):
+        raise uproot4.interpretation.objects.CannotBeStrided(self.typename)
+
     @property
     def cache_key(self):
         raise AssertionError
 
     @property
     def typename(self):
+        raise AssertionError
+
+    def awkward_form(self, file, header=False, tobject_header=True):
         raise AssertionError
 
     def read(self, chunk, cursor, context, file, parent, header=True):
@@ -149,13 +157,46 @@ class AsSTLContainer(object):
     def __ne__(self, other):
         return not self == other
 
-    def tolist(self):
-        raise AssertionError
-
 
 class STLContainer(object):
     def __ne__(self, other):
         return not self == other
+
+    def tolist(self):
+        raise AssertionError
+
+
+class AsFIXME(AsSTLContainer):
+    def __init__(self, message):
+        self.message = message
+
+    def __hash__(self):
+        return hash((AsFIXME, self.message))
+
+    def __repr__(self):
+        return "AsFIXME({0})".format(repr(self.message))
+
+    @property
+    def cache_key(self):
+        return "AsFIXME({0})".format(repr(self.message))
+
+    @property
+    def typename(self):
+        return "unknown"
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        raise uproot4.deserialization.CannotBeAwkward(self.message)
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        raise uproot4.deserialization.DeserializationError(
+            self.message + "; please file a bug report!", None, None, None, None
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, AsFIXME):
+            return self.message == other.message
+        else:
+            return False
 
 
 class AsString(AsSTLContainer):
@@ -190,6 +231,22 @@ class AsString(AsSTLContainer):
             return "std::string"
         else:
             return self._typename
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            parameters={
+                "__array__": "string",
+                "uproot": {
+                    "as": "string",
+                    "header": self._header,
+                    "length_bytes": self._length_bytes,
+                },
+            },
+        )
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -227,12 +284,99 @@ class AsString(AsSTLContainer):
         )
 
 
+class AsPointer(AsSTLContainer):
+    def __init__(self, pointee):
+        self._pointee = pointee
+
+    @property
+    def pointee(self):
+        return self._pointee
+
+    def __hash__(self):
+        return hash((AsPointer, self._pointee))
+
+    def __repr__(self):
+        if isinstance(self._pointee, type):
+            pointee = self._pointee.__name__
+        else:
+            pointee = repr(self._pointee)
+        return "AsPointer({0})".format(pointee)
+
+    @property
+    def cache_key(self):
+        return "AsPointer({0})".format(_content_cache_key(self._pointee))
+
+    @property
+    def typename(self):
+        return _content_typename(self._pointee) + "*"
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        raise uproot4.deserialization.CannotBeAwkward("arbitrary pointer")
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        return uproot4.deserialization.read_object_any(
+            chunk, cursor, context, file, parent
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, AsPointer):
+            return self._pointee == other._pointee
+        else:
+            return False
+
+
+class AsArray(AsSTLContainer):
+    def __init__(self, header, values):
+        self._header = header
+        self._values = values
+
+    @property
+    def values(self):
+        return self._values
+
+    def __repr__(self):
+        return "AsArray({0}, {1})".format(self.header, repr(self._values))
+
+    @property
+    def cache_key(self):
+        return "AsArray({0},{1})".format(self.header, _content_cache_key(self._values))
+
+    @property
+    def typename(self):
+        return _content_typename(self._values) + "*"
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._values, file, header, tobject_header),
+            parameters={"uproot": {"as": "array", "header": self._header}},
+        )
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        if self._header and header:
+            cursor.skip(1)
+
+        if isinstance(self._values, numpy.dtype):
+            remainder = chunk.remainder(cursor.index, cursor, context)
+            return remainder.view(self._values)
+
+        else:
+            out = []
+            while cursor.index < chunk.stop:
+                out.append(self._values.read(chunk, cursor, context, file, self))
+            return numpy.array(out, dtype=numpy.dtype(numpy.object))
+
+
 class AsVector(AsSTLContainer):
     def __init__(self, header, values):
         self.header = header
         if isinstance(values, AsSTLContainer):
             self._values = values
-        elif isinstance(values, type) and issubclass(values, uproot4.model.Model):
+        elif isinstance(values, type) and issubclass(
+            values, (uproot4.model.Model, uproot4.model.DispatchByVersion)
+        ):
             self._values = values
         else:
             self._values = numpy.dtype(values)
@@ -245,7 +389,11 @@ class AsVector(AsSTLContainer):
         return self._values
 
     def __repr__(self):
-        return "AsVector({0}, {1})".format(self._header, repr(self._values))
+        if isinstance(self._values, type):
+            values = self._values.__name__
+        else:
+            values = repr(self._values)
+        return "AsVector({0}, {1})".format(self._header, values)
 
     @property
     def cache_key(self):
@@ -257,6 +405,15 @@ class AsVector(AsSTLContainer):
     def typename(self):
         return "std::vector<{0}>".format(_content_typename(self._values))
 
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._values, file, header, tobject_header),
+            parameters={"uproot": {"as": "vector", "header": self._header}},
+        )
+
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
@@ -266,9 +423,7 @@ class AsVector(AsSTLContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        values = _read_nested(
-            self._values, length, chunk, cursor, context, file, parent
-        )
+        values = _read_nested(self._values, length, chunk, cursor, context, file, self)
         out = STLVector(values)
 
         if self._header and header:
@@ -360,7 +515,9 @@ class AsSet(AsSTLContainer):
         self.header = header
         if isinstance(keys, AsSTLContainer):
             self._keys = keys
-        elif isinstance(keys, type) and issubclass(keys, uproot4.model.Model):
+        elif isinstance(keys, type) and issubclass(
+            keys, (uproot4.model.Model, uproot4.model.DispatchByVersion)
+        ):
             self._keys = keys
         else:
             self._keys = numpy.dtype(keys)
@@ -373,7 +530,11 @@ class AsSet(AsSTLContainer):
         return self._keys
 
     def __repr__(self):
-        return "AsSet({0}, {1})".format(self._header, repr(self._keys))
+        if isinstance(self._keys, type):
+            keys = self._keys.__name__
+        else:
+            keys = repr(self._keys)
+        return "AsSet({0}, {1})".format(self._header, keys)
 
     @property
     def cache_key(self):
@@ -382,6 +543,18 @@ class AsSet(AsSTLContainer):
     @property
     def typename(self):
         return "std::set<{0}>".format(_content_typename(self._keys))
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._keys, file, header, tobject_header),
+            parameters={
+                "__array__": "set",
+                "uproot": {"as": "set", "header": self._header},
+            },
+        )
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
@@ -392,7 +565,7 @@ class AsSet(AsSTLContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent)
+        keys = _read_nested(self._keys, length, chunk, cursor, context, file, self)
         out = STLSet(keys)
 
         if self._header and header:
@@ -507,7 +680,9 @@ class AsMap(AsSTLContainer):
 
         if isinstance(values, AsSTLContainer):
             self._values = values
-        elif isinstance(values, type) and issubclass(values, uproot4.model.Model):
+        elif isinstance(values, type) and issubclass(
+            values, (uproot4.model.Model, uproot4.model.DispatchByVersion)
+        ):
             self._values = values
         else:
             self._values = numpy.dtype(values)
@@ -524,9 +699,15 @@ class AsMap(AsSTLContainer):
         return self._values
 
     def __repr__(self):
-        return "AsMap({0}, {1}, {2})".format(
-            self._header, repr(self._keys), repr(self._values)
-        )
+        if isinstance(self._keys, type):
+            keys = self._keys.__name__
+        else:
+            keys = repr(self._keys)
+        if isinstance(self._values, type):
+            values = self._values.__name__
+        else:
+            values = repr(self._values)
+        return "AsMap({0}, {1}, {2})".format(self._header, keys, values)
 
     @property
     def cache_key(self):
@@ -542,6 +723,27 @@ class AsMap(AsSTLContainer):
             _content_typename(self._keys), _content_typename(self._values)
         )
 
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            awkward1.forms.RecordForm(
+                (
+                    uproot4._util.awkward_form(
+                        self._keys, file, header, tobject_header
+                    ),
+                    uproot4._util.awkward_form(
+                        self._values, file, header, tobject_header
+                    ),
+                )
+            ),
+            parameters={
+                "__array__": "sorted_map",
+                "uproot": {"as": "map", "header": self._header},
+            },
+        )
+
     def read(self, chunk, cursor, context, file, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
@@ -555,13 +757,13 @@ class AsMap(AsSTLContainer):
         if _has_nested_header(self._keys) and header:
             cursor.skip(6)
         keys = _read_nested(
-            self._keys, length, chunk, cursor, context, file, parent, header=False
+            self._keys, length, chunk, cursor, context, file, self, header=False
         )
 
         if _has_nested_header(self._values) and header:
             cursor.skip(6)
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, parent, header=False
+            self._values, length, chunk, cursor, context, file, self, header=False
         )
 
         out = STLMap(keys, values)

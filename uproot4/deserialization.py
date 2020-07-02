@@ -300,8 +300,14 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
                 if getattr(file, "file_path") is None:
                     in_file = ""
                 else:
-                    in_file = "\nin file {0}".format(file.file_path)
-                raise OSError("""invalid class-tag reference{0}""".format(in_file))
+                    in_file = "\n\nin file {0}".format(file.file_path)
+                raise ValueError(
+                    """invalid class-tag reference: {0}
+
+    Known references: {1}{2}""".format(
+                        ref, ", ".join(str(x) for x in cursor.refs), in_file
+                    )
+                )
 
             cls = cursor.refs[ref]  # reference class
             obj = cls.read(chunk, cursor, context, file, parent)

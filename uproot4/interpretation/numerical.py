@@ -16,6 +16,9 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpretation.Interpretation):
+    def _wrap_almost_finalized(self, array):
+        return array
+
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
@@ -83,7 +86,9 @@ class Numerical(uproot4.interpretation.Interpretation):
             output=output,
         )
 
-        output = library.finalize(output, branch)
+        output = self._wrap_almost_finalized(output)
+
+        output = library.finalize(output, branch, self)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -160,6 +165,15 @@ class AsDtype(Numerical):
     def numpy_dtype(self):
         return self._to_dtype
 
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        d, s = _dtype_shape(self._to_dtype)
+        out = uproot4._util.awkward_form(d, file, header, tobject_header)
+        for size in s[::-1]:
+            out = awkward1.forms.RegularForm(out, size)
+        return out
+
     @property
     def cache_key(self):
         def form(dtype, name):
@@ -217,13 +231,14 @@ class AsDtype(Numerical):
                 + "}"
             )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         dtype, shape = _dtype_shape(self._from_dtype)
@@ -249,6 +264,7 @@ in file {4}""".format(
             branch=branch,
             context=context,
             output=output,
+            cursor_offset=cursor_offset,
         )
 
         return output
@@ -316,13 +332,14 @@ class TruncatedNumerical(Numerical):
             type(self).__name__, self._low, self._high, self._num_bits, self._to_dims
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         try:
@@ -370,6 +387,7 @@ in file {5}""".format(
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
             raw=raw,
             output=output,
         )
@@ -399,6 +417,26 @@ class AsDouble32(TruncatedNumerical):
     def typename(self):
         return "Double32_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        out = awkward1.forms.NumpyForm(
+            (),
+            8,
+            "d",
+            parameters={
+                "uproot": {
+                    "as": "Double32",
+                    "low": self._low,
+                    "high": self._high,
+                    "num_bits": self._num_bits,
+                }
+            },
+        )
+        for size in self._to_dims[::-1]:
+            out = awkward1.forms.RegularForm(out, size)
+        return out
+
 
 class AsFloat16(TruncatedNumerical):
     def __init__(self, low, high, num_bits, to_dims=()):
@@ -421,6 +459,26 @@ class AsFloat16(TruncatedNumerical):
     @property
     def typename(self):
         return "Float16_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        out = awkward1.forms.NumpyForm(
+            (),
+            4,
+            "f",
+            parameters={
+                "uproot": {
+                    "as": "Float16",
+                    "low": self._low,
+                    "high": self._high,
+                    "num_bits": self._num_bits,
+                }
+            },
+        )
+        for size in self._to_dims[::-1]:
+            out = awkward1.forms.RegularForm(out, size)
+        return out
 
 
 class AsSTLBits(Numerical):

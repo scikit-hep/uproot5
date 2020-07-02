@@ -40,6 +40,13 @@ class Model_TList(uproot4.model.Model, Sequence):
             n = cursor.field(chunk, _tlist_format2, context)
             cursor.skip(n)
 
+    def __repr__(self):
+        return "<{0} of {1} items at 0x{2:012x}>".format(
+            uproot4.model.classname_pretty(self.classname, self.class_version),
+            len(self),
+            id(self),
+        )
+
     def __getitem__(self, where):
         return self._data[where]
 

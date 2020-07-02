@@ -2,12 +2,14 @@
 
 from __future__ import absolute_import
 
+import struct
+
 import numpy
 
 import uproot4.interpretation
 
 
-class StringArray(uproot4.interpretation.Interpretation):
+class StringArray(object):
     def __init__(self, offsets, content):
         self._offsets = offsets
         self._content = content
@@ -35,15 +37,28 @@ class StringArray(uproot4.interpretation.Interpretation):
     def __len__(self):
         return len(self._offsets) - 1
 
+    def __iter__(self):
+        start = self._offsets[0]
+        content = self._content
+        for stop in self._offsets[1:]:
+            yield uproot4._util.ensure_str(content[start:stop])
+            start = stop
+
+
+_string_4byte_size = struct.Struct(">I")
+
 
 class AsStrings(uproot4.interpretation.Interpretation):
-    def __init__(self, header_bytes=0, length_bytes="1-5", typename=None):
+    def __init__(
+        self, header_bytes=0, length_bytes="1-5", typename=None, original=None
+    ):
         self._header_bytes = header_bytes
         if length_bytes in ("1-5", "4"):
             self._length_bytes = length_bytes
         else:
             raise ValueError("length_bytes must be '1-5' or '4'")
         self._typename = typename
+        self._original = original
 
     @property
     def header_bytes(self):
@@ -76,12 +91,28 @@ class AsStrings(uproot4.interpretation.Interpretation):
             return self._typename
 
     @property
+    def original(self):
+        return self._original
+
+    @property
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)
 
-    @property
-    def awkward_form(self):
-        raise NotImplementedError
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            parameters={
+                "__array__": "string",
+                "uproot": {
+                    "as": "strings",
+                    "header_bytes": self._header_bytes,
+                    "length_bytes": self._length_bytes,
+                },
+            },
+        )
 
     @property
     def cache_key(self):
@@ -89,36 +120,78 @@ class AsStrings(uproot4.interpretation.Interpretation):
             type(self).__name__, self._header_bytes, repr(self._length_bytes)
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
-        assert basket.byte_offsets is not None
+        if byte_offsets is None:
+            counts = numpy.empty(len(data), dtype=numpy.int32)
+            outdata = numpy.empty(len(data), dtype=data.dtype)
 
-        byte_starts = byte_offsets[:-1] + self._header_bytes
-        byte_stops = byte_offsets[1:]
+            pos = 0
+            entry_num = 0
+            len_outdata = 0
 
-        if self._length_bytes == "1-5":
-            length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
-            length_header_size[data[byte_starts] == 255] += 4
-        elif self._length_bytes == "4":
-            length_header_size = numpy.full(len(byte_starts), 4, dtype=numpy.int32)
+            if self._length_bytes == "1-5":
+                while True:
+                    if pos >= len(data):
+                        break
+                    size = data[pos]
+                    pos += 1
+                    if size == 255:
+                        (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
+                        pos += 4
+                    counts[entry_num] = size
+                    entry_num += 1
+                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
+                    len_outdata += size
+                    pos += size
+
+            elif self._length_bytes == "4":
+                while True:
+                    if pos >= len(data):
+                        break
+                    (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
+                    pos += 4
+                    counts[entry_num] = size
+                    entry_num += 1
+                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
+                    len_outdata += size
+                    pos += size
+
+            else:
+                raise AssertionError(repr(self._length_bytes))
+
+            counts = counts[:entry_num]
+            data = outdata[:len_outdata]
+
         else:
-            raise AssertionError(repr(self._length_bytes))
-        byte_starts += length_header_size
+            byte_starts = byte_offsets[:-1] + self._header_bytes
+            byte_stops = byte_offsets[1:]
 
-        mask = numpy.zeros(len(data), dtype=numpy.int8)
-        mask[byte_starts[byte_starts < len(data)]] = 1
-        numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
-        numpy.cumsum(mask, out=mask)
-        data = data[mask.view(numpy.bool_)]
+            if self._length_bytes == "1-5":
+                length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
+                length_header_size[data[byte_starts] == 255] += 4
+            elif self._length_bytes == "4":
+                length_header_size = numpy.full(len(byte_starts), 4, dtype=numpy.int32)
+            else:
+                raise AssertionError(repr(self._length_bytes))
+            byte_starts += length_header_size
 
-        counts = byte_stops - byte_starts
+            mask = numpy.zeros(len(data), dtype=numpy.int8)
+            mask[byte_starts[byte_starts < len(data)]] = 1
+            numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
+            numpy.cumsum(mask, out=mask)
+            data = data[mask.view(numpy.bool_)]
+
+            counts = byte_stops - byte_starts
+
         offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
         offsets[0] = 0
         numpy.cumsum(counts, out=offsets[1:])
@@ -136,6 +209,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             output=output,
+            cursor_offset=cursor_offset,
         )
 
         return output
@@ -229,7 +303,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
                 output=output,
             )
 
-        output = library.finalize(output, branch)
+        output = library.finalize(output, branch, self)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,

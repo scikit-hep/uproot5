@@ -48,8 +48,7 @@ in object {2}""".format(
     def numpy_dtype(self):
         raise self
 
-    @property
-    def awkward_form(self):
+    def awkward_form(self, file, header=False, tobject_header=True):
         raise self
 
     @property
@@ -185,8 +184,11 @@ _simplify_token_1 = re.compile(r"\s*\*")
 _simplify_token_2 = re.compile(r"\s*::\s*")
 
 
-def _simplify_token(token):
-    return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token.group(0)))
+def _simplify_token(token, is_token=True):
+    if is_token:
+        return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token.group(0)))
+    else:
+        return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token))
 
 
 def _parse_error(pos, typename, file):
@@ -231,6 +233,23 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif tokens[i].group(0) == "bool":
         return i + 1, _parse_maybe_quote('numpy.dtype("?")', quote)
 
+    elif _simplify_token(tokens[i]) == "Bool_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype("?"))'.format(header),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "bool*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype("?"))'.format(header),
+                quote,
+            ),
+        )
+
     elif tokens[i].group(0) == "Char_t":
         return i + 1, _parse_maybe_quote('numpy.dtype("i1")', quote)
     elif tokens[i].group(0) == "char":
@@ -239,6 +258,27 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 1, _parse_maybe_quote('numpy.dtype("u1")', quote)
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "char":
         return i + 2, _parse_maybe_quote('numpy.dtype("u1")', quote)
+
+    elif _simplify_token(tokens[i]) == "UChar_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype("u1"))'.format(header),
+                quote,
+            ),
+        )
+    elif (
+        has2
+        and tokens[i].group(0) == "unsigned"
+        and _simplify_token(tokens[i + 1]) == "char*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype("u1"))'.format(header),
+                quote,
+            ),
+        )
 
     elif tokens[i].group(0) == "Short_t":
         return i + 1, _parse_maybe_quote('numpy.dtype(">i2")', quote)
@@ -251,6 +291,51 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     ):
         return i + 2, _parse_maybe_quote('numpy.dtype(">u2")', quote)
 
+    elif _simplify_token(tokens[i]) == "Short_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i2"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "short*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i2"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "UShort_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u2"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif (
+        has2
+        and tokens[i].group(0) == "unsigned"
+        and _simplify_token(tokens[i + 1]) == "short*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u2"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+
     elif tokens[i].group(0) == "Int_t":
         return i + 1, _parse_maybe_quote('numpy.dtype(">i4")', quote)
     elif tokens[i].group(0) == "int":
@@ -259,6 +344,51 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return i + 1, _parse_maybe_quote('numpy.dtype(">u4")', quote)
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "int":
         return i + 2, _parse_maybe_quote('numpy.dtype(">u4")', quote)
+
+    elif _simplify_token(tokens[i]) == "Int_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i4"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "int*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i4"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "UInt_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u4"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif (
+        has2
+        and tokens[i].group(0) == "unsigned"
+        and _simplify_token(tokens[i + 1]) == "int*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u4"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
 
     elif tokens[i].group(0) == "Long_t":
         return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
@@ -273,15 +403,159 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "long":
         return i + 2, _parse_maybe_quote('numpy.dtype(">u8")', quote)
 
+    elif _simplify_token(tokens[i]) == "Long_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "Long64_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "long*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">i8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "ULong_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "ULong64_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif (
+        has2
+        and tokens[i].group(0) == "unsigned"
+        and _simplify_token(tokens[i + 1]) == "long*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">u8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+
     elif tokens[i].group(0) == "Float_t":
         return i + 1, _parse_maybe_quote('numpy.dtype(">f4")', quote)
     elif tokens[i].group(0) == "float":
         return i + 1, _parse_maybe_quote('numpy.dtype(">f4")', quote)
 
+    elif _simplify_token(tokens[i]) == "Float_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f4"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "float*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f4"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+
     elif tokens[i].group(0) == "Double_t":
         return i + 1, _parse_maybe_quote('numpy.dtype(">f8")', quote)
     elif tokens[i].group(0) == "double":
         return i + 1, _parse_maybe_quote('numpy.dtype(">f8")', quote)
+
+    elif _simplify_token(tokens[i]) == "Double_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+    elif _simplify_token(tokens[i]) == "double*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, numpy.dtype(">f8"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+
+    elif tokens[i].group(0) == "Float16_t":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsFIXME("Float16_t in another context")', quote
+            ),
+        )
+
+    elif _simplify_token(tokens[i]) == "Float16_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                "uproot4.stl_containers.AsArray({0}, "
+                'uproot4.stl_containers.AsFIXME("Float16_t in array"))'.format(header),
+                quote,
+            ),
+        )
+
+    elif tokens[i].group(0) == "Double32_t":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsFIXME("Double32_t in another context")', quote
+            ),
+        )
+
+    elif _simplify_token(tokens[i]) == "Double32_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                "uproot4.stl_containers.AsArray({0}, "
+                'uproot4.stl_containers.AsFIXME("Double32_t in array '
+                '(note: Event.root fClosestDistance has an example)"))'.format(header),
+                quote,
+            ),
+        )
 
     elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
         return (
@@ -314,6 +588,22 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             i + 2,
             _parse_maybe_quote(
                 "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
+                quote,
+            ),
+        )
+
+    elif tokens[i].group(0) == "bitset" or _simplify_token(tokens[i]) == "std::bitset":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        _parse_expect(None, tokens, i + 2, typename, file)
+        try:
+            num_bits = int(tokens[i + 2].group(0))
+        except ValueError:
+            _parse_error(tokens[i + 2].start() + 1, typename, file)
+        _parse_expect(">", tokens, i + 3, typename, file)
+        return (
+            i + 4,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsFIXME("std::bitset<{0}>")'.format(num_bits),
                 quote,
             ),
         )
@@ -374,14 +664,25 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             stop = tokens[i + 1].span()[1]
             i += 1
 
-        classname = typename[start:stop]
+        classname = _simplify_token(typename[start:stop], is_token=False)
+
+        pointers = 0
+        while classname.endswith("*"):
+            pointers += 1
+            classname = classname[:-1]
 
         if quote:
-            return "c({0})".format(repr(classname))
+            cls = "c({0})".format(repr(classname))
+            for x in range(pointers):
+                cls = "uproot4.stl_containers.AsPointer({0})".format(cls)
         elif file is None:
             cls = uproot4.classes[classname]
+            for x in range(pointers):
+                cls = uproot4.stl_containers.AsPointer(cls)
         else:
             cls = file.class_named(classname)
+            for x in range(pointers):
+                cls = uproot4.stl_containers.AsPointer(cls)
 
         return i + 1, cls
 
@@ -392,12 +693,12 @@ def parse_typename(
     quote=False,
     outer_header=True,
     inner_header=False,
-    string_header=True,
+    string_header=False,
 ):
     tokens = list(_tokenize_typename_pattern.finditer(typename))
 
     if (
-        string_header
+        not string_header
         and len(tokens) != 0
         and (
             tokens[0].group(0) == "string"
@@ -753,9 +1054,12 @@ def interpretation_of(branch, context):
                 file=branch.file,
                 outer_header=True,
                 inner_header=False,
-                string_header=True,
+                string_header=False,
             )
-            return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
+
+            return uproot4.interpretation.objects.AsObjects(
+                model_cls, branch
+            ).simplify()
 
         if branch.streamer is not None:
             model_cls = parse_typename(
@@ -763,17 +1067,12 @@ def interpretation_of(branch, context):
                 file=branch.file,
                 outer_header=True,
                 inner_header=False,
-                string_header=False,
+                string_header=True,
             )
-            return uproot4.interpretation.objects.AsObjects(model_cls).simplify()
+            return uproot4.interpretation.objects.AsObjects(
+                model_cls, branch
+            ).simplify()
 
-        if leaf.classname == "TLeafElement":
-            raise NotImplementedError
-
-        if isinstance(branch.streamer, uproot4.streamers.Model_TStreamerObjectPointer):
-            typename = branch.streamer.typename
-            if typename.endswith("*"):
-                typename = typename[:-1]
-            raise NotImplementedError("obj_or_genobj")
-
-        raise NotImplementedError
+        raise UnknownInterpretation(
+            "none of the rules matched", branch.file.file_path, branch.object_path,
+        )

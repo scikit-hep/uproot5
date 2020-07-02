@@ -964,7 +964,7 @@ def test_stl_vector():
 
 
 def test_pandas_merge():
-    pandas = pytest.importorskip("pandas")
+    pandas = pytest.importorskip("pandas", minversion="0.21.0")
 
     group = uproot4.interpretation.library.Pandas().group
     name_interp_branch = [("a", None), ("b", None), ("c", None)]

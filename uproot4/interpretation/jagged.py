@@ -29,6 +29,13 @@ class JaggedArray(object):
     def __len__(self):
         return len(self._offsets) - 1
 
+    def __iter__(self):
+        start = self._offsets[0]
+        content = self._content
+        for stop in self._offsets[1:]:
+            yield content[start:stop]
+            start = stop
+
     def parents_localindex(self):
         counts = self._offsets[1:] - self._offsets[:-1]
         if uproot4._util.win:
@@ -59,12 +66,13 @@ def fast_divide(array, divisor):
 
 
 class AsJagged(uproot4.interpretation.Interpretation):
-    def __init__(self, content, header_bytes=0, typename=None):
+    def __init__(self, content, header_bytes=0, typename=None, original=None):
         if not isinstance(content, uproot4.interpretation.numerical.Numerical):
             raise TypeError("AsJagged content can only be Numerical")
         self._content = content
         self._header_bytes = header_bytes
         self._typename = typename
+        self._original = original
 
     @property
     def content(self):
@@ -73,6 +81,10 @@ class AsJagged(uproot4.interpretation.Interpretation):
     @property
     def header_bytes(self):
         return self._header_bytes
+
+    @property
+    def original(self):
+        return self._original
 
     def __repr__(self):
         if self._header_bytes == 0:
@@ -93,9 +105,14 @@ class AsJagged(uproot4.interpretation.Interpretation):
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)
 
-    @property
-    def awkward_form(self):
-        raise NotImplementedError
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        return awkward1.forms.ListOffsetForm(
+            "i32",
+            uproot4._util.awkward_form(self._content, file, header, tobject_header),
+            parameters={"uproot": {"as": "jagged", "header_bytes": self._header_bytes}},
+        )
 
     @property
     def cache_key(self):
@@ -115,20 +132,23 @@ class AsJagged(uproot4.interpretation.Interpretation):
         else:
             return self._typename
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         assert basket.byte_offsets is not None
 
         if self._header_bytes == 0:
             offsets = fast_divide(basket.byte_offsets, self._content.itemsize)
-            content = self._content.basket_array(data, None, basket, branch, context)
+            content = self._content.basket_array(
+                data, None, basket, branch, context, cursor_offset
+            )
             output = JaggedArray(offsets, content)
 
         else:
@@ -141,7 +161,9 @@ class AsJagged(uproot4.interpretation.Interpretation):
             numpy.cumsum(mask, out=mask)
             data = data[mask.view(numpy.bool_)]
 
-            content = self._content.basket_array(data, None, basket, branch, context)
+            content = self._content.basket_array(
+                data, None, basket, branch, context, cursor_offset
+            )
 
             byte_counts = byte_stops - byte_starts
             counts = fast_divide(byte_counts, self._content.itemsize)
@@ -159,6 +181,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             output=output,
+            cursor_offset=cursor_offset,
         )
 
         return output
@@ -244,11 +267,13 @@ class AsJagged(uproot4.interpretation.Interpretation):
 
                 start = stop
 
-            content = numpy.empty((before,), contents[0].dtype)
+            content = numpy.empty((before,), self.content.to_dtype)
             before = 0
             for cnt in contents:
                 content[before : before + len(cnt)] = cnt
                 before += len(cnt)
+
+            content = self._content._wrap_almost_finalized(content)
 
             output = JaggedArray(offsets, content)
 
@@ -262,7 +287,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
                 output=output,
             )
 
-        output = library.finalize(output, branch)
+        output = library.finalize(output, branch, self)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,

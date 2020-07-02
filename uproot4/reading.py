@@ -441,7 +441,11 @@ in file {1}""".format(
             return streamer_versions.get(version)
 
     def streamers_named(self, classname):
-        return list(self.streamers[classname].values())
+        streamer_versions = self.streamers.get(classname)
+        if streamer_versions is None:
+            return []
+        else:
+            return list(streamer_versions.values())
 
     def class_named(self, classname, version=None):
         classes = uproot4.model.maybe_custom_classes(self._custom_classes)

@@ -97,13 +97,13 @@ class LZ4(Compression):
             import lz4.block
         except ImportError:
             raise ImportError(
-                """install the 'lz4' package with:
+                """install the 'lz4' package with (you probably also need 'xxhash'):
 
-    pip install lz4
+    pip install lz4 xxhash
 
 or
 
-    conda install lz4"""
+    conda install lz4 python-xxhash"""
             )
         if uncompressed_bytes is None:
             raise ValueError(
@@ -180,13 +180,13 @@ def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
                 import xxhash
             except ImportError:
                 raise ImportError(
-                    """install the 'xxhash' package with:
+                    """install the 'xxhash' package with (you probably also need 'lz4'):
 
-    pip install xxhash
+    pip install xxhash lz4
 
 or
 
-    conda install python-xxhash"""
+    conda install python-xxhash lz4"""
                 )
             computed_checksum = xxhash.xxh64(data).intdigest()
             if computed_checksum != expected_checksum:

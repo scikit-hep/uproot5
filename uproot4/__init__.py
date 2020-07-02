@@ -34,6 +34,8 @@ from uproot4.model import classname_decode
 from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
+from uproot4.model import bootstrap_classnames
+from uproot4.model import bootstrap_classes
 
 from uproot4.stl_containers import STLVector
 from uproot4.stl_containers import STLSet
@@ -53,6 +55,7 @@ import uproot4.models.THashList
 import uproot4.models.TObjArray
 import uproot4.models.TObjString
 import uproot4.models.TAtt
+import uproot4.models.TRef
 
 import uproot4.models.TTree
 import uproot4.models.TBranch
@@ -62,9 +65,6 @@ from uproot4.behaviors.TTree import TTree
 from uproot4.behaviors.TBranch import TBranch
 
 import uproot4.models.RNTuple
-
-# FIXME: add uproot4.models.TRef
-
 
 import pkgutil
 import uproot4.behaviors
@@ -124,9 +124,9 @@ class KeyInFileError(KeyError):
             to_show = None
             for key in self.keys:
                 if to_show is None:
-                    to_show = key
+                    to_show = repr(key)
                 else:
-                    to_show += ", " + key
+                    to_show += ", " + repr(key)
                 if len(to_show) > 200:
                     to_show += "..."
                     break
