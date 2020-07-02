@@ -231,13 +231,14 @@ class AsDtype(Numerical):
                 + "}"
             )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         dtype, shape = _dtype_shape(self._from_dtype)
@@ -263,6 +264,7 @@ in file {4}""".format(
             branch=branch,
             context=context,
             output=output,
+            cursor_offset=cursor_offset,
         )
 
         return output
@@ -330,13 +332,14 @@ class TruncatedNumerical(Numerical):
             type(self).__name__, self._low, self._high, self._num_bits, self._to_dims
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         try:
@@ -384,6 +387,7 @@ in file {5}""".format(
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
             raw=raw,
             output=output,
         )

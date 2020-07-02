@@ -438,7 +438,12 @@ def _ranges_or_baskets_to_arrays(
             basket_arrays = branchid_arrays[id(branch)]
 
             basket_arrays[basket.basket_num] = interpretation.basket_array(
-                basket.data, basket.byte_offsets, basket, branch, branch.context
+                basket.data,
+                basket.byte_offsets,
+                basket,
+                branch,
+                branch.context,
+                basket.member("fKeylen"),
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(

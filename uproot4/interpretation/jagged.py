@@ -132,20 +132,23 @@ class AsJagged(uproot4.interpretation.Interpretation):
         else:
             return self._typename
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         assert basket.byte_offsets is not None
 
         if self._header_bytes == 0:
             offsets = fast_divide(basket.byte_offsets, self._content.itemsize)
-            content = self._content.basket_array(data, None, basket, branch, context)
+            content = self._content.basket_array(
+                data, None, basket, branch, context, cursor_offset
+            )
             output = JaggedArray(offsets, content)
 
         else:
@@ -158,7 +161,9 @@ class AsJagged(uproot4.interpretation.Interpretation):
             numpy.cumsum(mask, out=mask)
             data = data[mask.view(numpy.bool_)]
 
-            content = self._content.basket_array(data, None, basket, branch, context)
+            content = self._content.basket_array(
+                data, None, basket, branch, context, cursor_offset
+            )
 
             byte_counts = byte_stops - byte_starts
             counts = fast_divide(byte_counts, self._content.itemsize)
@@ -176,6 +181,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             output=output,
+            cursor_offset=cursor_offset,
         )
 
         return output

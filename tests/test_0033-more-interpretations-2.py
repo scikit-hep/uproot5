@@ -167,3 +167,17 @@ def test_fixed_width_pandas_2():
         assert list(result.columns) == ["xyz[" + str(i) + "]" for i in range(10)]
         for i in range(10):
             assert result["xyz[" + str(i) + "]"].values.tolist() == list(range(100))
+
+
+def hook(self, **kwargs):
+    print("ENTER")
+    for k, v in kwargs.items():
+        print(k, v)
+
+
+def test_pointers_to_histograms():
+    with uproot4.open(skhep_testdata.data_path("uproot-issue399.root"))[
+        "Event/Histos.histograms1D"
+    ] as branch:
+        result = branch.array(library="np", entry_stop=1)
+        assert result[0][-1].member("fName") == "ElossPEHisto"

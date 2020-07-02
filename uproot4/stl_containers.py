@@ -284,6 +284,47 @@ class AsString(AsSTLContainer):
         )
 
 
+class AsPointer(AsSTLContainer):
+    def __init__(self, pointee):
+        self._pointee = pointee
+
+    @property
+    def pointee(self):
+        return self._pointee
+
+    def __hash__(self):
+        return hash((AsPointer, self._pointee))
+
+    def __repr__(self):
+        if isinstance(self._pointee, type):
+            pointee = self._pointee.__name__
+        else:
+            pointee = repr(self._pointee)
+        return "AsPointer({0})".format(pointee)
+
+    @property
+    def cache_key(self):
+        return "AsPointer({0})".format(_content_cache_key(self._pointee))
+
+    @property
+    def typename(self):
+        return _content_typename(self._pointee) + "*"
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        raise uproot4.deserialization.CannotBeAwkward("arbitrary pointer")
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        return uproot4.deserialization.read_object_any(
+            chunk, cursor, context, file, parent
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, AsPointer):
+            return self._pointee == other._pointee
+        else:
+            return False
+
+
 class AsArray(AsSTLContainer):
     def __init__(self, header, values):
         self._header = header

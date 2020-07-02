@@ -664,14 +664,25 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             stop = tokens[i + 1].span()[1]
             i += 1
 
-        classname = _simplify_token(typename[start:stop], is_token=False).rstrip("*")
+        classname = _simplify_token(typename[start:stop], is_token=False)
+
+        pointers = 0
+        while classname.endswith("*"):
+            pointers += 1
+            classname = classname[:-1]
 
         if quote:
             cls = "c({0})".format(repr(classname))
+            for x in range(pointers):
+                cls = "uproot4.stl_containers.AsPointer({0})".format(cls)
         elif file is None:
             cls = uproot4.classes[classname]
+            for x in range(pointers):
+                cls = uproot4.stl_containers.AsPointer(cls)
         else:
             cls = file.class_named(classname)
+            for x in range(pointers):
+                cls = uproot4.stl_containers.AsPointer(cls)
 
         return i + 1, cls
 

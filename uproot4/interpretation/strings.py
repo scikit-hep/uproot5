@@ -120,13 +120,14 @@ class AsStrings(uproot4.interpretation.Interpretation):
             type(self).__name__, self._header_bytes, repr(self._length_bytes)
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         if byte_offsets is None:
@@ -208,6 +209,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             output=output,
+            cursor_offset=cursor_offset,
         )
 
         return output

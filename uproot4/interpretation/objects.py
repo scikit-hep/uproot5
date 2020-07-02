@@ -16,20 +16,24 @@ import uproot4._util
 
 
 class ObjectArray(object):
-    def __init__(self, model, branch, context, byte_offsets, byte_content):
+    def __init__(
+        self, model, branch, context, byte_offsets, byte_content, cursor_offset
+    ):
         self._model = model
         self._branch = branch
         self._context = context
         self._byte_offsets = byte_offsets
         self._byte_content = byte_content
+        self._cursor_offset = cursor_offset
 
     def __repr__(self):
-        return "ObjectArray({0}, {1}, {2}, {3}, {4})".format(
+        return "ObjectArray({0}, {1}, {2}, {3}, {4}, {5})".format(
             self._model,
             self._branch,
             self._context,
             self._byte_offsets,
             self._byte_content,
+            self._cursor_offset,
         )
 
     @property
@@ -52,6 +56,10 @@ class ObjectArray(object):
     def byte_content(self):
         return self._byte_content
 
+    @property
+    def cursor_offset(self):
+        return self._cursor_offset
+
     def __len__(self):
         return len(self._byte_offsets) - 1
 
@@ -64,7 +72,7 @@ class ObjectArray(object):
     def __getitem__(self, where):
         if uproot4._util.isint(where):
             chunk = self.chunk(where)
-            cursor = uproot4.source.cursor.Cursor(0)
+            cursor = uproot4.source.cursor.Cursor(0, origin=-self._cursor_offset)
             return self._model.read(
                 chunk, cursor, self._context, self._branch.file, self._branch
             )
@@ -76,13 +84,13 @@ class ObjectArray(object):
                 self._context,
                 self._byte_offsets[where],
                 self._byte_content,
+                self._cursor_offset,
             )
 
         else:
             raise NotImplementedError(repr(where))
 
     def __iter__(self):
-        cursor = uproot4.source.cursor.Cursor(0)
         source = self._branch.file.source
         context = self._context
         file = self._branch.file
@@ -91,6 +99,7 @@ class ObjectArray(object):
         for byte_stop in self._byte_offsets[1:]:
             data = self._byte_content[byte_start:byte_stop]
             chunk = uproot4.source.chunk.Chunk.wrap(source, data)
+            cursor = uproot4.source.cursor.Cursor(0, origin=-self._cursor_offset)
             yield self._model.read(chunk, cursor, context, file, branch)
             byte_start = byte_stop
 
@@ -144,18 +153,21 @@ class AsObjects(uproot4.interpretation.Interpretation):
                 self._branch.file, header=header, tobject_header=tobject_header
             )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
             basket=basket,
             branch=branch,
             context=context,
+            cursor_offset=cursor_offset,
         )
 
         assert basket.byte_offsets is not None
 
-        output = ObjectArray(self._model, branch, context, byte_offsets, data)
+        output = ObjectArray(
+            self._model, branch, context, byte_offsets, data, cursor_offset
+        )
 
         self.hook_after_basket_array(
             data=data,
@@ -164,6 +176,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             output=output,
+            cursor_offset=cursor_offset,
         )
 
         return output

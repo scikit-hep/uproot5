@@ -16,11 +16,11 @@ class Interpretation(object):
              dimension) of the NumPy array that would be created.
        * `awkward_form(file, header=False, tobject_header=True)`: Form of the
              Awkward Array that would be created (requires `awkward1`).
-       * `basket_array(data, byte_offsets, basket, branch, context)`: Create a
-             basket_array from a basket's `data` and `byte_offsets`.
-       * `final_array(basket_arrays, entry_start, entry_stop, entry_offsets, library)`:
-             Combine basket_arrays with basket excess trimmed and in the form
-             required by a given library.
+       * `basket_array(data, byte_offsets, basket, branch, context, cursor_offset)`:
+             Create a basket_array from a basket's `data` and `byte_offsets`.
+       * `final_array(basket_arrays, entry_start, entry_stop, entry_offsets,
+             library, branch)`: Combine basket_arrays with basket excess
+             trimmed and in the form required by a given library.
     """
 
     @property
@@ -38,11 +38,11 @@ class Interpretation(object):
     def awkward_form(self, file, header=False, tobject_header=True):
         raise AssertionError
 
-    def basket_array(self, data, byte_offsets, basket, branch, context):
+    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         raise AssertionError
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library
+        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
         raise AssertionError
 
