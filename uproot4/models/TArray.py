@@ -61,7 +61,7 @@ class Model_TArray(uproot4.model.Model, Sequence):
 
         return awkward1.forms.ListOffsetForm(
             "i32",
-            uproot4._util.awkward_form(cls.dtype),
+            uproot4._util.awkward_form(cls.dtype, file, header, tobject_header),
             parameters={"uproot": {"as": "TArray"}},
         )
 

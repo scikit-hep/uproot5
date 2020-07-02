@@ -1106,10 +1106,12 @@ in file {3}""".format(
 
     def __repr__(self):
         if len(self) == 0:
-            return "<TBranch {0} at 0x{1:012x}>".format(repr(self.name), id(self))
+            return "<{0} {1} at 0x{2:012x}>".format(
+                self.classname, repr(self.name), id(self)
+            )
         else:
-            return "<TBranch {0} ({1} subbranches) at 0x{2:012x}>".format(
-                repr(self.name), len(self), id(self)
+            return "<{0} {1} ({2} subbranches) at 0x{3:012x}>".format(
+                self.classname, repr(self.name), len(self), id(self)
             )
 
     def basket_chunk_bytes(self, basket_num):

@@ -1067,6 +1067,7 @@ def interpretation_of(branch, context, simplify=True):
                 inner_header=False,
                 string_header=False,
             )
+
             out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
             if simplify:
                 return out.simplify()
@@ -1081,6 +1082,17 @@ def interpretation_of(branch, context, simplify=True):
                 inner_header=False,
                 string_header=True,
             )
+
+            # kObjectp/kAnyp (as opposed to kObjectP/kAnyP) are stored inline
+            if isinstance(
+                model_cls, uproot4.stl_containers.AsPointer
+            ) and branch.streamer.member("fType") in (
+                uproot4.const.kObjectp,
+                uproot4.const.kAnyp,
+            ):
+                while isinstance(model_cls, uproot4.stl_containers.AsPointer):
+                    model_cls = model_cls.pointee
+
             out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
             if simplify:
                 return out.simplify()

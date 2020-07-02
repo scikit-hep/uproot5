@@ -34,9 +34,11 @@ class Model_TNamed(uproot4.model.Model):
 
         contents = {}
         if header:
-            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@num_bytes"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
             contents["@instance_version"] = uproot4._util.awkward_form(
-                numpy.dtype("u2")
+                numpy.dtype("u2"), file, header, tobject_header
             )
         contents["fName"] = uproot4.stl_containers.AsString(
             False, typename="TString"
