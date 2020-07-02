@@ -1062,9 +1062,7 @@ def interpretation_of(branch, context, simplify=True):
                 inner_header=False,
                 string_header=False,
             )
-            out = uproot4.interpretation.objects.AsObjects(
-                model_cls, branch
-            )
+            out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
             if simplify:
                 return out.simplify()
             else:
@@ -1078,9 +1076,7 @@ def interpretation_of(branch, context, simplify=True):
                 inner_header=False,
                 string_header=True,
             )
-            out = uproot4.interpretation.objects.AsObjects(
-                model_cls, branch
-            )
+            out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
             if simplify:
                 return out.simplify()
             else:

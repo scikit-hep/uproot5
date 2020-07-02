@@ -486,7 +486,9 @@ in file {1}""".format(
                     unknown_cls = uproot4.unknown_classes.get(classname)
                     if unknown_cls is None:
                         unknown_cls = uproot4._util.new_class(
-                            classname_encode(classname, version, unknown=True),
+                            uproot4.model.classname_encode(
+                                classname, version, unknown=True
+                            ),
                             (uproot4.model.UnknownClassVersion,),
                             {},
                         )
