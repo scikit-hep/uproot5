@@ -63,16 +63,13 @@ class ObjectArray(object):
     def __len__(self):
         return len(self._byte_offsets) - 1
 
-    def chunk(self, entry_num):
-        byte_start = self._byte_offsets[entry_num]
-        byte_stop = self._byte_offsets[entry_num + 1]
-        data = self._byte_content[byte_start:byte_stop]
-        return uproot4.source.chunk.Chunk.wrap(self._branch.file.source, data)
-
     def __getitem__(self, where):
         if uproot4._util.isint(where):
-            chunk = self.chunk(where)
-            cursor = uproot4.source.cursor.Cursor(0, origin=-self._cursor_offset)
+            byte_start = self._byte_offsets[where]
+            byte_stop = self._byte_offsets[where + 1]
+            data = self._byte_content[byte_start:byte_stop]
+            chunk = uproot4.source.chunk.Chunk.wrap(self._branch.file.source, data)
+            cursor = uproot4.source.cursor.Cursor(0, origin=-(byte_start + self._cursor_offset))
             return self._model.read(
                 chunk, cursor, self._context, self._branch.file, self._branch
             )
