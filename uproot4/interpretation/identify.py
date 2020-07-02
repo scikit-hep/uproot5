@@ -184,8 +184,11 @@ _simplify_token_1 = re.compile(r"\s*\*")
 _simplify_token_2 = re.compile(r"\s*::\s*")
 
 
-def _simplify_token(token):
-    return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token.group(0)))
+def _simplify_token(token, is_token=True):
+    if is_token:
+        return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token.group(0)))
+    else:
+        return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token))
 
 
 def _parse_error(pos, typename, file):
@@ -529,9 +532,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, uproot4.stl_containers.AsFIXME("Float16_t in array"))'.format(
-                    header
-                ),
+                "uproot4.stl_containers.AsArray({0}, "
+                'uproot4.stl_containers.AsFIXME("Float16_t in array"))'.format(header),
                 quote,
             ),
         )
@@ -548,9 +550,9 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                'uproot4.stl_containers.AsArray({0}, uproot4.stl_containers.AsFIXME("Double32_t in array (note: Event.root fClosestDistance has an example)"))'.format(
-                    header
-                ),
+                "uproot4.stl_containers.AsArray({0}, "
+                'uproot4.stl_containers.AsFIXME("Double32_t in array '
+                '(note: Event.root fClosestDistance has an example)"))'.format(header),
                 quote,
             ),
         )
@@ -662,7 +664,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             stop = tokens[i + 1].span()[1]
             i += 1
 
-        classname = typename[start:stop]
+        classname = _simplify_token(typename[start:stop], is_token=False).rstrip("*")
 
         if quote:
             cls = "c({0})".format(repr(classname))

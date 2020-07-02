@@ -29,6 +29,10 @@ class Model_TArray(uproot4.model.Model, Sequence):
     def __array__(self):
         return self._data
 
+    @property
+    def nbytes(self):
+        return self._data.nbytes
+
     def __getitem__(self, where):
         return self._data[where]
 

@@ -53,6 +53,7 @@ import uproot4.models.THashList
 import uproot4.models.TObjArray
 import uproot4.models.TObjString
 import uproot4.models.TAtt
+import uproot4.models.TRef
 
 import uproot4.models.TTree
 import uproot4.models.TBranch
