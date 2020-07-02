@@ -517,6 +517,44 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             ),
         )
 
+    elif tokens[i].group(0) == "Float16_t":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsFIXME("Float16_t in another context")', quote
+            ),
+        )
+
+    elif _simplify_token(tokens[i]) == "Float16_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, uproot4.stl_containers.AsFIXME("Float16_t in array"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+
+    elif tokens[i].group(0) == "Double32_t":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsFIXME("Double32_t in another context")', quote
+            ),
+        )
+
+    elif _simplify_token(tokens[i]) == "Double32_t*":
+        return (
+            i + 1,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsArray({0}, uproot4.stl_containers.AsFIXME("Double32_t in array (note: Event.root fClosestDistance has an example)"))'.format(
+                    header
+                ),
+                quote,
+            ),
+        )
+
     elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
         return (
             i + 1,
@@ -548,6 +586,22 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             i + 2,
             _parse_maybe_quote(
                 "uproot4.stl_containers.AsString(False, length_bytes='4', typename='char*')",
+                quote,
+            ),
+        )
+
+    elif tokens[i].group(0) == "bitset" or _simplify_token(tokens[i]) == "std::bitset":
+        _parse_expect("<", tokens, i + 1, typename, file)
+        _parse_expect(None, tokens, i + 2, typename, file)
+        try:
+            num_bits = int(tokens[i + 2].group(0))
+        except ValueError:
+            _parse_error(tokens[i + 2].start() + 1, typename, file)
+        _parse_expect(">", tokens, i + 3, typename, file)
+        return (
+            i + 4,
+            _parse_maybe_quote(
+                'uproot4.stl_containers.AsFIXME("std::bitset<{0}>")'.format(num_bits),
                 quote,
             ),
         )

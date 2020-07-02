@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import sys
+import re
 import threading
 
 try:
@@ -887,6 +888,10 @@ class HasBranches(Mapping):
         return library.group(output, expression_context, how)
 
 
+_branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
+_branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\])*")
+
+
 class TBranch(HasBranches):
     def postprocess(self, chunk, cursor, context):
         fWriteBasket = self.member("fWriteBasket")
@@ -1027,17 +1032,34 @@ in file {3}""".format(
     @property
     def streamer(self):
         if self._streamer is None:
-            nodotname = self.name.split(".")[-1]
+            clean_name = _branch_clean_name.match(self.name).group(2)
+            clean_parentname = _branch_clean_parent_name.match(self.name)
             fParentName = self.member("fParentName", none_if_missing=True)
             fClassName = self.member("fClassName", none_if_missing=True)
 
             if fParentName is not None and fParentName != "":
                 matches = self._file.streamers.get(fParentName)
+
                 if matches is not None:
-                    for element in matches[max(matches)].elements:
-                        if element.name == nodotname:
+                    streamerinfo = matches[max(matches)]
+
+                    for element in streamerinfo.elements:
+                        if element.name == clean_name:
                             self._streamer = element
                             break
+
+                    if self._streamer is None and clean_parentname is not None:
+                        clean_parentname = clean_parentname.group(2)
+                        for element in streamerinfo.elements:
+                            if element.name == clean_parentname:
+                                substreamerinfo = self._file.streamer_named(
+                                    element.typename
+                                )
+                                for subelement in substreamerinfo.elements:
+                                    if subelement.name == clean_name:
+                                        self._streamer = subelement
+                                        break
+                                break
 
             elif fClassName is not None and fClassName != "":
                 matches = self._file.streamers.get(fClassName)

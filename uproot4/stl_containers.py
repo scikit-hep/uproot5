@@ -166,6 +166,39 @@ class STLContainer(object):
         raise AssertionError
 
 
+class AsFIXME(AsSTLContainer):
+    def __init__(self, message):
+        self.message = message
+
+    def __hash__(self):
+        return hash((AsFIXME, self.message))
+
+    def __repr__(self):
+        return "AsFIXME({0})".format(repr(self.message))
+
+    @property
+    def cache_key(self):
+        return "AsFIXME({0})".format(repr(self.message))
+
+    @property
+    def typename(self):
+        return "unknown"
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        raise uproot4.deserialization.CannotBeAwkward(self.message)
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        raise uproot4.deserialization.DeserializationError(
+            self.message + "; please file a bug report!", None, None, None, None
+        )
+
+    def __eq__(self, other):
+        if isinstance(other, AsFIXME):
+            return self.message == other.message
+        else:
+            return False
+
+
 class AsString(AsSTLContainer):
     def __init__(self, header, length_bytes="1-5", typename=None):
         self.header = header

@@ -450,7 +450,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            "        raise uproot4.deserialization.CannotBeStrided("
+            "        raise uproot4.interpretation.objects.CannotBeStrided("
             "'not implemented: class members defined by {0} of type {1} in member "
             "{2} of class {3}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
@@ -594,7 +594,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            "        raise uproot4.deserialization.CannotBeStrided("
+            "        raise uproot4.interpretation.objects.CannotBeStrided("
             "'class members defined by {0} of type {1} in member "
             "{2} of class {3}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
@@ -766,7 +766,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
         else:
             strided_interpretation.append(
-                "        raise uproot4.deserialization.CannotBeStrided("
+                "        raise uproot4.interpretation.objects.CannotBeStrided("
                 "'class members defined by {0} of type {1} in member "
                 "{2} of class {3}')".format(
                     type(self).__name__, self.typename, self.name, streamerinfo.name
@@ -775,25 +775,17 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         if self.array_length == 0:
             if self.typename == "Double32_t":
-                awkward_form.extend(
-                    [
-                        "        contents[{0}] = NumpyForm((), 8, 'd',".format(
-                            repr(self.name)
-                        ),
-                        "            parameters={'uproot': {'as': 'Double32'}})",
-                        "        )",
-                    ]
+                awkward_form.append(
+                    "        contents["
+                    + repr(self.name)
+                    + "] = NumpyForm((), 8, 'd', parameters={'uproot': {'as': 'Double32'}})"
                 )
 
             elif self.typename == "Float16_t":
-                awkward_form.extend(
-                    [
-                        "        contents[{0}] = NumpyForm((), 4, 'f',".format(
-                            repr(self.name)
-                        ),
-                        "            parameters={'uproot': {'as': 'Float16'}})",
-                        "        )",
-                    ]
+                awkward_form.append(
+                    "        contents["
+                    + repr(self.name)
+                    + "] = NumpyForm((), 4, 'f', parameters={'uproot': {'as': 'Float16'}})"
                 )
 
             else:
@@ -870,7 +862,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         )
 
         strided_interpretation.append(
-            "        raise uproot4.deserialization.CannotBeStrided("
+            "        raise uproot4.interpretation.objects.CannotBeStrided("
             "'class members defined by {0} of type {1} in member "
             "{2} of class {3}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
@@ -1029,7 +1021,7 @@ class pointer_types(object):
                 "context, self._file, self)".format(repr(self.name))
             )
             strided_interpretation.append(
-                "        raise uproot4.deserialization.CannotBeStrided("
+                "        raise uproot4.interpretation.objects.CannotBeStrided("
                 "'class members defined by {0} of type {1} in member "
                 "{2} of class {3}')".format(
                     type(self).__name__, self.typename, self.name, streamerinfo.name
