@@ -1203,6 +1203,30 @@ in file {3}""".format(
             start = stop
         return out
 
+    def debug(
+        self,
+        entry,
+        skip_bytes=None,
+        limit_bytes=None,
+        dtype=None,
+        offset=0,
+        stream=sys.stdout,
+    ):
+        interpretation = uproot4.interpretation.jagged.AsJagged(
+            uproot4.interpretation.numerical.AsDtype("u1")
+        )
+        data = self.array(
+            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
+        )[0]
+        chunk = uproot4.source.chunk.Chunk.wrap(self._file.source, data)
+        if skip_bytes is None:
+            cursor = uproot4.source.cursor.Cursor(0)
+        else:
+            cursor = uproot4.source.cursor.Cursor(skip_bytes)
+        cursor.debug(
+            chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
+        )
+
     def array(
         self,
         interpretation=None,

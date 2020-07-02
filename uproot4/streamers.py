@@ -458,7 +458,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         )
 
         awkward_form.append(
-            "        raise uproot4.deserialization.CannotBeAwkward("
+            "        raise uproot4.interpretation.objects.CannotBeAwkward("
             "'not implemented: class members defined by {0} of type {1} in member "
             "{2} of class {3}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name

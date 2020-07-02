@@ -185,7 +185,7 @@ class AsFIXME(AsSTLContainer):
         return "unknown"
 
     def awkward_form(self, file, header=False, tobject_header=True):
-        raise uproot4.deserialization.CannotBeAwkward(self.message)
+        raise uproot4.interpretation.objects.CannotBeAwkward(self.message)
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         raise uproot4.deserialization.DeserializationError(
@@ -311,7 +311,7 @@ class AsPointer(AsSTLContainer):
         return _content_typename(self._pointee) + "*"
 
     def awkward_form(self, file, header=False, tobject_header=True):
-        raise uproot4.deserialization.CannotBeAwkward("arbitrary pointer")
+        raise uproot4.interpretation.objects.CannotBeAwkward("arbitrary pointer")
 
     def read(self, chunk, cursor, context, file, parent, header=True):
         return uproot4.deserialization.read_object_any(
@@ -335,7 +335,11 @@ class AsArray(AsSTLContainer):
         return self._values
 
     def __repr__(self):
-        return "AsArray({0}, {1})".format(self.header, repr(self._values))
+        if isinstance(self._values, type):
+            values = self._values.__name__
+        else:
+            values = repr(self._values)
+        return "AsArray({0}, {1})".format(self.header, values)
 
     @property
     def cache_key(self):
@@ -365,8 +369,58 @@ class AsArray(AsSTLContainer):
         else:
             out = []
             while cursor.index < chunk.stop:
-                out.append(self._values.read(chunk, cursor, context, file, self))
+                out.append(self._values.read(chunk, cursor, context, file, parent))
             return numpy.array(out, dtype=numpy.dtype(numpy.object))
+
+
+class AsDynamic(AsSTLContainer):
+    def __init__(self, model=None):
+        self._model = model
+
+    @property
+    def model(self):
+        return self._model
+
+    def __repr__(self):
+        if self._model is None:
+            model = ""
+        elif isinstance(self._model, type):
+            model = "model=" + self._model.__name__
+        else:
+            model = "model=" + repr(self._model)
+        return "AsDynamic({0})".format(model)
+
+    @property
+    def cache_key(self):
+        if self._model is None:
+            return "AsDynamic(None)"
+        else:
+            return "AsDynamic({0})".format(_content_cache_key(self._model))
+
+    @property
+    def typename(self):
+        if self._model is None:
+            return "void*"
+        else:
+            return _content_typename(self._values) + "*"
+
+    def awkward_form(self, file, header=False, tobject_header=True):
+        import awkward1
+
+        if self._model is None:
+            raise uproot4.interpretation.objects.CannotBeAwkward("dynamic type")
+        else:
+            return awkward1.forms.ListOffsetForm(
+                "i32",
+                uproot4._util.awkward_form(self._model, file, header, tobject_header),
+                parameters={"uproot": {"as": "array", "header": self._header}},
+            )
+
+    def read(self, chunk, cursor, context, file, parent, header=True):
+        classname = cursor.string(chunk, context)
+        cursor.skip(1)
+        cls = file.class_named(classname)
+        return cls.read(chunk, cursor, context, file, parent)
 
 
 class AsVector(AsSTLContainer):
@@ -423,7 +477,9 @@ class AsVector(AsSTLContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        values = _read_nested(self._values, length, chunk, cursor, context, file, self)
+        values = _read_nested(
+            self._values, length, chunk, cursor, context, file, parent
+        )
         out = STLVector(values)
 
         if self._header and header:
@@ -565,7 +621,7 @@ class AsSet(AsSTLContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        keys = _read_nested(self._keys, length, chunk, cursor, context, file, self)
+        keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent)
         out = STLSet(keys)
 
         if self._header and header:
@@ -757,13 +813,13 @@ class AsMap(AsSTLContainer):
         if _has_nested_header(self._keys) and header:
             cursor.skip(6)
         keys = _read_nested(
-            self._keys, length, chunk, cursor, context, file, self, header=False
+            self._keys, length, chunk, cursor, context, file, parent, header=False
         )
 
         if _has_nested_header(self._values) and header:
             cursor.skip(6)
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, self, header=False
+            self._values, length, chunk, cursor, context, file, parent, header=False
         )
 
         out = STLMap(keys, values)

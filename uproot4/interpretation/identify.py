@@ -969,6 +969,11 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
 
 
 def interpretation_of(branch, context, simplify=True):
+    if branch.classname == "TBranchObject":
+        return uproot4.interpretation.objects.AsObjects(
+            uproot4.stl_containers.AsDynamic(), branch
+        )
+
     dims, is_jagged = _from_leaves(branch, context)
 
     try:
