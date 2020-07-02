@@ -561,8 +561,7 @@ class STLVector(Container, Sequence):
 
     def tolist(self):
         return [
-            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x
-            for x in self
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
         ]
 
 
@@ -713,8 +712,7 @@ class STLSet(Container, Set):
 
     def tolist(self):
         return set(
-            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x
-            for x in self
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
         )
 
 

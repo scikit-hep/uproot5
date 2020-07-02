@@ -69,7 +69,9 @@ class ObjectArray(object):
             byte_stop = self._byte_offsets[where + 1]
             data = self._byte_content[byte_start:byte_stop]
             chunk = uproot4.source.chunk.Chunk.wrap(self._branch.file.source, data)
-            cursor = uproot4.source.cursor.Cursor(0, origin=-(byte_start + self._cursor_offset))
+            cursor = uproot4.source.cursor.Cursor(
+                0, origin=-(byte_start + self._cursor_offset)
+            )
             return self._model.read(
                 chunk, cursor, self._context, self._branch.file, self._branch
             )
@@ -267,8 +269,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             )
 
         if isinstance(
-            self._model,
-            (uproot4.containers.AsArray, uproot4.containers.AsVector),
+            self._model, (uproot4.containers.AsArray, uproot4.containers.AsVector),
         ):
             if not self._model.header:
                 header_bytes = 0
