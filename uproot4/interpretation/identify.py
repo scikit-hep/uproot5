@@ -968,7 +968,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             return uproot4.interpretation.numerical.AsFloat16(low, high, num_bits, dims)
 
 
-def interpretation_of(branch, context):
+def interpretation_of(branch, context, simplify=True):
     dims, is_jagged = _from_leaves(branch, context)
 
     try:
@@ -1062,10 +1062,13 @@ def interpretation_of(branch, context):
                 inner_header=False,
                 string_header=False,
             )
-
-            return uproot4.interpretation.objects.AsObjects(
+            out = uproot4.interpretation.objects.AsObjects(
                 model_cls, branch
-            ).simplify()
+            )
+            if simplify:
+                return out.simplify()
+            else:
+                return out
 
         if branch.streamer is not None:
             model_cls = parse_typename(
@@ -1075,9 +1078,13 @@ def interpretation_of(branch, context):
                 inner_header=False,
                 string_header=True,
             )
-            return uproot4.interpretation.objects.AsObjects(
+            out = uproot4.interpretation.objects.AsObjects(
                 model_cls, branch
-            ).simplify()
+            )
+            if simplify:
+                return out.simplify()
+            else:
+                return out
 
         raise UnknownInterpretation(
             "none of the rules matched", branch.file.file_path, branch.object_path,

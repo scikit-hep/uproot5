@@ -46,7 +46,9 @@ def bootstrap_classes():
 
 
 def reset_classes():
-    if not uproot4._util.py2:
+    if uproot4._util.py2:
+        reload = __builtins__["reload"]
+    else:
         from importlib import reload
 
     uproot4.classes = {}

@@ -301,12 +301,16 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
                     in_file = ""
                 else:
                     in_file = "\n\nin file {0}".format(file.file_path)
-                raise ValueError(
+                raise uproot4.deserialization.DeserializationError(
                     """invalid class-tag reference: {0}
 
     Known references: {1}{2}""".format(
                         ref, ", ".join(str(x) for x in cursor.refs), in_file
-                    )
+                    ),
+                    chunk,
+                    cursor,
+                    context,
+                    file.file_path,
                 )
 
             cls = cursor.refs[ref]  # reference class
