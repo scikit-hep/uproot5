@@ -34,6 +34,8 @@ from uproot4.model import classname_decode
 from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
+from uproot4.model import bootstrap_classnames
+from uproot4.model import bootstrap_classes
 
 from uproot4.stl_containers import STLVector
 from uproot4.stl_containers import STLSet
@@ -63,9 +65,6 @@ from uproot4.behaviors.TTree import TTree
 from uproot4.behaviors.TBranch import TBranch
 
 import uproot4.models.RNTuple
-
-# FIXME: add uproot4.models.TRef
-
 
 import pkgutil
 import uproot4.behaviors
