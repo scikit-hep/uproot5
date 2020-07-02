@@ -10,6 +10,7 @@ import uproot4.model
 import uproot4.deserialization
 import uproot4.compression
 import uproot4.behaviors.TBranch
+import uproot4.const
 
 
 _tbasket_format1 = struct.Struct(">ihiIhh")
@@ -158,6 +159,17 @@ class Model_TBasket(uproot4.model.Model):
     @property
     def byte_offsets(self):
         return self._byte_offsets
+
+    @property
+    def counts(self):
+        count_branch = self._parent.count_branch
+        if count_branch is not None:
+            entry_offsets = count_branch.entry_offsets
+            entry_start = entry_offsets[self._basket_num]
+            entry_stop = entry_offsets[self._basket_num + 1]
+            return count_branch.array(
+                entry_start=entry_start, entry_stop=entry_stop, library="np"
+            )
 
     def array(self, interpretation=None):
         if interpretation is None:

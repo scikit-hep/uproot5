@@ -142,10 +142,25 @@ class AsJagged(uproot4.interpretation.Interpretation):
             cursor_offset=cursor_offset,
         )
 
-        assert basket.byte_offsets is not None
+        if byte_offsets is None:
+            counts = basket.counts
+            if counts is None:
+                raise uproot4.deserialization.DeserializationError(
+                    "missing offsets (and missing count branch) for jagged array",
+                    None,
+                    None,
+                    context,
+                    branch.file.file_path,
+                )
+            else:
+                itemsize = self._content.from_dtype.itemsize
+                numpy.multiply(counts, itemsize, out=counts)
+                byte_offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
+                byte_offsets[0] = 0
+                numpy.cumsum(counts, out=byte_offsets[1:])
 
         if self._header_bytes == 0:
-            offsets = fast_divide(basket.byte_offsets, self._content.itemsize)
+            offsets = fast_divide(byte_offsets, self._content.itemsize)
             content = self._content.basket_array(
                 data, None, basket, branch, context, cursor_offset
             )

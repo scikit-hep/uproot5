@@ -197,7 +197,7 @@ def numbytes_check(
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
-            raise uproot4.deserialization.DeserializationError(
+            raise DeserializationError(
                 """expected {0} bytes but cursor moved by {1} bytes (through {2})""".format(
                     num_bytes, observed, classname
                 ),
@@ -284,7 +284,7 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
                     in_file = ""
                 else:
                     in_file = "\n\nin file {0}".format(file.file_path)
-                raise uproot4.deserialization.DeserializationError(
+                raise DeserializationError(
                     """invalid class-tag reference: {0}
 
     Known references: {1}{2}""".format(

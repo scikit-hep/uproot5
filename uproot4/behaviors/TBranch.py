@@ -903,8 +903,6 @@ class TBranch(HasBranches):
 
         self._lookup = {}
         self._interpretation = None
-        self._count_branch = None
-        self._count_leaf = None
         self._typename = None
         self._streamer = None
         self._context = dict(context)
@@ -1086,15 +1084,18 @@ in file {3}""".format(
 
     @property
     def count_branch(self):
-        if self._count_branch is None:
-            raise NotImplementedError
-        return self._count_branch
+        leaf = self.count_leaf
+        if leaf is None:
+            return None
+        else:
+            return leaf.parent
 
     @property
     def count_leaf(self):
-        if self._count_leaf is None:
-            raise NotImplementedError
-        return self._count_leaf
+        leaves = self.member("fLeaves")
+        if len(leaves) != 1:
+            return None
+        return leaves[0].member("fLeafCount")
 
     @property
     def num_entries(self):

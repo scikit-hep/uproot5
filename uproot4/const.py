@@ -102,4 +102,4 @@ kSTLany = 300
 
 ############# IOFeatures
 
-kGenerateOffsetMap = 1
+kGenerateOffsetMap = numpy.uint8(1)

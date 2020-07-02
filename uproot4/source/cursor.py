@@ -343,7 +343,12 @@ of file path {2}""".format(
         if move:
             self._index += local_stop
 
-        out = remainder[: local_stop - 1].tostring()
+        out = remainder[: local_stop - 1]
+        if hasattr(out, "tobytes"):
+            out = out.tobytes()
+        else:
+            out = out.tostring()
+
         if uproot4._util.py2:
             return out
         else:
