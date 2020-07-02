@@ -23,7 +23,7 @@ import numpy
 
 import uproot4.source.cursor
 import uproot4.streamers
-import uproot4.stl_containers
+import uproot4.containers
 import uproot4.interpretation
 import uproot4.interpretation.numerical
 import uproot4.interpretation.jagged
@@ -903,8 +903,6 @@ class TBranch(HasBranches):
 
         self._lookup = {}
         self._interpretation = None
-        self._count_branch = None
-        self._count_leaf = None
         self._typename = None
         self._streamer = None
         self._context = dict(context)
@@ -1086,15 +1084,18 @@ in file {3}""".format(
 
     @property
     def count_branch(self):
-        if self._count_branch is None:
-            raise NotImplementedError
-        return self._count_branch
+        leaf = self.count_leaf
+        if leaf is None:
+            return None
+        else:
+            return leaf.parent
 
     @property
     def count_leaf(self):
-        if self._count_leaf is None:
-            raise NotImplementedError
-        return self._count_leaf
+        leaves = self.member("fLeaves")
+        if len(leaves) != 1:
+            return None
+        return leaves[0].member("fLeafCount")
 
     @property
     def num_entries(self):
@@ -1106,10 +1107,12 @@ in file {3}""".format(
 
     def __repr__(self):
         if len(self) == 0:
-            return "<TBranch {0} at 0x{1:012x}>".format(repr(self.name), id(self))
+            return "<{0} {1} at 0x{2:012x}>".format(
+                self.classname, repr(self.name), id(self)
+            )
         else:
-            return "<TBranch {0} ({1} subbranches) at 0x{2:012x}>".format(
-                repr(self.name), len(self), id(self)
+            return "<{0} {1} ({2} subbranches) at 0x{3:012x}>".format(
+                self.classname, repr(self.name), len(self), id(self)
             )
 
     def basket_chunk_bytes(self, basket_num):
@@ -1202,6 +1205,30 @@ in file {3}""".format(
                     raise AssertionError((self.name, basket_num))
             start = stop
         return out
+
+    def debug(
+        self,
+        entry,
+        skip_bytes=None,
+        limit_bytes=None,
+        dtype=None,
+        offset=0,
+        stream=sys.stdout,
+    ):
+        interpretation = uproot4.interpretation.jagged.AsJagged(
+            uproot4.interpretation.numerical.AsDtype("u1")
+        )
+        data = self.array(
+            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
+        )[0]
+        chunk = uproot4.source.chunk.Chunk.wrap(self._file.source, data)
+        if skip_bytes is None:
+            cursor = uproot4.source.cursor.Cursor(0)
+        else:
+            cursor = uproot4.source.cursor.Cursor(skip_bytes)
+        cursor.debug(
+            chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
+        )
 
     def array(
         self,

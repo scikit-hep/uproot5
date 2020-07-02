@@ -35,7 +35,7 @@ class Model_TString(uproot4.model.Model, str):
 
     @classmethod
     def awkward_form(cls, file, header=False, tobject_header=True):
-        return uproot4.stl_containers.AsString(False, typename="TString").awkward_form(
+        return uproot4.containers.AsString(False, typename="TString").awkward_form(
             file, header, tobject_header
         )
 

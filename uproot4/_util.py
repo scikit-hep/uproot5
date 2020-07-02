@@ -271,7 +271,9 @@ def awkward_form(model, file, header=False, tobject_header=True):
         model = model.newbyteorder("=")
 
         if model not in _primitive_awkward_form:
-            if model == numpy.dtype(numpy.int8):
+            if model == numpy.dtype(numpy.bool_) or model == numpy.dtype(numpy.bool):
+                _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"bool"')
+            elif model == numpy.dtype(numpy.int8):
                 _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"int8"')
             elif model == numpy.dtype(numpy.uint8):
                 _primitive_awkward_form[model] = awkward1.forms.Form.fromjson('"uint8"')
@@ -302,7 +304,7 @@ def awkward_form(model, file, header=False, tobject_header=True):
                     '"float64"'
                 )
             else:
-                raise AssertionError(model)
+                raise AssertionError("{0}: {1}".format(repr(model), type(model)))
 
         return _primitive_awkward_form[model]
 

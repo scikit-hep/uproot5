@@ -235,7 +235,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         fields = []
         formats = []
         dtypes = []
-        stl_containers = []
+        containers = []
         base_names_versions = []
         member_names = []
         class_flags = {}
@@ -251,7 +251,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
                 fields,
                 formats,
                 dtypes,
-                stl_containers,
+                containers,
                 base_names_versions,
                 member_names,
                 class_flags,
@@ -284,7 +284,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         for i, dt in enumerate(dtypes):
             class_data.append("    _dtype{0} = {1}".format(i, dt))
 
-        for i, stl in enumerate(stl_containers):
+        for i, stl in enumerate(containers):
             class_data.append("    _stl_container{0} = {1}".format(i, stl))
 
         class_data.append(
@@ -436,7 +436,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -458,7 +458,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         )
 
         awkward_form.append(
-            "        raise uproot4.deserialization.CannotBeAwkward("
+            "        raise uproot4.interpretation.objects.CannotBeAwkward("
             "'not implemented: class members defined by {0} of type {1} in member "
             "{2} of class {3}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
@@ -512,7 +512,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -570,7 +570,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -697,7 +697,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -845,7 +845,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -930,7 +930,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -945,22 +945,22 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
             "chunk, cursor, context, self._file, self)"
-            "".format(repr(self.name), len(stl_containers))
+            "".format(repr(self.name), len(containers))
         )
 
         strided_interpretation.append(
             "        members.append(({0}, cls._stl_container{1}."
             "strided_interpretation(file, header, tobject_header)))".format(
-                repr(self.name), len(stl_containers)
+                repr(self.name), len(containers)
             )
         )
 
         awkward_form.append(
             "        contents[{0}] = cls._stl_container{1}.awkward_form(file, "
-            "header, tobject_header)".format(repr(self.name), len(stl_containers))
+            "header, tobject_header)".format(repr(self.name), len(containers))
         )
 
-        stl_containers.append(stl_container)
+        containers.append(stl_container)
         member_names.append(self.name)
 
 
@@ -990,7 +990,7 @@ class pointer_types(object):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,
@@ -1078,7 +1078,7 @@ class object_types(object):
         fields,
         formats,
         dtypes,
-        stl_containers,
+        containers,
         base_names_versions,
         member_names,
         class_flags,

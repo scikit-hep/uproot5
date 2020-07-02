@@ -42,7 +42,9 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
 
         contents = {}
         if header:
-            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@num_bytes"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
             contents["@instance_version"] = uproot4._util.awkward_form(
                 numpy.dtype("u2"), file, header, tobject_header
             )
@@ -94,7 +96,9 @@ class Model_TAttLine_v2(uproot4.model.VersionedModel):
 
         contents = {}
         if header:
-            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@num_bytes"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
             contents["@instance_version"] = uproot4._util.awkward_form(
                 numpy.dtype("u2"), file, header, tobject_header
             )
@@ -147,7 +151,9 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
 
         contents = {}
         if header:
-            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@num_bytes"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
             contents["@instance_version"] = uproot4._util.awkward_form(
                 numpy.dtype("u2"), file, header, tobject_header
             )
@@ -193,7 +199,9 @@ class Model_TAttFill_v2(uproot4.model.VersionedModel):
 
         contents = {}
         if header:
-            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@num_bytes"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
             contents["@instance_version"] = uproot4._util.awkward_form(
                 numpy.dtype("u2"), file, header, tobject_header
             )
@@ -245,7 +253,9 @@ class Model_TAttMarker_v2(uproot4.model.VersionedModel):
 
         contents = {}
         if header:
-            contents["@num_bytes"] = uproot4._util.awkward_form(numpy.dtype("u4"))
+            contents["@num_bytes"] = uproot4._util.awkward_form(
+                numpy.dtype("u4"), file, header, tobject_header
+            )
             contents["@instance_version"] = uproot4._util.awkward_form(
                 numpy.dtype("u2"), file, header, tobject_header
             )

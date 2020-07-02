@@ -74,7 +74,7 @@ class DeserializationError(Exception):
                     obj.instance_version,
                     type(obj).__module__,
                     type(obj).__name__,
-                    obj.num_bytes,
+                    "?" if obj.num_bytes is None else obj.num_bytes,
                 )
             )
             indent = indent + "    "
@@ -197,7 +197,7 @@ def numbytes_check(
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
-            raise uproot4.deserialization.DeserializationError(
+            raise DeserializationError(
                 """expected {0} bytes but cursor moved by {1} bytes (through {2})""".format(
                     num_bytes, observed, classname
                 ),
@@ -206,23 +206,6 @@ def numbytes_check(
                 context,
                 file_path,
             )
-
-
-# _map_string_string_format1 = struct.Struct(">I")
-# def map_long_int(chunk, cursor, context):
-#     cursor.skip(12)
-#     size = cursor.field(chunk, _map_string_string_format1, context)
-#     keys = cursor.array(chunk, size, numpy.dtype(">i8"), context)
-#     values = cursor.array(chunk, size, numpy.dtype(">i4"), context)
-#     return dict(zip(keys, values))
-# scope["map_long_int"] = map_long_int
-
-# def set_long(chunk, cursor, context):
-#     cursor.skip(6)
-#     size = cursor.field(chunk, _map_string_string_format1, context)
-#     values = cursor.array(chunk, size, numpy.dtype(">i8"), context)
-#     return set(values)
-# scope["set_long"] = set_long
 
 
 _read_object_any_format1 = struct.Struct(">I")
@@ -301,12 +284,16 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
                     in_file = ""
                 else:
                     in_file = "\n\nin file {0}".format(file.file_path)
-                raise ValueError(
+                raise DeserializationError(
                     """invalid class-tag reference: {0}
 
     Known references: {1}{2}""".format(
                         ref, ", ".join(str(x) for x in cursor.refs), in_file
-                    )
+                    ),
+                    chunk,
+                    cursor,
+                    context,
+                    file.file_path,
                 )
 
             cls = cursor.refs[ref]  # reference class

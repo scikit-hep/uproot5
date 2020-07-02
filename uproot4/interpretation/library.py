@@ -10,7 +10,7 @@ import numpy
 import uproot4.interpretation.jagged
 import uproot4.interpretation.strings
 import uproot4.interpretation.objects
-import uproot4.stl_containers
+import uproot4.containers
 
 
 class Library(object):
@@ -372,7 +372,7 @@ in object {3}""".format(
                 cut = len(jagged[0])
                 for name in jagged:
                     cut = min(cut, len(name))
-                    while cut > 0 and name[:cut] != jagged[0][:cut]:
+                    while cut > 0 and (name[:cut] != jagged[0][:cut] or name[cut - 1] not in ("_", ".", "/")):
                         cut -= 1
                     if cut == 0:
                         break

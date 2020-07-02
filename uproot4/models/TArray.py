@@ -42,7 +42,13 @@ class Model_TArray(uproot4.model.Model, Sequence):
     def __repr__(self):
         return "<{0} {1} at 0x{2:012x}>".format(
             uproot4.model.classname_pretty(self.classname, self.class_version),
-            str(self._data),
+            numpy.array2string(
+                self._data,
+                max_line_width=numpy.inf,
+                separator=", ",
+                formatter={"float": lambda x: "%g" % x},
+                threshold=6,
+            ),
             id(self),
         )
 
@@ -55,7 +61,7 @@ class Model_TArray(uproot4.model.Model, Sequence):
 
         return awkward1.forms.ListOffsetForm(
             "i32",
-            uproot4._util.awkward_form(cls.dtype),
+            uproot4._util.awkward_form(cls.dtype, file, header, tobject_header),
             parameters={"uproot": {"as": "TArray"}},
         )
 

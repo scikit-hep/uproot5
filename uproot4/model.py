@@ -11,7 +11,6 @@ import uproot4.const
 import uproot4._util
 import uproot4.interpretation.objects
 
-
 bootstrap_classnames = [
     "TStreamerInfo",
     "TStreamerElement",
@@ -44,6 +43,33 @@ def bootstrap_classes():
         custom_classes[classname] = uproot4.classes[classname]
 
     return custom_classes
+
+
+def reset_classes():
+    if uproot4._util.py2:
+        reload = __builtins__["reload"]
+    else:
+        from importlib import reload
+
+    uproot4.classes = {}
+    uproot4.unknown_classes = {}
+
+    reload(uproot4.streamers)
+    reload(uproot4.models.TObject)
+    reload(uproot4.models.TString)
+    reload(uproot4.models.TArray)
+    reload(uproot4.models.TNamed)
+    reload(uproot4.models.TList)
+    reload(uproot4.models.THashList)
+    reload(uproot4.models.TObjArray)
+    reload(uproot4.models.TObjString)
+    reload(uproot4.models.TAtt)
+    reload(uproot4.models.TRef)
+    reload(uproot4.models.TTree)
+    reload(uproot4.models.TBranch)
+    reload(uproot4.models.TLeaf)
+    reload(uproot4.models.TBasket)
+    reload(uproot4.models.RNTuple)
 
 
 class Model(object):

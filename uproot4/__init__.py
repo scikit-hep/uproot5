@@ -34,17 +34,7 @@ from uproot4.model import classname_decode
 from uproot4.model import classname_encode
 from uproot4.model import has_class_named
 from uproot4.model import class_named
-from uproot4.model import bootstrap_classnames
-from uproot4.model import bootstrap_classes
-
-from uproot4.stl_containers import STLVector
-from uproot4.stl_containers import STLSet
-from uproot4.stl_containers import STLMap
-
-import uproot4.interpretation
-import uproot4.interpretation.library
-
-default_library = "ak"
+from uproot4.model import reset_classes
 
 import uproot4.models.TObject
 import uproot4.models.TString
@@ -61,10 +51,19 @@ import uproot4.models.TTree
 import uproot4.models.TBranch
 import uproot4.models.TLeaf
 import uproot4.models.TBasket
+import uproot4.models.RNTuple
+
+from uproot4.containers import STLVector
+from uproot4.containers import STLSet
+from uproot4.containers import STLMap
+
+import uproot4.interpretation
+import uproot4.interpretation.library
+
+default_library = "ak"
+
 from uproot4.behaviors.TTree import TTree
 from uproot4.behaviors.TBranch import TBranch
-
-import uproot4.models.RNTuple
 
 import pkgutil
 import uproot4.behaviors

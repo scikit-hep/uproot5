@@ -475,7 +475,26 @@ in file {1}""".format(
 
         if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
             if not uproot4._util.isint(version):
-                version = self.streamer_named(classname, version).class_version
+                streamer = self.streamer_named(classname, version)
+                if streamer is not None:
+                    version = streamer.class_version
+                elif version == "max" and len(cls.known_versions) != 0:
+                    version = max(cls.known_versions)
+                elif version == "min" and len(cls.known_versions) != 0:
+                    version = min(cls.known_versions)
+                else:
+                    unknown_cls = uproot4.unknown_classes.get(classname)
+                    if unknown_cls is None:
+                        unknown_cls = uproot4._util.new_class(
+                            uproot4.model.classname_encode(
+                                classname, version, unknown=True
+                            ),
+                            (uproot4.model.UnknownClassVersion,),
+                            {},
+                        )
+                        uproot4.unknown_classes[classname] = unknown_cls
+                    return unknown_cls
+
             versioned_cls = cls.class_of_version(version)
             if versioned_cls is None:
                 cls = cls.new_class(self, version)
@@ -844,7 +863,7 @@ class ReadOnlyKey(object):
 
                 if breadcrumbs is None or all(
                     breadcrumb_cls.classname in uproot4.model.bootstrap_classnames
-                    or isinstance(breadcrumb_cls, uproot4.stl_containers.AsSTLContainer)
+                    or isinstance(breadcrumb_cls, uproot4.containers.AsContainer)
                     or getattr(breadcrumb_cls.class_streamer, "file_uuid", None)
                     == self._file.uuid
                     for breadcrumb_cls in breadcrumbs
