@@ -622,5 +622,30 @@ class Model_TBranchElement(uproot4.model.DispatchByVersion):
     }
 
 
+class Model_TBranchObject_v1(
+    uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
+):
+    def read_members(self, chunk, cursor, context):
+        self._bases.append(
+            self.class_named("TBranch", 13).read(
+                chunk, cursor, context, self._file, self._parent
+            )
+        )
+        self._members["fClassName"] = self.class_named("TString").read(
+            chunk, cursor, context, self._file, self
+        )
+
+    base_names_versions = [("TBranch", 13)]
+    member_names = ["fClassName"]
+    class_flags = {}
+
+
+class Model_TBranchObject(uproot4.model.DispatchByVersion):
+    known_versions = {
+        1: Model_TBranchObject_v1,
+    }
+
+
 uproot4.classes["TBranch"] = Model_TBranch
 uproot4.classes["TBranchElement"] = Model_TBranchElement
+uproot4.classes["TBranchObject"] = Model_TBranchObject

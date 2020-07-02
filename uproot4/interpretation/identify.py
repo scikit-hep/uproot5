@@ -177,18 +177,25 @@ def _leaf_to_dtype(leaf):
 
 
 _tokenize_typename_pattern = re.compile(
-    r"(\b([A-Za-z_][A-Za-z_0-9]*)(\s*::\s*[A-Za-z_][A-Za-z_0-9]*)*\b(\s*\*)*|<|>|,)"
+    r"(\b([A-Za-z_0-9]+)(\s*::\s*[A-Za-z_][A-Za-z_0-9]*)*\b(\s*\*)*|<|>|,)"
 )
 
 _simplify_token_1 = re.compile(r"\s*\*")
 _simplify_token_2 = re.compile(r"\s*::\s*")
+_simplify_token_3 = re.compile(r"\s*<\s*")
+_simplify_token_4 = re.compile(r"\s*>\s*")
 
 
 def _simplify_token(token, is_token=True):
     if is_token:
-        return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token.group(0)))
+        text = token.group(0)
     else:
-        return _simplify_token_2.sub("::", _simplify_token_1.sub("*", token))
+        text = token
+    text = _simplify_token_1.sub("*", text)
+    text = _simplify_token_2.sub("::", text)
+    text = _simplify_token_3.sub("<", text)
+    text = _simplify_token_4.sub(">", text)
+    return text
 
 
 def _parse_error(pos, typename, file):
@@ -658,11 +665,10 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
 
         if has2 and tokens[i + 1].group(0) == "<":
             i, keys = _parse_node(
-                tokens, i + 1, typename, file, quote, inner_header, inner_header
+                tokens, i + 2, typename, file, quote, inner_header, inner_header
             )
-            _parse_expect(">", tokens, i + 1, typename, file)
-            stop = tokens[i + 1].span()[1]
-            i += 1
+            _parse_expect(">", tokens, i, typename, file)
+            stop = tokens[i].span()[1]
 
         classname = _simplify_token(typename[start:stop], is_token=False)
 

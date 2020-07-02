@@ -475,7 +475,24 @@ in file {1}""".format(
 
         if version is not None and issubclass(cls, uproot4.model.DispatchByVersion):
             if not uproot4._util.isint(version):
-                version = self.streamer_named(classname, version).class_version
+                streamer = self.streamer_named(classname, version)
+                if streamer is not None:
+                    version = streamer.class_version
+                elif version == "max" and len(cls.known_versions) != 0:
+                    version = max(cls.known_versions)
+                elif version == "min" and len(cls.known_versions) != 0:
+                    version = min(cls.known_versions)
+                else:
+                    unknown_cls = uproot4.unknown_classes.get(classname)
+                    if unknown_cls is None:
+                        unknown_cls = uproot4._util.new_class(
+                            classname_encode(classname, version, unknown=True),
+                            (uproot4.model.UnknownClassVersion,),
+                            {},
+                        )
+                        uproot4.unknown_classes[classname] = unknown_cls
+                    return unknown_cls
+
             versioned_cls = cls.class_of_version(version)
             if versioned_cls is None:
                 cls = cls.new_class(self, version)
