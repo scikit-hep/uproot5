@@ -215,6 +215,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
                     output[global_i - entry_start] = basket_array[local_i]
 
             elif entry_start < stop and start <= entry_stop:
+                basket_array = basket_arrays[basket_num]
                 for global_i in range(start, stop):
                     local_i = global_i - start
                     output[global_i - entry_start] = basket_array[local_i]
