@@ -372,7 +372,10 @@ in object {3}""".format(
                 cut = len(jagged[0])
                 for name in jagged:
                     cut = min(cut, len(name))
-                    while cut > 0 and (name[:cut] != jagged[0][:cut] or name[cut - 1] not in ("_", ".", "/")):
+                    while cut > 0 and (
+                        name[:cut] != jagged[0][:cut]
+                        or name[cut - 1] not in ("_", ".", "/")
+                    ):
                         cut -= 1
                     if cut == 0:
                         break
