@@ -232,7 +232,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             output=output,
         )
 
-        output = library.finalize(output, branch, self)
+        output = library.finalize(output, branch, self, entry_start, entry_stop)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,

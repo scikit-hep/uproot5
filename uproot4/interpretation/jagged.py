@@ -36,10 +36,12 @@ class JaggedArray(object):
             yield content[start:stop]
             start = stop
 
-    def parents_localindex(self):
+    def parents_localindex(self, entry_start, entry_stop):
         counts = self._offsets[1:] - self._offsets[:-1]
         if uproot4._util.win:
             counts = counts.astype(numpy.int32)
+
+        assert entry_stop - entry_start == len(self._offsets) - 1
         indexes = numpy.arange(len(self._offsets) - 1, dtype=numpy.int64)
 
         parents = numpy.repeat(indexes, counts)
@@ -49,7 +51,7 @@ class JaggedArray(object):
         )
         localindex -= self._offsets[parents]
 
-        return parents, localindex
+        return parents + entry_start, localindex
 
 
 def fast_divide(array, divisor):
@@ -154,7 +156,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
                 )
             else:
                 itemsize = self._content.from_dtype.itemsize
-                numpy.multiply(counts, itemsize, out=counts)
+                counts = numpy.multiply(counts, itemsize)
                 byte_offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
                 byte_offsets[0] = 0
                 numpy.cumsum(counts, out=byte_offsets[1:])
@@ -186,7 +188,6 @@ class AsJagged(uproot4.interpretation.Interpretation):
             offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
             offsets[0] = 0
             numpy.cumsum(counts, out=offsets[1:])
-
             output = JaggedArray(offsets, content)
 
         self.hook_after_basket_array(
@@ -250,7 +251,9 @@ class AsJagged(uproot4.interpretation.Interpretation):
                     local_start = entry_start - start
                     local_stop = entry_stop - start
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[:] = before + off[local_start : local_stop + 1]
+                    offsets[:] = (
+                        before - off[local_start] + off[local_start : local_stop + 1]
+                    )
                     before += off[local_stop] - off[local_start]
                     contents.append(cnt[off[local_start] : off[local_stop]])
 
@@ -259,7 +262,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
                     local_stop = stop - start
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
                     offsets[: stop - entry_start + 1] = (
-                        before + off[local_start : local_stop + 1]
+                        before - off[local_start] + off[local_start : local_stop + 1]
                     )
                     before += off[local_stop] - off[local_start]
                     contents.append(cnt[off[local_start] : off[local_stop]])
@@ -269,14 +272,16 @@ class AsJagged(uproot4.interpretation.Interpretation):
                     local_stop = entry_stop - start
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
                     offsets[start - entry_start :] = (
-                        before + off[local_start : local_stop + 1]
+                        before - off[local_start] + off[local_start : local_stop + 1]
                     )
                     before += off[local_stop] - off[local_start]
                     contents.append(cnt[off[local_start] : off[local_stop]])
 
                 elif entry_start < stop and start <= entry_stop:
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[start - entry_start : stop - entry_start + 1] = before + off
+                    offsets[start - entry_start : stop - entry_start + 1] = (
+                        before - off[0] + off
+                    )
                     before += off[-1] - off[0]
                     contents.append(cnt[off[0] : off[-1]])
 
@@ -302,7 +307,7 @@ class AsJagged(uproot4.interpretation.Interpretation):
                 output=output,
             )
 
-        output = library.finalize(output, branch, self)
+        output = library.finalize(output, branch, self, entry_start, entry_stop)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,

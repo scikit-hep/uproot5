@@ -74,3 +74,39 @@ def test_iterate_2():
                 ]
             else:
                 assert False
+
+
+def test_iterate_pandas_1():
+    pandas = pytest.importorskip("pandas")
+    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
+        "events"
+    ] as events:
+        for i, arrays in enumerate(events.iterate(1000, "px1", library="pd")):
+            if i == 0:
+                assert arrays["px1"].index.values[0] == 0
+                assert arrays["px1"].index.values[-1] == 999
+            elif i == 1:
+                assert arrays["px1"].index.values[0] == 1000
+                assert arrays["px1"].index.values[-1] == 1999
+            elif i == 2:
+                assert arrays["px1"].index.values[0] == 2000
+                assert arrays["px1"].index.values[-1] == 2303
+            else:
+                assert False
+
+
+def test_iterate_pandas_2():
+    pandas = pytest.importorskip("pandas")
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
+        for i, arrays in enumerate(events.iterate(1000, "Muon_Px", library="pd")):
+            if i == 0:
+                assert arrays.index.values[0] == (0, 0)
+                assert arrays.index.values[-1] == (999, 0)
+            elif i == 1:
+                assert arrays.index.values[0] == (1000, 0)
+                assert arrays.index.values[-1] == (1999, 1)
+            elif i == 2:
+                assert arrays.index.values[0] == (2000, 0)
+                assert arrays.index.values[-1] == (2420, 0)
+            else:
+                assert False

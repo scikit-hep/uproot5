@@ -20,9 +20,9 @@ class Library(object):
        * `imported`: The imported library or raises a helpful "how to"
              message if it could not be imported.
        * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
-       * `finalize(array, branch, interpretation)`: Convert the internal
-             storage form into one appropriate for this library (NumPy array,
-             Pandas Series, etc.).
+       * `finalize(array, branch, interpretation, entry_start, entry_stop)`:
+             Convert the internal storage form into one appropriate for this
+             library (NumPy array, Pandas Series, etc.).
        * `group(arrays, expression_context, how)`: Combine arrays into a group,
              either a generic tuple or a grouping style appropriate for this
              library (NumPy array dict, Awkward RecordArray, etc.).
@@ -35,7 +35,7 @@ class Library(object):
     def empty(self, shape, dtype):
         return numpy.empty(shape, dtype)
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         raise AssertionError
 
     def group(self, arrays, expression_context, how):
@@ -67,7 +67,7 @@ class NumPy(Library):
 
         return numpy
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         if isinstance(array, uproot4.interpretation.jagged.JaggedArray) and isinstance(
             array.content, uproot4.interpretation.objects.StridedObjectArray,
         ):
@@ -228,7 +228,7 @@ class Awkward(Library):
         else:
             return awkward1
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         awkward1 = self.imported
 
         if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
@@ -420,6 +420,13 @@ def _strided_to_pandas(path, interpretation, data, arrays, columns):
                 columns.append(p)
 
 
+def _pandas_basic_index(pandas, entry_start, entry_stop):
+    if hasattr(pandas, "RangeIndex"):
+        return pandas.RangeIndex(entry_start, entry_stop)
+    else:
+        return pandas.Int64Index(range(entry_start, entry_stop))
+
+
 class Pandas(Library):
     name = "pd"
 
@@ -440,7 +447,7 @@ or
         else:
             return pandas
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         pandas = self.imported
 
         if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
@@ -454,7 +461,10 @@ or
                 columns = pandas.MultiIndex.from_tuples(
                     [x + ("",) * (maxlen - len(x)) for x in columns]
                 )
-            out = pandas.DataFrame(dict(zip(columns, arrays)), columns=columns)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(
+                dict(zip(columns, arrays)), columns=columns, index=index
+            )
             out.leaflist = maxlen != 1
             return out
 
@@ -464,7 +474,8 @@ or
             array.content, uproot4.interpretation.objects.StridedObjectArray
         ):
             index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(), names=["entry", "subentry"]
+                array.parents_localindex(entry_start, entry_stop),
+                names=["entry", "subentry"],
             )
             arrays = []
             columns = []
@@ -486,7 +497,8 @@ or
 
         elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(), names=["entry", "subentry"]
+                array.parents_localindex(entry_start, entry_stop),
+                names=["entry", "subentry"],
             )
             return pandas.Series(array.content, index=index)
 
@@ -500,7 +512,8 @@ or
             out = numpy.zeros(len(array), dtype=numpy.object)
             for i, x in enumerate(array):
                 out[i] = x
-            return pandas.Series(out)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            return pandas.Series(out, index=index)
 
         elif array.dtype.names is not None and len(array.shape) != 1:
             names = []
@@ -510,14 +523,16 @@ or
                     name = (n + "".join("[" + str(x) + "]" for x in tup),)
                     names.append(name)
                     arrays[name] = array[n][(slice(None),) + tup]
-            out = pandas.DataFrame(arrays, columns=names)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(arrays, columns=names, index=index)
             out.leaflist = True
             return out
 
         elif array.dtype.names is not None:
             columns = pandas.MultiIndex.from_tuples([(x,) for x in array.dtype.names])
             arrays = dict((y, array[x]) for x, y in zip(array.dtype.names, columns))
-            out = pandas.DataFrame(arrays, columns=columns)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(arrays, columns=columns, index=index)
             out.leaflist = True
             return out
 
@@ -528,12 +543,14 @@ or
                 name = "".join("[" + str(x) + "]" for x in tup)
                 names.append(name)
                 arrays[name] = array[(slice(None),) + tup]
-            out = pandas.DataFrame(arrays, columns=names)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(arrays, columns=names, index=index)
             out.leaflist = False
             return out
 
         else:
-            return pandas.Series(array)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            return pandas.Series(array, index=index)
 
     def _only_series(self, original_arrays, original_names):
         pandas = self.imported
@@ -686,7 +703,7 @@ or
         cupy = self.imported
         return cupy.empty(shape, dtype)
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         cupy = self.imported
 
         if isinstance(
