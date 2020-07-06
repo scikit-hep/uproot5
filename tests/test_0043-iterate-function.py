@@ -110,3 +110,47 @@ def test_iterate_pandas_2():
                 assert arrays.index.values[-1] == (2420, 0)
             else:
                 assert False
+
+
+def test_iterate_report_1():
+    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
+        "events"
+    ] as events:
+        for i, (arrays, report) in enumerate(
+            events.iterate(1000, "px1", report=True, library="np")
+        ):
+            if i == 0:
+                assert report.tree_entry_start == 0
+                assert report.tree_entry_stop == 1000
+                assert report.file_path == skhep_testdata.data_path("uproot-Zmumu.root")
+            elif i == 1:
+                assert report.tree_entry_start == 1000
+                assert report.tree_entry_stop == 2000
+                assert report.file_path == skhep_testdata.data_path("uproot-Zmumu.root")
+            elif i == 2:
+                assert report.tree_entry_start == 2000
+                assert report.tree_entry_stop == 2304
+                assert report.file_path == skhep_testdata.data_path("uproot-Zmumu.root")
+            else:
+                assert False
+
+
+def test_iterate_report_2():
+    with uproot4.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
+        for i, (arrays, report) in enumerate(
+            events.iterate(1000, "Muon_Px", report=True, library="np")
+        ):
+            if i == 0:
+                assert report.tree_entry_start == 0
+                assert report.tree_entry_stop == 1000
+                assert report.file_path == skhep_testdata.data_path("uproot-HZZ.root")
+            elif i == 1:
+                assert report.tree_entry_start == 1000
+                assert report.tree_entry_stop == 2000
+                assert report.file_path == skhep_testdata.data_path("uproot-HZZ.root")
+            elif i == 2:
+                assert report.tree_entry_start == 2000
+                assert report.tree_entry_stop == 2421
+                assert report.file_path == skhep_testdata.data_path("uproot-HZZ.root")
+            else:
+                assert False

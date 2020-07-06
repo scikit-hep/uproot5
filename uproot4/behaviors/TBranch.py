@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import sys
 import re
 import threading
+import collections
 
 try:
     from collections.abc import Mapping
@@ -982,6 +983,7 @@ class HasBranches(Mapping):
         interpretation_executor=None,
         library="ak",
         how=None,
+        report=False,
     ):
         entry_start, entry_stop = _regularize_entries_start_stop(
             self.tree.num_entries, entry_start, entry_stop
@@ -1009,6 +1011,22 @@ class HasBranches(Mapping):
         entry_step = _regularize_step_size(
             self, step_size, entry_start, entry_stop, branchid_interpretation
         )
+
+        if report:
+            Report = collections.namedtuple(
+                "Report",
+                [
+                    "tree_entry_start",
+                    "tree_entry_stop",
+                    "global_entry_start",
+                    "global_entry_stop",
+                    "container",
+                    "tree",
+                    "file",
+                    "file_path",
+                ],
+            )
+            tree = self.tree
 
         previous_baskets = {}
         for sub_entry_start in range(entry_start, entry_stop, entry_step):
@@ -1062,7 +1080,21 @@ class HasBranches(Mapping):
                 if c["is_primary"] and not c["is_cut"]
             ]
 
-            yield library.group(output, expression_context, how)
+            arrays = library.group(output, expression_context, how)
+
+            if report:
+                yield arrays, Report(
+                    sub_entry_start,
+                    sub_entry_stop,
+                    sub_entry_start,
+                    sub_entry_stop,
+                    self,
+                    tree,
+                    self.file,
+                    self.file.file_path,
+                )
+            else:
+                yield arrays
 
             for branch, basket_num, basket in ranges_or_baskets:
                 previous_baskets[id(branch), basket_num] = basket
