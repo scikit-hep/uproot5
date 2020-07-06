@@ -214,12 +214,12 @@ def file_path_to_source_class(file_path, options):
         raise ValueError("URI scheme not recognized: {0}".format(file_path))
 
 
-def memory_size(data):
+def memory_size(data, error_message=None):
     """
-    Normalizes strings like '## kB' and plain integer number of bytes to
+    Regularizes strings like '## kB' and plain integer number of bytes to
     an integer number of bytes.
     """
-    if isinstance(data, str):
+    if isstr(data):
         m = re.match(
             r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",
             data,
@@ -245,14 +245,16 @@ def memory_size(data):
                 target *= 1024 ** 8
             return int(target)
 
-    elif isint(data):
+    if isint(data):
         return int(data)
 
-    else:
+    if error_message is None:
         raise TypeError(
             "number of bytes or memory size string with units "
-            "required, not {0}".format(repr(data))
+            "(such as '100 MB') required, not {0}".format(repr(data))
         )
+    else:
+        raise TypeError(error_message)
 
 
 def new_class(name, bases, members):

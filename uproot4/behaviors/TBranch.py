@@ -512,7 +512,7 @@ def _hasbranches_num_entries_for(
                 start = stop
 
     total_entries = entry_stop - entry_start
-    num_entries = int(round(total_entries / total_bytes * target_num_bytes))
+    num_entries = int(round(target_num_bytes * total_entries / total_bytes))
     if num_entries <= 0:
         return 1
     else:
@@ -522,14 +522,13 @@ def _hasbranches_num_entries_for(
 def _regularize_step_size(
     hasbranches, step_size, entry_start, entry_stop, branchid_interpretation
 ):
-    if step_size is None:
-        step_size = "100 MB"
-
     if uproot4._util.isint(step_size):
         return step_size
-
-    target_num_bytes = uproot4._util.memory_size(memory_size)
-
+    target_num_bytes = uproot4._util.memory_size(
+        step_size,
+        "number of entries or memory size string with units "
+        "(such as '100 MB') required, not {0}".format(repr(step_size)),
+    )
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     )
@@ -969,9 +968,9 @@ class HasBranches(Mapping):
 
     def iterate(
         self,
+        step_size,
         expressions=None,
         cut=None,
-        step_size=None,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1007,45 +1006,66 @@ class HasBranches(Mapping):
             (lambda branchname, interpretation: None),
         )
 
-        step_size = _regularize_step_size(
+        entry_step = _regularize_step_size(
             self, step_size, entry_start, entry_stop, branchid_interpretation
         )
 
-        ranges_or_baskets = []
-        for expression, context in expression_context:
-            branch = context.get("branch")
-            if branch is not None and not context["is_duplicate"]:
-                for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
-                    entry_start, entry_stop
-                ):
-                    ranges_or_baskets.append((branch, basket_num, range_or_basket))
+        previous_baskets = {}
+        for sub_entry_start in range(entry_start, entry_stop, entry_step):
+            sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
 
-        _ranges_or_baskets_to_arrays(
-            self,
-            ranges_or_baskets,
-            branchid_interpretation,
-            entry_start,
-            entry_stop,
-            decompression_executor,
-            interpretation_executor,
-            library,
-            arrays,
-        )
+            ranges_or_baskets = []
+            for expression, context in expression_context:
+                branch = context.get("branch")
+                if branch is not None and not context["is_duplicate"]:
+                    for (
+                        basket_num,
+                        range_or_basket,
+                    ) in branch.entries_to_ranges_or_baskets(
+                        sub_entry_start, sub_entry_stop
+                    ):
+                        previous_basket = previous_baskets.get((id(branch), basket_num))
+                        if previous_basket is None:
+                            ranges_or_baskets.append(
+                                (branch, basket_num, range_or_basket)
+                            )
+                        else:
+                            ranges_or_baskets.append(
+                                (branch, basket_num, previous_basket)
+                            )
 
-        output = compute.compute_expressions(
-            arrays,
-            expression_context,
-            keys,
-            aliases,
-            self.file.file_path,
-            self.object_path,
-        )
+            arrays = {}
+            _ranges_or_baskets_to_arrays(
+                self,
+                ranges_or_baskets,
+                branchid_interpretation,
+                sub_entry_start,
+                sub_entry_stop,
+                decompression_executor,
+                interpretation_executor,
+                library,
+                arrays,
+            )
 
-        expression_context = [
-            (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
-        ]
+            output = compute.compute_expressions(
+                arrays,
+                expression_context,
+                keys,
+                aliases,
+                self.file.file_path,
+                self.object_path,
+            )
 
-        return library.group(output, expression_context, how)
+            expression_context = [
+                (e, c)
+                for e, c in expression_context
+                if c["is_primary"] and not c["is_cut"]
+            ]
+
+            yield library.group(output, expression_context, how)
+
+            for branch, basket_num, basket in ranges_or_baskets:
+                previous_baskets[id(branch), basket_num] = basket
 
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
