@@ -8,6 +8,7 @@ import skhep_testdata
 
 import uproot4
 
+
 def test_num_entries_for():
     with uproot4.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
         assert events.num_entries_for("1 kB") == 12

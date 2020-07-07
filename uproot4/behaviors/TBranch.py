@@ -1588,7 +1588,7 @@ def iterate(
     how=None,
     report=False,
     custom_classes=None,
-    **options,
+    **options
 ):
     files = list(_regularize_files(files))
     if any(
@@ -1615,7 +1615,7 @@ def iterate(
                 object_cache=None,
                 array_cache=None,
                 custom_classes=custom_classes,
-                **options,
+                **options
             )
             try:
                 hasbranches = file.root_directory[object_path]
