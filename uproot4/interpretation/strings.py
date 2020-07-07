@@ -259,7 +259,9 @@ class AsStrings(uproot4.interpretation.Interpretation):
                     local_start = entry_start - start
                     local_stop = entry_stop - start
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[:] = before + off[local_start : local_stop + 1]
+                    offsets[:] = (
+                        before - off[local_start] + off[local_start : local_stop + 1]
+                    )
                     before += off[local_stop] - off[local_start]
                     contents.append(cnt[off[local_start] : off[local_stop]])
 
@@ -268,7 +270,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
                     local_stop = stop - start
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
                     offsets[: stop - entry_start + 1] = (
-                        before + off[local_start : local_stop + 1]
+                        before - off[local_start] + off[local_start : local_stop + 1]
                     )
                     before += off[local_stop] - off[local_start]
                     contents.append(cnt[off[local_start] : off[local_stop]])
@@ -278,14 +280,16 @@ class AsStrings(uproot4.interpretation.Interpretation):
                     local_stop = entry_stop - start
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
                     offsets[start - entry_start :] = (
-                        before + off[local_start : local_stop + 1]
+                        before - off[local_start] + off[local_start : local_stop + 1]
                     )
                     before += off[local_stop] - off[local_start]
                     contents.append(cnt[off[local_start] : off[local_stop]])
 
                 elif entry_start < stop and start <= entry_stop:
                     off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[start - entry_start : stop - entry_start + 1] = before + off
+                    offsets[start - entry_start : stop - entry_start + 1] = (
+                        before - off[0] + off
+                    )
                     before += off[-1] - off[0]
                     contents.append(cnt[off[0] : off[-1]])
 
@@ -303,7 +307,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
                 output=output,
             )
 
-        output = library.finalize(output, branch, self)
+        output = library.finalize(output, branch, self, entry_start, entry_stop)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,

@@ -20,12 +20,15 @@ class Library(object):
        * `imported`: The imported library or raises a helpful "how to"
              message if it could not be imported.
        * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
-       * `finalize(array, branch, interpretation)`: Convert the internal
-             storage form into one appropriate for this library (NumPy array,
-             Pandas Series, etc.).
+       * `finalize(array, branch, interpretation, entry_start, entry_stop)`:
+             Convert the internal storage form into one appropriate for this
+             library (NumPy array, Pandas Series, etc.).
        * `group(arrays, expression_context, how)`: Combine arrays into a group,
              either a generic tuple or a grouping style appropriate for this
              library (NumPy array dict, Awkward RecordArray, etc.).
+       * `global_index(array, global_start)`: Add `global_start` to the array's
+             index (if any). The array is modified in-place (if possible) and
+             returned.
     """
 
     @property
@@ -35,7 +38,7 @@ class Library(object):
     def empty(self, shape, dtype):
         return numpy.empty(shape, dtype)
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         raise AssertionError
 
     def group(self, arrays, expression_context, how):
@@ -50,6 +53,9 @@ class Library(object):
                 "for library {0}, how must be tuple, list, dict, or None (for "
                 "dict)".format(self.name)
             )
+
+    def global_index(self, array, global_start):
+        return array
 
     def __repr__(self):
         return repr(self.name)
@@ -67,7 +73,7 @@ class NumPy(Library):
 
         return numpy
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         if isinstance(array, uproot4.interpretation.jagged.JaggedArray) and isinstance(
             array.content, uproot4.interpretation.objects.StridedObjectArray,
         ):
@@ -228,7 +234,7 @@ class Awkward(Library):
         else:
             return awkward1
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         awkward1 = self.imported
 
         if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
@@ -372,7 +378,10 @@ in object {3}""".format(
                 cut = len(jagged[0])
                 for name in jagged:
                     cut = min(cut, len(name))
-                    while cut > 0 and (name[:cut] != jagged[0][:cut] or name[cut - 1] not in ("_", ".", "/")):
+                    while cut > 0 and (
+                        name[:cut] != jagged[0][:cut]
+                        or name[cut - 1] not in ("_", ".", "/")
+                    ):
                         cut -= 1
                     if cut == 0:
                         break
@@ -417,6 +426,13 @@ def _strided_to_pandas(path, interpretation, data, arrays, columns):
                 columns.append(p)
 
 
+def _pandas_basic_index(pandas, entry_start, entry_stop):
+    if hasattr(pandas, "RangeIndex"):
+        return pandas.RangeIndex(entry_start, entry_stop)
+    else:
+        return pandas.Int64Index(range(entry_start, entry_stop))
+
+
 class Pandas(Library):
     name = "pd"
 
@@ -437,7 +453,7 @@ or
         else:
             return pandas
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         pandas = self.imported
 
         if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
@@ -451,7 +467,10 @@ or
                 columns = pandas.MultiIndex.from_tuples(
                     [x + ("",) * (maxlen - len(x)) for x in columns]
                 )
-            out = pandas.DataFrame(dict(zip(columns, arrays)), columns=columns)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(
+                dict(zip(columns, arrays)), columns=columns, index=index
+            )
             out.leaflist = maxlen != 1
             return out
 
@@ -461,7 +480,8 @@ or
             array.content, uproot4.interpretation.objects.StridedObjectArray
         ):
             index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(), names=["entry", "subentry"]
+                array.parents_localindex(entry_start, entry_stop),
+                names=["entry", "subentry"],
             )
             arrays = []
             columns = []
@@ -483,7 +503,8 @@ or
 
         elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
             index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(), names=["entry", "subentry"]
+                array.parents_localindex(entry_start, entry_stop),
+                names=["entry", "subentry"],
             )
             return pandas.Series(array.content, index=index)
 
@@ -497,7 +518,8 @@ or
             out = numpy.zeros(len(array), dtype=numpy.object)
             for i, x in enumerate(array):
                 out[i] = x
-            return pandas.Series(out)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            return pandas.Series(out, index=index)
 
         elif array.dtype.names is not None and len(array.shape) != 1:
             names = []
@@ -507,14 +529,16 @@ or
                     name = (n + "".join("[" + str(x) + "]" for x in tup),)
                     names.append(name)
                     arrays[name] = array[n][(slice(None),) + tup]
-            out = pandas.DataFrame(arrays, columns=names)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(arrays, columns=names, index=index)
             out.leaflist = True
             return out
 
         elif array.dtype.names is not None:
             columns = pandas.MultiIndex.from_tuples([(x,) for x in array.dtype.names])
             arrays = dict((y, array[x]) for x, y in zip(array.dtype.names, columns))
-            out = pandas.DataFrame(arrays, columns=columns)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(arrays, columns=columns, index=index)
             out.leaflist = True
             return out
 
@@ -525,12 +549,14 @@ or
                 name = "".join("[" + str(x) + "]" for x in tup)
                 names.append(name)
                 arrays[name] = array[(slice(None),) + tup]
-            out = pandas.DataFrame(arrays, columns=names)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            out = pandas.DataFrame(arrays, columns=names, index=index)
             out.leaflist = False
             return out
 
         else:
-            return pandas.Series(array)
+            index = _pandas_basic_index(pandas, entry_start, entry_stop)
+            return pandas.Series(array, index=index)
 
     def _only_series(self, original_arrays, original_names):
         pandas = self.imported
@@ -658,6 +684,34 @@ or
                 "DataFrames without merging)".format(self.name)
             )
 
+    def global_index(self, arrays, global_start):
+        if type(arrays.index).__name__ == "MultiIndex":
+            if hasattr(arrays.index.levels[0], "arrays"):
+                index = arrays.index.levels[0].arrays  # pandas>=0.24.0
+            else:
+                index = arrays.index.levels[0].values  # pandas<0.24.0
+            numpy.add(index, global_start, out=index)
+
+        elif type(arrays.index).__name__ == "RangeIndex":
+            if hasattr(arrays.index, "start") and hasattr(arrays.index, "stop"):
+                index_start = arrays.index.start  # pandas>=0.25.0
+                index_stop = arrays.index.stop
+            else:
+                index_start = arrays.index._start  # pandas<0.25.0
+                index_stop = arrays.index._stop
+            arrays.index = type(arrays.index)(
+                index_start + global_start, index_stop + global_start
+            )
+
+        else:
+            if hasattr(arrays.index, "arrays"):
+                index = arrays.index.arrays  # pandas>=0.24.0
+            else:
+                index = arrays.index.values  # pandas<0.24.0
+            numpy.add(index, global_start, out=index)
+
+        return arrays
+
 
 class CuPy(Library):
     name = "cp"
@@ -683,7 +737,7 @@ or
         cupy = self.imported
         return cupy.empty(shape, dtype)
 
-    def finalize(self, array, branch, interpretation):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         cupy = self.imported
 
         if isinstance(

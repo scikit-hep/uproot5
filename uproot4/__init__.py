@@ -64,6 +64,7 @@ default_library = "ak"
 
 from uproot4.behaviors.TTree import TTree
 from uproot4.behaviors.TBranch import TBranch
+from uproot4.behaviors.TBranch import iterate
 
 import pkgutil
 import uproot4.behaviors
