@@ -1523,12 +1523,12 @@ def _regularize_files(files):
                 results = [expanded]
             else:
                 results = []
-                for combination in itertools.product(*[
-                    match.group(0)[1:-1].split(",") for match in matches
-                ]):
+                for combination in itertools.product(
+                    *[match.group(0)[1:-1].split(",") for match in matches]
+                ):
                     tmp = expanded
                     for c, m in list(zip(combination, matches))[::-1]:
-                        tmp = tmp[:m.span()[0]] + c + tmp[m.span()[1]:]
+                        tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
                     results.append(tmp)
 
             seen = set()

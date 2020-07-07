@@ -193,7 +193,9 @@ def test_function_iterate_pandas():
 def test_function_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
     files = (
-        skhep_testdata.data_path("uproot-HZZ.root").replace("HZZ", "HZZ-{uncompressed,zlib,lz4}")
+        skhep_testdata.data_path("uproot-HZZ.root").replace(
+            "HZZ", "HZZ-{uncompressed,zlib,lz4}"
+        )
         + ":events"
     )
     expect = 0

@@ -687,26 +687,28 @@ or
     def global_index(self, arrays, global_start):
         if type(arrays.index).__name__ == "MultiIndex":
             if hasattr(arrays.index.levels[0], "arrays"):
-                index = arrays.index.levels[0].arrays    # pandas>=0.24.0
+                index = arrays.index.levels[0].arrays  # pandas>=0.24.0
             else:
-                index = arrays.index.levels[0].values    # pandas<0.24.0
+                index = arrays.index.levels[0].values  # pandas<0.24.0
             numpy.add(index, global_start, out=index)
 
         elif type(arrays.index).__name__ == "RangeIndex":
             if hasattr(arrays.index, "start") and hasattr(arrays.index, "stop"):
-                index_start = arrays.index.start         # pandas>=0.25.0
+                index_start = arrays.index.start  # pandas>=0.25.0
                 index_stop = arrays.index.stop
             else:
-                index_start = arrays.index._start        # pandas<0.25.0
+                index_start = arrays.index._start  # pandas<0.25.0
                 index_stop = arrays.index._stop
-            arrays.index = type(arrays.index)(index_start + global_start, index_stop + global_start)
+            arrays.index = type(arrays.index)(
+                index_start + global_start, index_stop + global_start
+            )
 
         else:
             if hasattr(arrays.index, "arrays"):
-                index = arrays.index.arrays              # pandas>=0.24.0
+                index = arrays.index.arrays  # pandas>=0.24.0
             else:
-                index = arrays.index.values              # pandas<0.24.0
-            numpy.add(index, globalentrystart, out=index)
+                index = arrays.index.values  # pandas<0.24.0
+            numpy.add(index, global_start, out=index)
 
         return arrays
 
