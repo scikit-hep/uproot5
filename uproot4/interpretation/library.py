@@ -29,6 +29,8 @@ class Library(object):
        * `global_index(array, global_start)`: Add `global_start` to the array's
              index (if any). The array is modified in-place (if possible) and
              returned.
+       * `concatenate(all_arrays)`: Eagerly combine a list of arrays into one
+             array.
     """
 
     @property
@@ -100,6 +102,31 @@ class NumPy(Library):
 
         else:
             return array
+
+    def concatenate(self, all_arrays):
+        if len(all_arrays) == 0:
+            return all_arrays
+
+        if isinstance(all_arrays[0], (tuple, list)):
+            keys = range(len(all_arrays[0]))
+        elif isinstance(all_arrays[0], dict):
+            keys = list(all_arrays[0])
+        else:
+            raise AssertionError(repr(all_arrays[0]))
+
+        to_concatenate = dict((k, []) for k in keys)
+        for arrays in all_arrays:
+            for k in keys:
+                to_concatenate[k].append(arrays[k])
+
+        concatenated = dict((k, numpy.concatenate(to_concatenate[k])) for k in keys)
+
+        if isinstance(all_arrays[0], tuple):
+            return tuple(concatenated[k] for k in keys)
+        elif isinstance(all_arrays[0], list):
+            return [concatenated[k] for k in keys]
+        elif isinstance(all_arrays[0], dict):
+            return concatenated
 
 
 def _strided_to_awkward(awkward1, path, interpretation, data):
@@ -408,6 +435,33 @@ in object {3}""".format(
                 "None, for an unzipped record array".format(self.name)
             )
 
+    def concatenate(self, all_arrays):
+        awkward1 = self.imported
+
+        if len(all_arrays) == 0:
+            return all_arrays
+
+        if isinstance(all_arrays[0], (tuple, list)):
+            keys = range(len(all_arrays[0]))
+        elif isinstance(all_arrays[0], dict):
+            keys = list(all_arrays[0])
+        else:
+            return awkward1.concatenate(all_arrays)
+
+        to_concatenate = dict((k, []) for k in keys)
+        for arrays in all_arrays:
+            for k in keys:
+                to_concatenate[k].append(arrays[k])
+
+        concatenated = dict((k, awkward1.concatenate(to_concatenate[k])) for k in keys)
+
+        if isinstance(all_arrays[0], tuple):
+            return tuple(concatenated[k] for k in keys)
+        elif isinstance(all_arrays[0], list):
+            return [concatenated[k] for k in keys]
+        elif isinstance(all_arrays[0], dict):
+            return concatenated
+
 
 def _pandas_rangeindex():
     import pandas
@@ -712,6 +766,33 @@ or
 
         return arrays
 
+    def concatenate(self, all_arrays):
+        pandas = self.imported
+
+        if len(all_arrays) == 0:
+            return all_arrays
+
+        if isinstance(all_arrays[0], (tuple, list)):
+            keys = range(len(all_arrays[0]))
+        elif isinstance(all_arrays[0], dict):
+            keys = list(all_arrays[0])
+        else:
+            return pandas.concat(all_arrays)
+
+        to_concatenate = dict((k, []) for k in keys)
+        for arrays in all_arrays:
+            for k in keys:
+                to_concatenate[k].append(arrays[k])
+
+        concatenated = dict((k, pandas.concat(to_concatenate[k])) for k in keys)
+
+        if isinstance(all_arrays[0], tuple):
+            return tuple(concatenated[k] for k in keys)
+        elif isinstance(all_arrays[0], list):
+            return [concatenated[k] for k in keys]
+        elif isinstance(all_arrays[0], dict):
+            return concatenated
+
 
 class CuPy(Library):
     name = "cp"
@@ -753,6 +834,33 @@ or
         else:
             assert isinstance(array, cupy.ndarray)
             return array
+
+    def concatenate(self, all_arrays):
+        cupy = self.imported
+
+        if len(all_arrays) == 0:
+            return all_arrays
+
+        if isinstance(all_arrays[0], (tuple, list)):
+            keys = range(len(all_arrays[0]))
+        elif isinstance(all_arrays[0], dict):
+            keys = list(all_arrays[0])
+        else:
+            raise AssertionError(repr(all_arrays[0]))
+
+        to_concatenate = dict((k, []) for k in keys)
+        for arrays in all_arrays:
+            for k in keys:
+                to_concatenate[k].append(arrays[k])
+
+        concatenated = dict((k, cupy.concatenate(to_concatenate[k])) for k in keys)
+
+        if isinstance(all_arrays[0], tuple):
+            return tuple(concatenated[k] for k in keys)
+        elif isinstance(all_arrays[0], list):
+            return [concatenated[k] for k in keys]
+        elif isinstance(all_arrays[0], dict):
+            return concatenated
 
 
 _libraries = {

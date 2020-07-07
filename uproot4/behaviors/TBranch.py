@@ -1655,3 +1655,76 @@ def iterate(
                     yield arrays
 
             global_start += hasbranches.num_entries
+
+
+def concatenate(
+    files,
+    expressions=None,
+    cut=None,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    aliases=None,
+    compute=uproot4.compute.python.ComputePython(),
+    decompression_executor=None,
+    interpretation_executor=None,
+    array_cache=None,
+    library="ak",
+    how=None,
+    report=False,
+    custom_classes=None,
+    **options
+):
+    files = list(_regularize_files(files))
+    if any(
+        uproot4._util.isstr(file_path) and object_path is None
+        for file_path, object_path in files
+    ):
+        raise TypeError(
+            "'files' must include a TTree/TBranch object path (separated by a "
+            "colon ':') to each glob pattern (if multiple are given)"
+        )
+
+    decompression_executor, interpretation_executor = _regularize_executors(
+        decompression_executor, interpretation_executor
+    )
+    library = uproot4.interpretation.library._regularize_library(library)
+
+    all_arrays = []
+    global_start = 0
+    for file_path, object_path in files:
+        if object_path is None:
+            hasbranches = _NoClose(file_path)
+        else:
+            file = uproot4.reading.ReadOnlyFile(
+                file_path,
+                object_cache=None,
+                array_cache=None,
+                custom_classes=custom_classes,
+                **options
+            )
+            try:
+                hasbranches = file.root_directory[object_path]
+            except KeyError:
+                continue
+
+        with hasbranches:
+            arrays = hasbranches.arrays(
+                expressions=expressions,
+                cut=cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                aliases=aliases,
+                compute=compute,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                array_cache=array_cache,
+                library=library,
+                how=how,
+            )
+            arrays = library.global_index(arrays, global_start)
+            all_arrays.append(arrays)
+            global_start += hasbranches.num_entries
+
+    return library.concatenate(all_arrays)
