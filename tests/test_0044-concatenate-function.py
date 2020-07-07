@@ -31,7 +31,7 @@ def test_concatenate_awkward():
     )
     arrays = uproot4.concatenate(files, ["i8", "f8"], library="ak")
     assert isinstance(arrays, awkward1.Array)
-    assert awkward1.keys(arrays) == ["i8", "f8"]
+    assert set(awkward1.keys(arrays)) == set(["i8", "f8"])
     assert len(arrays) == 420
 
 
@@ -45,5 +45,5 @@ def test_concatenate_pandas():
     )
     arrays = uproot4.concatenate(files, ["i8", "f8"], library="pd")
     assert isinstance(arrays, pandas.DataFrame)
-    assert arrays.columns.tolist() == ["i8", "f8"]
+    assert set(arrays.columns.tolist()) == set(["i8", "f8"])
     assert len(arrays) == 420
