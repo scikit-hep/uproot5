@@ -2,10 +2,13 @@
 
 from __future__ import absolute_import
 
+import os
+import glob
 import sys
 import re
 import threading
 import collections
+import itertools
 
 try:
     from collections.abc import Mapping
@@ -19,6 +22,10 @@ try:
     import queue
 except ImportError:
     import Queue as queue
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 import numpy
 
@@ -535,6 +542,21 @@ def _regularize_step_size(
     )
 
 
+Report = collections.namedtuple(
+    "Report",
+    [
+        "global_entry_start",
+        "global_entry_stop",
+        "tree_entry_start",
+        "tree_entry_stop",
+        "container",
+        "tree",
+        "file",
+        "file_path",
+    ],
+)
+
+
 class HasBranches(Mapping):
     @property
     def branches(self):
@@ -969,7 +991,6 @@ class HasBranches(Mapping):
 
     def iterate(
         self,
-        step_size,
         expressions=None,
         cut=None,
         filter_name=no_filter,
@@ -979,6 +1000,7 @@ class HasBranches(Mapping):
         compute=uproot4.compute.python.ComputePython(),
         entry_start=None,
         entry_stop=None,
+        step_size="100 MB",
         decompression_executor=None,
         interpretation_executor=None,
         library="ak",
@@ -1013,24 +1035,13 @@ class HasBranches(Mapping):
         )
 
         if report:
-            Report = collections.namedtuple(
-                "Report",
-                [
-                    "tree_entry_start",
-                    "tree_entry_stop",
-                    "global_entry_start",
-                    "global_entry_stop",
-                    "container",
-                    "tree",
-                    "file",
-                    "file_path",
-                ],
-            )
             tree = self.tree
 
         previous_baskets = {}
         for sub_entry_start in range(entry_start, entry_stop, entry_step):
             sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
+            if sub_entry_stop - sub_entry_start == 0:
+                continue
 
             ranges_or_baskets = []
             for expression, context in expression_context:
@@ -1490,3 +1501,157 @@ in file {3}""".format(
             array_cache[cache_key] = arrays[id(self)]
 
         return arrays[id(self)]
+
+
+_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
+
+
+def _regularize_files(files):
+    files = uproot4._util.regularize_path(files)
+
+    if uproot4._util.isstr(files):
+        file_path, object_path = uproot4._util.file_object_path_split(files)
+        parsed_url = urlparse(file_path)
+
+        if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
+            yield file_path, object_path
+
+        else:
+            expanded = os.path.expanduser(file_path)
+            matches = list(_regularize_files_braces.finditer(expanded))
+            if len(matches) == 0:
+                results = [expanded]
+            else:
+                results = []
+                for combination in itertools.product(*[
+                    match.group(0)[1:-1].split(",") for match in matches
+                ]):
+                    tmp = expanded
+                    for c, m in list(zip(combination, matches))[::-1]:
+                        tmp = tmp[:m.span()[0]] + c + tmp[m.span()[1]:]
+                    results.append(tmp)
+
+            seen = set()
+            for result in results:
+                for match in glob.glob(result):
+                    if match not in seen:
+                        yield match, object_path
+                        seen.add(match)
+
+    elif isinstance(files, HasBranches):
+        yield files, None
+
+    elif isinstance(files, Iterable):
+        seen = set()
+        for file in files:
+            for file_path, object_path in _regularize_files(file):
+                if uproot4._util.isstr(file_path):
+                    if file_path not in seen:
+                        yield file_path, object_path
+                        seen.add(file_path)
+                else:
+                    yield file_path, object_path
+
+    else:
+        raise TypeError(
+            "'files' must be a file path/URL (string or Path) with a TTree/TBranch "
+            "object path (separated by a colon ':'), possibly with glob "
+            "patterns (for local files), TTree/TBranch objects, or an iterable "
+            "of such things, not {0}".format(repr(files))
+        )
+
+
+class _NoClose(object):
+    def __init__(self, hasbranches):
+        self.hasbranches = hasbranches
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        pass
+
+
+def iterate(
+    files,
+    expressions=None,
+    cut=None,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    aliases=None,
+    compute=uproot4.compute.python.ComputePython(),
+    step_size="100 MB",
+    decompression_executor=None,
+    interpretation_executor=None,
+    library="ak",
+    how=None,
+    report=False,
+    custom_classes=None,
+    **options,
+):
+    files = list(_regularize_files(files))
+    if any(
+        uproot4._util.isstr(file_path) and object_path is None
+        for file_path, object_path in files
+    ):
+        raise TypeError(
+            "'files' must include a TTree/TBranch object path (separated by a "
+            "colon ':') to each glob pattern (if multiple are given)"
+        )
+
+    decompression_executor, interpretation_executor = _regularize_executors(
+        decompression_executor, interpretation_executor
+    )
+    library = uproot4.interpretation.library._regularize_library(library)
+
+    global_start = 0
+    for file_path, object_path in files:
+        if object_path is None:
+            hasbranches = _NoClose(file_path)
+        else:
+            file = uproot4.reading.ReadOnlyFile(
+                file_path,
+                object_cache=None,
+                array_cache=None,
+                custom_classes=custom_classes,
+                **options,
+            )
+            try:
+                hasbranches = file.root_directory[object_path]
+            except KeyError:
+                continue
+
+        with hasbranches:
+            for item in hasbranches.iterate(
+                expressions=expressions,
+                cut=cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                aliases=aliases,
+                compute=compute,
+                step_size=step_size,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                library=library,
+                how=how,
+                report=report,
+            ):
+                if report:
+                    arrays, local_report = item
+                    global_entry_start = local_report.tree_entry_start
+                    global_entry_stop = local_report.tree_entry_stop
+                    global_entry_start += global_start
+                    global_entry_stop += global_start
+                    global_report = type(local_report)(
+                        *((global_entry_start, global_entry_stop) + local_report[2:])
+                    )
+                    arrays = library.global_index(arrays, global_start)
+                    yield arrays, global_report
+
+                else:
+                    arrays = library.global_index(item, global_start)
+                    yield arrays
+
+            global_start += hasbranches.num_entries

@@ -172,6 +172,10 @@ def file_object_path_split(path):
             return file_path, object_path
 
 
+_remote_schemes = ["ROOT", "HTTP", "HTTPS"]
+_schemes = ["FILE"] + _remote_schemes
+
+
 def file_path_to_source_class(file_path, options):
     file_path = regularize_path(file_path)
 
