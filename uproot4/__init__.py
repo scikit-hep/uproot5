@@ -66,6 +66,7 @@ from uproot4.behaviors.TTree import TTree
 from uproot4.behaviors.TBranch import TBranch
 from uproot4.behaviors.TBranch import iterate
 from uproot4.behaviors.TBranch import concatenate
+from uproot4.behaviors.TBranch import lazy
 
 import pkgutil
 import uproot4.behaviors

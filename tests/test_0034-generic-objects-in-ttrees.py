@@ -376,8 +376,8 @@ def test_general_awkward_form():
             "size": 10
         },
         "Beg": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint8",
             "parameters": {
                 "__array__": "string",
@@ -389,8 +389,8 @@ def test_general_awkward_form():
             }
         },
         "End": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint8",
             "parameters": {
                 "__array__": "string",
@@ -419,8 +419,8 @@ def test_general_awkward_form():
             }
         },
         "SliceF32": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "float32",
             "parameters": {
                 "uproot": {
@@ -430,8 +430,8 @@ def test_general_awkward_form():
             }
         },
         "SliceF64": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "float64",
             "parameters": {
                 "uproot": {
@@ -441,8 +441,8 @@ def test_general_awkward_form():
             }
         },
         "SliceI16": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "int16",
             "parameters": {
                 "uproot": {
@@ -452,8 +452,8 @@ def test_general_awkward_form():
             }
         },
         "SliceI32": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "int32",
             "parameters": {
                 "uproot": {
@@ -463,8 +463,8 @@ def test_general_awkward_form():
             }
         },
         "SliceI64": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "int64",
             "parameters": {
                 "uproot": {
@@ -474,8 +474,8 @@ def test_general_awkward_form():
             }
         },
         "SliceU16": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint16",
             "parameters": {
                 "uproot": {
@@ -485,8 +485,8 @@ def test_general_awkward_form():
             }
         },
         "SliceU32": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint32",
             "parameters": {
                 "uproot": {
@@ -496,8 +496,8 @@ def test_general_awkward_form():
             }
         },
         "SliceU64": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint64",
             "parameters": {
                 "uproot": {
@@ -507,8 +507,8 @@ def test_general_awkward_form():
             }
         },
         "StdStr": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint8",
             "parameters": {
                 "__array__": "string",
@@ -520,8 +520,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecF32": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "float32",
             "parameters": {
                 "uproot": {
@@ -531,8 +531,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecF64": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "float64",
             "parameters": {
                 "uproot": {
@@ -542,8 +542,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecI16": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "int16",
             "parameters": {
                 "uproot": {
@@ -553,8 +553,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecI32": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "int32",
             "parameters": {
                 "uproot": {
@@ -564,8 +564,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecI64": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "int64",
             "parameters": {
                 "uproot": {
@@ -575,11 +575,11 @@ def test_general_awkward_form():
             }
         },
         "StlVecStr": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": {
-                "class": "ListOffsetArray32",
-                "offsets": "i32",
+                "class": "ListOffsetArray64",
+                "offsets": "i64",
                 "content": "uint8",
                 "parameters": {
                     "__array__": "string",
@@ -598,8 +598,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecU16": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint16",
             "parameters": {
                 "uproot": {
@@ -609,8 +609,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecU32": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint32",
             "parameters": {
                 "uproot": {
@@ -620,8 +620,8 @@ def test_general_awkward_form():
             }
         },
         "StlVecU64": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint64",
             "parameters": {
                 "uproot": {
@@ -631,8 +631,8 @@ def test_general_awkward_form():
             }
         },
         "Str": {
-            "class": "ListOffsetArray32",
-            "offsets": "i32",
+            "class": "ListOffsetArray64",
+            "offsets": "i64",
             "content": "uint8",
             "parameters": {
                 "__array__": "string",

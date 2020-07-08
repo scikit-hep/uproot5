@@ -22,13 +22,16 @@ def test_array_cast():
         ]
 
 
-# def test_basic():
+# def test_awkward():
+#     awkward1 = pytest.importorskip("awkward1")
 #     files = (
 #         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
 #             "6.20.04", "*"
 #         )
 #         + ":sample"
 #     )
+#     array = uproot4.lazy(files)
 
+#     print(array)
 
 #     raise Exception

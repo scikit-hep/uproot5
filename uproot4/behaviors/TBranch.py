@@ -29,6 +29,7 @@ except ImportError:
 
 import numpy
 
+import uproot4.cache
 import uproot4.source.cursor
 import uproot4.streamers
 import uproot4.containers
@@ -86,10 +87,14 @@ def _regularize_executors(decompression_executor, interpretation_executor):
 def _regularize_array_cache(array_cache, file):
     if isinstance(array_cache, MutableMapping):
         return array_cache
-    elif array_cache is None:
+    elif array_cache is None and file is not None:
         return file._array_cache
+    elif array_cache is None:
+        return None
+    elif uproot4._util.isint(array_cache) or uproot4._util.isstr(array_cache):
+        return uproot4.cache.LRUArrayCache(array_cache)
     else:
-        raise TypeError("array_cache must be None or a MutableMapping")
+        raise TypeError("array_cache must be None, a MutableMapping, or a memory size")
 
 
 def _regularize_aliases(hasbranches, aliases):
@@ -1520,9 +1525,11 @@ def _regularize_files(files):
     if uproot4._util.isstr(files):
         file_path, object_path = uproot4._util.file_object_path_split(files)
         parsed_url = urlparse(file_path)
+        count = 0
 
         if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
             yield file_path, object_path
+            count += 1
 
         else:
             expanded = os.path.expanduser(file_path)
@@ -1545,11 +1552,20 @@ def _regularize_files(files):
                     if match not in seen:
                         yield match, object_path
                         seen.add(match)
+                        count += 1
+
+        if count == 0:
+            if hasattr(__builtins__, "FileNotFoundError"):
+                errclass = __builtins__.FileNotFoundError
+            else:
+                errclass = __builtins__.IOError
+            raise errclass("{0} did not match any files".format(repr(file_path)))
 
     elif isinstance(files, HasBranches):
         yield files, None
 
     elif isinstance(files, Iterable):
+        count = 0
         seen = set()
         for file in files:
             for file_path, object_path in _regularize_files(file):
@@ -1559,6 +1575,14 @@ def _regularize_files(files):
                         seen.add(file_path)
                 else:
                     yield file_path, object_path
+                    count += 1
+
+        if count == 0:
+            if hasattr(__builtins__, "FileNotFoundError"):
+                errclass = __builtins__.FileNotFoundError
+            else:
+                errclass = __builtins__.IOError
+            raise errclass("at least one file path or URL must be provided")
 
     else:
         raise TypeError(
@@ -1736,3 +1760,137 @@ def concatenate(
             global_start += hasbranches.num_entries
 
     return library.concatenate(all_arrays)
+
+
+def lazy(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    step_size="100 MB",
+    decompression_executor=None,
+    interpretation_executor=None,
+    array_cache="100 MB",
+    library="ak",
+    report=False,
+    custom_classes=None,
+    **options
+):
+    files = list(_regularize_files(files))
+    if any(
+        uproot4._util.isstr(file_path) and object_path is None
+        for file_path, object_path in files
+    ):
+        raise TypeError(
+            "'files' must include a TTree/TBranch object path (separated by a "
+            "colon ':') to each glob pattern (if multiple are given)"
+        )
+
+    decompression_executor, interpretation_executor = _regularize_executors(
+        decompression_executor, interpretation_executor
+    )
+    array_cache = _regularize_array_cache(array_cache, None)
+    library = uproot4.interpretation.library._regularize_library_lazy(library)
+    import awkward1
+
+    if array_cache is not None:
+        array_cache = awkward1.layout.ArrayCache(array_cache)
+
+    real_options = dict(options)
+    if "num_workers" not in real_options:
+        real_options["num_workers"] = 1
+    if "num_fallback_workers" not in real_options:
+        real_options["num_fallback_workers"] = 1
+
+    hasbranches = []
+    common_keys = None
+
+    for file_path, object_path in files:
+        if object_path is None:
+            hasbranches.append(file_path)
+        else:
+            hasbranches.append(uproot4.reading.open(
+                file_path,
+                object_cache=None,
+                array_cache=None,
+                custom_classes=custom_classes,
+                **real_options
+            )[object_path])
+
+        new_keys = hasbranches[-1].keys(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            full_paths=full_paths,
+        )
+        if common_keys is None:
+            common_keys = new_keys
+        else:
+            new_keys = set(new_keys)
+            common_keys = [key for key in common_keys if key in new_keys]
+
+    if len(common_keys) == 0:
+        raise ValueError(
+            "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
+                "\n    ".join("{0}:{1}".format(
+                    f.file_path if o is None else f,
+                    f.object_path if o is None else o,
+                ) for f, o in files)
+            )
+        )
+
+    partitions = []
+    global_offsets = [0]
+    for hasbranches_obj in hasbranches:
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            hasbranches_obj.tree.num_entries, None, None
+        )
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = hasbranches_obj[key]
+            branchid_interpretation[id(branch)] = branch.interpretation
+        entry_step = _regularize_step_size(
+            hasbranches_obj, step_size, entry_start, entry_stop, branchid_interpretation
+        )
+
+        for start in range(entry_start, entry_stop, entry_step):
+            stop = min(start + entry_step, entry_stop)
+            length = stop - start
+
+            fields = []
+            names = []
+            for key in common_keys:
+                branch = hasbranches_obj[key]
+                form = branchid_interpretation[id(branch)].awkward_form(
+                    hasbranches_obj.file, index_format="i64"
+                ),
+                generator = awkward1.layout.ArrayGenerator(
+                    branch.array,
+                    (
+                        None,
+                        start,
+                        stop,
+                        decompression_executor,
+                        interpretation_executor,
+                        None,
+                        "ak",
+                    ),
+                    {},
+                    form,
+                    length,
+                )
+                virtualarray = awkward1.layout.VirtualArray(
+                    generator, cache=array_cache, cache_key=branch.cache_key
+                )
+                fields.append(virtualarray)
+                names.append(key)
+
+            recordarray = awkward1.layout.RecordArray(fields, names, length)
+            partitions.append(recordarray)
+            global_offsets.append(global_offsets[-1] + length)
+
+    out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
+    return awkward1.Array(out)

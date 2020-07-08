@@ -154,7 +154,7 @@ class Model(object):
         )
 
     @classmethod
-    def awkward_form(cls, file, header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         raise uproot4.interpretation.objects.CannotBeAwkward(
             classname_decode(cls.__name__)[0]
         )
@@ -510,10 +510,10 @@ class DispatchByVersion(object):
         )
 
     @classmethod
-    def awkward_form(cls, file, header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.awkward_form(
-            file, header=header, tobject_header=tobject_header
+            file, index_format, header, tobject_header
         )
 
 

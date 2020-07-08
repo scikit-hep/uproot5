@@ -14,8 +14,8 @@ class Interpretation(object):
              was derived.
        * `numpy_dtype`: Data type (including any shape elements after the first
              dimension) of the NumPy array that would be created.
-       * `awkward_form(file, header=False, tobject_header=True)`: Form of the
-             Awkward Array that would be created (requires `awkward1`).
+       * `awkward_form(file, index_format="i64", header=False, tobject_header=True)`:
+             Form of the Awkward Array that would be created (requires `awkward1`).
        * `basket_array(data, byte_offsets, basket, branch, context, cursor_offset)`:
              Create a basket_array from a basket's `data` and `byte_offsets`.
        * `final_array(basket_arrays, entry_start, entry_stop, entry_offsets,
@@ -35,7 +35,7 @@ class Interpretation(object):
     def numpy_dtype(self):
         raise AssertionError
 
-    def awkward_form(self, file, header=False, tobject_header=True):
+    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         raise AssertionError
 
     def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):

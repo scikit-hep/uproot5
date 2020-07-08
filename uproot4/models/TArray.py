@@ -56,12 +56,12 @@ class Model_TArray(uproot4.model.Model, Sequence):
         return self._data.tolist()
 
     @classmethod
-    def awkward_form(cls, file, header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
-            "i32",
-            uproot4._util.awkward_form(cls.dtype, file, header, tobject_header),
+            index_format,
+            uproot4._util.awkward_form(cls.dtype, file, index_format, header, tobject_header),
             parameters={"uproot": {"as": "TArray"}},
         )
 

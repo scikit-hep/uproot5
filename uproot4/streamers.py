@@ -222,15 +222,15 @@ class Model_TStreamerInfo(uproot4.model.Model):
         ]
         awkward_form = [
             "    @classmethod",
-            "    def awkward_form(cls, file, header=False, tobject_header=True):",
+            "    def awkward_form(cls, file, index_format='i64', header=False, tobject_header=True):",
             "        from awkward1.forms import NumpyForm, ListOffsetForm, "
             "RegularForm, RecordForm",
             "        contents = {}",
             "        if header:",
             "            contents['@num_bytes'] = "
-            "uproot4._util.awkward_form(numpy.dtype('u4'), file, header, tobject_header)",
+            "uproot4._util.awkward_form(numpy.dtype('u4'), file, index_format, header, tobject_header)",
             "            contents['@instance_version'] = "
-            "uproot4._util.awkward_form(numpy.dtype('u2'), file, header, tobject_header)",
+            "uproot4._util.awkward_form(numpy.dtype('u2'), file, index_format, header, tobject_header)",
         ]
         fields = []
         formats = []
@@ -531,7 +531,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         )
         awkward_form.append(
             "        contents.update(file.class_named({0}, {1}).awkward_form(file, "
-            "header, tobject_header).contents)".format(
+            "index_format, header, tobject_header).contents)".format(
                 repr(self.name), self.base_version
             )
         )
@@ -603,8 +603,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
 
         awkward_form.extend(
             [
-                "        contents[{0}] = ListOffsetForm('i32', "
-                "uproot4._util.awkward_form(cls._dtype{1}, file, header, "
+                "        contents[{0}] = ListOffsetForm(index_format, "
+                "uproot4._util.awkward_form(cls._dtype{1}, file, index_format, header, "
                 "tobject_header),".format(repr(self.name), len(dtypes)),
                 "            parameters={'uproot': {'as': 'TStreamerBasicPointer', "
                 "'count_name': " + repr(self.count_name) + "}}",
@@ -791,7 +791,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             else:
                 awkward_form.append(
                     "        contents[{0}] = uproot4._util.awkward_form({1}, "
-                    "file, header, tobject_header)".format(
+                    "file, index_format, header, tobject_header)".format(
                         repr(self.name), _ftype_to_dtype(self.fType)
                     )
                 )
@@ -799,7 +799,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         else:
             awkward_form.append(
                 "        contents[{0}] = RegularForm(uproot4._util.awkward_form({1}, "
-                "file, header, tobject_header), {2})".format(
+                "file, index_format, header, tobject_header), {2})".format(
                     repr(self.name), _ftype_to_dtype(self.fType), self.array_length
                 )
             )
@@ -872,8 +872,8 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         awkward_form.extend(
             [
                 "        tmp = file.class_named({0}, 'max').awkward_form(file, "
-                "header, tobject_header)".format(repr(self.typename.rstrip("*"))),
-                "        contents[" + repr(self.name) + "] = ListOffsetForm('i32', "
+                "index_format, header, tobject_header)".format(repr(self.typename.rstrip("*"))),
+                "        contents[" + repr(self.name) + "] = ListOffsetForm(index_format, "
                 "tmp, parameters={'uproot': {'as': TStreamerLoop, 'count_name': "
                 + repr(self.count_name)
                 + "}})",
@@ -957,7 +957,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
         awkward_form.append(
             "        contents[{0}] = cls._stl_container{1}.awkward_form(file, "
-            "header, tobject_header)".format(repr(self.name), len(containers))
+            "index_format, header, tobject_header)".format(repr(self.name), len(containers))
         )
 
         containers.append(stl_container)
@@ -1010,7 +1010,7 @@ class pointer_types(object):
             )
             awkward_form.append(
                 "        contents[{0}] = file.class_named({1}, 'max').awkward_form(file, "
-                "header, tobject_header)".format(
+                "index_format, header, tobject_header)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -1096,7 +1096,7 @@ class object_types(object):
         )
         awkward_form.append(
             "        contents[{0}] = file.class_named({1}, 'max').awkward_form(file, "
-            "header, tobject_header)".format(
+            "index_format, header, tobject_header)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )

@@ -270,7 +270,7 @@ def new_class(name, bases, members):
 _primitive_awkward_form = {}
 
 
-def awkward_form(model, file, header=False, tobject_header=True):
+def awkward_form(model, file, index_format="i64", header=False, tobject_header=True):
     import awkward1
 
     if isinstance(model, numpy.dtype):
@@ -315,4 +315,4 @@ def awkward_form(model, file, header=False, tobject_header=True):
         return _primitive_awkward_form[model]
 
     else:
-        return model.awkward_form(file, header, tobject_header)
+        return model.awkward_form(file, index_format, header, tobject_header)

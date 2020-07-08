@@ -34,11 +34,11 @@ class Model_TObjString(uproot4.model.Model, str):
         )
 
     @classmethod
-    def awkward_form(cls, file, header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
-            "i32",
+            index_format,
             awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
