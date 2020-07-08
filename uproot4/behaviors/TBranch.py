@@ -411,6 +411,7 @@ def _ranges_or_baskets_to_arrays(
         branchid_num_baskets[id(branch)] += 1
 
         if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
+            range_or_basket = (int(range_or_basket[0]), int(range_or_basket[1]))
             ranges.append(range_or_basket)
             range_args[range_or_basket] = (branch, basket_num)
             range_original_index[range_or_basket] = original_index
