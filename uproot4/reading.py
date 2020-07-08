@@ -291,7 +291,7 @@ in file {1}""".format(
     def chunk(self, start, stop):
         if self.closed:
             raise OSError("file {0} is closed".format(repr(self._file_path)))
-        elif (start, stop) in self._end_chunk:
+        elif self._end_chunk is not None and (start, stop) in self._end_chunk:
             return self._end_chunk
         elif (start, stop) in self._begin_chunk:
             return self._begin_chunk

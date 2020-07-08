@@ -149,6 +149,8 @@ class HTTPBackgroundThread(threading.Thread):
     def num_fallback_workers(self):
         return self._num_fallback_workers
 
+    _content_range_just_size = re.compile("bytes ([0-9]+-[0-9]+)/([0-9]+)")
+
     def fill_with_singlepart(self, start, stop, future):
         """
         Fills the `future` with data from a single-part range request.
@@ -166,6 +168,12 @@ class HTTPBackgroundThread(threading.Thread):
                 future._result = response.read()[start:stop]
 
             elif response.status == 206:
+                if self._num_bytes is None:
+                    for k, x in response.getheaders():
+                        if k.lower() == "content-range":
+                            m = self._content_range_just_size.match(x)
+                            if m is not None and int(m.group(2)) != 0:
+                                self._num_bytes = int(m.group(2))
                 future._result = response.read()
 
             else:
@@ -200,7 +208,12 @@ for URL {1}""".format(
         This will only be called before the HTTPSource notices that there is a
         `fallback` and sends requests for `chunks` to it directly.
         """
-        if any(x is None or y is None for x, y in ranges):
+        is_begin_end = any(x is None or y is None for x, y in ranges)
+
+        if is_begin_end and self._num_bytes is None:
+            (_, begin_guess_bytes), (end_guess_bytes, _) = ranges
+
+        elif is_begin_end:
             (_, begin_guess_bytes), (end_guess_bytes, _) = ranges
             num_bytes = self._num_bytes
 
@@ -226,7 +239,12 @@ for URL {1}""".format(
             }
 
         try:
-            chunks = self._fallback.chunks(ranges)
+            if is_begin_end and self._num_bytes is None:
+                chunks = self._fallback.begin_end_chunks(
+                    begin_guess_bytes, end_guess_bytes
+                )
+            else:
+                chunks = self._fallback.chunks(ranges)
 
         except Exception:
             for future in futures.values():
@@ -359,7 +377,7 @@ for URL {3}""".format(
 
         if not multipart_supported:
             for k, x in response.getheaders():
-                if k.lower() == "content-length":
+                if k.lower() == "content-length" and int(x) != 0:
                     self._num_bytes = int(x)
             response.close()
             self.make_fallback()
@@ -439,7 +457,7 @@ in file {1}""".format(
 
             else:
                 for k, x in response.getheaders():
-                    if k.lower() == "content-length":
+                    if k.lower() == "content-length" and int(x) != 0:
                         self._num_bytes = int(x)
                         break
 
@@ -702,40 +720,14 @@ class HTTPSource(uproot4.source.chunk.Source):
         self._num_requested_chunks += 2
         self._num_requested_bytes += begin_guess_bytes + end_guess_bytes
 
-        if self._worker.fallback is not None:
-            return self._worker.fallback.begin_end_chunks(
-                begin_guess_bytes, end_guess_bytes
-            )
+        begin_chunk = self.chunk(0, begin_guess_bytes)
+        begin_chunk.wait()
 
+        num_bytes = self.num_bytes
+        if num_bytes - end_guess_bytes < begin_guess_bytes:
+            return begin_chunk, begin_chunk
         else:
-            range_strings = [
-                "0-{0}".format(begin_guess_bytes - 1),
-                "-{0}".format(end_guess_bytes),
-            ]
-            futures = {}
-            chunks = []
-
-            future = uproot4.source.futures.TaskFuture(None)
-            chunk = uproot4.source.chunk.Chunk(self, 0, 0, future, exact=False)
-            future.add_done_callback(self._fix_start_stop(chunk))
-            futures[b"begin"] = future
-            chunks.append(chunk)
-
-            future = uproot4.source.futures.TaskFuture(None)
-            chunk = uproot4.source.chunk.Chunk(self, 0, 0, future, exact=False)
-            future.add_done_callback(self._fix_start_stop(chunk))
-            futures[b"end"] = future
-            chunks.append(chunk)
-
-            range_string = "bytes=" + ", ".join(range_strings)
-            self._work_queue.put(
-                HTTPBackgroundThread.MultipartWork(
-                    [(None, begin_guess_bytes), (end_guess_bytes, None)],
-                    range_string,
-                    futures,
-                )
-            )
-            return chunks
+            return begin_chunk, self.chunk(num_bytes - end_guess_bytes, num_bytes)
 
 
 class HTTPResource(uproot4.source.chunk.Resource):
@@ -895,7 +887,7 @@ in file {1}""".format(
                 )
 
             for k, x in response.getheaders():
-                if k.lower() == "content-length":
+                if k.lower() == "content-length" and int(x) != 0:
                     self._num_bytes = int(x)
                     break
             else:
