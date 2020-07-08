@@ -370,13 +370,21 @@ def _unravel_members(members):
     return out
 
 
-def _strided_awkward_form(awkward1, classname, members, file, index_format, header, tobject_header):
+def _strided_awkward_form(
+    awkward1, classname, members, file, index_format, header, tobject_header
+):
     contents = {}
     for name, member in members:
         if isinstance(member, AsStridedObjects):
             cname = uproot4.model.classname_decode(member._model.__name__)[0]
             contents[name] = _strided_awkward_form(
-                awkward1, cname, member._members, file, index_format, header, tobject_header
+                awkward1,
+                cname,
+                member._members,
+                file,
+                index_format,
+                header,
+                tobject_header,
             )
         else:
             contents[name] = uproot4._util.awkward_form(

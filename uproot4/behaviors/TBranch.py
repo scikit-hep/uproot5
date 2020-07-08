@@ -1811,13 +1811,15 @@ def lazy(
         if object_path is None:
             hasbranches.append(file_path)
         else:
-            hasbranches.append(uproot4.reading.open(
-                file_path,
-                object_cache=None,
-                array_cache=None,
-                custom_classes=custom_classes,
-                **real_options
-            )[object_path])
+            hasbranches.append(
+                uproot4.reading.open(
+                    file_path,
+                    object_cache=None,
+                    array_cache=None,
+                    custom_classes=custom_classes,
+                    **real_options
+                )[object_path]
+            )
 
         new_keys = hasbranches[-1].keys(
             recursive=recursive,
@@ -1835,10 +1837,13 @@ def lazy(
     if len(common_keys) == 0:
         raise ValueError(
             "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
-                "\n    ".join("{0}:{1}".format(
-                    f.file_path if o is None else f,
-                    f.object_path if o is None else o,
-                ) for f, o in files)
+                "\n    ".join(
+                    "{0}:{1}".format(
+                        f.file_path if o is None else f,
+                        f.object_path if o is None else o,
+                    )
+                    for f, o in files
+                )
             )
         )
 
@@ -1866,7 +1871,7 @@ def lazy(
                 branch = hasbranches_obj[key]
                 form = branchid_interpretation[id(branch)].awkward_form(
                     hasbranches_obj.file, index_format="i64"
-                ),
+                )
                 generator = awkward1.layout.ArrayGenerator(
                     branch.array,
                     (
@@ -1879,7 +1884,7 @@ def lazy(
                         "ak",
                     ),
                     {},
-                    form,
+                    uproot4._util.awkward_form_remove_uproot(awkward1, form),
                     length,
                 )
                 virtualarray = awkward1.layout.VirtualArray(

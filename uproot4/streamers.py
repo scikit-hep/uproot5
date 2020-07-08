@@ -872,8 +872,12 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         awkward_form.extend(
             [
                 "        tmp = file.class_named({0}, 'max').awkward_form(file, "
-                "index_format, header, tobject_header)".format(repr(self.typename.rstrip("*"))),
-                "        contents[" + repr(self.name) + "] = ListOffsetForm(index_format, "
+                "index_format, header, tobject_header)".format(
+                    repr(self.typename.rstrip("*"))
+                ),
+                "        contents["
+                + repr(self.name)
+                + "] = ListOffsetForm(index_format, "
                 "tmp, parameters={'uproot': {'as': TStreamerLoop, 'count_name': "
                 + repr(self.count_name)
                 + "}})",
@@ -957,7 +961,9 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
         awkward_form.append(
             "        contents[{0}] = cls._stl_container{1}.awkward_form(file, "
-            "index_format, header, tobject_header)".format(repr(self.name), len(containers))
+            "index_format, header, tobject_header)".format(
+                repr(self.name), len(containers)
+            )
         )
 
         containers.append(stl_container)

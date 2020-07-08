@@ -412,7 +412,9 @@ class AsDynamic(AsContainer):
         else:
             return awkward1.forms.ListOffsetForm(
                 index_format,
-                uproot4._util.awkward_form(self._model, file, index_format, header, tobject_header),
+                uproot4._util.awkward_form(
+                    self._model, file, index_format, header, tobject_header
+                ),
                 parameters={"uproot": {"as": "array", "header": self._header}},
             )
 
@@ -464,7 +466,9 @@ class AsVector(AsContainer):
 
         return awkward1.forms.ListOffsetForm(
             index_format,
-            uproot4._util.awkward_form(self._values, file, index_format, header, tobject_header),
+            uproot4._util.awkward_form(
+                self._values, file, index_format, header, tobject_header
+            ),
             parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
@@ -604,7 +608,9 @@ class AsSet(AsContainer):
 
         return awkward1.forms.ListOffsetForm(
             index_format,
-            uproot4._util.awkward_form(self._keys, file, index_format, header, tobject_header),
+            uproot4._util.awkward_form(
+                self._keys, file, index_format, header, tobject_header
+            ),
             parameters={
                 "__array__": "set",
                 "uproot": {"as": "set", "header": self._header},

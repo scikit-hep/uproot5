@@ -140,7 +140,9 @@ def _strided_to_awkward(awkward1, path, interpretation, data):
             if isinstance(member, uproot4.interpretation.objects.AsStridedObjects):
                 contents.append(_strided_to_awkward(awkward1, p, member, data))
             else:
-                contents.append(awkward1.layout.NumpyArray(numpy.array(data[p])))
+                contents.append(
+                    awkward1.from_numpy(numpy.array(data[p]), regulararray=True, highlevel=False)
+                )
             names.append(name)
     parameters = {
         "__record__": uproot4.model.classname_decode(interpretation.model.__name__)[0]
@@ -286,7 +288,7 @@ class Awkward(Library):
             return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
-            content = awkward1.from_numpy(array.content, highlevel=False)
+            content = awkward1.from_numpy(array.content, regulararray=True, highlevel=False)
             if issubclass(array.offsets.dtype.type, numpy.int32):
                 offsets = awkward1.layout.Index32(array.offsets)
                 layout = awkward1.layout.ListOffsetArray32(offsets, content)
@@ -353,14 +355,16 @@ in object {3}""".format(
             array = array.reshape(-1)
             contents = []
             for name in array.dtype.names:
-                contents.append(awkward1.layout.NumpyArray(numpy.array(array[name])))
+                contents.append(
+                    awkward1.from_numpy(numpy.array(array[name]), regulararray=True, highlevel=False)
+                )
             out = awkward1.layout.RecordArray(contents, array.dtype.names, length)
             for size in shape[::-1]:
                 out = awkward1.layout.RegularArray(out, size)
             return awkward1.Array(out)
 
         else:
-            return awkward1.from_numpy(array)
+            return awkward1.from_numpy(array, regulararray=True)
 
     def group(self, arrays, expression_context, how):
         awkward1 = self.imported
