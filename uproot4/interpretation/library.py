@@ -894,13 +894,139 @@ _libraries["CUPY"] = _libraries[CuPy.name]
 
 def _regularize_library(library):
     if isinstance(library, Library):
-        return _libraries[library.name]
+        if library.name in _libraries:
+            return _libraries[library.name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    type(library).__name__, repr(library.name)
+                )
+            )
 
     elif isinstance(library, type) and issubclass(library, Library):
-        return _libraries[library().name]
+        if library().name in _libraries:
+            return _libraries[library().name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    library.__name__, repr(library().name)
+                )
+            )
 
     else:
         try:
             return _libraries[library]
         except KeyError:
-            raise ValueError("unrecognized library: {0}".format(repr(library)))
+            raise ValueError(
+                """library {0} not recognized (for this function); """
+                """try "np" (NumPy), "ak" (Awkward1), "pd" (Pandas), or "cp" (CuPy) """
+                """instead""".format(repr(library))
+            )
+
+
+_libraries_lazy = {Awkward.name: _libraries[Awkward.name]}
+
+
+class DaskArray(Library):
+    name = "da"
+
+    awkward = _libraries_lazy[Awkward.name]
+
+    @property
+    def imported(self):
+        try:
+            import dask.array
+        except ImportError:
+            raise ImportError(
+                """install the 'dask.array' package with:
+
+    pip install "dask[array]"
+
+or
+
+    conda install dask"""
+            )
+        else:
+            return dask.array
+
+
+_libraries_lazy[DaskArray.name] = DaskArray()
+
+
+class DaskFrame(Library):
+    name = "dd"
+
+    awkward = _libraries_lazy[Awkward.name]
+    daskarray = _libraries_lazy[DaskArray.name]
+
+    @property
+    def imported(self):
+        try:
+            import dask.dataframe
+        except ImportError:
+            raise ImportError(
+                """install the 'dask.dataframe' package with:
+
+    pip install "dask[dataframe]"
+
+or
+
+    conda install dask"""
+            )
+        else:
+            return dask.dataframe
+
+
+_libraries_lazy[DaskFrame.name] = DaskFrame()
+
+
+_libraries_lazy["awkward1"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["Awkward1"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["AWKWARD1"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["awkward"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["Awkward"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["AWKWARD"] = _libraries_lazy[Awkward.name]
+
+_libraries_lazy["dask"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["Dask"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["DASK"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask.array"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask-array"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask_array"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["DaskArray"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask.dataframe"] = _libraries_lazy[DaskFrame.name]
+_libraries_lazy["dask-dataframe"] = _libraries_lazy[DaskFrame.name]
+_libraries_lazy["dask_dataframe"] = _libraries_lazy[DaskFrame.name]
+_libraries_lazy["DaskDataframe"] = _libraries_lazy[DaskFrame.name]
+
+
+def _regularize_library_lazy(library):
+    if isinstance(library, Library):
+        if library.name in _libraries_lazy:
+            return _libraries_lazy[library.name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    type(library).__name__, repr(library.name)
+                )
+            )
+
+    elif isinstance(library, type) and issubclass(library, Library):
+        if library().name in _libraries_lazy:
+            return _libraries_lazy[library().name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    library.__name__, repr(library().name)
+                )
+            )
+
+    else:
+        try:
+            return _libraries_lazy[library]
+        except KeyError:
+            raise ValueError(
+                """library {0} not recognized (for this function); """
+                """try "ak" (Awkward1), "da" (dask.array), or "dd" (dask.dataframe) """
+                """instead""".format(repr(library))
+            )

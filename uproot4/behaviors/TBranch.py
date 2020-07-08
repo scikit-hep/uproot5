@@ -1442,6 +1442,13 @@ in file {3}""".format(
             chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
         )
 
+    def __array__(self, *args, **kwargs):
+        out = self.array(library="np")
+        if args == () and kwargs == {}:
+            return out
+        else:
+            return numpy.array(out, *args, **kwargs)
+
     def array(
         self,
         interpretation=None,
