@@ -63,3 +63,23 @@ def test_awkward():
         "hey-4",
     ]
     assert len(cache) == 4
+
+
+def test_dask():
+    dask_array = pytest.importorskip("dask.array")
+    files = (
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
+            "6.20.04", "*"
+        )
+        + ":sample"
+    )
+    array1 = uproot4.lazy(files, "i4", library="da")
+    array2 = uproot4.lazy(files, "i4", library="da")
+    array3 = uproot4.lazy(files, "i8", library="da")
+
+    assert array1.name == array2.name
+    assert array1.name != array3.name
+
+    assert array1[0].compute() == -15
+    assert array2[0].compute() == -15
+    assert array3[0].compute() == -15

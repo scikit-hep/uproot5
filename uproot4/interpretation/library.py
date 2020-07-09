@@ -59,6 +59,9 @@ class Library(object):
     def global_index(self, array, global_start):
         return array
 
+    def concatenate(self, all_arrays):
+        raise AssertionError
+
     def __repr__(self):
         return repr(self.name)
 
@@ -465,6 +468,10 @@ in object {3}""".format(
             return [concatenated[k] for k in keys]
         elif isinstance(all_arrays[0], dict):
             return concatenated
+
+    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
+        awkward1 = self.imported
+        return awkward1.Array(layout)
 
 
 def _pandas_rangeindex():
@@ -953,6 +960,49 @@ or
         else:
             return dask.array
 
+    def empty(self, shape, dtype):
+        return self.awkward.empty(shape, dtype)
+
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+        return self.awkward.finalize(array, branch, interpretation, entry_start, entry_stop)
+
+    def group(self, arrays, expression_context, how):
+        return self.awkward.group(arrays, expression_context, how)
+
+    def global_index(self, array, global_start):
+        return self.awkward.global_index(array, global_start)
+
+    def concatenate(self, all_arrays):
+        return self.awkward.concatenate(self, all_arrays)
+
+    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
+        awkward1 = self.awkward.imported
+        class ArrayWithShapeDtype(awkward1.Array):
+            @property
+            def dtype(self):
+                return numpy.dtype(numpy.object)
+
+            @property
+            def shape(self):
+                return (len(self),)
+
+        if len(common_keys) == 1:
+            array = ArrayWithShapeDtype(layout[common_keys[0]])
+        else:
+            array = ArrayWithShapeDtype(layout)
+
+        dask_array = self.imported
+        return dask_array.from_array(
+            array,
+            chunks=[
+                global_offsets[i + 1] - global_offsets[i]
+                for i in range(len(global_offsets) - 1)
+            ],
+            name="ak-{0}".format(abs(hash(global_cache_key))),
+            asarray=False,
+            fancy=True,
+        )
+
 
 _libraries_lazy[DaskArray.name] = DaskArray()
 
@@ -979,6 +1029,21 @@ or
             )
         else:
             return dask.dataframe
+
+    def empty(self, shape, dtype):
+        return self.awkward.empty(shape, dtype)
+
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+        return self.awkward.finalize(array, branch, interpretation, entry_start, entry_stop)
+
+    def group(self, arrays, expression_context, how):
+        return self.awkward.group(arrays, expression_context, how)
+
+    def global_index(self, array, global_start):
+        return self.awkward.global_index(array, global_start)
+
+    def concatenate(self, all_arrays):
+        return self.awkward.concatenate(self, all_arrays)
 
 
 _libraries_lazy[DaskFrame.name] = DaskFrame()

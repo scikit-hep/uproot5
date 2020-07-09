@@ -1849,6 +1849,7 @@ def lazy(
 
     partitions = []
     global_offsets = [0]
+    global_cache_key = []
     for hasbranches_obj in hasbranches:
         entry_start, entry_stop = _regularize_entries_start_stop(
             hasbranches_obj.tree.num_entries, None, None
@@ -1887,8 +1888,16 @@ def lazy(
                     uproot4._util.awkward_form_remove_uproot(awkward1, form),
                     length,
                 )
+                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                    branch.cache_key,
+                    branchid_interpretation[id(branch)].cache_key,
+                    start,
+                    stop,
+                    library.name,
+                )
+                global_cache_key.append(cache_key)
                 virtualarray = awkward1.layout.VirtualArray(
-                    generator, cache=array_cache, cache_key=branch.cache_key
+                    generator, cache=array_cache, cache_key=cache_key
                 )
                 fields.append(virtualarray)
                 names.append(key)
@@ -1898,4 +1907,8 @@ def lazy(
             global_offsets.append(global_offsets[-1] + length)
 
     out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
-    return awkward1.Array(out)
+    out = awkward1.Array(out)
+
+    return library.wrap_awkward_lazy(
+        out, common_keys, global_offsets, ",".join(global_cache_key)
+    )
