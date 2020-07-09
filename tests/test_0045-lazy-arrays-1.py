@@ -172,3 +172,18 @@ def test_dask():
     assert array1[0].compute() == -15
     assert array2[0].compute() == -15
     assert array3[0].compute() == -15
+
+
+# def test_daskframe():
+#     # dask_frame = pytest.importorskip("dask.dataframe")
+#     files = (
+#         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
+#             "6.20.04", "*"
+#         )
+#         + ":sample"
+#     )
+#     array1 = uproot4.lazy(files, library="dd")
+
+#     print(repr(array1))
+
+#     raise Exception

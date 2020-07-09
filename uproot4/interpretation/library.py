@@ -986,19 +986,10 @@ or
     def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
         awkward1 = self.awkward.imported
 
-        class ArrayWithShapeDtype(awkward1.Array):
-            @property
-            def dtype(self):
-                return numpy.dtype(numpy.object)
-
-            @property
-            def shape(self):
-                return (len(self),)
-
         if len(common_keys) == 1:
-            array = ArrayWithShapeDtype(layout[common_keys[0]])
+            array = awkward1.Array(layout[common_keys[0]])
         else:
-            array = ArrayWithShapeDtype(layout)
+            array = awkward1.Array(layout)
 
         dask_array = self.imported
         return dask_array.from_array(
@@ -1055,6 +1046,11 @@ or
 
     def concatenate(self, all_arrays):
         return self.awkward.concatenate(self, all_arrays)
+
+    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
+        # dask_dataframe = self.imported
+
+        raise Exception("STOP")
 
 
 _libraries_lazy[DaskFrame.name] = DaskFrame()

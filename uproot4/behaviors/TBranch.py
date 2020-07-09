@@ -1872,10 +1872,11 @@ def lazy(
         if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
             original = obj
             obj = obj.parent
-            real_filter_branch = lambda branch: branch is original and filter_branch(
-                branch
-            )
             is_self.append(True)
+
+            def real_filter_branch(branch):
+                return branch is original and filter_branch(branch)
+
         else:
             is_self.append(False)
             real_filter_branch = filter_branch
