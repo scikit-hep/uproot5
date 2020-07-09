@@ -6,30 +6,9 @@ Source and Resource for XRootD (pyxrootd).
 
 from __future__ import absolute_import
 
-import os
-
 import uproot4.source.chunk
 import uproot4.source.futures
-
-
-def import_pyxrootd():
-    os.environ["XRD_RUNFORKHANDLER"] = "1"  # set multiprocessing flag
-    try:
-        import pyxrootd.client
-        import XRootD.client
-
-    except ImportError:
-        raise ImportError(
-            """Install pyxrootd package with:
-
-    conda install -c conda-forge xrootd
-
-(or download from http://xrootd.org/dload.html and manually compile with """
-            """cmake; setting PYTHONPATH and LD_LIBRARY_PATH appropriately)."""
-        )
-
-    else:
-        return pyxrootd, XRootD
+import uproot4.extras
 
 
 def get_server_config(file_path):
@@ -45,20 +24,20 @@ def get_server_config(file_path):
         readv_ior_max (int): The maximum number of bytes that can be requested
             per **element** in a vector read
     """
-    pyxrootd, XRootD = import_pyxrootd()
+    pyxrootd_client, XRootD_client = uproot4.extras.pyxrootd_XRootD_client()
 
-    url = XRootD.client.URL(file_path)
-    fs = XRootD.client.FileSystem("{0}://{1}/".format(url.protocol, url.hostid))
+    url = XRootD_client.URL(file_path)
+    fs = XRootD_client.FileSystem("{0}://{1}/".format(url.protocol, url.hostid))
 
     status, readv_iov_max = fs.query(
-        XRootD.client.flags.QueryCode.CONFIG, "readv_iov_max"
+        XRootD_client.flags.QueryCode.CONFIG, "readv_iov_max"
     )
     if not status.ok:
         raise OSError(status.message)
     readv_iov_max = int(readv_iov_max)
 
     status, readv_ior_max = fs.query(
-        XRootD.client.flags.QueryCode.CONFIG, "readv_ior_max"
+        XRootD_client.flags.QueryCode.CONFIG, "readv_ior_max"
     )
     if not status.ok:
         raise OSError(status.message)
@@ -81,11 +60,10 @@ class XRootDResource(uproot4.source.chunk.Resource):
             timeout (int): Number of seconds (loosely interpreted by XRootD)
                 before giving up on a remote file.
         """
-
-        pyxrootd, XRootD = import_pyxrootd()
+        pyxrootd_client, XRootD_client = uproot4.extras.pyxrootd_XRootD_client()
         self._file_path = file_path
         self._timeout = timeout
-        self._file = pyxrootd.client.File()
+        self._file = pyxrootd_client.File()
 
         status, dummy = self._file.open(
             self._file_path, timeout=(0 if timeout is None else timeout)
