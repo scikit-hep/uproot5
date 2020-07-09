@@ -36,42 +36,21 @@ class TH1(object):
     def metadata(self, axis):
         if axis == "x":
             axis = self.member("fXaxis")
-        return {
+        else:
+            assert axis is self.member("fXaxis")
+
+        out = {
             "name": self.member("fName"),
             "title": self.member("fTitle"),
             "entries": self.member("fEntries"),
-            "total-sumw": self.member("fTsumw"),
-            "total-sumw2": self.member("fTsumw2"),
-            "total-sumwx": self.member("fTsumwx"),
-            "total-sumwx2": self.member("fTsumwx2"),
-            "norm-factor": self.member("fNormFactor"),
-            "option": self.member("fOption"),
-            "line-color": self.member("fLineColor"),
-            "line-style": self.member("fLineStyle"),
-            "line-width": self.member("fLineWidth"),
-            "fill-color": self.member("fFillColor"),
-            "fill-style": self.member("fFillStyle"),
-            "marker-color": self.member("fMarkerColor"),
-            "marker-style": self.member("fMarkerStyle"),
-            "marker-size": self.member("fMarkerSize"),
-            "bar-offset": self.member("fBarOffset"),
-            "bar-width": self.member("fBarWidth"),
-            "labels": axis.member("fLabels"),
-            "axis-color": axis.member("fAxisColor"),
-            "label-color": axis.member("fLabelColor"),
-            "label-font": axis.member("fLabelFont"),
-            "label-offset": axis.member("fLabelOffset"),
-            "label-size": axis.member("fLabelSize"),
-            "tick-length": axis.member("fTickLength"),
-            "title-offset": axis.member("fTitleOffset"),
-            "title-size": axis.member("fTitleSize"),
-            "title-color": axis.member("fTitleColor"),
-            "title-font": axis.member("fTitleFont"),
-            "time-display": axis.member("fTimeDisplay"),
-            "time-format": str(axis.member("fTimeFormat")),
-            "contour": numpy.asarray(self.member("fContour")),
-            "functions": list(self.member("fFunctions")),
         }
+
+        if axis.member("fLabels") is not None:
+            out["labels"] = list(axis.member("fLabels"))
+        if axis.member("fTimeDisplay"):
+            out["time-format"] = str(axis.member("fTimeFormat"))
+
+        return out
 
     @property
     def bh(self):

@@ -2177,4 +2177,8 @@ def test_boost_1d():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpx"].bh
 
-    raise Exception
+
+def test_boost_2d():
+    boost_histogram = pytest.importorskip("boost_histogram")
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        f["hpxpy"].bh
