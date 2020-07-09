@@ -98,11 +98,11 @@ class AsStrings(uproot4.interpretation.Interpretation):
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)
 
-    def awkward_form(self, file, header=False, tobject_header=True):
+    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
-            "i32",
+            index_format,
             awkward1.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",

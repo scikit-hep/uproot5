@@ -270,7 +270,7 @@ def new_class(name, bases, members):
 _primitive_awkward_form = {}
 
 
-def awkward_form(model, file, header=False, tobject_header=True):
+def awkward_form(model, file, index_format="i64", header=False, tobject_header=True):
     import awkward1
 
     if isinstance(model, numpy.dtype):
@@ -315,4 +315,104 @@ def awkward_form(model, file, header=False, tobject_header=True):
         return _primitive_awkward_form[model]
 
     else:
-        return model.awkward_form(file, header, tobject_header)
+        return model.awkward_form(file, index_format, header, tobject_header)
+
+
+def awkward_form_remove_uproot(awkward1, form):
+    parameters = dict(form.parameters)
+    parameters.pop("uproot", None)
+    if isinstance(form, awkward1.forms.BitMaskedForm):
+        return awkward1.forms.BitMaskedForm(
+            form.mask,
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.valid_when,
+            form.lsb_order,
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.ByteMaskedForm):
+        return awkward1.forms.ByteMaskedForm(
+            form.mask,
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.valid_when,
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.EmptyForm):
+        return awkward1.forms.EmptyForm(form.has_identities, parameters,)
+    elif isinstance(form, awkward1.forms.IndexedForm):
+        return awkward1.forms.IndexedForm(
+            form.index,
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.IndexedOptionForm):
+        return awkward1.forms.IndexedOptionForm(
+            form.index,
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.ListForm):
+        return awkward1.forms.ListForm(
+            form.starts,
+            form.stops,
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.ListOffsetForm):
+        return awkward1.forms.ListOffsetForm(
+            form.offsets,
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.NumpyForm):
+        return awkward1.forms.NumpyForm(
+            form.inner_shape,
+            form.itemsize,
+            form.format,
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.RecordForm):
+        return awkward1.forms.RecordForm(
+            dict(
+                (k, awkward_form_remove_uproot(awkward1, v))
+                for k, v in form.contents.items()
+            ),
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.RegularForm):
+        return awkward1.forms.RegularForm(
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.size,
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.UnionForm):
+        return awkward1.forms.UnionForm(
+            form.tags,
+            form.index,
+            [awkward_form_remove_uproot(awkward1, x) for x in form.contents],
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.UnmaskedForm):
+        return awkward1.forms.UnmaskedForm(
+            awkward_form_remove_uproot(awkward1, form.content),
+            form.has_identities,
+            parameters,
+        )
+    elif isinstance(form, awkward1.forms.VirtualForm):
+        return awkward1.forms.VirtualForm(
+            awkward_form_remove_uproot(awkward1, form.form),
+            form.has_length,
+            form.has_identities,
+            parameters,
+        )
+    else:
+        raise RuntimeError("unrecognized form: {0}".format(type(form)))

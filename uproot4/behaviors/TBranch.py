@@ -29,6 +29,7 @@ except ImportError:
 
 import numpy
 
+import uproot4.cache
 import uproot4.source.cursor
 import uproot4.streamers
 import uproot4.containers
@@ -86,10 +87,14 @@ def _regularize_executors(decompression_executor, interpretation_executor):
 def _regularize_array_cache(array_cache, file):
     if isinstance(array_cache, MutableMapping):
         return array_cache
-    elif array_cache is None:
+    elif array_cache is None and file is not None:
         return file._array_cache
+    elif array_cache is None:
+        return None
+    elif uproot4._util.isint(array_cache) or uproot4._util.isstr(array_cache):
+        return uproot4.cache.LRUArrayCache(array_cache)
     else:
-        raise TypeError("array_cache must be None or a MutableMapping")
+        raise TypeError("array_cache must be None, a MutableMapping, or a memory size")
 
 
 def _regularize_aliases(hasbranches, aliases):
@@ -862,6 +867,26 @@ class HasBranches(Mapping):
         library="ak",
         how=None,
     ):
+        keys = set(self.keys(recursive=True, full_paths=False))
+        if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
+            filter_branch = uproot4._util.regularize_filter(filter_branch)
+            return self.parent.arrays(
+                expressions=expressions,
+                cut=cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=lambda branch: branch is self and filter_branch(branch),
+                aliases=aliases,
+                compute=compute,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                array_cache=array_cache,
+                library=library,
+                how=how,
+            )
+
         entry_start, entry_stop = _regularize_entries_start_stop(
             self.tree.num_entries, entry_start, entry_stop
         )
@@ -885,7 +910,6 @@ class HasBranches(Mapping):
             else:
                 return None
 
-        keys = set(self.keys(recursive=True, full_paths=False))
         aliases = _regularize_aliases(self, aliases)
         arrays, expression_context, branchid_interpretation = _regularize_expressions(
             self,
@@ -1008,108 +1032,136 @@ class HasBranches(Mapping):
         how=None,
         report=False,
     ):
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            self.tree.num_entries, entry_start, entry_stop
-        )
-        decompression_executor, interpretation_executor = _regularize_executors(
-            decompression_executor, interpretation_executor
-        )
-        library = uproot4.interpretation.library._regularize_library(library)
-
         keys = set(self.keys(recursive=True, full_paths=False))
-        aliases = _regularize_aliases(self, aliases)
-        arrays, expression_context, branchid_interpretation = _regularize_expressions(
-            self,
-            expressions,
-            cut,
-            filter_name,
-            filter_typename,
-            filter_branch,
-            keys,
-            aliases,
-            compute,
-            (lambda branchname, interpretation: None),
-        )
+        if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
+            filter_branch = uproot4._util.regularize_filter(filter_branch)
+            for x in self.parent.iterate(
+                expressions=expressions,
+                cut=cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=lambda branch: branch is self and filter_branch(branch),
+                aliases=aliases,
+                compute=compute,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                step_size=step_size,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                library=library,
+                how=how,
+                report=report,
+            ):
+                yield x
 
-        entry_step = _regularize_step_size(
-            self, step_size, entry_start, entry_stop, branchid_interpretation
-        )
-
-        if report:
-            tree = self.tree
-
-        previous_baskets = {}
-        for sub_entry_start in range(entry_start, entry_stop, entry_step):
-            sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
-            if sub_entry_stop - sub_entry_start == 0:
-                continue
-
-            ranges_or_baskets = []
-            for expression, context in expression_context:
-                branch = context.get("branch")
-                if branch is not None and not context["is_duplicate"]:
-                    for (
-                        basket_num,
-                        range_or_basket,
-                    ) in branch.entries_to_ranges_or_baskets(
-                        sub_entry_start, sub_entry_stop
-                    ):
-                        previous_basket = previous_baskets.get((id(branch), basket_num))
-                        if previous_basket is None:
-                            ranges_or_baskets.append(
-                                (branch, basket_num, range_or_basket)
-                            )
-                        else:
-                            ranges_or_baskets.append(
-                                (branch, basket_num, previous_basket)
-                            )
-
-            arrays = {}
-            _ranges_or_baskets_to_arrays(
-                self,
-                ranges_or_baskets,
-                branchid_interpretation,
-                sub_entry_start,
-                sub_entry_stop,
-                decompression_executor,
-                interpretation_executor,
-                library,
-                arrays,
+        else:
+            entry_start, entry_stop = _regularize_entries_start_stop(
+                self.tree.num_entries, entry_start, entry_stop
             )
+            decompression_executor, interpretation_executor = _regularize_executors(
+                decompression_executor, interpretation_executor
+            )
+            library = uproot4.interpretation.library._regularize_library(library)
 
-            output = compute.compute_expressions(
+            aliases = _regularize_aliases(self, aliases)
+            (
                 arrays,
                 expression_context,
+                branchid_interpretation,
+            ) = _regularize_expressions(
+                self,
+                expressions,
+                cut,
+                filter_name,
+                filter_typename,
+                filter_branch,
                 keys,
                 aliases,
-                self.file.file_path,
-                self.object_path,
+                compute,
+                (lambda branchname, interpretation: None),
             )
 
-            expression_context = [
-                (e, c)
-                for e, c in expression_context
-                if c["is_primary"] and not c["is_cut"]
-            ]
-
-            arrays = library.group(output, expression_context, how)
+            entry_step = _regularize_step_size(
+                self, step_size, entry_start, entry_stop, branchid_interpretation
+            )
 
             if report:
-                yield arrays, Report(
-                    sub_entry_start,
-                    sub_entry_stop,
-                    sub_entry_start,
-                    sub_entry_stop,
-                    self,
-                    tree,
-                    self.file,
-                    self.file.file_path,
-                )
-            else:
-                yield arrays
+                tree = self.tree
 
-            for branch, basket_num, basket in ranges_or_baskets:
-                previous_baskets[id(branch), basket_num] = basket
+            previous_baskets = {}
+            for sub_entry_start in range(entry_start, entry_stop, entry_step):
+                sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
+                if sub_entry_stop - sub_entry_start == 0:
+                    continue
+
+                ranges_or_baskets = []
+                for expression, context in expression_context:
+                    branch = context.get("branch")
+                    if branch is not None and not context["is_duplicate"]:
+                        for (
+                            basket_num,
+                            range_or_basket,
+                        ) in branch.entries_to_ranges_or_baskets(
+                            sub_entry_start, sub_entry_stop
+                        ):
+                            previous_basket = previous_baskets.get(
+                                (id(branch), basket_num)
+                            )
+                            if previous_basket is None:
+                                ranges_or_baskets.append(
+                                    (branch, basket_num, range_or_basket)
+                                )
+                            else:
+                                ranges_or_baskets.append(
+                                    (branch, basket_num, previous_basket)
+                                )
+
+                arrays = {}
+                _ranges_or_baskets_to_arrays(
+                    self,
+                    ranges_or_baskets,
+                    branchid_interpretation,
+                    sub_entry_start,
+                    sub_entry_stop,
+                    decompression_executor,
+                    interpretation_executor,
+                    library,
+                    arrays,
+                )
+
+                output = compute.compute_expressions(
+                    arrays,
+                    expression_context,
+                    keys,
+                    aliases,
+                    self.file.file_path,
+                    self.object_path,
+                )
+
+                expression_context = [
+                    (e, c)
+                    for e, c in expression_context
+                    if c["is_primary"] and not c["is_cut"]
+                ]
+
+                arrays = library.group(output, expression_context, how)
+
+                if report:
+                    yield arrays, Report(
+                        sub_entry_start,
+                        sub_entry_stop,
+                        sub_entry_start,
+                        sub_entry_stop,
+                        self,
+                        tree,
+                        self.file,
+                        self.file.file_path,
+                    )
+                else:
+                    yield arrays
+
+                for branch, basket_num, basket in ranges_or_baskets:
+                    previous_baskets[id(branch), basket_num] = basket
 
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
@@ -1442,6 +1494,13 @@ in file {3}""".format(
             chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
         )
 
+    def __array__(self, *args, **kwargs):
+        out = self.array(library="np")
+        if args == () and kwargs == {}:
+            return out
+        else:
+            return numpy.array(out, *args, **kwargs)
+
     def array(
         self,
         interpretation=None,
@@ -1513,9 +1572,11 @@ def _regularize_files(files):
     if uproot4._util.isstr(files):
         file_path, object_path = uproot4._util.file_object_path_split(files)
         parsed_url = urlparse(file_path)
+        count = 0
 
         if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
             yield file_path, object_path
+            count += 1
 
         else:
             expanded = os.path.expanduser(file_path)
@@ -1538,11 +1599,20 @@ def _regularize_files(files):
                     if match not in seen:
                         yield match, object_path
                         seen.add(match)
+                        count += 1
+
+        if count == 0:
+            if hasattr(__builtins__, "FileNotFoundError"):
+                errclass = __builtins__.FileNotFoundError
+            else:
+                errclass = __builtins__.IOError
+            raise errclass("{0} did not match any files".format(repr(file_path)))
 
     elif isinstance(files, HasBranches):
         yield files, None
 
     elif isinstance(files, Iterable):
+        count = 0
         seen = set()
         for file in files:
             for file_path, object_path in _regularize_files(file):
@@ -1552,6 +1622,14 @@ def _regularize_files(files):
                         seen.add(file_path)
                 else:
                     yield file_path, object_path
+                    count += 1
+
+        if count == 0:
+            if hasattr(__builtins__, "FileNotFoundError"):
+                errclass = __builtins__.FileNotFoundError
+            else:
+                errclass = __builtins__.IOError
+            raise errclass("at least one file path or URL must be provided")
 
     else:
         raise TypeError(
@@ -1729,3 +1807,171 @@ def concatenate(
             global_start += hasbranches.num_entries
 
     return library.concatenate(all_arrays)
+
+
+def lazy(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    step_size="100 MB",
+    decompression_executor=None,
+    interpretation_executor=None,
+    array_cache="100 MB",
+    library="ak",
+    report=False,
+    custom_classes=None,
+    **options
+):
+    files = list(_regularize_files(files))
+    if any(
+        uproot4._util.isstr(file_path) and object_path is None
+        for file_path, object_path in files
+    ):
+        raise TypeError(
+            "'files' must include a TTree/TBranch object path (separated by a "
+            "colon ':') to each glob pattern (if multiple are given)"
+        )
+
+    decompression_executor, interpretation_executor = _regularize_executors(
+        decompression_executor, interpretation_executor
+    )
+    array_cache = _regularize_array_cache(array_cache, None)
+    library = uproot4.interpretation.library._regularize_library_lazy(library)
+    import awkward1
+
+    if array_cache is not None:
+        array_cache = awkward1.layout.ArrayCache(array_cache)
+
+    real_options = dict(options)
+    if "num_workers" not in real_options:
+        real_options["num_workers"] = 1
+    if "num_fallback_workers" not in real_options:
+        real_options["num_fallback_workers"] = 1
+
+    filter_branch = uproot4._util.regularize_filter(filter_branch)
+
+    hasbranches = []
+    common_keys = None
+    is_self = []
+
+    for file_path, object_path in files:
+        if object_path is None:
+            obj = file_path
+        else:
+            obj = uproot4.reading.open(
+                file_path,
+                object_cache=None,
+                array_cache=None,
+                custom_classes=custom_classes,
+                **real_options
+            )[object_path]
+
+        if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+            original = obj
+            obj = obj.parent
+            is_self.append(True)
+
+            def real_filter_branch(branch):
+                return branch is original and filter_branch(branch)
+
+        else:
+            is_self.append(False)
+            real_filter_branch = filter_branch
+
+        hasbranches.append(obj)
+
+        new_keys = obj.keys(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=real_filter_branch,
+            full_paths=full_paths,
+        )
+
+        if common_keys is None:
+            common_keys = new_keys
+        else:
+            new_keys = set(new_keys)
+            common_keys = [key for key in common_keys if key in new_keys]
+
+    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
+        raise ValueError(
+            "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
+                "\n    ".join(
+                    "{0}:{1}".format(
+                        f.file_path if o is None else f,
+                        f.object_path if o is None else o,
+                    )
+                    for f, o in files
+                )
+            )
+        )
+
+    partitions = []
+    global_offsets = [0]
+    global_cache_key = []
+    for obj in hasbranches:
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            obj.tree.num_entries, None, None
+        )
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = obj[key]
+            branchid_interpretation[id(branch)] = branch.interpretation
+        entry_step = _regularize_step_size(
+            obj, step_size, entry_start, entry_stop, branchid_interpretation
+        )
+
+        for start in range(entry_start, entry_stop, entry_step):
+            stop = min(start + entry_step, entry_stop)
+            length = stop - start
+
+            fields = []
+            names = []
+            for key in common_keys:
+                branch = obj[key]
+                form = branchid_interpretation[id(branch)].awkward_form(
+                    obj.file, index_format="i64"
+                )
+                generator = awkward1.layout.ArrayGenerator(
+                    branch.array,
+                    (
+                        None,
+                        start,
+                        stop,
+                        decompression_executor,
+                        interpretation_executor,
+                        None,
+                        "ak",
+                    ),
+                    {},
+                    uproot4._util.awkward_form_remove_uproot(awkward1, form),
+                    length,
+                )
+                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                    branch.cache_key,
+                    branchid_interpretation[id(branch)].cache_key,
+                    start,
+                    stop,
+                    library.name,
+                )
+                global_cache_key.append(cache_key)
+                virtualarray = awkward1.layout.VirtualArray(
+                    generator, cache=array_cache, cache_key=cache_key
+                )
+                fields.append(virtualarray)
+                names.append(key)
+
+            recordarray = awkward1.layout.RecordArray(fields, names, length)
+            partitions.append(recordarray)
+            global_offsets.append(global_offsets[-1] + length)
+
+    out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
+    out = awkward1.Array(out)
+
+    return library.wrap_awkward_lazy(
+        out, common_keys, global_offsets, ",".join(global_cache_key)
+    )

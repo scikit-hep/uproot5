@@ -46,22 +46,22 @@ class Model_TRef(uproot4.model.Model):
         )
 
     @classmethod
-    def awkward_form(cls, file, header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         import awkward1
 
         contents = {}
         if tobject_header:
             contents["@pidf"] = uproot4._util.awkward_form(
-                numpy.dtype("u2"), file, header, tobject_header
+                numpy.dtype("u2"), file, index_format, header, tobject_header
             )
             contents["id"] = uproot4._util.awkward_form(
-                numpy.dtype("u4"), file, header, tobject_header
+                numpy.dtype("u4"), file, index_format, header, tobject_header
             )
             contents["@other1"] = uproot4._util.awkward_form(
-                numpy.dtype("u2"), file, header, tobject_header
+                numpy.dtype("u2"), file, index_format, header, tobject_header
             )
             contents["@other2"] = uproot4._util.awkward_form(
-                numpy.dtype("u4"), file, header, tobject_header
+                numpy.dtype("u4"), file, index_format, header, tobject_header
             )
         return awkward1.forms.RecordForm(contents, parameters={"__record__": "TRef"},)
 

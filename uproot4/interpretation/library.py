@@ -59,6 +59,9 @@ class Library(object):
     def global_index(self, array, global_start):
         return array
 
+    def concatenate(self, all_arrays):
+        raise AssertionError
+
     def __repr__(self):
         return repr(self.name)
 
@@ -140,7 +143,11 @@ def _strided_to_awkward(awkward1, path, interpretation, data):
             if isinstance(member, uproot4.interpretation.objects.AsStridedObjects):
                 contents.append(_strided_to_awkward(awkward1, p, member, data))
             else:
-                contents.append(awkward1.layout.NumpyArray(numpy.array(data[p])))
+                contents.append(
+                    awkward1.from_numpy(
+                        numpy.array(data[p]), regulararray=True, highlevel=False
+                    )
+                )
             names.append(name)
     parameters = {
         "__record__": uproot4.model.classname_decode(interpretation.model.__name__)[0]
@@ -286,7 +293,9 @@ class Awkward(Library):
             return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
-            content = awkward1.from_numpy(array.content, highlevel=False)
+            content = awkward1.from_numpy(
+                array.content, regulararray=True, highlevel=False
+            )
             if issubclass(array.offsets.dtype.type, numpy.int32):
                 offsets = awkward1.layout.Index32(array.offsets)
                 layout = awkward1.layout.ListOffsetArray32(offsets, content)
@@ -353,14 +362,18 @@ in object {3}""".format(
             array = array.reshape(-1)
             contents = []
             for name in array.dtype.names:
-                contents.append(awkward1.layout.NumpyArray(numpy.array(array[name])))
+                contents.append(
+                    awkward1.from_numpy(
+                        numpy.array(array[name]), regulararray=True, highlevel=False
+                    )
+                )
             out = awkward1.layout.RecordArray(contents, array.dtype.names, length)
             for size in shape[::-1]:
                 out = awkward1.layout.RegularArray(out, size)
             return awkward1.Array(out)
 
         else:
-            return awkward1.from_numpy(array)
+            return awkward1.from_numpy(array, regulararray=True)
 
     def group(self, arrays, expression_context, how):
         awkward1 = self.imported
@@ -461,6 +474,10 @@ in object {3}""".format(
             return [concatenated[k] for k in keys]
         elif isinstance(all_arrays[0], dict):
             return concatenated
+
+    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
+        awkward1 = self.imported
+        return awkward1.Array(layout)
 
 
 def _pandas_rangeindex():
@@ -894,13 +911,214 @@ _libraries["CUPY"] = _libraries[CuPy.name]
 
 def _regularize_library(library):
     if isinstance(library, Library):
-        return _libraries[library.name]
+        if library.name in _libraries:
+            return _libraries[library.name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    type(library).__name__, repr(library.name)
+                )
+            )
 
     elif isinstance(library, type) and issubclass(library, Library):
-        return _libraries[library().name]
+        if library().name in _libraries:
+            return _libraries[library().name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    library.__name__, repr(library().name)
+                )
+            )
 
     else:
         try:
             return _libraries[library]
         except KeyError:
-            raise ValueError("unrecognized library: {0}".format(repr(library)))
+            raise ValueError(
+                """library {0} not recognized (for this function); """
+                """try "np" (NumPy), "ak" (Awkward1), "pd" (Pandas), or "cp" (CuPy) """
+                """instead""".format(repr(library))
+            )
+
+
+_libraries_lazy = {Awkward.name: _libraries[Awkward.name]}
+
+
+class DaskArray(Library):
+    name = "da"
+
+    awkward = _libraries_lazy[Awkward.name]
+
+    @property
+    def imported(self):
+        try:
+            import dask.array
+        except ImportError:
+            raise ImportError(
+                """install the 'dask.array' package with:
+
+    pip install "dask[array]"
+
+or
+
+    conda install dask"""
+            )
+        else:
+            return dask.array
+
+    def empty(self, shape, dtype):
+        return self.awkward.empty(shape, dtype)
+
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+        return self.awkward.finalize(
+            array, branch, interpretation, entry_start, entry_stop
+        )
+
+    def group(self, arrays, expression_context, how):
+        return self.awkward.group(arrays, expression_context, how)
+
+    def global_index(self, array, global_start):
+        return self.awkward.global_index(array, global_start)
+
+    def concatenate(self, all_arrays):
+        return self.awkward.concatenate(self, all_arrays)
+
+    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
+        awkward1 = self.awkward.imported
+
+        if len(common_keys) == 1:
+            array = awkward1.Array(layout[common_keys[0]])
+        else:
+            array = awkward1.Array(layout)
+
+        dask_array = self.imported
+        return dask_array.from_array(
+            array,
+            chunks=[
+                global_offsets[i + 1] - global_offsets[i]
+                for i in range(len(global_offsets) - 1)
+            ],
+            name="ak-{0}".format(abs(hash(global_cache_key))),
+            asarray=False,
+            fancy=True,
+        )
+
+
+_libraries_lazy[DaskArray.name] = DaskArray()
+
+
+class DaskFrame(Library):
+    name = "dd"
+
+    awkward = _libraries_lazy[Awkward.name]
+    dask_array = _libraries_lazy[DaskArray.name]
+
+    @property
+    def imported(self):
+        try:
+            import dask.dataframe
+        except ImportError:
+            raise ImportError(
+                """install the 'dask.dataframe' package with:
+
+    pip install "dask[dataframe]"
+
+or
+
+    conda install dask"""
+            )
+        else:
+            return dask.dataframe
+
+    def empty(self, shape, dtype):
+        return self.awkward.empty(shape, dtype)
+
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+        return self.awkward.finalize(
+            array, branch, interpretation, entry_start, entry_stop
+        )
+
+    def group(self, arrays, expression_context, how):
+        return self.awkward.group(arrays, expression_context, how)
+
+    def global_index(self, array, global_start):
+        return self.awkward.global_index(array, global_start)
+
+    def concatenate(self, all_arrays):
+        return self.awkward.concatenate(self, all_arrays)
+
+    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
+        awkward1 = self.awkward.imported
+        dask_array = self.dask_array.imported
+        dask_dataframe = self.imported
+
+        series = []
+        for name in common_keys:
+            array = dask_array.from_array(
+                awkward1.Array(layout[name]),
+                chunks=[
+                    global_offsets[i + 1] - global_offsets[i]
+                    for i in range(len(global_offsets) - 1)
+                ],
+                name="ak-{0}".format(abs(hash((global_cache_key, name)))),
+                asarray=False,
+                fancy=True,
+            )
+            series.append(dask_dataframe.from_dask_array(array, columns=name))
+
+        return dask_dataframe.concat(series, axis=1)
+
+
+_libraries_lazy[DaskFrame.name] = DaskFrame()
+
+
+_libraries_lazy["awkward1"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["Awkward1"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["AWKWARD1"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["awkward"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["Awkward"] = _libraries_lazy[Awkward.name]
+_libraries_lazy["AWKWARD"] = _libraries_lazy[Awkward.name]
+
+_libraries_lazy["dask"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["Dask"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["DASK"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask.array"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask-array"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask_array"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["DaskArray"] = _libraries_lazy[DaskArray.name]
+_libraries_lazy["dask.dataframe"] = _libraries_lazy[DaskFrame.name]
+_libraries_lazy["dask-dataframe"] = _libraries_lazy[DaskFrame.name]
+_libraries_lazy["dask_dataframe"] = _libraries_lazy[DaskFrame.name]
+_libraries_lazy["DaskDataframe"] = _libraries_lazy[DaskFrame.name]
+
+
+def _regularize_library_lazy(library):
+    if isinstance(library, Library):
+        if library.name in _libraries_lazy:
+            return _libraries_lazy[library.name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    type(library).__name__, repr(library.name)
+                )
+            )
+
+    elif isinstance(library, type) and issubclass(library, Library):
+        if library().name in _libraries_lazy:
+            return _libraries_lazy[library().name]
+        else:
+            raise ValueError(
+                "library {0} ({1}) cannot be used in this function".format(
+                    library.__name__, repr(library().name)
+                )
+            )
+
+    else:
+        try:
+            return _libraries_lazy[library]
+        except KeyError:
+            raise ValueError(
+                """library {0} not recognized (for this function); """
+                """try "ak" (Awkward1), "da" (dask.array), or "dd" (dask.dataframe) """
+                """instead""".format(repr(library))
+            )

@@ -107,12 +107,14 @@ class AsJagged(uproot4.interpretation.Interpretation):
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)
 
-    def awkward_form(self, file, header=False, tobject_header=True):
+    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         import awkward1
 
         return awkward1.forms.ListOffsetForm(
-            "i32",
-            uproot4._util.awkward_form(self._content, file, header, tobject_header),
+            index_format,
+            uproot4._util.awkward_form(
+                self._content, file, index_format, header, tobject_header
+            ),
             parameters={"uproot": {"as": "jagged", "header_bytes": self._header_bytes}},
         )
 
