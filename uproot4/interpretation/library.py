@@ -1011,7 +1011,7 @@ class DaskFrame(Library):
     name = "dd"
 
     awkward = _libraries_lazy[Awkward.name]
-    daskarray = _libraries_lazy[DaskArray.name]
+    dask_array = _libraries_lazy[DaskArray.name]
 
     @property
     def imported(self):
@@ -1048,9 +1048,25 @@ or
         return self.awkward.concatenate(self, all_arrays)
 
     def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
-        # dask_dataframe = self.imported
+        awkward1 = self.awkward.imported
+        dask_array = self.dask_array.imported
+        dask_dataframe = self.imported
 
-        raise Exception("STOP")
+        series = []
+        for name in common_keys:
+            array = dask_array.from_array(
+                awkward1.Array(layout[name]),
+                chunks=[
+                    global_offsets[i + 1] - global_offsets[i]
+                    for i in range(len(global_offsets) - 1)
+                ],
+                name="ak-{0}".format(abs(hash((global_cache_key, name)))),
+                asarray=False,
+                fancy=True,
+            )
+            series.append(dask_dataframe.from_dask_array(array, columns=name))
+
+        return dask_dataframe.concat(series, axis=1)
 
 
 _libraries_lazy[DaskFrame.name] = DaskFrame()
