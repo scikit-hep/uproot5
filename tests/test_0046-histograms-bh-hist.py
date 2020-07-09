@@ -2172,6 +2172,13 @@ def test_numpy_2d():
         ]
 
 
+# def test_numpy_profile():
+#     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+#         print(f["hprof"].np)
+
+#     raise Exception
+
+
 def test_boost_1d():
     boost_histogram = pytest.importorskip("boost_histogram")
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:

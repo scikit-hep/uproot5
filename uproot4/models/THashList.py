@@ -6,6 +6,9 @@ import uproot4.models.TList
 
 
 class Model_THashList(uproot4.model.Model):
+    def read_numbytes_version(self, chunk, cursor, context):
+        pass
+
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             uproot4.models.TList.Model_TList.read(

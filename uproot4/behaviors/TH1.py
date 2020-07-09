@@ -8,79 +8,66 @@ import uproot4.models.TArray
 import uproot4.extras
 
 
+def _edges(axis):
+    fNbins = axis.member("fNbins")
+    out = numpy.empty(fNbins + 3, dtype=numpy.float64)
+    out[0] = -numpy.inf
+    out[-1] = numpy.inf
+
+    axis_fXbins = axis.member("fXbins", none_if_missing=True)
+    if axis_fXbins is None or len(axis_fXbins) == 0:
+        out[1:-1] = numpy.linspace(
+            axis.member("fXmin"), axis.member("fXmax"), fNbins + 1
+        )
+    else:
+        out[1:-1] = axis_fXbins
+
+    return out
+
+
+def _boost_axis(boost_histogram, axis):
+    fNbins = axis.member("fNbins")
+    fXbins = axis.member("fXbins", none_if_missing=True)
+
+    metadata = axis.all_members
+    metadata.pop("fXbins", None)
+    metadata.pop("fLabels", None)
+
+    if axis.member("fLabels") is not None:
+        return boost_histogram.axis.StrCategory(
+            [str(x) for x in axis.member("fLabels")], metadata=metadata,
+        )
+
+    elif fXbins is None or len(fXbins) == 0:
+        return boost_histogram.axis.Regular(
+            fNbins,
+            axis.member("fXmin"),
+            axis.member("fXmax"),
+            underflow=True,
+            overflow=True,
+            metadata=metadata,
+        )
+
+    else:
+        return boost_histogram.axis.Variable(
+            fXbins, underflow=True, overflow=True, metadata=metadata,
+        )
+
+
 class TH1(object):
     @property
     def np(self):
-        xaxis = self.member("fXaxis")
+        (values,) = self.base(uproot4.models.TArray.Model_TArray)
+        values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
 
-        xaxis_fNbins = xaxis.member("fNbins")
-        xedges = numpy.empty(xaxis_fNbins + 3, dtype=numpy.float64)
-        xedges[0] = -numpy.inf
-        xedges[-1] = numpy.inf
-
-        xaxis_fXbins = xaxis.member("fXbins", none_if_missing=True)
-        if xaxis_fXbins is None or len(xaxis_fXbins) == 0:
-            xedges[1:-1] = numpy.linspace(
-                xaxis.member("fXmin"), xaxis.member("fXmax"), xaxis_fNbins + 1
-            )
-        else:
-            xedges[1:-1] = xaxis_fXbins
-
-        for base in self.bases:
-            if isinstance(base, uproot4.models.TArray.Model_TArray):
-                values = numpy.array(base, dtype=base.dtype.newbyteorder("="))
-                break
-
-        return values, xedges
-
-    def metadata(self, axis):
-        if axis == "x":
-            axis = self.member("fXaxis")
-        else:
-            assert axis is self.member("fXaxis")
-
-        out = {
-            "name": self.member("fName"),
-            "title": self.member("fTitle"),
-            "entries": self.member("fEntries"),
-        }
-
-        if axis.member("fLabels") is not None:
-            out["labels"] = list(axis.member("fLabels"))
-        if axis.member("fTimeDisplay"):
-            out["time-format"] = str(axis.member("fTimeFormat"))
-
-        return out
+        return values, _edges(self.member("fXaxis"))
 
     @property
     def bh(self):
         boost_histogram = uproot4.extras.boost_histogram()
 
-        xaxis = self.member("fXaxis")
-
-        xaxis_fNbins = xaxis.member("fNbins")
-        xaxis_fXbins = xaxis.member("fXbins", none_if_missing=True)
-        if xaxis_fXbins is None or len(xaxis_fXbins) == 0:
-            boost_xaxis = boost_histogram.axis.Regular(
-                xaxis_fNbins,
-                xaxis.member("fXmin"),
-                xaxis.member("fXmax"),
-                underflow=True,
-                overflow=True,
-                metadata=self.metadata(xaxis),
-            )
-        else:
-            boost_xaxis = boost_histogram.axis.Variable(
-                xaxis_fXbins,
-                underflow=True,
-                overflow=True,
-                metadata=self.metadata(xaxis),
-            )
-
-        for base in self.bases:
-            if isinstance(base, uproot4.models.TArray.Model_TArray):
-                values = numpy.asarray(base)
-                break
+        (values,) = self.base(uproot4.models.TArray.Model_TArray)
+        values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
@@ -92,9 +79,22 @@ class TH1(object):
             else:
                 storage = boost_histogram.storage.Double()
 
-        out = boost_histogram.Histogram(boost_xaxis, storage=storage)
-        view = out.view(flow=True)
+        xaxis = _boost_axis(boost_histogram, self.member("fXaxis"))
+        out = boost_histogram.Histogram(xaxis, storage=storage)
 
+        metadata = self.all_members
+        metadata.pop("fXaxis", None)
+        metadata.pop("fYaxis", None)
+        metadata.pop("fZaxis", None)
+        metadata.pop("fContour", None)
+        metadata.pop("fSumw2", None)
+        metadata.pop("fBuffer", None)
+        out.metadata = metadata
+
+        if isinstance(xaxis, boost_histogram.axis.StrCategory):
+            values = values[1:]
+
+        view = out.view(flow=True)
         if sumw2 is not None and len(sumw2) == len(values):
             view.value[:] = values
             view.variance[:] = sumw2
