@@ -179,3 +179,33 @@ or
         )
     else:
         return zstandard
+
+
+def boost_histogram():
+    try:
+        import boost_histogram
+    except ImportError:
+        raise ImportError(
+            """install the 'boost-histogram' package with:
+
+    pip install boost-histogram
+
+or
+
+    conda install -c conda-forge boost-histogram"""
+        )
+    else:
+        return boost_histogram
+
+
+def hist():
+    try:
+        import hist
+    except ImportError:
+        raise ImportError(
+            """install the 'hist' package with:
+
+    pip install hist"""
+        )
+    else:
+        return hist

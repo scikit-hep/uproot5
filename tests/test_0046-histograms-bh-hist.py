@@ -9,8 +9,8 @@ import skhep_testdata
 import uproot4
 
 
-def test_boost_1d():
+def test_numpy_1d():
     # {'hpx': 'TH1F', 'hpxpy': 'TH2F', 'hprof': 'TProfile'}
 
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-        print(f["hpx"].hello())
+        print(f["hpx"].np)

@@ -26,8 +26,11 @@ class Model_TArray(uproot4.model.Model, Sequence):
         self._members["fN"] = cursor.field(chunk, _tarray_format1, context)
         self._data = cursor.array(chunk, self._members["fN"], self.dtype, context)
 
-    def __array__(self):
-        return self._data
+    def __array__(self, *args, **kwargs):
+        if len(args) == len(kwargs) == 0:
+            return self._data
+        else:
+            return numpy.array(self._data, *args, **kwargs)
 
     @property
     def nbytes(self):
