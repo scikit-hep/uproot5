@@ -144,7 +144,9 @@ def _strided_to_awkward(awkward1, path, interpretation, data):
                 contents.append(_strided_to_awkward(awkward1, p, member, data))
             else:
                 contents.append(
-                    awkward1.from_numpy(numpy.array(data[p]), regulararray=True, highlevel=False)
+                    awkward1.from_numpy(
+                        numpy.array(data[p]), regulararray=True, highlevel=False
+                    )
                 )
             names.append(name)
     parameters = {
@@ -291,7 +293,9 @@ class Awkward(Library):
             return awkward1.Array(layout)
 
         elif isinstance(array, uproot4.interpretation.jagged.JaggedArray):
-            content = awkward1.from_numpy(array.content, regulararray=True, highlevel=False)
+            content = awkward1.from_numpy(
+                array.content, regulararray=True, highlevel=False
+            )
             if issubclass(array.offsets.dtype.type, numpy.int32):
                 offsets = awkward1.layout.Index32(array.offsets)
                 layout = awkward1.layout.ListOffsetArray32(offsets, content)
@@ -359,7 +363,9 @@ in object {3}""".format(
             contents = []
             for name in array.dtype.names:
                 contents.append(
-                    awkward1.from_numpy(numpy.array(array[name]), regulararray=True, highlevel=False)
+                    awkward1.from_numpy(
+                        numpy.array(array[name]), regulararray=True, highlevel=False
+                    )
                 )
             out = awkward1.layout.RecordArray(contents, array.dtype.names, length)
             for size in shape[::-1]:
@@ -964,7 +970,9 @@ or
         return self.awkward.empty(shape, dtype)
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
-        return self.awkward.finalize(array, branch, interpretation, entry_start, entry_stop)
+        return self.awkward.finalize(
+            array, branch, interpretation, entry_start, entry_stop
+        )
 
     def group(self, arrays, expression_context, how):
         return self.awkward.group(arrays, expression_context, how)
@@ -977,6 +985,7 @@ or
 
     def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
         awkward1 = self.awkward.imported
+
         class ArrayWithShapeDtype(awkward1.Array):
             @property
             def dtype(self):
@@ -1034,7 +1043,9 @@ or
         return self.awkward.empty(shape, dtype)
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
-        return self.awkward.finalize(array, branch, interpretation, entry_start, entry_stop)
+        return self.awkward.finalize(
+            array, branch, interpretation, entry_start, entry_stop
+        )
 
     def group(self, arrays, expression_context, how):
         return self.awkward.group(arrays, expression_context, how)
