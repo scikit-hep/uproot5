@@ -79,8 +79,9 @@ class TProfile(object):
                 "                        1/'s' for spread (variance),\n"
                 "                        2/'i' for integer spread (using sqrt(12)),\n"
                 "                     or 3/'g' for Gaussian spread\n"
-                "                    not " + repr(error_mode) +
-                "see https://root.cern.ch/doc/master/classTProfile.html"
+                "                    not "
+                + repr(error_mode)
+                + "see https://root.cern.ch/doc/master/classTProfile.html"
             )
 
         root_sum = self.member("fBinEntries")
