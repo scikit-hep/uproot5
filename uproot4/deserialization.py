@@ -23,6 +23,16 @@ def _actually_compile(class_code, new_scope):
     exec(compile(class_code, "<dynamic>", "exec"), new_scope)
 
 
+def _yield_all_behaviors(cls, c):
+    behavior_cls = uproot4.behavior_of(uproot4.model.classname_decode(cls.__name__)[0])
+    if behavior_cls is not None:
+        yield behavior_cls
+    if hasattr(cls, "base_names_versions"):
+        for base_name, base_version in cls.base_names_versions:
+            for x in _yield_all_behaviors(c(base_name, base_version), c):
+                yield x
+
+
 def compile_class(file, classes, class_code, class_name):
     new_scope = dict(scope)
     for cls in classes.values():
@@ -44,9 +54,9 @@ def compile_class(file, classes, class_code, class_name):
     out.class_code = class_code
     out.__module__ = "<dynamic>"
 
-    behavior_cls = uproot4.behavior_of(uproot4.model.classname_decode(class_name)[0])
-    if behavior_cls is not None:
-        out = uproot4._util.new_class(out.__name__, (behavior_cls, out), {})
+    behaviors = tuple(_yield_all_behaviors(out, c))
+    if len(behaviors) != 0:
+        out = uproot4._util.new_class(out.__name__, behaviors + (out,), {})
         out.__module__ = "<dynamic>"
 
     return out

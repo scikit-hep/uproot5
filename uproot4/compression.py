@@ -9,6 +9,7 @@ import numpy
 import uproot4.source.chunk
 import uproot4.const
 import uproot4._util
+import uproot4.extras
 
 
 class Compression(object):
@@ -70,63 +71,25 @@ class ZLIB(Compression):
 class LZMA(Compression):
     @classmethod
     def decompress(cls, data, uncompressed_bytes=None):
-        try:
-            import lzma
-        except ImportError:
-            try:
-                import backports.lzma as lzma
-            except ImportError:
-                raise ImportError(
-                    """install the 'lzma' package with:
-
-    pip install backports.lzma
-
-or
-
-    conda install backports.lzma
-
-or use Python >= 3.3."""
-                )
+        lzma = uproot4.extras.lzma()
         return lzma.decompress(data)
 
 
 class LZ4(Compression):
     @classmethod
     def decompress(cls, data, uncompressed_bytes=None):
-        try:
-            import lz4.block
-        except ImportError:
-            raise ImportError(
-                """install the 'lz4' package with (you probably also need 'xxhash'):
-
-    pip install lz4 xxhash
-
-or
-
-    conda install lz4 python-xxhash"""
-            )
+        lz4_block = uproot4.extras.lz4_block()
         if uncompressed_bytes is None:
             raise ValueError(
                 "lz4 block decompression requires the number of uncompressed bytes"
             )
-        return lz4.block.decompress(data, uncompressed_size=uncompressed_bytes)
+        return lz4_block.decompress(data, uncompressed_size=uncompressed_bytes)
 
 
 class ZSTD(Compression):
     @classmethod
     def decompress(cls, data, uncompressed_bytes=None):
-        try:
-            import zstandard
-        except ImportError:
-            raise ImportError(
-                """install the 'zstandard' package with:
-
-    pip install zstandard
-
-or
-
-    conda install zstandard"""
-            )
+        zstandard = uproot4.extras.zstandard()
         dctx = zstandard.ZstdDecompressor()
         return dctx.decompress(data)
 
@@ -176,18 +139,8 @@ def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
                 chunk, _decompress_checksum_format, context
             )
             data = cursor.bytes(chunk, block_compressed_bytes, context)
-            try:
-                import xxhash
-            except ImportError:
-                raise ImportError(
-                    """install the 'xxhash' package with (you probably also need 'lz4'):
 
-    pip install xxhash lz4
-
-or
-
-    conda install python-xxhash lz4"""
-                )
+            xxhash = uproot4.extras.xxhash()
             computed_checksum = xxhash.xxh64(data).intdigest()
             if computed_checksum != expected_checksum:
                 raise ValueError(

@@ -23,6 +23,7 @@ def test_array_cast():
 
 
 def test_branch_pluralization():
+    awkward1 = pytest.importorskip("awkward1")
     with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
         "events/px1"
     ] as px1:
@@ -155,6 +156,7 @@ def test_awkward_pluralization():
 
 
 def test_dask():
+    awkward1 = pytest.importorskip("awkward1")
     dask_array = pytest.importorskip("dask.array")
     files = (
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
@@ -175,6 +177,7 @@ def test_dask():
 
 
 def test_daskframe():
+    awkward1 = pytest.importorskip("awkward1")
     dask_frame = pytest.importorskip("dask.dataframe")
     files = (
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(

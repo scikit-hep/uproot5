@@ -11,6 +11,7 @@ import uproot4.interpretation.jagged
 import uproot4.interpretation.strings
 import uproot4.interpretation.objects
 import uproot4.containers
+import uproot4.extras
 
 
 class Library(object):
@@ -257,16 +258,7 @@ class Awkward(Library):
 
     @property
     def imported(self):
-        try:
-            import awkward1
-        except ImportError:
-            raise ImportError(
-                """install the 'awkward1' package with:
-
-    pip install awkward1"""
-            )
-        else:
-            return awkward1
+        return uproot4.extras.awkward1()
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         awkward1 = self.imported
@@ -509,20 +501,7 @@ class Pandas(Library):
 
     @property
     def imported(self):
-        try:
-            import pandas
-        except ImportError:
-            raise ImportError(
-                """install the 'pandas' package with:
-
-    pip install pandas
-
-or
-
-    conda install pandas"""
-            )
-        else:
-            return pandas
+        return uproot4.extras.pandas()
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         pandas = self.imported
@@ -816,20 +795,7 @@ class CuPy(Library):
 
     @property
     def imported(self):
-        try:
-            import cupy
-        except ImportError:
-            raise ImportError(
-                """install the 'cupy' package with:
-
-    pip install cupy
-
-or
-
-    conda install cupy"""
-            )
-        else:
-            return cupy
+        return uproot4.extras.cupy()
 
     def empty(self, shape, dtype):
         cupy = self.imported
@@ -951,20 +917,7 @@ class DaskArray(Library):
 
     @property
     def imported(self):
-        try:
-            import dask.array
-        except ImportError:
-            raise ImportError(
-                """install the 'dask.array' package with:
-
-    pip install "dask[array]"
-
-or
-
-    conda install dask"""
-            )
-        else:
-            return dask.array
+        return uproot4.extras.dask_array()
 
     def empty(self, shape, dtype):
         return self.awkward.empty(shape, dtype)
@@ -1015,20 +968,7 @@ class DaskFrame(Library):
 
     @property
     def imported(self):
-        try:
-            import dask.dataframe
-        except ImportError:
-            raise ImportError(
-                """install the 'dask.dataframe' package with:
-
-    pip install "dask[dataframe]"
-
-or
-
-    conda install dask"""
-            )
-        else:
-            return dask.dataframe
+        return uproot4.extras.dask_dataframe()
 
     def empty(self, shape, dtype):
         return self.awkward.empty(shape, dtype)

@@ -86,7 +86,7 @@ def behavior_of(classname):
                 globals(),
             )
             module = eval("uproot4.behaviors.{0}".format(name))
-            behavior_cls = getattr(module, name)
+            behavior_cls = getattr(module, name, None)
             if behavior_cls is not None:
                 globals()[name] = behavior_cls
 

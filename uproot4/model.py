@@ -235,6 +235,15 @@ class Model(object):
     def bases(self):
         return self._bases
 
+    def base(self, *cls):
+        out = []
+        for x in getattr(self, "_bases", []):
+            if isinstance(x, cls):
+                out.append(x)
+            if isinstance(x, Model):
+                out.extend(x.base(*cls))
+        return out
+
     def has_member(self, name, bases=True, recursive_bases=True):
         if name in self._members:
             return True
