@@ -25,7 +25,9 @@ def _edges(axis):
     return out
 
 
-def _boost_axis(boost_histogram, axis):
+def _boost_axis(axis):
+    boost_histogram = uproot4.extras.boost_histogram()
+
     fNbins = axis.member("fNbins")
     fXbins = axis.member("fXbins", none_if_missing=True)
 
@@ -55,19 +57,25 @@ def _boost_axis(boost_histogram, axis):
 
 
 class TH1(object):
+    def edges(self, axis=0):
+        if axis == 0 or axis == "x":
+            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+        else:
+            raise ValueError("axis must be 0 or 'x' for a TH1")
+
+    def values(self):
+        (values,) = self.base(uproot4.models.TArray.Model_TArray)
+        return numpy.array(values, dtype=values.dtype.newbyteorder("="))
+
     @property
     def np(self):
-        (values,) = self.base(uproot4.models.TArray.Model_TArray)
-        values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
-
-        return values, _edges(self.member("fXaxis"))
+        return self.values(), self.edges(0)
 
     @property
     def bh(self):
         boost_histogram = uproot4.extras.boost_histogram()
 
-        (values,) = self.base(uproot4.models.TArray.Model_TArray)
-        values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
+        values = self.values()
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
@@ -79,7 +87,7 @@ class TH1(object):
             else:
                 storage = boost_histogram.storage.Double()
 
-        xaxis = _boost_axis(boost_histogram, self.member("fXaxis"))
+        xaxis = _boost_axis(self.member("fXaxis"))
         out = boost_histogram.Histogram(xaxis, storage=storage)
 
         metadata = self.all_members

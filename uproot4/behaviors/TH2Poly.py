@@ -4,6 +4,12 @@ from __future__ import absolute_import
 
 
 class TH2Poly(object):
+    def edges(self, axis):
+        raise NotImplementedError(repr(self))
+
+    def values(self):
+        raise NotImplementedError(repr(self))
+
     @property
     def np(self):
         raise NotImplementedError(repr(self))

@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import numpy
 
 import uproot4.models.TArray
+import uproot4.behaviors.TH1
 
 
 _kERRORMEAN = 0
@@ -14,7 +15,12 @@ _kERRORSPREADG = 3
 
 
 class TProfile(object):
-    @property
+    def edges(self, axis=0):
+        if axis == 0 or axis == "x":
+            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+        else:
+            raise ValueError("axis must be 0 or 'x' for a TH1")
+
     def effective_entries(self):
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L141-L163
 
@@ -39,9 +45,26 @@ class TProfile(object):
         )
         return out
 
-    @property
-    def np(self):
+    def values_errors(self, error_mode):
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L660-L721
+
+        if error_mode is None or error_mode == _kERRORMEAN or error_mode == "":
+            error_mode = _kERRORMEAN
+        elif error_mode == _kERRORSPREAD or error_mode == "s":
+            error_mode = _kERRORSPREAD
+        elif error_mode == _kERRORSPREADI or error_mode == "i":
+            error_mode = _kERRORSPREADI
+        elif error_mode == _kERRORSPREADG or error_mode == "g":
+            error_mode = _kERRORSPREADG
+        else:
+            raise ValueError(
+                "error_mode must be None/0/'' for error-on-mean,\n"
+                "                        1/'s' for spread (variance),\n"
+                "                        2/'i' for integer spread (using sqrt(12)),\n"
+                "                     or 3/'g' for Gaussian spread\n"
+                "                    not " + repr(error_mode) +
+                "see https://root.cern.ch/doc/master/classTProfile.html"
+            )
 
         root_sum = self.member("fBinEntries")
         root_sum = numpy.array(root_sum, dtype=numpy.float64)
@@ -53,10 +76,10 @@ class TProfile(object):
         root_contsum = numpy.zeros(len(root_cont), dtype=numpy.float64)
         root_contsum[nonzero] = root_cont[nonzero] / root_sum[nonzero]
 
-        if self.member("fErrorMode") == _kERRORSPREADG:
+        if error_mode == _kERRORSPREADG:
             out = numpy.zeros(len(root_cont), dtype=numpy.float64)
             out[nonzero] = 1.0 / numpy.sqrt(root_sum[nonzero])
-            return root_contsum, out
+            return (root_contsum, out), self.edges(0)
 
         root_err2 = self.member("fSumw2", none_if_missing=True)
         if root_err2 is None or len(root_err2) != len(root_cont):
@@ -64,7 +87,7 @@ class TProfile(object):
         else:
             root_err2 = numpy.array(root_err2, dtype=numpy.float64)
 
-        root_neff = self.effective_entries
+        root_neff = self.effective_entries()
 
         root_eprim2 = numpy.zeros(len(root_cont), dtype=numpy.float64)
         root_eprim2[nonzero] = abs(
@@ -72,7 +95,7 @@ class TProfile(object):
         )
         root_eprim = numpy.sqrt(root_eprim2)
 
-        if self.member("fErrorMode") == _kERRORSPREADI:
+        if error_mode == _kERRORSPREADI:
             numer = numpy.ones(len(root_cont), dtype=numpy.float64)
             denom = numpy.full(len(root_cont), numpy.sqrt(12 * root_neff))
 
@@ -82,15 +105,19 @@ class TProfile(object):
 
             out = numpy.zeros(len(root_cont), dtype=numpy.float64)
             out[nonzero] = numer[nonzero] / denom[nonzero]
-            return root_contsum, out
+            return (root_contsum, out), self.edges(0)
 
-        if self.member("fErrorMode") == _kERRORSPREAD:
+        if error_mode == _kERRORSPREAD:
             root_eprim[~nonzero] = 0.0
-            return root_contsum, root_eprim
+            return (root_contsum, root_eprim), self.edges(0)
 
         out = numpy.zeros(len(root_cont), dtype=numpy.float64)
         out[nonzero] = root_eprim[nonzero] / numpy.sqrt(root_neff[nonzero])
-        return root_contsum, out
+        return (root_contsum, out), self.edges(0)
+
+    @property
+    def np(self):
+        return self.values_errors(self.member("fErrorMode"))
 
     @property
     def bh(self):

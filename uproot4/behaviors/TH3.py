@@ -5,46 +5,44 @@ from __future__ import absolute_import
 import numpy
 
 import uproot4.models.TArray
-from uproot4.behaviors.TH1 import _edges, _boost_axis
+import uproot4.behaviors.TH1
 
 
 class TH3(object):
-    @property
-    def np(self):
+    def edges(self, axis):
+        if axis == 0 or axis == "x":
+            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+        elif axis == 1 or axis == "y":
+            return uproot4.behaviors.TH1._edges(self.member("fYaxis"))
+        elif axis == 2 or axis == "z":
+            return uproot4.behaviors.TH1._edges(self.member("fZaxis"))
+        else:
+            raise ValueError("axis must be 0, 1, 2 or 'x', 'y', 'z' for a TH3")
+
+    def values(self):
         (values,) = self.base(uproot4.models.TArray.Model_TArray)
         values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
 
         xaxis_fNbins = self.member("fXaxis").member("fNbins")
         yaxis_fNbins = self.member("fYaxis").member("fNbins")
         zaxis_fNbins = self.member("fZaxis").member("fNbins")
-        values = values.reshape(xaxis_fNbins + 2, yaxis_fNbins + 2, zaxis_fNbins + 2)
+        return values.reshape(xaxis_fNbins + 2, yaxis_fNbins + 2, zaxis_fNbins + 2)
 
-        return (
-            values,
-            (
-                _edges(self.member("fXaxis")),
-                _edges(self.member("fYaxis")),
-                _edges(self.member("fZaxis")),
-            ),
-        )
+    @property
+    def np(self):
+        return self.values(), (self.edges(0), self.edges(1), self.edges(2))
 
     @property
     def bh(self):
         boost_histogram = uproot4.extras.boost_histogram()
 
-        (values,) = self.base(uproot4.models.TArray.Model_TArray)
-        values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
-
-        xaxis_fNbins = self.member("fXaxis").member("fNbins")
-        yaxis_fNbins = self.member("fYaxis").member("fNbins")
-        zaxis_fNbins = self.member("fZaxis").member("fNbins")
-        values = values.reshape(xaxis_fNbins + 2, yaxis_fNbins + 2, zaxis_fNbins + 2)
+        values = self.values()
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
         if sumw2 is not None and len(sumw2) == len(values):
             sumw2 = numpy.array(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-            sumw2.reshape(xaxis_fNbins + 2, yaxis_fNbins + 2, zaxis_fNbins + 2)
+            sumw2.reshape(values.shape)
             storage = boost_histogram.storage.Weight()
         else:
             if issubclass(values.dtype.type, numpy.integer):
@@ -52,9 +50,9 @@ class TH3(object):
             else:
                 storage = boost_histogram.storage.Double()
 
-        xaxis = _boost_axis(boost_histogram, self.member("fXaxis"))
-        yaxis = _boost_axis(boost_histogram, self.member("fYaxis"))
-        zaxis = _boost_axis(boost_histogram, self.member("fZaxis"))
+        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"))
+        yaxis = uproot4.behaviors.TH1._boost_axis(self.member("fYaxis"))
+        zaxis = uproot4.behaviors.TH1._boost_axis(self.member("fZaxis"))
         out = boost_histogram.Histogram(xaxis, yaxis, zaxis, storage=storage)
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
