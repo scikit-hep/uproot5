@@ -19,6 +19,9 @@ class TProfile3D(object):
     def values(self):
         raise NotImplementedError(repr(self))
 
+    def values_errors(self, error_mode=0):
+        raise NotImplementedError(repr(self))
+
     @property
     def np(self):
         raise NotImplementedError(repr(self))

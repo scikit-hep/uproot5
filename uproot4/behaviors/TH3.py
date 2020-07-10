@@ -28,6 +28,8 @@ class TH3(object):
         zaxis_fNbins = self.member("fZaxis").member("fNbins")
         return values.reshape(xaxis_fNbins + 2, yaxis_fNbins + 2, zaxis_fNbins + 2)
 
+    # values_errors "inherited" from TH1
+
     @property
     def np(self):
         return self.values(), (self.edges(0), self.edges(1), self.edges(2))
@@ -40,7 +42,7 @@ class TH3(object):
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
-        if sumw2 is not None and len(sumw2) == len(values):
+        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
             sumw2 = numpy.array(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2.reshape(values.shape)
             storage = boost_histogram.storage.Weight()

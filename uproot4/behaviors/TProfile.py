@@ -100,7 +100,7 @@ class TProfile(object):
             return root_contsum, out
 
         root_err2 = self.member("fSumw2", none_if_missing=True)
-        if root_err2 is None or len(root_err2) != len(root_cont):
+        if root_err2 is None or len(root_err2) != self.member("fNcells"):
             root_err2 = numpy.zeros(len(root_cont), dtype=numpy.float64)
         else:
             root_err2 = numpy.array(root_err2, dtype=numpy.float64)

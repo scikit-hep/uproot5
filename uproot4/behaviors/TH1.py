@@ -67,6 +67,23 @@ class TH1(object):
         (values,) = self.base(uproot4.models.TArray.Model_TArray)
         return numpy.array(values, dtype=values.dtype.newbyteorder("="))
 
+    def values_errors(self):
+        # this should work equally well for TH2 and TH3
+
+        values = self.values()
+        errors = numpy.zeros(values.shape, dtype=numpy.float64)
+
+        sumw2 = self.member("fSumw2", none_if_missing=True)
+        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+            sumw2 = sumw2.reshape(values.shape)
+            positive = sumw2 > 0
+            errors[positive] = numpy.sqrt(sumw2[positive])
+        else:
+            positive = values > 0
+            errors[positive] = numpy.sqrt(values[positive])
+
+        return values, errors
+
     @property
     def np(self):
         return self.values(), self.edges(0)
@@ -79,7 +96,7 @@ class TH1(object):
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
-        if sumw2 is not None and len(sumw2) == len(values):
+        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
             storage = boost_histogram.storage.Weight()
         else:
             if issubclass(values.dtype.type, numpy.integer):

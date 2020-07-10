@@ -224,6 +224,8 @@ def test_numpy_1d():
             numpy.inf,
         ]
 
+        f["hpx"].values_errors()
+
 
 def test_numpy_2d():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
@@ -2172,6 +2174,8 @@ def test_numpy_2d():
             numpy.inf,
         ]
 
+        f["hpxpy"].values_errors()
+
 
 def test_numpy_profile():
     # python -c 'import ROOT, skhep_testdata; f = ROOT.TFile(skhep_testdata.data_path("uproot-hepdata-example.root")); h = f.Get("hprof"); h.SetErrorOption("g"); print(repr(h.GetErrorOption())); print([h.GetBinError(i) for i in range(102)])'
@@ -2815,6 +2819,8 @@ def test_numpy_profile():
             1.0,
             0.5773502691896258,
         ]
+
+        f["hprof"].values_errors()
 
 
 def test_boost_1d():
