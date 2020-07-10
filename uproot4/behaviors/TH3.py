@@ -21,9 +21,11 @@ class TH3(object):
 
         return (
             values,
-            _edges(self.member("fXaxis")),
-            _edges(self.member("fYaxis")),
-            _edges(self.member("fZaxis")),
+            (
+                _edges(self.member("fXaxis")),
+                _edges(self.member("fYaxis")),
+                _edges(self.member("fZaxis")),
+            ),
         )
 
     @property
