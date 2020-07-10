@@ -2829,8 +2829,6 @@ def test_boost_2d():
         f["hpxpy"].bh
 
 
-# def test_boost_profile():
-#     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-#         print(f["hprof"].bh)
-
-#     raise Exception
+def test_boost_profile():
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        f["hprof"].bh

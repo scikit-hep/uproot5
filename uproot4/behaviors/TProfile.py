@@ -22,6 +22,7 @@ class TProfile(object):
             raise ValueError("axis must be 0 or 'x' for a TH1")
 
     def effective_entries(self):
+        # closely follows the ROOT function, using the same names (with 'root_' prepended)
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L141-L163
 
         root_sumOfWeights = self.member("fBinEntries")
@@ -45,7 +46,23 @@ class TProfile(object):
         )
         return out
 
-    def values_errors(self, error_mode):
+    def values(self):
+        # duplicates the first part of 'values_errors'
+
+        root_sum = self.member("fBinEntries")
+        root_sum = numpy.array(root_sum, dtype=numpy.float64)
+        nonzero = root_sum != 0
+
+        (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
+        root_cont = numpy.array(root_cont, dtype=numpy.float64)
+
+        root_contsum = numpy.zeros(len(root_cont), dtype=numpy.float64)
+        root_contsum[nonzero] = root_cont[nonzero] / root_sum[nonzero]
+
+        return root_contsum
+
+    def values_errors(self, error_mode=0):
+        # closely follows the ROOT function, using the same names (with 'root_' prepended)
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L660-L721
 
         if error_mode is None or error_mode == _kERRORMEAN or error_mode == "":
@@ -79,7 +96,7 @@ class TProfile(object):
         if error_mode == _kERRORSPREADG:
             out = numpy.zeros(len(root_cont), dtype=numpy.float64)
             out[nonzero] = 1.0 / numpy.sqrt(root_sum[nonzero])
-            return (root_contsum, out), self.edges(0)
+            return root_contsum, out
 
         root_err2 = self.member("fSumw2", none_if_missing=True)
         if root_err2 is None or len(root_err2) != len(root_cont):
@@ -105,20 +122,40 @@ class TProfile(object):
 
             out = numpy.zeros(len(root_cont), dtype=numpy.float64)
             out[nonzero] = numer[nonzero] / denom[nonzero]
-            return (root_contsum, out), self.edges(0)
+            return root_contsum, out
 
         if error_mode == _kERRORSPREAD:
             root_eprim[~nonzero] = 0.0
-            return (root_contsum, root_eprim), self.edges(0)
+            return root_contsum, root_eprim
 
         out = numpy.zeros(len(root_cont), dtype=numpy.float64)
         out[nonzero] = root_eprim[nonzero] / numpy.sqrt(root_neff[nonzero])
-        return (root_contsum, out), self.edges(0)
+        return root_contsum, out
 
     @property
     def np(self):
-        return self.values_errors(self.member("fErrorMode"))
+        return self.values_errors(self.member("fErrorMode")), self.edges(0)
 
     @property
     def bh(self):
-        raise NotImplementedError(repr(self))
+        boost_histogram = uproot4.extras.boost_histogram()
+
+        storage = boost_histogram.storage.WeightedMean()
+
+        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"))
+        out = boost_histogram.Histogram(xaxis, storage=storage)
+
+        values, errors = self.values_errors(self.member("fErrorMode"))
+
+        if isinstance(xaxis, boost_histogram.axis.StrCategory):
+            values = values[1:]
+            errors = errors[1:]
+
+        view = out.view(flow=True)
+
+        view.sum_of_weights
+        view.sum_of_weights_squared
+        view.value = values
+        view.sum_of_weighted_deltas_squared
+
+        return out
