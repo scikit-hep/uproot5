@@ -147,6 +147,7 @@ def regularize_path(path):
 _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
 _windows_absolute_path_pattern_slash = re.compile(r"^/[A-Za-z]:\\")
+_might_be_port = re.compile(r"^[0-9].*")
 
 
 def file_object_path_split(path):
@@ -158,6 +159,13 @@ def file_object_path_split(path):
         return path, None
     else:
         file_path, object_path = path[:index], path[index + 1 :]
+
+        if (
+            _might_be_port.match(object_path) is not None
+            and urlparse(file_path).path == ""
+        ):
+            return path, None
+
         file_path = file_path.rstrip()
         object_path = object_path.lstrip()
 
