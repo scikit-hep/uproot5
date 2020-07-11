@@ -128,6 +128,8 @@ or use Python >= 3.3."""
             )
         else:
             return lzma
+    else:
+        return lzma
 
 
 def lz4_block():
