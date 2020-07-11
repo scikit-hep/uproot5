@@ -30,3 +30,6 @@ class TProfile3D(object):
 
     def to_boost(self):
         raise NotImplementedError(repr(self))
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())

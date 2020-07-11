@@ -2835,7 +2835,13 @@ def test_boost_2d():
         f["hpxpy"].to_boost()
 
 
-def test_boost_profile():
+def test_hist_1d():
     boost_histogram = pytest.importorskip("boost_histogram")
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-        f["hprof"].to_boost()
+        f["hpx"].to_hist()
+
+
+def test_hist_2d():
+    boost_histogram = pytest.importorskip("boost_histogram")
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        f["hpxpy"].to_hist()

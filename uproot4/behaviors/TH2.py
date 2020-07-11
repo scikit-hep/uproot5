@@ -88,6 +88,17 @@ class TH2(object):
         yaxis = uproot4.behaviors.TH1._boost_axis(self.member("fYaxis"))
         out = boost_histogram.Histogram(xaxis, yaxis, storage=storage)
 
+        metadata = self.all_members
+        metadata["name"] = metadata.pop("fName")
+        metadata["title"] = metadata.pop("fTitle")
+        metadata.pop("fXaxis", None)
+        metadata.pop("fYaxis", None)
+        metadata.pop("fZaxis", None)
+        metadata.pop("fContour", None)
+        metadata.pop("fSumw2", None)
+        metadata.pop("fBuffer", None)
+        out.metadata = metadata
+
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             values = values[1:, :]
         if isinstance(yaxis, boost_histogram.axis.StrCategory):
@@ -101,3 +112,6 @@ class TH2(object):
             view[:] = values
 
         return out
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())

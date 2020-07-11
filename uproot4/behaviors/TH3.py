@@ -109,3 +109,6 @@ class TH3(object):
             view[:] = values
 
         return out
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())

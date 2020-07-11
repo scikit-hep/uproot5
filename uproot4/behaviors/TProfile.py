@@ -179,4 +179,7 @@ class TProfile(object):
         view.value = values
         view.sum_of_weighted_deltas_squared
 
-        return out
+        raise NotImplementedError(repr(self))
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())

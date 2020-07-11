@@ -32,6 +32,8 @@ def _boost_axis(axis):
     fXbins = axis.member("fXbins", none_if_missing=True)
 
     metadata = axis.all_members
+    metadata["name"] = metadata.pop("fName")
+    metadata["title"] = metadata.pop("fTitle")
     metadata.pop("fXbins", None)
     metadata.pop("fLabels", None)
 
@@ -124,6 +126,8 @@ class TH1(object):
         out = boost_histogram.Histogram(xaxis, storage=storage)
 
         metadata = self.all_members
+        metadata["name"] = metadata.pop("fName")
+        metadata["title"] = metadata.pop("fTitle")
         metadata.pop("fXaxis", None)
         metadata.pop("fYaxis", None)
         metadata.pop("fZaxis", None)
@@ -143,3 +147,6 @@ class TH1(object):
             view[:] = values
 
         return out
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())
