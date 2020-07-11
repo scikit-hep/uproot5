@@ -2,8 +2,12 @@
 
 from __future__ import absolute_import
 
+import uproot4.behaviors.TH2
+
 
 class TH2Poly(object):
+    no_inherit = (uproot4.behaviors.TH2.TH2,)
+
     def edges(self, axis):
         raise NotImplementedError(repr(self))
 

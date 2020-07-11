@@ -137,7 +137,7 @@ class TProfile(object):
 
     @property
     def np(self):
-        return self.values_errors(self.member("fErrorMode")), self.edges(0)
+        return self.values_errors(self.member("fErrorMode")), (self.edges(0),)
 
     @property
     def bh(self):

@@ -2183,7 +2183,7 @@ def test_numpy_profile():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         obj = f["hprof"]
 
-        assert obj.np[1].tolist() == [
+        assert obj.np[1][0].tolist() == [
             -numpy.inf,
             -4.0,
             -3.92,
