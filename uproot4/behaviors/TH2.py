@@ -51,9 +51,9 @@ class TH2(object):
         xedges = self.edges(0)
         yedges = self.edges(1)
         if not flow:
-            values = values[1:-1]
+            values = values[1:-1, 1:-1]
             if errors:
-                errs = errs[1:-1]
+                errs = errs[1:-1, 1:-1]
             xedges = xedges[1:-1]
             yedges = yedges[1:-1]
 
