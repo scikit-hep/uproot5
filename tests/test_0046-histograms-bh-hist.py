@@ -12,7 +12,7 @@ import uproot4.behaviors.TProfile
 
 def test_numpy_1d():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-        values, edges = f["hpx"].np
+        values, edges = f["hpx"].np1
         assert values.tolist() == [
             2.0,
             2.0,
@@ -229,7 +229,7 @@ def test_numpy_1d():
 
 def test_numpy_2d():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-        values, xedges, yedges = f["hpxpy"].np
+        values, xedges, yedges = f["hpxpy"].np2
 
         assert values.tolist() == [
             [

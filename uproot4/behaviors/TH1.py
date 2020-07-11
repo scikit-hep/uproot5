@@ -68,8 +68,6 @@ class TH1(object):
         return numpy.array(values, dtype=values.dtype.newbyteorder("="))
 
     def values_errors(self):
-        # this should work equally well for TH2 and TH3
-
         values = self.values()
         errors = numpy.zeros(values.shape, dtype=numpy.float64)
 
@@ -85,8 +83,12 @@ class TH1(object):
         return values, errors
 
     @property
-    def np(self):
+    def np1(self):
         return self.values(), self.edges(0)
+
+    @property
+    def np(self):
+        return self.values(), (self.edges(0),)
 
     @property
     def bh(self):

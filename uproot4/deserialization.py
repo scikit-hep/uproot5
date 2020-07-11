@@ -55,6 +55,9 @@ def compile_class(file, classes, class_code, class_name):
     out.__module__ = "<dynamic>"
 
     behaviors = tuple(_yield_all_behaviors(out, c))
+    exclude = tuple(bad for cls in behaviors if hasattr(cls, "no_inherit") for bad in cls.no_inherit)
+    behaviors = tuple(cls for cls in behaviors if cls not in exclude)
+
     if len(behaviors) != 0:
         out = uproot4._util.new_class(out.__name__, behaviors + (out,), {})
         out.__module__ = "<dynamic>"

@@ -9,6 +9,8 @@ import uproot4.behaviors.TH1
 
 
 class TH2(object):
+    no_inherit = (uproot4.behaviors.TH1.TH1,)
+
     def edges(self, axis):
         if axis == 0 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
@@ -25,11 +27,28 @@ class TH2(object):
         yaxis_fNbins = self.member("fYaxis").member("fNbins")
         return values.reshape(xaxis_fNbins + 2, yaxis_fNbins + 2)
 
-    # values_errors "inherited" from TH1
+    def values_errors(self):
+        values = self.values()
+        errors = numpy.zeros(values.shape, dtype=numpy.float64)
+
+        sumw2 = self.member("fSumw2", none_if_missing=True)
+        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+            sumw2 = sumw2.reshape(values.shape)
+            positive = sumw2 > 0
+            errors[positive] = numpy.sqrt(sumw2[positive])
+        else:
+            positive = values > 0
+            errors[positive] = numpy.sqrt(values[positive])
+
+        return values, errors
+
+    @property
+    def np2(self):
+        return self.values(), self.edges(0), self.edges(1)
 
     @property
     def np(self):
-        return self.values(), self.edges(0), self.edges(1)
+        return self.values(), (self.edges(0), self.edges(1))
 
     @property
     def bh(self):

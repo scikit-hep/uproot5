@@ -15,6 +15,8 @@ _kERRORSPREADG = 3
 
 
 class TProfile(object):
+    no_inherit = (uproot4.behaviors.TH1.TH1,)
+
     def edges(self, axis=0):
         if axis == 0 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
