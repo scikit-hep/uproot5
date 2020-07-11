@@ -59,6 +59,22 @@ from uproot4.containers import STLMap
 
 import uproot4.interpretation
 import uproot4.interpretation.library
+from uproot4.interpretation.numerical import AsDtype
+from uproot4.interpretation.numerical import AsArray
+from uproot4.interpretation.numerical import AsDouble32
+from uproot4.interpretation.numerical import AsFloat16
+from uproot4.interpretation.numerical import AsSTLBits
+from uproot4.interpretation.jagged import AsJagged
+from uproot4.interpretation.strings import AsStrings
+from uproot4.interpretation.objects import AsObjects
+from uproot4.interpretation.objects import AsStridedObjects
+from uproot4.containers import AsString
+from uproot4.containers import AsPointer
+from uproot4.containers import AsArray
+from uproot4.containers import AsDynamic
+from uproot4.containers import AsVector
+from uproot4.containers import AsSet
+from uproot4.containers import AsMap
 
 default_library = "ak"
 

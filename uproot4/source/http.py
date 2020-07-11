@@ -35,18 +35,18 @@ def make_connection(parsed_url, timeout):
     if parsed_url.scheme == "https":
         if uproot4._util.py2:
             return HTTPSConnection(
-                parsed_url.netloc, parsed_url.port, None, None, False, timeout
+                parsed_url.hostname, parsed_url.port, None, None, False, timeout
             )
         else:
             return HTTPSConnection(
-                parsed_url.netloc, parsed_url.port, None, None, timeout
+                parsed_url.hostname, parsed_url.port, None, None, timeout
             )
 
     elif parsed_url.scheme == "http":
         if uproot4._util.py2:
-            return HTTPConnection(parsed_url.netloc, parsed_url.port, False, timeout)
+            return HTTPConnection(parsed_url.hostname, parsed_url.port, False, timeout)
         else:
-            return HTTPConnection(parsed_url.netloc, parsed_url.port, timeout)
+            return HTTPConnection(parsed_url.hostname, parsed_url.port, timeout)
 
     else:
         raise ValueError(

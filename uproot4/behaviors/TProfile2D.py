@@ -3,9 +3,12 @@
 from __future__ import absolute_import
 
 import uproot4.behaviors.TH1
+import uproot4.behaviors.TH2
 
 
 class TProfile2D(object):
+    no_inherit = (uproot4.behaviors.TH2.TH2,)
+
     def edges(self, axis):
         if axis == 0 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
@@ -20,10 +23,11 @@ class TProfile2D(object):
     def values_errors(self, error_mode=0):
         raise NotImplementedError(repr(self))
 
-    @property
-    def np(self):
+    def to_numpy(self, flow=True, dd=False, errors=False, error_mode=0):
         raise NotImplementedError(repr(self))
 
-    @property
-    def bh(self):
+    def to_boost(self):
         raise NotImplementedError(repr(self))
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())

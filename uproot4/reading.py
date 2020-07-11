@@ -32,12 +32,21 @@ import uproot4._util
 from uproot4._util import no_filter
 
 
-def open(path, object_cache=100, array_cache="100 MB", custom_classes=None, **options):
+def open(
+    path,
+    parse_object=True,
+    object_cache=100,
+    array_cache="100 MB",
+    custom_classes=None,
+    **options
+):
     """
     Args:
         path (str or Path): Path or URL to open, which may include a colon
             separating a file path from an object-within-ROOT path, like
             `"root://server/path/to/file.root : internal_directory/my_ttree"`.
+        parse_object (bool): If False, interpret the `path` purely as a file
+            path (no colon-delimited object path).
         object_cache (None, MutableMapping, or int): Cache of objects drawn
             from ROOT directories (e.g histograms, TTrees, other directories);
             if None, do not use a cache; if an int, create a new cache of this

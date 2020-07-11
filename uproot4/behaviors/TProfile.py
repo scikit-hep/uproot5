@@ -15,6 +15,8 @@ _kERRORSPREADG = 3
 
 
 class TProfile(object):
+    no_inherit = (uproot4.behaviors.TH1.TH1,)
+
     def edges(self, axis=0):
         if axis == 0 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
@@ -133,12 +135,30 @@ class TProfile(object):
         out[nonzero] = root_eprim[nonzero] / numpy.sqrt(root_neff[nonzero])
         return root_contsum, out
 
-    @property
-    def np(self):
-        return self.values_errors(self.member("fErrorMode")), self.edges(0)
+    def to_numpy(self, flow=True, dd=False, errors=False, error_mode=0):
+        if errors:
+            values, errs = self.values_errors(error_mode=error_mode)
+        else:
+            values, errs = self.values(), None
 
-    @property
-    def bh(self):
+        xedges = self.edges(0)
+        if not flow:
+            values = values[1:-1]
+            if errors:
+                errs = errs[1:-1]
+            xedges = xedges[1:-1]
+
+        if errors:
+            values_errors = values, errs
+        else:
+            values_errors = values
+
+        if dd:
+            return values_errors, (xedges,)
+        else:
+            return values_errors, xedges
+
+    def to_boost(self):
         boost_histogram = uproot4.extras.boost_histogram()
 
         storage = boost_histogram.storage.WeightedMean()
@@ -159,4 +179,7 @@ class TProfile(object):
         view.value = values
         view.sum_of_weighted_deltas_squared
 
-        return out
+        raise NotImplementedError(repr(self))
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())

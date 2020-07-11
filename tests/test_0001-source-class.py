@@ -111,6 +111,39 @@ def test_http():
         assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
 
 
+def colons_and_ports():
+    assert uproot4._util.file_object_path_split("https://example.com:443") == (
+        "https://example.com:443",
+        None,
+    )
+    assert uproot4._util.file_object_path_split(
+        "https://example.com:443/something"
+    ) == ("https://example.com:443/something", None)
+    assert uproot4._util.file_object_path_split(
+        "https://example.com:443/something:else"
+    ) == ("https://example.com:443/something", "else")
+
+
+@pytest.mark.network
+def test_http_port():
+    source = uproot4.source.http.HTTPSource(
+        "https://example.com:443", timeout=10, num_fallback_workers=0
+    )
+    with source as tmp:
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+
+    source = uproot4.source.http.MultithreadedHTTPSource(
+        "https://example.com:443", num_workers=0, timeout=10
+    )
+    with source as tmp:
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
+
+
 @pytest.mark.network
 def test_http_size():
     with uproot4.source.http.HTTPSource(
@@ -122,6 +155,25 @@ def test_http_size():
 
     with uproot4.source.http.MultithreadedHTTPSource(
         "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=0, timeout=10
+    ) as source:
+        size2 = source.num_bytes
+
+    assert size1 == size2
+
+
+@pytest.mark.network
+def test_http_size_port():
+    with uproot4.source.http.HTTPSource(
+        "https://scikit-hep.org:443/uproot/examples/Zmumu.root",
+        timeout=10,
+        num_fallback_workers=0,
+    ) as source:
+        size1 = source.num_bytes
+
+    with uproot4.source.http.MultithreadedHTTPSource(
+        "https://scikit-hep.org:443/uproot/examples/Zmumu.root",
+        num_workers=0,
+        timeout=10,
     ) as source:
         size2 = source.num_bytes
 

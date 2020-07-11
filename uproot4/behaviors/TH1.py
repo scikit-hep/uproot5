@@ -32,6 +32,8 @@ def _boost_axis(axis):
     fXbins = axis.member("fXbins", none_if_missing=True)
 
     metadata = axis.all_members
+    metadata["name"] = metadata.pop("fName")
+    metadata["title"] = metadata.pop("fTitle")
     metadata.pop("fXbins", None)
     metadata.pop("fLabels", None)
 
@@ -68,8 +70,6 @@ class TH1(object):
         return numpy.array(values, dtype=values.dtype.newbyteorder("="))
 
     def values_errors(self):
-        # this should work equally well for TH2 and TH3
-
         values = self.values()
         errors = numpy.zeros(values.shape, dtype=numpy.float64)
 
@@ -84,12 +84,30 @@ class TH1(object):
 
         return values, errors
 
-    @property
-    def np(self):
-        return self.values(), self.edges(0)
+    def to_numpy(self, flow=True, dd=False, errors=False):
+        if errors:
+            values, errs = self.values_errors()
+        else:
+            values, errs = self.values(), None
 
-    @property
-    def bh(self):
+        xedges = self.edges(0)
+        if not flow:
+            values = values[1:-1]
+            if errors:
+                errs = errs[1:-1]
+            xedges = xedges[1:-1]
+
+        if errors:
+            values_errors = values, errs
+        else:
+            values_errors = values
+
+        if dd:
+            return values_errors, (xedges,)
+        else:
+            return values_errors, xedges
+
+    def to_boost(self):
         boost_histogram = uproot4.extras.boost_histogram()
 
         values = self.values()
@@ -108,6 +126,8 @@ class TH1(object):
         out = boost_histogram.Histogram(xaxis, storage=storage)
 
         metadata = self.all_members
+        metadata["name"] = metadata.pop("fName")
+        metadata["title"] = metadata.pop("fTitle")
         metadata.pop("fXaxis", None)
         metadata.pop("fYaxis", None)
         metadata.pop("fZaxis", None)
@@ -127,3 +147,6 @@ class TH1(object):
             view[:] = values
 
         return out
+
+    def to_hist(self):
+        return uproot4.extras.hist().Hist(self.to_boost())
