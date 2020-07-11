@@ -42,16 +42,32 @@ class TH2(object):
 
         return values, errors
 
-    @property
-    def np2(self):
-        return self.values(), self.edges(0), self.edges(1)
+    def to_numpy(self, flow=True, dd=False, errors=False):
+        if errors:
+            values, errs = self.values_errors()
+        else:
+            values, errs = self.values(), None
 
-    @property
-    def np(self):
-        return self.values(), (self.edges(0), self.edges(1))
+        xedges = self.edges(0)
+        yedges = self.edges(1)
+        if not flow:
+            values = values[1:-1]
+            if errors:
+                errs = errs[1:-1]
+            xedges = xedges[1:-1]
+            yedges = yedges[1:-1]
 
-    @property
-    def bh(self):
+        if errors:
+            values_errors = values, errs
+        else:
+            values_errors = values
+
+        if dd:
+            return values_errors, (xedges, yedges)
+        else:
+            return values_errors, xedges, yedges
+
+    def to_boost(self):
         boost_histogram = uproot4.extras.boost_histogram()
 
         values = self.values()

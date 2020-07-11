@@ -23,10 +23,8 @@ class TProfile2D(object):
     def values_errors(self, error_mode=0):
         raise NotImplementedError(repr(self))
 
-    @property
-    def np(self):
+    def to_numpy(self, flow=True, dd=False, errors=False, error_mode=0):
         raise NotImplementedError(repr(self))
 
-    @property
-    def bh(self):
+    def to_boost(self):
         raise NotImplementedError(repr(self))

@@ -171,7 +171,9 @@ def test_http_size_port():
         size1 = source.num_bytes
 
     with uproot4.source.http.MultithreadedHTTPSource(
-        "https://scikit-hep.org:443/uproot/examples/Zmumu.root", num_workers=0, timeout=10
+        "https://scikit-hep.org:443/uproot/examples/Zmumu.root",
+        num_workers=0,
+        timeout=10,
     ) as source:
         size2 = source.num_bytes
 
