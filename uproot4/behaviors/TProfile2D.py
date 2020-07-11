@@ -3,9 +3,12 @@
 from __future__ import absolute_import
 
 import uproot4.behaviors.TH1
+import uproot4.behaviors.TH2
 
 
 class TProfile2D(object):
+    no_inherit = (uproot4.behaviors.TH2.TH2,)
+
     def edges(self, axis):
         if axis == 0 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
