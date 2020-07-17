@@ -1481,7 +1481,7 @@ in file {3}""".format(
         out = self.array(
             interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
         )[0][skip_bytes:]
-        return out[:(len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
 
     def debug(
         self,
