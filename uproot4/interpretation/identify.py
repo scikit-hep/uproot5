@@ -629,6 +629,10 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             i, keys = _parse_node(
                 tokens, i + 2, typename, file, quote, inner_header, inner_header
             )
+            while tokens[i].group(0) == ",":
+                i, keys = _parse_node(
+                    tokens, i + 1, typename, file, quote, inner_header, inner_header
+                )
             _parse_expect(">", tokens, i, typename, file)
             stop = tokens[i].span()[1]
 
