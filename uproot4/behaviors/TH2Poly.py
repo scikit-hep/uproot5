@@ -17,7 +17,7 @@ class TH2Poly(object):
     def values_errors(self, error_mode=0):
         raise NotImplementedError(repr(self))
 
-    def to_numpy(self, flow=True, dd=False, errors=False):
+    def to_numpy(self, flow=False, dd=False, errors=False):
         raise NotImplementedError(repr(self))
 
     def to_boost(self):

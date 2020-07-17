@@ -42,7 +42,7 @@ class TH2(object):
 
         return values, errors
 
-    def to_numpy(self, flow=True, dd=False, errors=False):
+    def to_numpy(self, flow=False, dd=False, errors=False):
         if errors:
             values, errs = self.values_errors()
         else:

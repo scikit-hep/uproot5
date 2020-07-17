@@ -135,7 +135,7 @@ class TProfile(object):
         out[nonzero] = root_eprim[nonzero] / numpy.sqrt(root_neff[nonzero])
         return root_contsum, out
 
-    def to_numpy(self, flow=True, dd=False, errors=False, error_mode=0):
+    def to_numpy(self, flow=False, dd=False, errors=False, error_mode=0):
         if errors:
             values, errs = self.values_errors(error_mode=error_mode)
         else:
