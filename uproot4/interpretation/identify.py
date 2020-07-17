@@ -11,6 +11,7 @@ import uproot4.const
 import uproot4.interpretation.numerical
 import uproot4.interpretation.strings
 import uproot4.interpretation.objects
+import uproot4.interpretation.grouped
 import uproot4.containers
 import uproot4.streamers
 import uproot4._util
@@ -629,6 +630,10 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             i, keys = _parse_node(
                 tokens, i + 2, typename, file, quote, inner_header, inner_header
             )
+            while tokens[i].group(0) == ",":
+                i, keys = _parse_node(
+                    tokens, i + 1, typename, file, quote, inner_header, inner_header
+                )
             _parse_expect(">", tokens, i, typename, file)
             stop = tokens[i].span()[1]
 
@@ -931,6 +936,18 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
 
 
 def interpretation_of(branch, context, simplify=True):
+    if len(branch.branches) != 0:
+        if branch.top_level and branch.has_member("fClassName"):
+            typename = branch.member("fClassName")
+        elif branch.streamer is not None:
+            typename = branch.streamer.typename
+        else:
+            typename = None
+        subbranches = dict((x.name, x.interpretation) for x in branch.branches)
+        return uproot4.interpretation.grouped.AsGrouped(
+            branch, subbranches, typename=typename
+        )
+
     if branch.classname == "TBranchObject":
         if branch.top_level and branch.has_member("fClassName"):
             model_cls = parse_typename(
