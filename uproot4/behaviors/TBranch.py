@@ -279,11 +279,14 @@ def _regularize_expressions(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
-            full_paths=True,
+            full_paths=False,
         ):
             if not isinstance(
                 branch.interpretation,
-                uproot4.interpretation.identify.UnknownInterpretation,
+                (
+                    uproot4.interpretation.identify.UnknownInterpretation,
+                    uproot4.interpretation.grouped.AsGrouped,
+                ),
             ):
                 _regularize_branchname(
                     hasbranches,

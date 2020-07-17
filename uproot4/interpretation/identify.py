@@ -11,6 +11,7 @@ import uproot4.const
 import uproot4.interpretation.numerical
 import uproot4.interpretation.strings
 import uproot4.interpretation.objects
+import uproot4.interpretation.grouped
 import uproot4.containers
 import uproot4.streamers
 import uproot4._util
@@ -935,6 +936,18 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
 
 
 def interpretation_of(branch, context, simplify=True):
+    if len(branch.branches) != 0:
+        if branch.top_level and branch.has_member("fClassName"):
+            typename = branch.member("fClassName")
+        elif branch.streamer is not None:
+            typename = branch.streamer.typename
+        else:
+            typename = None
+        subbranches = dict((x.name, x.interpretation) for x in branch.branches)
+        return uproot4.interpretation.grouped.AsGrouped(
+            branch, subbranches, typename=typename
+        )
+
     if branch.classname == "TBranchObject":
         if branch.top_level and branch.has_member("fClassName"):
             model_cls = parse_typename(

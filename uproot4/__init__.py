@@ -68,6 +68,7 @@ from uproot4.interpretation.jagged import AsJagged
 from uproot4.interpretation.strings import AsStrings
 from uproot4.interpretation.objects import AsObjects
 from uproot4.interpretation.objects import AsStridedObjects
+from uproot4.interpretation.grouped import AsGrouped
 from uproot4.containers import AsString
 from uproot4.containers import AsPointer
 from uproot4.containers import AsArray
