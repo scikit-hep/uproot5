@@ -1470,6 +1470,16 @@ in file {3}""".format(
             start = stop
         return out
 
+    def debug_array(self, entry, dtype=numpy.dtype("u1"), skip_bytes=0):
+        dtype = numpy.dtype(dtype)
+        interpretation = uproot4.interpretation.jagged.AsJagged(
+            uproot4.interpretation.numerical.AsDtype("u1")
+        )
+        out = self.array(
+            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
+        )[0][skip_bytes:]
+        return out[:(len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+
     def debug(
         self,
         entry,
@@ -1479,12 +1489,7 @@ in file {3}""".format(
         offset=0,
         stream=sys.stdout,
     ):
-        interpretation = uproot4.interpretation.jagged.AsJagged(
-            uproot4.interpretation.numerical.AsDtype("u1")
-        )
-        data = self.array(
-            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
-        )[0]
+        data = self.debug_array(entry)
         chunk = uproot4.source.chunk.Chunk.wrap(self._file.source, data)
         if skip_bytes is None:
             cursor = uproot4.source.cursor.Cursor(0)
