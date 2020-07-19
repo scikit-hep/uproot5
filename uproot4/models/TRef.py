@@ -63,7 +63,7 @@ class Model_TRef(uproot4.model.Model):
             contents["@other2"] = uproot4._util.awkward_form(
                 numpy.dtype("u4"), file, index_format, header, tobject_header
             )
-        return awkward1.forms.RecordForm(contents, parameters={"__record__": "TRef"},)
+        return awkward1.forms.RecordForm(contents, parameters={"__record__": "TRef"})
 
 
 _trefarray_format1 = struct.Struct(">i")
@@ -88,6 +88,10 @@ class Model_TRefArray(uproot4.model.Model, Sequence):
     def nbytes(self):
         return self._data.nbytes
 
+    @property
+    def refs(self):
+        return self._data
+
     def __getitem__(self, where):
         return self._data[where]
 
@@ -105,6 +109,25 @@ class Model_TRefArray(uproot4.model.Model, Sequence):
                 threshold=6,
             ),
             id(self),
+        )
+
+    @classmethod
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+        import awkward1
+
+        contents = {}
+
+        contents["fName"] = uproot4.containers.AsString(
+            False, typename="TString"
+        ).awkward_form(file, index_format, header, tobject_header)
+        contents["fSize"] = uproot4._util.awkward_form(
+            numpy.dtype("i4"), file, index_format, header, tobject_header
+        )
+        contents["refs"] = uproot4._util.awkward_form(
+            numpy.dtype("i4"), file, index_format, header, tobject_header
+        )
+        return awkward1.forms.RecordForm(
+            contents, parameters={"__record__": "TRefArray"}
         )
 
 
