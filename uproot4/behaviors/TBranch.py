@@ -1179,6 +1179,7 @@ class TBranch(HasBranches):
         self._interpretation = None
         self._typename = None
         self._streamer = None
+        self._streamer_isTClonesArray = False
         self._context = dict(context)
         self._context["breadcrumbs"] = ()
         self._context["in_TBranch"] = True
@@ -1338,8 +1339,18 @@ in file {3}""".format(
                                         break
                                 break
 
+                    if self.parent.member("fClassName") == "TClonesArray":
+                        self._streamer_isTClonesArray = True
+
             elif fClassName is not None and fClassName != "":
-                matches = self._file.streamers.get(fClassName)
+                if fClassName == "TClonesArray":
+                    self._streamer_isTClonesArray = True
+                    matches = self._file.streamers.get(
+                        self.member("fClonesName", none_if_missing=True)
+                    )
+                else:
+                    matches = self._file.streamers.get(fClassName)
+
                 if matches is not None:
                     self._streamer = matches[max(matches)]
 

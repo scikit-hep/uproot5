@@ -1097,6 +1097,9 @@ def interpretation_of(branch, context, simplify=True):
                 while isinstance(model_cls, uproot4.containers.AsPointer):
                     model_cls = model_cls.pointee
 
+            if branch._streamer_isTClonesArray:
+                model_cls = uproot4.containers.AsArray(False, model_cls)
+
             out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
             if simplify:
                 return out.simplify()

@@ -97,7 +97,13 @@ class Model_TRefArray(uproot4.model.Model, Sequence):
     def __repr__(self):
         return "<{0} {1} at 0x{2:012x}>".format(
             uproot4.model.classname_pretty(self.classname, self.class_version),
-            str(self._data),
+            numpy.array2string(
+                self._data,
+                max_line_width=numpy.inf,
+                separator=", ",
+                formatter={"float": lambda x: "%g" % x},
+                threshold=6,
+            ),
             id(self),
         )
 
