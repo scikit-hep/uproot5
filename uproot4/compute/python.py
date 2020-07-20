@@ -339,7 +339,7 @@ class ComputePython(uproot4.compute.Compute):
         for expression, context in expression_context:
             branch = context.get("branch")
             if branch is not None:
-                values[expression] = arrays[id(branch)]
+                values[expression] = arrays[branch.cache_key]
 
         output = {}
         for expression, context in expression_context:
