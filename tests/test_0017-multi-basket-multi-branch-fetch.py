@@ -118,7 +118,7 @@ def test_ranges_or_baskets_to_arrays():
 
         ranges_or_baskets = _names_entries_to_ranges_or_baskets(sample, ["i4"], 0, 30)
         branchid_interpretation = {
-            id(branch): uproot4.interpretation.numerical.AsDtype(">i4")
+            branch.cache_key: uproot4.interpretation.numerical.AsDtype(">i4")
         }
         entry_start, entry_stop = (0, 30)
         decompression_executor = uproot4.source.futures.TrivialExecutor()
@@ -137,7 +137,7 @@ def test_ranges_or_baskets_to_arrays():
             library,
             arrays,
         )
-        assert arrays[id(branch)].tolist() == [
+        assert arrays[branch.cache_key].tolist() == [
             -15,
             -14,
             -13,

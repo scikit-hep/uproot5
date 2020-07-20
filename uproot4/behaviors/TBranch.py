@@ -131,16 +131,20 @@ def _regularize_branchname(
 ):
     got = get_from_cache(branchname, interpretation)
     if got is not None:
-        arrays[id(branch)] = got
+        arrays[branch.cache_key] = got
 
     is_jagged = isinstance(interpretation, uproot4.interpretation.jagged.AsJagged)
 
-    if id(branch) in branchid_interpretation:
-        if branchid_interpretation[id(branch)].cache_key != interpretation.cache_key:
+    if branch.cache_key in branchid_interpretation:
+        if (
+            branchid_interpretation[branch.cache_key].cache_key
+            != interpretation.cache_key
+        ):
             raise ValueError(
                 "a branch cannot be loaded with multiple interpretations: "
                 "{0} and {1}".format(
-                    repr(branchid_interpretation[id(branch)]), repr(interpretation)
+                    repr(branchid_interpretation[branch.cache_key]),
+                    repr(interpretation),
                 )
             )
         else:
@@ -170,7 +174,7 @@ def _regularize_branchname(
                 },
             )
         )
-        branchid_interpretation[id(branch)] = interpretation
+        branchid_interpretation[branch.cache_key] = interpretation
 
 
 def _regularize_expression(
@@ -413,10 +417,10 @@ def _ranges_or_baskets_to_arrays(
     original_index = 0
 
     for branch, basket_num, range_or_basket in ranges_or_baskets:
-        if id(branch) not in branchid_arrays:
-            branchid_arrays[id(branch)] = {}
-            branchid_num_baskets[id(branch)] = 0
-        branchid_num_baskets[id(branch)] += 1
+        if branch.cache_key not in branchid_arrays:
+            branchid_arrays[branch.cache_key] = {}
+            branchid_num_baskets[branch.cache_key] = 0
+        branchid_num_baskets[branch.cache_key] += 1
 
         if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
             range_or_basket = (int(range_or_basket[0]), int(range_or_basket[1]))
@@ -451,8 +455,8 @@ def _ranges_or_baskets_to_arrays(
         try:
             assert basket.basket_num is not None
             branch = basket.parent
-            interpretation = branchid_interpretation[id(branch)]
-            basket_arrays = branchid_arrays[id(branch)]
+            interpretation = branchid_interpretation[branch.cache_key]
+            basket_arrays = branchid_arrays[branch.cache_key]
 
             basket_arrays[basket.basket_num] = interpretation.basket_array(
                 basket.data,
@@ -476,8 +480,8 @@ def _ranges_or_baskets_to_arrays(
                     )
                 )
 
-            if len(basket_arrays) == branchid_num_baskets[id(branch)]:
-                arrays[id(branch)] = interpretation.final_array(
+            if len(basket_arrays) == branchid_num_baskets[branch.cache_key]:
+                arrays[branch.cache_key] = interpretation.final_array(
                     basket_arrays,
                     entry_start,
                     entry_stop,
@@ -520,7 +524,7 @@ def _hasbranches_num_entries_for(
 ):
     total_bytes = 0.0
     for branch in hasbranches.itervalues(recursive=True):
-        if id(branch) in branchid_interpretation:
+        if branch.cache_key in branchid_interpretation:
             entry_offsets = branch.entry_offsets
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
@@ -952,7 +956,7 @@ class HasBranches(Mapping):
             for expression, context in expression_context:
                 branch = context.get("branch")
                 if branch is not None:
-                    interpretation = branchid_interpretation[id(branch)]
+                    interpretation = branchid_interpretation[branch.cache_key]
                     if branch is not None:
                         cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
                             self.cache_key,
@@ -962,7 +966,7 @@ class HasBranches(Mapping):
                             entry_stop,
                             library.name,
                         )
-                    array_cache[cache_key] = arrays[id(branch)]
+                    array_cache[cache_key] = arrays[branch.cache_key]
 
         output = compute.compute_expressions(
             arrays,
@@ -1108,7 +1112,7 @@ class HasBranches(Mapping):
                             sub_entry_start, sub_entry_stop
                         ):
                             previous_basket = previous_baskets.get(
-                                (id(branch), basket_num)
+                                (branch.cache_key, basket_num)
                             )
                             if previous_basket is None:
                                 ranges_or_baskets.append(
@@ -1164,7 +1168,7 @@ class HasBranches(Mapping):
                     yield arrays
 
                 for branch, basket_num, basket in ranges_or_baskets:
-                    previous_baskets[id(branch), basket_num] = basket
+                    previous_baskets[branch.cache_key, basket_num] = basket
 
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
@@ -1180,6 +1184,7 @@ class TBranch(HasBranches):
         self._typename = None
         self._streamer = None
         self._streamer_isTClonesArray = False
+        self._cache_key = None
         self._context = dict(context)
         self._context["breadcrumbs"] = ()
         self._context["in_TBranch"] = True
@@ -1241,13 +1246,15 @@ class TBranch(HasBranches):
 
     @property
     def cache_key(self):
-        if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
-            sep = ":"
-        else:
-            sep = "/"
-        return "{0}{1}{2}({3})".format(
-            self.parent.cache_key, sep, self.name, self.index
-        )
+        if self._cache_key is None:
+            if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
+                sep = ":"
+            else:
+                sep = "/"
+            self._cache_key = "{0}{1}{2}({3})".format(
+                self.parent.cache_key, sep, self.name, self.index
+            )
+        return self._cache_key
 
     @property
     def object_path(self):
@@ -1546,7 +1553,7 @@ in file {3}""".format(
             interpretation = self.interpretation
         else:
             interpretation = _regularize_interpretation(interpretation)
-        branchid_interpretation = {id(self): interpretation}
+        branchid_interpretation = {self.cache_key: interpretation}
 
         entry_start, entry_stop = _regularize_entries_start_stop(
             self.num_entries, entry_start, entry_stop
@@ -1589,9 +1596,9 @@ in file {3}""".format(
         )
 
         if array_cache is not None:
-            array_cache[cache_key] = arrays[id(self)]
+            array_cache[cache_key] = arrays[self.cache_key]
 
-        return arrays[id(self)]
+        return arrays[self.cache_key]
 
 
 _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
@@ -1951,7 +1958,7 @@ def lazy(
         branchid_interpretation = {}
         for key in common_keys:
             branch = obj[key]
-            branchid_interpretation[id(branch)] = branch.interpretation
+            branchid_interpretation[branch.cache_key] = branch.interpretation
         entry_step = _regularize_step_size(
             obj, step_size, entry_start, entry_stop, branchid_interpretation
         )
@@ -1964,7 +1971,7 @@ def lazy(
             names = []
             for key in common_keys:
                 branch = obj[key]
-                form = branchid_interpretation[id(branch)].awkward_form(
+                form = branchid_interpretation[branch.cache_key].awkward_form(
                     obj.file, index_format="i64"
                 )
                 generator = awkward1.layout.ArrayGenerator(
@@ -1984,7 +1991,7 @@ def lazy(
                 )
                 cache_key = "{0}:{1}:{2}-{3}:{4}".format(
                     branch.cache_key,
-                    branchid_interpretation[id(branch)].cache_key,
+                    branchid_interpretation[branch.cache_key].cache_key,
                     start,
                     stop,
                     library.name,

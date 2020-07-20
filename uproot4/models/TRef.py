@@ -22,14 +22,14 @@ class Model_TRef(uproot4.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context):
-        self._id = cursor.field(chunk, _tref_format1, context)
+        self._ref = cursor.field(chunk, _tref_format1, context)
 
     @property
-    def id(self):
-        return self._id
+    def ref(self):
+        return self._ref
 
     def __repr__(self):
-        return "<TRef {0}>".format(self._id)
+        return "<TRef {0}>".format(self._ref)
 
     @classmethod
     def strided_interpretation(
@@ -37,7 +37,7 @@ class Model_TRef(uproot4.model.Model):
     ):
         members = []
         members.append(("@pidf", numpy.dtype(">u2")))
-        members.append(("id", numpy.dtype(">u4")))
+        members.append(("ref", numpy.dtype(">u4")))
         members.append(("@other1", numpy.dtype(">u2")))
         members.append(("@other2", numpy.dtype(">u4")))
 
@@ -54,7 +54,7 @@ class Model_TRef(uproot4.model.Model):
             contents["@pidf"] = uproot4._util.awkward_form(
                 numpy.dtype("u2"), file, index_format, header, tobject_header
             )
-            contents["id"] = uproot4._util.awkward_form(
+            contents["ref"] = uproot4._util.awkward_form(
                 numpy.dtype("u4"), file, index_format, header, tobject_header
             )
             contents["@other1"] = uproot4._util.awkward_form(
