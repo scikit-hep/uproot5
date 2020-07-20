@@ -332,3 +332,18 @@ def test_awkward_TRefArray():
                 ],
             },
         ]
+
+
+def test_same_names():
+    with uproot4.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
+        one, two = t.values(filter_name="Particle_size")
+        assert (
+            one.cache_key
+            == "ac4a884e-c931-11ea-a7a5-c78b2480beef:/Delphes;1:Particle_size(3)"
+        )
+        assert (
+            two.cache_key
+            == "ac4a884e-c931-11ea-a7a5-c78b2480beef:/Delphes;1:Particle_size(17)"
+        )
+        assert one.object_path == "/Delphes;1:Particle_size"
+        assert two.object_path == "/Delphes;1:Particle_size"

@@ -1232,18 +1232,30 @@ class TBranch(HasBranches):
         return self.tree.aliases
 
     @property
+    def index(self):
+        for i, branch in enumerate(self.parent.branches):
+            if branch is self:
+                return i
+        else:
+            raise AssertionError
+
+    @property
     def cache_key(self):
         if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
-            return self.parent.cache_key + ":" + self.name
+            sep = ":"
         else:
-            return self.parent.cache_key + "/" + self.name
+            sep = "/"
+        return "{0}{1}{2}({3})".format(
+            self.parent.cache_key, sep, self.name, self.index
+        )
 
     @property
     def object_path(self):
         if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
-            return self.parent.object_path + ":" + self.name
+            sep = ":"
         else:
-            return self.parent.object_path + "/" + self.name
+            sep = "/"
+        return "{0}{1}{2}".format(self.parent.object_path, sep, self.name)
 
     @property
     def entry_offsets(self):
