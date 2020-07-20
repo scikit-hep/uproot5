@@ -170,7 +170,10 @@ def _object_to_awkward_json(form, obj):
         out = {}
         for name, subform in form["contents"].items():
             if not name.startswith("@"):
-                out[name] = _object_to_awkward_json(subform, obj.member(name))
+                if obj.has_member(name):
+                    out[name] = _object_to_awkward_json(subform, obj.member(name))
+                else:
+                    out[name] = _object_to_awkward_json(subform, getattr(obj, name))
         return out
 
     elif form["class"][:15] == "ListOffsetArray":

@@ -132,8 +132,8 @@ def test_compute():
 
         assert set(sample.file.array_cache) == set(
             [
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:i4:AsDtype(Bi4(),Li4()):0-30:ak",
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:Ai8:AsJagged(AsDtype(Bi8(),Li8()),0):0-30:ak",
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4:AsDtype(Bi4(),Li4()):0-30:ak",
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:Ai8:AsJagged(AsDtype(Bi8(),Li8()),0):0-30:ak",
             ]
         )
 
@@ -189,8 +189,8 @@ def test_arrays():
 
         assert set(sample.file.array_cache) == set(
             [
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:i4:AsDtype(Bi4(),Li4()):0-30:ak",
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample:f4:AsDtype(Bf4(),Lf4()):0-30:ak",
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4:AsDtype(Bi4(),Li4()):0-30:ak",
+                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:f4:AsDtype(Bf4(),Lf4()):0-30:ak",
             ]
         )
 

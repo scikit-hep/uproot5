@@ -49,11 +49,13 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
 
     @property
     def cache_key(self):
-        return self.parent.parent.cache_key + self.name
+        return "{0}{1};{2}".format(
+            self.parent.parent.cache_key, self.name, self.parent.fCycle
+        )
 
     @property
     def object_path(self):
-        return self.parent.parent.object_path + self.name
+        return self.parent.object_path
 
     @property
     def chunk(self):

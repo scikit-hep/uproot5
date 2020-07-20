@@ -833,7 +833,9 @@ class ReadOnlyKey(object):
     @property
     def object_path(self):
         if isinstance(self._parent, ReadOnlyDirectory):
-            return self._parent.object_path + self.name(False)
+            return "{0}{1};{2}".format(
+                self._parent.object_path, self.name(False), self._fCycle
+            )
         else:
             return "(seek pos {0})/{1}".format(self.data_cursor.index, self.name(False))
 
@@ -1403,7 +1405,10 @@ class ReadOnlyDirectory(Mapping):
         if ";" in where:
             at = where.rindex(";")
             item, cycle = where[:at], where[at + 1 :]
-            cycle = int(cycle)
+            try:
+                cycle = int(cycle)
+            except ValueError:
+                item, cycle = where, None
         else:
             item, cycle = where, None
 

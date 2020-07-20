@@ -354,7 +354,9 @@ class AsArray(AsContainer):
 
         return awkward1.forms.ListOffsetForm(
             index_format,
-            uproot4._util.awkward_form(self._values, file, header, tobject_header),
+            uproot4._util.awkward_form(
+                self._values, file, index_format, header, tobject_header
+            ),
             parameters={"uproot": {"as": "array", "header": self._header}},
         )
 

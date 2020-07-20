@@ -88,11 +88,16 @@ class Model(object):
         return self
 
     @classmethod
-    def read(cls, chunk, cursor, context, file, parent):
+    def read(cls, chunk, cursor, context, file, parent, concrete=None):
         self = cls.__new__(cls)
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
+        if concrete is None:
+            self._concrete = self
+        else:
+            self._concrete = concrete
+
         self._members = {}
         self._bases = []
         self._num_bytes = None
@@ -198,6 +203,10 @@ class Model(object):
     @property
     def parent(self):
         return self._parent
+
+    @property
+    def concrete(self):
+        return self._concrete
 
     @property
     def encoded_classname(self):
@@ -436,7 +445,7 @@ class UnknownClassVersion(VersionedModel):
 
 class DispatchByVersion(object):
     @classmethod
-    def read(cls, chunk, cursor, context, file, parent):
+    def read(cls, chunk, cursor, context, file, parent, concrete=None):
         import uproot4.deserialization
 
         start_cursor = cursor.copy()
@@ -466,7 +475,7 @@ class DispatchByVersion(object):
             )
 
         return cls.postprocess(
-            versioned_cls.read(chunk, cursor, context, file, parent),
+            versioned_cls.read(chunk, cursor, context, file, parent, concrete=concrete),
             chunk,
             cursor,
             context,

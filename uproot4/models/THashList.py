@@ -12,7 +12,12 @@ class Model_THashList(uproot4.model.Model):
     def read_members(self, chunk, cursor, context):
         self._bases.append(
             uproot4.models.TList.Model_TList.read(
-                chunk, cursor, context, self._file, self._parent
+                chunk,
+                cursor,
+                context,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
 
