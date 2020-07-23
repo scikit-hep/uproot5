@@ -155,7 +155,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def postprocess(self, chunk, cursor, context):
         # prevent circular dependencies and long-lived references to files
         self._file_uuid = self._file.uuid
-        self._file = None
+        self._file = self._file.detached
         self._parent = None
         return self
 

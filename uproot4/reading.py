@@ -109,7 +109,124 @@ _file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
 _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
 
-class ReadOnlyFile(object):
+class CommonFileMethods(object):
+    @property
+    def file_path(self):
+        return self._file_path
+
+    @property
+    def options(self):
+        return self._options
+
+    @property
+    def root_version_tuple(self):
+        version = self._fVersion
+        if version >= 1000000:
+            version -= 1000000
+
+        major = version // 10000
+        version %= 10000
+        minor = version // 100
+        version %= 100
+
+        return major, minor, version
+
+    @property
+    def root_version(self):
+        return "{0}.{1:02d}/{2:02d}".format(*self.root_version_tuple)
+
+    @property
+    def is_64bit(self):
+        return self._fVersion >= 1000000
+
+    @property
+    def compression(self):
+        return uproot4.compression.Compression.from_code(self._fCompress)
+
+    @property
+    def hex_uuid(self):
+        if uproot4._util.py2:
+            out = "".join("{0:02x}".format(ord(x)) for x in self._fUUID)
+        else:
+            out = "".join("{0:02x}".format(x) for x in self._fUUID)
+        return "-".join([out[0:8], out[8:12], out[12:16], out[16:20], out[20:32]])
+
+    @property
+    def uuid(self):
+        return uuid.UUID(self.hex_uuid.replace("-", ""))
+
+    @property
+    def fVersion(self):
+        return self._fVersion
+
+    @property
+    def fBEGIN(self):
+        return self._fBEGIN
+
+    @property
+    def fEND(self):
+        return self._fEND
+
+    @property
+    def fSeekFree(self):
+        return self._fSeekFree
+
+    @property
+    def fNbytesFree(self):
+        return self._fNbytesFree
+
+    @property
+    def nfree(self):
+        return self._nfree
+
+    @property
+    def fNbytesName(self):
+        return self._fNbytesName
+
+    @property
+    def fUnits(self):
+        return self._fUnits
+
+    @property
+    def fCompress(self):
+        return self._fCompress
+
+    @property
+    def fSeekInfo(self):
+        return self._fSeekInfo
+
+    @property
+    def fNbytesInfo(self):
+        return self._fNbytesInfo
+
+    @property
+    def fUUID(self):
+        return self._fUUID
+
+
+class DetachedFile(CommonFileMethods):
+    def __init__(self, file):
+        self._file_path = file._file_path
+        self._options = file._options
+        self._fVersion = file._fVersion
+        self._fBEGIN = file._fBEGIN
+        self._fEND = file._fEND
+        self._fSeekFree = file._fSeekFree
+        self._fNbytesFree = file._fNbytesFree
+        self._nfree = file._nfree
+        self._fNbytesName = file._fNbytesName
+        self._fUnits = file._fUnits
+        self._fCompress = file._fCompress
+        self._fSeekInfo = file._fSeekInfo
+        self._fNbytesInfo = file._fNbytesInfo
+        self._fUUID_version = file._fUUID_version
+        self._fUUID = file._fUUID
+
+
+must_be_attached = ["TDirectory", "TDirectoryFile", "TTree"]
+
+
+class ReadOnlyFile(CommonFileMethods):
     def __init__(
         self,
         file_path,
@@ -233,8 +350,8 @@ in file {1}""".format(
         pass
 
     @property
-    def file_path(self):
-        return self._file_path
+    def detached(self):
+        return DetachedFile(self)
 
     @property
     def object_cache(self):
@@ -512,91 +629,6 @@ in file {1}""".format(
 
         return cls
 
-    @property
-    def root_version_tuple(self):
-        version = self._fVersion
-        if version >= 1000000:
-            version -= 1000000
-
-        major = version // 10000
-        version %= 10000
-        minor = version // 100
-        version %= 100
-
-        return major, minor, version
-
-    @property
-    def root_version(self):
-        return "{0}.{1:02d}/{2:02d}".format(*self.root_version_tuple)
-
-    @property
-    def is_64bit(self):
-        return self._fVersion >= 1000000
-
-    @property
-    def compression(self):
-        return uproot4.compression.Compression.from_code(self._fCompress)
-
-    @property
-    def hex_uuid(self):
-        if uproot4._util.py2:
-            out = "".join("{0:02x}".format(ord(x)) for x in self._fUUID)
-        else:
-            out = "".join("{0:02x}".format(x) for x in self._fUUID)
-        return "-".join([out[0:8], out[8:12], out[12:16], out[16:20], out[20:32]])
-
-    @property
-    def uuid(self):
-        return uuid.UUID(self.hex_uuid.replace("-", ""))
-
-    @property
-    def fVersion(self):
-        return self._fVersion
-
-    @property
-    def fBEGIN(self):
-        return self._fBEGIN
-
-    @property
-    def fEND(self):
-        return self._fEND
-
-    @property
-    def fSeekFree(self):
-        return self._fSeekFree
-
-    @property
-    def fNbytesFree(self):
-        return self._fNbytesFree
-
-    @property
-    def nfree(self):
-        return self._nfree
-
-    @property
-    def fNbytesName(self):
-        return self._fNbytesName
-
-    @property
-    def fUnits(self):
-        return self._fUnits
-
-    @property
-    def fCompress(self):
-        return self._fCompress
-
-    @property
-    def fSeekInfo(self):
-        return self._fSeekInfo
-
-    @property
-    def fNbytesInfo(self):
-        return self._fNbytesInfo
-
-    @property
-    def fUUID(self):
-        return self._fUUID
-
     def __enter__(self):
         """
         Passes __enter__ to the file's Source and returns self.
@@ -843,7 +875,7 @@ class ReadOnlyKey(object):
         if self._file.object_cache is not None:
             out = self._file.object_cache.get(self.cache_key)
             if out is not None:
-                if out.file.closed:
+                if isinstance(out.file, ReadOnlyFile) and out.file.closed:
                     del self._file.object_cache[self.cache_key]
                 else:
                     return out
@@ -894,6 +926,10 @@ class ReadOnlyKey(object):
                 context = {"breadcrumbs": (), "TKey": self}
 
                 out = cls.read(chunk, cursor, context, self._file, self)
+
+        if self._fClassName not in must_be_attached:
+            out._file = self._file.detached
+            out._parent = None
 
         if self._file.object_cache is not None:
             self._file.object_cache[self.cache_key] = out
