@@ -20,13 +20,13 @@ _tbranch10_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v10(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -36,7 +36,7 @@ class Model_TBranch_v10(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -55,17 +55,17 @@ class Model_TBranch_v10(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch10_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
         tmp = _tbranch10_dtype1
         if context.get("speedbump", True):
@@ -86,11 +86,11 @@ class Model_TBranch_v10(
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = self.class_named("TString").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -134,13 +134,13 @@ _tbranch11_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v11(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -150,7 +150,7 @@ class Model_TBranch_v11(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -170,17 +170,17 @@ class Model_TBranch_v11(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch11_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
         tmp = _tbranch11_dtype1
         if context.get("speedbump", True):
@@ -201,11 +201,11 @@ class Model_TBranch_v11(
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = self.class_named("TString").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -250,13 +250,13 @@ _tbranch12_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v12(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -266,7 +266,7 @@ class Model_TBranch_v12(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -286,17 +286,17 @@ class Model_TBranch_v12(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch12_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
         tmp = _tbranch12_dtype1
         if context.get("speedbump", True):
@@ -317,11 +317,11 @@ class Model_TBranch_v12(
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = self.class_named("TString").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -367,13 +367,13 @@ _tbranch13_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v13(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -383,7 +383,7 @@ class Model_TBranch_v13(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -396,7 +396,7 @@ class Model_TBranch_v13(
             self._members["fEntryNumber"],
         ) = cursor.fields(chunk, _tbranch13_format1, context)
         self._members["fIOFeatures"] = self.class_named("ROOT::TIOFeatures").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         (
             self._members["fOffset"],
@@ -408,17 +408,17 @@ class Model_TBranch_v13(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch13_format2, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_over(chunk, context)
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
         tmp = _tbranch13_dtype1
         if context.get("speedbump", True):
@@ -439,11 +439,11 @@ class Model_TBranch_v13(
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = self.class_named("TString").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -495,26 +495,26 @@ _tbranchelement8_format1 = struct.Struct(">Iiiiii")
 class Model_TBranchElement_v8(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 10).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fParentName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fClonesName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         (
             self._members["fCheckSum"],
@@ -525,10 +525,10 @@ class Model_TBranchElement_v8(
             self._members["fMaximum"],
         ) = cursor.fields(chunk, _tbranchelement8_format1, context)
         self._members["fBranchCount"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fBranchCount2"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
 
     base_names_versions = [("TBranch", 10)]
@@ -555,26 +555,26 @@ _tbranchelement9_format1 = struct.Struct(">Iiiiii")
 class Model_TBranchElement_v9(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 12).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fParentName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fClonesName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         (
             self._members["fCheckSum"],
@@ -585,10 +585,10 @@ class Model_TBranchElement_v9(
             self._members["fMaximum"],
         ) = cursor.fields(chunk, _tbranchelement9_format1, context)
         self._members["fBranchCount"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fBranchCount2"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
 
     base_names_versions = [("TBranch", 12)]
@@ -615,26 +615,26 @@ _tbranchelement10_format1 = struct.Struct(">Ihiiii")
 class Model_TBranchElement_v10(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 12).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fParentName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fClonesName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         (
             self._members["fCheckSum"],
@@ -645,10 +645,10 @@ class Model_TBranchElement_v10(
             self._members["fMaximum"],
         ) = cursor.fields(chunk, _tbranchelement10_format1, context)
         self._members["fBranchCount"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fBranchCount2"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
 
     base_names_versions = [("TBranch", 12)]
@@ -680,19 +680,19 @@ class Model_TBranchElement(uproot4.model.DispatchByVersion):
 class Model_TBranchObject_v1(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 13).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
         )
         self._members["fClassName"] = self.class_named("TString").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
 
     base_names_versions = [("TBranch", 13)]

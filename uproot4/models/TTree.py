@@ -15,13 +15,13 @@ _ttree16_format1 = struct.Struct(">qqqqdiiiqqqqq")
 
 
 class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -31,7 +31,7 @@ class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -41,7 +41,7 @@ class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -51,7 +51,7 @@ class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -72,35 +72,35 @@ class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree16_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
 
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fIndexValues"] = self.class_named("TArrayD").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fIndex"] = self.class_named("TArrayI").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fFriends"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fUserInfo"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fBranchRef"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -150,13 +150,13 @@ _ttree17_format1 = struct.Struct(">qqqqdiiiiqqqqq")
 
 
 class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -166,7 +166,7 @@ class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -176,7 +176,7 @@ class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -186,7 +186,7 @@ class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -208,34 +208,34 @@ class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree17_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fIndexValues"] = self.class_named("TArrayD").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fIndex"] = self.class_named("TArrayI").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fFriends"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fUserInfo"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fBranchRef"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -286,13 +286,13 @@ _ttree18_format1 = struct.Struct(">qqqqqdiiiiqqqqqq")
 
 
 class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -302,7 +302,7 @@ class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -312,7 +312,7 @@ class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -322,7 +322,7 @@ class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -346,34 +346,34 @@ class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree18_format1, context)
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fIndexValues"] = self.class_named("TArrayD").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fIndex"] = self.class_named("TArrayI").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fFriends"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fUserInfo"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fBranchRef"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -428,13 +428,13 @@ _ttree19_dtype2 = numpy.dtype(">i8")
 
 
 class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -444,7 +444,7 @@ class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -454,7 +454,7 @@ class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -464,7 +464,7 @@ class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -501,34 +501,34 @@ class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             chunk, self.member("fNClusterRange"), tmp, context
         )
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fIndexValues"] = self.class_named("TArrayD").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fIndex"] = self.class_named("TArrayI").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fFriends"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fUserInfo"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fBranchRef"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -586,13 +586,13 @@ _ttree20_dtype2 = numpy.dtype(">i8")
 
 
 class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -602,7 +602,7 @@ class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -612,7 +612,7 @@ class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -622,7 +622,7 @@ class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
@@ -659,37 +659,37 @@ class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
             chunk, self.member("fNClusterRange"), tmp, context
         )
         self._members["fIOFeatures"] = self.class_named("ROOT::TIOFeatures").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fBranches"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fLeaves"] = self.class_named("TObjArray").read(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._concrete
         )
-        if self._file.options["minimal_ttree_metadata"]:
+        if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
             self._members["fIndexValues"] = self.class_named("TArrayD").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fIndex"] = self.class_named("TArrayI").read(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fFriends"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fUserInfo"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
             self._members["fBranchRef"] = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._concrete
+                chunk, cursor, context, file, self._concrete
             )
 
     @property
@@ -756,7 +756,7 @@ _tiofeatures_format1 = struct.Struct(">B")
 
 
 class Model_ROOT_3a3a_TIOFeatures(uproot4.model.Model):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         cursor.skip(4)
         self._members["fIOBits"] = cursor.field(chunk, _tiofeatures_format1, context)
 

@@ -9,10 +9,10 @@ class Model_TString(uproot4.model.Model, str):
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._data = cursor.string(chunk, context)
 
-    def postprocess(self, chunk, cursor, context):
+    def postprocess(self, chunk, cursor, context, file):
         out = Model_TString(self._data)
         out._cursor = self._cursor
         out._file = self._file

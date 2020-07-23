@@ -28,7 +28,7 @@ class Model_TBasket(uproot4.model.Model):
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         assert isinstance(self._parent, uproot4.behaviors.TBranch.TBranch)
         self._basket_num = context.get("basket_num")
 

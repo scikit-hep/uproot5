@@ -18,7 +18,7 @@ class Model_TObject(uproot4.model.Model):
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._instance_version = cursor.field(chunk, _tobject_format1, context)
         if numpy.int64(self._instance_version) & uproot4.const.kByteCountVMask:
             cursor.skip(4)

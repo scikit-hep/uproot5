@@ -7,20 +7,20 @@ import uproot4.models.TObject
 
 
 class Model_TObjString(uproot4.model.Model, str):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,
                 cursor,
                 context,
-                self._file,
+                file,
                 self._parent,
                 concrete=self._concrete,
             )
         )
         self._data = cursor.string(chunk, context)
 
-    def postprocess(self, chunk, cursor, context):
+    def postprocess(self, chunk, cursor, context, file):
         out = Model_TObjString(self._data)
         out._cursor = self._cursor
         out._file = self._file

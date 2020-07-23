@@ -1176,7 +1176,7 @@ _branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\
 
 
 class TBranch(HasBranches):
-    def postprocess(self, chunk, cursor, context):
+    def postprocess(self, chunk, cursor, context, file):
         fWriteBasket = self.member("fWriteBasket")
 
         self._lookup = {}

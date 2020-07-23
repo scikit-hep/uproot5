@@ -14,7 +14,7 @@ _tattline1_format1 = struct.Struct(">hhh")
 
 
 class Model_TAttLine_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         (
             self._members["fLineColor"],
             self._members["fLineStyle"],
@@ -68,7 +68,7 @@ class Model_TAttLine_v1(uproot4.model.VersionedModel):
 
 
 class Model_TAttLine_v2(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         (
             self._members["fLineColor"],
             self._members["fLineStyle"],
@@ -126,7 +126,7 @@ _tattfill2_format1 = struct.Struct(">hh")
 
 
 class Model_TAttFill_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._members["fFillColor"], self._members["fFillStyle"] = cursor.fields(
             chunk, _tattfill1_format1, context
         )
@@ -174,7 +174,7 @@ class Model_TAttFill_v1(uproot4.model.VersionedModel):
 
 
 class Model_TAttFill_v2(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._members["fFillColor"], self._members["fFillStyle"] = cursor.fields(
             chunk, _tattfill2_format1, context
         )
@@ -225,7 +225,7 @@ _tattmarker2_format1 = struct.Struct(">hhf")
 
 
 class Model_TAttMarker_v2(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         (
             self._members["fMarkerColor"],
             self._members["fMarkerStyle"],

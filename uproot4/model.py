@@ -106,7 +106,7 @@ class Model(object):
         old_breadcrumbs = context.get("breadcrumbs", ())
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
-        self.hook_before_read(chunk=chunk, cursor=cursor, context=context)
+        self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
 
         self.read_numbytes_version(chunk, cursor, context)
 
@@ -118,17 +118,17 @@ class Model(object):
             elif self._instance_version == 0:
                 cursor.skip(4)
 
-        self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context)
+        self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context, file=file)
 
-        self.read_members(chunk, cursor, context)
+        self.read_members(chunk, cursor, context, file)
 
-        self.hook_after_read_members(chunk=chunk, cursor=cursor, context=context)
+        self.hook_after_read_members(chunk=chunk, cursor=cursor, context=context, file=file)
 
         self.check_numbytes(chunk, cursor, context)
 
-        self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context)
+        self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context, file=file)
 
-        out = self.postprocess(chunk, cursor, context)
+        out = self.postprocess(chunk, cursor, context, file)
 
         context["breadcrumbs"] = old_breadcrumbs
 
@@ -147,7 +147,7 @@ class Model(object):
             self._instance_version,
         ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
 
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         pass
 
     @classmethod
@@ -177,7 +177,7 @@ class Model(object):
             getattr(self._file, "file_path"),
         )
 
-    def postprocess(self, chunk, cursor, context):
+    def postprocess(self, chunk, cursor, context, file):
         return self
 
     def hook_before_read(self, **kwargs):
@@ -351,7 +351,7 @@ class Model(object):
 
 
 class UnknownClass(Model):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._chunk = chunk
         self._context = context
 
@@ -399,7 +399,7 @@ class VersionedModel(Model):
 
 
 class UnknownClassVersion(VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._chunk = chunk
         self._context = context
 
@@ -479,6 +479,7 @@ class DispatchByVersion(object):
             chunk,
             cursor,
             context,
+            file,
         )
 
     @classmethod
@@ -507,7 +508,7 @@ class DispatchByVersion(object):
             return unknown_cls
 
     @classmethod
-    def postprocess(cls, self, chunk, cursor, context):
+    def postprocess(cls, self, chunk, cursor, context, file):
         return self
 
     @classmethod
