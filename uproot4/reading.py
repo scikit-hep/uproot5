@@ -492,7 +492,7 @@ in file {1}""".format(
 
                 classes = uproot4.model.maybe_custom_classes(self._custom_classes)
                 tlist = classes["TList"].read(
-                    streamer_chunk, streamer_cursor, {}, self, self, None
+                    streamer_chunk, streamer_cursor, {}, self, self.detached, None
                 )
 
                 self._streamers = {}

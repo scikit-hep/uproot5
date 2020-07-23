@@ -153,13 +153,6 @@ class Model_TStreamerInfo(uproot4.model.Model):
             chunk, cursor, context, file, self._file, self._concrete
         )
 
-    def postprocess(self, chunk, cursor, context, file):
-        # prevent circular dependencies and long-lived references to files
-        self._file_uuid = self._file.uuid
-        self._file = self._file.detached
-        self._parent = None
-        return self
-
     def __repr__(self):
         return "<TStreamerInfo for {0} version {1} at 0x{2:012x}>".format(
             self.name, self.class_version, id(self)
@@ -183,7 +176,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     @property
     def file_uuid(self):
-        return self._file_uuid
+        return self._file.uuid
 
     def _dependencies(self, streamers, out):
         out.append((self.name, self.class_version))
@@ -381,13 +374,6 @@ class Model_TStreamerElement(uproot4.model.Model):
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
 
-    def postprocess(self, chunk, cursor, context, file):
-        # prevent circular dependencies and long-lived references to files
-        self._file_uuid = self._file.uuid
-        self._file = None
-        self._parent = None
-        return self
-
     @property
     def name(self):
         return self.member("fName")
@@ -410,7 +396,7 @@ class Model_TStreamerElement(uproot4.model.Model):
 
     @property
     def file_uuid(self):
-        return self._file_uuid
+        return self._file.uuid
 
     def _dependencies(self, streamers, out):
         pass
