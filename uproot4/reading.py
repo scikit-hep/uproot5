@@ -223,7 +223,19 @@ class DetachedFile(CommonFileMethods):
         self._fUUID = file._fUUID
 
 
-must_be_attached = ["TDirectory", "TDirectoryFile", "TTree"]
+must_be_attached = [
+    "TROOT",
+    "TDirectory",
+    "TDirectoryFile",
+    "RooWorkspace::WSDir",
+    "TTree",
+    "TChain",
+    "TProofChain",
+    "THbookTree",
+    "TNtuple",
+    "TNtupleD",
+    "TTreeSQL",
+]
 
 
 class ReadOnlyFile(CommonFileMethods):
