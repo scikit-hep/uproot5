@@ -22,7 +22,13 @@ class Model_TObjArray(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
 
@@ -66,7 +72,13 @@ class Model_TObjArrayOfTBaskets(Model_TObjArray):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
 

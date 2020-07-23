@@ -54,7 +54,9 @@ def _content_cache_key(content):
         return content.cache_key
 
 
-def _read_nested(model, length, chunk, cursor, context, file, selffile, parent, header=True):
+def _read_nested(
+    model, length, chunk, cursor, context, file, selffile, parent, header=True
+):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
 
@@ -371,7 +373,9 @@ class AsArray(AsContainer):
         else:
             out = []
             while cursor.index < chunk.stop:
-                out.append(self._values.read(chunk, cursor, context, file, selffile, parent))
+                out.append(
+                    self._values.read(chunk, cursor, context, file, selffile, parent)
+                )
             return numpy.array(out, dtype=numpy.dtype(numpy.object))
 
 
@@ -628,7 +632,9 @@ class AsSet(AsContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        keys = _read_nested(self._keys, length, chunk, cursor, context, file, selffile, parent)
+        keys = _read_nested(
+            self._keys, length, chunk, cursor, context, file, selffile, parent
+        )
         out = STLSet(keys)
 
         if self._header and header:
@@ -819,13 +825,29 @@ class AsMap(AsContainer):
         if _has_nested_header(self._keys) and header:
             cursor.skip(6)
         keys = _read_nested(
-            self._keys, length, chunk, cursor, context, file, selffile, parent, header=False
+            self._keys,
+            length,
+            chunk,
+            cursor,
+            context,
+            file,
+            selffile,
+            parent,
+            header=False,
         )
 
         if _has_nested_header(self._values) and header:
             cursor.skip(6)
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, selffile, parent, header=False
+            self._values,
+            length,
+            chunk,
+            cursor,
+            context,
+            file,
+            selffile,
+            parent,
+            header=False,
         )
 
         out = STLMap(keys, values)

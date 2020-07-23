@@ -481,7 +481,9 @@ class DispatchByVersion(object):
             )
 
         return cls.postprocess(
-            versioned_cls.read(chunk, cursor, context, file, selffile, parent, concrete=concrete),
+            versioned_cls.read(
+                chunk, cursor, context, file, selffile, parent, concrete=concrete
+            ),
             chunk,
             cursor,
             context,

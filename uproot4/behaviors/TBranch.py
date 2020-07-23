@@ -442,7 +442,12 @@ def _ranges_or_baskets_to_arrays(
         try:
             cursor = uproot4.source.cursor.Cursor(chunk.start)
             basket = uproot4.models.TBasket.Model_TBasket.read(
-                chunk, cursor, {"basket_num": basket_num}, hasbranches._file, hasbranches._file, branch
+                chunk,
+                cursor,
+                {"basket_num": basket_num},
+                hasbranches._file,
+                hasbranches._file,
+                branch,
             )
             original_index = range_original_index[(chunk.start, chunk.stop)]
             replace(ranges_or_baskets, original_index, basket)

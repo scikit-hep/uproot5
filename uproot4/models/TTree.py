@@ -18,22 +18,46 @@ class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttLine", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttMarker", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -133,22 +157,46 @@ class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttLine", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttMarker", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -249,22 +297,46 @@ class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttLine", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttMarker", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -371,22 +443,46 @@ class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttLine", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttMarker", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -509,22 +605,46 @@ class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedMode
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttLine", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttMarker", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (

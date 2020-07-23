@@ -25,6 +25,7 @@ class ObjectArray(object):
         self._byte_offsets = byte_offsets
         self._byte_content = byte_content
         self._cursor_offset = cursor_offset
+        self._detached_file = self._branch.file.detached
 
     def __repr__(self):
         return "ObjectArray({0}, {1}, {2}, {3}, {4}, {5})".format(
@@ -73,7 +74,12 @@ class ObjectArray(object):
                 0, origin=-(byte_start + self._cursor_offset)
             )
             return self._model.read(
-                chunk, cursor, self._context, self._branch.file, self._branch.file, self._branch
+                chunk,
+                cursor,
+                self._context,
+                self._branch.file,
+                self._detached_file,
+                self._branch,
             )
 
         elif isinstance(where, slice):
@@ -93,13 +99,14 @@ class ObjectArray(object):
         source = self._branch.file.source
         context = self._context
         file = self._branch.file
+        selffile = self._detached_file
         branch = self._branch
         byte_start = self._byte_offsets[0]
         for byte_stop in self._byte_offsets[1:]:
             data = self._byte_content[byte_start:byte_stop]
             chunk = uproot4.source.chunk.Chunk.wrap(source, data)
             cursor = uproot4.source.cursor.Cursor(0, origin=-self._cursor_offset)
-            yield self._model.read(chunk, cursor, context, file, file, branch)
+            yield self._model.read(chunk, cursor, context, file, selffile, branch)
             byte_start = byte_stop
 
 

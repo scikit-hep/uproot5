@@ -23,12 +23,24 @@ class Model_TBranch_v10(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -127,12 +139,24 @@ class Model_TBranch_v11(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -233,12 +257,24 @@ class Model_TBranch_v12(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -340,12 +376,24 @@ class Model_TBranch_v13(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._bases.append(
             self.class_named("TAttFill", 2).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         (
@@ -458,7 +506,13 @@ class Model_TBranchElement_v8(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 10).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
@@ -513,7 +567,13 @@ class Model_TBranchElement_v9(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 12).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
@@ -568,7 +628,13 @@ class Model_TBranchElement_v10(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 12).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
@@ -628,7 +694,13 @@ class Model_TBranchObject_v1(
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TBranch", 13).read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
             )
         )
         self._members["fClassName"] = self.class_named("TString").read(
