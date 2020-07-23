@@ -73,7 +73,7 @@ class ObjectArray(object):
                 0, origin=-(byte_start + self._cursor_offset)
             )
             return self._model.read(
-                chunk, cursor, self._context, self._branch.file, self._branch
+                chunk, cursor, self._context, self._branch.file, self._branch.file, self._branch
             )
 
         elif isinstance(where, slice):
@@ -99,7 +99,7 @@ class ObjectArray(object):
             data = self._byte_content[byte_start:byte_stop]
             chunk = uproot4.source.chunk.Chunk.wrap(source, data)
             cursor = uproot4.source.cursor.Cursor(0, origin=-self._cursor_offset)
-            yield self._model.read(chunk, cursor, context, file, branch)
+            yield self._model.read(chunk, cursor, context, file, file, branch)
             byte_start = byte_stop
 
 

@@ -492,7 +492,7 @@ in file {1}""".format(
 
                 classes = uproot4.model.maybe_custom_classes(self._custom_classes)
                 tlist = classes["TList"].read(
-                    streamer_chunk, streamer_cursor, {}, self, self
+                    streamer_chunk, streamer_cursor, {}, self, self, self
                 )
 
                 self._streamers = {}
@@ -911,7 +911,7 @@ class ReadOnlyKey(object):
             context = {"breadcrumbs": (), "TKey": self}
 
             try:
-                out = cls.read(chunk, cursor, context, self._file, self)
+                out = cls.read(chunk, cursor, context, self._file, self._file, self)
 
             except uproot4.deserialization.DeserializationError:
                 breadcrumbs = context.get("breadcrumbs")
@@ -937,7 +937,7 @@ class ReadOnlyKey(object):
                 cls = self._file.class_named(self._fClassName)
                 context = {"breadcrumbs": (), "TKey": self}
 
-                out = cls.read(chunk, cursor, context, self._file, self)
+                out = cls.read(chunk, cursor, context, self._file, self._file, self)
 
         if self._fClassName not in must_be_attached:
             out._file = self._file.detached

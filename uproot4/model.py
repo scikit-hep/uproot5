@@ -88,10 +88,10 @@ class Model(object):
         return self
 
     @classmethod
-    def read(cls, chunk, cursor, context, file, parent, concrete=None):
+    def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
         self = cls.__new__(cls)
         self._cursor = cursor.copy()
-        self._file = file
+        self._file = selffile
         self._parent = parent
         if concrete is None:
             self._concrete = self
@@ -118,15 +118,21 @@ class Model(object):
             elif self._instance_version == 0:
                 cursor.skip(4)
 
-        self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context, file=file)
+        self.hook_before_read_members(
+            chunk=chunk, cursor=cursor, context=context, file=file
+        )
 
         self.read_members(chunk, cursor, context, file)
 
-        self.hook_after_read_members(chunk=chunk, cursor=cursor, context=context, file=file)
+        self.hook_after_read_members(
+            chunk=chunk, cursor=cursor, context=context, file=file
+        )
 
         self.check_numbytes(chunk, cursor, context)
 
-        self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context, file=file)
+        self.hook_before_postprocess(
+            chunk=chunk, cursor=cursor, context=context, file=file
+        )
 
         out = self.postprocess(chunk, cursor, context, file)
 
@@ -445,7 +451,7 @@ class UnknownClassVersion(VersionedModel):
 
 class DispatchByVersion(object):
     @classmethod
-    def read(cls, chunk, cursor, context, file, parent, concrete=None):
+    def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
         import uproot4.deserialization
 
         start_cursor = cursor.copy()
@@ -475,7 +481,7 @@ class DispatchByVersion(object):
             )
 
         return cls.postprocess(
-            versioned_cls.read(chunk, cursor, context, file, parent, concrete=concrete),
+            versioned_cls.read(chunk, cursor, context, file, selffile, parent, concrete=concrete),
             chunk,
             cursor,
             context,

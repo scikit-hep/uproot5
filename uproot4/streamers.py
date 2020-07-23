@@ -132,12 +132,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TNamed.Model_TNamed.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._bases[0]._members["fName"] = _canonical_typename(
@@ -149,7 +144,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
 
         self._members["fElements"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, file, self._concrete
+            chunk, cursor, context, file, self._file, self._concrete
         )
 
     def postprocess(self, chunk, cursor, context, file):
@@ -336,12 +331,7 @@ class Model_TStreamerElement(uproot4.model.Model):
 
         self._bases.append(
             uproot4.models.TNamed.Model_TNamed.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 
@@ -431,12 +421,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 
@@ -488,12 +473,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         if self._instance_version >= 2:
@@ -539,7 +519,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
     ):
         read_members.append(
             "        self._bases.append(c({0}, {1}).read(chunk, cursor, "
-            "context, file, self._parent, concrete=self._concrete))".format(
+            "context, file, self._file, self._parent, concrete=self._concrete))".format(
                 repr(self.name), self.base_version
             )
         )
@@ -566,12 +546,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fCountVersion"] = cursor.field(
@@ -645,12 +620,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         if (
@@ -844,12 +814,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fCountVersion"] = cursor.field(
@@ -890,7 +855,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 "        cursor.skip(6)",
                 "        for tmp in range(self.member({0})):".format(self.count_name),
                 "            self._members[{0}] = c({1}).read(chunk, cursor, "
-                "context, file, self._concrete)".format(
+                "context, file, self._file, self._concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 ),
             ]
@@ -929,12 +894,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fSTLtype"], self._members["fCtype"] = cursor.fields(
@@ -988,7 +948,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
-            "chunk, cursor, context, file, self._concrete)"
+            "chunk, cursor, context, file, self._file, self._concrete)"
             "".format(repr(self.name), len(containers))
         )
 
@@ -1014,12 +974,7 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerSTL.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 
@@ -1051,7 +1006,7 @@ class pointer_types(object):
         if self.fType == uproot4.const.kObjectp or self.fType == uproot4.const.kAnyp:
             read_members.append(
                 "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
-                "file, self._concrete)".format(
+                "file, self._file, self._concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -1071,7 +1026,7 @@ class pointer_types(object):
         elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
             read_members.append(
                 "        self._members[{0}] = read_object_any(chunk, cursor, "
-                "context, file, self)".format(repr(self.name))
+                "context, file, self._file, self)".format(repr(self.name))
             )
             strided_interpretation.append(
                 "        raise uproot4.interpretation.objects.CannotBeStrided("
@@ -1098,12 +1053,7 @@ class Model_TStreamerObjectAnyPointer(pointer_types, Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 
@@ -1112,12 +1062,7 @@ class Model_TStreamerObjectPointer(pointer_types, Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 
@@ -1148,7 +1093,7 @@ class object_types(object):
     ):
         read_members.append(
             "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
-            "file, self._concrete)".format(
+            "file, self._file, self._concrete)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )
@@ -1173,12 +1118,7 @@ class Model_TStreamerObject(object_types, Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 
@@ -1187,12 +1127,7 @@ class Model_TStreamerObjectAny(object_types, Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 
@@ -1201,12 +1136,7 @@ class Model_TStreamerString(object_types, Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 

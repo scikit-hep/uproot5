@@ -15,12 +15,7 @@ class Model_TLeaf_v2(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         (
@@ -31,7 +26,7 @@ class Model_TLeaf_v2(uproot4.model.VersionedModel):
             self._members["fIsUnsigned"],
         ) = cursor.fields(chunk, _tleaf2_format0, context)
         self._members["fLeafCount"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, file, self._concrete
+            chunk, cursor, context, file, self._file, self._concrete
         )
 
     base_names_versions = [("TNamed", 1)]
@@ -58,12 +53,7 @@ class Model_TLeafB_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -87,12 +77,7 @@ class Model_TLeafC_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -116,12 +101,7 @@ class Model_TLeafD_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -145,12 +125,7 @@ class Model_TLeafF_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -174,12 +149,7 @@ class Model_TLeafI_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -203,12 +173,7 @@ class Model_TLeafL_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -232,12 +197,7 @@ class Model_TLeafO_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -261,12 +221,7 @@ class Model_TLeafS_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -290,12 +245,7 @@ class Model_TLeafElement_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fID"], self._members["fType"] = cursor.fields(
@@ -316,12 +266,7 @@ class Model_TLeafD32_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"] = cursor.double32(chunk, context)
@@ -340,12 +285,7 @@ class Model_TLeafF16_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._members["fMinimum"] = cursor.float16(chunk, 12, context)

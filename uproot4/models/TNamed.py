@@ -13,12 +13,7 @@ class Model_TNamed(uproot4.model.Model):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
 

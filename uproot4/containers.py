@@ -54,7 +54,7 @@ def _content_cache_key(content):
         return content.cache_key
 
 
-def _read_nested(model, length, chunk, cursor, context, file, parent, header=True):
+def _read_nested(model, length, chunk, cursor, context, file, selffile, parent, header=True):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
 
@@ -63,11 +63,11 @@ def _read_nested(model, length, chunk, cursor, context, file, parent, header=Tru
         if isinstance(model, AsContainer):
             for i in range(length):
                 values[i] = model.read(
-                    chunk, cursor, context, file, parent, header=header
+                    chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
             for i in range(length):
-                values[i] = model.read(chunk, cursor, context, file, parent)
+                values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         return values
 
 
@@ -148,7 +148,7 @@ class AsContainer(object):
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         raise AssertionError
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         raise AssertionError
 
     def __eq__(self, other):
@@ -187,7 +187,7 @@ class AsFIXME(AsContainer):
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         raise uproot4.interpretation.objects.CannotBeAwkward(self.message)
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         raise uproot4.deserialization.DeserializationError(
             self.message + "; please file a bug report!", None, None, None, None
         )
@@ -248,7 +248,7 @@ class AsString(AsContainer):
             },
         )
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
@@ -313,9 +313,9 @@ class AsPointer(AsContainer):
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         raise uproot4.interpretation.objects.CannotBeAwkward("arbitrary pointer")
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         return uproot4.deserialization.read_object_any(
-            chunk, cursor, context, file, parent
+            chunk, cursor, context, file, selffile, parent
         )
 
     def __eq__(self, other):
@@ -360,7 +360,7 @@ class AsArray(AsContainer):
             parameters={"uproot": {"as": "array", "header": self._header}},
         )
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             cursor.skip(1)
 
@@ -371,7 +371,7 @@ class AsArray(AsContainer):
         else:
             out = []
             while cursor.index < chunk.stop:
-                out.append(self._values.read(chunk, cursor, context, file, parent))
+                out.append(self._values.read(chunk, cursor, context, file, selffile, parent))
             return numpy.array(out, dtype=numpy.dtype(numpy.object))
 
 
@@ -420,11 +420,11 @@ class AsDynamic(AsContainer):
                 parameters={"uproot": {"as": "array", "header": self._header}},
             )
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         classname = cursor.string(chunk, context)
         cursor.skip(1)
         cls = file.class_named(classname)
-        return cls.read(chunk, cursor, context, file, parent)
+        return cls.read(chunk, cursor, context, file, selffile, parent)
 
 
 class AsVector(AsContainer):
@@ -474,7 +474,7 @@ class AsVector(AsContainer):
             parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
@@ -484,7 +484,7 @@ class AsVector(AsContainer):
         length = cursor.field(chunk, _stl_container_size, context)
 
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, parent
+            self._values, length, chunk, cursor, context, file, selffile, parent
         )
         out = STLVector(values)
 
@@ -619,7 +619,7 @@ class AsSet(AsContainer):
             },
         )
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
@@ -628,7 +628,7 @@ class AsSet(AsContainer):
 
         length = cursor.field(chunk, _stl_container_size, context)
 
-        keys = _read_nested(self._keys, length, chunk, cursor, context, file, parent)
+        keys = _read_nested(self._keys, length, chunk, cursor, context, file, selffile, parent)
         out = STLSet(keys)
 
         if self._header and header:
@@ -806,7 +806,7 @@ class AsMap(AsContainer):
             },
         )
 
-    def read(self, chunk, cursor, context, file, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
             num_bytes, instance_version = uproot4.deserialization.numbytes_version(
@@ -819,13 +819,13 @@ class AsMap(AsContainer):
         if _has_nested_header(self._keys) and header:
             cursor.skip(6)
         keys = _read_nested(
-            self._keys, length, chunk, cursor, context, file, parent, header=False
+            self._keys, length, chunk, cursor, context, file, selffile, parent, header=False
         )
 
         if _has_nested_header(self._values) and header:
             cursor.skip(6)
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, parent, header=False
+            self._values, length, chunk, cursor, context, file, selffile, parent, header=False
         )
 
         out = STLMap(keys, values)

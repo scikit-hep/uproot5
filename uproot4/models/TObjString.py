@@ -10,12 +10,7 @@ class Model_TObjString(uproot4.model.Model, str):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._parent,
-                concrete=self._concrete,
+                chunk, cursor, context, file, self._file, self._parent, concrete=self._concrete,
             )
         )
         self._data = cursor.string(chunk, context)

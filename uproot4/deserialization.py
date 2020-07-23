@@ -226,7 +226,7 @@ def numbytes_check(
 _read_object_any_format1 = struct.Struct(">I")
 
 
-def read_object_any(chunk, cursor, context, file, parent, as_class=None):
+def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=None):
     # TBufferFile::ReadObjectAny()
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2684
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2404
@@ -277,9 +277,9 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
             cursor.refs[len(cursor.refs) + 1] = cls
 
         if as_class is None:
-            obj = cls.read(chunk, cursor, context, file, parent)
+            obj = cls.read(chunk, cursor, context, file, selffile, parent)
         else:
-            obj = as_class.read(chunk, cursor, context, file, parent)
+            obj = as_class.read(chunk, cursor, context, file, selffile, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj
@@ -312,10 +312,10 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
                 )
 
             cls = cursor.refs[ref]  # reference class
-            obj = cls.read(chunk, cursor, context, file, parent)
+            obj = cls.read(chunk, cursor, context, file, selffile, parent)
 
         else:
-            obj = as_class.read(chunk, cursor, context, file, parent)
+            obj = as_class.read(chunk, cursor, context, file, selffile, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj
