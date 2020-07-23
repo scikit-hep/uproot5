@@ -427,8 +427,12 @@ class DynamicModel(VersionedModel):
         cls = type(self)
         class_data, instance_data = state
         for k, v in class_data.items():
-            setattr(cls, k, v)
-        cls.__bases__ = class_data["behaviors"] + cls.__bases__
+            if not hasattr(cls, k):
+                setattr(cls, k, v)
+        cls.__bases__ = (
+            tuple(x for x in class_data["behaviors"] if x not in cls.__bases__)
+            + cls.__bases__
+        )
         self.__dict__.update(instance_data)
 
 
