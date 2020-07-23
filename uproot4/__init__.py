@@ -4,6 +4,8 @@ from __future__ import absolute_import
 
 from uproot4.version import __version__
 
+import uproot4.dynamic
+
 classes = {}
 unknown_classes = {}
 

@@ -35,12 +35,25 @@ def test_detachment():
         )
 
 
-# def test_pickle():
-#     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-#         original = f["hpx"]
-#         print(original.file.file_path)
+def test_pickle():
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        original = f["hpx"]
+        original_file_path = original.file.file_path
 
-#         reconstituted = pickle.loads(pickle.dumps(original))
-#         print(reconstituted.file.file_path)
+        reconstituted = pickle.loads(pickle.dumps(original))
+        reconstituted_file_path = reconstituted.file.file_path
 
-#     raise Exception
+        assert original_file_path == reconstituted_file_path
+
+
+def test_pickle_boost():
+    boost_histogram = pytest.importorskip("boost_histogram")
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        original = f["hpx"]
+        original_boost = original.to_boost()
+
+        reconstituted = pickle.loads(pickle.dumps(original))
+        reconstituted_boost = reconstituted.to_boost()
+
+        pickle.loads(pickle.dumps(original_boost))
+        pickle.loads(pickle.dumps(reconstituted_boost))

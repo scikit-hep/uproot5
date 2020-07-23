@@ -52,7 +52,8 @@ def compile_class(file, classes, class_code, class_name):
 
     out = new_scope[class_name]
     out.class_code = class_code
-    out.__module__ = "<dynamic>"
+    out.__module__ = "uproot4.dynamic"
+    setattr(uproot4.dynamic, out.__name__, out)
 
     behaviors = tuple(_yield_all_behaviors(out, c))
     exclude = tuple(
@@ -62,7 +63,6 @@ def compile_class(file, classes, class_code, class_name):
 
     if len(behaviors) != 0:
         out = uproot4._util.new_class(out.__name__, behaviors + (out,), {})
-        out.__module__ = "<dynamic>"
 
     return out
 
