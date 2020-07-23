@@ -129,12 +129,13 @@ _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 
 class Model_TStreamerInfo(uproot4.model.Model):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TNamed.Model_TNamed.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -149,15 +150,8 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
 
         self._members["fElements"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self._concrete
         )
-
-    def postprocess(self, chunk, cursor, context):
-        # prevent circular dependencies and long-lived references to files
-        self._file_uuid = self._file.uuid
-        self._file = None
-        self._parent = None
-        return self
 
     def __repr__(self):
         return "<TStreamerInfo for {0} version {1} at 0x{2:012x}>".format(
@@ -182,7 +176,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
     @property
     def file_uuid(self):
-        return self._file_uuid
+        return self._file.uuid
 
     def _dependencies(self, streamers, out):
         out.append((self.name, self.class_version))
@@ -215,7 +209,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
 
     def class_code(self):
-        read_members = ["    def read_members(self, chunk, cursor, context):"]
+        read_members = ["    def read_members(self, chunk, cursor, context, file):"]
         strided_interpretation = [
             "    @classmethod",
             "    def strided_interpretation(cls, file, header=False, "
@@ -331,7 +325,7 @@ _tstreamerelement_dtype1 = numpy.dtype(">i4")
 
 
 class Model_TStreamerElement(uproot4.model.Model):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         # https://github.com/root-project/root/blob/master/core/meta/src/TStreamerElement.cxx#L505
 
         self._bases.append(
@@ -339,6 +333,7 @@ class Model_TStreamerElement(uproot4.model.Model):
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -379,13 +374,6 @@ class Model_TStreamerElement(uproot4.model.Model):
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
 
-    def postprocess(self, chunk, cursor, context):
-        # prevent circular dependencies and long-lived references to files
-        self._file_uuid = self._file.uuid
-        self._file = None
-        self._parent = None
-        return self
-
     @property
     def name(self):
         return self.member("fName")
@@ -408,7 +396,7 @@ class Model_TStreamerElement(uproot4.model.Model):
 
     @property
     def file_uuid(self):
-        return self._file_uuid
+        return self._file.uuid
 
     def _dependencies(self, streamers, out):
         pass
@@ -428,12 +416,13 @@ class Model_TStreamerElement(uproot4.model.Model):
 
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -459,7 +448,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         read_members.append(
             "        raise uproot4.deserialization.DeserializationError("
             "'not implemented: class members defined by {0} of type {1} in member "
-            "{2} of class {3}', chunk, cursor, context, self._file.file_path)".format(
+            "{2} of class {3}', chunk, cursor, context, file.file_path)".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
@@ -485,12 +474,13 @@ _tstreamerbase_format1 = struct.Struct(">i")
 
 
 class Model_TStreamerBase(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -539,7 +529,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
     ):
         read_members.append(
             "        self._bases.append(c({0}, {1}).read(chunk, cursor, "
-            "context, self._file, self._parent, concrete=self._concrete))".format(
+            "context, file, self._file, self._parent, concrete=self._concrete))".format(
                 repr(self.name), self.base_version
             )
         )
@@ -563,12 +553,13 @@ _tstreamerbasicpointer_format1 = struct.Struct(">i")
 
 
 class Model_TStreamerBasicPointer(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -642,12 +633,13 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
 
 
 class Model_TStreamerBasicType(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -841,12 +833,13 @@ _tstreamerloop_format1 = struct.Struct(">i")
 
 
 class Model_TStreamerLoop(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -890,7 +883,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 "        cursor.skip(6)",
                 "        for tmp in range(self.member({0})):".format(self.count_name),
                 "            self._members[{0}] = c({1}).read(chunk, cursor, "
-                "context, self._file, self._concrete)".format(
+                "context, file, self._file, self._concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 ),
             ]
@@ -926,12 +919,13 @@ _tstreamerstl_format1 = struct.Struct(">ii")
 
 
 class Model_TStreamerSTL(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -988,7 +982,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
-            "chunk, cursor, context, self._file, self._concrete)"
+            "chunk, cursor, context, file, self._file, self._concrete)"
             "".format(repr(self.name), len(containers))
         )
 
@@ -1011,12 +1005,13 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
 
 class Model_TStreamerSTLstring(Model_TStreamerSTL):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerSTL.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -1051,7 +1046,7 @@ class pointer_types(object):
         if self.fType == uproot4.const.kObjectp or self.fType == uproot4.const.kAnyp:
             read_members.append(
                 "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
-                "self._file, self._concrete)".format(
+                "file, self._file, self._concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -1071,7 +1066,7 @@ class pointer_types(object):
         elif self.fType == uproot4.const.kObjectP or self.fType == uproot4.const.kAnyP:
             read_members.append(
                 "        self._members[{0}] = read_object_any(chunk, cursor, "
-                "context, self._file, self)".format(repr(self.name))
+                "context, file, self._file, self)".format(repr(self.name))
             )
             strided_interpretation.append(
                 "        raise uproot4.interpretation.objects.CannotBeStrided("
@@ -1086,7 +1081,7 @@ class pointer_types(object):
             read_members.append(
                 "        raise uproot4.deserialization.DeserializationError("
                 "'not implemented: class members defined by {0} with fType {1}', "
-                "chunk, cursor, context, self._file.file_path)".format(
+                "chunk, cursor, context, file.file_path)".format(
                     type(self).__name__, self.fType,
                 )
             )
@@ -1095,12 +1090,13 @@ class pointer_types(object):
 
 
 class Model_TStreamerObjectAnyPointer(pointer_types, Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -1109,12 +1105,13 @@ class Model_TStreamerObjectAnyPointer(pointer_types, Model_TStreamerElement):
 
 
 class Model_TStreamerObjectPointer(pointer_types, Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -1148,7 +1145,7 @@ class object_types(object):
     ):
         read_members.append(
             "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
-            "self._file, self._concrete)".format(
+            "file, self._file, self._concrete)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )
@@ -1170,12 +1167,13 @@ class object_types(object):
 
 
 class Model_TStreamerObject(object_types, Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -1184,12 +1182,13 @@ class Model_TStreamerObject(object_types, Model_TStreamerElement):
 
 
 class Model_TStreamerObjectAny(object_types, Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -1198,12 +1197,13 @@ class Model_TStreamerObjectAny(object_types, Model_TStreamerElement):
 
 
 class Model_TStreamerString(object_types, Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,

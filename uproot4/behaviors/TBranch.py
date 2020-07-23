@@ -442,7 +442,12 @@ def _ranges_or_baskets_to_arrays(
         try:
             cursor = uproot4.source.cursor.Cursor(chunk.start)
             basket = uproot4.models.TBasket.Model_TBasket.read(
-                chunk, cursor, {"basket_num": basket_num}, hasbranches._file, branch
+                chunk,
+                cursor,
+                {"basket_num": basket_num},
+                hasbranches._file,
+                hasbranches._file,
+                branch,
             )
             original_index = range_original_index[(chunk.start, chunk.stop)]
             replace(ranges_or_baskets, original_index, basket)
@@ -1176,7 +1181,7 @@ _branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\
 
 
 class TBranch(HasBranches):
-    def postprocess(self, chunk, cursor, context):
+    def postprocess(self, chunk, cursor, context, file):
         fWriteBasket = self.member("fWriteBasket")
 
         self._lookup = {}
@@ -1294,7 +1299,7 @@ in file {3}""".format(
         if self._embedded_baskets is None:
             cursor = self._cursor_baskets.copy()
             baskets = uproot4.models.TObjArray.Model_TObjArrayOfTBaskets.read(
-                self.tree.chunk, cursor, {}, self._file, self
+                self.tree.chunk, cursor, {}, self._file, self._file, self
             )
             with self._embedded_baskets_lock:
                 self._embedded_baskets = []
@@ -1474,7 +1479,7 @@ in file {3}""".format(
         if 0 <= basket_num < self._num_normal_baskets:
             chunk, cursor = self.basket_chunk_cursor(basket_num)
             return uproot4.models.TBasket.Model_TBasket.read(
-                chunk, cursor, {"basket_num": basket_num}, self._file, self
+                chunk, cursor, {"basket_num": basket_num}, self._file, self._file, self
             )
         elif 0 <= basket_num < self.num_baskets:
             return self.embedded_baskets[basket_num - self._num_normal_baskets]

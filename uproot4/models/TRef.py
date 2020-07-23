@@ -21,7 +21,7 @@ class Model_TRef(uproot4.model.Model):
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._ref = cursor.field(chunk, _tref_format1, context)
 
     @property
@@ -71,7 +71,7 @@ _trefarray_dtype = numpy.dtype(">i4")
 
 
 class Model_TRefArray(uproot4.model.Model, Sequence):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         cursor.skip(10)
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"] = cursor.field(chunk, _trefarray_format1, context)

@@ -4,6 +4,8 @@ from __future__ import absolute_import
 
 from uproot4.version import __version__
 
+import uproot4.dynamic
+
 classes = {}
 unknown_classes = {}
 
@@ -119,8 +121,6 @@ del pkgutil
 
 
 class KeyInFileError(KeyError):
-    __slots__ = ["key", "because", "cycle", "keys", "file_path", "object_path"]
-
     def __init__(
         self, key, because="", cycle=None, keys=None, file_path=None, object_path=None
     ):

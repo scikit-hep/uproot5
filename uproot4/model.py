@@ -74,6 +74,7 @@ def reset_classes():
 
 class Model(object):
     class_streamer = None
+    behaviors = ()
 
     @classmethod
     def empty(cls):
@@ -88,10 +89,10 @@ class Model(object):
         return self
 
     @classmethod
-    def read(cls, chunk, cursor, context, file, parent, concrete=None):
+    def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
         self = cls.__new__(cls)
         self._cursor = cursor.copy()
-        self._file = file
+        self._file = selffile
         self._parent = parent
         if concrete is None:
             self._concrete = self
@@ -106,7 +107,7 @@ class Model(object):
         old_breadcrumbs = context.get("breadcrumbs", ())
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
-        self.hook_before_read(chunk=chunk, cursor=cursor, context=context)
+        self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
 
         self.read_numbytes_version(chunk, cursor, context)
 
@@ -118,17 +119,23 @@ class Model(object):
             elif self._instance_version == 0:
                 cursor.skip(4)
 
-        self.hook_before_read_members(chunk=chunk, cursor=cursor, context=context)
+        self.hook_before_read_members(
+            chunk=chunk, cursor=cursor, context=context, file=file
+        )
 
-        self.read_members(chunk, cursor, context)
+        self.read_members(chunk, cursor, context, file)
 
-        self.hook_after_read_members(chunk=chunk, cursor=cursor, context=context)
+        self.hook_after_read_members(
+            chunk=chunk, cursor=cursor, context=context, file=file
+        )
 
         self.check_numbytes(chunk, cursor, context)
 
-        self.hook_before_postprocess(chunk=chunk, cursor=cursor, context=context)
+        self.hook_before_postprocess(
+            chunk=chunk, cursor=cursor, context=context, file=file
+        )
 
-        out = self.postprocess(chunk, cursor, context)
+        out = self.postprocess(chunk, cursor, context, file)
 
         context["breadcrumbs"] = old_breadcrumbs
 
@@ -147,7 +154,7 @@ class Model(object):
             self._instance_version,
         ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
 
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         pass
 
     @classmethod
@@ -177,7 +184,7 @@ class Model(object):
             getattr(self._file, "file_path"),
         )
 
-    def postprocess(self, chunk, cursor, context):
+    def postprocess(self, chunk, cursor, context, file):
         return self
 
     def hook_before_read(self, **kwargs):
@@ -320,7 +327,7 @@ class Model(object):
         """
         Passes __enter__ to the file and returns self.
         """
-        if self._file is not None:
+        if isinstance(self._file, uproot4.reading.ReadOnlyFile):
             self._file.source.__enter__()
         return self
 
@@ -329,14 +336,14 @@ class Model(object):
         Passes __exit__ to the file, which closes physical files and shuts down
         any other resources, such as thread pools for parallel reading.
         """
-        if self._file is not None:
+        if isinstance(self._file, uproot4.reading.ReadOnlyFile):
             self._file.source.__exit__(exception_type, exception_value, traceback)
 
     def close(self):
         """
         Closes the file from which this object is derived.
         """
-        if self._file is not None:
+        if isinstance(self._file, uproot4.reading.ReadOnlyFile):
             self._file.close()
 
     @property
@@ -344,14 +351,14 @@ class Model(object):
         """
         True if the associated file is closed; False otherwise.
         """
-        if self._file is not None:
+        if isinstance(self._file, uproot4.reading.ReadOnlyFile):
             return self._file.closed
         else:
             return None
 
 
 class UnknownClass(Model):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._chunk = chunk
         self._context = context
 
@@ -397,9 +404,40 @@ class VersionedModel(Model):
     def class_named(self, classname, version=None):
         return self._file.class_named(classname, version)
 
+    def __getstate__(self):
+        return (
+            {
+                "base_names_versions": self.base_names_versions,
+                "member_names": self.member_names,
+                "class_flags": self.class_flags,
+                "class_code": self.class_code,
+                "class_streamer": self.class_streamer,
+                "behaviors": self.behaviors,
+            },
+            dict(self.__dict__),
+        )
+
+    def __setstate__(self, state):
+        class_data, instance_data = state
+        self.__dict__.update(instance_data)
+
+
+class DynamicModel(VersionedModel):
+    def __setstate__(self, state):
+        cls = type(self)
+        class_data, instance_data = state
+        for k, v in class_data.items():
+            if not hasattr(cls, k):
+                setattr(cls, k, v)
+        cls.__bases__ = (
+            tuple(x for x in class_data["behaviors"] if x not in cls.__bases__)
+            + cls.__bases__
+        )
+        self.__dict__.update(instance_data)
+
 
 class UnknownClassVersion(VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._chunk = chunk
         self._context = context
 
@@ -445,7 +483,7 @@ class UnknownClassVersion(VersionedModel):
 
 class DispatchByVersion(object):
     @classmethod
-    def read(cls, chunk, cursor, context, file, parent, concrete=None):
+    def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
         import uproot4.deserialization
 
         start_cursor = cursor.copy()
@@ -475,10 +513,13 @@ class DispatchByVersion(object):
             )
 
         return cls.postprocess(
-            versioned_cls.read(chunk, cursor, context, file, parent, concrete=concrete),
+            versioned_cls.read(
+                chunk, cursor, context, file, selffile, parent, concrete=concrete
+            ),
             chunk,
             cursor,
             context,
+            file,
         )
 
     @classmethod
@@ -507,7 +548,7 @@ class DispatchByVersion(object):
             return unknown_cls
 
     @classmethod
-    def postprocess(cls, self, chunk, cursor, context):
+    def postprocess(cls, self, chunk, cursor, context, file):
         return self
 
     @classmethod

@@ -52,24 +52,23 @@ def compile_class(file, classes, class_code, class_name):
 
     out = new_scope[class_name]
     out.class_code = class_code
-    out.__module__ = "<dynamic>"
+    out.__module__ = "uproot4.dynamic"
+    setattr(uproot4.dynamic, out.__name__, out)
 
     behaviors = tuple(_yield_all_behaviors(out, c))
     exclude = tuple(
         bad for cls in behaviors if hasattr(cls, "no_inherit") for bad in cls.no_inherit
     )
     behaviors = tuple(cls for cls in behaviors if cls not in exclude)
+    out.behaviors = behaviors
 
     if len(behaviors) != 0:
         out = uproot4._util.new_class(out.__name__, behaviors + (out,), {})
-        out.__module__ = "<dynamic>"
 
     return out
 
 
 class DeserializationError(Exception):
-    __slots__ = ["message", "chunk", "cursor", "context", "file_path"]
-
     def __init__(self, message, chunk, cursor, context, file_path):
         self.message = message
         self.chunk = chunk
@@ -226,7 +225,7 @@ def numbytes_check(
 _read_object_any_format1 = struct.Struct(">I")
 
 
-def read_object_any(chunk, cursor, context, file, parent, as_class=None):
+def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=None):
     # TBufferFile::ReadObjectAny()
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2684
     # https://github.com/root-project/root/blob/c4aa801d24d0b1eeb6c1623fd18160ef2397ee54/io/io/src/TBufferFile.cxx#L2404
@@ -277,9 +276,9 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
             cursor.refs[len(cursor.refs) + 1] = cls
 
         if as_class is None:
-            obj = cls.read(chunk, cursor, context, file, parent)
+            obj = cls.read(chunk, cursor, context, file, selffile, parent)
         else:
-            obj = as_class.read(chunk, cursor, context, file, parent)
+            obj = as_class.read(chunk, cursor, context, file, selffile, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj
@@ -312,10 +311,10 @@ def read_object_any(chunk, cursor, context, file, parent, as_class=None):
                 )
 
             cls = cursor.refs[ref]  # reference class
-            obj = cls.read(chunk, cursor, context, file, parent)
+            obj = cls.read(chunk, cursor, context, file, selffile, parent)
 
         else:
-            obj = as_class.read(chunk, cursor, context, file, parent)
+            obj = as_class.read(chunk, cursor, context, file, selffile, parent)
 
         if vers > 0:
             cursor.refs[beg + uproot4.const.kMapOffset] = obj

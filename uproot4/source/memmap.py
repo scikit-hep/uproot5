@@ -21,8 +21,6 @@ class MemmapSource(uproot4.source.chunk.Source):
     Threading is unnecessary because a memory-map is stateless.
     """
 
-    __slots__ = ["_file_path", "_file", "_fallback"]
-
     _dtype = uproot4.source.chunk.Chunk._dtype
 
     def __init__(self, file_path, **options):

@@ -51,8 +51,6 @@ class XRootDResource(uproot4.source.chunk.Resource):
     Resource wrapping a pyxrootd.File.
     """
 
-    __slots__ = ["_file_path", "_file"]
-
     def __init__(self, file_path, timeout):
         """
         Args:
@@ -153,8 +151,6 @@ class XRootDSource(uproot4.source.chunk.Source):
     """
     Source managing data access using XRootD vector reads.
     """
-
-    __slots__ = ["_file_path", "_max_num_elements", "_resource"]
 
     def __init__(self, file_path, **options):
         """
@@ -313,8 +309,6 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
     Source managing one synchronous or multiple asynchronous XRootD handles as
     a context manager.
     """
-
-    __slots__ = ["_file_path", "_executor"]
 
     def __init__(self, file_path, **options):
         """

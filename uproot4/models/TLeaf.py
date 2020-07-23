@@ -12,12 +12,13 @@ _tleaf2_format0 = struct.Struct(">iii??")
 
 
 class Model_TLeaf_v2(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -31,7 +32,7 @@ class Model_TLeaf_v2(uproot4.model.VersionedModel):
             self._members["fIsUnsigned"],
         ) = cursor.fields(chunk, _tleaf2_format0, context)
         self._members["fLeafCount"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self._concrete
         )
 
     base_names_versions = [("TNamed", 1)]
@@ -55,12 +56,13 @@ _tleafb1_format1 = struct.Struct(">bb")
 
 
 class Model_TLeafB_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -84,12 +86,13 @@ _tleafc1_format1 = struct.Struct(">ii")
 
 
 class Model_TLeafC_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -113,12 +116,13 @@ _tleafd1_format1 = struct.Struct(">dd")
 
 
 class Model_TLeafD_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -142,12 +146,13 @@ _tleaff1_format1 = struct.Struct(">ff")
 
 
 class Model_TLeafF_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -171,12 +176,13 @@ _tleafi1_format1 = struct.Struct(">ii")
 
 
 class Model_TLeafI_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -200,12 +206,13 @@ _tleafl1_format0 = struct.Struct(">qq")
 
 
 class Model_TLeafL_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -229,12 +236,13 @@ _tleafO1_format1 = struct.Struct(">??")
 
 
 class Model_TLeafO_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -258,12 +266,13 @@ _tleafs1_format1 = struct.Struct(">hh")
 
 
 class Model_TLeafS_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -287,12 +296,13 @@ _tleafelement1_format1 = struct.Struct(">ii")
 
 
 class Model_TLeafElement_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -313,12 +323,13 @@ class Model_TLeafElement(uproot4.model.DispatchByVersion):
 
 
 class Model_TLeafD32_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -337,12 +348,13 @@ class Model_TLeafD32(uproot4.model.DispatchByVersion):
 
 
 class Model_TLeafF16_v1(uproot4.model.VersionedModel):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,

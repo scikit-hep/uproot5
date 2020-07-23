@@ -12,7 +12,7 @@ _rntuple_format1 = struct.Struct(">IIQIIQIIQ")
 
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot4.model.Model):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         cursor.skip(4)
         (
             self._members["fVersion"],

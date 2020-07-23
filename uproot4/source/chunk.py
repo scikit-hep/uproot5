@@ -204,8 +204,6 @@ class MultithreadedSource(Source):
 
 
 class RefineChunk(Exception):
-    __slots__ = ["start", "stop", "chunk_start", "chunk_stop"]
-
     def __init__(self, start, stop, chunk_start, chunk_stop):
         self.start = start
         self.stop = stop
@@ -225,8 +223,6 @@ class Chunk(object):
 
     It only blocks when `raw_data`, `get`, or `remainder` is called.
     """
-
-    __slots__ = ["_source", "_start", "_stop", "_future", "_raw_data", "_exact"]
 
     _dtype = numpy.dtype(numpy.uint8)
 

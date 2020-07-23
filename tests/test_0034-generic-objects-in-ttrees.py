@@ -378,7 +378,13 @@ def test_general_awkward_form():
         "Beg": {
             "class": "ListOffsetArray64",
             "offsets": "i64",
-            "content": "uint8",
+            "content": {
+                "class": "NumpyArray",
+                "format": "B",
+                "itemsize": 1,
+                "parameters": {"__array__": "char"},
+                "primitive": "uint8"
+            },
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -391,7 +397,13 @@ def test_general_awkward_form():
         "End": {
             "class": "ListOffsetArray64",
             "offsets": "i64",
-            "content": "uint8",
+            "content": {
+                "class": "NumpyArray",
+                "format": "B",
+                "itemsize": 1,
+                "parameters": {"__array__": "char"},
+                "primitive": "uint8"
+            },
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -509,7 +521,13 @@ def test_general_awkward_form():
         "StdStr": {
             "class": "ListOffsetArray64",
             "offsets": "i64",
-            "content": "uint8",
+            "content": {
+                "class": "NumpyArray",
+                "format": "B",
+                "itemsize": 1,
+                "parameters": {"__array__": "char"},
+                "primitive": "uint8"
+            },
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -580,7 +598,13 @@ def test_general_awkward_form():
             "content": {
                 "class": "ListOffsetArray64",
                 "offsets": "i64",
-                "content": "uint8",
+                "content": {
+                    "class": "NumpyArray",
+                    "format": "B",
+                    "itemsize": 1,
+                    "parameters": {"__array__": "char"},
+                    "primitive": "uint8"
+                },
                 "parameters": {
                     "__array__": "string",
                     "uproot": {
@@ -633,7 +657,13 @@ def test_general_awkward_form():
         "Str": {
             "class": "ListOffsetArray64",
             "offsets": "i64",
-            "content": "uint8",
+            "content": {
+                "class": "NumpyArray",
+                "format": "B",
+                "itemsize": 1,
+                "parameters": {"__array__": "char"},
+                "primitive": "uint8"
+            },
             "parameters": {
                 "__array__": "string",
                 "uproot": {

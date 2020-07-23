@@ -270,8 +270,11 @@ def memory_size(data, error_message=None):
 
 
 def new_class(name, bases, members):
+    import uproot4.dynamic
+
     out = type(ensure_str(name), bases, members)
-    out.__module__ = "<dynamic>"
+    out.__module__ = "uproot4.dynamic"
+    setattr(uproot4.dynamic, out.__name__, out)
     return out
 
 

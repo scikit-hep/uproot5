@@ -19,12 +19,13 @@ _tobjarray_format1 = struct.Struct(">ii")
 
 
 class Model_TObjArray(uproot4.model.Model, Sequence):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -39,7 +40,7 @@ class Model_TObjArray(uproot4.model.Model, Sequence):
         self._data = []
         for i in range(self._members["fSize"]):
             item = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._parent
+                chunk, cursor, context, file, self._file, self._parent
             )
             self._data.append(item)
 
@@ -68,12 +69,13 @@ uproot4.classes["TObjArray"] = Model_TObjArray
 
 
 class Model_TObjArrayOfTBaskets(Model_TObjArray):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -91,6 +93,7 @@ class Model_TObjArrayOfTBaskets(Model_TObjArray):
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 as_class=uproot4.models.TBasket.Model_TBasket,

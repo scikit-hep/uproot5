@@ -18,8 +18,6 @@ class FileResource(uproot4.source.chunk.Resource):
     Resource wrapping a plain file handle.
     """
 
-    __slots__ = ["_file_path", "_file"]
-
     def __init__(self, file_path):
         self._file_path = file_path
         self._file = open(self._file_path, "rb")
@@ -52,8 +50,6 @@ class FileSource(uproot4.source.chunk.MultithreadedSource):
     Source managing one synchronous or multiple asynchronous file handles as a
     context manager.
     """
-
-    __slots__ = ["_file_path", "_executor"]
 
     def __init__(self, file_path, **options):
         """

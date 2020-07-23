@@ -58,23 +58,17 @@ def make_connection(parsed_url, timeout):
 
 class HTTPBackgroundThread(threading.Thread):
     class GetSize(object):
-        __slots__ = ["done", "excinfo"]
-
         def __init__(self):
             self.done = threading.Event()
             self.excinfo = None
 
     class SinglepartWork(object):
-        __slots__ = ["start", "stop", "future"]
-
         def __init__(self, start, stop, future):
             self.start = start
             self.stop = stop
             self.future = future
 
     class MultipartWork(object):
-        __slots__ = ["ranges", "range_string", "futures"]
-
         def __init__(self, ranges, range_string, futures):
             self.ranges = ranges
             self.range_string = range_string
@@ -523,8 +517,6 @@ class HTTPSource(uproot4.source.chunk.Source):
     (206), this falls back to a nested MultithreadedHTTPSource.
     """
 
-    __slots__ = ["_file_path", "_parsed_url", "_connection", "_work_queue", "_worker"]
-
     def __init__(self, file_path, **options):
         """
         Args:
@@ -735,8 +727,6 @@ class HTTPResource(uproot4.source.chunk.Resource):
     Resource wrapping a HTTPConnection or HTTPSConnection.
     """
 
-    __slots__ = ["_file_path", "_timeout", "_parsed_url", "_connection"]
-
     def __init__(self, file_path, timeout):
         """
         Args:
@@ -830,8 +820,6 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
     This Source always makes one request per Chunk (though they may come from
     many concurrent Threads). See HTTPSource for multi-part HTTP(S).
     """
-
-    __slots__ = ["_file_path", "_executor", "_timeout"]
 
     def __init__(self, file_path, **options):
         """

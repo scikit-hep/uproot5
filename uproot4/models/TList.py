@@ -19,12 +19,13 @@ _tlist_format2 = struct.Struct(">B")
 
 
 class Model_TList(uproot4.model.Model, Sequence):
-    def read_members(self, chunk, cursor, context):
+    def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,
                 cursor,
                 context,
+                file,
                 self._file,
                 self._parent,
                 concrete=self._concrete,
@@ -37,7 +38,7 @@ class Model_TList(uproot4.model.Model, Sequence):
         self._data = []
         for i in range(self._members["fSize"]):
             item = uproot4.deserialization.read_object_any(
-                chunk, cursor, context, self._file, self._parent
+                chunk, cursor, context, file, self._file, self._parent
             )
             self._data.append(item)
 
