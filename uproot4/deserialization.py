@@ -69,8 +69,6 @@ def compile_class(file, classes, class_code, class_name):
 
 
 class DeserializationError(Exception):
-    __slots__ = ["message", "chunk", "cursor", "context", "file_path"]
-
     def __init__(self, message, chunk, cursor, context, file_path):
         self.message = message
         self.chunk = chunk

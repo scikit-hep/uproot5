@@ -121,8 +121,6 @@ del pkgutil
 
 
 class KeyInFileError(KeyError):
-    __slots__ = ["key", "because", "cycle", "keys", "file_path", "object_path"]
-
     def __init__(
         self, key, because="", cycle=None, keys=None, file_path=None, object_path=None
     ):

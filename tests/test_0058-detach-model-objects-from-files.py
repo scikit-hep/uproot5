@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import pickle
+import copy
 import os
 
 import numpy
@@ -34,6 +35,17 @@ def test_detachment():
             str(f.file.streamer_named("Event").file_uuid)
             == "9eebcae8-366b-11e7-ab9d-5e789e86beef"
         )
+
+
+def test_copy():
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        original = f["hpx"]
+        original_file_path = original.file.file_path
+
+        reconstituted = copy.deepcopy(original)
+        reconstituted_file_path = reconstituted.file.file_path
+
+        assert original_file_path == reconstituted_file_path
 
 
 def test_pickle():

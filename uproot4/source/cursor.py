@@ -30,8 +30,6 @@ class Cursor(object):
     or advanced while interpreting bytes from Chunks.
     """
 
-    __slots__ = ["_index", "_origin", "_refs"]
-
     def __init__(self, index, origin=0, refs=None):
         """
         Args:

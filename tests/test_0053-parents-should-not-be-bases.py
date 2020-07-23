@@ -9,6 +9,7 @@ import skhep_testdata
 import uproot4
 
 
+@pytest.mark.skipif(uproot4._util.py2, reason="Bug in Python 2")
 def test_TRefArray():
     with uproot4.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
         array = t["GenJet.Particles"].array(entry_stop=1, library="np")[0]
@@ -84,6 +85,7 @@ def test_TRefArray():
         ]
 
 
+@pytest.mark.skipif(uproot4._util.py2, reason="Bug in Python 2")
 def test_awkward_TRefArray():
     awkward1 = pytest.importorskip("awkward1")
     with uproot4.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
@@ -334,6 +336,7 @@ def test_awkward_TRefArray():
         ]
 
 
+@pytest.mark.skipif(uproot4._util.py2, reason="Bug in Python 2")
 def test_same_names():
     with uproot4.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
         one, two = t.values(filter_name="Particle_size")

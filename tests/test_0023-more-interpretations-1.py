@@ -59,7 +59,6 @@ def test_strings4():
         ]
 
 
-@pytest.mark.skip(reason="FIXME: implement unsplit object")
 def test_strings4():
     with uproot4.open(skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root"))[
         "tree/evt"
