@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import pickle
+import os
 
 import numpy
 import pytest
@@ -41,6 +42,19 @@ def test_pickle():
         original_file_path = original.file.file_path
 
         reconstituted = pickle.loads(pickle.dumps(original))
+        reconstituted_file_path = reconstituted.file.file_path
+
+        assert original_file_path == reconstituted_file_path
+
+
+def test_pickle_file(tmp_path):
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        original = f["hpx"]
+        original_file_path = original.file.file_path
+
+        pickle.dump(original, open(os.path.join(tmp_path, "tmp.pkl"), "wb"))
+
+        reconstituted = pickle.load(open(os.path.join(tmp_path, "tmp.pkl"), "rb"))
         reconstituted_file_path = reconstituted.file.file_path
 
         assert original_file_path == reconstituted_file_path

@@ -74,6 +74,7 @@ def reset_classes():
 
 class Model(object):
     class_streamer = None
+    behaviors = ()
 
     @classmethod
     def empty(cls):
@@ -402,6 +403,33 @@ class UnknownClass(Model):
 class VersionedModel(Model):
     def class_named(self, classname, version=None):
         return self._file.class_named(classname, version)
+
+    def __getstate__(self):
+        return (
+            {
+                "base_names_versions": self.base_names_versions,
+                "member_names": self.member_names,
+                "class_flags": self.class_flags,
+                "class_code": self.class_code,
+                "class_streamer": self.class_streamer,
+                "behaviors": self.behaviors,
+            },
+            dict(self.__dict__),
+        )
+
+    def __setstate__(self, state):
+        class_data, instance_data = state
+        self.__dict__.update(instance_data)
+
+
+class DynamicModel(VersionedModel):
+    def __setstate__(self, state):
+        cls = type(self)
+        class_data, instance_data = state
+        for k, v in class_data.items():
+            setattr(cls, k, v)
+        cls.__bases__ = class_data["behaviors"] + cls.__bases__
+        self.__dict__.update(instance_data)
 
 
 class UnknownClassVersion(VersionedModel):

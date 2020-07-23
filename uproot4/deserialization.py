@@ -60,6 +60,7 @@ def compile_class(file, classes, class_code, class_name):
         bad for cls in behaviors if hasattr(cls, "no_inherit") for bad in cls.no_inherit
     )
     behaviors = tuple(cls for cls in behaviors if cls not in exclude)
+    out.behaviors = behaviors
 
     if len(behaviors) != 0:
         out = uproot4._util.new_class(out.__name__, behaviors + (out,), {})

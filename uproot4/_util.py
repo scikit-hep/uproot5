@@ -278,13 +278,6 @@ def new_class(name, bases, members):
     return out
 
 
-def regenerate_object(name, bases, class_members, object_members):
-    cls = new_class(name, bases, class_members)
-    out = cls.__new__(cls)
-    out.__dict__.update(object_members)
-    return out
-
-
 _primitive_awkward_form = {}
 
 
