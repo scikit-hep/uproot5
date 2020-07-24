@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Source and Resource for XRootD (pyxrootd).
+Source and Resource for XRootD.
 """
 
 from __future__ import absolute_import
@@ -48,7 +48,7 @@ def get_server_config(file_path):
 
 class XRootDResource(uproot4.source.chunk.Resource):
     """
-    Resource wrapping a pyxrootd.File.
+    Resource wrapping a XRootD.client.File.
     """
 
     def __init__(self, file_path, timeout):
@@ -94,7 +94,7 @@ in file {1}""".format(
     @property
     def file(self):
         """
-        The pyxrootd.File handle.
+        The XRootD.client.File handle.
         """
         return self._file
 
@@ -106,7 +106,7 @@ in file {1}""".format(
 
     def __exit__(self, exception_type, exception_value, traceback):
         """
-        Closes the pyxrootd.File.
+        Closes the XRootD.client.File.
         """
         self._file.close(timeout=(0 if self._timeout is None else self._timeout))
 

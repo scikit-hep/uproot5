@@ -51,7 +51,7 @@ The full list is
    * `pandas`: only if `library="pd"`.
    * `cupy`: only if `library="cp"` (reads arrays onto GPUs).
    * `dask[array]` and `dask[dataframe]`: experimental, for lazy arrays with `library="da"`.
-   * `pyxrootd`: only if reading files with `root://` URLs.
+   * `xrootd`: only if reading files with `root://` URLs.
    * `lz4` and `xxhash`: only if reading ROOT files that have been LZ4-compressed.
    * `zstandard`: only if reading ROOT files that have been ZSTD-compressed.
    * `backports.lzma`: only if reading ROOT files that have been LZMA-compressed (in Python 2).

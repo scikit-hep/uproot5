@@ -235,7 +235,7 @@ def test_fallback():
 
 @pytest.mark.network
 def test_xrootd():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=0,
@@ -251,7 +251,7 @@ def test_xrootd():
 
 @pytest.mark.network
 def test_xrootd_fail():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.MultithreadedXRootDSource(
             "root://wonky.cern/does-not-exist", num_workers=0, timeout=1
@@ -260,7 +260,7 @@ def test_xrootd_fail():
 
 @pytest.mark.network
 def test_xrootd_vectorread():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
@@ -276,7 +276,7 @@ def test_xrootd_vectorread():
 
 @pytest.mark.network
 def test_xrootd_vectorread_fail():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.XRootDSource(
             "root://wonky.cern/does-not-exist", timeout=1, max_num_elements=None
@@ -285,7 +285,7 @@ def test_xrootd_vectorread_fail():
 
 @pytest.mark.network
 def test_xrootd_size():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
@@ -293,7 +293,7 @@ def test_xrootd_size():
     ) as source:
         size1 = source.num_bytes
 
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,

@@ -94,7 +94,7 @@ def XRootD_client():
 
     except ImportError:
         raise ImportError(
-            """Install pyxrootd package with:
+            """Install XRootD python bindings with:
 
     conda install -c conda-forge xrootd
 
