@@ -11,12 +11,12 @@ import uproot4.source.futures
 import uproot4.extras
 
 
-def get_server_config(file_path):
+def get_server_config(file):
     """
     Query a XRootD server for its configuration
 
     Args:
-        file_path (str): The full URl to the requested resource
+        file (XRootD.client.File): The XRootD File object of the resource
 
     Returns:
         readv_iov_max (int): The maximum number of elements that can be
@@ -24,24 +24,38 @@ def get_server_config(file_path):
         readv_ior_max (int): The maximum number of bytes that can be requested
             per **element** in a vector read
     """
+    # Set from some sensible defaults in case this fails
+    readv_iov_max = 1024
+    readv_ior_max = 2097136
+
     XRootD_client = uproot4.extras.XRootD_client()
 
-    url = XRootD_client.URL(file_path)
-    fs = XRootD_client.FileSystem("{0}://{1}/".format(url.protocol, url.hostid))
+    # Check if the file is stored locally on this machine
+    last_url = file.get_property("LastURL")
+    last_url = XRootD_client.URL(last_url)
+    if last_url.protocol == "file" and last_url.hostid == "localhost":
+        # The URL will redirect to a local file where XRootD will split the
+        # vector reads into multiple sequential reads so just use the default
+        return readv_iov_max, readv_ior_max
 
-    status, readv_iov_max = fs.query(
-        XRootD_client.flags.QueryCode.CONFIG, "readv_iov_max"
+    # Find where the data is actually stored
+    data_server = file.get_property("DataServer")
+    if data_server == "":
+        raise NotImplementedError()
+    data_server = XRootD_client.URL(data_server)
+    data_server = "{0}://{1}/".format(data_server.protocol, data_server.hostid)
+
+    # Use a single query call to avoid doubling the latency
+    fs = XRootD_client.FileSystem(data_server)
+    status, result = fs.query(
+        XRootD_client.flags.QueryCode.CONFIG,
+        "readv_iov_max readv_ior_max"
     )
     if not status.ok:
         raise OSError(status.message)
-    readv_iov_max = int(readv_iov_max)
 
-    status, readv_ior_max = fs.query(
-        XRootD_client.flags.QueryCode.CONFIG, "readv_ior_max"
-    )
-    if not status.ok:
-        raise OSError(status.message)
-    readv_ior_max = int(readv_ior_max)
+    # Result is something like b'178956968\n2097136\n'
+    readv_iov_max, readv_ior_max = map(int, result.split(b"\n", 1))
 
     return readv_iov_max, readv_ior_max
 
@@ -175,7 +189,7 @@ class XRootDSource(uproot4.source.chunk.Source):
         self._resource = XRootDResource(file_path, self._timeout)
 
         # this comes after because it HANGS for nonexistent hosts
-        self._max_num_elements, self._max_element_size = get_server_config(file_path)
+        self._max_num_elements, self._max_element_size = get_server_config(self._resource.file)
         if max_num_elements:
             self._max_num_elements = min(self._max_num_elements, max_num_elements)
 
