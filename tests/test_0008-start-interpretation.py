@@ -70,7 +70,7 @@ def test_http_begin_end_fallback():
 
 @pytest.mark.network
 def test_xrootd_begin_end():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,

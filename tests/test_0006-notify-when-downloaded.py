@@ -159,7 +159,7 @@ def test_http_fallback_workers():
 
 @pytest.mark.network
 def test_xrootd():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     notifications = queue.Queue()
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
@@ -177,7 +177,7 @@ def test_xrootd():
 
 @pytest.mark.network
 def test_xrootd_workers():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     notifications = queue.Queue()
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
@@ -195,7 +195,7 @@ def test_xrootd_workers():
 
 @pytest.mark.network
 def test_xrootd_vectorread():
-    pytest.importorskip("pyxrootd")
+    pytest.importorskip("XRootD")
     notifications = queue.Queue()
     with uproot4.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",

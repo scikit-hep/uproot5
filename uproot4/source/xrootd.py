@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Source and Resource for XRootD (pyxrootd).
+Source and Resource for XRootD.
 """
 
 from __future__ import absolute_import
@@ -11,12 +11,12 @@ import uproot4.source.futures
 import uproot4.extras
 
 
-def get_server_config(file_path):
+def get_server_config(file):
     """
     Query a XRootD server for its configuration
 
     Args:
-        file_path (str): The full URl to the requested resource
+        file (XRootD.client.File): The XRootD File object of the resource
 
     Returns:
         readv_iov_max (int): The maximum number of elements that can be
@@ -24,31 +24,45 @@ def get_server_config(file_path):
         readv_ior_max (int): The maximum number of bytes that can be requested
             per **element** in a vector read
     """
-    pyxrootd_client, XRootD_client = uproot4.extras.pyxrootd_XRootD_client()
+    # Set from some sensible defaults in case this fails
+    readv_iov_max = 1024
+    readv_ior_max = 2097136
 
-    url = XRootD_client.URL(file_path)
-    fs = XRootD_client.FileSystem("{0}://{1}/".format(url.protocol, url.hostid))
+    XRootD_client = uproot4.extras.XRootD_client()
 
-    status, readv_iov_max = fs.query(
-        XRootD_client.flags.QueryCode.CONFIG, "readv_iov_max"
+    # Check if the file is stored locally on this machine
+    last_url = file.get_property("LastURL")
+    last_url = XRootD_client.URL(last_url)
+    if last_url.protocol == "file" and last_url.hostid == "localhost":
+        # The URL will redirect to a local file where XRootD will split the
+        # vector reads into multiple sequential reads so just use the default
+        return readv_iov_max, readv_ior_max
+
+    # Find where the data is actually stored
+    data_server = file.get_property("DataServer")
+    if data_server == "":
+        raise NotImplementedError()
+    data_server = XRootD_client.URL(data_server)
+    data_server = "{0}://{1}/".format(data_server.protocol, data_server.hostid)
+
+    # Use a single query call to avoid doubling the latency
+    fs = XRootD_client.FileSystem(data_server)
+    status, result = fs.query(
+        XRootD_client.flags.QueryCode.CONFIG,
+        "readv_iov_max readv_ior_max"
     )
     if not status.ok:
         raise OSError(status.message)
-    readv_iov_max = int(readv_iov_max)
 
-    status, readv_ior_max = fs.query(
-        XRootD_client.flags.QueryCode.CONFIG, "readv_ior_max"
-    )
-    if not status.ok:
-        raise OSError(status.message)
-    readv_ior_max = int(readv_ior_max)
+    # Result is something like b'178956968\n2097136\n'
+    readv_iov_max, readv_ior_max = map(int, result.split(b"\n", 1))
 
     return readv_iov_max, readv_ior_max
 
 
 class XRootDResource(uproot4.source.chunk.Resource):
     """
-    Resource wrapping a pyxrootd.File.
+    Resource wrapping a XRootD.client.File.
     """
 
     def __init__(self, file_path, timeout):
@@ -58,21 +72,21 @@ class XRootDResource(uproot4.source.chunk.Resource):
             timeout (int): Number of seconds (loosely interpreted by XRootD)
                 before giving up on a remote file.
         """
-        pyxrootd_client, XRootD_client = uproot4.extras.pyxrootd_XRootD_client()
+        XRootD_client = uproot4.extras.XRootD_client()
         self._file_path = file_path
         self._timeout = timeout
-        self._file = pyxrootd_client.File()
+        self._file = XRootD_client.File()
 
         status, dummy = self._file.open(
             self._file_path, timeout=(0 if timeout is None else timeout)
         )
 
-        if status.get("error", None):
+        if status.error:
             self._file.close(timeout=(0 if self._timeout is None else self._timeout))
             raise OSError(
                 """XRootD error: {0}
 in file {1}""".format(
-                    status["message"], self._file_path
+                    status.message, self._file_path
                 )
             )
 
@@ -94,7 +108,7 @@ in file {1}""".format(
     @property
     def file(self):
         """
-        The pyxrootd.File handle.
+        The XRootD.client.File handle.
         """
         return self._file
 
@@ -106,7 +120,7 @@ in file {1}""".format(
 
     def __exit__(self, exception_type, exception_value, traceback):
         """
-        Closes the pyxrootd.File.
+        Closes the XRootD.client.File.
         """
         self._file.close(timeout=(0 if self._timeout is None else self._timeout))
 
@@ -128,12 +142,12 @@ in file {1}""".format(
         status, data = self._file.read(
             start, stop - start, timeout=(0 if self._timeout is None else self._timeout)
         )
-        if status.get("error", None):
+        if status.error:
             self._file.close(timeout=(0 if self._timeout is None else self._timeout))
             raise OSError(
                 """XRootD error: {0}
 in file {1}""".format(
-                    status["message"], self._file_path
+                    status.message, self._file_path
                 )
             )
         return data
@@ -175,7 +189,7 @@ class XRootDSource(uproot4.source.chunk.Source):
         self._resource = XRootDResource(file_path, self._timeout)
 
         # this comes after because it HANGS for nonexistent hosts
-        self._max_num_elements, self._max_element_size = get_server_config(file_path)
+        self._max_num_elements, self._max_element_size = get_server_config(self._resource.file)
         if max_num_elements:
             self._max_num_elements = min(self._max_num_elements, max_num_elements)
 
@@ -201,14 +215,14 @@ class XRootDSource(uproot4.source.chunk.Source):
             status, info = self._resource._file.stat(
                 timeout=(0 if self._timeout is None else self._timeout)
             )
-            if not status["ok"]:
+            if not status.ok:
                 raise OSError(
                     """XRootD error: {0}
 in file {1}""".format(
                         status["message"], self._file_path
                     )
                 )
-            self._num_bytes = info["size"]
+            self._num_bytes = info.size
 
         return self._num_bytes
 
@@ -277,19 +291,19 @@ in file {1}""".format(
                 chunks.append(chunk)
 
             def _callback(status, response, hosts, futures=futures):
-                for chunk in response["chunks"]:
-                    future = futures[(chunk["offset"], chunk["length"])]
-                    future._result = chunk["buffer"]
+                for chunk in response.chunks:
+                    future = futures[(chunk.offset, chunk.length)]
+                    future._result = chunk.buffer
                     future._set_finished()
 
             status = self._resource._file.vector_read(
                 chunks=request_ranges, callback=_callback
             )
-            if not status["ok"]:
+            if not status.ok:
                 raise OSError(
                     """XRootD error: {0}
 in file {1}""".format(
-                        status["message"], self._file_path
+                        status.message, self._file_path
                     )
                 )
 
@@ -356,14 +370,14 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
             status, info = self._resource._file.stat(
                 timeout=(0 if self._timeout is None else self._timeout)
             )
-            if not status["ok"]:
+            if not status.ok:
                 raise OSError(
                     """XRootD error: {0}
 in file {1}""".format(
                         status["message"], self._file_path
                     )
                 )
-            self._num_bytes = info["size"]
+            self._num_bytes = info.size
 
         return self._num_bytes
 
