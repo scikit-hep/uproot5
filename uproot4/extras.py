@@ -86,11 +86,9 @@ or
         return dask.dataframe
 
 
-def pyxrootd_XRootD_client():
+def XRootD_client():
     os.environ["XRD_RUNFORKHANDLER"] = "1"  # set multiprocessing flag
     try:
-        import pyxrootd
-        import pyxrootd.client
         import XRootD
         import XRootD.client
 
@@ -105,7 +103,7 @@ def pyxrootd_XRootD_client():
         )
 
     else:
-        return pyxrootd.client, XRootD.client
+        return XRootD.client
 
 
 def lzma():

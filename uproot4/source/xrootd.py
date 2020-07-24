@@ -24,7 +24,7 @@ def get_server_config(file_path):
         readv_ior_max (int): The maximum number of bytes that can be requested
             per **element** in a vector read
     """
-    pyxrootd_client, XRootD_client = uproot4.extras.pyxrootd_XRootD_client()
+    XRootD_client = uproot4.extras.XRootD_client()
 
     url = XRootD_client.URL(file_path)
     fs = XRootD_client.FileSystem("{0}://{1}/".format(url.protocol, url.hostid))
@@ -58,21 +58,21 @@ class XRootDResource(uproot4.source.chunk.Resource):
             timeout (int): Number of seconds (loosely interpreted by XRootD)
                 before giving up on a remote file.
         """
-        pyxrootd_client, XRootD_client = uproot4.extras.pyxrootd_XRootD_client()
+        XRootD_client = uproot4.extras.XRootD_client()
         self._file_path = file_path
         self._timeout = timeout
-        self._file = pyxrootd_client.File()
+        self._file = XRootD_client.File()
 
         status, dummy = self._file.open(
             self._file_path, timeout=(0 if timeout is None else timeout)
         )
 
-        if status.get("error", None):
+        if status.error:
             self._file.close(timeout=(0 if self._timeout is None else self._timeout))
             raise OSError(
                 """XRootD error: {0}
 in file {1}""".format(
-                    status["message"], self._file_path
+                    status.message, self._file_path
                 )
             )
 
@@ -128,12 +128,12 @@ in file {1}""".format(
         status, data = self._file.read(
             start, stop - start, timeout=(0 if self._timeout is None else self._timeout)
         )
-        if status.get("error", None):
+        if status.error:
             self._file.close(timeout=(0 if self._timeout is None else self._timeout))
             raise OSError(
                 """XRootD error: {0}
 in file {1}""".format(
-                    status["message"], self._file_path
+                    status.message, self._file_path
                 )
             )
         return data
@@ -201,14 +201,14 @@ class XRootDSource(uproot4.source.chunk.Source):
             status, info = self._resource._file.stat(
                 timeout=(0 if self._timeout is None else self._timeout)
             )
-            if not status["ok"]:
+            if not status.ok:
                 raise OSError(
                     """XRootD error: {0}
 in file {1}""".format(
                         status["message"], self._file_path
                     )
                 )
-            self._num_bytes = info["size"]
+            self._num_bytes = info.size
 
         return self._num_bytes
 
@@ -277,19 +277,19 @@ in file {1}""".format(
                 chunks.append(chunk)
 
             def _callback(status, response, hosts, futures=futures):
-                for chunk in response["chunks"]:
-                    future = futures[(chunk["offset"], chunk["length"])]
-                    future._result = chunk["buffer"]
+                for chunk in response.chunks:
+                    future = futures[(chunk.offset, chunk.length)]
+                    future._result = chunk.buffer
                     future._set_finished()
 
             status = self._resource._file.vector_read(
                 chunks=request_ranges, callback=_callback
             )
-            if not status["ok"]:
+            if not status.ok:
                 raise OSError(
                     """XRootD error: {0}
 in file {1}""".format(
-                        status["message"], self._file_path
+                        status.message, self._file_path
                     )
                 )
 
@@ -356,14 +356,14 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
             status, info = self._resource._file.stat(
                 timeout=(0 if self._timeout is None else self._timeout)
             )
-            if not status["ok"]:
+            if not status.ok:
                 raise OSError(
                     """XRootD error: {0}
 in file {1}""".format(
                         status["message"], self._file_path
                     )
                 )
-            self._num_bytes = info["size"]
+            self._num_bytes = info.size
 
         return self._num_bytes
 
