@@ -9,6 +9,17 @@ def get_version():
     exec(open(os.path.join("uproot4", "version.py")).read(), g)
     return g["__version__"]
 
+tests_require = [
+    "pytest",
+    "flake8",
+    "scikit-hep-testdata",
+    "pandas",
+    "awkward1",
+    "boost_histogram",
+    "hist>=2.0.0a1",
+    "dask[array,dataframe]",
+]
+
 setup(name = "uproot4",
       packages = find_packages(exclude = ["tests"]),
       scripts = [],
@@ -26,7 +37,10 @@ setup(name = "uproot4",
       test_suite = "tests",
       python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
       install_requires = ["numpy"],
-      tests_require = ["pytest", "flake8", "scikit-hep-testdata", "pandas", "awkward1"],
+      tests_require = tests_require,
+      extras_require = {
+          "testing": tests_require,
+      },
 
       classifiers = [
 #         "Development Status :: 1 - Planning",
