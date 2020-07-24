@@ -250,6 +250,16 @@ def test_xrootd():
 
 
 @pytest.mark.network
+def test_xrootd_deadlock():
+    pytest.importorskip("XRootD")
+    # Attach this file to the "test_xrootd_deadlock" function so it leaks
+    pytest.uproot_test_xrootd_deadlock_f = uproot4.source.xrootd.XRootDResource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=20,
+    )
+
+
+@pytest.mark.network
 def test_xrootd_fail():
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
