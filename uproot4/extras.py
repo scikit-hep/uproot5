@@ -102,8 +102,26 @@ def XRootD_client():
             """cmake; setting PYTHONPATH and LD_LIBRARY_PATH appropriately)."""
         )
 
-    else:
-        return XRootD.client
+    import atexit
+
+    # TODO: When fixed this should only be used for buggy XRootD versions
+    # This is registered after calling "import XRootD.client" so it is ran
+    # before XRootD.client.finalize.finalize()
+    @atexit.register
+    def cleanup_open_files():
+        """Clean up any open xrootd file objects at exit
+
+        Required to avoid deadlocks from XRootD, for details see:
+        * https://github.com/scikit-hep/uproot/issues/504
+        * https://github.com/xrootd/xrootd/pull/1260
+        """
+        import gc
+
+        for obj in gc.get_objects():
+            if isinstance(obj, XRootD.client.file.File) and obj.is_open():
+                obj.close()
+
+    return XRootD.client
 
 
 def lzma():
