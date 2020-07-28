@@ -20,7 +20,7 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
 
     @property
     def aliases(self):
-        aliases = self.member("fAliases")
+        aliases = self.member("fAliases", none_if_missing=True)
         if aliases is None:
             return {}
         else:
