@@ -174,11 +174,12 @@ class AsJagged(uproot4.interpretation.Interpretation):
             byte_starts = byte_offsets[:-1] + self._header_bytes
             byte_stops = byte_offsets[1:]
 
-            mask = numpy.zeros(len(data), dtype=numpy.int8)
-            mask[byte_starts[byte_starts < len(data)]] = 1
-            numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
-            numpy.cumsum(mask, out=mask)
-            data = data[mask.view(numpy.bool_)]
+            #mask out the headers
+            header_offsets = numpy.arange(self._header_bytes)
+            header_idxs = (byte_offsets[:-1] + header_offsets[:,numpy.newaxis]).ravel()
+            mask = numpy.full(len(data), True, dtype=numpy.bool_)
+            mask[header_idxs] = False
+            data = data[mask]
 
             content = self._content.basket_array(
                 data, None, basket, branch, context, cursor_offset
