@@ -174,9 +174,9 @@ class AsJagged(uproot4.interpretation.Interpretation):
             byte_starts = byte_offsets[:-1] + self._header_bytes
             byte_stops = byte_offsets[1:]
 
-            #mask out the headers
+            # mask out the headers
             header_offsets = numpy.arange(self._header_bytes)
-            header_idxs = (byte_offsets[:-1] + header_offsets[:,numpy.newaxis]).ravel()
+            header_idxs = (byte_offsets[:-1] + header_offsets[:, numpy.newaxis]).ravel()
             mask = numpy.full(len(data), True, dtype=numpy.bool_)
             mask[header_idxs] = False
             data = data[mask]
