@@ -18,6 +18,13 @@ import uproot4.source.http
 import uproot4.source.xrootd
 
 
+def tobytes(x):
+    if hasattr(x, "tobytes"):
+        return x.tobytes()
+    else:
+        return x.tostring()
+
+
 def test_file(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
     with open(filename, "wb") as tmp:
@@ -40,7 +47,7 @@ def test_file(tmpdir):
                 [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
             ):
                 chunk = source.chunk(start, stop)
-                assert chunk.raw_data.tostring() == expected[i]
+                assert tobytes(chunk.raw_data) == expected[i]
 
         with pytest.raises(Exception):
             uproot4.source.file.FileSource(
@@ -67,7 +74,7 @@ def test_memmap(tmpdir):
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
         ):
             chunk = source.chunk(start, stop)
-            assert chunk.raw_data.tostring() == expected[i]
+            assert tobytes(chunk.raw_data) == expected[i]
 
     with pytest.raises(Exception):
         uproot4.source.memmap.MemmapSource(
@@ -83,7 +90,7 @@ def test_http():
         ) as source:
             for start, stop in [(0, 100), (50, 55), (200, 400)]:
                 chunk = source.chunk(start, stop)
-                assert len(chunk.raw_data.tostring()) == stop - start
+                assert len(tobytes(chunk.raw_data)) == stop - start
 
             with pytest.raises(Exception):
                 with uproot4.source.http.MultithreadedHTTPSource(
@@ -101,13 +108,13 @@ def test_http_multipart():
     ) as source:
         for start, stop in [(0, 100), (50, 55), (200, 400)]:
             chunk = source.chunk(start, stop)
-            assert len(chunk.raw_data.tostring()) == stop - start
+            assert len(tobytes(chunk.raw_data)) == stop - start
 
         with pytest.raises(Exception):
             with uproot4.source.http.HTTPSource(
                 "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=0
             ) as source:
-                source.chunk(0, 100).raw_data.tostring()
+                tobytes(source.chunk(0, 100).raw_data)
 
 
 @pytest.mark.network
@@ -118,11 +125,11 @@ def test_xrootd():
         num_workers=0,
         timeout=10,
     ) as source:
-        one = source.chunk(0, 100).raw_data.tostring()
+        one = tobytes(source.chunk(0, 100).raw_data)
         assert len(one) == 100
-        two = source.chunk(50, 55).raw_data.tostring()
+        two = tobytes(source.chunk(50, 55).raw_data)
         assert len(two) == 5
-        three = source.chunk(200, 400).raw_data.tostring()
+        three = tobytes(source.chunk(200, 400).raw_data)
         assert len(three) == 200
         assert one[:4] == b"root"
 
@@ -135,11 +142,11 @@ def test_xrootd_worker():
         num_workers=5,
         timeout=10,
     ) as source:
-        one = source.chunk(0, 100).raw_data.tostring()
+        one = tobytes(source.chunk(0, 100).raw_data)
         assert len(one) == 100
-        two = source.chunk(50, 55).raw_data.tostring()
+        two = tobytes(source.chunk(50, 55).raw_data)
         assert len(two) == 5
-        three = source.chunk(200, 400).raw_data.tostring()
+        three = tobytes(source.chunk(200, 400).raw_data)
         assert len(three) == 200
         assert one[:4] == b"root"
 
@@ -152,10 +159,10 @@ def test_xrootd_vectorread():
         timeout=10,
         max_num_elements=None,
     ) as source:
-        one = source.chunk(0, 100).raw_data.tostring()
+        one = tobytes(source.chunk(0, 100).raw_data)
         assert len(one) == 100
-        two = source.chunk(50, 55).raw_data.tostring()
+        two = tobytes(source.chunk(50, 55).raw_data)
         assert len(two) == 5
-        three = source.chunk(200, 400).raw_data.tostring()
+        three = tobytes(source.chunk(200, 400).raw_data)
         assert len(three) == 200
         assert one[:4] == b"root"
