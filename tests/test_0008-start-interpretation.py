@@ -18,6 +18,13 @@ import uproot4.source.http
 import uproot4.source.xrootd
 
 
+def tobytes(x):
+    if hasattr(x, "tobytes"):
+        return x.tobytes()
+    else:
+        return x.tostring()
+
+
 def test_classname_encoding(tmpdir):
     assert (
         uproot4.model.classname_encode("namespace::some.deep<templated, thing>", 12)
@@ -52,8 +59,8 @@ def test_http_begin_end():
         filename, timeout=10, num_fallback_workers=0
     ) as source:
         begin, end = source.begin_end_chunks(20, 30)
-        assert len(begin.raw_data.tostring()) == 20
-        assert len(end.raw_data.tostring()) == 30
+        assert len(tobytes(begin.raw_data)) == 20
+        assert len(tobytes(end.raw_data)) == 30
 
 
 @pytest.mark.network
@@ -63,9 +70,9 @@ def test_http_begin_end_fallback():
         filename, timeout=10, num_fallback_workers=0
     ) as source:
         begin, end = source.begin_end_chunks(20, 30)
-        assert len(begin.raw_data.tostring()) == 20
-        assert len(end.raw_data.tostring()) == 30
-        assert begin.raw_data.tostring()[:4] == b"root"
+        assert len(tobytes(begin.raw_data)) == 20
+        assert len(tobytes(end.raw_data)) == 30
+        assert tobytes(begin.raw_data)[:4] == b"root"
 
 
 @pytest.mark.network
@@ -77,6 +84,6 @@ def test_xrootd_begin_end():
         max_num_elements=None,
     ) as source:
         begin, end = source.begin_end_chunks(512, 64 * 1024)
-        assert len(begin.raw_data.tostring()) == 512
-        assert len(end.raw_data.tostring()) == 64 * 1024
-        assert begin.raw_data.tostring()[:4] == b"root"
+        assert len(tobytes(begin.raw_data)) == 512
+        assert len(tobytes(end.raw_data)) == 64 * 1024
+        assert tobytes(begin.raw_data)[:4] == b"root"

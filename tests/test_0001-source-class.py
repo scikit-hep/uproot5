@@ -23,6 +23,13 @@ import uproot4.source.http
 import uproot4.source.xrootd
 
 
+def tobytes(x):
+    if hasattr(x, "tobytes"):
+        return x.tobytes()
+    else:
+        return x.tostring()
+
+
 def test_file(tmpdir):
     filename = os.path.join(str(tmpdir), "tmp.raw")
 
@@ -35,7 +42,7 @@ def test_file(tmpdir):
             chunks = tmp.chunks(
                 [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
             )
-            assert [chunk.raw_data.tostring() for chunk in chunks] == [
+            assert [tobytes(chunk.raw_data) for chunk in chunks] == [
                 b"******",
                 b"    ",
                 b"...",
@@ -69,7 +76,7 @@ def test_memmap(tmpdir):
     source = uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0)
     with source as tmp:
         chunks = tmp.chunks([(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)])
-        assert [chunk.raw_data.tostring() for chunk in chunks] == [
+        assert [tobytes(chunk.raw_data) for chunk in chunks] == [
             b"******",
             b"    ",
             b"...",
@@ -98,7 +105,7 @@ def test_http():
     )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
-        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
@@ -108,7 +115,7 @@ def test_http():
     )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
-        assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
+        assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
 def colons_and_ports():
@@ -131,7 +138,7 @@ def test_http_port():
     )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
-        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
@@ -141,7 +148,7 @@ def test_http_port():
     )
     with source as tmp:
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
-        assert [x.raw_data.tostring() for x in chunks] == [one, two, three]
+        assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
 @pytest.mark.network
@@ -199,7 +206,7 @@ def test_no_multipart():
             timeout=10,
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-            one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+            one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
             assert len(one) == 100
             assert len(two) == 5
             assert len(three) == 200
@@ -226,7 +233,7 @@ def test_fallback():
             num_fallback_workers=num_workers,
         ) as source:
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-            one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+            one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
             assert len(one) == 100
             assert len(two) == 5
             assert len(three) == 200
@@ -242,7 +249,7 @@ def test_xrootd():
         timeout=20,
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
@@ -277,7 +284,7 @@ def test_xrootd_vectorread():
         max_num_elements=None,
     ) as source:
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
-        one, two, three = [chunk.raw_data.tostring() for chunk in chunks]
+        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
