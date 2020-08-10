@@ -49,9 +49,8 @@ jobs:
       - name: "Setup paths"
         shell: "bash -l {0}"
         run: |
-          echo $PATH
-          export PATH="$HOME/miniconda3/bin:$HOME/miniconda3/Scripts:$PATH"
-          echo $PATH
+          echo "::add-path::$HOME/miniconda3/bin"
+          echo "::add-path::$HOME/miniconda3/Scripts"
 
       - name: "Create conda environment"
         shell: "bash -l {0}"
