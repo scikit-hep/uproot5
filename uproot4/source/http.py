@@ -663,7 +663,9 @@ class HTTPSource(uproot4.source.chunk.Source):
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
         if self._worker.fallback is not None:
-            return self._worker.fallback.chunks(ranges)
+            return self._worker.fallback.chunks(
+                ranges, exact=exact, notifications=notifications
+            )
 
         else:
             range_strings = []

@@ -501,7 +501,7 @@ def _ranges_or_baskets_to_arrays(
 
     while len(arrays) < len(branchid_interpretation):
         try:
-            obj = notifications.get(timeout=0.001)
+            obj = notifications.get()
         except queue.Empty:
             continue
 

@@ -310,6 +310,7 @@ class ThreadResourceWorker(threading.Thread):
                     future._result = future._task(self._resource)
             except Exception:
                 future._excinfo = sys.exc_info()
+
             future._set_finished()
 
 
