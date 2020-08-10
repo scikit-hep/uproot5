@@ -500,10 +500,7 @@ def _ranges_or_baskets_to_arrays(
             notifications.put(None)
 
     while len(arrays) < len(branchid_interpretation):
-        try:
-            obj = notifications.get()
-        except queue.Empty:
-            continue
+        obj = notifications.get()
 
         if isinstance(obj, uproot4.source.chunk.Chunk):
             chunk = obj
