@@ -1178,10 +1178,10 @@ class HasBranches(Mapping):
     def common_entry_offsets(self, branches=None):
         """Find common breakpoints in baskets
 
-        Arguments:
-            branches (list of str): If None, compute common
+        Args:
+            branches (list): If None, compute common
             offsets for all branches, otherwise only compute
-            common offsets for listed branches
+            common offsets for listed branch names
 
         Returns a list of integers
         """
@@ -1198,7 +1198,7 @@ class HasBranches(Mapping):
                 common_offsets = set(branch.common_entry_offsets())
             else:
                 common_offsets &= set(branch.common_entry_offsets())
-        return sorted(list(common_offsets))
+        return sorted(common_offsets)
 
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
