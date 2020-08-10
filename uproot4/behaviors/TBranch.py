@@ -1175,6 +1175,31 @@ class HasBranches(Mapping):
                 for branch, basket_num, basket in ranges_or_baskets:
                     previous_baskets[branch.cache_key, basket_num] = basket
 
+    def common_entry_offsets(self, branches=None):
+        """Find common breakpoints in baskets
+
+        Arguments:
+            branches (list of str): If None, compute common
+            offsets for all branches, otherwise only compute
+            common offsets for listed branches
+
+        Returns a list of integers
+        """
+        if not len(self):
+            # assume it is a "leaf" branch
+            return self.entry_offsets
+        elif branches is None:
+            branches = self
+        else:
+            branches = (self[b] for b in branches)
+        common_offsets = None
+        for branch in branches:
+            if common_offsets is None:
+                common_offsets = set(branch.common_entry_offsets())
+            else:
+                common_offsets &= set(branch.common_entry_offsets())
+        return sorted(list(common_offsets))
+
 
 _branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
 _branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\])*")
