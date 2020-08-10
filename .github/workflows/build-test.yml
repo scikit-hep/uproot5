@@ -35,13 +35,15 @@ jobs:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           channels: conda-forge
+        run: |
+          conda env list
+          conda update -n base -c defaults conda
+          conda info
 
       - name: "install most dependencies"
         shell: "bash -l {0}"
         run: |
           conda env list
-          conda update -n base -c defaults conda
-          conda info
           conda install numpy pandas pytest flake8 lz4 python-xxhash
           pip install scikit-hep-testdata
           conda list
