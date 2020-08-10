@@ -40,7 +40,8 @@ jobs:
         shell: "bash -l {0}"
         run: |
           conda env list
-          conda update -n base -c defaults conda
+          conda info
+          conda update conda
           conda install numpy pandas pytest flake8 lz4 python-xxhash
           pip install scikit-hep-testdata
           conda list
