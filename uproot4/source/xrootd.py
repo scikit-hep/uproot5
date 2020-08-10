@@ -48,8 +48,7 @@ def get_server_config(file):
     # Use a single query call to avoid doubling the latency
     fs = XRootD_client.FileSystem(data_server)
     status, result = fs.query(
-        XRootD_client.flags.QueryCode.CONFIG,
-        "readv_iov_max readv_ior_max"
+        XRootD_client.flags.QueryCode.CONFIG, "readv_iov_max readv_ior_max"
     )
     if not status.ok:
         raise OSError(status.message)
@@ -189,7 +188,9 @@ class XRootDSource(uproot4.source.chunk.Source):
         self._resource = XRootDResource(file_path, self._timeout)
 
         # this comes after because it HANGS for nonexistent hosts
-        self._max_num_elements, self._max_element_size = get_server_config(self._resource.file)
+        self._max_num_elements, self._max_element_size = get_server_config(
+            self._resource.file
+        )
         if max_num_elements:
             self._max_num_elements = min(self._max_num_elements, max_num_elements)
 

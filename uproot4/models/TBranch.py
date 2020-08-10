@@ -64,7 +64,10 @@ class Model_TBranch_v10(
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk, context)
+            if not cursor.skip_over(chunk, context):
+                self.class_named("TObjArray").read(
+                    chunk, cursor, context, file, self._file, self._concrete
+                )
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete
@@ -181,7 +184,10 @@ class Model_TBranch_v11(
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk, context)
+            if not cursor.skip_over(chunk, context):
+                self.class_named("TObjArray").read(
+                    chunk, cursor, context, file, self._file, self._concrete
+                )
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete
@@ -299,7 +305,10 @@ class Model_TBranch_v12(
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk, context)
+            if not cursor.skip_over(chunk, context):
+                self.class_named("TObjArray").read(
+                    chunk, cursor, context, file, self._file, self._concrete
+                )
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete
@@ -423,7 +432,10 @@ class Model_TBranch_v13(
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
-            cursor.skip_over(chunk, context)
+            if not cursor.skip_over(chunk, context):
+                self.class_named("TObjArray").read(
+                    chunk, cursor, context, file, self._file, self._concrete
+                )
         else:
             self._members["fBaskets"] = self.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete

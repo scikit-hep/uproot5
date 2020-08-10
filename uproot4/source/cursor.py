@@ -141,16 +141,18 @@ class Cursor(object):
         """
         Move the index after serialized data for an object with
         numbytes_version.
+
+        Returns True if successful (cursor has moved), False otherwise (cursor
+        has NOT moved).
         """
         num_bytes, version = uproot4.deserialization.numbytes_version(
             chunk, self, context, move=False
         )
         if num_bytes is None:
-            raise TypeError(
-                "Cursor.skip_over can only be used on an object with non-null "
-                "`num_bytes`"
-            )
-        self._index += num_bytes
+            return False
+        else:
+            self._index += num_bytes
+            return True
 
     def fields(self, chunk, format, context, move=True):
         """
