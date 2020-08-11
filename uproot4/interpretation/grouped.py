@@ -60,13 +60,11 @@ class AsGrouped(uproot4.interpretation.Interpretation):
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         awkward1 = uproot4.extras.awkward1()
 
-        names = []
-        fields = []
+        record = {}
         for x, y in self._subbranches.items():
-            names.append(x)
-            fields.append(y.awkward_form(file, index_format, header, tobject_header))
+            record[x] = y.awkward_form(file, index_format, header, tobject_header)
 
-        return awkward1.forms.RecordForm(fields, names)
+        return awkward1.forms.RecordForm(record)
 
     def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         raise ValueError(
