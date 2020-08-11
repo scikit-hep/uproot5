@@ -15,9 +15,24 @@ def test_common_offsets():
 
     # this file has just one branch
     with uproot4.open(skhep_testdata.data_path("uproot-foriter.root")) as f:
-        assert f["foriter;1"].common_entry_offsets() == [0, 6, 12, 18, 24, 30, 36, 42, 46]
+        assert f["foriter;1"].common_entry_offsets() == [
+            0,
+            6,
+            12,
+            18,
+            24,
+            30,
+            36,
+            42,
+            46,
+        ]
 
     with uproot4.open(skhep_testdata.data_path("uproot-small-dy-nooffsets.root")) as f:
         assert f["tree;1"].common_entry_offsets() == [0, 200, 400, 501]
         assert f["tree;1"].common_entry_offsets(["Jet_pt"]) == [0, 200, 397, 400, 501]
-        assert f["tree;1"].common_entry_offsets(["Jet_pt", "nJet"]) == [0, 200, 400, 501]
+        assert f["tree;1"].common_entry_offsets(["Jet_pt", "nJet"]) == [
+            0,
+            200,
+            400,
+            501,
+        ]
