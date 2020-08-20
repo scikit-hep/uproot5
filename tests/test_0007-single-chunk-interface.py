@@ -117,6 +117,7 @@ def test_http_multipart():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
@@ -134,6 +135,7 @@ def test_xrootd():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_worker():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
@@ -151,6 +153,7 @@ def test_xrootd_worker():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_vectorread():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.XRootDSource(

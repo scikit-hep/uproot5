@@ -157,6 +157,7 @@ def test_http_fallback_workers():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd():
     pytest.importorskip("XRootD")
     notifications = queue.Queue()
@@ -175,6 +176,7 @@ def test_xrootd():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_workers():
     pytest.importorskip("XRootD")
     notifications = queue.Queue()
@@ -193,6 +195,7 @@ def test_xrootd_workers():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_vectorread():
     pytest.importorskip("XRootD")
     notifications = queue.Queue()

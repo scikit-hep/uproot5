@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import sys
 import re
 
 try:
@@ -51,6 +52,34 @@ def make_connection(parsed_url, timeout):
         )
 
 
+def get_num_bytes(file_path, parsed_url, timeout):
+    connection = make_connection(parsed_url, timeout)
+    connection.request("HEAD", parsed_url.path)
+    response = connection.getresponse()
+
+    if response.status != 200:
+        connection.close()
+        raise OSError(
+            """HTTP response was {0}, rather than 200, in attempt to get file size
+in file {1}""".format(
+                response.status, file_path
+            )
+        )
+
+    for k, x in response.getheaders():
+        if k.lower() == "content-length" and x.strip() != "0":
+            connection.close()
+            return int(x)
+    else:
+        connection.close()
+        raise OSError(
+            """response headers did not include content-length: {0}
+in file {1}""".format(
+                dict(response.getheaders()), file_path
+            )
+        )
+
+
 class HTTPResource(uproot4.source.chunk.Resource):
     def __init__(self, file_path, timeout):
         self._file_path = file_path
@@ -72,11 +101,11 @@ class HTTPResource(uproot4.source.chunk.Resource):
         pass
 
     @staticmethod
-    def future(start, stop):
-        connection = make_connection(self._parsed_url, self._timeout)
+    def future(source, start, stop):
+        connection = make_connection(source.parsed_url, source.timeout)
         connection.request(
             "GET",
-            self._parsed_url.path,
+            source.parsed_url.path,
             headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
         )
 
@@ -100,81 +129,107 @@ for URL {0}""".format(
             connection.close()
 
     @staticmethod
-    def multifuture(ranges, futures, results, source):
-        connection = make_connection(source.parsed_url, self._timeout)
+    def multifuture(source, ranges, futures, results):
+        connection = make_connection(source.parsed_url, source.timeout)
 
         range_strings = []
         for start, stop in ranges:
             range_strings.append("{0}-{1}".format(start, stop - 1))
 
-        connection.request("GET", parsed_url.path, headers={
-            "Range": "bytes=" + ", ".join(range_strings)
-        })
+        connection.request(
+            "GET",
+            source.parsed_url.path,
+            headers={"Range": "bytes=" + ", ".join(range_strings)},
+        )
 
         def task(resource):
-            response = connection.getresponse()
+            try:
+                response = connection.getresponse()
+                multipart_supported = resource.is_multipart_supported(ranges, response)
 
-            multipart_supported = response.status == 206
-
-            if multipart_supported:
-                for k, x in response.getheaders():
-                    if k.lower() == "content-length":
-                        content_length = int(x)
-                        for start, stop in ranges:
-                            if content_length == stop - start:
-                                multipart_supported = False
-                        break
+                if not multipart_supported:
+                    resource.handle_no_multipart(source, ranges, futures, results)
                 else:
-                    multipart_supported = False
+                    resource.handle_multipart(source, futures, results, response)
 
-            if not multipart_supported:
-                connection.close()
+            except Exception:
+                excinfo = sys.exc_info()
+                for future in futures.values():
+                    future._set_excinfo(excinfo)
 
-                source._set_fallback()
-
-                notifications = queue.Queue()
-                source.fallback.chunks(ranges, notifications)
-
-                for x in range(len(ranges)):
-                    chunk = notifications.get()
-                    results[chunk.start, chunk.stop] = chunk.raw_data
-                    futures[chunk.start, chunk.stop]._run(resource)
-
-            else:
-                for i in range(len(futures)):
-                    range_string, size = resource.next_header(response)
-                    if range_string is None:
-                        resource.raise_missing(i, futures)
-                        connection.close()
-                        break
-
-                    start, last = range_string.split(b"-")
-                    start, last = int(first), int(last)
-                    stop = last + 1
-
-                    future = futures.get(start, stop)
-                    if future is None:
-                        resource.raise_unrecognized(range_string, futures)
-                        connection.close()
-                        break
-
-                    length = stop - start
-                    results[start, stop] = response.read(length)
-                    if len(results[start, stop]) != length:
-                        resource.raise_wrong_length(
-                            len(results[start, stop]), length, range_string, future
-                        )
-                        connection.close()
-                        break
-
-                    future._run(resource)
-
+            finally:
                 connection.close()
 
         return uproot4.source.futures.ResourceFuture(task)
 
     _content_range_size = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)")
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
+
+    def is_multipart_supported(self, ranges, response):
+        if response.status != 206:
+            return False
+
+        for k, x in response.getheaders():
+            if k.lower() == "content-length":
+                content_length = int(x)
+                for start, stop in ranges:
+                    if content_length == stop - start:
+                        return False
+        else:
+            return True
+
+    def handle_no_multipart(self, source, ranges, futures, results):
+        source._set_fallback()
+
+        notifications = queue.Queue()
+        source.fallback.chunks(ranges, notifications)
+
+        for x in range(len(ranges)):
+            chunk = notifications.get()
+            results[chunk.start, chunk.stop] = chunk.raw_data
+            futures[chunk.start, chunk.stop]._run(self)
+
+    def handle_multipart(self, source, futures, results, response):
+        for i in range(len(futures)):
+            range_string, size = self.next_header(response)
+            if range_string is None:
+                raise OSError(
+                    """found {0} of {1} expected headers in HTTP multipart
+for URL {2}""".format(
+                        i, len(futures), self._file_path
+                    )
+                )
+
+            start, last = range_string.split(b"-")
+            start, last = int(start), int(last)
+            stop = last + 1
+
+            future = futures.get((start, stop))
+
+            if future is None:
+                raise OSError(
+                    """unrecognized byte range in headers of HTTP multipart: {0}
+for URL {1}""".format(
+                        repr(range_string.decode()), self._file_path
+                    )
+                )
+
+            length = stop - start
+            results[start, stop] = response.read(length)
+
+            if len(results[start, stop]) != length:
+                raise OSError(
+                    """wrong chunk length {0} (expected {1}) for byte range {2} "
+                    "in HTTP multipart
+for URL {3}""".format(
+                        len(results[start, stop]),
+                        length,
+                        repr(range_string.decode()),
+                        self._file_path,
+                    )
+                )
+
+            future._run(self)
 
     def next_header(self, response):
         line = response.fp.readline()
@@ -193,38 +248,6 @@ for URL {0}""".format(
             if len(line.strip()) == 0:
                 break
         return range_string, size
-
-    def raise_missing(self, i, futures):
-        try:
-            raise OSError(
-                """found {0} of {1} expected headers in HTTP multipart
-for URL {2}""".format(i, len(futures), self.file_path)
-            )
-        except Exception:
-            excinfo = sys.exc_info()
-        for future in futures.values():
-            future._set_excinfo(excinfo)
-
-    def raise_unrecognized(self, range_string, futures):
-        try:
-           raise OSError(
-               """unrecognized byte range in headers of HTTP multipart: {0}
-for URL {1}""".format(repr(range_string.decode()), self.file_path)
-           )
-        except Exception:
-            excinfo = sys.exc_info()
-        for future in futures.values():
-            future._set_excinfo(excinfo)
-
-    def raise_wrong_length(self, actual, expected, range_string, future):
-        try:
-            raise OSError(
-                """wrong chunk length {0} (expected {1}) for byte range {2} in HTTP multipart:
-for URL {3}""".format(actual, expected, repr(range_string.decode()), self.file_path)
-            )
-        except Exception:
-            excinfo = sys.exc_info()
-        future._set_excinfo(excinfo)
 
     @staticmethod
     def partfuture(results, start, stop):
@@ -245,7 +268,7 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
         self._num_requested_bytes = 0
 
         self._file_path = file_path
-        self._num_bytes = num_bytes
+        self._num_bytes = None
         self._timeout = timeout
 
         self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
@@ -259,8 +282,14 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
     @property
     def num_bytes(self):
         if self._num_bytes is None:
-            self._num_bytes = get_num_bytes(self._file_path)
+            self._num_bytes = get_num_bytes(
+                self._file_path, self.parsed_url, self._timeout
+            )
         return self._num_bytes
+
+    @property
+    def parsed_url(self):
+        return self._executor.workers[0].resource.parsed_url
 
 
 class HTTPSource(uproot4.source.chunk.Source):
@@ -285,18 +314,20 @@ class HTTPSource(uproot4.source.chunk.Source):
         self._fallback_options["num_workers"] = num_fallback_workers
 
     @property
-    def parsed_url(self):
-        return self._executor.workers[0].resource.parsed_url
-
-    @property
     def timeout(self):
         return self._timeout
 
     @property
     def num_bytes(self):
         if self._num_bytes is None:
-            self._num_bytes = get_num_bytes(self._file_path)
+            self._num_bytes = get_num_bytes(
+                self._file_path, self.parsed_url, self._timeout
+            )
         return self._num_bytes
+
+    @property
+    def parsed_url(self):
+        return self._executor.workers[0].resource.parsed_url
 
     @property
     def executor(self):
@@ -308,7 +339,7 @@ class HTTPSource(uproot4.source.chunk.Source):
 
     def _set_fallback(self):
         self._fallback = MultithreadedHTTPSource(
-            self._file_path, self._fallback_options
+            self._file_path, **self._fallback_options
         )
 
     def __enter__(self):
@@ -326,8 +357,8 @@ class HTTPSource(uproot4.source.chunk.Source):
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
 
-        future = self.ResourceClass.future(start, stop)
-        chunk = Chunk(self, start, stop, future)
+        future = self.ResourceClass.future(self, start, stop)
+        chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
         self._executor.submit(future)
         return chunk
 
@@ -337,7 +368,6 @@ class HTTPSource(uproot4.source.chunk.Source):
             self._num_requested_chunks += len(ranges)
             self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
-            range_strings = []
             futures = {}
             results = {}
             chunks = []
@@ -345,12 +375,14 @@ class HTTPSource(uproot4.source.chunk.Source):
                 partfuture = self.ResourceClass.partfuture(results, start, stop)
                 futures[start, stop] = partfuture
                 results[start, stop] = None
-                chunk = Chunk(self, start, stop, partfuture)
-                future._set_notify(uproot4.source.notifier(chunk, notifications))
+                chunk = uproot4.source.chunk.Chunk(self, start, stop, partfuture)
+                partfuture._set_notify(
+                    uproot4.source.chunk.notifier(chunk, notifications)
+                )
                 chunks.append(chunk)
 
             self._executor.submit(
-                self.ResourceClass.multifuture(ranges, futures, results, self)
+                self.ResourceClass.multifuture(self, ranges, futures, results)
             )
             return chunks
 

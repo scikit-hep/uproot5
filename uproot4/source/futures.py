@@ -14,9 +14,12 @@ implement the full API, though the same method names are used.
 
 from __future__ import absolute_import
 
-import threading
 import os
+import sys
+import threading
 import time
+
+import uproot4
 
 try:
     import queue
@@ -159,11 +162,22 @@ class ResourceFuture(Future):
         self._notify = notify
 
     def _set_excinfo(self, excinfo):
+        print("one")
+
         if not self._finished.is_set():
+            print("two")
+
             self._excinfo = excinfo
             self._finished.set()
+
+            print("three")
+
             if self._notify is not None:
+                print("four")
+
                 self._notify()
+
+            print("five")
 
     def _run(self, resource):
         try:
@@ -215,9 +229,11 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
     def submit(self, future):
         assert isinstance(future, ResourceFuture)
         if self.closed:
-            raise OSError("resource is closed for file {0}".format(
-                self._workers[0].resource.file_path
-            ))
+            raise OSError(
+                "resource is closed for file {0}".format(
+                    self._workers[0].resource.file_path
+                )
+            )
         self._work_queue.put(future)
         return future
 

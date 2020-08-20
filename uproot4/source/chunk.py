@@ -93,7 +93,7 @@ class MultithreadedSource(Source):
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
         return "<{0} {1} ({2} workers) at 0x{3:012x}>".format(
-            type(self).__name__, path, self._num_workers, id(self)
+            type(self).__name__, path, self.num_workers, id(self)
         )
 
     @property
@@ -120,7 +120,7 @@ class MultithreadedSource(Source):
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
 
-        future = self.ResourceClass.future(start, stop)
+        future = self.ResourceClass.future(self, start, stop)
         chunk = Chunk(self, start, stop, future)
         self._executor.submit(future)
         return chunk
@@ -132,7 +132,7 @@ class MultithreadedSource(Source):
 
         chunks = []
         for start, stop in ranges:
-            future = self.ResourceClass.future(start, stop)
+            future = self.ResourceClass.future(self, start, stop)
             chunk = Chunk(self, start, stop, future)
             future._set_notify(notifier(chunk, notifications))
             self._executor.submit(future)
@@ -163,7 +163,7 @@ class Chunk(object):
         Wrap a `data` buffer with a Chunk interface, linking it to a given
         Source. Used for presenting uncompressed data as Chunks.
         """
-        future = uproot4.soruce.futures.NoFuture(data)
+        future = uproot4.source.futures.NoFuture(data)
         return Chunk(source, 0, len(data), future)
 
     def __init__(self, source, start, stop, future):

@@ -40,7 +40,9 @@ def test_file(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     for num_workers in [1, 2]:
-        source = uproot4.source.file.MultithreadedFileSource(filename, num_workers=num_workers)
+        source = uproot4.source.file.MultithreadedFileSource(
+            filename, num_workers=num_workers
+        )
         with source as tmp:
             notifications = queue.Queue()
             chunks = tmp.chunks(
@@ -118,6 +120,7 @@ def test_http():
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
+    assert source.fallback is None
 
     source = uproot4.source.http.MultithreadedHTTPSource(
         "https://example.com", num_workers=1, timeout=10
@@ -257,6 +260,7 @@ def test_fallback():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
@@ -274,6 +278,7 @@ def test_xrootd():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_deadlock():
     pytest.importorskip("XRootD")
     # Attach this file to the "test_xrootd_deadlock" function so it leaks
@@ -284,6 +289,7 @@ def test_xrootd_deadlock():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_fail():
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
@@ -293,6 +299,7 @@ def test_xrootd_fail():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_vectorread():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.XRootDSource(
@@ -310,6 +317,7 @@ def test_xrootd_vectorread():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_vectorread_fail():
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
@@ -319,6 +327,7 @@ def test_xrootd_vectorread_fail():
 
 
 @pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_size():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.XRootDSource(
@@ -350,9 +359,9 @@ def test_cursor_debug():
             numpy.array([123, 123], "u1"),
         ]
     )
-    future = uproot4.source.futures.TrivialFuture(data)
+    future = uproot4.source.futures.NoFuture(data)
 
-    chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future, True)
+    chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future)
     cursor = uproot4.source.cursor.Cursor(0)
 
     output = StringIO()

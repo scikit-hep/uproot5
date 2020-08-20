@@ -31,22 +31,15 @@ class FileResource(uproot4.source.chunk.Resource):
         self._file.__exit__(exception_type, exception_value, traceback)
 
     @staticmethod
-    def future(start, stop):
+    def future(source, start, stop):
         def task(resource):
-            return resource(start, stop)
+            return resource.get(start, stop)
 
         return uproot4.source.futures.ResourceFuture(task)
 
     def get(self, start, stop):
         self._file.seek(start)
         return self._file.read(stop - start)
-
-    @staticmethod
-    def getter(start, stop):
-        def task(resource):
-            return resource.get(start, stop)
-
-        return task
 
 
 class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
@@ -67,7 +60,9 @@ class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
 
 
 class MemmapSource(uproot4.source.chunk.Source):
-    def __init__(self, file_path):
+    _dtype = uproot4.source.chunk.Chunk._dtype
+
+    def __init__(self, file_path, **options):
         num_fallback_workers = options["num_fallback_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
