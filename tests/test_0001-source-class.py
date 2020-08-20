@@ -9,6 +9,10 @@ try:
     from io import StringIO
 except ImportError:
     from StringIO import StringIO
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 import numpy
 import pytest
@@ -18,7 +22,6 @@ import uproot4.source.futures
 import uproot4.source.cursor
 import uproot4.source.chunk
 import uproot4.source.file
-import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
 
@@ -36,11 +39,13 @@ def test_file(tmpdir):
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-    for num_workers in [0, 1, 2]:
-        source = uproot4.source.file.FileSource(filename, num_workers=num_workers)
+    for num_workers in [1, 2]:
+        source = uproot4.source.file.MultithreadedFileSource(filename, num_workers=num_workers)
         with source as tmp:
+            notifications = queue.Queue()
             chunks = tmp.chunks(
-                [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
+                [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
+                notifications,
             )
             assert [tobytes(chunk.raw_data) for chunk in chunks] == [
                 b"******",
@@ -60,9 +65,9 @@ def test_file_fail(tmpdir):
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-    for num_workers in [0, 1, 2]:
+    for num_workers in [1, 2]:
         with pytest.raises(Exception):
-            uproot4.source.file.FileSource(
+            uproot4.source.file.MultithreadedFileSource(
                 filename + "-does-not-exist", num_workers=num_workers
             )
 
@@ -73,9 +78,12 @@ def test_memmap(tmpdir):
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-    source = uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0)
+    source = uproot4.source.file.MemmapSource(filename, num_fallback_workers=1)
     with source as tmp:
-        chunks = tmp.chunks([(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)])
+        notifications = queue.Queue()
+        chunks = tmp.chunks(
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
+        )
         assert [tobytes(chunk.raw_data) for chunk in chunks] == [
             b"******",
             b"    ",
@@ -95,26 +103,28 @@ def test_memmap_fail(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     with pytest.raises(Exception):
-        uproot4.source.file.FileSource(filename + "-does-not-exist")
+        uproot4.source.file.MultithreadedFileSource(filename + "-does-not-exist")
 
 
 @pytest.mark.network
 def test_http():
     source = uproot4.source.http.HTTPSource(
-        "https://example.com", timeout=10, num_fallback_workers=0
+        "https://example.com", timeout=10, num_fallback_workers=1
     )
     with source as tmp:
-        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        notifications = queue.Queue()
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
 
     source = uproot4.source.http.MultithreadedHTTPSource(
-        "https://example.com", num_workers=0, timeout=10
+        "https://example.com", num_workers=1, timeout=10
     )
     with source as tmp:
-        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        notifications = queue.Queue()
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
@@ -134,20 +144,22 @@ def colons_and_ports():
 @pytest.mark.network
 def test_http_port():
     source = uproot4.source.http.HTTPSource(
-        "https://example.com:443", timeout=10, num_fallback_workers=0
+        "https://example.com:443", timeout=10, num_fallback_workers=1
     )
     with source as tmp:
-        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        notifications = queue.Queue()
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
 
     source = uproot4.source.http.MultithreadedHTTPSource(
-        "https://example.com:443", num_workers=0, timeout=10
+        "https://example.com:443", num_workers=1, timeout=10
     )
     with source as tmp:
-        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)])
+        notifications = queue.Queue()
+        chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
@@ -156,12 +168,12 @@ def test_http_size():
     with uproot4.source.http.HTTPSource(
         "https://scikit-hep.org/uproot/examples/Zmumu.root",
         timeout=10,
-        num_fallback_workers=0,
+        num_fallback_workers=1,
     ) as source:
         size1 = source.num_bytes
 
     with uproot4.source.http.MultithreadedHTTPSource(
-        "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=0, timeout=10
+        "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=1, timeout=10
     ) as source:
         size2 = source.num_bytes
 
@@ -173,13 +185,13 @@ def test_http_size_port():
     with uproot4.source.http.HTTPSource(
         "https://scikit-hep.org:443/uproot/examples/Zmumu.root",
         timeout=10,
-        num_fallback_workers=0,
+        num_fallback_workers=1,
     ) as source:
         size1 = source.num_bytes
 
     with uproot4.source.http.MultithreadedHTTPSource(
         "https://scikit-hep.org:443/uproot/examples/Zmumu.root",
-        num_workers=0,
+        num_workers=1,
         timeout=10,
     ) as source:
         size2 = source.num_bytes
@@ -190,22 +202,24 @@ def test_http_size_port():
 @pytest.mark.network
 def test_http_fail():
     source = uproot4.source.http.HTTPSource(
-        "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=0
+        "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=1
     )
     with pytest.raises(Exception) as err:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        notifications = queue.Queue()
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         chunks[0].raw_data
 
 
 @pytest.mark.network
 def test_no_multipart():
-    for num_workers in [0, 1, 2]:
+    for num_workers in [1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root",
             num_workers=num_workers,
             timeout=10,
         ) as source:
-            chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+            notifications = queue.Queue()
+            chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
             one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
             assert len(one) == 100
             assert len(two) == 5
@@ -215,24 +229,26 @@ def test_no_multipart():
 
 @pytest.mark.network
 def test_no_multipart_fail():
-    for num_workers in [0, 1, 2]:
+    for num_workers in [1, 2]:
         source = uproot4.source.http.MultithreadedHTTPSource(
             "https://wonky.cern/does-not-exist", num_workers=num_workers, timeout=0.1
         )
         with pytest.raises(Exception) as err:
-            chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+            notifications = queue.Queue()
+            chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
             chunks[0].raw_data
 
 
 @pytest.mark.network
 def test_fallback():
-    for num_workers in [0, 1, 2]:
+    for num_workers in [1, 2]:
         with uproot4.source.http.HTTPSource(
             "https://scikit-hep.org/uproot/examples/Zmumu.root",
             timeout=10,
             num_fallback_workers=num_workers,
         ) as source:
-            chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+            notifications = queue.Queue()
+            chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
             one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
             assert len(one) == 100
             assert len(two) == 5
@@ -245,10 +261,11 @@ def test_xrootd():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        num_workers=0,
+        num_workers=1,
         timeout=20,
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        notifications = queue.Queue()
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
@@ -271,7 +288,7 @@ def test_xrootd_fail():
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
         source = uproot4.source.xrootd.MultithreadedXRootDSource(
-            "root://wonky.cern/does-not-exist", num_workers=0, timeout=1
+            "root://wonky.cern/does-not-exist", num_workers=1, timeout=1
         )
 
 
@@ -283,7 +300,8 @@ def test_xrootd_vectorread():
         timeout=10,
         max_num_elements=None,
     ) as source:
-        chunks = source.chunks([(0, 100), (50, 55), (200, 400)])
+        notifications = queue.Queue()
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
         assert len(one) == 100
         assert len(two) == 5
@@ -314,7 +332,7 @@ def test_xrootd_size():
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
-        num_workers=0,
+        num_workers=1,
     ) as source:
         size2 = source.num_bytes
 

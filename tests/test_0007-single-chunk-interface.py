@@ -13,7 +13,6 @@ import uproot4.source.futures
 import uproot4.source.cursor
 import uproot4.source.chunk
 import uproot4.source.file
-import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
 
@@ -39,8 +38,8 @@ def test_file(tmpdir):
         b"@@@@@",
     ]
 
-    for num_workers in [0, 1, 2]:
-        with uproot4.source.file.FileSource(
+    for num_workers in [1, 2]:
+        with uproot4.source.file.MultithreadedFileSource(
             filename, num_workers=num_workers
         ) as source:
             for i, (start, stop) in enumerate(
@@ -50,7 +49,7 @@ def test_file(tmpdir):
                 assert tobytes(chunk.raw_data) == expected[i]
 
         with pytest.raises(Exception):
-            uproot4.source.file.FileSource(
+            uproot4.source.file.MultithreadedFileSource(
                 filename + "-does-not-exist", num_workers=num_workers
             )
 
@@ -69,7 +68,7 @@ def test_memmap(tmpdir):
         b"@@@@@",
     ]
 
-    with uproot4.source.memmap.MemmapSource(filename, num_fallback_workers=0) as source:
+    with uproot4.source.file.MemmapSource(filename, num_fallback_workers=1) as source:
         for i, (start, stop) in enumerate(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)]
         ):
@@ -77,14 +76,14 @@ def test_memmap(tmpdir):
             assert tobytes(chunk.raw_data) == expected[i]
 
     with pytest.raises(Exception):
-        uproot4.source.memmap.MemmapSource(
-            filename + "-does-not-exist", num_fallback_workers=0
+        uproot4.source.file.MemmapSource(
+            filename + "-does-not-exist", num_fallback_workers=1
         )
 
 
 @pytest.mark.network
 def test_http():
-    for num_workers in [0, 1, 2]:
+    for num_workers in [1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
             "https://example.com", num_workers=num_workers, timeout=10
         ) as source:
@@ -104,7 +103,7 @@ def test_http():
 @pytest.mark.network
 def test_http_multipart():
     with uproot4.source.http.HTTPSource(
-        "https://example.com", timeout=10, num_fallback_workers=0
+        "https://example.com", timeout=10, num_fallback_workers=1
     ) as source:
         for start, stop in [(0, 100), (50, 55), (200, 400)]:
             chunk = source.chunk(start, stop)
@@ -112,7 +111,7 @@ def test_http_multipart():
 
         with pytest.raises(Exception):
             with uproot4.source.http.HTTPSource(
-                "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=0
+                "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=1
             ) as source:
                 tobytes(source.chunk(0, 100).raw_data)
 
@@ -122,7 +121,7 @@ def test_xrootd():
     pytest.importorskip("XRootD")
     with uproot4.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        num_workers=0,
+        num_workers=1,
         timeout=10,
     ) as source:
         one = tobytes(source.chunk(0, 100).raw_data)
