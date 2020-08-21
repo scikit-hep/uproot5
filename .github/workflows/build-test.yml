@@ -67,4 +67,4 @@ jobs:
 
       - name: "Run pytest"
         shell: "bash -l {0}"
-        run: python -m pytest -vv tests -m "not xrootd"
+        run: python -m pytest -vv tests

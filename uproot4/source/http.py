@@ -313,6 +313,17 @@ class HTTPSource(uproot4.source.chunk.Source):
         self._fallback_options = dict(options)
         self._fallback_options["num_workers"] = num_fallback_workers
 
+    def __repr__(self):
+        path = repr(self._file_path)
+        if len(self._file_path) > 10:
+            path = repr("..." + self._file_path[-10:])
+        fallback = ""
+        if self._fallback is not None:
+            fallback = " with fallback"
+        return "<{0} {1}{2} at 0x{3:012x}>".format(
+            type(self).__name__, path, fallback, id(self)
+        )
+
     @property
     def timeout(self):
         return self._timeout
