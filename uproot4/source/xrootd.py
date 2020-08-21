@@ -78,7 +78,9 @@ class XRootDResource(uproot4.source.chunk.Resource):
         self._file.close(timeout=self._xrd_timeout())
         raise OSError(
             """XRootD error: {0}
-in file {1}""".format(message, self._file_path)
+in file {1}""".format(
+                message, self._file_path
+            )
         )
 
     @property
@@ -103,9 +105,7 @@ in file {1}""".format(message, self._file_path)
         self._file.close(timeout=self._xrd_timeout())
 
     def get(self, start, stop):
-        status, data = self._file.read(
-            start, stop - start, timeout=self._xrd_timeout()
-        )
+        status, data = self._file.read(start, stop - start, timeout=self._xrd_timeout())
         if status.error:
             self._xrd_error(status.message)
         return data
@@ -194,9 +194,7 @@ class XRootDSource(uproot4.source.chunk.Source):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
-        return "<{0} {1} at 0x{3:012x}>".format(
-            type(self).__name__, path, id(self)
-        )
+        return "<{0} {1} at 0x{2:012x}>".format(type(self).__name__, path, id(self))
 
     @property
     def resource(self):
