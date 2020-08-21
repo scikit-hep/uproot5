@@ -22,7 +22,6 @@ import uproot4.compression
 import uproot4.cache
 import uproot4.source.cursor
 import uproot4.source.chunk
-import uproot4.source.memmap
 import uproot4.source.http
 import uproot4.source.xrootd
 import uproot4.streamers
@@ -63,15 +62,14 @@ def open(
 
     Options (type; default):
 
-        * file_handler (Source class; uproot4.source.memmap.MemmapSource)
+        * file_handler (Source class; uproot4.source.file.MemmapSource)
         * xrootd_handler (Source class; uproot4.source.xrootd.XRootDSource)
         * http_handler (Source class; uproot4.source.http.HTTPSource)
         * timeout (float for HTTP, int for XRootD; 30)
         * max_num_elements (None or int; None)
-        * num_workers (int; 10)
+        * num_workers (int; 1)
         * num_fallback_workers (int; 10)
         * begin_guess_bytes (memory_size; 512)
-        * end_guess_bytes (memory_size; "64 kB")
         * minimal_ttree_metadata (bool; True)
     """
 
@@ -92,15 +90,14 @@ def open(
 
 
 open.defaults = {
-    "file_handler": uproot4.source.memmap.MemmapSource,
-    "xrootd_handler": uproot4.source.xrootd.XRootDSource,
+    "file_handler": uproot4.source.file.MemmapSource,
+    # "xrootd_handler": uproot4.source.xrootd.XRootDSource,
     "http_handler": uproot4.source.http.HTTPSource,
     "timeout": 30,
     "max_num_elements": None,
-    "num_workers": 10,
+    "num_workers": 1,
     "num_fallback_workers": 10,
     "begin_guess_bytes": 512,
-    "end_guess_bytes": "64 kB",
     "minimal_ttree_metadata": True,
 }
 
@@ -254,7 +251,7 @@ class ReadOnlyFile(CommonFileMethods):
 
         self._options = dict(open.defaults)
         self._options.update(options)
-        for option in ("begin_guess_bytes", "end_guess_bytes"):
+        for option in ["begin_guess_bytes"]:
             self._options[option] = uproot4._util.memory_size(self._options[option])
 
         self._streamers = None
@@ -277,9 +274,8 @@ class ReadOnlyFile(CommonFileMethods):
                 )
             )
 
-        self._begin_chunk, self._end_chunk = self._source.begin_end_chunks(
-            self._options["begin_guess_bytes"], self._options["end_guess_bytes"]
-        )
+        self._begin_chunk = self._source.chunk(0, self._options["begin_guess_bytes"])
+        self._end_chunk = None
 
         self.hook_before_read()
 

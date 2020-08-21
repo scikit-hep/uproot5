@@ -12,8 +12,8 @@ unknown_classes = {}
 from uproot4.cache import LRUCache
 from uproot4.cache import LRUArrayCache
 
-from uproot4.source.memmap import MemmapSource
-from uproot4.source.file import FileSource
+from uproot4.source.file import MemmapSource
+from uproot4.source.file import MultithreadedFileSource
 from uproot4.source.http import HTTPSource
 from uproot4.source.http import MultithreadedHTTPSource
 from uproot4.source.xrootd import XRootDSource

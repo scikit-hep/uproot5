@@ -172,7 +172,8 @@ def test_ranges_or_baskets_to_arrays():
 
 
 @pytest.mark.parametrize(
-    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+    "file_handler",
+    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
 )
 def test_branch_array_1(file_handler):
     with uproot4.open(
@@ -216,7 +217,8 @@ def test_branch_array_1(file_handler):
 
 
 @pytest.mark.parametrize(
-    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+    "file_handler",
+    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
 )
 def test_branch_array_2(file_handler):
     with uproot4.open(
@@ -255,7 +257,8 @@ def test_branch_array_2(file_handler):
 
 
 @pytest.mark.parametrize(
-    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+    "file_handler",
+    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
 )
 def test_branch_array_3(file_handler):
     with uproot4.open(
@@ -295,7 +298,8 @@ def test_branch_array_3(file_handler):
 
 
 @pytest.mark.parametrize(
-    "file_handler", [uproot4.source.file.FileSource, uproot4.source.memmap.MemmapSource]
+    "file_handler",
+    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
 )
 def test_branch_array_4(file_handler):
     with uproot4.open(

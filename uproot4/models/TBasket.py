@@ -75,7 +75,7 @@ class Model_TBasket(uproot4.model.Model):
             cursor.skip(self._members["fKeylen"])
 
             self._raw_data = None
-            self._data = cursor.bytes(chunk, self.border, context, copy_if_memmap=True)
+            self._data = cursor.bytes(chunk, self.border, context)
 
         else:
             if self.compressed_bytes != self.uncompressed_bytes:
@@ -89,9 +89,7 @@ class Model_TBasket(uproot4.model.Model):
                     context,
                 )
             else:
-                self._raw_data = cursor.bytes(
-                    chunk, self.uncompressed_bytes, context, copy_if_memmap=True
-                )
+                self._raw_data = cursor.bytes(chunk, self.uncompressed_bytes, context)
 
             if self.border != self.uncompressed_bytes:
                 self._data = self._raw_data[: self.border]

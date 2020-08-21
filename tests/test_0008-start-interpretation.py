@@ -13,9 +13,7 @@ import uproot4.model
 import uproot4.deserialization
 import uproot4.reading
 import uproot4.source.file
-import uproot4.source.memmap
 import uproot4.source.http
-import uproot4.source.xrootd
 
 
 def tobytes(x):
@@ -50,40 +48,3 @@ def test_file_header():
     assert not file.is_64bit
     assert file.fNbytesInfo == 4447
     assert file.hex_uuid == "944b77d0-98ab-11e7-a769-0100007fbeef"
-
-
-@pytest.mark.network
-def test_http_begin_end():
-    filename = "https://example.com"
-    with uproot4.source.http.HTTPSource(
-        filename, timeout=10, num_fallback_workers=0
-    ) as source:
-        begin, end = source.begin_end_chunks(20, 30)
-        assert len(tobytes(begin.raw_data)) == 20
-        assert len(tobytes(end.raw_data)) == 30
-
-
-@pytest.mark.network
-def test_http_begin_end_fallback():
-    filename = "https://scikit-hep.org/uproot/examples/Zmumu.root"
-    with uproot4.source.http.HTTPSource(
-        filename, timeout=10, num_fallback_workers=0
-    ) as source:
-        begin, end = source.begin_end_chunks(20, 30)
-        assert len(tobytes(begin.raw_data)) == 20
-        assert len(tobytes(end.raw_data)) == 30
-        assert tobytes(begin.raw_data)[:4] == b"root"
-
-
-@pytest.mark.network
-def test_xrootd_begin_end():
-    pytest.importorskip("XRootD")
-    with uproot4.source.xrootd.XRootDSource(
-        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        timeout=10,
-        max_num_elements=None,
-    ) as source:
-        begin, end = source.begin_end_chunks(512, 64 * 1024)
-        assert len(tobytes(begin.raw_data)) == 512
-        assert len(tobytes(end.raw_data)) == 64 * 1024
-        assert tobytes(begin.raw_data)[:4] == b"root"

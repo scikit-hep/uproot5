@@ -5,6 +5,11 @@ from __future__ import absolute_import
 import sys
 import json
 
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 import numpy
 import pytest
 import skhep_testdata
@@ -35,10 +40,11 @@ def test():
         cursor.debug(header_chunk, 80)
         print("\n")
 
+        notifications = queue.Queue()
         footer_start = obj.member("fSeekFooter")
         footer_stop = footer_start + obj.member("fNBytesFooter")
         header_chunk, footer_chunk = f.file.source.chunks(
-            [(header_start, header_stop), (footer_start, footer_stop)]
+            [(header_start, header_stop), (footer_start, footer_stop)], notifications,
         )
 
         print("FOOTER")

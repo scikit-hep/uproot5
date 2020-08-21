@@ -1,13 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
-"""
-Defines the basic types of Uproot physical I/O.
-
-A Source represents one ROOT file (local or remote) as a source of Chunks.
-
-Chunks are byte ranges within the file that can fill asynchronously.
-"""
-
 from __future__ import absolute_import
 
 import numpy
@@ -26,16 +18,11 @@ class Resource(object):
     function.
     """
 
-    @staticmethod
-    def getter(start, stop):
+    def file_path(self):
         """
-        Creates a function to submit to an Executor, which fetches bytes.
+        The original path to the file (or URL, etc).
         """
-        return lambda resource: resource.get(start, stop)
-
-    @staticmethod
-    def notifier(chunk, notifications):
-        return lambda future: notifications.put(chunk)
+        return self._file_path
 
 
 class Source(object):
@@ -52,6 +39,13 @@ class Source(object):
         The original path to the file (or URL, etc).
         """
         return self._file_path
+
+    @property
+    def num_bytes(self):
+        """
+        The number of bytes in the file.
+        """
+        return self._num_bytes
 
     @property
     def num_requests(self):
@@ -88,132 +82,69 @@ class Source(object):
         """
         return self._executor.closed
 
-    def begin_end_chunks(self, begin_guess_bytes, end_guess_bytes):
-        """
-        Args:
-            begin_guess_bytes (int): Number of bytes to try to take from the
-                beginning of the file.
-            end_guess_bytes (int): Number of bytes to try to take from the
-                end of the file.
-
-        Returns two Chunks, one from the beginning of the file and the other
-        from the end of the file, which may be the same Chunk if these regions
-        overlap. The Chunks are filled asynchronously.
-        """
-        num_bytes = self.num_bytes
-        if begin_guess_bytes + end_guess_bytes > num_bytes:
-            chunk = self.chunk(0, num_bytes, exact=False)
-            return chunk, chunk
-        else:
-            return self.chunks(
-                [(0, begin_guess_bytes), (num_bytes - end_guess_bytes, num_bytes)],
-                exact=False,
-            )
-
 
 class MultithreadedSource(Source):
     """
-    Base class for Sources that maintain an Executor.
+    Base class for Sources that maintain an ResourceThreadPoolExecutor.
     """
+
+    def __repr__(self):
+        path = repr(self._file_path)
+        if len(self._file_path) > 10:
+            path = repr("..." + self._file_path[-10:])
+        return "<{0} {1} ({2} workers) at 0x{3:012x}>".format(
+            type(self).__name__, path, self.num_workers, id(self)
+        )
 
     @property
     def executor(self):
-        """
-        The Executor, which may be manage Threads and other Resources.
-        """
         return self._executor
 
     @property
     def num_workers(self):
-        """
-        The number of workers (int).
-
-        If 0, this Source is synchronous: calling `chunks` blocks until all
-        Chunks are full.
-
-        If 1 or more, this Source is asynchronous: the thread or threads fill
-        Chunks in the background.
-        """
         return self._executor.num_workers
 
-    def __enter__(self):
-        """
-        Passes down __enter__, but most Sources do nothing when entering a
-        context block. (Resources are provisioned in the constructor.)
+    @property
+    def closed(self):
+        return self._executor.closed
 
-        Returns self.
-        """
+    def __enter__(self):
         self._executor.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        """
-        Passes down __exit__. Most Sources shut down thread pools and close
-        file handles when exiting a context block.
-        """
         self._executor.__exit__(exception_type, exception_value, traceback)
-        self._resource.__exit__(exception_type, exception_value, traceback)
 
-    def chunk(self, start, stop, exact=True):
-        """
-        Args:
-            start (int): The start (inclusive) byte position for the desired
-                chunk.
-            stop (int): The stop (exclusive) byte position for the desired
-                chunk.
-            exact (bool): If False, attempts to access bytes beyond the
-                end of the Chunk raises a RefineChunk; if True, it raises
-                an OSError with an informative message.
-
-        Returns a single Chunk that has already been filled synchronously.
-        """
+    def chunk(self, start, stop):
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
 
-        future = uproot4.source.futures.TrivialFuture(self._resource.get(start, stop))
-        return Chunk(self, start, stop, future, exact)
+        future = self.ResourceClass.future(self, start, stop)
+        chunk = Chunk(self, start, stop, future)
+        self._executor.submit(future)
+        return chunk
 
-    def chunks(self, ranges, exact=True, notifications=None):
-        """
-        Args:
-            ranges (iterable of (int, int)): The start (inclusive) and stop
-                (exclusive) byte ranges for each desired chunk.
-            exact (bool): If False, attempts to access bytes beyond the
-                end of the Chunk raises a RefineChunk; if True, it raises
-                an OSError with an informative message.
-            notifications (None or Queue): If not None, Chunks will be put
-                on this Queue immediately after they are ready.
-
-        Returns a list of Chunks that may already be filled with data or are
-        filling in another thread and only block when their bytes are needed.
-        """
+    def chunks(self, ranges, notifications):
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
         chunks = []
         for start, stop in ranges:
-            future = self._executor._prepare(Resource.getter(start, stop))
-            chunk = Chunk(self, start, stop, future, exact)
-            if notifications is not None:
-                future.add_done_callback(Resource.notifier(chunk, notifications))
+            future = self.ResourceClass.future(self, start, stop)
+            chunk = Chunk(self, start, stop, future)
+            future._set_notify(notifier(chunk, notifications))
             self._executor.submit(future)
             chunks.append(chunk)
         return chunks
 
 
-class RefineChunk(Exception):
-    def __init__(self, start, stop, chunk_start, chunk_stop):
-        self.start = start
-        self.stop = stop
-        self.chunk_start = chunk_start
-        self.chunk_stop = chunk_stop
+def notifier(chunk, notifications):
+    def notify():
+        notifications.put(chunk)
 
-    def __repr__(self):
-        return "RefineChunk({0}, {1}, {2}, {3})".format(
-            self.start, self.stop, self.chunk_start, self.chunk_stop
-        )
+    return notify
 
 
 class Chunk(object):
@@ -232,34 +163,25 @@ class Chunk(object):
         Wrap a `data` buffer with a Chunk interface, linking it to a given
         Source. Used for presenting uncompressed data as Chunks.
         """
-        future = uproot4.source.futures.TrivialFuture(data)
-        return Chunk(source, 0, len(data), future, True)
+        future = uproot4.source.futures.NoFuture(data)
+        return Chunk(source, 0, len(data), future)
 
-    def __init__(self, source, start, stop, future, exact):
+    def __init__(self, source, start, stop, future):
         """
         Args:
             source (Source): Parent from which this Chunk is derived.
             start (int): Starting byte position (inclusive, global in Source).
             stop (int): Stopping byte position (exclusive, global in Source).
             future (Future): Fills `raw_data` on demand.
-            exact (bool): If False, attempts to access bytes beyond the
-                end of this Chunk raises a RefineChunk; if True, it raises
-                an OSError with an informative message.
         """
         self._source = source
         self._start = start
         self._stop = stop
         self._future = future
-        self._exact = exact
         self._raw_data = None
 
     def __repr__(self):
-        if self._exact:
-            e = ""
-        else:
-            e = " (inexact)"
-
-        return "<Chunk {0}-{1}{2}>".format(self._start, self._stop, e)
+        return "<Chunk {0}-{1}>".format(self._start, self._stop)
 
     @property
     def source(self):
@@ -289,14 +211,6 @@ class Chunk(object):
         """
         return self._future
 
-    @property
-    def exact(self):
-        """
-        If False, attempts to access bytes beyond the end of this Chunk raises
-        a RefineChunk; if True, it raises an OSError with an informative message.
-        """
-        return self._exact
-
     def __contains__(self, range):
         """
         True if the range (start, stop) is fully contained within the Chunk;
@@ -315,7 +229,7 @@ class Chunk(object):
         """
         if self._raw_data is None:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
-            if self._exact and len(self._raw_data) != self._stop - self._start:
+            if len(self._raw_data) != self._stop - self._start:
                 raise OSError(
                     """expected Chunk of length {0},
 received Chunk of length {1}
@@ -360,7 +274,7 @@ for file path {2}""".format(
             local_stop = stop - self._start
             return self._raw_data[local_start:local_stop]
 
-        elif self._exact:
+        else:
             raise uproot4.deserialization.DeserializationError(
                 """attempting to get bytes {0}:{1}
 outside expected range {2}:{3} for this Chunk""".format(
@@ -371,9 +285,6 @@ outside expected range {2}:{3} for this Chunk""".format(
                 context,
                 self._source.file_path,
             )
-
-        else:
-            raise RefineChunk(start, stop, self._start, self._stop)
 
     def remainder(self, start, cursor, context):
         """
