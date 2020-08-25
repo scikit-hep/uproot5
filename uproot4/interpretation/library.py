@@ -636,18 +636,35 @@ class Pandas(Library):
     def group(self, arrays, expression_context, how):
         pandas = self.imported
         names = [name for name, _ in expression_context]
+
         if how is tuple:
             return tuple(arrays[name] for name in names)
+
         elif how is list:
             return [arrays[name] for name in names]
+
         elif how is dict:
             return dict((name, arrays[name]) for name in names)
+
         elif uproot4._util.isstr(how) or how is None:
             arrays, names = self._only_series(arrays, names)
+
             if any(isinstance(x, tuple) for x in names):
-                names = pandas.MultiIndex.from_tuples(names)
+                longest = max(len(x) for x in names if isinstance(x, tuple))
+                newarrays, newnames = {}, []
+                for x in names:
+                    if not isinstance(x, tuple):
+                        y = (x,) + (None,) * (longest - 1)
+                    else:
+                        y = x + (None,) * (longest - len(x))
+                    newarrays[y] = arrays[x]
+                    newnames.append(y)
+                arrays = newarrays
+                names = pandas.MultiIndex.from_tuples(newnames)
+
             if all(isinstance(x.index, _pandas_rangeindex()) for x in arrays.values()):
                 return pandas.DataFrame(data=arrays, columns=names)
+
             indexes = []
             groups = []
             for name in names:
