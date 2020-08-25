@@ -755,7 +755,7 @@ def parse_typename_for_streamer(typename, file):
     return out
 
 
-_title_has_dims = re.compile(r"^([^\[\]]+)(\[[^\[\]]+\])+")
+_title_has_dims = re.compile(r"^([^\[\]]*)(\[[^\[\]]+\])+")
 _item_dim_pattern = re.compile(r"\[([1-9][0-9]*)\]")
 _item_any_pattern = re.compile(r"\[(.*)\]")
 _vector_pointer = re.compile(r"vector\<([^<>]*)\*\>")
