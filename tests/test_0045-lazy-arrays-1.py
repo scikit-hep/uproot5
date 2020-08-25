@@ -153,37 +153,3 @@ def test_awkward_pluralization():
         + ":sample/i4"
     )
     assert awkward1.to_list(uproot4.lazy(files)[:5, "i4"]) == [-15, -14, -13, -12, -11]
-
-
-def test_dask():
-    awkward1 = pytest.importorskip("awkward1")
-    dask_array = pytest.importorskip("dask.array")
-    files = (
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-            "6.20.04", "*"
-        )
-        + ":sample"
-    )
-    array1 = uproot4.lazy(files, "i4", library="da")
-    array2 = uproot4.lazy(files, "i4", library="da")
-    array3 = uproot4.lazy(files, "i8", library="da")
-
-    assert array1.name == array2.name
-    assert array1.name != array3.name
-
-    assert array1[0].compute() == -15
-    assert array2[0].compute() == -15
-    assert array3[0].compute() == -15
-
-
-def test_daskframe():
-    awkward1 = pytest.importorskip("awkward1")
-    dask_frame = pytest.importorskip("dask.dataframe")
-    files = (
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-            "6.20.04", "*"
-        )
-        + ":sample"
-    )
-    array1 = uproot4.lazy(files, library="dd")
-    repr(array1)

@@ -52,40 +52,6 @@ or
         return cupy
 
 
-def dask_array():
-    try:
-        import dask.array
-    except ImportError:
-        raise ImportError(
-            """install the 'dask.array' package with:
-
-    pip install "dask[array]"
-
-or
-
-    conda install dask"""
-        )
-    else:
-        return dask.array
-
-
-def dask_dataframe():
-    try:
-        import dask.dataframe
-    except ImportError:
-        raise ImportError(
-            """install the 'dask.dataframe' package with:
-
-    pip install "dask[dataframe]"
-
-or
-
-    conda install dask"""
-        )
-    else:
-        return dask.dataframe
-
-
 def XRootD_client():
     os.environ["XRD_RUNFORKHANDLER"] = "1"  # set multiprocessing flag
     try:
