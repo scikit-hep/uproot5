@@ -929,127 +929,12 @@ def _regularize_library(library):
 
 _libraries_lazy = {Awkward.name: _libraries[Awkward.name]}
 
-
-class DaskArray(Library):
-    name = "da"
-
-    awkward = _libraries_lazy[Awkward.name]
-
-    @property
-    def imported(self):
-        return uproot4.extras.dask_array()
-
-    def empty(self, shape, dtype):
-        return self.awkward.empty(shape, dtype)
-
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
-        return self.awkward.finalize(
-            array, branch, interpretation, entry_start, entry_stop
-        )
-
-    def group(self, arrays, expression_context, how):
-        return self.awkward.group(arrays, expression_context, how)
-
-    def global_index(self, array, global_start):
-        return self.awkward.global_index(array, global_start)
-
-    def concatenate(self, all_arrays):
-        return self.awkward.concatenate(self, all_arrays)
-
-    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
-        awkward1 = self.awkward.imported
-
-        if len(common_keys) == 1:
-            array = awkward1.Array(layout[common_keys[0]])
-        else:
-            array = awkward1.Array(layout)
-
-        dask_array = self.imported
-        return dask_array.from_array(
-            array,
-            chunks=[
-                global_offsets[i + 1] - global_offsets[i]
-                for i in range(len(global_offsets) - 1)
-            ],
-            name="ak-{0}".format(abs(hash(global_cache_key))),
-            asarray=False,
-            fancy=True,
-        )
-
-
-_libraries_lazy[DaskArray.name] = DaskArray()
-
-
-class DaskFrame(Library):
-    name = "dd"
-
-    awkward = _libraries_lazy[Awkward.name]
-    dask_array = _libraries_lazy[DaskArray.name]
-
-    @property
-    def imported(self):
-        return uproot4.extras.dask_dataframe()
-
-    def empty(self, shape, dtype):
-        return self.awkward.empty(shape, dtype)
-
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
-        return self.awkward.finalize(
-            array, branch, interpretation, entry_start, entry_stop
-        )
-
-    def group(self, arrays, expression_context, how):
-        return self.awkward.group(arrays, expression_context, how)
-
-    def global_index(self, array, global_start):
-        return self.awkward.global_index(array, global_start)
-
-    def concatenate(self, all_arrays):
-        return self.awkward.concatenate(self, all_arrays)
-
-    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
-        awkward1 = self.awkward.imported
-        dask_array = self.dask_array.imported
-        dask_dataframe = self.imported
-
-        series = []
-        for name in common_keys:
-            array = dask_array.from_array(
-                awkward1.Array(layout[name]),
-                chunks=[
-                    global_offsets[i + 1] - global_offsets[i]
-                    for i in range(len(global_offsets) - 1)
-                ],
-                name="ak-{0}".format(abs(hash((global_cache_key, name)))),
-                asarray=False,
-                fancy=True,
-            )
-            series.append(dask_dataframe.from_dask_array(array, columns=name))
-
-        return dask_dataframe.concat(series, axis=1)
-
-
-_libraries_lazy[DaskFrame.name] = DaskFrame()
-
-
 _libraries_lazy["awkward1"] = _libraries_lazy[Awkward.name]
 _libraries_lazy["Awkward1"] = _libraries_lazy[Awkward.name]
 _libraries_lazy["AWKWARD1"] = _libraries_lazy[Awkward.name]
 _libraries_lazy["awkward"] = _libraries_lazy[Awkward.name]
 _libraries_lazy["Awkward"] = _libraries_lazy[Awkward.name]
 _libraries_lazy["AWKWARD"] = _libraries_lazy[Awkward.name]
-
-_libraries_lazy["dask"] = _libraries_lazy[DaskArray.name]
-_libraries_lazy["Dask"] = _libraries_lazy[DaskArray.name]
-_libraries_lazy["DASK"] = _libraries_lazy[DaskArray.name]
-_libraries_lazy["dask.array"] = _libraries_lazy[DaskArray.name]
-_libraries_lazy["dask-array"] = _libraries_lazy[DaskArray.name]
-_libraries_lazy["dask_array"] = _libraries_lazy[DaskArray.name]
-_libraries_lazy["DaskArray"] = _libraries_lazy[DaskArray.name]
-_libraries_lazy["dask.dataframe"] = _libraries_lazy[DaskFrame.name]
-_libraries_lazy["dask-dataframe"] = _libraries_lazy[DaskFrame.name]
-_libraries_lazy["dask_dataframe"] = _libraries_lazy[DaskFrame.name]
-_libraries_lazy["DaskDataframe"] = _libraries_lazy[DaskFrame.name]
 
 
 def _regularize_library_lazy(library):
@@ -1079,6 +964,6 @@ def _regularize_library_lazy(library):
         except KeyError:
             raise ValueError(
                 """library {0} not recognized (for this function); """
-                """try "ak" (Awkward1), "da" (dask.array), or "dd" (dask.dataframe) """
+                """try "ak" (Awkward1) """
                 """instead""".format(repr(library))
             )
