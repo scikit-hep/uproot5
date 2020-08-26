@@ -57,6 +57,15 @@ def get_num_bytes(file_path, parsed_url, timeout):
     connection.request("HEAD", parsed_url.path)
     response = connection.getresponse()
 
+    if response.status == 404:
+        connection.close()
+        raise OSError(
+            """file not found (HTTP error code 404)
+for file {0}""".format(
+                file_path
+            )
+        )
+
     if response.status != 200:
         connection.close()
         raise OSError(
@@ -116,7 +125,18 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
     def get(self, connection, start, stop):
         response = connection.getresponse()
+
+        if response.status == 404:
+            connection.close()
+            raise OSError(
+                """file not found (HTTP error code 404)
+for file {0}""".format(
+                    self._file_path
+                )
+            )
+
         if response.status != 206:
+            connection.close()
             raise OSError(
                 """remote server does not support HTTP range requests
 for URL {0}""".format(

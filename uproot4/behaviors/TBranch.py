@@ -1638,7 +1638,7 @@ def _regularize_files_inner(files):
         parsed_url = urlparse(files)
 
         if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
-            yield file_path, None
+            yield files, None
 
         else:
             expanded = os.path.expanduser(files)
@@ -1676,7 +1676,7 @@ def _regularize_files_inner(files):
         raise TypeError(
             "'files' must be a file path/URL (string or Path), possibly with "
             "a glob pattern (for local files), a dict of "
-            "{path/URL: TTree/TBranch name}, actual TTree/TBranch objects, or "
+            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
             "an iterable of such things, not {0}".format(repr(files))
         )
 
@@ -1693,10 +1693,16 @@ def _regularize_files(files):
             out.append((file_path, object_path))
 
     if len(out) == 0:
-        if hasattr(__builtins__, "FileNotFoundError"):
-            errclass = __builtins__.FileNotFoundError
+        if isinstance(__builtins__, dict):
+            if "FileNotFoundError" in __builtins__:
+                errclass = __builtins__["FileNotFoundError"]
+            else:
+                errclass = __builtins__["IOError"]
         else:
-            errclass = __builtins__.IOError
+            if hasattr(__builtins__, "FileNotFoundError"):
+                errclass = __builtins__.FileNotFoundError
+            else:
+                errclass = __builtins__.IOError
         raise errclass("at least one file path or URL must be provided")
 
     return out
@@ -1717,9 +1723,13 @@ def _regularize_object_path(file_path, object_path, custom_classes, options):
         if object_path is None:
             trees = [k for k, v in file.classnames().items() if v == "TTree"]
             if len(trees) == 0:
-                raise ValueError("""no TTrees found
+                raise ValueError(
+                    """no TTrees found
 
-in file {0}""".format(file_path))
+in file {0}""".format(
+                        file_path
+                    )
+                )
             elif len(trees) == 1:
                 return file[trees[0]]
             else:
@@ -1730,7 +1740,9 @@ in file {0}""".format(file_path))
 
     TTrees: {0}
 
-in file {1}""".format(", ".join(repr(x) for x in trees), file_path)
+in file {1}""".format(
+                        ", ".join(repr(x) for x in trees), file_path
+                    )
                 )
 
         else:
@@ -1942,10 +1954,12 @@ def lazy(
         raise ValueError(
             "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{" + "{0}: {1}".format(
+                    "{"
+                    + "{0}: {1}".format(
                         repr(f.file_path if isinstance(f, HasBranches) else f),
                         repr(f.object_path if isinstance(f, HasBranches) else o),
-                    ) + "}"
+                    )
+                    + "}"
                     for f, o in files
                 )
             )
