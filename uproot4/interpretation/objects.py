@@ -279,12 +279,17 @@ class AsObjects(uproot4.interpretation.Interpretation):
         if isinstance(
             self._model, (uproot4.containers.AsArray, uproot4.containers.AsVector),
         ):
-            if not self._model.header:
-                header_bytes = 0
-            elif isinstance(self._model, uproot4.containers.AsArray):
-                header_bytes = 1
-            else:
-                header_bytes = 10
+            header_bytes = 0
+            if (
+                isinstance(self._model, uproot4.containers.AsArray)
+                and self._model.speedbump
+            ):
+                header_bytes += 1
+            if (
+                isinstance(self._model, uproot4.containers.AsVector)
+                and self._model.header
+            ):
+                header_bytes += 10
 
             if isinstance(self._model.values, numpy.dtype):
                 content = uproot4.interpretation.numerical.AsDtype(self._model.values)

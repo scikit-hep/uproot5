@@ -62,7 +62,7 @@ from uproot4.containers import STLMap
 import uproot4.interpretation
 import uproot4.interpretation.library
 from uproot4.interpretation.numerical import AsDtype
-from uproot4.interpretation.numerical import AsArray
+from uproot4.interpretation.numerical import AsDtypeInPlace
 from uproot4.interpretation.numerical import AsDouble32
 from uproot4.interpretation.numerical import AsFloat16
 from uproot4.interpretation.numerical import AsSTLBits
