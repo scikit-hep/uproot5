@@ -1708,7 +1708,9 @@ def _regularize_files(files):
     return out
 
 
-def _regularize_object_path(file_path, object_path, custom_classes, options):
+def _regularize_object_path(
+    file_path, object_path, custom_classes, allow_missing, options
+):
     if isinstance(file_path, HasBranches):
         return _NoClose(file_path)
 
@@ -1723,13 +1725,15 @@ def _regularize_object_path(file_path, object_path, custom_classes, options):
         if object_path is None:
             trees = [k for k, v in file.classnames().items() if v == "TTree"]
             if len(trees) == 0:
-                raise ValueError(
-                    """no TTrees found
-
+                if allow_missing:
+                    return None
+                else:
+                    raise ValueError(
+                        """no TTrees found
 in file {0}""".format(
-                        file_path
+                            file_path
+                        )
                     )
-                )
             elif len(trees) == 1:
                 return file[trees[0]]
             else:
@@ -1746,6 +1750,8 @@ in file {1}""".format(
                 )
 
         else:
+            if allow_missing and object_path not in file:
+                return None
             return file[object_path]
 
 
@@ -1776,6 +1782,7 @@ def iterate(
     how=None,
     report=False,
     custom_classes=None,
+    allow_missing=False,
     **options
 ):
     files = _regularize_files(files)
@@ -1787,42 +1794,46 @@ def iterate(
     global_start = 0
     for file_path, object_path in files:
         hasbranches = _regularize_object_path(
-            file_path, object_path, custom_classes, options
+            file_path, object_path, custom_classes, allow_missing, options
         )
 
-        with hasbranches:
-            for item in hasbranches.iterate(
-                expressions=expressions,
-                cut=cut,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-                aliases=aliases,
-                compute=compute,
-                step_size=step_size,
-                decompression_executor=decompression_executor,
-                interpretation_executor=interpretation_executor,
-                library=library,
-                how=how,
-                report=report,
-            ):
-                if report:
-                    arrays, local_report = item
-                    global_entry_start = local_report.tree_entry_start
-                    global_entry_stop = local_report.tree_entry_stop
-                    global_entry_start += global_start
-                    global_entry_stop += global_start
-                    global_report = type(local_report)(
-                        *((global_entry_start, global_entry_stop) + local_report[2:])
-                    )
-                    arrays = library.global_index(arrays, global_start)
-                    yield arrays, global_report
+        if hasbranches is not None:
+            with hasbranches:
+                for item in hasbranches.iterate(
+                    expressions=expressions,
+                    cut=cut,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    aliases=aliases,
+                    compute=compute,
+                    step_size=step_size,
+                    decompression_executor=decompression_executor,
+                    interpretation_executor=interpretation_executor,
+                    library=library,
+                    how=how,
+                    report=report,
+                ):
+                    if report:
+                        arrays, local_report = item
+                        global_entry_start = local_report.tree_entry_start
+                        global_entry_stop = local_report.tree_entry_stop
+                        global_entry_start += global_start
+                        global_entry_stop += global_start
+                        global_report = type(local_report)(
+                            *(
+                                (global_entry_start, global_entry_stop)
+                                + local_report[2:]
+                            )
+                        )
+                        arrays = library.global_index(arrays, global_start)
+                        yield arrays, global_report
 
-                else:
-                    arrays = library.global_index(item, global_start)
-                    yield arrays
+                    else:
+                        arrays = library.global_index(item, global_start)
+                        yield arrays
 
-            global_start += hasbranches.num_entries
+                global_start += hasbranches.num_entries
 
 
 def concatenate(
@@ -1841,6 +1852,7 @@ def concatenate(
     how=None,
     report=False,
     custom_classes=None,
+    allow_missing=False,
     **options
 ):
     files = _regularize_files(files)
@@ -1853,27 +1865,29 @@ def concatenate(
     global_start = 0
     for file_path, object_path in files:
         hasbranches = _regularize_object_path(
-            file_path, object_path, custom_classes, options
+            file_path, object_path, custom_classes, allow_missing, options
         )
 
-        with hasbranches:
-            arrays = hasbranches.arrays(
-                expressions=expressions,
-                cut=cut,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-                aliases=aliases,
-                compute=compute,
-                decompression_executor=decompression_executor,
-                interpretation_executor=interpretation_executor,
-                array_cache=array_cache,
-                library=library,
-                how=how,
-            )
-            arrays = library.global_index(arrays, global_start)
-            all_arrays.append(arrays)
-            global_start += hasbranches.num_entries
+        if hasbranches is not None:
+            with hasbranches:
+                arrays = hasbranches.arrays(
+                    expressions=expressions,
+                    cut=cut,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    aliases=aliases,
+                    compute=compute,
+                    decompression_executor=decompression_executor,
+                    interpretation_executor=interpretation_executor,
+                    array_cache=array_cache,
+                    library=library,
+                    how=how,
+                )
+                arrays = library.global_index(arrays, global_start)
+                all_arrays.append(arrays)
+
+                global_start += hasbranches.num_entries
 
     return library.concatenate(all_arrays)
 
@@ -1892,6 +1906,7 @@ def lazy(
     library="ak",
     report=False,
     custom_classes=None,
+    allow_missing=False,
     **options
 ):
     files = _regularize_files(files)
@@ -1917,38 +1932,57 @@ def lazy(
     common_keys = None
     is_self = []
 
+    count = 0
     for file_path, object_path in files:
         obj = _regularize_object_path(
-            file_path, object_path, custom_classes, real_options
+            file_path, object_path, custom_classes, allow_missing, real_options
         )
 
-        if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-            original = obj
-            obj = obj.parent
-            is_self.append(True)
+        if obj is not None:
+            count += 1
 
-            def real_filter_branch(branch):
-                return branch is original and filter_branch(branch)
+            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+                original = obj
+                obj = obj.parent
+                is_self.append(True)
 
-        else:
-            is_self.append(False)
-            real_filter_branch = filter_branch
+                def real_filter_branch(branch):
+                    return branch is original and filter_branch(branch)
 
-        hasbranches.append(obj)
+            else:
+                is_self.append(False)
+                real_filter_branch = filter_branch
 
-        new_keys = obj.keys(
-            recursive=recursive,
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_branch=real_filter_branch,
-            full_paths=full_paths,
+            hasbranches.append(obj)
+
+            new_keys = obj.keys(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=real_filter_branch,
+                full_paths=full_paths,
+            )
+
+            if common_keys is None:
+                common_keys = new_keys
+            else:
+                new_keys = set(new_keys)
+                common_keys = [key for key in common_keys if key in new_keys]
+
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {0}".format(
+                "\n    ".join(
+                    "{"
+                    + "{0}: {1}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
         )
-
-        if common_keys is None:
-            common_keys = new_keys
-        else:
-            new_keys = set(new_keys)
-            common_keys = [key for key in common_keys if key in new_keys]
 
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(

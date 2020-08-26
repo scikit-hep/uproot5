@@ -80,6 +80,12 @@ def open(
         file_path = path
         object_path = None
 
+    if not uproot4._util.isstr(file_path):
+        raise ValueError(
+            "'path' must be a string, Path, or a length-1 dict of "
+            "{{file_path: object_path}}, not {0}".format(repr(path))
+        )
+
     file = ReadOnlyFile(
         file_path,
         object_cache=object_cache,
