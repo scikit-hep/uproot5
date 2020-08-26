@@ -395,6 +395,16 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "long":
         return i + 2, _parse_maybe_quote('numpy.dtype(">u8")', quote)
 
+    elif has2 and tokens[i].group(0) == "long" and tokens[i + 1].group(0) == "long":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">i8")', quote)
+    elif (
+        i + 2 < len(tokens)
+        and tokens[i].group(0) == "unsigned"
+        and tokens[i + 1].group(0) == "long"
+        and tokens[i + 2].group(0) == "long"
+    ):
+        return i + 3, _parse_maybe_quote('numpy.dtype(">u8")', quote)
+
     elif _simplify_token(tokens[i]) == "Long_t*":
         return (
             i + 1,
@@ -442,6 +452,32 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     ):
         return (
             i + 2,
+            _parse_maybe_quote(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u8"))'.format(header),
+                quote,
+            ),
+        )
+
+    elif (
+        has2
+        and tokens[i].group(0) == "long"
+        and _simplify_token(tokens[i + 1]) == "long*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i8"))'.format(header),
+                quote,
+            ),
+        )
+    elif (
+        i + 2 < len(tokens)
+        and tokens[i].group(0) == "unsigned"
+        and _simplify_token(tokens[i + 1]) == "long"
+        and _simplify_token(tokens[i + 2]) == "long*"
+    ):
+        return (
+            i + 3,
             _parse_maybe_quote(
                 'uproot4.containers.AsArray({0}, numpy.dtype(">u8"))'.format(header),
                 quote,
