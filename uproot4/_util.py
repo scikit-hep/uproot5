@@ -144,6 +144,7 @@ def regularize_path(path):
     return path
 
 
+_file_path_object_path_matcher = re.compile(r"^(.+\.root)[ ]*:[ ]*(.+)$")
 _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
 _windows_absolute_path_pattern_slash = re.compile(r"^/[A-Za-z]:\\")
@@ -152,32 +153,12 @@ _might_be_port = re.compile(r"^[0-9].*")
 
 def file_object_path_split(path):
     path = regularize_path(path)
+    match = _file_path_object_path_matcher.match(path)
 
-    try:
-        index = path.rindex(":")
-    except ValueError:
-        return path, None
-    else:
-        file_path, object_path = path[:index], path[index + 1 :]
+    if match:
+        return match.groups()
 
-        if (
-            _might_be_port.match(object_path) is not None
-            and urlparse(file_path).path == ""
-        ):
-            return path, None
-
-        file_path = file_path.rstrip()
-        object_path = object_path.lstrip()
-
-        if file_path.upper() in ("FILE", "HTTP", "HTTPS", "ROOT"):
-            return path, None
-        elif (
-            os.name == "nt"
-            and _windows_drive_letter_ending.match(file_path) is not None
-        ):
-            return path, None
-        else:
-            return file_path, object_path
+    return path, None
 
 
 _remote_schemes = ["ROOT", "HTTP", "HTTPS"]
