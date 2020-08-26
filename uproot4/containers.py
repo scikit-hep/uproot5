@@ -328,9 +328,14 @@ class AsPointer(AsContainer):
 
 
 class AsArray(AsContainer):
-    def __init__(self, header, values):
+    def __init__(self, header, speedbump, values):
         self._header = header
+        self._speedbump = speedbump
         self._values = values
+
+    @property
+    def speedbump(self):
+        return self._speedbump
 
     @property
     def values(self):
@@ -341,11 +346,13 @@ class AsArray(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsArray({0}, {1})".format(self.header, values)
+        return "AsArray({0}, {1}, {2})".format(self.header, self.speedbump, values)
 
     @property
     def cache_key(self):
-        return "AsArray({0},{1})".format(self.header, _content_cache_key(self._values))
+        return "AsArray({0},{1},{2})".format(
+            self.header, self.speedbump, _content_cache_key(self._values)
+        )
 
     @property
     def typename(self):
@@ -359,24 +366,66 @@ class AsArray(AsContainer):
             uproot4._util.awkward_form(
                 self._values, file, index_format, header, tobject_header
             ),
-            parameters={"uproot": {"as": "array", "header": self._header}},
+            parameters={
+                "uproot": {
+                    "as": "array",
+                    "header": self._header,
+                    "speedbump": self._speedbump,
+                }
+            },
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
-            cursor.skip(1)
+            start_cursor = cursor.copy()
+            num_bytes, instance_version = uproot4.deserialization.numbytes_version(
+                chunk, cursor, context
+            )
 
-        if isinstance(self._values, numpy.dtype):
-            remainder = chunk.remainder(cursor.index, cursor, context)
-            return remainder.view(self._values)
+            if isinstance(self._values, numpy.dtype):
+                remainder = chunk.get(
+                    cursor.index, cursor.index + num_bytes, cursor, context
+                )
+                return remainder.view(self._values)
+
+            else:
+                out = []
+                while cursor.displacement(start_cursor) < num_bytes:
+                    out.append(
+                        self._values.read(
+                            chunk, cursor, context, file, selffile, parent
+                        )
+                    )
+
+                if self._header and header:
+                    uproot4.deserialization.numbytes_check(
+                        chunk,
+                        start_cursor,
+                        cursor,
+                        num_bytes,
+                        self.typename,
+                        context,
+                        file.file_path,
+                    )
+                return numpy.array(out, dtype=numpy.dtype(numpy.object))
 
         else:
-            out = []
-            while cursor.index < chunk.stop:
-                out.append(
-                    self._values.read(chunk, cursor, context, file, selffile, parent)
-                )
-            return numpy.array(out, dtype=numpy.dtype(numpy.object))
+            if self._speedbump:
+                cursor.skip(1)
+
+            if isinstance(self._values, numpy.dtype):
+                remainder = chunk.remainder(cursor.index, cursor, context)
+                return remainder.view(self._values)
+
+            else:
+                out = []
+                while cursor.index < chunk.stop:
+                    out.append(
+                        self._values.read(
+                            chunk, cursor, context, file, selffile, parent
+                        )
+                    )
+                return numpy.array(out, dtype=numpy.dtype(numpy.object))
 
 
 class AsDynamic(AsContainer):

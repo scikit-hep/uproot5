@@ -1385,7 +1385,11 @@ in file {3}""".format(
                                         break
                                 break
 
-                    if self.parent.member("fClassName") == "TClonesArray":
+                    if (
+                        self.parent.member("fClassName") == "TClonesArray"
+                        or self.parent.member("fClonesName", none_if_missing=True)
+                        == fParentName
+                    ):
                         self._streamer_isTClonesArray = True
 
             elif fClassName is not None and fClassName != "":

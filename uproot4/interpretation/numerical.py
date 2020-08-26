@@ -270,7 +270,7 @@ in file {4}""".format(
         return output
 
 
-class AsArray(AsDtype):
+class AsDtypeInPlace(AsDtype):
     def __init__(self):
         raise NotImplementedError
 
