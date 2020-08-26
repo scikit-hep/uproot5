@@ -1631,20 +1631,17 @@ in file {3}""".format(
 _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
 
 
-def _regularize_files(files):
+def _regularize_files_inner(files):
     files = uproot4._util.regularize_path(files)
 
     if uproot4._util.isstr(files):
-        file_path, object_path = uproot4._util.file_object_path_split(files)
-        parsed_url = urlparse(file_path)
-        count = 0
+        parsed_url = urlparse(files)
 
         if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
-            yield file_path, object_path
-            count += 1
+            yield file_path, None
 
         else:
-            expanded = os.path.expanduser(file_path)
+            expanded = os.path.expanduser(files)
             matches = list(_regularize_files_braces.finditer(expanded))
             if len(matches) == 0:
                 results = [expanded]
@@ -1658,51 +1655,86 @@ def _regularize_files(files):
                         tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
                     results.append(tmp)
 
-            seen = set()
             for result in results:
                 for match in glob.glob(result):
-                    if match not in seen:
-                        yield match, object_path
-                        seen.add(match)
-                        count += 1
-
-        if count == 0:
-            if hasattr(__builtins__, "FileNotFoundError"):
-                errclass = __builtins__.FileNotFoundError
-            else:
-                errclass = __builtins__.IOError
-            raise errclass("{0} did not match any files".format(repr(file_path)))
+                    yield match, None
 
     elif isinstance(files, HasBranches):
         yield files, None
 
-    elif isinstance(files, Iterable):
-        count = 0
-        seen = set()
-        for file in files:
-            for file_path, object_path in _regularize_files(file):
-                if uproot4._util.isstr(file_path):
-                    if file_path not in seen:
-                        yield file_path, object_path
-                        seen.add(file_path)
-                else:
-                    yield file_path, object_path
-                    count += 1
+    elif isinstance(files, dict):
+        for key, object_path in files.items():
+            for file_path, _ in _regularize_files_inner(key):
+                yield file_path, object_path
 
-        if count == 0:
-            if hasattr(__builtins__, "FileNotFoundError"):
-                errclass = __builtins__.FileNotFoundError
-            else:
-                errclass = __builtins__.IOError
-            raise errclass("at least one file path or URL must be provided")
+    elif isinstance(files, Iterable):
+        for file in files:
+            for file_path, object_path in _regularize_files_inner(file):
+                yield file_path, object_path
 
     else:
         raise TypeError(
-            "'files' must be a file path/URL (string or Path) with a TTree/TBranch "
-            "object path (separated by a colon ':'), possibly with glob "
-            "patterns (for local files), TTree/TBranch objects, or an iterable "
-            "of such things, not {0}".format(repr(files))
+            "'files' must be a file path/URL (string or Path), possibly with "
+            "a glob pattern (for local files), a dict of "
+            "{path/URL: TTree/TBranch name}, actual TTree/TBranch objects, or "
+            "an iterable of such things, not {0}".format(repr(files))
         )
+
+
+def _regularize_files(files):
+    out = []
+    seen = set()
+    for file_path, object_path in _regularize_files_inner(files):
+        if uproot4._util.isstr(file_path):
+            if (file_path, object_path) not in seen:
+                out.append((file_path, object_path))
+                seen.add((file_path, object_path))
+        else:
+            out.append((file_path, object_path))
+
+    if len(out) == 0:
+        if hasattr(__builtins__, "FileNotFoundError"):
+            errclass = __builtins__.FileNotFoundError
+        else:
+            errclass = __builtins__.IOError
+        raise errclass("at least one file path or URL must be provided")
+
+    return out
+
+
+def _regularize_object_path(file_path, object_path, custom_classes, options):
+    if isinstance(file_path, HasBranches):
+        return _NoClose(file_path)
+
+    else:
+        file = uproot4.reading.ReadOnlyFile(
+            file_path,
+            object_cache=None,
+            array_cache=None,
+            custom_classes=custom_classes,
+            **options,
+        ).root_directory
+        if object_path is None:
+            trees = [k for k, v in file.classnames().items() if v == "TTree"]
+            if len(trees) == 0:
+                raise ValueError("""no TTrees found
+
+in file {0}""".format(file_path))
+            elif len(trees) == 1:
+                return file[trees[0]]
+            else:
+                raise ValueError(
+                    """TTree object paths must be specified in the 'files' """
+                    """as {{\"filenames*.root\": \"path\"}} if any files have """
+                    """more than one TTree
+
+    TTrees: {0}
+
+in file {1}""".format(", ".join(repr(x) for x in trees), file_path)
+                )
+
+        else:
+            return file[object_path]
 
 
 class _NoClose(object):
@@ -1734,16 +1766,7 @@ def iterate(
     custom_classes=None,
     **options
 ):
-    files = list(_regularize_files(files))
-    if any(
-        uproot4._util.isstr(file_path) and object_path is None
-        for file_path, object_path in files
-    ):
-        raise TypeError(
-            "'files' must include a TTree/TBranch object path (separated by a "
-            "colon ':') to each glob pattern (if multiple are given)"
-        )
-
+    files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor
     )
@@ -1751,20 +1774,9 @@ def iterate(
 
     global_start = 0
     for file_path, object_path in files:
-        if object_path is None:
-            hasbranches = _NoClose(file_path)
-        else:
-            file = uproot4.reading.ReadOnlyFile(
-                file_path,
-                object_cache=None,
-                array_cache=None,
-                custom_classes=custom_classes,
-                **options
-            )
-            try:
-                hasbranches = file.root_directory[object_path]
-            except KeyError:
-                continue
+        hasbranches = _regularize_object_path(
+            file_path, object_path, custom_classes, options
+        )
 
         with hasbranches:
             for item in hasbranches.iterate(
@@ -1819,16 +1831,7 @@ def concatenate(
     custom_classes=None,
     **options
 ):
-    files = list(_regularize_files(files))
-    if any(
-        uproot4._util.isstr(file_path) and object_path is None
-        for file_path, object_path in files
-    ):
-        raise TypeError(
-            "'files' must include a TTree/TBranch object path (separated by a "
-            "colon ':') to each glob pattern (if multiple are given)"
-        )
-
+    files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor
     )
@@ -1837,20 +1840,9 @@ def concatenate(
     all_arrays = []
     global_start = 0
     for file_path, object_path in files:
-        if object_path is None:
-            hasbranches = _NoClose(file_path)
-        else:
-            file = uproot4.reading.ReadOnlyFile(
-                file_path,
-                object_cache=None,
-                array_cache=None,
-                custom_classes=custom_classes,
-                **options
-            )
-            try:
-                hasbranches = file.root_directory[object_path]
-            except KeyError:
-                continue
+        hasbranches = _regularize_object_path(
+            file_path, object_path, custom_classes, options
+        )
 
         with hasbranches:
             arrays = hasbranches.arrays(
@@ -1890,16 +1882,7 @@ def lazy(
     custom_classes=None,
     **options
 ):
-    files = list(_regularize_files(files))
-    if any(
-        uproot4._util.isstr(file_path) and object_path is None
-        for file_path, object_path in files
-    ):
-        raise TypeError(
-            "'files' must include a TTree/TBranch object path (separated by a "
-            "colon ':') to each glob pattern (if multiple are given)"
-        )
-
+    files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor
     )
@@ -1923,16 +1906,9 @@ def lazy(
     is_self = []
 
     for file_path, object_path in files:
-        if object_path is None:
-            obj = file_path
-        else:
-            obj = uproot4.reading.open(
-                file_path,
-                object_cache=None,
-                array_cache=None,
-                custom_classes=custom_classes,
-                **real_options
-            )[object_path]
+        obj = _regularize_object_path(
+            file_path, object_path, custom_classes, real_options
+        )
 
         if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
             original = obj
@@ -1966,10 +1942,10 @@ def lazy(
         raise ValueError(
             "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
                 "\n    ".join(
-                    "{0}:{1}".format(
-                        f.file_path if o is None else f,
-                        f.object_path if o is None else o,
-                    )
+                    "{" + "{0}: {1}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    ) + "}"
                     for f, o in files
                 )
             )

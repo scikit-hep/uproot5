@@ -41,9 +41,10 @@ def open(
 ):
     """
     Args:
-        path (str or Path): Path or URL to open, which may include a colon
-            separating a file path from an object-within-ROOT path, like
-            `"root://server/path/to/file.root : internal_directory/my_ttree"`.
+        path (str, Path, or length-1 dict): The name or URL of a file to open;
+            if a dict, the (single) key is a filename/URL and the (single)
+            value is an object-within-ROOT path, like
+            `{"root://server/path/to/file.root": "internal_directory/my_ttree"}`.
         parse_object (bool): If False, interpret the `path` purely as a file
             path (no colon-delimited object path).
         object_cache (None, MutableMapping, or int): Cache of objects drawn
@@ -73,7 +74,11 @@ def open(
         * minimal_ttree_metadata (bool; True)
     """
 
-    file_path, object_path = uproot4._util.file_object_path_split(path)
+    if isinstance(path, dict) and len(path) == 1:
+        ((file_path, object_path),) = path.items()
+    else:
+        file_path = path
+        object_path = None
 
     file = ReadOnlyFile(
         file_path,
