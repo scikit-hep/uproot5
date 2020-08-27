@@ -266,7 +266,9 @@ Functions that accept many files (uproot4.iterate, etc.) also allow:
          Example: {{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}
    * already-open TTree objects.
    * iterables of the above.
-""".format(message, repr(files))
+""".format(
+            message, repr(files)
+        )
     )
 
 

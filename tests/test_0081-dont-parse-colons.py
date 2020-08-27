@@ -119,13 +119,16 @@ def test_open_colon():
 
     with pytest.raises(FileNotFoundError):
         uproot4.open(
-            pathlib.Path(skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal")
+            pathlib.Path(
+                skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal"
+            )
         )
 
     with pytest.raises(FileNotFoundError):
         uproot4.open(
             {skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal": None}
         )
+
 
 def test_lazy_colon():
     uproot4.lazy(skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal")

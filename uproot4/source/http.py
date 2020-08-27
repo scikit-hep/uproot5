@@ -123,7 +123,7 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
         if response.status == 404:
             connection.close()
-            raise uproot4._util._file_not_found(file_path, "HTTP(S) returned 404")
+            raise uproot4._util._file_not_found(self.file_path, "HTTP(S) returned 404")
 
         if response.status != 206:
             connection.close()

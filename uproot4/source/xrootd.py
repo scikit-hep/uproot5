@@ -84,7 +84,7 @@ class XRootDResource(uproot4.source.chunk.Resource):
 
         else:
             raise OSError(
-            """XRootD error: {0}
+                """XRootD error: {0}
 in file {1}""".format(
                     status.message, self._file_path
                 )
