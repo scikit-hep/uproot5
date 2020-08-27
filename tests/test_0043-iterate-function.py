@@ -159,14 +159,13 @@ def test_iterate_report_2():
 
 
 def test_function_iterate():
-    files = (
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-            "6.20.04", "*"
-        )
-        + ":sample"
+    files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
+        "6.20.04", "*"
     )
     expect = 0
-    for arrays, report in uproot4.iterate(files, "i8", report=True, library="np"):
+    for arrays, report in uproot4.iterate(
+        {files: "sample"}, "i8", report=True, library="np"
+    ):
         assert arrays["i8"][:5].tolist() == [-15, -14, -13, -12, -11]
         assert report.global_entry_start == expect
         assert report.global_entry_stop == expect + len(arrays["i8"])
@@ -175,14 +174,13 @@ def test_function_iterate():
 
 def test_function_iterate_pandas():
     pandas = pytest.importorskip("pandas")
-    files = (
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-            "6.20.04", "*"
-        )
-        + ":sample"
+    files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
+        "6.20.04", "*"
     )
     expect = 0
-    for arrays, report in uproot4.iterate(files, "i8", report=True, library="pd"):
+    for arrays, report in uproot4.iterate(
+        {files: "sample"}, "i8", report=True, library="pd"
+    ):
         assert arrays["i8"].values[:5].tolist() == [-15, -14, -13, -12, -11]
         assert arrays.index.values[0] == expect
         assert report.global_entry_start == expect
@@ -192,13 +190,12 @@ def test_function_iterate_pandas():
 
 def test_function_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
-    files = (
-        skhep_testdata.data_path("uproot-HZZ.root").replace(
-            "HZZ", "HZZ-{uncompressed,zlib,lz4}"
-        )
-        + ":events"
+    files = skhep_testdata.data_path("uproot-HZZ.root").replace(
+        "HZZ", "HZZ-{uncompressed,zlib,lz4}"
     )
     expect = 0
-    for arrays, report in uproot4.iterate(files, "Muon_Px", report=True, library="pd"):
+    for arrays, report in uproot4.iterate(
+        {files: "events"}, "Muon_Px", report=True, library="pd"
+    ):
         assert arrays["Muon_Px"].index.values[0] == (expect, 0)
         expect += report.tree.num_entries

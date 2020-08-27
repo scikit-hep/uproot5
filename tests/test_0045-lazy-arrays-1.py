@@ -71,7 +71,7 @@ def test_branch_pluralization():
                 assert False
 
     for i, arrays in enumerate(
-        uproot4.iterate(skhep_testdata.data_path("uproot-Zmumu.root") + ":events/px1")
+        uproot4.iterate({skhep_testdata.data_path("uproot-Zmumu.root"): "events/px1"})
     ):
         if i == 0:
             assert arrays["px1"][:5].tolist() == [
@@ -103,14 +103,11 @@ def test_branch_pluralization():
 
 def test_awkward():
     awkward1 = pytest.importorskip("awkward1")
-    files = (
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-            "6.20.04", "*"
-        )
-        + ":sample"
+    files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
+        "6.20.04", "*"
     )
     cache = {}
-    array = uproot4.lazy(files, array_cache=cache)
+    array = uproot4.lazy({files: "sample"}, array_cache=cache)
     assert len(cache) == 0
 
     assert awkward1.to_list(array[:5, "i4"]) == [-15, -14, -13, -12, -11]
@@ -146,10 +143,8 @@ def test_awkward():
 
 def test_awkward_pluralization():
     awkward1 = pytest.importorskip("awkward1")
-    files = (
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-            "6.20.04", "*"
-        )
-        + ":sample/i4"
+    files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
+        "6.20.04", "*"
     )
-    assert awkward1.to_list(uproot4.lazy(files)[:5, "i4"]) == [-15, -14, -13, -12, -11]
+    array = uproot4.lazy({files: "sample"})
+    assert awkward1.to_list(array[:5, "i4"]) == [-15, -14, -13, -12, -11]
