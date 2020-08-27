@@ -131,6 +131,19 @@ def test_http():
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
+def colons_and_ports():
+    assert uproot4._util.file_object_path_split("https://example.com:443") == (
+        "https://example.com:443",
+        None,
+    )
+    assert uproot4._util.file_object_path_split(
+        "https://example.com:443/something"
+    ) == ("https://example.com:443/something", None)
+    assert uproot4._util.file_object_path_split(
+        "https://example.com:443/something:else"
+    ) == ("https://example.com:443/something", "else")
+
+
 @pytest.mark.network
 def test_http_port():
     source = uproot4.source.http.HTTPSource(

@@ -144,8 +144,41 @@ def regularize_path(path):
     return path
 
 
+_windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
 _windows_absolute_path_pattern_slash = re.compile(r"^/[A-Za-z]:\\")
+_might_be_port = re.compile(r"^[0-9].*")
+
+
+def file_object_path_split(path):
+    path = regularize_path(path)
+
+    try:
+        index = path.rindex(":")
+    except ValueError:
+        return path, None
+    else:
+        file_path, object_path = path[:index], path[index + 1 :]
+
+        if (
+            _might_be_port.match(object_path) is not None
+            and urlparse(file_path).path == ""
+        ):
+            return path, None
+
+        file_path = file_path.rstrip()
+        object_path = object_path.lstrip()
+
+        if file_path.upper() in ("FILE", "HTTP", "HTTPS", "ROOT"):
+            return path, None
+        elif (
+            os.name == "nt"
+            and _windows_drive_letter_ending.match(file_path) is not None
+        ):
+            return path, None
+        else:
+            return file_path, object_path
+
 
 _remote_schemes = ["ROOT", "HTTP", "HTTPS"]
 _schemes = ["FILE"] + _remote_schemes
@@ -191,6 +224,50 @@ def file_path_to_source_class(file_path, options):
 
     else:
         raise ValueError("URI scheme not recognized: {0}".format(file_path))
+
+
+if isinstance(__builtins__, dict):
+    if "FileNotFoundError" in __builtins__:
+        _FileNotFoundError = __builtins__["FileNotFoundError"]
+    else:
+        _FileNotFoundError = __builtins__["IOError"]
+else:
+    if hasattr(__builtins__, "FileNotFoundError"):
+        _FileNotFoundError = __builtins__.FileNotFoundError
+    else:
+        _FileNotFoundError = __builtins__.IOError
+
+
+def _file_not_found(files, message=None):
+    if message is None:
+        message = ""
+    else:
+        message = " (" + message + ")"
+
+    return _FileNotFoundError(
+        """file not found{0}
+
+    {1}
+
+Files may be specified as:
+   * str/bytes: relative or absolute filesystem path or URL, without any colons
+         other than Windows drive letter or URL schema.
+         Examples: "rel/file.root", "C:\\abs\\file.root", "http://where/what.root"
+   * str/bytes: same with an object-within-ROOT path, separated by a colon.
+         Example: "rel/file.root:tdirectory/ttree"
+   * pathlib.Path: always interpreted as a filesystem path or URL only (no
+         object-within-ROOT path), regardless of whether there are any colons.
+         Examples: Path("rel:/file.root"), Path("/abs/path:stuff.root")
+
+Functions that accept many files (uproot4.iterate, etc.) also allow:
+   * glob syntax in str/bytes and pathlib.Path.
+         Examples: Path("rel/*.root"), "/abs/*.root:tdirectory/ttree"
+   * dict: keys are filesystem paths, values are objects-within-ROOT paths.
+         Example: {{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}
+   * already-open TTree objects.
+   * iterables of the above.
+""".format(message, repr(files))
+    )
 
 
 def memory_size(data, error_message=None):

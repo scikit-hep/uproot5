@@ -1631,17 +1631,26 @@ in file {3}""".format(
 _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
 
 
-def _regularize_files_inner(files):
-    files = uproot4._util.regularize_path(files)
+def _regularize_files_inner(files, parse_colon):
+    files2 = uproot4._util.regularize_path(files)
+
+    if uproot4._util.isstr(files2) and not uproot4._util.isstr(files):
+        parse_colon = False
+        files = files2
 
     if uproot4._util.isstr(files):
-        parsed_url = urlparse(files)
+        if parse_colon:
+            file_path, object_path = uproot4._util.file_object_path_split(files)
+        else:
+            file_path, object_path = files, None
+
+        parsed_url = urlparse(file_path)
 
         if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
-            yield files, None
+            yield file_path, object_path
 
         else:
-            expanded = os.path.expanduser(files)
+            expanded = os.path.expanduser(file_path)
             matches = list(_regularize_files_braces.finditer(expanded))
             if len(matches) == 0:
                 results = [expanded]
@@ -1655,21 +1664,24 @@ def _regularize_files_inner(files):
                         tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
                     results.append(tmp)
 
+            seen = set()
             for result in results:
                 for match in glob.glob(result):
-                    yield match, None
+                    if match not in seen:
+                        yield match, object_path
+                        seen.add(match)
 
     elif isinstance(files, HasBranches):
         yield files, None
 
     elif isinstance(files, dict):
         for key, object_path in files.items():
-            for file_path, _ in _regularize_files_inner(key):
+            for file_path, _ in _regularize_files_inner(key, False):
                 yield file_path, object_path
 
     elif isinstance(files, Iterable):
         for file in files:
-            for file_path, object_path in _regularize_files_inner(file):
+            for file_path, object_path in _regularize_files_inner(file, parse_colon):
                 yield file_path, object_path
 
     else:
@@ -1684,7 +1696,7 @@ def _regularize_files_inner(files):
 def _regularize_files(files):
     out = []
     seen = set()
-    for file_path, object_path in _regularize_files_inner(files):
+    for file_path, object_path in _regularize_files_inner(files, True):
         if uproot4._util.isstr(file_path):
             if (file_path, object_path) not in seen:
                 out.append((file_path, object_path))
@@ -1693,17 +1705,7 @@ def _regularize_files(files):
             out.append((file_path, object_path))
 
     if len(out) == 0:
-        if isinstance(__builtins__, dict):
-            if "FileNotFoundError" in __builtins__:
-                errclass = __builtins__["FileNotFoundError"]
-            else:
-                errclass = __builtins__["IOError"]
-        else:
-            if hasattr(__builtins__, "FileNotFoundError"):
-                errclass = __builtins__.FileNotFoundError
-            else:
-                errclass = __builtins__.IOError
-        raise errclass("at least one file path or URL must be provided")
+        uproot4._util._file_not_found(files)
 
     return out
 

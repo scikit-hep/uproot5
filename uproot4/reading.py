@@ -41,10 +41,13 @@ def open(
 ):
     """
     Args:
-        path (str, Path, or length-1 dict): The name or URL of a file to open;
-            if a dict, the (single) key is a filename/URL and the (single)
-            value is an object-within-ROOT path, like
-            `{"root://server/path/to/file.root": "internal_directory/my_ttree"}`.
+        path (str or Path): The filesystem path or remote URL of the file to open.
+            If a string, it may be followed by a colon (`:`) and an object path
+            within the ROOT file, to return an object, rather than a file.
+            Path objects are interpreted strictly as filesystem paths or URLs.
+            Examples: "rel/file.root", "C:\abs\file.root", "http://where/what.root",
+                      "rel/file.root:tdirectory/ttree",
+                      Path("rel:/file.root"), Path("/abs/path:stuff.root")
         parse_object (bool): If False, interpret the `path` purely as a file
             path (no colon-delimited object path).
         object_cache (None, MutableMapping, or int): Cache of objects drawn
@@ -76,9 +79,15 @@ def open(
 
     if isinstance(path, dict) and len(path) == 1:
         ((file_path, object_path),) = path.items()
+
+    elif uproot4._util.isstr(path):
+        file_path, object_path = uproot4._util.file_object_path_split(path)
+
     else:
         file_path = path
         object_path = None
+
+    file_path = uproot4._util.regularize_path(file_path)
 
     if not uproot4._util.isstr(file_path):
         raise ValueError(
@@ -102,7 +111,7 @@ def open(
 
 open.defaults = {
     "file_handler": uproot4.source.file.MemmapSource,
-    # "xrootd_handler": uproot4.source.xrootd.XRootDSource,
+    "xrootd_handler": uproot4.source.xrootd.XRootDSource,
     "http_handler": uproot4.source.http.HTTPSource,
     "timeout": 30,
     "max_num_elements": None,

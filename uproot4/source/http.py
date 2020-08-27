@@ -59,12 +59,7 @@ def get_num_bytes(file_path, parsed_url, timeout):
 
     if response.status == 404:
         connection.close()
-        raise OSError(
-            """file not found (HTTP error code 404)
-for file {0}""".format(
-                file_path
-            )
-        )
+        raise uproot4._util._file_not_found(file_path, "HTTP(S) returned 404")
 
     if response.status != 200:
         connection.close()
@@ -128,12 +123,7 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
         if response.status == 404:
             connection.close()
-            raise OSError(
-                """file not found (HTTP error code 404)
-for file {0}""".format(
-                    self._file_path
-                )
-            )
+            raise uproot4._util._file_not_found(file_path, "HTTP(S) returned 404")
 
         if response.status != 206:
             connection.close()

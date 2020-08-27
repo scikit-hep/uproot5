@@ -104,3 +104,34 @@ def test_iterate():
         pass
     for arrays in uproot4.iterate([{files: "sample"}], "Ai8"):
         pass
+
+
+pathlib = pytest.importorskip("pathlib")
+
+
+def test_open_colon():
+    assert isinstance(
+        uproot4.open(
+            skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal"
+        ),
+        uproot4.behaviors.TTree.TTree,
+    )
+
+    with pytest.raises(FileNotFoundError):
+        uproot4.open(
+            pathlib.Path(skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal")
+        )
+
+    with pytest.raises(FileNotFoundError):
+        uproot4.open(
+            {skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal": None}
+        )
+
+def test_lazy_colon():
+    uproot4.lazy(skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal")
+    uproot4.lazy(
+        [
+            skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal",
+            skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_Fake_nominal",
+        ]
+    )

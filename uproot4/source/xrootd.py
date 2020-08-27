@@ -66,7 +66,7 @@ class XRootDResource(uproot4.source.chunk.Resource):
 
         status, dummy = self._file.open(self._file_path, timeout=self._xrd_timeout())
         if status.error:
-            self._xrd_error(status.message)
+            self._xrd_error(status)
 
     def _xrd_timeout(self):
         if self._timeout is None:
@@ -74,14 +74,21 @@ class XRootDResource(uproot4.source.chunk.Resource):
         else:
             return int(self._timeout)
 
-    def _xrd_error(self, message):
+    def _xrd_error(self, status):
         self._file.close(timeout=self._xrd_timeout())
-        raise OSError(
+
+        # https://github.com/xrootd/xrootd/blob/8e91462e76ab969720b40fc324714b84e0b4bd42/src/XrdCl/XrdClStatus.hh#L47-L103
+        # https://github.com/xrootd/xrootd/blob/250eced4d3787c2ac5be2c8c922134153bbf7f08/src/XrdCl/XrdClStatus.cc#L34-L74
+        if status.code == 101 or status.code == 304 or status.code == 400:
+            raise uproot4._util._file_not_found(self._file_path, status.message)
+
+        else:
+            raise OSError(
             """XRootD error: {0}
 in file {1}""".format(
-                message, self._file_path
+                    status.message, self._file_path
+                )
             )
-        )
 
     @property
     def timeout(self):
@@ -95,7 +102,7 @@ in file {1}""".format(
     def num_bytes(self):
         status, info = self._file.stat(self._xrd_timeout())
         if status.error:
-            self._xrd_error(status.message)
+            self._xrd_error(status)
         return info.size
 
     def __enter__(self):
@@ -107,7 +114,7 @@ in file {1}""".format(
     def get(self, start, stop):
         status, data = self._file.read(start, stop - start, timeout=self._xrd_timeout())
         if status.error:
-            self._xrd_error(status.message)
+            self._xrd_error(status)
         return data
 
     @property
@@ -268,6 +275,6 @@ class XRootDSource(uproot4.source.chunk.Source):
                 chunks=request_ranges, callback=callback
             )
             if status.error:
-                self._resource._xrd_error(status.message)
+                self._resource._xrd_error(status)
 
         return chunks

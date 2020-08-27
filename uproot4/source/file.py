@@ -14,7 +14,10 @@ import uproot4._util
 class FileResource(uproot4.source.chunk.Resource):
     def __init__(self, file_path):
         self._file_path = file_path
-        self._file = open(self._file_path, "rb")
+        try:
+            self._file = open(self._file_path, "rb")
+        except uproot4._util._FileNotFoundError:
+            raise uproot4._util._file_not_found(file_path)
 
     @property
     def file(self):
@@ -52,11 +55,10 @@ class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
         self._num_requested_bytes = 0
 
         self._file_path = file_path
-        self._num_bytes = os.path.getsize(self._file_path)
-
         self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
             [FileResource(file_path) for x in range(num_workers)]
         )
+        self._num_bytes = os.path.getsize(self._file_path)
 
 
 class MemmapSource(uproot4.source.chunk.Source):
