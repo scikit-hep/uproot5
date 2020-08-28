@@ -174,6 +174,15 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def elements(self):
         return self._members["fElements"]
 
+    def walk_members(self, streamers):
+        for element in self._members["fElements"]:
+            if isinstance(element, Model_TStreamerBase):
+                base = streamers[element.name][element.base_version]
+                for x in base.walk_members(streamers):
+                    yield x
+            else:
+                yield element
+
     @property
     def file_uuid(self):
         return self._file.uuid
