@@ -162,22 +162,11 @@ class ResourceFuture(Future):
         self._notify = notify
 
     def _set_excinfo(self, excinfo):
-        print("one")
-
         if not self._finished.is_set():
-            print("two")
-
             self._excinfo = excinfo
             self._finished.set()
-
-            print("three")
-
             if self._notify is not None:
-                print("four")
-
                 self._notify()
-
-            print("five")
 
     def _run(self, resource):
         try:
