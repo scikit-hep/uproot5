@@ -1367,19 +1367,21 @@ in file {3}""".format(
                 if matches is not None:
                     streamerinfo = matches[max(matches)]
 
-                    for element in streamerinfo.elements:
+                    for element in streamerinfo.walk_members(self._file.streamers):
                         if element.name == clean_name:
                             self._streamer = element
                             break
 
                     if self._streamer is None and clean_parentname is not None:
                         clean_parentname = clean_parentname.group(2)
-                        for element in streamerinfo.elements:
+                        for element in streamerinfo.walk_members(self._file.streamers):
                             if element.name == clean_parentname:
                                 substreamerinfo = self._file.streamer_named(
                                     element.typename
                                 )
-                                for subelement in substreamerinfo.elements:
+                                for subelement in substreamerinfo.walk_members(
+                                    self._file.streamers
+                                ):
                                     if subelement.name == clean_name:
                                         self._streamer = subelement
                                         break
