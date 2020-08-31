@@ -56,7 +56,7 @@ class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
 
         self._file_path = file_path
         self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
-            [FileResource(file_path) for x in range(num_workers)]
+            [FileResource(file_path) for x in uproot4._util.range(num_workers)]
         )
         self._num_bytes = os.path.getsize(self._file_path)
 
@@ -80,7 +80,8 @@ class MemmapSource(uproot4.source.chunk.Source):
             opts = dict(options)
             opts["num_workers"] = num_fallback_workers
             self._fallback = uproot4.source.file.MultithreadedFileSource(
-                file_path, **opts
+                file_path,
+                **opts    # NOTE: a comma after **opts breaks Python 2
             )
 
     def __repr__(self):

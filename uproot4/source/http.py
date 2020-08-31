@@ -194,13 +194,13 @@ for URL {0}""".format(
         notifications = queue.Queue()
         source.fallback.chunks(ranges, notifications)
 
-        for x in range(len(ranges)):
+        for x in uproot4._util.range(len(ranges)):
             chunk = notifications.get()
             results[chunk.start, chunk.stop] = chunk.raw_data
             futures[chunk.start, chunk.stop]._run(self)
 
     def handle_multipart(self, source, futures, results, response):
-        for i in range(len(futures)):
+        for i in uproot4._util.range(len(futures)):
             range_string, size = self.next_header(response)
             if range_string is None:
                 raise OSError(
@@ -282,7 +282,7 @@ class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
         self._timeout = timeout
 
         self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(file_path, timeout) for x in range(num_workers)]
+            [HTTPResource(file_path, timeout) for x in uproot4._util.range(num_workers)]
         )
 
     @property
@@ -360,7 +360,8 @@ class HTTPSource(uproot4.source.chunk.Source):
 
     def _set_fallback(self):
         self._fallback = MultithreadedHTTPSource(
-            self._file_path, **self._fallback_options
+            self._file_path,
+            **self._fallback_options    # NOTE: a comma after **fallback_options breaks Python 2
         )
 
     def __enter__(self):

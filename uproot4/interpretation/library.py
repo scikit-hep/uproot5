@@ -112,7 +112,7 @@ class NumPy(Library):
             return all_arrays
 
         if isinstance(all_arrays[0], (tuple, list)):
-            keys = range(len(all_arrays[0]))
+            keys = uproot4._util.range(len(all_arrays[0]))
         elif isinstance(all_arrays[0], dict):
             keys = list(all_arrays[0])
         else:
@@ -450,7 +450,7 @@ in object {3}""".format(
             return all_arrays
 
         if isinstance(all_arrays[0], (tuple, list)):
-            keys = range(len(all_arrays[0]))
+            keys = uproot4._util.range(len(all_arrays[0]))
         elif isinstance(all_arrays[0], dict):
             keys = list(all_arrays[0])
         else:
@@ -496,7 +496,7 @@ def _pandas_basic_index(pandas, entry_start, entry_stop):
     if hasattr(pandas, "RangeIndex"):
         return pandas.RangeIndex(entry_start, entry_stop)
     else:
-        return pandas.Int64Index(range(entry_start, entry_stop))
+        return pandas.Int64Index(uproot4._util.range(entry_start, entry_stop))
 
 
 class Pandas(Library):
@@ -578,7 +578,9 @@ class Pandas(Library):
             names = []
             arrays = {}
             for n in array.dtype.names:
-                for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
+                for tup in itertools.product(
+                    *[uproot4._util.range(d) for d in array.shape[1:]]
+                ):
                     name = (n + "".join("[" + str(x) + "]" for x in tup),)
                     names.append(name)
                     arrays[name] = array[n][(slice(None),) + tup]
@@ -598,7 +600,9 @@ class Pandas(Library):
         elif len(array.shape) != 1:
             names = []
             arrays = {}
-            for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
+            for tup in itertools.product(
+                *[uproot4._util.range(d) for d in array.shape[1:]]
+            ):
                 name = "".join("[" + str(x) + "]" for x in tup)
                 names.append(name)
                 arrays[name] = array[(slice(None),) + tup]
@@ -789,7 +793,7 @@ class Pandas(Library):
             return all_arrays
 
         if isinstance(all_arrays[0], (tuple, list)):
-            keys = range(len(all_arrays[0]))
+            keys = uproot4._util.range(len(all_arrays[0]))
         elif isinstance(all_arrays[0], dict):
             keys = list(all_arrays[0])
         else:
@@ -845,7 +849,7 @@ class CuPy(Library):
             return all_arrays
 
         if isinstance(all_arrays[0], (tuple, list)):
-            keys = range(len(all_arrays[0]))
+            keys = uproot4._util.range(len(all_arrays[0]))
         elif isinstance(all_arrays[0], dict):
             keys = list(all_arrays[0])
         else:

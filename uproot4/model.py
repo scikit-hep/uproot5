@@ -593,7 +593,9 @@ if uproot4._util.py2:
 
     def _classname_decode_convert(hex_characters):
         g = hex_characters.group(1)
-        return b"".join(chr(int(g[i : i + 2], 16)) for i in range(0, len(g), 2))
+        return b"".join(
+            chr(int(g[i : i + 2], 16)) for i in uproot4._util.range(0, len(g), 2)
+        )
 
 
 else:
@@ -604,7 +606,7 @@ else:
 
     def _classname_decode_convert(hex_characters):
         g = hex_characters.group(1)
-        return bytes(int(g[i : i + 2], 16) for i in range(0, len(g), 2))
+        return bytes(int(g[i : i + 2], 16) for i in uproot4._util.range(0, len(g), 2))
 
 
 def classname_encode(classname, version=None, unknown=False):

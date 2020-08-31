@@ -31,11 +31,13 @@ py35 = not py2 and sys.version_info[1] <= 5
 win = os.name == "nt"
 
 
-# to silence flake8 F821 errors
 if py2:
+    # to silence flake8 F821 errors
     unicode = eval("unicode")
+    range = eval("xrange")
 else:
     unicode = None
+    range = eval("range")
 
 
 def isint(x):

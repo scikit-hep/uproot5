@@ -205,25 +205,25 @@ class AsObjects(uproot4.interpretation.Interpretation):
         for basket_num, stop in enumerate(entry_offsets[1:]):
             if start <= entry_start and entry_stop <= stop:
                 basket_array = basket_arrays[basket_num]
-                for global_i in range(entry_start, entry_stop):
+                for global_i in uproot4._util.range(entry_start, entry_stop):
                     local_i = global_i - start
                     output[global_i - entry_start] = basket_array[local_i]
 
             elif start <= entry_start < stop:
                 basket_array = basket_arrays[basket_num]
-                for global_i in range(entry_start, stop):
+                for global_i in uproot4._util.range(entry_start, stop):
                     local_i = global_i - start
                     output[global_i - entry_start] = basket_array[local_i]
 
             elif start <= entry_stop <= stop:
                 basket_array = basket_arrays[basket_num]
-                for global_i in range(start, entry_stop):
+                for global_i in uproot4._util.range(start, entry_stop):
                     local_i = global_i - start
                     output[global_i - entry_start] = basket_array[local_i]
 
             elif entry_start < stop and start <= entry_stop:
                 basket_array = basket_arrays[basket_num]
-                for global_i in range(start, stop):
+                for global_i in uproot4._util.range(start, stop):
                     local_i = global_i - start
                     output[global_i - entry_start] = basket_array[local_i]
 

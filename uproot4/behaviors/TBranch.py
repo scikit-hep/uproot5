@@ -1098,7 +1098,9 @@ class HasBranches(Mapping):
                 tree = self.tree
 
             previous_baskets = {}
-            for sub_entry_start in range(entry_start, entry_stop, entry_step):
+            for sub_entry_start in uproot4._util.range(
+                entry_start, entry_stop, entry_step
+            ):
                 sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
                 if sub_entry_stop - sub_entry_start == 0:
                     continue
@@ -1728,7 +1730,7 @@ def _regularize_object_path(
             object_cache=None,
             array_cache=None,
             custom_classes=custom_classes,
-            **options,
+            **options    # NOTE: a comma after **options breaks Python 2
         ).root_directory
         if object_path is None:
             trees = [k for k, v in file.classnames().items() if v == "TTree"]
@@ -1791,7 +1793,7 @@ def iterate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options
+    **options    # NOTE: a comma after **options breaks Python 2
 ):
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -1861,7 +1863,7 @@ def concatenate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options
+    **options    # NOTE: a comma after **options breaks Python 2
 ):
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -1915,7 +1917,7 @@ def lazy(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options
+    **options    # NOTE: a comma after **options breaks Python 2
 ):
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -2022,7 +2024,7 @@ def lazy(
             obj, step_size, entry_start, entry_stop, branchid_interpretation
         )
 
-        for start in range(entry_start, entry_stop, entry_step):
+        for start in uproot4._util.range(entry_start, entry_stop, entry_step):
             stop = min(start + entry_step, entry_stop)
             length = stop - start
 

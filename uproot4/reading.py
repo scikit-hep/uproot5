@@ -37,7 +37,7 @@ def open(
     object_cache=100,
     array_cache="100 MB",
     custom_classes=None,
-    **options
+    **options    # NOTE: a comma after **options breaks Python 2
 ):
     """
     Args:
@@ -100,7 +100,7 @@ def open(
         object_cache=object_cache,
         array_cache=array_cache,
         custom_classes=custom_classes,
-        **options
+        **options    # NOTE: a comma after **options breaks Python 2
     )
 
     if object_path is None:
@@ -262,7 +262,7 @@ class ReadOnlyFile(CommonFileMethods):
         object_cache=100,
         array_cache="100 MB",
         custom_classes=None,
-        **options
+        **options    # NOTE: a comma after **options breaks Python 2
     ):
         self._file_path = file_path
         self.object_cache = object_cache
@@ -282,7 +282,10 @@ class ReadOnlyFile(CommonFileMethods):
         Source, file_path = uproot4._util.file_path_to_source_class(
             file_path, self._options
         )
-        self._source = Source(file_path, **self._options)
+        self._source = Source(
+            file_path,
+            **self._options    # NOTE: a comma after **options breaks Python 2
+        )
 
         self.hook_before_get_chunks()
 
@@ -1059,7 +1062,7 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._keys = []
-            for i in range(num_keys):
+            for i in uproot4._util.range(num_keys):
                 key = ReadOnlyKey(
                     keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )
