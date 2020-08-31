@@ -23,6 +23,13 @@ class Model_TArray(uproot4.model.Model, Sequence):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._members["fN"] = cursor.field(chunk, _tarray_format1, context)
         self._data = cursor.array(chunk, self._members["fN"], self.dtype, context)
 

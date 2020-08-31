@@ -253,9 +253,11 @@ class AsString(AsContainer):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
-            num_bytes, instance_version = uproot4.deserialization.numbytes_version(
-                chunk, cursor, context
-            )
+            (
+                num_bytes,
+                instance_version,
+                is_memberwise,
+            ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
@@ -378,9 +380,19 @@ class AsArray(AsContainer):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
-            num_bytes, instance_version = uproot4.deserialization.numbytes_version(
-                chunk, cursor, context
-            )
+            (
+                num_bytes,
+                instance_version,
+                is_memberwise,
+            ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
+
+            if is_memberwise:
+                raise NotImplementedError(
+                    """memberwise serialization of {0}
+in file {1}""".format(
+                        type(self).__name__, selffile.file_path
+                    )
+                )
 
             if isinstance(self._values, numpy.dtype):
                 remainder = chunk.get(
@@ -530,8 +542,20 @@ class AsVector(AsContainer):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
-            num_bytes, instance_version = uproot4.deserialization.numbytes_version(
-                chunk, cursor, context
+            (
+                num_bytes,
+                instance_version,
+                is_memberwise,
+            ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
+        else:
+            is_memberwise = False
+
+        if is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, selffile.file_path
+                )
             )
 
         length = cursor.field(chunk, _stl_container_size, context)
@@ -675,8 +699,20 @@ class AsSet(AsContainer):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
-            num_bytes, instance_version = uproot4.deserialization.numbytes_version(
-                chunk, cursor, context
+            (
+                num_bytes,
+                instance_version,
+                is_memberwise,
+            ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
+        else:
+            is_memberwise = False
+
+        if is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, selffile.file_path
+                )
             )
 
         length = cursor.field(chunk, _stl_container_size, context)
@@ -864,55 +900,68 @@ class AsMap(AsContainer):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         if self._header and header:
             start_cursor = cursor.copy()
-            num_bytes, instance_version = uproot4.deserialization.numbytes_version(
-                chunk, cursor, context
-            )
-            cursor.skip(6)
-
-        length = cursor.field(chunk, _stl_container_size, context)
-
-        if _has_nested_header(self._keys) and header:
-            cursor.skip(6)
-        keys = _read_nested(
-            self._keys,
-            length,
-            chunk,
-            cursor,
-            context,
-            file,
-            selffile,
-            parent,
-            header=False,
-        )
-
-        if _has_nested_header(self._values) and header:
-            cursor.skip(6)
-        values = _read_nested(
-            self._values,
-            length,
-            chunk,
-            cursor,
-            context,
-            file,
-            selffile,
-            parent,
-            header=False,
-        )
-
-        out = STLMap(keys, values)
-
-        if self._header and header:
-            uproot4.deserialization.numbytes_check(
-                chunk,
-                start_cursor,
-                cursor,
+            (
                 num_bytes,
-                self.typename,
+                instance_version,
+                is_memberwise,
+            ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
+            cursor.skip(6)
+        else:
+            is_memberwise = False
+
+        if is_memberwise:
+            length = cursor.field(chunk, _stl_container_size, context)
+
+            if _has_nested_header(self._keys) and header:
+                cursor.skip(6)
+            keys = _read_nested(
+                self._keys,
+                length,
+                chunk,
+                cursor,
                 context,
-                file.file_path,
+                file,
+                selffile,
+                parent,
+                header=False,
             )
 
-        return out
+            if _has_nested_header(self._values) and header:
+                cursor.skip(6)
+            values = _read_nested(
+                self._values,
+                length,
+                chunk,
+                cursor,
+                context,
+                file,
+                selffile,
+                parent,
+                header=False,
+            )
+
+            out = STLMap(keys, values)
+
+            if self._header and header:
+                uproot4.deserialization.numbytes_check(
+                    chunk,
+                    start_cursor,
+                    cursor,
+                    num_bytes,
+                    self.typename,
+                    context,
+                    file.file_path,
+                )
+
+            return out
+
+        else:
+            raise NotImplementedError(
+                """non-memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, selffile.file_path
+                )
+            )
 
     def __eq__(self, other):
         if not isinstance(other, AsMap):

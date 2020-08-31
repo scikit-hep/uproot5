@@ -218,7 +218,14 @@ class Model_TStreamerInfo(uproot4.model.Model):
         )
 
     def class_code(self):
-        read_members = ["    def read_members(self, chunk, cursor, context, file):"]
+        read_members = [
+            "    def read_members(self, chunk, cursor, context, file):",
+            "        if self.is_memberwise:",
+            "            raise NotImplementedError(",
+            '                "memberwise serialization of {0}\\nin file {1}".format('
+            "type(self).__name__, self.file.file_path)",
+            "            )",
+        ]
         strided_interpretation = [
             "    @classmethod",
             "    def strided_interpretation(cls, file, header=False, "
@@ -230,15 +237,18 @@ class Model_TStreamerInfo(uproot4.model.Model):
         ]
         awkward_form = [
             "    @classmethod",
-            "    def awkward_form(cls, file, index_format='i64', header=False, tobject_header=True):",
+            "    def awkward_form(cls, file, index_format='i64', header=False, "
+            "tobject_header=True):",
             "        from awkward1.forms import NumpyForm, ListOffsetForm, "
             "RegularForm, RecordForm",
             "        contents = {}",
             "        if header:",
             "            contents['@num_bytes'] = "
-            "uproot4._util.awkward_form(numpy.dtype('u4'), file, index_format, header, tobject_header)",
+            "uproot4._util.awkward_form(numpy.dtype('u4'), file, index_format, "
+            "header, tobject_header)",
             "            contents['@instance_version'] = "
-            "uproot4._util.awkward_form(numpy.dtype('u2'), file, index_format, header, tobject_header)",
+            "uproot4._util.awkward_form(numpy.dtype('u2'), file, index_format, "
+            "header, tobject_header)",
         ]
         fields = []
         formats = []

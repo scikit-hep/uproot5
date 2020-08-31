@@ -8,6 +8,13 @@ import uproot4.models.TObject
 
 class Model_TObjString(uproot4.model.Model, str):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,

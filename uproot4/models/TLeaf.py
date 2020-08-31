@@ -13,6 +13,13 @@ _tleaf2_format0 = struct.Struct(">iii??")
 
 class Model_TLeaf_v2(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -57,6 +64,13 @@ _tleafb1_format1 = struct.Struct(">bb")
 
 class Model_TLeafB_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -87,6 +101,13 @@ _tleafc1_format1 = struct.Struct(">ii")
 
 class Model_TLeafC_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -117,6 +138,13 @@ _tleafd1_format1 = struct.Struct(">dd")
 
 class Model_TLeafD_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -147,6 +175,13 @@ _tleaff1_format1 = struct.Struct(">ff")
 
 class Model_TLeafF_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -177,6 +212,13 @@ _tleafi1_format1 = struct.Struct(">ii")
 
 class Model_TLeafI_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -207,6 +249,13 @@ _tleafl1_format0 = struct.Struct(">qq")
 
 class Model_TLeafL_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -237,6 +286,13 @@ _tleafO1_format1 = struct.Struct(">??")
 
 class Model_TLeafO_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -267,6 +323,13 @@ _tleafs1_format1 = struct.Struct(">hh")
 
 class Model_TLeafS_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -297,6 +360,13 @@ _tleafelement1_format1 = struct.Struct(">ii")
 
 class Model_TLeafElement_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -324,6 +394,13 @@ class Model_TLeafElement(uproot4.model.DispatchByVersion):
 
 class Model_TLeafD32_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,
@@ -349,6 +426,13 @@ class Model_TLeafD32(uproot4.model.DispatchByVersion):
 
 class Model_TLeafF16_v1(uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TLeaf", 2).read(
                 chunk,

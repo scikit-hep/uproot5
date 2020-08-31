@@ -20,6 +20,13 @@ _tlist_format2 = struct.Struct(">B")
 
 class Model_TList(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,

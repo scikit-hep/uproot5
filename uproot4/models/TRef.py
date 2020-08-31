@@ -22,6 +22,13 @@ class Model_TRef(uproot4.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._ref = cursor.field(chunk, _tref_format1, context)
 
     @property
@@ -72,6 +79,13 @@ _trefarray_dtype = numpy.dtype(">i4")
 
 class Model_TRefArray(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         cursor.skip(10)
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"] = cursor.field(chunk, _trefarray_format1, context)

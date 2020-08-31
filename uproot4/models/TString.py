@@ -10,6 +10,13 @@ class Model_TString(uproot4.model.Model, str):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._data = cursor.string(chunk, context)
 
     def postprocess(self, chunk, cursor, context, file):

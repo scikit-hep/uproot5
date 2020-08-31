@@ -13,6 +13,14 @@ _rntuple_format1 = struct.Struct(">IIQIIQIIQ")
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot4.model.Model):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
+
         cursor.skip(4)
         (
             self._members["fVersion"],
