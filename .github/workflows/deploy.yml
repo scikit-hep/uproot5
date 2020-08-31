@@ -28,4 +28,5 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.pypi_password }}
         run: |
           python setup.py sdist
+          python setup.py bdist_wheel --universal
           twine upload dist/*
