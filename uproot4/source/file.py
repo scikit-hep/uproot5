@@ -80,7 +80,8 @@ class MemmapSource(uproot4.source.chunk.Source):
             opts = dict(options)
             opts["num_workers"] = num_fallback_workers
             self._fallback = uproot4.source.file.MultithreadedFileSource(
-                file_path, **opts
+                file_path,
+                **opts    # NOTE: a comma after **opts breaks Python 2
             )
 
     def __repr__(self):

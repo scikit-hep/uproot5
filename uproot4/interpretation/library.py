@@ -578,7 +578,9 @@ class Pandas(Library):
             names = []
             arrays = {}
             for n in array.dtype.names:
-                for tup in itertools.product(*[uproot4._util.range(d) for d in array.shape[1:]]):
+                for tup in itertools.product(
+                    *[uproot4._util.range(d) for d in array.shape[1:]]
+                ):
                     name = (n + "".join("[" + str(x) + "]" for x in tup),)
                     names.append(name)
                     arrays[name] = array[n][(slice(None),) + tup]
@@ -598,7 +600,9 @@ class Pandas(Library):
         elif len(array.shape) != 1:
             names = []
             arrays = {}
-            for tup in itertools.product(*[uproot4._util.range(d) for d in array.shape[1:]]):
+            for tup in itertools.product(
+                *[uproot4._util.range(d) for d in array.shape[1:]]
+            ):
                 name = "".join("[" + str(x) + "]" for x in tup)
                 names.append(name)
                 arrays[name] = array[(slice(None),) + tup]

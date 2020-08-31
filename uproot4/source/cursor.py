@@ -402,7 +402,9 @@ of file path {2}""".format(
 
             formatter = u"{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
 
-        for line_start in uproot4._util.range(0, int(numpy.ceil(len(data) / 20.0)) * 20, 20):
+        for line_start in uproot4._util.range(
+            0, int(numpy.ceil(len(data) / 20.0)) * 20, 20
+        ):
             line_data = data[line_start : line_start + 20]
 
             prefix = u""
