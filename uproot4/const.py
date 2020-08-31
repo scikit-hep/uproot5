@@ -103,3 +103,7 @@ kSTLany = 300
 ############# IOFeatures
 
 kGenerateOffsetMap = numpy.uint8(1)
+
+############# other
+
+kStreamedMemberWise = numpy.uint16(1 << 14)

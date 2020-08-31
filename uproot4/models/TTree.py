@@ -16,6 +16,13 @@ _ttree16_format1 = struct.Struct(">qqqqdiiiqqqqq")
 
 class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -155,6 +162,13 @@ _ttree17_format1 = struct.Struct(">qqqqdiiiiqqqqq")
 
 class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -295,6 +309,13 @@ _ttree18_format1 = struct.Struct(">qqqqqdiiiiqqqqqq")
 
 class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -441,6 +462,13 @@ _ttree19_dtype2 = numpy.dtype(">i8")
 
 class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -603,6 +631,13 @@ _ttree20_dtype2 = numpy.dtype(">i8")
 
 class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -777,6 +812,13 @@ _tiofeatures_format1 = struct.Struct(">B")
 
 class Model_ROOT_3a3a_TIOFeatures(uproot4.model.Model):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         cursor.skip(4)
         self._members["fIOBits"] = cursor.field(chunk, _tiofeatures_format1, context)
 

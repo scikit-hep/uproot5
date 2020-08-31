@@ -202,7 +202,11 @@ def numbytes_version(chunk, cursor, context, move=True):
         num_bytes = None
         version = cursor.field(chunk, _numbytes_version_2, context, move=move)
 
-    return num_bytes, version
+    is_memberwise = version & uproot4.const.kStreamedMemberWise
+    if is_memberwise:
+        version = version & ~uproot4.const.kStreamedMemberWise
+
+    return num_bytes, version, is_memberwise
 
 
 def numbytes_check(

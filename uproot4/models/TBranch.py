@@ -21,6 +21,13 @@ class Model_TBranch_v10(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -140,6 +147,13 @@ class Model_TBranch_v11(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -261,6 +275,13 @@ class Model_TBranch_v12(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -383,6 +404,13 @@ class Model_TBranch_v13(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TNamed", 1).read(
                 chunk,
@@ -516,6 +544,13 @@ class Model_TBranchElement_v8(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TBranch", 10).read(
                 chunk,
@@ -577,6 +612,13 @@ class Model_TBranchElement_v9(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TBranch", 12).read(
                 chunk,
@@ -638,6 +680,13 @@ class Model_TBranchElement_v10(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TBranch", 12).read(
                 chunk,
@@ -704,6 +753,13 @@ class Model_TBranchObject_v1(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             self.class_named("TBranch", 13).read(
                 chunk,

@@ -145,7 +145,7 @@ class Cursor(object):
         Returns True if successful (cursor has moved), False otherwise (cursor
         has NOT moved).
         """
-        num_bytes, version = uproot4.deserialization.numbytes_version(
+        num_bytes, version, is_memberwise = uproot4.deserialization.numbytes_version(
             chunk, self, context, move=False
         )
         if num_bytes is None:

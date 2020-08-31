@@ -20,6 +20,13 @@ _tobjarray_format1 = struct.Struct(">ii")
 
 class Model_TObjArray(uproot4.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,
@@ -70,6 +77,13 @@ uproot4.classes["TObjArray"] = Model_TObjArray
 
 class Model_TObjArrayOfTBaskets(Model_TObjArray):
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._bases.append(
             uproot4.models.TObject.Model_TObject.read(
                 chunk,

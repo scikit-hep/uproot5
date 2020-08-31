@@ -86,6 +86,7 @@ class Model(object):
         self._bases = []
         self._num_bytes = None
         self._instance_version = None
+        self._is_memberwise = False
         return self
 
     @classmethod
@@ -103,6 +104,7 @@ class Model(object):
         self._bases = []
         self._num_bytes = None
         self._instance_version = None
+        self._is_memberwise = False
 
         old_breadcrumbs = context.get("breadcrumbs", ())
         context["breadcrumbs"] = old_breadcrumbs + (self,)
@@ -152,6 +154,7 @@ class Model(object):
         (
             self._num_bytes,
             self._instance_version,
+            self._is_memberwise,
         ) = uproot4.deserialization.numbytes_version(chunk, cursor, context)
 
     def read_members(self, chunk, cursor, context, file):
@@ -234,6 +237,10 @@ class Model(object):
     @property
     def instance_version(self):
         return self._instance_version
+
+    @property
+    def is_memberwise(self):
+        return self._is_memberwise
 
     @property
     def members(self):
@@ -487,7 +494,7 @@ class DispatchByVersion(object):
         import uproot4.deserialization
 
         start_cursor = cursor.copy()
-        num_bytes, version = uproot4.deserialization.numbytes_version(
+        (num_bytes, version, is_memberwise,) = uproot4.deserialization.numbytes_version(
             chunk, cursor, context, move=False
         )
 

@@ -19,6 +19,13 @@ class Model_TObject(uproot4.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {0}
+in file {1}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
         self._instance_version = cursor.field(chunk, _tobject_format1, context)
         if numpy.int64(self._instance_version) & uproot4.const.kByteCountVMask:
             cursor.skip(4)
