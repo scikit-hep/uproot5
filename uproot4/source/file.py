@@ -56,7 +56,7 @@ class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
 
         self._file_path = file_path
         self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
-            [FileResource(file_path) for x in range(num_workers)]
+            [FileResource(file_path) for x in uproot4._util.range(num_workers)]
         )
         self._num_bytes = os.path.getsize(self._file_path)
 

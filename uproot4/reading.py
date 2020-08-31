@@ -1059,7 +1059,7 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._keys = []
-            for i in range(num_keys):
+            for i in uproot4._util.range(num_keys):
                 key = ReadOnlyKey(
                     keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )

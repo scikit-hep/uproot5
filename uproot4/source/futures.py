@@ -116,7 +116,7 @@ class ThreadPoolExecutor(object):
 
         self._work_queue = queue.Queue()
         self._workers = []
-        for x in range(num_workers):
+        for x in uproot4._util.range(num_workers):
             self._workers.append(Worker(self._work_queue))
         for worker in self._workers:
             worker.start()

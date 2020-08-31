@@ -63,12 +63,12 @@ def _read_nested(
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
-            for i in range(length):
+            for i in uproot4._util.range(length):
                 values[i] = model.read(
                     chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
-            for i in range(length):
+            for i in uproot4._util.range(length):
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         return values
 
@@ -1121,7 +1121,7 @@ class STLMap(Container, Mapping):
 
     def tolist(self):
         out = {}
-        for i in range(len(self)):
+        for i in uproot4._util.range(len(self)):
             x = self._values[i]
             if isinstance(x, (Container, numpy.ndarray)):
                 out[self._keys[i]] = x.tolist()

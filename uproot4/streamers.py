@@ -258,7 +258,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
         member_names = []
         class_flags = {}
 
-        for i in range(len(self._members["fElements"])):
+        for i in uproot4._util.range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
                 self,
                 i,
@@ -900,7 +900,9 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         read_members.extend(
             [
                 "        cursor.skip(6)",
-                "        for tmp in range(self.member({0})):".format(self.count_name),
+                "        for tmp in uproot4._util.range(self.member({0})):".format(
+                    self.count_name
+                ),
                 "            self._members[{0}] = c({1}).read(chunk, cursor, "
                 "context, file, self._file, self._concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
