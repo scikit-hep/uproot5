@@ -29,94 +29,6 @@ import uproot4.streamers
 import uproot4._util
 
 
-class NotNumerical(Exception):
-    pass
-
-
-class UnknownInterpretation(Exception):
-    def __init__(self, reason, file_path, object_path):
-        self.reason = reason
-        self.file_path = file_path
-        self.object_path = object_path
-
-    def __repr__(self):
-        return "<UnknownInterpretation {0}>".format(repr(self.reason))
-
-    def __str__(self):
-        return """{0}
-in file {1}
-in object {2}""".format(
-            self.reason, self.file_path, self.object_path
-        )
-
-    @property
-    def typename(self):
-        return "unknown"
-
-    @property
-    def cache_key(self):
-        raise self
-
-    @property
-    def numpy_dtype(self):
-        raise self
-
-    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
-        raise self
-
-    @property
-    def basket_array(self):
-        raise self
-
-    @property
-    def final_array(self):
-        raise self
-
-    @property
-    def hook_before_basket_array(self):
-        raise self
-
-    @property
-    def hook_after_basket_array(self):
-        raise self
-
-    @property
-    def hook_before_final_array(self):
-        raise self
-
-    @property
-    def hook_before_library_finalize(self):
-        raise self
-
-    @property
-    def hook_after_final_array(self):
-        raise self
-
-    @property
-    def itemsize(self):
-        raise self
-
-    @property
-    def from_dtype(self):
-        raise self
-
-    @property
-    def to_dtype(self):
-        raise self
-
-    @property
-    def content(self):
-        raise self
-
-    @property
-    def header_bytes(self):
-        raise self
-
-    @property
-    def size_1to5_bytes(self):
-        raise self
-
-
 def _normalize_ftype(fType):
     if fType is not None and uproot4.const.kOffsetL < fType < uproot4.const.kOffsetP:
         return fType - uproot4.const.kOffsetL
@@ -187,6 +99,383 @@ def _leaf_to_dtype(leaf):
         return _ftype_to_dtype(leaf.member("fType"))
     else:
         raise NotNumerical()
+
+
+_title_has_dims = re.compile(r"^([^\[\]]*)(\[[^\[\]]+\])+")
+_item_dim_pattern = re.compile(r"\[([1-9][0-9]*)\]")
+_item_any_pattern = re.compile(r"\[(.*)\]")
+_vector_pointer = re.compile(r"vector\<([^<>]*)\*\>")
+_pair_second = re.compile(r"pair\<[^<>]*,(.*) \>")
+
+
+def _from_leaves(branch, context):
+    dims, is_jagged = (), False
+    if len(branch.member("fLeaves")) == 1:
+        leaf = branch.member("fLeaves")[0]
+        title = leaf.member("fTitle")
+
+        m = _title_has_dims.match(title)
+        if m is not None:
+            dims = tuple(int(x) for x in re.findall(_item_dim_pattern, title))
+            if dims == ():
+                if leaf.member("fLen") > 1:
+                    dims = (leaf.member("fLen"),)
+
+            if any(
+                _item_dim_pattern.match(x) is None
+                for x in re.findall(_item_any_pattern, title)
+            ):
+                is_jagged = True
+
+    else:
+        for leaf in branch.member("fLeaves"):
+            if _title_has_dims.match(leaf.member("fTitle")):
+                raise UnknownInterpretation(
+                    "leaf-list with square brackets in the title",
+                    branch.file.file_path,
+                    branch.object_path,
+                )
+
+    return dims, is_jagged
+
+
+def _float16_double32_walk_ast(node, branch, source):
+    if isinstance(node, ast.AST):
+        if (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id.lower() == "pi"
+        ):
+            out = ast.Num(3.141592653589793)  # TMath::Pi()
+        elif (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id.lower() == "twopi"
+        ):
+            out = ast.Num(6.283185307179586)  # TMath::TwoPi()
+        elif isinstance(node, ast.Num):
+            out = ast.Num(float(node.n))
+        elif isinstance(node, ast.BinOp) and isinstance(
+            node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div)
+        ):
+            out = ast.BinOp(
+                _float16_double32_walk_ast(node.left, branch, source),
+                node.op,
+                _float16_double32_walk_ast(node.right, branch, source),
+            )
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+            out = ast.UnaryOp(
+                node.op, _float16_double32_walk_ast(node.operand, branch, source)
+            )
+        elif (
+            isinstance(node, ast.List)
+            and isinstance(node.ctx, ast.Load)
+            and len(node.elts) == 2
+        ):
+            out = ast.List(
+                [
+                    _float16_double32_walk_ast(node.elts[0], branch, source),
+                    _float16_double32_walk_ast(node.elts[1], branch, source),
+                ],
+                node.ctx,
+            )
+        elif (
+            isinstance(node, ast.List)
+            and isinstance(node.ctx, ast.Load)
+            and len(node.elts) == 3
+            and isinstance(node.elts[2], ast.Num)
+        ):
+            out = ast.List(
+                [
+                    _float16_double32_walk_ast(node.elts[0], branch, source),
+                    _float16_double32_walk_ast(node.elts[1], branch, source),
+                    node.elts[2],
+                ],
+                node.ctx,
+            )
+        else:
+            raise UnknownInterpretation(
+                "cannot compute streamer title {0}".format(repr(source)),
+                branch.file.file_path,
+                branch.object_path,
+            )
+        out.lineno, out.col_offset = node.lineno, node.col_offset
+        return out
+
+    else:
+        raise UnknownInterpretation(
+            "cannot compute streamer title {0}".format(repr(source)),
+            branch.file.file_path,
+            branch.object_path,
+        )
+
+
+def _float16_or_double32(branch, context, leaf, is_float16, dims):
+    if leaf.classname in ("TLeafF16", "TLeafD32"):
+        title = leaf.member("fTitle")
+    else:
+        title = branch.streamer.title
+
+    try:
+        left = title.index("[")
+        right = title.index("]")
+
+    except (ValueError, AttributeError):
+        low, high, num_bits = 0, 0, 0
+
+    else:
+        source = title[left : right + 1]
+        try:
+            parsed = ast.parse(source).body[0].value
+        except SyntaxError:
+            raise UnknownInterpretation(
+                "cannot parse streamer title {0} (as Python)".format(repr(source)),
+                branch.file.file_path,
+                branch.object_path,
+            )
+
+        transformed = ast.Expression(_float16_double32_walk_ast(parsed, branch, source))
+        spec = eval(compile(transformed, repr(title), "eval"))
+        if (
+            len(spec) == 2
+            and uproot4._util.isnum(spec[0])
+            and uproot4._util.isnum(spec[1])
+        ):
+            low, high = spec
+            num_bits = None
+
+        elif (
+            len(spec) == 3
+            and uproot4._util.isnum(spec[0])
+            and uproot4._util.isnum(spec[1])
+            and uproot4._util.isint(spec[2])
+        ):
+            low, high, num_bits = spec
+
+        else:
+            raise UnknownInterpretation(
+                "cannot interpret streamer title {0} as (low, high) or "
+                "(low, high, num_bits)".format(repr(source)),
+                branch.file.file_path,
+                branch.object_path,
+            )
+
+    if not is_float16:
+        if num_bits == 0:
+            return uproot4.interpretation.numerical.AsDtype(
+                numpy.dtype((">f4", dims)), numpy.dtype(("f8", dims))
+            )
+        elif num_bits is None:
+            return uproot4.interpretation.numerical.AsDouble32(low, high, 32, dims)
+        else:
+            return uproot4.interpretation.numerical.AsDouble32(
+                low, high, num_bits, dims
+            )
+
+    else:
+        if num_bits == 0:
+            return uproot4.interpretation.numerical.AsFloat16(low, high, 12, dims)
+        elif num_bits is None:
+            return uproot4.interpretation.numerical.AsFloat16(low, high, 32, dims)
+        else:
+            return uproot4.interpretation.numerical.AsFloat16(low, high, num_bits, dims)
+
+
+def interpretation_of(branch, context, simplify=True):
+    """
+    Args:
+        branch (:doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch`` to
+            interpret as an array.
+        context (dict): Auxiliary data used in deserialization.
+        simplify (bool): If True, call
+            :doc:`uproot4.interpretation.objects.AsObjects.simplify` on any
+            :doc:`uproot4.interpretation.objects.AsObjects` to try to get a
+            more efficient interpretation.
+
+    Attempts to derive an :doc:`uproot4.interpretation.Interpretation` of the
+    ``branch`` (within some ``context``).
+
+    If no interpretation can be found, it raises
+    :doc:`uproot4.interpretation.identify.UnknownInterpretation`.
+    """
+    if len(branch.branches) != 0:
+        if branch.top_level and branch.has_member("fClassName"):
+            typename = branch.member("fClassName")
+        elif branch.streamer is not None:
+            typename = branch.streamer.typename
+        else:
+            typename = None
+        subbranches = dict((x.name, x.interpretation) for x in branch.branches)
+        return uproot4.interpretation.grouped.AsGrouped(
+            branch, subbranches, typename=typename
+        )
+
+    if branch.classname == "TBranchObject":
+        if branch.top_level and branch.has_member("fClassName"):
+            model_cls = parse_typename(
+                branch.member("fClassName"),
+                file=branch.file,
+                outer_header=True,
+                inner_header=False,
+                string_header=False,
+            )
+            return uproot4.interpretation.objects.AsObjects(
+                uproot4.containers.AsDynamic(model_cls), branch
+            )
+
+        if branch.streamer is not None:
+            model_cls = parse_typename(
+                branch.streamer.typename,
+                file=branch.file,
+                outer_header=True,
+                inner_header=False,
+                string_header=True,
+            )
+
+            return uproot4.interpretation.objects.AsObjects(
+                uproot4.containers.AsDynamic(model_cls), branch
+            )
+
+        return uproot4.interpretation.objects.AsObjects(
+            uproot4.containers.AsDynamic(), branch
+        )
+
+    dims, is_jagged = _from_leaves(branch, context)
+
+    try:
+        if len(branch.member("fLeaves")) == 0:
+            pass
+
+        elif len(branch.member("fLeaves")) == 1:
+            leaf = branch.member("fLeaves")[0]
+
+            leaftype = uproot4.const.kBase
+            if leaf.classname == "TLeafElement":
+                leaftype = _normalize_ftype(leaf.member("fType"))
+
+            is_float16 = (
+                leaftype == uproot4.const.kFloat16 or leaf.classname == "TLeafF16"
+            )
+            is_double32 = (
+                leaftype == uproot4.const.kDouble32 or leaf.classname == "TLeafD32"
+            )
+            if is_float16 or is_double32:
+                out = _float16_or_double32(branch, context, leaf, is_float16, dims)
+
+            else:
+                from_dtype = _leaf_to_dtype(leaf).newbyteorder(">")
+
+                if context.get("swap_bytes", True):
+                    to_dtype = from_dtype.newbyteorder("=")
+                else:
+                    to_dtype = from_dtype
+
+                out = uproot4.interpretation.numerical.AsDtype(
+                    numpy.dtype((from_dtype, dims)), numpy.dtype((to_dtype, dims))
+                )
+
+            if leaf.member("fLeafCount") is None:
+                return out
+            else:
+                return uproot4.interpretation.jagged.AsJagged(out)
+
+        else:
+            from_dtype = []
+            for leaf in branch.member("fLeaves"):
+                from_dtype.append(
+                    (leaf.member("fName"), _leaf_to_dtype(leaf).newbyteorder(">"))
+                )
+
+            if context.get("swap_bytes", True):
+                to_dtype = [(name, dt.newbyteorder("=")) for name, dt in from_dtype]
+            else:
+                to_dtype = from_dtype
+
+            if all(
+                leaf.member("fLeafCount") is None for leaf in branch.member("fLeaves")
+            ):
+                return uproot4.interpretation.numerical.AsDtype(
+                    numpy.dtype((from_dtype, dims)), numpy.dtype((to_dtype, dims))
+                )
+            else:
+                raise UnknownInterpretation(
+                    "leaf-list with non-null fLeafCount",
+                    branch.file.file_path,
+                    branch.object_path,
+                )
+
+    except NotNumerical:
+        if (
+            branch.member("fStreamerType", none_if_missing=True)
+            == uproot4.const.kTString
+        ):
+            return uproot4.interpretation.strings.AsStrings(typename="TString")
+
+        if len(branch.member("fLeaves")) != 1:
+            raise UnknownInterpretation(
+                "more or less than one TLeaf ({0}) in a non-numerical TBranch".format(
+                    len(branch.member("fLeaves"))
+                ),
+                branch.file.file_path,
+                branch.object_path,
+            )
+
+        leaf = branch.member("fLeaves")[0]
+
+        if leaf.classname == "TLeafC":
+            return uproot4.interpretation.strings.AsStrings()
+
+        if branch.top_level and branch.has_member("fClassName"):
+            model_cls = parse_typename(
+                branch.member("fClassName"),
+                file=branch.file,
+                outer_header=True,
+                inner_header=False,
+                string_header=False,
+            )
+
+            out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
+            if simplify:
+                return out.simplify()
+            else:
+                return out
+
+        if branch.streamer is not None:
+            model_cls = parse_typename(
+                branch.streamer.typename,
+                file=branch.file,
+                outer_header=True,
+                inner_header=False,
+                string_header=True,
+            )
+
+            # kObjectp/kAnyp (as opposed to kObjectP/kAnyP) are stored inline
+            if isinstance(
+                model_cls, uproot4.containers.AsPointer
+            ) and branch.streamer.member("fType") in (
+                uproot4.const.kObjectp,
+                uproot4.const.kAnyp,
+            ):
+                while isinstance(model_cls, uproot4.containers.AsPointer):
+                    model_cls = model_cls.pointee
+
+            if branch._streamer_isTClonesArray:
+                if isinstance(branch.streamer, uproot4.streamers.Model_TStreamerObject):
+                    model_cls = uproot4.containers.AsArray(False, False, model_cls)
+                else:
+                    if hasattr(model_cls, "header"):
+                        model_cls._header = False
+                    model_cls = uproot4.containers.AsArray(True, False, model_cls)
+
+            out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
+            if simplify:
+                return out.simplify()
+            else:
+                return out
+
+        raise UnknownInterpretation(
+            "none of the rules matched", branch.file.file_path, branch.object_path,
+        )
 
 
 _tokenize_typename_pattern = re.compile(
@@ -760,6 +1049,24 @@ def parse_typename(
     inner_header=False,
     string_header=False,
 ):
+    """
+    Args:
+        typename (str): The C++ type to parse.
+        file (None or :doc:`uproot4.reading.CommonFileMethods`): Used to provide
+            error messages with the ``file_path``.
+        quote (bool): If True, return the output as a string to evaluate. This
+            is used to build code for a :doc:`uproot4.model.Model`, rather than
+            the :doc:`uproot4.model.Model` itself.
+        outer_header (bool): If True, set the ``header`` flag for the outermost
+            :doc:`uproot4.containers.AsContainer` to True.
+        inner_header (bool): If True, set the ``header`` flag for inner
+            :doc:`uproot4.containers.AsContainer` objects to True.
+        string_header (bool): If True, set the ``header`` flag for
+            :doc:`uproot4.containers.AsString` objects to True.
+
+    Return a :doc:`uproot4.model.Model` or :doc:`uproot4.containers.AsContainer`
+    for the C++ ``typename``.
+    """
     tokens = list(_tokenize_typename_pattern.finditer(typename))
 
     if (
@@ -783,426 +1090,106 @@ def parse_typename(
     return out
 
 
-def _parse_node_for_streamer(tokens, i, typename, file):
-    _parse_expect(None, tokens, i, typename, file)
-
-    has2 = i + 1 < len(tokens)
-
-    if tokens[i].group(0) == ",":
-        _parse_error(tokens[i].start() + 1, typename, file)
-
-    elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
-        return i + 1, "string"
-    elif tokens[i].group(0) == "TString":
-        return i + 1, "TString"
-    elif _simplify_token(tokens[i]) == "char*":
-        return i + 1, "char*"
-    elif (
-        has2
-        and tokens[i].group(0) == "const"
-        and _simplify_token(tokens[i + 1]) == "char*"
-    ):
-        return i + 2, "char*"
-
-    elif tokens[i].group(0) == "vector" or _simplify_token(tokens[i]) == "std::vector":
-        _parse_expect("<", tokens, i + 1, typename, file)
-        i, values = _parse_node_for_streamer(tokens, i + 2, typename, file)
-        _parse_expect(">", tokens, i, typename, file)
-        return i + 1, values
-
-    elif tokens[i].group(0) == "set" or _simplify_token(tokens[i]) == "std::set":
-        _parse_expect("<", tokens, i + 1, typename, file)
-        i, keys = _parse_node_for_streamer(tokens, i + 2, typename, file)
-        _parse_expect(">", tokens, i, typename, file)
-        return i + 1, keys
-
-    elif tokens[i].group(0) == "map" or _simplify_token(tokens[i]) == "std::map":
-        _parse_expect("<", tokens, i + 1, typename, file)
-        i, keys = _parse_node_for_streamer(tokens, i + 2, typename, file)
-        _parse_expect(",", tokens, i, typename, file)
-        i, values = _parse_node_for_streamer(tokens, i + 1, typename, file)
-        _parse_expect(">", tokens, i, typename, file)
-        return i + 1, values
-
-    else:
-        start, stop = tokens[i].span()
-
-        if has2 and tokens[i + 1].group(0) == "<":
-            i, keys = _parse_node_for_streamer(tokens, i + 1, typename, file)
-            _parse_expect(">", tokens, i + 1, typename, file)
-            stop = tokens[i + 1].span()[1]
-            i += 1
-
-        return typename[start:stop]
+class NotNumerical(Exception):
+    """
+    Exception used to stop searches for a numerical interpretation in
+    :doc:`uproot4.interpretation.identify.interpretation_of` as soon as a
+    non-conforming type is found.
+    """
+    pass
 
 
-def parse_typename_for_streamer(typename, file):
-    tokens = list(_tokenize_typename_pattern.finditer(typename))
+class UnknownInterpretation(Exception):
+    """
+    Exception raised by :doc:`uproot4.interpretation.identify.interpretation_of`
+    if an :doc:`uproot4.interpretation.Interpretation` cannot be found.
 
-    i, out = _parse_node_for_streamer(tokens, 0, typename, file)
+    The :doc:`uproot4.behavior.TBranch.TBranch.interpretation` property may have
+    :doc:`uproot4.interpretation.identify.UnknownInterpretation` as a value.
 
-    if i < len(tokens):
-        _parse_error(tokens[i].start(), typename, None)
+    Any attempts to use this class as a
+    :doc:`uproot4.interpretation.Interpretation` causes it to raise itself.
+    Thus, failing to find an interpretation for a ``TBranch`` is not a fatal
+    error, but attempting to use it to deserialize arrays is a fatal error.
+    """
+    def __init__(self, reason, file_path, object_path):
+        self.reason = reason
+        self.file_path = file_path
+        self.object_path = object_path
 
-    return out
+    def __repr__(self):
+        return "<UnknownInterpretation {0}>".format(repr(self.reason))
 
-
-_title_has_dims = re.compile(r"^([^\[\]]*)(\[[^\[\]]+\])+")
-_item_dim_pattern = re.compile(r"\[([1-9][0-9]*)\]")
-_item_any_pattern = re.compile(r"\[(.*)\]")
-_vector_pointer = re.compile(r"vector\<([^<>]*)\*\>")
-_pair_second = re.compile(r"pair\<[^<>]*,(.*) \>")
-
-
-def _from_leaves(branch, context):
-    dims, is_jagged = (), False
-    if len(branch.member("fLeaves")) == 1:
-        leaf = branch.member("fLeaves")[0]
-        title = leaf.member("fTitle")
-
-        m = _title_has_dims.match(title)
-        if m is not None:
-            dims = tuple(int(x) for x in re.findall(_item_dim_pattern, title))
-            if dims == ():
-                if leaf.member("fLen") > 1:
-                    dims = (leaf.member("fLen"),)
-
-            if any(
-                _item_dim_pattern.match(x) is None
-                for x in re.findall(_item_any_pattern, title)
-            ):
-                is_jagged = True
-
-    else:
-        for leaf in branch.member("fLeaves"):
-            if _title_has_dims.match(leaf.member("fTitle")):
-                raise UnknownInterpretation(
-                    "leaf-list with square brackets in the title",
-                    branch.file.file_path,
-                    branch.object_path,
-                )
-
-    return dims, is_jagged
-
-
-def _float16_double32_walk_ast(node, branch, source):
-    if isinstance(node, ast.AST):
-        if (
-            isinstance(node, ast.Name)
-            and isinstance(node.ctx, ast.Load)
-            and node.id.lower() == "pi"
-        ):
-            out = ast.Num(3.141592653589793)  # TMath::Pi()
-        elif (
-            isinstance(node, ast.Name)
-            and isinstance(node.ctx, ast.Load)
-            and node.id.lower() == "twopi"
-        ):
-            out = ast.Num(6.283185307179586)  # TMath::TwoPi()
-        elif isinstance(node, ast.Num):
-            out = ast.Num(float(node.n))
-        elif isinstance(node, ast.BinOp) and isinstance(
-            node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div)
-        ):
-            out = ast.BinOp(
-                _float16_double32_walk_ast(node.left, branch, source),
-                node.op,
-                _float16_double32_walk_ast(node.right, branch, source),
-            )
-        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
-            out = ast.UnaryOp(
-                node.op, _float16_double32_walk_ast(node.operand, branch, source)
-            )
-        elif (
-            isinstance(node, ast.List)
-            and isinstance(node.ctx, ast.Load)
-            and len(node.elts) == 2
-        ):
-            out = ast.List(
-                [
-                    _float16_double32_walk_ast(node.elts[0], branch, source),
-                    _float16_double32_walk_ast(node.elts[1], branch, source),
-                ],
-                node.ctx,
-            )
-        elif (
-            isinstance(node, ast.List)
-            and isinstance(node.ctx, ast.Load)
-            and len(node.elts) == 3
-            and isinstance(node.elts[2], ast.Num)
-        ):
-            out = ast.List(
-                [
-                    _float16_double32_walk_ast(node.elts[0], branch, source),
-                    _float16_double32_walk_ast(node.elts[1], branch, source),
-                    node.elts[2],
-                ],
-                node.ctx,
-            )
-        else:
-            raise UnknownInterpretation(
-                "cannot compute streamer title {0}".format(repr(source)),
-                branch.file.file_path,
-                branch.object_path,
-            )
-        out.lineno, out.col_offset = node.lineno, node.col_offset
-        return out
-
-    else:
-        raise UnknownInterpretation(
-            "cannot compute streamer title {0}".format(repr(source)),
-            branch.file.file_path,
-            branch.object_path,
+    def __str__(self):
+        return """{0}
+in file {1}
+in object {2}""".format(
+            self.reason, self.file_path, self.object_path
         )
 
+    @property
+    def typename(self):
+        return "unknown"
 
-def _float16_or_double32(branch, context, leaf, is_float16, dims):
-    if leaf.classname in ("TLeafF16", "TLeafD32"):
-        title = leaf.member("fTitle")
-    else:
-        title = branch.streamer.title
+    @property
+    def cache_key(self):
+        raise self
 
-    try:
-        left = title.index("[")
-        right = title.index("]")
+    @property
+    def numpy_dtype(self):
+        raise self
 
-    except (ValueError, AttributeError):
-        low, high, num_bits = 0, 0, 0
+    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
+        raise self
 
-    else:
-        source = title[left : right + 1]
-        try:
-            parsed = ast.parse(source).body[0].value
-        except SyntaxError:
-            raise UnknownInterpretation(
-                "cannot parse streamer title {0} (as Python)".format(repr(source)),
-                branch.file.file_path,
-                branch.object_path,
-            )
+    @property
+    def basket_array(self):
+        raise self
 
-        transformed = ast.Expression(_float16_double32_walk_ast(parsed, branch, source))
-        spec = eval(compile(transformed, repr(title), "eval"))
-        if (
-            len(spec) == 2
-            and uproot4._util.isnum(spec[0])
-            and uproot4._util.isnum(spec[1])
-        ):
-            low, high = spec
-            num_bits = None
+    @property
+    def final_array(self):
+        raise self
 
-        elif (
-            len(spec) == 3
-            and uproot4._util.isnum(spec[0])
-            and uproot4._util.isnum(spec[1])
-            and uproot4._util.isint(spec[2])
-        ):
-            low, high, num_bits = spec
+    @property
+    def hook_before_basket_array(self):
+        raise self
 
-        else:
-            raise UnknownInterpretation(
-                "cannot interpret streamer title {0} as (low, high) or "
-                "(low, high, num_bits)".format(repr(source)),
-                branch.file.file_path,
-                branch.object_path,
-            )
+    @property
+    def hook_after_basket_array(self):
+        raise self
 
-    if not is_float16:
-        if num_bits == 0:
-            return uproot4.interpretation.numerical.AsDtype(
-                numpy.dtype((">f4", dims)), numpy.dtype(("f8", dims))
-            )
-        elif num_bits is None:
-            return uproot4.interpretation.numerical.AsDouble32(low, high, 32, dims)
-        else:
-            return uproot4.interpretation.numerical.AsDouble32(
-                low, high, num_bits, dims
-            )
+    @property
+    def hook_before_final_array(self):
+        raise self
 
-    else:
-        if num_bits == 0:
-            return uproot4.interpretation.numerical.AsFloat16(low, high, 12, dims)
-        elif num_bits is None:
-            return uproot4.interpretation.numerical.AsFloat16(low, high, 32, dims)
-        else:
-            return uproot4.interpretation.numerical.AsFloat16(low, high, num_bits, dims)
+    @property
+    def hook_before_library_finalize(self):
+        raise self
 
+    @property
+    def hook_after_final_array(self):
+        raise self
 
-def interpretation_of(branch, context, simplify=True):
-    if len(branch.branches) != 0:
-        if branch.top_level and branch.has_member("fClassName"):
-            typename = branch.member("fClassName")
-        elif branch.streamer is not None:
-            typename = branch.streamer.typename
-        else:
-            typename = None
-        subbranches = dict((x.name, x.interpretation) for x in branch.branches)
-        return uproot4.interpretation.grouped.AsGrouped(
-            branch, subbranches, typename=typename
-        )
+    @property
+    def itemsize(self):
+        raise self
 
-    if branch.classname == "TBranchObject":
-        if branch.top_level and branch.has_member("fClassName"):
-            model_cls = parse_typename(
-                branch.member("fClassName"),
-                file=branch.file,
-                outer_header=True,
-                inner_header=False,
-                string_header=False,
-            )
-            return uproot4.interpretation.objects.AsObjects(
-                uproot4.containers.AsDynamic(model_cls), branch
-            )
+    @property
+    def from_dtype(self):
+        raise self
 
-        if branch.streamer is not None:
-            model_cls = parse_typename(
-                branch.streamer.typename,
-                file=branch.file,
-                outer_header=True,
-                inner_header=False,
-                string_header=True,
-            )
+    @property
+    def to_dtype(self):
+        raise self
 
-            return uproot4.interpretation.objects.AsObjects(
-                uproot4.containers.AsDynamic(model_cls), branch
-            )
+    @property
+    def content(self):
+        raise self
 
-        return uproot4.interpretation.objects.AsObjects(
-            uproot4.containers.AsDynamic(), branch
-        )
+    @property
+    def header_bytes(self):
+        raise self
 
-    dims, is_jagged = _from_leaves(branch, context)
-
-    try:
-        if len(branch.member("fLeaves")) == 0:
-            pass
-
-        elif len(branch.member("fLeaves")) == 1:
-            leaf = branch.member("fLeaves")[0]
-
-            leaftype = uproot4.const.kBase
-            if leaf.classname == "TLeafElement":
-                leaftype = _normalize_ftype(leaf.member("fType"))
-
-            is_float16 = (
-                leaftype == uproot4.const.kFloat16 or leaf.classname == "TLeafF16"
-            )
-            is_double32 = (
-                leaftype == uproot4.const.kDouble32 or leaf.classname == "TLeafD32"
-            )
-            if is_float16 or is_double32:
-                out = _float16_or_double32(branch, context, leaf, is_float16, dims)
-
-            else:
-                from_dtype = _leaf_to_dtype(leaf).newbyteorder(">")
-
-                if context.get("swap_bytes", True):
-                    to_dtype = from_dtype.newbyteorder("=")
-                else:
-                    to_dtype = from_dtype
-
-                out = uproot4.interpretation.numerical.AsDtype(
-                    numpy.dtype((from_dtype, dims)), numpy.dtype((to_dtype, dims))
-                )
-
-            if leaf.member("fLeafCount") is None:
-                return out
-            else:
-                return uproot4.interpretation.jagged.AsJagged(out)
-
-        else:
-            from_dtype = []
-            for leaf in branch.member("fLeaves"):
-                from_dtype.append(
-                    (leaf.member("fName"), _leaf_to_dtype(leaf).newbyteorder(">"))
-                )
-
-            if context.get("swap_bytes", True):
-                to_dtype = [(name, dt.newbyteorder("=")) for name, dt in from_dtype]
-            else:
-                to_dtype = from_dtype
-
-            if all(
-                leaf.member("fLeafCount") is None for leaf in branch.member("fLeaves")
-            ):
-                return uproot4.interpretation.numerical.AsDtype(
-                    numpy.dtype((from_dtype, dims)), numpy.dtype((to_dtype, dims))
-                )
-            else:
-                raise UnknownInterpretation(
-                    "leaf-list with non-null fLeafCount",
-                    branch.file.file_path,
-                    branch.object_path,
-                )
-
-    except NotNumerical:
-        if (
-            branch.member("fStreamerType", none_if_missing=True)
-            == uproot4.const.kTString
-        ):
-            return uproot4.interpretation.strings.AsStrings(typename="TString")
-
-        if len(branch.member("fLeaves")) != 1:
-            raise UnknownInterpretation(
-                "more or less than one TLeaf ({0}) in a non-numerical TBranch".format(
-                    len(branch.member("fLeaves"))
-                ),
-                branch.file.file_path,
-                branch.object_path,
-            )
-
-        leaf = branch.member("fLeaves")[0]
-
-        if leaf.classname == "TLeafC":
-            return uproot4.interpretation.strings.AsStrings()
-
-        if branch.top_level and branch.has_member("fClassName"):
-            model_cls = parse_typename(
-                branch.member("fClassName"),
-                file=branch.file,
-                outer_header=True,
-                inner_header=False,
-                string_header=False,
-            )
-
-            out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
-            if simplify:
-                return out.simplify()
-            else:
-                return out
-
-        if branch.streamer is not None:
-            model_cls = parse_typename(
-                branch.streamer.typename,
-                file=branch.file,
-                outer_header=True,
-                inner_header=False,
-                string_header=True,
-            )
-
-            # kObjectp/kAnyp (as opposed to kObjectP/kAnyP) are stored inline
-            if isinstance(
-                model_cls, uproot4.containers.AsPointer
-            ) and branch.streamer.member("fType") in (
-                uproot4.const.kObjectp,
-                uproot4.const.kAnyp,
-            ):
-                while isinstance(model_cls, uproot4.containers.AsPointer):
-                    model_cls = model_cls.pointee
-
-            if branch._streamer_isTClonesArray:
-                if isinstance(branch.streamer, uproot4.streamers.Model_TStreamerObject):
-                    model_cls = uproot4.containers.AsArray(False, False, model_cls)
-                else:
-                    if hasattr(model_cls, "header"):
-                        model_cls._header = False
-                    model_cls = uproot4.containers.AsArray(True, False, model_cls)
-
-            out = uproot4.interpretation.objects.AsObjects(model_cls, branch)
-            if simplify:
-                return out.simplify()
-            else:
-                return out
-
-        raise UnknownInterpretation(
-            "none of the rules matched", branch.file.file_path, branch.object_path,
-        )
+    @property
+    def size_1to5_bytes(self):
+        raise self
