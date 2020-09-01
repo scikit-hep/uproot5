@@ -25,21 +25,31 @@ import uproot4._util
 
 class LRUCache(MutableMapping):
     """
-    Cache with Least-Recently Used (LRU) semantics, evicting if the `current`
-    number of objects exceeds `limit`.
+    Args:
+        limit (None or int): Number of objects to allow in the cache before
+            evicting the least-recently used. If None, this cache never evicts.
+
+    LRUCache is a ``MutableMapping`` that evicts the least-recently used
+    objects when the ``current`` number of objects exceeds the ``limit``.
+
+    Get and set (or explicitly remove) items with ``MutableMapping`` syntax:
+    square bracket subscripting.
+
+    LRUCache is thread-safe for getting, setting, and deleting, but not for
+    iterating.
+
+    This cache is insensitive to the size of the objects it stores, and hence
+    is a better ``object_cache`` than an ``array_cache``.
     """
 
     @classmethod
     def sizeof(cls, obj):
+        """
+        The "size of" an object in this cache is always exactly 1.
+        """
         return 1
 
     def __init__(self, limit):
-        """
-        Args:
-            limit (None or int): If None, this cache never evicts;
-                otherwise, objects are evicted when the number of
-                items reachs the limit.
-        """
         self._limit = limit
         self._current = 0
         self._order = []
@@ -56,22 +66,19 @@ class LRUCache(MutableMapping):
     @property
     def limit(self):
         """
-        Limit before evicting or None if this cache never evicts.
+        Number of objects to allow in the cache before evicting the
+        least-recently used. If None, this cache never evicts.
         """
         return self._limit
 
     @property
     def current(self):
         """
-        Current fill level of the cache; to be compared with `limit`.
+        Current number of items in the cache.
         """
         return self._current
 
     def __getitem__(self, where):
-        """
-        Try to get an object from the cache. Raises `KeyError` if it is not
-        found.
-        """
         with self._lock:
             out = self._data[where]
             self._order.remove(where)
@@ -79,10 +86,6 @@ class LRUCache(MutableMapping):
             return out
 
     def __setitem__(self, where, what):
-        """
-        Adds an object to the cache and evicts if the new `current`
-        exceeds `limit`.
-        """
         with self._lock:
             if where in self._data:
                 self._order.remove(where)
@@ -97,49 +100,54 @@ class LRUCache(MutableMapping):
                     del self._data[key]
 
     def __delitem__(self, where):
-        """
-        Manually deletes an item from the cache.
-        """
         with self._lock:
             self._current -= self.sizeof(self._data[where])
             del self._data[where]
             self._order.remove(where)
 
     def __iter__(self):
-        """
-        Iterates over the data in the cache.
-        """
         for x in self._order:
             yield x
 
     def __len__(self):
-        """
-        Number of items in the cache.
-        """
         return len(self._order)
 
 
 class LRUArrayCache(LRUCache):
     """
-    Cache with Least-Recently Used (LRU) semantics, evicting if the `current`
-    sum of all objects' `nbytes` exceeds `limit`.
+    Args:
+        limit_bytes (None, int, or str): Amount of data to allow in the cache
+            before evicting the least-recently used. An integer is interpreted
+            as a number of bytes and a string must be a number followed by a
+            unit, such as "100 MB". If None, this cache never evicts.
 
-    If an object does not have an `nbytes` attribute, it is presumed to have
-    `default_nbytes`.
+    LRUArrayCache is a ``MutableMapping`` that evicts the least-recently used
+    objects when the ``current`` number of bytes exceeds the ``limit``. The
+    size of an object is taken from its ``nbytes`` attribute. If it does not
+    have an ``nbytes``, it is presumed to have ``default_nbytes``.
+
+    Get and set (or explicitly remove) items with ``MutableMapping`` syntax:
+    square bracket subscripting.
+
+    LRUArrayCache is thread-safe for getting, setting, and deleting, but not
+    for iterating.
+
+    This cache is sensitive to the size of the objects it stores, but only if
+    those objects have meaningful ``nbytes``. It is therefore a better
+    ``array_cache`` than an ``array_cache``.
     """
 
     default_nbytes = 1024
 
     @classmethod
     def sizeof(cls, what):
+        """
+        The "size of" an object in this cache is its ``nbytes`` attribute or,
+        if it doesn't have one, ``default_nbytes``.
+        """
         return getattr(what, "nbytes", cls.default_nbytes)
 
     def __init__(self, limit_bytes):
-        """
-        Args:
-            limit_bytes (None, int, or str): If None, this cache never evicts;
-                otherwise, the limit is interpreted as a memory_size.
-        """
         if limit_bytes is None:
             limit = None
         else:
@@ -152,3 +160,18 @@ class LRUArrayCache(LRUCache):
         else:
             limit = "({0}/{1} bytes full)".format(self._current, self._limit)
         return "<LRUArrayCache {0} at 0x{1:012x}>".format(limit, id(self))
+
+    @property
+    def limit(self):
+        """
+        Number of bytes to allow in the cache before evicting the
+        least-recently used. If None, this cache never evicts.
+        """
+        return self._limit
+
+    @property
+    def current(self):
+        """
+        Current number of bytes in the cache.
+        """
+        return self._current
