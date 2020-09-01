@@ -235,6 +235,25 @@ _lgamma = _vectorized_gamma(True)
 
 
 class ComputePython(uproot4.compute.Compute):
+    """
+    Args:
+        functions (None or dict): Mapping from function name to function, or
+            None for ``default_functions``.
+        getter (str): Name of the function that extracts branches by name;
+            needed for branches whose names are not valid Python symbols.
+            Default is "get".
+
+    ComputePython is the default :doc:`uproot4.compute.Compute` for
+    interpreting expressions passed to
+    :doc:`uproot4.behavior.TBranch.HasBranches.arrays`. This interpretation
+    assumes that these expressions have Python syntax and semantics, with math
+    functions loaded into the namespace.
+
+    Unlike standard Python, an expression with attributes, such as
+    ``some.thing``, can be a single identifier, so that a ``TBranch`` whose
+    name contains dots does not need to be loaded with ``get("some.thing")``.
+    """
+
     default_functions = {
         "abs": numpy.absolute,
         "absolute": numpy.absolute,
@@ -307,13 +326,34 @@ class ComputePython(uproot4.compute.Compute):
 
     @property
     def functions(self):
+        """
+        Mapping from function name to function (dict).
+        """
         return self._functions
 
     @property
     def getter(self):
+        """
+        Name of the function that extracts branches by name; needed for
+        branches whose names are not valid Python symbols.
+        """
         return self._getter
 
     def free_symbols(self, expression, keys, aliases, file_path, object_path):
+        """
+        Args:
+            expression (str): The expression to analyze.
+            keys (list of str): Names of branches or aliases (for aliases that
+                refer to aliases).
+            aliases (list of str): Names of aliases.
+            file_path (str): File path for error messages.
+            object_path (str): Object path for error messages.
+
+        Finds the symbols in the expression that are in ``keys`` or ``aliases``,
+        in other words, ``TBranch`` names or alias names. These expressions may
+        include dots (attributes). Known ``functions`` and the ``getter`` are
+        excluded.
+        """
         node = _expression_to_node(expression, file_path, object_path)
         try:
             return list(
@@ -329,6 +369,19 @@ class ComputePython(uproot4.compute.Compute):
     def compute_expressions(
         self, arrays, expression_context, keys, aliases, file_path, object_path
     ):
+        """
+        Args:
+            arrays (dict of arrays): Inputs to the computation.
+            expression_context (list of (expression, context) tuples): Expression
+                strings and a dict of metadata about each.
+            keys (list of str): Names of branches or aliases (for aliases that
+                refer to aliases).
+            aliases (list of str): Names of aliases.
+            file_path (str): File path for error messages.
+            object_path (str): Object path for error messages.
+
+        Computes an array for each expression.
+        """
         values = {}
 
         def getter(name):
