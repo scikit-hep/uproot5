@@ -81,6 +81,10 @@ class ObjectArray(object):
     def cursor_offset(self):
         return self._cursor_offset
 
+    @property
+    def detached_file(self):
+        return self._detached_file
+
     def __len__(self):
         return len(self._byte_offsets) - 1
 

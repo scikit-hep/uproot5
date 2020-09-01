@@ -432,10 +432,6 @@ in file {1}""".format(
             del self._custom_classes[classname]
 
     @property
-    def options(self):
-        return self._options
-
-    @property
     def source(self):
         return self._source
 
