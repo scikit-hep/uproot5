@@ -327,7 +327,7 @@ class JaggedArray(object):
     Args:
         offsets (array of ``numpy.int32``): Starting and stopping entries for
             each variable-length list. The length of the ``offsets`` is one
-            greater than the logical length of this jagged array.
+            greater than the number of lists.
         content (array): Contiguous array for data in all nested lists of the
             jagged array.
 
@@ -347,8 +347,7 @@ class JaggedArray(object):
     def offsets(self):
         """
         Starting and stopping entries for each variable-length list. The length
-        of the ``offsets`` is one greater than the logical length of this
-        jagged array.
+        of the ``offsets`` is one greater than the number of lists.
         """
         return self._offsets
 
