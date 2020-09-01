@@ -42,35 +42,74 @@ import uproot4.extras
 
 class Library(object):
     """
-    Indicates the type of array to produce.
+    Abstract superclass of array-library handlers, for libraries such as NumPy,
+    Awkward Array, Pandas, and CuPy.
 
-       * `imported`: The imported library or raises a helpful "how to"
-             message if it could not be imported.
-       * `empty(shape, dtype)`: Make (possibly temporary) multi-basket storage.
-       * `finalize(array, branch, interpretation, entry_start, entry_stop)`:
-             Convert the internal storage form into one appropriate for this
-             library (NumPy array, Pandas Series, etc.).
-       * `group(arrays, expression_context, how)`: Combine arrays into a group,
-             either a generic tuple or a grouping style appropriate for this
-             library (NumPy array dict, Awkward RecordArray, etc.).
-       * `global_index(array, global_start)`: Add `global_start` to the array's
-             index (if any). The array is modified in-place (if possible) and
-             returned.
-       * `concatenate(all_arrays)`: Eagerly combine a list of arrays into one
-             array.
+    A library is used in the finalization and grouping stages of producing an
+    array, converting it from internal representations like
+    :doc:`uproot4.interpretation.jagged.JaggedArray`,
+    :doc:`uproot4.interpretation.strings.StringArray`, and
+    :doc:`uproot4.interpretation.objects.ObjectArray` into the library's
+    equivalents. It can also be required for concatenation and other late-stage
+    operations on the output arrays.
+
+    Libraries are usually selected by a string name. These names are held in a
+    private registry in the :doc:`uproot4.interpretation.library` module.
     """
 
     @property
     def imported(self):
+        """
+        Attempts to import the library and returns the imported module.
+        """
         raise AssertionError
 
     def empty(self, shape, dtype):
+        """
+        Args:
+            shape (tuple of int): NumPy array ``shape``. (The first item must
+                be zero.)
+            dtype (``numpy.dtype`` or its constructor argument): NumPy array
+                ``dtype``.
+
+        Returns an empty NumPy-like array.
+        """
         return numpy.empty(shape, dtype)
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+        """
+        Args:
+            array (array): Internal, temporary, trimmed array. If this is a
+                NumPy array, it may be identical to the output array.
+            branch (:doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch``
+                that is represented by this array.
+            interpretation (:doc:`uproot4.interpretation.Interpretation`): The
+                interpretation that produced the ``array``.
+            entry_start (int): First entry that is included in the output.
+            entry_stop (int): FIrst entry that is excluded (one greater than
+                the last entry that is included) in the output.
+
+        Create a library-appropriate output array for this temporary ``array``.
+
+        This array would represent one ``TBranch`` (i.e. not a "group").
+        """
         raise AssertionError
 
     def group(self, arrays, expression_context, how):
+        u"""
+        Args:
+            arrays (dict of str \u2192 array): Mapping from names to finalized
+                array objets to combine into a group.
+            expression_context (list of (str, dict) tuples): Expression strings
+                and a dict of metadata about each.
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+
+        Combine the finalized ``arrays`` into a library-appropriate group type.
+        """
         if how is tuple:
             return tuple(arrays[name] for name, _ in expression_context)
         elif how is list:
@@ -84,9 +123,29 @@ class Library(object):
             )
 
     def global_index(self, array, global_start):
+        """
+        Args:
+            array (array): The library-appropriate array whose global index
+                needs adjustment.
+            global_start (int): A number to add to the global index of
+                ``array`` to correct it.
+
+        Apply *in-place* corrections to the global index of ``array`` by adding
+        ``global_start``.
+
+        Even though the operation is performed *in-place*, this method returns
+        the ``array``.
+        """
         return array
 
     def concatenate(self, all_arrays):
+        """
+        Args:
+            all_arrays (list of arrays): A list of library-appropriate arrays
+                that need to be concatenated.
+
+        Returns a concatenated version of ``all_arrays``.
+        """
         raise AssertionError
 
     def __repr__(self):
@@ -97,6 +156,26 @@ class Library(object):
 
 
 class NumPy(Library):
+    u"""
+    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    data as NumPy arrays. The standard name for this library is ``"np"``.
+
+    The single-``TBranch`` form for this library is a ``numpy.ndarray``. If
+    the data are non-numerical, they will be converted into Python objects and
+    stored in an array with ``dtype="O"``. This is inefficient, but it is the
+    minimal-dependency option for Python.
+
+    The "group" behavior for this library is:
+
+    * ``how=dict`` or ``how=None``: a dict of str \u2192 array, mapping the
+      names to arrays.
+    * ``how=tuple``: a tuple of arrays, in the order requested. (Names are
+      lost.)
+    * ``how=list``: a list of arrays, in the order requested. (Names are lost.)
+
+    Since NumPy arrays are not indexed, ``global_index`` has no effect.
+    """
+
     name = "np"
 
     @property
@@ -283,6 +362,32 @@ def _awkward_json_to_array(awkward1, form, array):
 
 
 class Awkward(Library):
+    u"""
+    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    data as Awkward Arrays. The standard name for this library is ``"ak"``.
+
+    This is the default for all functions that require a
+    :doc:`uproot4.interpetation.library.Library`, though Uproot does not
+    explicitly depend on Awkward Array. If you are confronted with a message
+    that Awkward Array is not installed, either install ``awkward1`` or
+    select another library (likely :doc:`uproot4.interpretation.library.NumPy`).
+
+    Both the single-``TBranch`` and "group" forms for this library are
+    ``ak.Array``, though groups are always arrays of records. Awkward Array
+    was originally developed for Uproot, so the data structures are usually
+    optimial for Uproot data.
+
+    The "group" behavior for this library is:
+
+    * ``how=None``: an array of Awkward records.
+    * ``how=dict``: a dict of str \u2192 array, mapping the names to arrays.
+    * ``how=tuple``: a tuple of arrays, in the order requested. (Names are
+      lost.)
+    * ``how=list``: a list of arrays, in the order requested. (Names are lost.)
+
+    Since Awkward arrays are not indexed, ``global_index`` has no effect.
+    """
+
     name = "ak"
 
     @property
@@ -526,6 +631,29 @@ def _pandas_basic_index(pandas, entry_start, entry_stop):
 
 
 class Pandas(Library):
+    u"""
+    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    data as Pandas Series and DataFrames. The standard name for this library is
+    ``"pd"``.
+
+    The single-``TBranch`` (with a single ``TLeaf``) form for this library is
+    ``pandas.Series``, and the "group" form is ``pandas.DataFrame``.
+
+    The "group" behavior for this library is:
+
+    * ``how=None`` or a string: passed to ``pandas.merge`` as its ``how``
+      parameter, which would be relevant if jagged arrays with different
+      multiplicity are requested.
+    * ``how=dict``: a dict of str \u2192 array, mapping the names to
+      ``pandas.Series``.
+    * ``how=tuple``: a tuple of ``pandas.Series``, in the order requested.
+      (Names are assigned to the ``pandas.Series``.)
+    * ``how=list``: a list of ``pandas.Series``, in the order requested.
+      (Names are assigned to the ``pandas.Series``.)
+
+    Pandas Series and DataFrames are indexed, so ``global_index`` adjusts them.
+    """
+
     name = "pd"
 
     @property
@@ -841,6 +969,25 @@ class Pandas(Library):
 
 
 class CuPy(Library):
+    u"""
+    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    data as CuPy arrays on a GPU. The standard name for this library is ``"cp"``.
+
+    The single-``TBranch`` form for this library is a ``cupy.ndarray``.
+    Non-numerical data are not allowed. Note that Awkward Arrays can be moved
+    to GPUs with full data structures.
+
+    The "group" behavior for this library is:
+
+    * ``how=dict`` or ``how=None``: a dict of str \u2192 array, mapping the
+      names to arrays.
+    * ``how=tuple``: a tuple of arrays, in the order requested. (Names are
+      lost.)
+    * ``how=list``: a list of arrays, in the order requested. (Names are lost.)
+
+    Since CuPy arrays are not indexed, ``global_index`` has no effect.
+    """
+
     name = "cp"
 
     @property

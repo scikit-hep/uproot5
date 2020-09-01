@@ -372,8 +372,8 @@ class ComputePython(uproot4.compute.Compute):
         """
         Args:
             arrays (dict of arrays): Inputs to the computation.
-            expression_context (list of (expression, context) tuples): Expression
-                strings and a dict of metadata about each.
+            expression_context (list of (str, dict) tuples): Expression strings
+                and a dict of metadata about each.
             keys (list of str): Names of branches or aliases (for aliases that
                 refer to aliases).
             aliases (list of str): Names of aliases.
