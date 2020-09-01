@@ -14,8 +14,8 @@ from __future__ import absolute_import
 
 class Compute(object):
     """
-    Superclass of all computation backends for expressions passed to
-    :doc:`uproot4.behavior.TBranch.HasBranches.arrays`.
+    Abstract class for all computation backends, which compute the expressions
+    that are passed to :doc:`uproot4.behavior.TBranch.HasBranches.arrays`.
 
     The default is :doc:`uproot4.compute.python.ComputePython`.
     """
