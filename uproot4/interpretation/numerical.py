@@ -32,6 +32,14 @@ def _dtype_shape(dtype):
 
 
 class Numerical(uproot4.interpretation.Interpretation):
+    """
+    Abstract superclass of numerical interpretations, including
+
+    * :doc:`uproot4.interpretation.numerical.AsDtype`
+    * :doc:`uproot4.interpretation.numerical.AsSTLBits`
+    * :doc:`uproot4.interpretation.numerical.TruncatedNumerical`
+    """
+
     def _wrap_almost_finalized(self, array):
         return array
 
@@ -143,6 +151,19 @@ _dtype_kind_itemsize_to_typename = {
 
 
 class AsDtype(Numerical):
+    """
+    Args:
+        from_dtype (``numpy.dtype`` or its constructor argument): Data type to
+            *assume* of the raw but uncompressed bytes in the ``TBasket``.
+            Usually big-endian; may include named fields and a shape.
+        to_dtype (None, ``numpy.dtype``, or its constructor argument): Data
+            type to *convert* the data into. Usually native-endian; may include
+            named fields and a shape. If None, ``to_dtype`` will be set to the
+            native-endian equivalent of ``from_dtype``.
+
+    Interpretation for any array that can be fully described as a
+    ``numpy.dtype``.
+    """
     def __init__(self, from_dtype, to_dtype=None):
         self._from_dtype = numpy.dtype(from_dtype)
         if to_dtype is None:
@@ -167,14 +188,47 @@ class AsDtype(Numerical):
 
     @property
     def from_dtype(self):
+        """
+        Data type to expect of the raw but uncompressed bytes in the
+        ``TBasket`` data. Usually big-endian; may include named fields and a
+        shape.
+
+        Named fields (``dtype.names``) can be used to construct a NumPy
+        `structured array <https://numpy.org/doc/stable/user/basics.rec.html>`__.
+
+        A shape (``dtype.shape``) can be used to construct a fixed-size array
+        for each entry. (Not applicable to variable-length lists! See
+        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        ``array.shape[1:] == dtype.shape``.
+        """
         return self._from_dtype
 
     @property
     def to_dtype(self):
+        """
+        Data type to convert the data into. Usually the native-endian
+        equivalent of :doc:`uproot4.interpretation.numerical.AsDtype.from_dtype`;
+        may include named fields and a shape.
+
+        Named fields (``dtype.names``) can be used to construct a NumPy
+        `structured array <https://numpy.org/doc/stable/user/basics.rec.html>`__.
+
+        A shape (``dtype.shape``) can be used to construct a fixed-size array
+        for each entry. (Not applicable to variable-length lists! See
+        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        ``array.shape[1:] == dtype.shape``.
+        """
         return self._to_dtype
 
     @property
     def itemsize(self):
+        """
+        Number of bytes per item of
+        :doc:`uproot4.interpretation.numerical.AsDtype.from_dtype`.
+
+        This number of bytes includes the fields and shape, like
+        ``dtype.itemsize`` in NumPy.
+        """
         return self._from_dtype.itemsize
 
     @property
@@ -287,37 +341,95 @@ in file {4}""".format(
 
 
 class AsDtypeInPlace(AsDtype):
+    """
+    Like :doc:`uproot4.interpretation.numerical.AsDtype`, but a given array is
+    filled in-place, rather than creating a new output array.
+    """
     def __init__(self):
         raise NotImplementedError
 
 
+class AsSTLBits(Numerical):
+    """
+    Interpretation for ``std::bitset``.
+    """
+    def __init__(self):
+        raise NotImplementedError
+
+    @property
+    def itemsize(self):
+        return self._num_bytes + 4
+
+
 class TruncatedNumerical(Numerical):
+    """
+    Abstract superclass for interpretations that truncate the range and
+    granularity of the real number line to pack data into fewer bits.
+
+    Subclasses are
+
+    * :doc:`uproot4.interpretation.numerical.AsDouble32`
+    * :doc:`uproot4.interpretation.numerical.AsFloat16`
+    """
+
     @property
     def low(self):
+        """
+        Lower bound on the range of real numbers this type can express.
+        """
         return self._low
 
     @property
     def high(self):
+        """
+        Upper bound on the range of real numbers this type can express.
+        """
         return self._high
 
     @property
     def num_bits(self):
+        """
+        Number of bytes into which to pack these data.
+        """
         return self._num_bits
 
     @property
-    def truncated(self):
-        return self._low == 0.0 and self._high == 0.0
-
-    @property
-    def to_dims(self):
-        return self._to_dims
-
-    @property
     def from_dtype(self):
-        if self.truncated:
+        """
+        The ``numpy.dtype`` of the raw but uncompressed data.
+
+        May be a
+        `structured array <https://numpy.org/doc/stable/user/basics.rec.html>`__
+        of ``"exponent"`` and ``"mantissa"`` or an integer.
+        """
+        if self.is_truncated:
             return numpy.dtype(({"exponent": (">u1", 0), "mantissa": (">u2", 1)}, ()))
         else:
             return numpy.dtype(">u4")
+
+    @property
+    def itemsize(self):
+        """
+        Number of bytes in
+        :doc:`uproot4.interpretation.numerical.TruncatedNumerical.from_dtype`.
+        """
+        return self.from_dtype.itemsize
+
+    @property
+    def to_dims(self):
+        """
+        The ``dtype.shape`` of the ``to_dtype``.
+        """
+        return self._to_dims
+
+    @property
+    def is_truncated(self):
+        """
+        If True (:doc:`uproot4.interpretation.numerical.TruncatedNumerical.low`
+        and :doc:`uproot4.interpretation.numerical.TruncatedNumerical.high` are
+        both ``0``), the data are truly truncated.
+        """
+        return self._low == 0.0 and self._high == 0.0
 
     def __repr__(self):
         args = [repr(self._low), repr(self._high), repr(self._num_bits)]
@@ -333,10 +445,6 @@ class TruncatedNumerical(Numerical):
             and self._num_bits == other._num_bits
             and self._to_dims == other._to_dims
         )
-
-    @property
-    def itemsize(self):
-        return self.from_dtype.itemsize
 
     @property
     def numpy_dtype(self):
@@ -374,7 +482,7 @@ in file {5}""".format(
                 )
             )
 
-        if self.truncated:
+        if self.is_truncated:
             exponent = raw["exponent"].astype(numpy.int32)
             mantissa = raw["mantissa"].astype(numpy.int32)
 
@@ -412,6 +520,16 @@ in file {5}""".format(
 
 
 class AsDouble32(TruncatedNumerical):
+    """
+    Args:
+        low (float): Lower bound on the range of expressible values.
+        high (float): Upper bound on the range of expressible values.
+        num_bits (int): Number of bits in the representation.
+        to_dims (tuple of ints): Shape of
+            :doc:`uproot4.interpretation.numerical.AsDouble32.to_dtype`.
+
+    Interpretation for ROOT's ``Double32_t`` type.
+    """
     def __init__(self, low, high, num_bits, to_dims=()):
         self._low = low
         self._high = high
@@ -420,13 +538,21 @@ class AsDouble32(TruncatedNumerical):
 
         if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 32:
             raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
-        if high <= low and not self.truncated:
+        if high <= low and not self.is_truncated:
             raise ValueError(
                 "high ({0}) must be strictly greater than low ({1})".format(high, low)
             )
 
     @property
     def to_dtype(self):
+        """
+        The ``numpy.dtype`` of the output array.
+
+        A shape (``dtype.shape``) can be used to construct a fixed-size array
+        for each entry. (Not applicable to variable-length lists! See
+        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        ``array.shape[1:] == dtype.shape``.
+        """
         return numpy.dtype((numpy.float64, self.to_dims))
 
     @property
@@ -455,6 +581,16 @@ class AsDouble32(TruncatedNumerical):
 
 
 class AsFloat16(TruncatedNumerical):
+    """
+    Args:
+        low (float): Lower bound on the range of expressible values.
+        high (float): Upper bound on the range of expressible values.
+        num_bits (int): Number of bits in the representation.
+        to_dims (tuple of ints): Shape of
+            :doc:`uproot4.interpretation.numerical.AsFloat16.to_dtype`.
+
+    Interpretation for ROOT's ``Float16_t`` type.
+    """
     def __init__(self, low, high, num_bits, to_dims=()):
         self._low = low
         self._high = high
@@ -463,13 +599,21 @@ class AsFloat16(TruncatedNumerical):
 
         if not uproot4._util.isint(num_bits) or not 2 <= num_bits <= 16:
             raise TypeError("num_bits must be an integer between 2 and 16 (inclusive)")
-        if high <= low and not self.truncated:
+        if high <= low and not self.is_truncated:
             raise ValueError(
                 "high ({0}) must be strictly greater than low ({1})".format(high, low)
             )
 
     @property
     def to_dtype(self):
+        """
+        The ``numpy.dtype`` of the output array.
+
+        A shape (``dtype.shape``) can be used to construct a fixed-size array
+        for each entry. (Not applicable to variable-length lists! See
+        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        ``array.shape[1:] == dtype.shape``.
+        """
         return numpy.dtype((numpy.float32, self.to_dims))
 
     @property
@@ -495,12 +639,3 @@ class AsFloat16(TruncatedNumerical):
         for size in self._to_dims[::-1]:
             out = awkward1.forms.RegularForm(out, size)
         return out
-
-
-class AsSTLBits(Numerical):
-    def __init__(self):
-        raise NotImplementedError
-
-    @property
-    def itemsize(self):
-        return self._num_bytes + 4
