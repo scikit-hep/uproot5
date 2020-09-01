@@ -37,7 +37,7 @@ class Interpretation(object):
     def cache_key(self):
         """
         String that uniquely specifies this interpretation, to use as part of
-        the array's cache key.
+        an array's cache key.
         """
         raise AssertionError
 

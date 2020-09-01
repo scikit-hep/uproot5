@@ -42,8 +42,20 @@ class AsStrings(uproot4.interpretation.Interpretation):
             reminder of the original
             :doc:`uproot4.interpretation.objects.AsObjects.model`.
 
-    Interpretation for an array of strings (only). For strings nested within
-    other classes or containers, see :doc:`uproot4.containers.AsString`.
+    An :doc:`uproot4.interpretation.Interpretation` for an array of strings.
+
+    This cannot be nested within other
+    :doc:`uproot4.interpretation.Interpretation` objects; it can only represent
+    a ``TBranch`` that only contains strings (not strings within ``std::vector``,
+    for instance).
+
+    Note that the :doc:`uproot4.containers.AsString` class is for strings nested
+    within other objects.
+
+    (:doc:`uproot4.interpretation.objects.AsObjects.simplify` converts an
+    :doc:`uproot4.interpretation.objects.AsObjects` of
+    :doc:`uproot4.containers.AsString` into a
+    :doc:`uproot4.interpretation.strings.AsStrings`.)
     """
     def __init__(
         self, header_bytes=0, length_bytes="1-5", typename=None, original=None
