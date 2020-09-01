@@ -35,116 +35,39 @@ import uproot4.source.cursor
 import uproot4._util
 
 
-class ObjectArray(object):
-    def __init__(
-        self, model, branch, context, byte_offsets, byte_content, cursor_offset
-    ):
-        self._model = model
-        self._branch = branch
-        self._context = context
-        self._byte_offsets = byte_offsets
-        self._byte_content = byte_content
-        self._cursor_offset = cursor_offset
-        self._detached_file = self._branch.file.detached
-
-    def __repr__(self):
-        return "ObjectArray({0}, {1}, {2}, {3}, {4}, {5})".format(
-            self._model,
-            self._branch,
-            self._context,
-            self._byte_offsets,
-            self._byte_content,
-            self._cursor_offset,
-        )
-
-    @property
-    def model(self):
-        return self._model
-
-    @property
-    def branch(self):
-        return self._branch
-
-    @property
-    def context(self):
-        return self._context
-
-    @property
-    def byte_offsets(self):
-        return self._byte_offsets
-
-    @property
-    def byte_content(self):
-        return self._byte_content
-
-    @property
-    def cursor_offset(self):
-        return self._cursor_offset
-
-    @property
-    def detached_file(self):
-        return self._detached_file
-
-    def __len__(self):
-        return len(self._byte_offsets) - 1
-
-    def __getitem__(self, where):
-        if uproot4._util.isint(where):
-            byte_start = self._byte_offsets[where]
-            byte_stop = self._byte_offsets[where + 1]
-            data = self._byte_content[byte_start:byte_stop]
-            chunk = uproot4.source.chunk.Chunk.wrap(self._branch.file.source, data)
-            cursor = uproot4.source.cursor.Cursor(
-                0, origin=-(byte_start + self._cursor_offset)
-            )
-            return self._model.read(
-                chunk,
-                cursor,
-                self._context,
-                self._branch.file,
-                self._detached_file,
-                self._branch,
-            )
-
-        elif isinstance(where, slice):
-            return ObjectArray(
-                self._model,
-                self._branch,
-                self._context,
-                self._byte_offsets[where],
-                self._byte_content,
-                self._cursor_offset,
-            )
-
-        else:
-            raise NotImplementedError(repr(where))
-
-    def __iter__(self):
-        source = self._branch.file.source
-        context = self._context
-        file = self._branch.file
-        selffile = self._detached_file
-        branch = self._branch
-        byte_start = self._byte_offsets[0]
-        for byte_stop in self._byte_offsets[1:]:
-            data = self._byte_content[byte_start:byte_stop]
-            chunk = uproot4.source.chunk.Chunk.wrap(source, data)
-            cursor = uproot4.source.cursor.Cursor(0, origin=-self._cursor_offset)
-            yield self._model.read(chunk, cursor, context, file, selffile, branch)
-            byte_start = byte_stop
-
-
 class AsObjects(uproot4.interpretation.Interpretation):
+    """
+    Args:
+        model (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): The
+            full Uproot deserialization model for the data.
+        branch (None or :doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch``
+            from which the data are drawn.
+
+    Integerpretation for arrays of any kind of data that might reside in a
+    ROOT ``TTree``. This interpretation prescribes the full (slow)
+    deserialization process.
+
+    :doc:`uproot4.interpretation.objects.AsObjects.simplify` attempts to
+    replace this interpretation with a faster-to-read equivalent, but not all
+    data types can be simplified.
+    """
     def __init__(self, model, branch=None):
         self._model = model
         self._branch = branch
 
     @property
     def model(self):
+        """
+        The full Uproot deserialization model for the data
+        (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`).
+        """
         return self._model
 
     @property
     def branch(self):
+        """
+        The ``TBranch`` from which the data are drawn. May be None.
+        """
         return self._branch
 
     def __repr__(self):
@@ -278,6 +201,13 @@ class AsObjects(uproot4.interpretation.Interpretation):
         return output
 
     def simplify(self):
+        """
+        Attempts to replace this :doc:`uproot4.interpretation.objects.AsObjects`
+        with an interpretation that can be executed more quickly.
+
+        If there isn't a simpler interpretation, then this method returns
+        ``self``.
+        """
         if self._branch is not None:
             try:
                 return self._model.strided_interpretation(
@@ -341,60 +271,6 @@ class AsObjects(uproot4.interpretation.Interpretation):
         return self
 
 
-class CannotBeStrided(Exception):
-    pass
-
-
-class CannotBeAwkward(Exception):
-    def __init__(self, because):
-        self.because = because
-
-
-def _strided_object(path, interpretation, data):
-    out = interpretation._model.empty()
-    for name, member in interpretation._members:
-        p = name
-        if len(path) != 0:
-            p = path + "/" + name
-        if isinstance(member, AsStridedObjects):
-            out._members[name] = _strided_object(p, member, data)
-        else:
-            out._members[name] = data[p]
-    return out
-
-
-class StridedObjectArray(object):
-    def __init__(self, interpretation, array):
-        self._interpretation = interpretation
-        self._array = array
-
-    @property
-    def interpretation(self):
-        return self._interpretation
-
-    @property
-    def array(self):
-        return self._array
-
-    def __repr__(self):
-        return "StridedObjectArray({0}, {1})".format(self._interpretation, self._array)
-
-    def __len__(self):
-        return len(self._array)
-
-    def __getitem__(self, where):
-        if uproot4._util.isint(where):
-            return _strided_object("", self._interpretation, self._array[where])
-
-        else:
-            return StridedObjectArray(self._interpretation, self._array[where])
-
-    def __iter__(self):
-        interpretation = self._interpretation
-        for x in self._array:
-            yield _strided_object("", interpretation, x)
-
-
 def _unravel_members(members):
     out = []
     for name, member in members:
@@ -430,6 +306,35 @@ def _strided_awkward_form(
 
 
 class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
+    """
+    Args:
+        model (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): The
+            full Uproot deserialization model for the data.
+        members (list of (str, :doc:`uproot4.interpretation.Interpretation`) tuples): The
+            name and fixed-width interpretation for each member of the objects.
+        original (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): If
+            this interpretation is derived from
+            :doc:`uproot4.interpretation.objects.AsObjects.simplify`, this is a
+            reminder of the original
+            :doc:`uproot4.interpretation.objects.AsObjects.model`.
+
+    Interpretation for an array (possibly
+    :doc:`uproot4.interpretation.jagged.AsJagged`) of fixed-size objects. Since
+    the objects have a fixed number of fields with a fixed number of bytes each,
+    the whole array (or :doc:`uproot4.interpretation.jagged.AsJagged.content`)
+    can be interpreted in one vectorized array-cast. Therefore, this
+    interpretation is faster than :doc:`uproot4.interpretation.objects.AsObjects`
+    *when it is possible*.
+
+    Unlike :doc:`uproot4.interpretation.numerical.AsDtype` with a
+    `structured array <https://numpy.org/doc/stable/user/basics.rec.html>`__,
+    the objects in the final array have the methods required by its ``model``.
+    If the ``library`` is :doc:`uproot4.interpretation.library.NumPy`, these
+    are instantiated as Python objects (slow); if
+    :doc:`uproot4.interpretation.library.Awkward`, they are behaviors passed to
+    the Awkward Array's local
+    `behavior <https://awkward-array.readthedocs.io/en/latest/ak.behavior.html>`__.
+    """
     def __init__(self, model, members, original=None):
         self._model = model
         self._members = members
@@ -438,14 +343,29 @@ class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
 
     @property
     def model(self):
+        """
+        The full Uproot deserialization model for the data
+        (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`).
+        """
         return self._model
 
     @property
     def members(self):
+        """
+        The name (str) and fixed-width
+        :doc:`uproot4.interpretation.Interpretation` for each member of the
+        objects as a list of 2-tuple pairs.
+        """
         return self._members
 
     @property
     def original(self):
+        """
+        If not None, this was the original
+        :doc:`uproot4.interpretation.objects.AsObjects.model` from an
+        :doc:`uproot4.interpretation.objects.AsObjects` that was simplified
+        into this :doc:`uproot4.interpretation.objects.AsStridedObjects`.
+        """
         return self._original
 
     def __repr__(self):
@@ -476,3 +396,226 @@ class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
 
     def _wrap_almost_finalized(self, array):
         return StridedObjectArray(self, array)
+
+
+class CannotBeStrided(Exception):
+    """
+    Exception used to stop recursion over
+    :doc:`uproot4.model.Model.strided_interpretation` and
+    :doc:`uproot4.containers.AsContainer.strided_interpretation` as soon as a
+    non-conforming type is found.
+    """
+    pass
+
+
+class CannotBeAwkward(Exception):
+    """
+    Exception used to stop recursion over
+    :doc:`uproot4.interpretation.Interpretation.awkward_form`,
+    :doc:`uproot4.model.Model.awkward_form` and
+    :doc:`uproot4.containers.AsContainer.awkward_form` as soon as a
+    non-conforming type is found.
+    """
+    def __init__(self, because):
+        self.because = because
+
+
+class ObjectArray(object):
+    """
+    Args:
+        model (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): The
+            full Uproot deserialization model for the data.
+        branch (:doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch`` from
+            which the data are drawn.
+        context (dict): Auxiliary data used in deserialization.
+        byte_offsets (array of ``numpy.int32``): Index where each entry of the
+            ``byte_content`` starts and stops.
+        byte_content (array of ``numpy.uint8``): Raw but uncompressed data,
+            directly from
+            :doc:`uproot4.interpretation.Interpretation.basket_array`.
+        cursor_offset (int): Correction to the integer keys used in
+            :doc:`uproot4.source.cursor.Cursor.refs` for objects deserialized
+            by reference (:doc:`uproot4.deserialization.read_object_any`).
+
+    Temporary array filled by
+    :doc:`uproot4.interpretation.objects.AsObjects.basket_array`, which will be
+    turned into a NumPy, Awkward, or other array, depending on the specified
+    :doc:`uproot4.interpretation.library.Library`.
+    """
+    def __init__(
+        self, model, branch, context, byte_offsets, byte_content, cursor_offset
+    ):
+        self._model = model
+        self._branch = branch
+        self._context = context
+        self._byte_offsets = byte_offsets
+        self._byte_content = byte_content
+        self._cursor_offset = cursor_offset
+        self._detached_file = self._branch.file.detached
+
+    def __repr__(self):
+        return "ObjectArray({0}, {1}, {2}, {3}, {4}, {5})".format(
+            self._model,
+            self._branch,
+            self._context,
+            self._byte_offsets,
+            self._byte_content,
+            self._cursor_offset,
+        )
+
+    @property
+    def model(self):
+        """
+        The full Uproot deserialization model for the data
+        (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`).
+        """
+        return self._model
+
+    @property
+    def branch(self):
+        """
+        The ``TBranch`` from which the data are drawn.
+        """
+        return self._branch
+
+    @property
+    def context(self):
+        """
+        Auxiliary data used in deserialization (dict).
+        """
+        return self._context
+
+    @property
+    def byte_offsets(self):
+        """
+        Index where each entry of the ``byte_content`` starts and stops.
+        """
+        return self._byte_offsets
+
+    @property
+    def byte_content(self):
+        """
+        Raw but uncompressed data, directly from
+        :doc:`uproot4.interpretation.Interpretation.basket_array`.
+        """
+        return self._byte_content
+
+    @property
+    def cursor_offset(self):
+        """
+        Correction to the integer keys used in
+        :doc:`uproot4.source.cursor.Cursor.refs` for objects deserialized by
+        reference (:doc:`uproot4.deserialization.read_object_any`).
+        """
+        return self._cursor_offset
+
+    def __len__(self):
+        return len(self._byte_offsets) - 1
+
+    def __getitem__(self, where):
+        if uproot4._util.isint(where):
+            byte_start = self._byte_offsets[where]
+            byte_stop = self._byte_offsets[where + 1]
+            data = self._byte_content[byte_start:byte_stop]
+            chunk = uproot4.source.chunk.Chunk.wrap(self._branch.file.source, data)
+            cursor = uproot4.source.cursor.Cursor(
+                0, origin=-(byte_start + self._cursor_offset)
+            )
+            return self._model.read(
+                chunk,
+                cursor,
+                self._context,
+                self._branch.file,
+                self._detached_file,
+                self._branch,
+            )
+
+        elif isinstance(where, slice):
+            return ObjectArray(
+                self._model,
+                self._branch,
+                self._context,
+                self._byte_offsets[where],
+                self._byte_content,
+                self._cursor_offset,
+            )
+
+        else:
+            raise NotImplementedError(repr(where))
+
+    def __iter__(self):
+        source = self._branch.file.source
+        context = self._context
+        file = self._branch.file
+        selffile = self._detached_file
+        branch = self._branch
+        byte_start = self._byte_offsets[0]
+        for byte_stop in self._byte_offsets[1:]:
+            data = self._byte_content[byte_start:byte_stop]
+            chunk = uproot4.source.chunk.Chunk.wrap(source, data)
+            cursor = uproot4.source.cursor.Cursor(0, origin=-self._cursor_offset)
+            yield self._model.read(chunk, cursor, context, file, selffile, branch)
+            byte_start = byte_stop
+
+
+def _strided_object(path, interpretation, data):
+    out = interpretation._model.empty()
+    for name, member in interpretation._members:
+        p = name
+        if len(path) != 0:
+            p = path + "/" + name
+        if isinstance(member, AsStridedObjects):
+            out._members[name] = _strided_object(p, member, data)
+        else:
+            out._members[name] = data[p]
+    return out
+
+
+class StridedObjectArray(object):
+    """
+    Args:
+        interpretation (:doc:`uproot4.interpretation.objects.AsStridedObjects`): The
+            interpretation that produced this array.
+        array (array): Underlying array object, which may be NumPy or another
+            temporary array.
+
+    Temporary array filled by
+    :doc:`uproot4.interpretation.objects.AsStridedObjects.basket_array`, which
+    will be turned into a NumPy, Awkward, or other array, depending on the
+    specified :doc:`uproot4.interpretation.library.Library`.
+    """
+    def __init__(self, interpretation, array):
+        self._interpretation = interpretation
+        self._array = array
+
+    @property
+    def interpretation(self):
+        """
+        The interpretation that produced this array.
+        """
+        return self._interpretation
+
+    @property
+    def array(self):
+        """
+        Underlying array object, which may be NumPy or another temporary array.
+        """
+        return self._array
+
+    def __repr__(self):
+        return "StridedObjectArray({0}, {1})".format(self._interpretation, self._array)
+
+    def __len__(self):
+        return len(self._array)
+
+    def __getitem__(self, where):
+        if uproot4._util.isint(where):
+            return _strided_object("", self._interpretation, self._array[where])
+
+        else:
+            return StridedObjectArray(self._interpretation, self._array[where])
+
+    def __iter__(self):
+        interpretation = self._interpretation
+        for x in self._array:
+            yield _strided_object("", interpretation, x)

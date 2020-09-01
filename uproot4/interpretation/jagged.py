@@ -36,7 +36,7 @@ def fast_divide(array, divisor):
 class AsJagged(uproot4.interpretation.Interpretation):
     """
     Args:
-        content (:doc:`uproot4.interpretation.numerical.AsDtype`): Interpretation
+        content (:doc:`uproot4.interpretation.numerical.AsDtype` or :doc:`uproot4.interpretation.objects.AsStridedObjects`): Interpretation
             for data in the nested, variable-length lists.
         header_bytes (int): Number of bytes to skip at the beginning of each
             entry.
@@ -63,7 +63,8 @@ class AsJagged(uproot4.interpretation.Interpretation):
     @property
     def content(self):
         """
-        The :doc:`uproot4.interpretation.numerical.AsDtype` that interprets
+        The :doc:`uproot4.interpretation.numerical.AsDtype` or
+        :doc:`uproot4.interpretation.objects.AsStridedObjects` that interprets
         data in the nested, variable-length lists.
         """
         return self._content

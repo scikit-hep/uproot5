@@ -79,15 +79,15 @@ class Interpretation(object):
     def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
         """
         Args:
-            data (array of ``numpy.int8``): Raw but uncompressed data from the
+            data (array of ``numpy.uint8``): Raw but uncompressed data from the
                 ``TBasket``. If the ``TBasket`` has offsets and navigational
                 metadata, it is not included in this array.
             byte_offsets (array of ``numpy.int32``): Index where each entry of
-                the ``TBasket`` begins and ends. The header is not included
+                the ``TBasket`` starts and stops. The header is not included
                 (i.e. the first offset is ``0``), and the length of this array
                 is one greater than the number of entries in the ``TBasket``.
             basket (:doc:`uproot4.models.TBasket`): The ``TBasket`` object.
-            context (dict): Auxiliary data used in interpretation.
+            context (dict): Auxiliary data used in deserialization.
             cursor_offset (int): Correction to the integer keys used in
                 :doc:`uproot4.source.cursor.Cursor.refs` for objects
                 deserialized by reference
