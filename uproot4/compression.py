@@ -1,5 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an interface to compression algorithms used by ROOT, as well as functions
+for compressing and decompressing a :doc:`uproot4.source.chunk.Chunk`.
+"""
+
 from __future__ import absolute_import
 
 import struct

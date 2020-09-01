@@ -1,5 +1,25 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array for
+object data (Python objects or Awkward Array data structures).
+
+The :doc:`uproot4.interpretation.objects.AsObjects` describes fully generic
+objects using a :doc:`uproot4.interpretation.model.Model` (or
+:doc:`uproot4.interpretation.containers`). These objects require a
+non-vectorized loop to deserialize.
+
+The :doc:`uproot4.interpretation.objects.AsStridedObjects` describes fixed-width
+objects that can be described as a ``numpy.dtype``. These objects can be
+interpreted as a single, vectorized cast, and are therefore much faster to
+deserialize.
+
+The :doc:`uproot4.interpretation.object.ObjectArray` and
+:doc:`uproot4.interpretation.object.StridedObjectArray` classes only hold data
+while an array is being built from ``TBaskets``. Its final form is determined
+by :doc:`uproot4.interpretation.library`.
+"""
+
 from __future__ import absolute_import
 
 import numpy

@@ -1,5 +1,13 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines low-level routines for deserialization, including
+:doc:`uproot4.deserialization.compile_class`, which creates class objects from
+``TStreamerInfo``-derived code, and
+:doc:`uproot4.deserialization.read_object_any`, which manages references to
+previously read objects.
+"""
+
 from __future__ import absolute_import
 
 import struct

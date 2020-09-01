@@ -1,5 +1,21 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an :doc:`uproot4.interpretation.Interpretation` for several numerical
+types:
+
+* :doc:`uproot4.interpretation.numerical.AsDtype`: numbers, which can simply be
+  described as a ``numpy.dtype``.
+* :doc:`uproot4.interpretation.numerical.AsDtypeInPlace`: a predefined array
+  into which data may be overwritten.
+* :doc:`uproot4.interpretation.numerical.AsDouble32`: ROOT's ``Double32_t``
+  packed data type.
+* :doc:`uproot4.interpretation.numerical.AsFloat16`: ROOT's ``Float16_t``
+  packed data type.
+* :doc:`uproot4.interpretation.numerical.AsSTLBits`: an ``std::bitset<N>``
+  for some ``N``.
+"""
+
 from __future__ import absolute_import
 
 import uproot4.interpretation

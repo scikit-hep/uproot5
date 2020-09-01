@@ -1,5 +1,17 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Physical layer for local files.
+
+Defines a :doc:`uproot4.source.file.FileResource` (wrapped Python file handle)
+and two sources: :doc:`uproot4.source.file.MultithreadedFileSource` and
+:doc:`uproot4.source.file.MemmapSource`, which provide thread-safe local
+file readers using many file handles or a memory-mapped file, respectively.
+
+If the filesystem or operating system does not support memory-mapped files, the
+:doc:`uproot4.source.file.MultithreadedFileSource` is an automatic fallback.
+"""
+
 from __future__ import absolute_import
 
 import os.path

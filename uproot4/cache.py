@@ -1,7 +1,14 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Simple, thread-safe cache for arrays (objects with an `nbytes` property).
+Simple, thread-safe cache classes satisfying the ``MutableMapping`` protocol.
+
+The :doc:`uproot4.cache.LRUCache` implements a least-recently used eviction
+policy that limits the number of items in the cache (used as an
+``object_cache``).
+
+The :doc:`uproot4.cache.LRUArrayCache` implements the same policy, limiting the
+total number of bytes, as reported by ``nbytes``.
 """
 
 from __future__ import absolute_import

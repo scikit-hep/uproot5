@@ -1,5 +1,18 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array for
+string data.
+
+Note that :doc:`uproot4.interpretation.strings.AsStrings` is an interpretation for
+top-level strings, but :doc:`uproot4.containers.AsString` can be nested within
+other :doc:`uproot4.containers`.
+
+The :doc:`uproot4.interpretation.strings.StringArray` class only holds data while
+an array is being built from ``TBaskets``. Its final form is determined by
+:doc:`uproot4.interpretation.library`.
+"""
+
 from __future__ import absolute_import
 
 import struct

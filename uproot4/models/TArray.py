@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines versionless models for ``TArray`` and its subclasses.
+"""
+
 from __future__ import absolute_import
 
 import struct

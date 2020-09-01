@@ -1,5 +1,19 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Physical layer for remote files, accessed via HTTP(S).
+
+Defines a :doc:`uproot4.source.http.HTTPResource` (stateless) and two sources:
+:doc:`uproot4.source.http.MultithreadedHTTPSource` and
+:doc:`uproot4.source.http.HTTPSource`. The multi-threaded source only requires
+the server to support byte range requests (code 206), but the general source
+requires the server to support multi-part byte range requests. If the server
+does not support multi-part GET, :doc:`uproot4.source.http.HTTPSource`
+automatically falls back to :doc:`uproot4.source.http.MultithreadedHTTPSource`.
+
+Despite the name, both sources support secure HTTPS (selected by URL scheme).
+"""
+
 from __future__ import absolute_import
 
 import sys

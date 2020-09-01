@@ -1,5 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Interpretations and models for standard containers, such as ``std::vector`` and
+simple arrays.
+
+See :doc:`uproot4.interpretation` and :doc:`uproot4.model`.
+"""
+
 from __future__ import absolute_import
 
 import types

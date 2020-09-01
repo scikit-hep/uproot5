@@ -1,5 +1,15 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Physical layer for remote files, accessed via the XRootD protocol.
+
+Defines a :doc:`uproot4.source.http.XRootDResource` (``XRootD.File``) and two
+sources: :doc:`uproot4.source.http.MultithreadedXRootDSource` and
+:doc:`uproot4.source.http.XRootDSource`. The latter requires the server to
+support vector-read requests; if not, it automatically falls back to
+:doc:`uproot4.source.http.MultithreadedXRootDSource`.
+"""
+
 from __future__ import absolute_import
 
 import uproot4.source.chunk

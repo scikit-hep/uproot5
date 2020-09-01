@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Initially empty submodule into which new classes are dynamically added.
+"""
+
 
 def __getattr__(name):
     import uproot4.model

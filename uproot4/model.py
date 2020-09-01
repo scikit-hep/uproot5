@@ -1,5 +1,22 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines utilities for modeling C++ objects as Python objects and the
+:doc:`uproot4.model.Model` class, which is the superclass of all objects that
+are read from ROOT files.
+
+The :doc:`uproot4.model.VersionedModel` class is the superclass of all models
+whose deserialization routines are specialized by ROOT class version.
+
+A :doc:`uproot4.model.DispatchByVersion` subclass selects a versioned model
+after reading its version bytes.
+
+The :doc:`uproot4.model.UnknownClass` and
+:doc:`uproot4.model.UnknownClassVersion` are placeholders for data that could
+not be modeled, either because the class has no streamer or no streamer for its
+version.
+"""
+
 from __future__ import absolute_import
 
 import re

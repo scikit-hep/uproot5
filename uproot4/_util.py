@@ -1,7 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Utilities for internal use.
+Utilities for internal use. This is not a public interface and may be changed
+without notice.
 """
 
 from __future__ import absolute_import

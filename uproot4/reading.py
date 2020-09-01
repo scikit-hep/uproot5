@@ -1,8 +1,11 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the most basic functions for reading ROOT files: ReadOnlyFile,
-ReadOnlyKey, and ReadOnlyDirectory, as well as the uproot.open function.
+Defines the entry-point for opening a file, :doc:`uproot4.reading.open`, and
+the classes that are too fundamental to be models:
+:doc:`uproot4.reading.ReadOnlyFile` (``TFile``),
+:doc:`uproot4.reading.ReadOnlyDirectory` (``TDirectory`` or ``TDirectoryFile``),
+and :doc:`uproot4.reading.ReadOnlyKey` (``TKey``).
 """
 
 from __future__ import absolute_import

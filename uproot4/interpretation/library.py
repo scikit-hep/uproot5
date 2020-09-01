@@ -1,5 +1,31 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Represents external libraries that define "array-like" types so that users can
+choose an output format.
+
+The :doc:`uproot4.interpretation.library.NumPy` library always works (NumPy is
+Uproot's only strict dependency) and outputs NumPy arrays for single arrays
+and dict/tuple/list as groups. Objects and jagged arrays are not efficiently
+represented, but it provides a zero-dependency least common denominator.
+
+The :doc:`uproot4.interpretation.library.Awkward` library is the default and
+depends on Awkward Array (``awkward1``). It is usually the best option, as it
+was designed for Uproot.
+
+The :doc:`uproot4.interpretation.library.Pandas` library outputs
+``pandas.Series`` for single arrays and ``pandas.DataFrame`` as groups. Objects
+are not efficiently represented, but some jagged arrays are encoded as
+``pandas.MultiIndex``.
+
+The :doc:`uproot4.interpretation.library.CuPy` library outputs arrays on a
+GPU, but the types that it supports are limited. Note that Awkward Arrays can
+be GPU-resident as well.
+
+Lazy arrays (:doc:`uproot4.behavior.TBranch.TBranch.lazy`) can only use the
+:doc:`uproot4.interpretation.library.Awkward` library.
+"""
+
 from __future__ import absolute_import
 
 import itertools

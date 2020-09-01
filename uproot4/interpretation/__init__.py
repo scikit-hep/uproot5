@@ -1,5 +1,16 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines procedures for interpreting data in ``TTrees`` as arrays.
+
+All interpretations must be subclasses of
+:doc:`uproot4.interpretation.Interpretation`.
+
+See :doc:`uproot4.interpretation.identify.interpretation_of` for heuristics
+that determine the default interpretation of a
+:doc:`uproot4.behavior.TBranch.TBranch`.
+"""
+
 from __future__ import absolute_import
 
 

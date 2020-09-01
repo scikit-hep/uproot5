@@ -1,15 +1,24 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines Futures and Executors for Uproot Sources.
+Defines a Python-like Future and Executor for Uproot in three levels:
 
-These are distinct from Python's built-in Futures and Executors because each
-Thread in the thread pools are associated with one Resource, such as an open
-file handle. Releasing file-handle resources and stopping threads are
-synonymous.
+1. :doc:`uproot4.source.futures.NoFuture` and
+   :doc:`uproot4.source.futures.TrivialExecutor`: interface only, all activity
+   is synchronous.
+2. :doc:`uproot4.source.futures.Future`, :doc:`uproot4.source.futures.Worker`,
+   and :doc:`uproot4.source.futures.ThreadPoolExecutor`: similar to Python's
+   own Future, Thread, and ThreadPoolExecutor, though only a minimal
+   implementation is provided. These exist to unify behavior between Python 2
+   and 3 and provide a base class for the following.
+3. :doc:`uproot4.source.futures.ResourceFuture`,
+   :doc:`uproot4.source.futures.ResourceWorker`,
+   and :doc:`uproot4.source.futures.ResourceThreadPoolExecutor`: like the above
+   except that a :doc:`uproot4.source.chunk.Resource` is associated with every
+   worker. When the threads are shut down, the resources (i.e. file handles)
+   are released.
 
-Since they can't be substituted for Python Futures and Executors, these don't
-implement the full API, though the same method names are used.
+These classes implement a *subset* of Python's Future and Executor interfaces.
 """
 
 from __future__ import absolute_import

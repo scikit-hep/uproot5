@@ -1,5 +1,15 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines a :doc:`uproot4.source.chunk.Chunk`, which is a range of bytes
+requested from a file. All interaction between the "physical layer" and the
+"interpretation layer" is through a :doc:`uproot4.source.cursor.Cursor`'s
+interpretation of a :doc:`uproot4.source.chunk.Chunk`.
+
+Also defines abstract classes for :doc:`uproot4.source.chunk.Resource` and
+:doc:`uproot4.source.chunk.Source`, the primary types of the "physical layer."
+"""
+
 from __future__ import absolute_import
 
 import numpy

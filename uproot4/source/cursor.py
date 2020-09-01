@@ -1,8 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the Cursor, which is a universal pointer/interpreter at point of data
-in a ROOT file.
+Defines the :doc:`uproot4.source.cursor.Cursor`, which maintains a thread-local
+pointer into a :doc:`uproot.source.chunk.Chunk` and performs the lowest level
+of interpretation (numbers, strings, raw arrays, etc.).
 """
 
 from __future__ import absolute_import

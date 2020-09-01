@@ -1,5 +1,15 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines a :doc:`uproot4.compute.Compute` engine for expressions passed to
+:doc:`uproot4.behavior.TBranch.HasBranches.arrays`.
+
+The :doc:`uproot4.compute.python.ComputePython` evaluates Python code. It is
+the default compute engine.
+"""
+
+from __future__ import absolute_import
+
 import ast
 
 import numpy

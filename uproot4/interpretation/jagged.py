@@ -1,5 +1,14 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array for
+jagged (variable-length list) data.
+
+The :doc:`uproot4.interpretation.jagged.JaggedArray` class only holds data while
+an array is being built from ``TBaskets``. Its final form is determined by
+:doc:`uproot4.interpretation.library`.
+"""
+
 from __future__ import absolute_import
 
 import numpy

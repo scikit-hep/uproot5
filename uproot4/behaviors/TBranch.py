@@ -1,5 +1,15 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines behaviors for :doc:`uproot4.behaviors.TBranch.TBranch` and
+:doc:`uproot4.behaviors.TBranch.HasBranches` (both ``TBranch`` and ``TTree``).
+
+Most of the functionality of TTree-reading is implemented here.
+
+See :doc:`uproot4.models.TBranch` for deserialization of the ``TBranch`` objects
+themselves.
+"""
+
 from __future__ import absolute_import
 
 import os

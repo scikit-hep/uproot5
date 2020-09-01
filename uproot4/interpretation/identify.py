@@ -1,5 +1,17 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines utilities for identifying the
+:doc:`uproot4.interpretation.Interpretation` of a
+:doc:`uproot4.behavior.TBranch.TBranch`.
+
+This includes a tokenizer/parser for C++ types and heuristics encoded in
+:doc:`uproot4.interpretation.identify.interpretation_of`. The latter will
+need to be tweaked by new types, type combinations, and serialization methods
+observed in ROOT files (perhaps forever), unless a systematic study can be
+performed to exhaustively discover all cases.
+"""
+
 from __future__ import absolute_import
 
 import re
