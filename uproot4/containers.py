@@ -470,18 +470,39 @@ class AsString(AsContainer):
 
 
 class AsPointer(AsContainer):
-    def __init__(self, pointee):
+    """
+    Args:
+        pointee (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): Optional
+            description of the data, used in
+            :doc:`uproot4.containers.AsPointer.awkward_form` but ignored in
+            :doc:`uproot4.containers.AsPointer.read`.
+
+    A :doc:`uproot4.containers.AsContainer` for an object referred to by
+    pointer, meaning that it could be None (``nullptr``) or identical to
+    an already-read object.
+
+    The deserialization procedure calls
+    :doc:`uproot4.deserialization.read_object_any`.
+    """
+    def __init__(self, pointee=None):
         self._pointee = pointee
 
     @property
     def pointee(self):
+        """
+        Optional description of the data, used in
+        :doc:`uproot4.containers.AsPointer.awkward_form` but ignored in
+        :doc:`uproot4.containers.AsPointer.read`.
+        """
         return self._pointee
 
     def __hash__(self):
         return hash((AsPointer, self._pointee))
 
     def __repr__(self):
-        if isinstance(self._pointee, type):
+        if self._pointee is None:
+            pointee = ""
+        elif isinstance(self._pointee, type):
             pointee = self._pointee.__name__
         else:
             pointee = repr(self._pointee)
@@ -489,11 +510,17 @@ class AsPointer(AsContainer):
 
     @property
     def cache_key(self):
-        return "AsPointer({0})".format(_content_cache_key(self._pointee))
+        if self._pointee is None:
+            return "AsPointer(None)"
+        else:
+            return "AsPointer({0})".format(_content_cache_key(self._pointee))
 
     @property
     def typename(self):
-        return _content_typename(self._pointee) + "*"
+        if self._pointee is None:
+            return "void*"
+        else:
+            return _content_typename(self._pointee) + "*"
 
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         raise uproot4.interpretation.objects.CannotBeAwkward("arbitrary pointer")
@@ -511,6 +538,17 @@ class AsPointer(AsContainer):
 
 
 class AsArray(AsContainer):
+    """
+    Args:
+        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
+        speedbump (bool): If True, one byte must be skipped before reading the
+            data.
+        values (:doc:`uproot4.model.Model`, :doc:`uproot4.containers.Container`, or ``numpy.dtype``): Data
+            type for data nested in the array.
+
+    A :doc:`uproot4.containers.AsContainer` for simple arrays (not
+    ``std::vector``).
+    """
     def __init__(self, header, speedbump, values):
         self._header = header
         self._speedbump = speedbump
@@ -518,10 +556,18 @@ class AsArray(AsContainer):
 
     @property
     def speedbump(self):
+        """
+        If True, one byte must be skipped before reading the data.
+        """
         return self._speedbump
 
     @property
     def values(self):
+        """
+        Data type for data nested in the array. May be a
+        :doc:`uproot4.model.Model`, :doc:`uproot4.containers.Container`, or
+        ``numpy.dtype``.
+        """
         return self._values
 
     def __repr__(self):
@@ -622,6 +668,14 @@ in file {1}""".format(
 
 
 class AsVector(AsContainer):
+    """
+    Args:
+        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
+        values (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot4.containers.AsContainer` for ``std::vector``.
+    """
     def __init__(self, header, values):
         self.header = header
         if isinstance(values, AsContainer):
@@ -638,6 +692,9 @@ class AsVector(AsContainer):
 
     @property
     def values(self):
+        """
+        Data type for data nested in the container.
+        """
         return self._values
 
     def __repr__(self):
@@ -727,6 +784,14 @@ in file {1}""".format(
 
 
 class AsSet(AsContainer):
+    """
+    Args:
+        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
+        keys (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot4.containers.AsContainer` for ``std::set``.
+    """
     def __init__(self, header, keys):
         self.header = header
         if isinstance(keys, AsContainer):
@@ -743,6 +808,9 @@ class AsSet(AsContainer):
 
     @property
     def keys(self):
+        """
+        Data type for data nested in the container.
+        """
         return self._keys
 
     def __repr__(self):
@@ -838,6 +906,16 @@ def _has_nested_header(obj):
 
 
 class AsMap(AsContainer):
+    """
+    Args:
+        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
+        keys (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+            type for the map's keys.
+        values (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+            type for the map's values.
+
+    A :doc:`uproot4.containers.AsContainer` for ``std::map``.
+    """
     def __init__(self, header, keys, values):
         self.header = header
 
@@ -860,10 +938,16 @@ class AsMap(AsContainer):
 
     @property
     def keys(self):
+        """
+        Data type for the map's keys.
+        """
         return self._keys
 
     @property
     def values(self):
+        """
+        Data type for the map's values.
+        """
         return self._values
 
     def __repr__(self):
@@ -1009,14 +1093,27 @@ in file {1}""".format(
 
 
 class Container(object):
+    """
+    Abstract class for Python representations of C++ STL collections.
+    """
     def __ne__(self, other):
         return not self == other
 
     def tolist(self):
+        """
+        Convert the data this collection contains into nested lists, sets,
+        and dicts.
+        """
         raise AssertionError
 
 
 class STLVector(Container, Sequence):
+    """
+    Args:
+        values (``numpy.ndarray`` or iterable): Contents of the ``std::vector``.
+
+    Representation of a C++ ``std::vector`` as a Python ``Sequence``.
+    """
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
@@ -1068,6 +1165,12 @@ class STLVector(Container, Sequence):
 
 
 class STLSet(Container, Set):
+    """
+    Args:
+        keys (``numpy.ndarray`` or iterable): Contents of the ``std::set``.
+
+    Representation of a C++ ``std::set`` as a Python ``Set``.
+    """
     def __init__(self, keys):
         if isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))
@@ -1131,8 +1234,22 @@ class STLSet(Container, Set):
 
 
 class STLMap(Container, Mapping):
+    """
+    Args:
+        keys (``numpy.ndarray`` or iterable): Keys of the ``std::map``.
+        values (``numpy.ndarray`` or iterable): Values of the ``std::map``.
+
+    Representation of a C++ ``std::map`` as a Python ``Mapping``.
+
+    The ``keys`` and ``values`` must have the same length.
+    """
+
     @classmethod
     def from_mapping(cls, mapping):
+        """
+        Construct a :doc:`uproot4.containers.STLMap` from a Python object with
+        ``keys()`` and ``values()``.
+        """
         return STLMap(mapping.keys(), mapping.values())
 
     def __init__(self, keys, values):
@@ -1172,6 +1289,24 @@ class STLMap(Container, Mapping):
             self.__str__(limit=limit - 30), id(self)
         )
 
+    def keys(self):
+        """
+        Keys of the ``std::map`` as a ``numpy.ndarray``.
+        """
+        return self._keys
+
+    def values(self):
+        """
+        Values of the ``std::map`` as a ``numpy.ndarray``.
+        """
+        return self._values
+
+    def items(self):
+        """
+        Key, value pairs of the ``std::map`` as a ``numpy.ndarray``.
+        """
+        return numpy.transpose(numpy.vstack([self._keys, self._values]))
+
     def __getitem__(self, where):
         where = numpy.asarray(where)
         index = numpy.searchsorted(self._keys.astype(where.dtype), where, side="left")
@@ -1192,6 +1327,9 @@ class STLMap(Container, Mapping):
             return numpy.ma.MaskedArray(self._values[index], mask)
 
     def get(self, where, default=None):
+        """
+        Get with a default, like dict.get.
+        """
         where = numpy.asarray(where)
         index = numpy.searchsorted(self._keys.astype(where.dtype), where, side="left")
 
@@ -1229,15 +1367,6 @@ class STLMap(Container, Mapping):
 
         else:
             return False
-
-    def keys(self):
-        return self._keys
-
-    def values(self):
-        return self._values
-
-    def items(self):
-        return numpy.transpose(numpy.vstack([self._keys, self._values]))
 
     def __eq__(self, other):
         if isinstance(other, Mapping):
