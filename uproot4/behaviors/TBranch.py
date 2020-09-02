@@ -1740,7 +1740,7 @@ def _regularize_object_path(
             object_cache=None,
             array_cache=None,
             custom_classes=custom_classes,
-            **options    # NOTE: a comma after **options breaks Python 2
+            **options  # NOTE: a comma after **options breaks Python 2
         ).root_directory
         if object_path is None:
             trees = [k for k, v in file.classnames().items() if v == "TTree"]
@@ -1803,7 +1803,7 @@ def iterate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options    # NOTE: a comma after **options breaks Python 2
+    **options  # NOTE: a comma after **options breaks Python 2
 ):
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -1873,7 +1873,7 @@ def concatenate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options    # NOTE: a comma after **options breaks Python 2
+    **options  # NOTE: a comma after **options breaks Python 2
 ):
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -1927,7 +1927,7 @@ def lazy(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options    # NOTE: a comma after **options breaks Python 2
+    **options  # NOTE: a comma after **options breaks Python 2
 ):
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(

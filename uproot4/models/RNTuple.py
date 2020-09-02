@@ -16,6 +16,10 @@ _rntuple_format1 = struct.Struct(">IIQIIQIIQ")
 
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``ROOT::Experimental::RNTuple``.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(

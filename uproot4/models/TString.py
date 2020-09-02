@@ -10,6 +10,12 @@ import uproot4.model
 
 
 class Model_TString(uproot4.model.Model, str):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TString``.
+
+    This is also a Python ``str`` (string).
+    """
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 

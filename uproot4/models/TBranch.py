@@ -27,6 +27,10 @@ _tbranch10_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v10(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranch`` version 10.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -153,6 +157,10 @@ _tbranch11_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v11(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranch`` version 11.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -281,6 +289,10 @@ _tbranch12_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v12(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranch`` version 12.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -410,6 +422,10 @@ _tbranch13_dtype3 = numpy.dtype(">i8")
 class Model_TBranch_v13(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranch`` version 13.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -536,6 +552,10 @@ in file {1}""".format(
 
 
 class Model_TBranch(uproot4.model.DispatchByVersion):
+    """
+    A :doc:`uproot4.model.DispatchByVersion` for ``TBranch``.
+    """
+
     known_versions = {
         10: Model_TBranch_v10,
         11: Model_TBranch_v11,
@@ -550,6 +570,10 @@ _tbranchelement8_format1 = struct.Struct(">Iiiiii")
 class Model_TBranchElement_v8(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranchElement`` version 8.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -618,6 +642,10 @@ _tbranchelement9_format1 = struct.Struct(">Iiiiii")
 class Model_TBranchElement_v9(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranchElement`` version 9.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -686,6 +714,10 @@ _tbranchelement10_format1 = struct.Struct(">Ihiiii")
 class Model_TBranchElement_v10(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranchElement`` version 10.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -749,6 +781,10 @@ in file {1}""".format(
 
 
 class Model_TBranchElement(uproot4.model.DispatchByVersion):
+    """
+    A :doc:`uproot4.model.DispatchByVersion` for ``TBranchElement``.
+    """
+
     known_versions = {
         8: Model_TBranchElement_v8,
         9: Model_TBranchElement_v9,
@@ -759,6 +795,10 @@ class Model_TBranchElement(uproot4.model.DispatchByVersion):
 class Model_TBranchObject_v1(
     uproot4.behaviors.TBranch.TBranch, uproot4.model.VersionedModel
 ):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TBranchObject`` version 1.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -788,6 +828,10 @@ in file {1}""".format(
 
 
 class Model_TBranchObject(uproot4.model.DispatchByVersion):
+    """
+    A :doc:`uproot4.model.DispatchByVersion` for ``TBranchObject``.
+    """
+
     known_versions = {
         1: Model_TBranchObject_v1,
     }

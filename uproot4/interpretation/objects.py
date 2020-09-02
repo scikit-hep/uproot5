@@ -51,6 +51,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
     replace this interpretation with a faster-to-read equivalent, but not all
     data types can be simplified.
     """
+
     def __init__(self, model, branch=None):
         self._model = model
         self._branch = branch
@@ -335,6 +336,7 @@ class AsStridedObjects(uproot4.interpretation.numerical.AsDtype):
     the Awkward Array's local
     `behavior <https://awkward-array.readthedocs.io/en/latest/ak.behavior.html>`__.
     """
+
     def __init__(self, model, members, original=None):
         self._model = model
         self._members = members
@@ -405,6 +407,7 @@ class CannotBeStrided(Exception):
     :doc:`uproot4.containers.AsContainer.strided_interpretation` as soon as a
     non-conforming type is found.
     """
+
     pass
 
 
@@ -416,6 +419,7 @@ class CannotBeAwkward(Exception):
     :doc:`uproot4.containers.AsContainer.awkward_form` as soon as a
     non-conforming type is found.
     """
+
     def __init__(self, because):
         self.because = because
 
@@ -442,6 +446,7 @@ class ObjectArray(object):
     turned into a NumPy, Awkward, or other array, depending on the specified
     :doc:`uproot4.interpretation.library.Library`.
     """
+
     def __init__(
         self, model, branch, context, byte_offsets, byte_content, cursor_offset
     ):
@@ -584,6 +589,7 @@ class StridedObjectArray(object):
     will be turned into a NumPy, Awkward, or other array, depending on the
     specified :doc:`uproot4.interpretation.library.Library`.
     """
+
     def __init__(self, interpretation, array):
         self._interpretation = interpretation
         self._array = array

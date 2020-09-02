@@ -22,6 +22,19 @@ _tref_format1 = struct.Struct(">xxIxxxxxx")
 
 
 class Model_TRef(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TRef``.
+
+    This model does not deserialize all fields, only the reference number.
+    """
+
+    @property
+    def ref(self):
+        """
+        The reference number as an integer.
+        """
+        return self._ref
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -34,10 +47,6 @@ in file {1}""".format(
                 )
             )
         self._ref = cursor.field(chunk, _tref_format1, context)
-
-    @property
-    def ref(self):
-        return self._ref
 
     def __repr__(self):
         return "<TRef {0}>".format(self._ref)
@@ -82,6 +91,33 @@ _trefarray_dtype = numpy.dtype(">i4")
 
 
 class Model_TRefArray(uproot4.model.Model, Sequence):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TRefArray``.
+
+    This also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
+    @property
+    def refs(self):
+        """
+        The reference number as a ``numpy.ndarray`` of ``dtype(">i4")``.
+        """
+        return self._data
+
+    @property
+    def nbytes(self):
+        """
+        The number of bytes in :doc:`uproot4.models.TRef.TRefArray.nbytes`.
+        """
+        return self._data.nbytes
+
+    @property
+    def name(self):
+        """
+        The name of this TRefArray.
+        """
+        return self._members["fName"]
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -97,18 +133,6 @@ in file {1}""".format(
         self._data = cursor.array(
             chunk, self._members["fSize"], _trefarray_dtype, context
         )
-
-    @property
-    def name(self):
-        return self._members["fName"]
-
-    @property
-    def nbytes(self):
-        return self._data.nbytes
-
-    @property
-    def refs(self):
-        return self._data
 
     def __getitem__(self, where):
         return self._data[where]

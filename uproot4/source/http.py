@@ -375,7 +375,7 @@ class HTTPSource(uproot4.source.chunk.Source):
     def _set_fallback(self):
         self._fallback = MultithreadedHTTPSource(
             self._file_path,
-            **self._fallback_options    # NOTE: a comma after **fallback_options breaks Python 2
+            **self._fallback_options  # NOTE: a comma after **fallback_options breaks Python 2
         )
 
     def __enter__(self):

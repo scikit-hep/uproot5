@@ -27,11 +27,171 @@ _tbasket_offsets_dtype = numpy.dtype(">i4")
 
 
 class Model_TBasket(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TBasket``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
     def __repr__(self):
         basket_num = self._basket_num if self._basket_num is not None else "(unknown)"
         return "<TBasket {0} of {1} at 0x{2:012x}>".format(
             basket_num, repr(self._parent.name), id(self)
         )
+
+    @property
+    def raw_data(self):
+        """
+        The raw but uncompressed data in the ``TBasket``, which combines data
+        content with entry offsets, if the latter exists.
+
+        If there are no entry offsets, this is identical to
+        :doc:`uproot4.models.TBasket.TBasket.data`.
+        """
+        return self._raw_data
+
+    @property
+    def data(self):
+        """
+        The uncompressed data content in the ``TBasket``, not including any
+        entry offsets, if they exist.
+
+        If there are no entry offsets, this is identical to
+        :doc:`uproot4.models.TBasket.TBasket.raw_data`.
+        """
+        return self._data
+
+    @property
+    def byte_offsets(self):
+        """
+        The index where each entry starts and stops in the
+        :doc:`uproot4.models.TBasket.TBasket.data`, not including header.
+
+        The first offset is ``0`` and the number of offsets is one greater than
+        the number of entries, such that the last offset is the length of
+        :doc:`uproot4.models.TBasket.TBasket.data`.
+        """
+        return self._byte_offsets
+
+    def array(self, interpretation=None):
+        """
+        The ``TBasket`` data and entry offsets as an array, given an
+        :doc:`uproot4.interpretation.Interpretation` (or the ``TBranch`` parent's
+        :doc:`uproot4.behaviors.TBranch.TBranch.interpretation`).
+
+        This calls the :doc:`uproot4.interpretation.Interpretation.basket_array`
+        method and not :doc:`uproot4.interpretation.Interpretation.final_array`,
+        so the resulting array might be a temporary object like
+        :doc:`uproot4.interpretation.jagged.JaggedArray`, rather than a NumPy
+        array, an Awkward Array, or other
+        :doc:`uproot4.interpretation.library.Library`-specific array.
+        """
+        if interpretation is None:
+            interpretation = self._parent.interpretation
+        return interpretation.basket_array(
+            self.data,
+            self.byte_offsets,
+            self,
+            self.parent,
+            self.parent.context,
+            self._members["fKeylen"],
+        )
+
+    @property
+    def counts(self):
+        """
+        The number of items in each entry as a NumPy array, derived from the
+        parent ``TBranch``'s :doc:`uproot4.behavior.TBranch.TBranch.count_branch`.
+        If there is no such branch (e.g. the data are ``std::vector``), then
+        this method returns None.
+        """
+        count_branch = self._parent.count_branch
+        if count_branch is not None:
+            entry_offsets = count_branch.entry_offsets
+            entry_start = entry_offsets[self._basket_num]
+            entry_stop = entry_offsets[self._basket_num + 1]
+            return count_branch.array(
+                entry_start=entry_start, entry_stop=entry_stop, library="np"
+            )
+        else:
+            return None
+
+    @property
+    def basket_num(self):
+        """
+        The index of this ``TBasket`` within its ``TBranch``.
+        """
+        return self._basket_num
+
+    @property
+    def key_version(self):
+        """
+        The instance version of the ``TKey`` for this ``TBasket`` (which is
+        deserialized along with the ``TBasket``, unlike normal objects).
+        """
+        return self._key_version
+
+    @property
+    def num_entries(self):
+        """
+        The number of entries in this ``TBasket``.
+        """
+        return self._members["fNevBuf"]
+
+    @property
+    def is_embedded(self):
+        """
+        If this ``TBasket`` is embedded within its ``TBranch`` (i.e. must be
+        deserialized as part of the ``TBranch``), then ``is_embedded`` is True.
+
+        If this ``TBasket`` is a free-standing object, then ``is_embedded`` is
+        False.
+        """
+        return self._members["fNbytes"] <= self._members["fKeylen"]
+
+    @property
+    def uncompressed_bytes(self):
+        """
+        The number of bytes for the uncompressed data, not including the header.
+
+        If the ``TBasket`` is uncompressed, this is equal to
+        :doc:`uproot4.models.TBasket.TBasket.compressed_bytes`.
+        """
+        if self.is_embedded:
+            if self._byte_offsets is None:
+                return self._data.nbytes
+            else:
+                return self._data.nbytes + 4 + self.num_entries * 4
+        else:
+            return self._members["fObjlen"]
+
+    @property
+    def compressed_bytes(self):
+        """
+        The number of bytes for the compressed data, not including the header
+        (which is always uncompressed).
+
+        If the ``TBasket`` is uncompressed, this is equal to
+        :doc:`uproot4.models.TBasket.TBasket.uncompressed_bytes`.
+        """
+        if self.is_embedded:
+            if self._byte_offsets is None:
+                return self._data.nbytes
+            else:
+                return self._data.nbytes + 4 + self.num_entries * 4
+        else:
+            return self._members["fNbytes"] - self._members["fKeylen"]
+
+    @property
+    def border(self):
+        """
+        The byte position of the boundary between data content and entry offsets.
+
+        Equal to ``self.member("fLast") - self.member("fKeylen")``.
+        """
+        return self._members["fLast"] - self._members["fKeylen"]
 
     def read_numbytes_version(self, chunk, cursor, context):
         pass
@@ -113,81 +273,6 @@ class Model_TBasket(uproot4.model.Model):
             else:
                 self._data = self._raw_data
                 self._byte_offsets = None
-
-    @property
-    def basket_num(self):
-        return self._basket_num
-
-    @property
-    def key_version(self):
-        return self._key_version
-
-    @property
-    def num_entries(self):
-        return self._members["fNevBuf"]
-
-    @property
-    def is_embedded(self):
-        return self._members["fNbytes"] <= self._members["fKeylen"]
-
-    @property
-    def uncompressed_bytes(self):
-        if self.is_embedded:
-            if self._byte_offsets is None:
-                return self._data.nbytes
-            else:
-                return self._data.nbytes + 4 + self.num_entries * 4
-        else:
-            return self._members["fObjlen"]
-
-    @property
-    def compressed_bytes(self):
-        if self.is_embedded:
-            if self._byte_offsets is None:
-                return self._data.nbytes
-            else:
-                return self._data.nbytes + 4 + self.num_entries * 4
-        else:
-            return self._members["fNbytes"] - self._members["fKeylen"]
-
-    @property
-    def border(self):
-        return self._members["fLast"] - self._members["fKeylen"]
-
-    @property
-    def raw_data(self):
-        return self._raw_data
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def byte_offsets(self):
-        return self._byte_offsets
-
-    @property
-    def counts(self):
-        count_branch = self._parent.count_branch
-        if count_branch is not None:
-            entry_offsets = count_branch.entry_offsets
-            entry_start = entry_offsets[self._basket_num]
-            entry_stop = entry_offsets[self._basket_num + 1]
-            return count_branch.array(
-                entry_start=entry_start, entry_stop=entry_stop, library="np"
-            )
-
-    def array(self, interpretation=None):
-        if interpretation is None:
-            interpretation = self._parent.interpretation
-        return interpretation.basket_array(
-            self.data,
-            self.byte_offsets,
-            self,
-            self.parent,
-            self.parent.context,
-            self._members["fKeylen"],
-        )
 
 
 uproot4.classes["TBasket"] = Model_TBasket

@@ -1096,6 +1096,7 @@ class NotNumerical(Exception):
     :doc:`uproot4.interpretation.identify.interpretation_of` as soon as a
     non-conforming type is found.
     """
+
     pass
 
 
@@ -1112,6 +1113,7 @@ class UnknownInterpretation(Exception):
     Thus, failing to find an interpretation for a ``TBranch`` is not a fatal
     error, but attempting to use it to deserialize arrays is a fatal error.
     """
+
     def __init__(self, reason, file_path, object_path):
         self.reason = reason
         self.file_path = file_path

@@ -10,6 +10,10 @@ import uproot4.models.TList
 
 
 class Model_THashList(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``THashList``.
+    """
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -39,10 +43,7 @@ in file {1}""".format(
         else:
             version = " (version {0})".format(self.class_version)
         return "<{0}{1} of {2} items at 0x{3:012x}>".format(
-            self.classname,
-            version,
-            len(self),
-            id(self),
+            self.classname, version, len(self), id(self),
         )
 
     def __getitem__(self, where):

@@ -11,6 +11,12 @@ import uproot4.models.TObject
 
 
 class Model_TObjString(uproot4.model.Model, str):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TObjString``.
+
+    This is also a Python ``str`` (string).
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -49,10 +55,7 @@ in file {1}""".format(
         else:
             version = " (version {0})".format(self.class_version)
         return "<{0}{1} {2} at 0x{3:012x}>".format(
-            self.classname,
-            version,
-            str.__repr__(self),
-            id(self),
+            self.classname, version, str.__repr__(self), id(self),
         )
 
     @classmethod

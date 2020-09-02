@@ -337,6 +337,7 @@ class JaggedArray(object):
     turned into a NumPy, Awkward, or other array, depending on the specified
     :doc:`uproot4.interpretation.library.Library`.
     """
+
     def __init__(self, offsets, content):
         self._offsets = offsets
         self._content = content

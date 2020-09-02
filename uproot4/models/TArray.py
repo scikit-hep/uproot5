@@ -23,6 +23,12 @@ _tarray_format1 = struct.Struct(">i")
 
 
 class Model_TArray(uproot4.model.Model, Sequence):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArray`` and its subclasses.
+
+    These also satisfy Python's abstract ``Sequence`` protocol.
+    """
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -88,30 +94,79 @@ in file {1}""".format(
 
 
 class Model_TArrayC(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayC``
+    (``dtype(">i1")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i1")
 
 
 class Model_TArrayS(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayS``
+    (``dtype(">i2")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i2")
 
 
 class Model_TArrayI(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayI``
+    (``dtype(">i4")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i4")
 
 
 class Model_TArrayL(Model_TArray):
-    dtype = numpy.dtype(numpy.int_).newbyteorder(">")
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayL``
+    (``dtype(">i8")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
+    dtype = numpy.dtype(">i8")
 
 
 class Model_TArrayL64(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayL64``
+    (``dtype(">i8")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i8")
 
 
 class Model_TArrayF(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayF``
+    (``dtype(">f4")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">f4")
 
 
 class Model_TArrayD(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayD``
+    (``dtype(">f8")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">f8")
 
 

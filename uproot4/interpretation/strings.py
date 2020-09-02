@@ -57,6 +57,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
     :doc:`uproot4.containers.AsString` into a
     :doc:`uproot4.interpretation.strings.AsStrings`.)
     """
+
     def __init__(
         self, header_bytes=0, length_bytes="1-5", typename=None, original=None
     ):
@@ -358,6 +359,7 @@ class StringArray(object):
     turned into a NumPy, Awkward, or other array, depending on the specified
     :doc:`uproot4.interpretation.library.Library`.
     """
+
     def __init__(self, offsets, content):
         self._offsets = offsets
         self._content = content

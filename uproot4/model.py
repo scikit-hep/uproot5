@@ -330,6 +330,7 @@ class Model(object):
     the superclass parts are included in a list called
     :doc:`uproot4.model.Model.bases`.
     """
+
     class_streamer = None
     behaviors = ()
 
@@ -900,6 +901,7 @@ class VersionedModel(Model):
     :doc:`uproot4.model.Model` classes cannot be pickled in Python versions
     before 3.7.
     """
+
     def __getstate__(self):
         return (
             {
@@ -937,6 +939,7 @@ class DispatchByVersion(object):
     :doc:`uproot4.model.Model`. Instances of this class are not usable as
     stand-ins for ROOT data.
     """
+
     @classmethod
     def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         """
@@ -1145,6 +1148,7 @@ class UnknownClass(Model):
     :doc:`uproot4.model.DispatchByVersion` and no ``TStreamerInfo`` in the
     current :doc:`uproot4.reading.ReadOnlyFile` to produce one.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._chunk = weakref.ref(chunk)
         self._context = context
@@ -1254,6 +1258,7 @@ class UnknownClassVersion(VersionedModel):
     Placeholder for a C++ class instance that has no ``TStreamerInfo`` in the
     current :doc:`uproot4.reading.ReadOnlyFile` to produce one.
     """
+
     @property
     def chunk(self):
         """
@@ -1370,6 +1375,7 @@ class DynamicModel(VersionedModel):
     This dynamically generated model allows ROOT object types without predefined
     :doc:`uproot4.model.Model` classes to be pickled in Python 3.7 and later.
     """
+
     def __setstate__(self, state):
         cls = type(self)
         class_data, instance_data = state

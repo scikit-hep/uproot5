@@ -164,6 +164,7 @@ class AsDtype(Numerical):
     Interpretation for any array that can be fully described as a
     ``numpy.dtype``.
     """
+
     def __init__(self, from_dtype, to_dtype=None):
         self._from_dtype = numpy.dtype(from_dtype)
         if to_dtype is None:
@@ -345,6 +346,7 @@ class AsDtypeInPlace(AsDtype):
     Like :doc:`uproot4.interpretation.numerical.AsDtype`, but a given array is
     filled in-place, rather than creating a new output array.
     """
+
     def __init__(self):
         raise NotImplementedError
 
@@ -353,6 +355,7 @@ class AsSTLBits(Numerical):
     """
     Interpretation for ``std::bitset``.
     """
+
     def __init__(self):
         raise NotImplementedError
 
@@ -530,6 +533,7 @@ class AsDouble32(TruncatedNumerical):
 
     Interpretation for ROOT's ``Double32_t`` type.
     """
+
     def __init__(self, low, high, num_bits, to_dims=()):
         self._low = low
         self._high = high
@@ -591,6 +595,7 @@ class AsFloat16(TruncatedNumerical):
 
     Interpretation for ROOT's ``Float16_t`` type.
     """
+
     def __init__(self, low, high, num_bits, to_dims=()):
         self._low = low
         self._high = high

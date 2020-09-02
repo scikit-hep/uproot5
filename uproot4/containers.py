@@ -140,6 +140,7 @@ class AsContainer(object):
     :doc:`uproot4.model.Model` class objects may be the ``model`` argument
     of a :doc:`uproot4.interpretation.objects.AsObjects`.
     """
+
     @property
     def cache_key(self):
         """
@@ -254,6 +255,7 @@ class AsDynamic(AsContainer):
     The byte-stream consists of a class name followed by instance data. Only
     known use: in ``TBranchObject`` branches.
     """
+
     def __init__(self, model=None):
         self._model = model
 
@@ -322,6 +324,7 @@ class AsFIXME(AsContainer):
     :doc:`uproot4.containers.AsFIXME.read` raises a
     :doc:`uproot4.deserialization.DeserializationError` asking for a bug-report.
     """
+
     def __init__(self, message):
         self.message = message
 
@@ -379,6 +382,7 @@ class AsString(AsContainer):
     :doc:`uproot4.containers.AsString` into a
     :doc:`uproot4.interpretation.strings.AsStrings`.)
     """
+
     def __init__(self, header, length_bytes="1-5", typename=None):
         self.header = header
         if length_bytes in ("1-5", "4"):
@@ -485,6 +489,7 @@ class AsPointer(AsContainer):
     The deserialization procedure calls
     :doc:`uproot4.deserialization.read_object_any`.
     """
+
     def __init__(self, pointee=None):
         self._pointee = pointee
 
@@ -550,6 +555,7 @@ class AsArray(AsContainer):
     A :doc:`uproot4.containers.AsContainer` for simple arrays (not
     ``std::vector``).
     """
+
     def __init__(self, header, speedbump, values):
         self._header = header
         self._speedbump = speedbump
@@ -677,6 +683,7 @@ class AsVector(AsContainer):
 
     A :doc:`uproot4.containers.AsContainer` for ``std::vector``.
     """
+
     def __init__(self, header, values):
         self.header = header
         if isinstance(values, AsContainer):
@@ -793,6 +800,7 @@ class AsSet(AsContainer):
 
     A :doc:`uproot4.containers.AsContainer` for ``std::set``.
     """
+
     def __init__(self, header, keys):
         self.header = header
         if isinstance(keys, AsContainer):
@@ -917,6 +925,7 @@ class AsMap(AsContainer):
 
     A :doc:`uproot4.containers.AsContainer` for ``std::map``.
     """
+
     def __init__(self, header, keys, values):
         self.header = header
 
@@ -1097,6 +1106,7 @@ class Container(object):
     """
     Abstract class for Python representations of C++ STL collections.
     """
+
     def __ne__(self, other):
         return not self == other
 
@@ -1115,6 +1125,7 @@ class STLVector(Container, Sequence):
 
     Representation of a C++ ``std::vector`` as a Python ``Sequence``.
     """
+
     def __init__(self, values):
         if isinstance(values, types.GeneratorType):
             values = numpy.asarray(list(values))
@@ -1172,6 +1183,7 @@ class STLSet(Container, Set):
 
     Representation of a C++ ``std::set`` as a Python ``Set``.
     """
+
     def __init__(self, keys):
         if isinstance(keys, types.GeneratorType):
             keys = numpy.asarray(list(keys))

@@ -31,6 +31,7 @@ class AsGrouped(uproot4.interpretation.Interpretation):
     array of records, :doc:`uproot4.interpretation.library.Pandas` makes
     a ``pandas.DataFrame``, etc.
     """
+
     def __init__(self, branch, subbranches, typename=None):
         self._branch = branch
         self._subbranches = subbranches

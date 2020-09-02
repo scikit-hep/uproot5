@@ -40,7 +40,7 @@ def open(
     object_cache=100,
     array_cache="100 MB",
     custom_classes=None,
-    **options    # NOTE: a comma after **options breaks Python 2
+    **options  # NOTE: a comma after **options breaks Python 2
 ):
     """
     Args:
@@ -103,7 +103,7 @@ def open(
         object_cache=object_cache,
         array_cache=array_cache,
         custom_classes=custom_classes,
-        **options    # NOTE: a comma after **options breaks Python 2
+        **options  # NOTE: a comma after **options breaks Python 2
     )
 
     if object_path is None:
@@ -265,7 +265,7 @@ class ReadOnlyFile(CommonFileMethods):
         object_cache=100,
         array_cache="100 MB",
         custom_classes=None,
-        **options    # NOTE: a comma after **options breaks Python 2
+        **options  # NOTE: a comma after **options breaks Python 2
     ):
         self._file_path = file_path
         self.object_cache = object_cache
@@ -286,8 +286,7 @@ class ReadOnlyFile(CommonFileMethods):
             file_path, self._options
         )
         self._source = Source(
-            file_path,
-            **self._options    # NOTE: a comma after **options breaks Python 2
+            file_path, **self._options  # NOTE: a comma after **options breaks Python 2
         )
 
         self.hook_before_get_chunks()

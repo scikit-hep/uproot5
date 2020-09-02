@@ -23,6 +23,10 @@ _tlist_format2 = struct.Struct(">B")
 
 
 class Model_TList(uproot4.model.Model, Sequence):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TList``.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -63,10 +67,7 @@ in file {1}""".format(
         else:
             version = " (version {0})".format(self.class_version)
         return "<{0}{1} of {2} items at 0x{3:012x}>".format(
-            self.classname,
-            version,
-            len(self),
-            id(self),
+            self.classname, version, len(self), id(self),
         )
 
     def __getitem__(self, where):
