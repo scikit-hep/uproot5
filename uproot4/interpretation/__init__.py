@@ -61,8 +61,10 @@ class Interpretation(object):
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         """
         Args:
-            file (:doc:`uproot4.reading.CommonFileMethods`): The file associated
-                with this interpretation's ``TBranch``.
+            file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot4.model.Model` classes from its
+                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+                for error messages.
             index_format (str): Format to use for indexes of the
                 ``awkward1.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.

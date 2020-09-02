@@ -218,6 +218,7 @@ class AsContainer(object):
                 from the file :doc:`uproot4.source.chunk.Source`.
             cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
                 that ``chunk``.
+            context (dict): Auxiliary data used in deserialization.
             file (:doc:`uproot4.reading.ReadOnlyFile`): An open file object,
                 capable of generating new :doc:`uproot4.model.Model` classes
                 from its :doc:`uproot4.reading.ReadOnlyFile.streamers`.
