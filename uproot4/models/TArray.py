@@ -54,8 +54,13 @@ in file {1}""".format(
         return len(self._data)
 
     def __repr__(self):
-        return "<{0} {1} at 0x{2:012x}>".format(
-            uproot4.model.classname_pretty(self.classname, self.class_version),
+        if self.class_version is None:
+            version = ""
+        else:
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            self.classname,
+            version,
             numpy.array2string(
                 self._data,
                 max_line_width=numpy.inf,

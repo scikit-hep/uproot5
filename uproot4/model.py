@@ -50,6 +50,10 @@ bootstrap_classnames = [
 
 
 def bootstrap_classes():
+    """
+    Returns the basic classes that are needed to load other classes (streamers,
+    TList, TObjArray, TObjString).
+    """
     import uproot4.streamers
     import uproot4.models.TList
     import uproot4.models.TObjArray
@@ -63,6 +67,10 @@ def bootstrap_classes():
 
 
 def reset_classes():
+    """
+    Removes all classes from ``uproot4.classes`` and ``uproot4.unknown_classes``
+    and refills ``uproot4.classes`` with original versions of these classes.
+    """
     if uproot4._util.py2:
         reload = __builtins__["reload"]
     else:
@@ -87,6 +95,158 @@ def reset_classes():
     reload(uproot4.models.TLeaf)
     reload(uproot4.models.TBasket)
     reload(uproot4.models.RNTuple)
+
+
+_classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
+_classname_decode_version = re.compile(br".*_v([0-9]+)")
+_classname_decode_pattern = re.compile(br"_(([0-9a-f][0-9a-f])+)_")
+
+if uproot4._util.py2:
+
+    def _classname_decode_convert(hex_characters):
+        g = hex_characters.group(1)
+        return b"".join(
+            chr(int(g[i : i + 2], 16)) for i in uproot4._util.range(0, len(g), 2)
+        )
+
+    def _classname_encode_convert(bad_characters):
+        g = bad_characters.group(0)
+        return b"_" + b"".join("{0:02x}".format(ord(x)).encode() for x in g) + b"_"
+
+
+else:
+
+    def _classname_decode_convert(hex_characters):
+        g = hex_characters.group(1)
+        return bytes(int(g[i : i + 2], 16) for i in uproot4._util.range(0, len(g), 2))
+
+    def _classname_encode_convert(bad_characters):
+        g = bad_characters.group(0)
+        return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
+
+
+def classname_decode(encoded_classname):
+    """
+    Converts a Python (encoded) classname, such as ``Model_Some_3a3a_Thing``
+    into a C++ (decoded) classname, such as ``Some::Thing``.
+
+    C++ classnames can include namespace delimiters (``::``) and template
+    arguments (``<`` and ``>``), which have to be translated into
+    ``[A-Za-z_][A-Za-z0-9_]*`` for Python. Non-conforming characters and also
+    underscores are translated to their hexadecimal equivalents and surrounded
+    by underscores. Additionally, Python models of C++ classes are prepended
+    with ``Model_`` (or ``Unknown_`` if a streamer isn't found).
+    """
+    if encoded_classname.startswith("Unknown_"):
+        raw = encoded_classname[8:].encode()
+    elif encoded_classname.startswith("Model_"):
+        raw = encoded_classname[6:].encode()
+    else:
+        raise ValueError("not an encoded classname: {0}".format(encoded_classname))
+
+    m = _classname_decode_version.match(raw)
+    if m is None:
+        version = None
+    else:
+        version = int(m.group(1))
+        raw = raw[: -len(m.group(1)) - 2]
+
+    out = _classname_decode_pattern.sub(_classname_decode_convert, raw)
+    return out.decode(), version
+
+
+def classname_encode(classname, version=None, unknown=False):
+    """
+    Converts a C++ (decoded) classname, such as ``Some::Thing`` into a Python
+    classname (encoded), such as ``Model_Some_3a3a_Thing``.
+
+    If ``version`` is a number such as ``2``, the Python name is suffixed by
+    version, such as ``Model_Some_3a3a_Thing_v2``.
+
+    If ``unknown`` is True, the ``Model_`` prefix becomes ``Unknown_``.
+
+    C++ classnames can include namespace delimiters (``::``) and template
+    arguments (``<`` and ``>``), which have to be translated into
+    ``[A-Za-z_][A-Za-z0-9_]*`` for Python. Non-conforming characters and also
+    underscores are translated to their hexadecimal equivalents and surrounded
+    by underscores. Additionally, Python models of C++ classes are prepended
+    with ``Model_`` (or ``Unknown_`` if a streamer isn't found).
+    """
+    if unknown:
+        prefix = "Unknown_"
+    else:
+        prefix = "Model_"
+    if classname.startswith(prefix):
+        raise ValueError("classname is already encoded: {0}".format(classname))
+
+    if version is None:
+        v = ""
+    else:
+        v = "_v" + str(version)
+
+    raw = classname.encode()
+    out = _classname_encode_pattern.sub(_classname_encode_convert, raw)
+    return prefix + out.decode() + v
+
+
+def classname_version(encoded_classname):
+    """
+    Extracts a version number from a Python (encoded) classname, if it has one.
+
+    For example, ``Model_Some_3a3a_Thing_v2`` returns ``2``.
+
+    A name without a version number, such as ``Model_Some_3a3a_Thing``, returns
+    None.
+    """
+    m = _classname_decode_version.match(encoded_classname.encode())
+    if m is None:
+        return None
+    else:
+        return int(m.group(1))
+
+
+def maybe_custom_classes(custom_classes):
+    if custom_classes is None:
+        return uproot4.classes
+    else:
+        return custom_classes
+
+
+def has_class_named(classname, version=None, custom_classes=None):
+    cls = maybe_custom_classes(custom_classes).get(classname)
+    if cls is None:
+        return False
+
+    if version is not None and isinstance(cls, DispatchByVersion):
+        return cls.has_version(version)
+    else:
+        return True
+
+
+def class_named(classname, version=None, custom_classes=None):
+    if custom_classes is None:
+        classes = uproot4.classes
+        where = "the 'custom_classes' dict"
+    else:
+        where = "uproot4.classes"
+
+    cls = classes.get(classname)
+    if cls is None:
+        raise ValueError("no class named {0} in {1}".format(classname, where))
+
+    if version is not None and isinstance(cls, DispatchByVersion):
+        versioned_cls = cls.class_of_version(version)
+        if versioned_cls is not None:
+            return versioned_cls
+        else:
+            raise ValueError(
+                "no class named {0} with version {1} in {2}".format(
+                    classname, version, where
+                )
+            )
+
+    else:
+        return cls
 
 
 class Model(object):
@@ -161,9 +321,11 @@ class Model(object):
         return out
 
     def __repr__(self):
-        return "<{0} at 0x{1:012x}>".format(
-            classname_pretty(self.classname, self.class_version), id(self)
-        )
+        if self.class_version is None:
+            version = ""
+        else:
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} at 0x{2:012x}>".format(self.classname, version, id(self))
 
     def read_numbytes_version(self, chunk, cursor, context):
         import uproot4.deserialization
@@ -596,127 +758,3 @@ class DispatchByVersion(object):
     def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.awkward_form(file, index_format, header, tobject_header)
-
-
-_classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
-_classname_decode_version = re.compile(br".*_v([0-9]+)")
-_classname_decode_pattern = re.compile(br"_(([0-9a-f][0-9a-f])+)_")
-
-if uproot4._util.py2:
-
-    def _classname_encode_convert(bad_characters):
-        g = bad_characters.group(0)
-        return b"_" + b"".join("{0:02x}".format(ord(x)).encode() for x in g) + b"_"
-
-    def _classname_decode_convert(hex_characters):
-        g = hex_characters.group(1)
-        return b"".join(
-            chr(int(g[i : i + 2], 16)) for i in uproot4._util.range(0, len(g), 2)
-        )
-
-
-else:
-
-    def _classname_encode_convert(bad_characters):
-        g = bad_characters.group(0)
-        return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
-
-    def _classname_decode_convert(hex_characters):
-        g = hex_characters.group(1)
-        return bytes(int(g[i : i + 2], 16) for i in uproot4._util.range(0, len(g), 2))
-
-
-def classname_encode(classname, version=None, unknown=False):
-    if unknown:
-        prefix = "Unknown_"
-    else:
-        prefix = "Model_"
-    if classname.startswith(prefix):
-        raise ValueError("classname is already encoded: {0}".format(classname))
-
-    if version is None:
-        v = ""
-    else:
-        v = "_v" + str(version)
-
-    raw = classname.encode()
-    out = _classname_encode_pattern.sub(_classname_encode_convert, raw)
-    return prefix + out.decode() + v
-
-
-def classname_decode(encoded_classname):
-    if encoded_classname.startswith("Unknown_"):
-        raw = encoded_classname[8:].encode()
-    elif encoded_classname.startswith("Model_"):
-        raw = encoded_classname[6:].encode()
-    else:
-        raise ValueError("not an encoded classname: {0}".format(encoded_classname))
-
-    m = _classname_decode_version.match(raw)
-    if m is None:
-        version = None
-    else:
-        version = int(m.group(1))
-        raw = raw[: -len(m.group(1)) - 2]
-
-    out = _classname_decode_pattern.sub(_classname_decode_convert, raw)
-    return out.decode(), version
-
-
-def classname_version(encoded_classname):
-    m = _classname_decode_version.match(encoded_classname.encode())
-    if m is None:
-        return None
-    else:
-        return int(m.group(1))
-
-
-def classname_pretty(classname, version):
-    if version is None:
-        return classname
-    else:
-        return "{0} (version {1})".format(classname, version)
-
-
-def maybe_custom_classes(custom_classes):
-    if custom_classes is None:
-        return uproot4.classes
-    else:
-        return custom_classes
-
-
-def has_class_named(classname, version=None, custom_classes=None):
-    cls = maybe_custom_classes(custom_classes).get(classname)
-    if cls is None:
-        return False
-
-    if version is not None and isinstance(cls, DispatchByVersion):
-        return cls.has_version(version)
-    else:
-        return True
-
-
-def class_named(classname, version=None, custom_classes=None):
-    if custom_classes is None:
-        classes = uproot4.classes
-        where = "the 'custom_classes' dict"
-    else:
-        where = "uproot4.classes"
-
-    cls = classes.get(classname)
-    if cls is None:
-        raise ValueError("no class named {0} in {1}".format(classname, where))
-
-    if version is not None and isinstance(cls, DispatchByVersion):
-        versioned_cls = cls.class_of_version(version)
-        if versioned_cls is not None:
-            return versioned_cls
-        else:
-            raise ValueError(
-                "no class named {0} with version {1} in {2}".format(
-                    classname, version, where
-                )
-            )
-
-    else:
-        return cls
