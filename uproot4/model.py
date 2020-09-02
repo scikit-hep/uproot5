@@ -760,13 +760,6 @@ class Model(object):
 
         Some types don't have a 6-byte header or handle it differently; in
         those cases, this method should be overridden.
-
-        Returns a 3-tuple of
-
-        * number of bytes (int or None if unknown)
-        * instance version (int)
-        * is memberwise (bool): True if the memberwise bit is set in the version
-          number; False otherwise.
         """
         import uproot4.deserialization
 
@@ -1149,22 +1142,6 @@ class UnknownClass(Model):
     current :doc:`uproot4.reading.ReadOnlyFile` to produce one.
     """
 
-    def read_members(self, chunk, cursor, context, file):
-        self._chunk = weakref.ref(chunk)
-        self._context = context
-
-        if self._num_bytes is not None:
-            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
-
-        else:
-            raise ValueError(
-                """unknown class {0} that cannot be skipped because its """
-                """number of bytes is unknown
-in file {1}""".format(
-                    self.classname, file.file_path
-                )
-            )
-
     @property
     def chunk(self):
         """
@@ -1226,7 +1203,9 @@ in file {1}""".format(
         Presents the byte stream at the point where this instance would have been
         deserialized.
 
-        Example output with dtype=">f4" and offset=3.
+        Example output with ``dtype=">f4"`` and ``offset=3``.
+
+        .. code-block:: raw
 
             --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
             123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
@@ -1244,13 +1223,51 @@ in file {1}""".format(
         cursor = self._cursor.copy()
         cursor.skip(skip_bytes)
         cursor.debug(
-            self._chunk,
+            self.chunk,
             context=self._context,
             limit_bytes=limit_bytes,
             dtype=dtype,
             offset=offset,
             stream=stream,
         )
+
+    def debug_array(self, skip_bytes=0, dtype=numpy.dtype("u1")):
+        """
+        Args:
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the :doc:`uproot4.source.chunk.Chunk`. May be
+                negative, to examine the byte stream leading up to the attempted
+                instantiation. The default, ``0``, starts where the number
+                of bytes and version number would be (just before
+                :doc:`uproot4.model.Model.read_numbytes_version`).
+            dtype (``numpy.dtype`` or its constructor argument): Data type in
+                which to interpret the data. (The size of the array returned is
+                truncated to this ``dtype.itemsize``.)
+
+        Like :doc:`uproot4.model.UnknownClass.debug`, but returns a NumPy array
+        for further inspection.
+        """
+        dtype = numpy.dtype(dtype)
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        out = self.chunk.remainder(cursor.index, cursor, self._context)
+        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+
+    def read_members(self, chunk, cursor, context, file):
+        self._chunk = weakref.ref(chunk)
+        self._context = context
+
+        if self._num_bytes is not None:
+            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
+
+        else:
+            raise ValueError(
+                """unknown class {0} that cannot be skipped because its """
+                """number of bytes is unknown
+in file {1}""".format(
+                    self.classname, file.file_path
+                )
+            )
 
 
 class UnknownClassVersion(VersionedModel):
@@ -1319,7 +1336,9 @@ class UnknownClassVersion(VersionedModel):
         Presents the byte stream at the point where this instance would have been
         deserialized.
 
-        Example output with dtype=">f4" and offset=3.
+        Example output with ``dtype=">f4"`` and ``offset=3``.
+
+        .. code-block:: raw
 
             --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
             123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
@@ -1337,13 +1356,35 @@ class UnknownClassVersion(VersionedModel):
         cursor = self._cursor.copy()
         cursor.skip(skip_bytes)
         cursor.debug(
-            self._chunk,
+            self.chunk,
             context=self._context,
             limit_bytes=limit_bytes,
             dtype=dtype,
             offset=offset,
             stream=stream,
         )
+
+    def debug_array(self, skip_bytes=0, dtype=numpy.dtype("u1")):
+        """
+        Args:
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the :doc:`uproot4.source.chunk.Chunk`. May be
+                negative, to examine the byte stream leading up to the attempted
+                instantiation. The default, ``0``, starts where the number
+                of bytes and version number would be (just before
+                :doc:`uproot4.model.Model.read_numbytes_version`).
+            dtype (``numpy.dtype`` or its constructor argument): Data type in
+                which to interpret the data. (The size of the array returned is
+                truncated to this ``dtype.itemsize``.)
+
+        Like :doc:`uproot4.model.UnknownClassVersion.debug`, but returns a
+        NumPy array for further inspection.
+        """
+        dtype = numpy.dtype(dtype)
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        out = self.chunk.remainder(cursor.index, cursor, self._context)
+        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
 
     def read_members(self, chunk, cursor, context, file):
         self._chunk = weakref.ref(chunk)

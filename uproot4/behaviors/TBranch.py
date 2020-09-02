@@ -1548,16 +1548,6 @@ in file {3}""".format(
             start = stop
         return out
 
-    def debug_array(self, entry, dtype=numpy.dtype("u1"), skip_bytes=0):
-        dtype = numpy.dtype(dtype)
-        interpretation = uproot4.interpretation.jagged.AsJagged(
-            uproot4.interpretation.numerical.AsDtype("u1")
-        )
-        out = self.array(
-            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
-        )[0][skip_bytes:]
-        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
-
     def debug(
         self,
         entry,
@@ -1567,6 +1557,49 @@ in file {3}""".format(
         offset=0,
         stream=sys.stdout,
     ):
+        """
+        Args:
+            entry (int): Entry number to inspect. Note: this debugging routine
+                is not applicable to data without entry offsets (nor would it
+                be needed).
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the ``entry``. May be negative, to examine the
+                byte stream before the ``entry``.
+            limit_bytes (None or int): Number of bytes to limit the output to.
+                A line of debugging output (without any ``offset``) is 20 bytes,
+                so multiples of 20 show full lines. If None, everything is
+                shown to the end of the ``entry``, which might be large.
+            dtype (None, ``numpy.dtype``, or its constructor argument): If None,
+                present only the bytes as decimal values (0-255). Otherwise,
+                also interpret them as an array of a given NumPy type.
+            offset (int): Number of bytes to skip before interpreting a ``dtype``;
+                can be helpful if the numerical values are out of phase with
+                the first byte shown. Not to be confused with ``skip_bytes``,
+                which determines which bytes are shown at all. Any ``offset``
+                values that are equivalent modulo ``dtype.itemsize`` show
+                equivalent interpretations.
+            stream (object with a ``write(str)`` method): Stream to write the
+                debugging output to.
+
+        Presents the data for one entry as raw bytes.
+
+        Example output with ``dtype=">f4"`` and ``offset=3``.
+
+        .. code-block:: raw
+
+            --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+            123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
+              {   {   {   ? --- --- ---   @ --- --- ---   @   S   3   3   @ --- --- ---   @
+                                    1.1             2.2             3.3             4.4
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                176   0   0  64 211  51  51  64 246 102 102  65  12 204 205  65  30 102 102  66
+                --- --- ---   @ ---   3   3   @ ---   f   f   A --- --- ---   A ---   f   f   B
+                        5.5             6.6             7.7             8.8             9.9
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                202   0   0  67  74   0   0  67 151 128   0 123 123
+                --- --- ---   C   J --- ---   C --- --- ---   {   {
+                      101.0           202.0           303.0
+        """
         data = self.debug_array(entry)
         chunk = uproot4.source.chunk.Chunk.wrap(self._file.source, data)
         if skip_bytes is None:
@@ -1576,6 +1609,31 @@ in file {3}""".format(
         cursor.debug(
             chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
         )
+
+    def debug_array(self, entry, skip_bytes=0, dtype=numpy.dtype("u1")):
+        """
+        Args:
+            entry (int): Entry number to inspect. Note: this debugging routine
+                is not applicable to data without entry offsets (nor would it
+                be needed).
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the ``entry``. May be negative, to examine the
+                byte stream before the ``entry``.
+            dtype (``numpy.dtype`` or its constructor argument): Data type in
+                which to interpret the data. (The size of the array returned is
+                truncated to this ``dtype.itemsize``.)
+
+        Like :doc:`uproot4.behaviors.TBranch.TBranch.debug`, but returns a
+        NumPy array for further inspection.
+        """
+        dtype = numpy.dtype(dtype)
+        interpretation = uproot4.interpretation.jagged.AsJagged(
+            uproot4.interpretation.numerical.AsDtype("u1")
+        )
+        out = self.array(
+            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
+        )[0][skip_bytes:]
+        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
 
     def __array__(self, *args, **kwargs):
         out = self.array(library="np")

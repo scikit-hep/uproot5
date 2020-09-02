@@ -380,7 +380,9 @@ of file path {2}""".format(
         are always presented as decimal bytes and ASCII characters, but may
         also be interpreted as numbers.
 
-        Example output with dtype=">f4" and offset=3.
+        Example output with ``dtype=">f4"`` and ``offset=3``.
+
+        .. code-block:: raw
 
             --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
             123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
