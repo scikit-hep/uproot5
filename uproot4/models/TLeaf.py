@@ -25,7 +25,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -76,7 +76,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -113,7 +113,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -150,7 +150,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -187,7 +187,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -224,7 +224,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -261,7 +261,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -298,7 +298,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -335,7 +335,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -372,7 +372,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -406,7 +406,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -438,7 +438,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TLeaf", 2).read(
+            file.class_named("TLeaf", 2).read(
                 chunk,
                 cursor,
                 context,

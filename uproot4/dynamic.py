@@ -2,6 +2,15 @@
 
 """
 Initially empty submodule into which new classes are dynamically added.
+
+The purpose of this namespace is to allow :doc:`uproot4.model.VersionedModel`
+classes that were automatically generated from ROOT ``TStreamerInfo`` to be
+pickled, with the help of :doc:`uproot4.model.DynamicModel`.
+
+In `Python 3.7 and later <https://www.python.org/dev/peps/pep-0562>`__, attempts
+to extract items from this namespace generate new :doc:`uproot4.model.DynamicModel`
+classes, which are used as a container in which data from pickled
+:doc:`uproot4.model.VersionedModel` instances are filled.
 """
 
 

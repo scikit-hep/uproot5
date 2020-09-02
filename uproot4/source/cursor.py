@@ -357,13 +357,24 @@ of file path {2}""".format(
     ):
         """
         Args:
-            chunk (Chunk): Data to interpret.
-            limit_bytes (None or int): Maximum number of bytes to view or None
-                to see all bytes to the end of the Chunk.
-            dtype (None or dtype): If a dtype, additionally interpret the data
-                as numbers.
-            offset (int): Number of bytes offset for interpreting as a dtype.
-            stream: Object with a `write` method for writing the output.
+            chunk (:doc:`uproot4.source.chunk.Chunk`): Data to examine.
+            context (dict): Auxiliary data used in deserialization.
+            limit_bytes (None or int): Number of bytes to limit the output to.
+                A line of debugging output (without any ``offset``) is 20 bytes,
+                so multiples of 20 show full lines. If None, everything is
+                shown to the end of the :doc:`uproot4.source.chunk.Chunk`,
+                which might be large.
+            dtype (None, ``numpy.dtype``, or its constructor argument): If None,
+                present only the bytes as decimal values (0-255). Otherwise,
+                also interpret them as an array of a given NumPy type.
+            offset (int): Number of bytes to skip before interpreting a ``dtype``;
+                can be helpful if the numerical values are out of phase with
+                the first byte shown. Not to be confused with ``skip_bytes``,
+                which determines which bytes are shown at all. Any ``offset``
+                values that are equivalent modulo ``dtype.itemsize`` show
+                equivalent interpretations.
+            stream (object with a ``write(str)`` method): Stream to write the
+                debugging output to.
 
         Peek at data by printing it to the `stream` (usually stdout). The data
         are always presented as decimal bytes and ASCII characters, but may

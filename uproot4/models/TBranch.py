@@ -36,7 +36,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -47,7 +47,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -70,20 +70,20 @@ in file {1}""".format(
             self._members["fTotBytes"],
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch10_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
-                self.class_named("TObjArray").read(
+                file.class_named("TObjArray").read(
                     chunk, cursor, context, file, self._file, self._concrete
                 )
         else:
-            self._members["fBaskets"] = self.class_named("TObjArray").read(
+            self._members["fBaskets"] = file.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
         tmp = _tbranch10_dtype1
@@ -108,7 +108,7 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fFileName"] = self.class_named("TString").read(
+            self._members["fFileName"] = file.class_named("TString").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
 
@@ -162,7 +162,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -173,7 +173,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -197,20 +197,20 @@ in file {1}""".format(
             self._members["fTotBytes"],
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch11_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
-                self.class_named("TObjArray").read(
+                file.class_named("TObjArray").read(
                     chunk, cursor, context, file, self._file, self._concrete
                 )
         else:
-            self._members["fBaskets"] = self.class_named("TObjArray").read(
+            self._members["fBaskets"] = file.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
         tmp = _tbranch11_dtype1
@@ -235,7 +235,7 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fFileName"] = self.class_named("TString").read(
+            self._members["fFileName"] = file.class_named("TString").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
 
@@ -290,7 +290,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -301,7 +301,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -325,20 +325,20 @@ in file {1}""".format(
             self._members["fTotBytes"],
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch12_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
-                self.class_named("TObjArray").read(
+                file.class_named("TObjArray").read(
                     chunk, cursor, context, file, self._file, self._concrete
                 )
         else:
-            self._members["fBaskets"] = self.class_named("TObjArray").read(
+            self._members["fBaskets"] = file.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
         tmp = _tbranch12_dtype1
@@ -363,7 +363,7 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fFileName"] = self.class_named("TString").read(
+            self._members["fFileName"] = file.class_named("TString").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
 
@@ -419,7 +419,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -430,7 +430,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 2).read(
+            file.class_named("TAttFill", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -447,7 +447,7 @@ in file {1}""".format(
             self._members["fWriteBasket"],
             self._members["fEntryNumber"],
         ) = cursor.fields(chunk, _tbranch13_format1, context)
-        self._members["fIOFeatures"] = self.class_named("ROOT::TIOFeatures").read(
+        self._members["fIOFeatures"] = file.class_named("ROOT::TIOFeatures").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         (
@@ -459,20 +459,20 @@ in file {1}""".format(
             self._members["fTotBytes"],
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch13_format2, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
-                self.class_named("TObjArray").read(
+                file.class_named("TObjArray").read(
                     chunk, cursor, context, file, self._file, self._concrete
                 )
         else:
-            self._members["fBaskets"] = self.class_named("TObjArray").read(
+            self._members["fBaskets"] = file.class_named("TObjArray").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
         tmp = _tbranch13_dtype1
@@ -497,7 +497,7 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fFileName"] = self.class_named("TString").read(
+            self._members["fFileName"] = file.class_named("TString").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
 
@@ -559,7 +559,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TBranch", 10).read(
+            file.class_named("TBranch", 10).read(
                 chunk,
                 cursor,
                 context,
@@ -570,13 +570,13 @@ in file {1}""".format(
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
-        self._members["fClassName"] = self.class_named("TString").read(
+        self._members["fClassName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fParentName"] = self.class_named("TString").read(
+        self._members["fParentName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fClonesName"] = self.class_named("TString").read(
+        self._members["fClonesName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         (
@@ -627,7 +627,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TBranch", 12).read(
+            file.class_named("TBranch", 12).read(
                 chunk,
                 cursor,
                 context,
@@ -638,13 +638,13 @@ in file {1}""".format(
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
-        self._members["fClassName"] = self.class_named("TString").read(
+        self._members["fClassName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fParentName"] = self.class_named("TString").read(
+        self._members["fParentName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fClonesName"] = self.class_named("TString").read(
+        self._members["fClonesName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         (
@@ -695,7 +695,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TBranch", 12).read(
+            file.class_named("TBranch", 12).read(
                 chunk,
                 cursor,
                 context,
@@ -706,13 +706,13 @@ in file {1}""".format(
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
-        self._members["fClassName"] = self.class_named("TString").read(
+        self._members["fClassName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fParentName"] = self.class_named("TString").read(
+        self._members["fParentName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fClonesName"] = self.class_named("TString").read(
+        self._members["fClonesName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         (
@@ -768,7 +768,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TBranch", 13).read(
+            file.class_named("TBranch", 13).read(
                 chunk,
                 cursor,
                 context,
@@ -778,7 +778,7 @@ in file {1}""".format(
                 concrete=self._concrete,
             )
         )
-        self._members["fClassName"] = self.class_named("TString").read(
+        self._members["fClassName"] = file.class_named("TString").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
 

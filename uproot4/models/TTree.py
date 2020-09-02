@@ -31,7 +31,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -42,7 +42,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -53,7 +53,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -64,7 +64,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -89,10 +89,10 @@ in file {1}""".format(
             self._members["fAutoSave"],
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree16_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -102,10 +102,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -177,7 +177,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -188,7 +188,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -199,7 +199,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -210,7 +210,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -236,10 +236,10 @@ in file {1}""".format(
             self._members["fAutoSave"],
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree17_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -248,10 +248,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -324,7 +324,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -335,7 +335,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -346,7 +346,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -357,7 +357,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -385,10 +385,10 @@ in file {1}""".format(
             self._members["fAutoFlush"],
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree18_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -397,10 +397,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -477,7 +477,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -488,7 +488,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -499,7 +499,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -510,7 +510,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -551,10 +551,10 @@ in file {1}""".format(
         self._members["fClusterSize"] = cursor.array(
             chunk, self.member("fNClusterRange"), tmp, context
         )
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -563,10 +563,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -646,7 +646,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -657,7 +657,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 2).read(
+            file.class_named("TAttLine", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -668,7 +668,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 2).read(
+            file.class_named("TAttFill", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -679,7 +679,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -720,13 +720,13 @@ in file {1}""".format(
         self._members["fClusterSize"] = cursor.array(
             chunk, self.member("fNClusterRange"), tmp, context
         )
-        self._members["fIOFeatures"] = self.class_named("ROOT::TIOFeatures").read(
+        self._members["fIOFeatures"] = file.class_named("ROOT::TIOFeatures").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -735,10 +735,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(

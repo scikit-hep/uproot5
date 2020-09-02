@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 import re
 import sys
+import weakref
 
 import numpy
 
@@ -587,6 +588,7 @@ class Model(object):
     def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         """
         Args:
+            cls (subclass of :doc:`uproot4.model.Model`): This class.
             file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot4.model.Model` classes from its
                 :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
@@ -612,6 +614,7 @@ class Model(object):
     ):
         """
         Args:
+            cls (subclass of :doc:`uproot4.model.Model`): This class.
             file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot4.model.Model` classes from its
                 :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
@@ -840,6 +843,12 @@ class Model(object):
         the ROOT data, which might be a different instance or even a different
         type from this class. The default in :doc:`uproot4.model.Model` is to
         return ``self``.
+
+        Note that for versioned models,
+        :doc:`uproot4.model.VersionedModel.postprocess` is called first, then
+        :doc:`uproot4.model.DispatchByVersion.postprocess` is called on its
+        output, allowing a :doc:`uproot4.model.DispatchByVersion` to refine all
+        data of its type, regardless of version.
         """
         return self
 
@@ -875,53 +884,22 @@ class Model(object):
         pass
 
 
-class UnknownClass(Model):
-    def read_members(self, chunk, cursor, context, file):
-        self._chunk = chunk
-        self._context = context
-
-        if self._num_bytes is not None:
-            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
-
-        else:
-            raise ValueError(
-                """Unknown class {0} that cannot be skipped because its """
-                """number of bytes is unknown.
-""".format(
-                    self.classname
-                )
-            )
-
-    @property
-    def chunk(self):
-        return self._chunk
-
-    @property
-    def context(self):
-        return self._context
-
-    def __repr__(self):
-        return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
-
-    def debug(
-        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
-    ):
-        cursor = self._cursor.copy()
-        cursor.skip(skip_bytes)
-        cursor.debug(
-            self._chunk,
-            context=self._context,
-            limit_bytes=limit_bytes,
-            dtype=dtype,
-            offset=offset,
-            stream=stream,
-        )
-
-
 class VersionedModel(Model):
-    def class_named(self, classname, version=None):
-        return self._file.class_named(classname, version)
+    """
+    A Python class that models a specific version of a ROOT C++ class.
 
+    Classes that inherit directly from :doc:`uproot4.model.Model` are versionless,
+    classes that inherit from :doc:`uproot4.model.VersionedModel` depend on
+    version.
+
+    Note that automatically generated :doc:`uproot4.model.VersionedModel` classes
+    are placed in the ``uproot4.dynamic`` namespace. This namespace can generate
+    :doc:`uproot4.model.DynamicModel` classes on demand in Python 3.7 and above,
+    which automatically generated :doc:`uproot4.model.VersionedModel` classes
+    rely upon to be pickleable. Therefore, ROOT object types without predefined
+    :doc:`uproot4.model.Model` classes cannot be pickled in Python versions
+    before 3.7.
+    """
     def __getstate__(self):
         return (
             {
@@ -940,68 +918,158 @@ class VersionedModel(Model):
         self.__dict__.update(instance_data)
 
 
-class DynamicModel(VersionedModel):
-    def __setstate__(self, state):
-        cls = type(self)
-        class_data, instance_data = state
-        for k, v in class_data.items():
-            if not hasattr(cls, k):
-                setattr(cls, k, v)
-        cls.__bases__ = (
-            tuple(x for x in class_data["behaviors"] if x not in cls.__bases__)
-            + cls.__bases__
+class DispatchByVersion(object):
+    """
+    A Python class that models all versions of a ROOT C++ class by maintaining
+    a dict of :doc:`uproot4.model.VersionedModel` classes.
+
+    The :doc:`uproot4.model.DispatchByVersion.read` classmethod reads the
+    instance version number from the byte stream, backs up the
+    :doc:`uproot4.source.cursor.Cursor` to the starting position, and invokes
+    the appropriate :doc:`uproot4.model.VersionedModel`'s ``read`` classmethod.
+
+    If a :doc:`uproot4.model.VersionedModel` does not exist for the specified
+    version, the ``file``'s ``TStreamerInfo`` is queried to attempt to create
+    one, and failing that, an :doc:`uproot4.model.UnknownClassVersion` is
+    created instead.
+
+    Note that :doc:`uproot4.model.DispatchByVersion` is not a subclass of
+    :doc:`uproot4.model.Model`. Instances of this class are not usable as
+    stand-ins for ROOT data.
+    """
+    @classmethod
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+        """
+        Args:
+            cls (subclass of :doc:`uproot4.model.DispatchByVersion`): This class.
+            file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot4.model.Model` classes from its
+                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+                for error messages.
+            index_format (str): Format to use for indexes of the
+                ``awkward1.forms.Form``; may be ``"i32"``, ``"u32"``, or
+                ``"i64"``.
+            header (bool): If True, include headers in the Form's ``"uproot"``
+                parameters.
+            tobject_header (bool): If True, include headers for ``TObject``
+                classes in the Form's ``"uproot"`` parameters.
+
+        The ``awkward1.forms.Form`` to use to put objects of type type in an
+        Awkward Array.
+        """
+        versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
+        return versioned_cls.awkward_form(file, index_format, header, tobject_header)
+
+    @classmethod
+    def strided_interpretation(
+        cls, file, header=False, tobject_header=True, original=None
+    ):
+        """
+        Args:
+            cls (subclass of :doc:`uproot4.model.DispatchByVersion`): This class.
+            file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot4.model.Model` classes from its
+                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+                for error messages.
+            header (bool): If True, assume the outermost object has a header.
+            tobject_header (bool): If True, assume that ``TObjects`` have headers.
+            original (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): The
+                original, non-strided model or container.
+
+        Returns a list of (str, ``numpy.dtype``) pairs to build a
+        :doc:`uproot4.interpretation.objects.AsStridedObjects` interpretation.
+        """
+        versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
+        return versioned_cls.strided_interpretation(
+            file, header=header, tobject_header=tobject_header
         )
-        self.__dict__.update(instance_data)
 
+    @classmethod
+    def class_of_version(cls, version):
+        """
+        Returns the class corresponding to a specified ``version`` if it exists.
 
-class UnknownClassVersion(VersionedModel):
-    def read_members(self, chunk, cursor, context, file):
-        self._chunk = chunk
-        self._context = context
+        If not, this classmethod returns None. No attempt is made to create a
+        missing class.
+        """
+        return cls.known_versions.get(version)
 
-        if self._num_bytes is not None:
-            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
+    @classmethod
+    def has_version(cls, version):
+        """
+        Returns True if a class corresponding to a specified ``version``
+        currently exists; False otherwise.
+        """
+        return version in cls.known_versions
+
+    @classmethod
+    def new_class(cls, file, version):
+        """
+        Uses ``file`` to create a new class for a specified ``version``.
+
+        As a side-effect, this new class is added to ``cls.known_versions``
+        (for :doc:`uproot4.model.class_of_version` and
+        :doc:`uproot4.model.has_version`).
+
+        If the ``file`` lacks a ``TStreamerInfo`` for the class, this function
+        returns a :doc:`uproot4.model.UnknownClassVersion` (adding it to
+        ``uproo4.unknown_classes`` if it's not already there).
+        """
+        classname, _ = classname_decode(cls.__name__)
+        streamer = file.streamer_named(classname, version)
+
+        if streamer is None:
+            streamer = file.streamer_named(classname, "max")
+
+        if streamer is not None:
+            versioned_cls = streamer.new_class(file)
+            versioned_cls.class_streamer = streamer
+            cls.known_versions[streamer.class_version] = versioned_cls
+            return versioned_cls
 
         else:
-            raise ValueError(
-                """Class {0} with unknown version {1} cannot be skipped """
-                """because its number of bytes is unknown.
-""".format(
-                    self.classname, self._instance_version,
+            unknown_cls = uproot4.unknown_classes.get(classname)
+            if unknown_cls is None:
+                unknown_cls = uproot4._util.new_class(
+                    classname_encode(classname, version, unknown=True),
+                    (UnknownClassVersion,),
+                    {},
                 )
-            )
+                uproot4.unknown_classes[classname] = unknown_cls
+            return unknown_cls
 
-    @property
-    def chunk(self):
-        return self._chunk
-
-    @property
-    def context(self):
-        return self._context
-
-    def __repr__(self):
-        return "<{0} with unknown version {1} at 0x{2:012x}>".format(
-            self.classname, self._instance_version, id(self)
-        )
-
-    def debug(
-        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
-    ):
-        cursor = self._cursor.copy()
-        cursor.skip(skip_bytes)
-        cursor.debug(
-            self._chunk,
-            context=self._context,
-            limit_bytes=limit_bytes,
-            dtype=dtype,
-            offset=offset,
-            stream=stream,
-        )
-
-
-class DispatchByVersion(object):
     @classmethod
     def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
+        """
+        Args:
+            cls (subclass of :doc:`uproot4.model.DispatchByVersion`): This class.
+            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot4.source.chunk.Source`.
+            cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
+                that ``chunk``.
+            context (dict): Auxiliary data used in deserialization.
+            file (:doc:`uproot4.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :doc:`uproot4.model.Model` classes
+                from its :doc:`uproot4.reading.ReadOnlyFile.streamers`.
+            selffile (:doc:`uproot4.reading.CommonFileMethods`): A possibly
+                :doc:`uproot4.reading.DetachedFile` associated with this object.
+            parent (None or calling object): The previous ``read`` in the
+                recursive descent.
+            concrete (None or :doc:`uproot4.model.Model` instance): If None,
+                this model corresponds to the concrete (instantiated) class in
+                C++. Otherwise, this model represents a superclass part of the
+                object, and ``concrete`` points to the concrete instance.
+
+        Reads the instance version number from the byte stream, backs up the
+        :doc:`uproot4.source.cursor.Cursor` to the starting position, and
+        invokes the appropriate :doc:`uproot4.model.VersionedModel`'s ``read``
+        classmethod.
+
+        If a :doc:`uproot4.model.VersionedModel` does not exist for the
+        specified version, the ``file``'s ``TStreamerInfo`` is queried to
+        attempt to create one, and failing that, an
+        :doc:`uproot4.model.UnknownClassVersion` is created instead.
+        """
         import uproot4.deserialization
 
         start_cursor = cursor.copy()
@@ -1041,52 +1109,275 @@ class DispatchByVersion(object):
         )
 
     @classmethod
-    def new_class(cls, file, version):
-        classname, _ = classname_decode(cls.__name__)
-        streamer = file.streamer_named(classname, version)
-
-        if streamer is None:
-            streamer = file.streamer_named(classname, "max")
-
-        if streamer is not None:
-            versioned_cls = streamer.new_class(file)
-            versioned_cls.class_streamer = streamer
-            cls.known_versions[streamer.class_version] = versioned_cls
-            return versioned_cls
-
-        else:
-            unknown_cls = uproot4.unknown_classes.get(classname)
-            if unknown_cls is None:
-                unknown_cls = uproot4._util.new_class(
-                    classname_encode(classname, version, unknown=True),
-                    (UnknownClassVersion,),
-                    {},
-                )
-                uproot4.unknown_classes[classname] = unknown_cls
-            return unknown_cls
-
-    @classmethod
     def postprocess(cls, self, chunk, cursor, context, file):
+        """
+        Args:
+            cls (subclass of :doc:`uproot4.model.DispatchByVersion`): This class.
+            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot4.source.chunk.Source`.
+            cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
+                that ``chunk``.
+            context (dict): Auxiliary data used in deserialization.
+            file (:doc:`uproot4.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :doc:`uproot4.model.Model` classes
+                from its :doc:`uproot4.reading.ReadOnlyFile.streamers`.
+
+        Called for any additional processing after the object has been fully
+        read.
+
+        The return value from this method is the object that actually represents
+        the ROOT data, which might be a different instance or even a different
+        type from this class. The default in :doc:`uproot4.model.Model` is to
+        return ``self``.
+
+        Note that for versioned models,
+        :doc:`uproot4.model.VersionedModel.postprocess` is called first, then
+        :doc:`uproot4.model.DispatchByVersion.postprocess` is called on its
+        output, allowing a :doc:`uproot4.model.DispatchByVersion` to refine all
+        data of its type, regardless of version.
+        """
         return self
 
-    @classmethod
-    def has_version(cls, version):
-        return version in cls.known_versions
 
-    @classmethod
-    def class_of_version(cls, version):
-        return cls.known_versions.get(version)
+class UnknownClass(Model):
+    """
+    Placeholder for a C++ class instance that has no
+    :doc:`uproot4.model.DispatchByVersion` and no ``TStreamerInfo`` in the
+    current :doc:`uproot4.reading.ReadOnlyFile` to produce one.
+    """
+    def read_members(self, chunk, cursor, context, file):
+        self._chunk = weakref.ref(chunk)
+        self._context = context
 
-    @classmethod
-    def strided_interpretation(
-        cls, file, header=False, tobject_header=True, original=None
+        if self._num_bytes is not None:
+            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
+
+        else:
+            raise ValueError(
+                """unknown class {0} that cannot be skipped because its """
+                """number of bytes is unknown
+in file {1}""".format(
+                    self.classname, file.file_path
+                )
+            )
+
+    @property
+    def chunk(self):
+        """
+        The ``chunk`` of data associated with the unknown class, referred to by
+        a weak reference (to avoid memory leaks in
+        :doc:`uproot4.model.UnknownClass` objects). If the original ``chunk``
+        has been garbage-collected, this raises ``RuntimeError``.
+
+        Primarily useful in the :doc:`uproot4.model.UnknownClass.debug` method.
+        """
+        chunk = self._chunk()
+        if chunk is None:
+            raise RuntimeError(
+                "the 'chunk' associated with this unknown class has been deleted"
+            )
+        else:
+            return chunk
+
+    @property
+    def context(self):
+        """
+        The auxiliary data used in deserialization.
+
+        Primarily useful in the :doc:`uproot4.model.UnknownClass.debug` method.
+        """
+        return self._context
+
+    def __repr__(self):
+        return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
+
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
     ):
-        versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
-        return versioned_cls.strided_interpretation(
-            file, header=header, tobject_header=tobject_header
+        """
+        Args:
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the :doc:`uproot4.source.chunk.Chunk`. May be
+                negative, to examine the byte stream leading up to the attempted
+                instantiation. The default, ``0``, starts where the number
+                of bytes and version number would be (just before
+                :doc:`uproot4.model.Model.read_numbytes_version`).
+            limit_bytes (None or int): Number of bytes to limit the output to.
+                A line of debugging output (without any ``offset``) is 20 bytes,
+                so multiples of 20 show full lines. If None, everything is
+                shown to the end of the :doc:`uproot4.source.chunk.Chunk`,
+                which might be large.
+            dtype (None, ``numpy.dtype``, or its constructor argument): If None,
+                present only the bytes as decimal values (0-255). Otherwise,
+                also interpret them as an array of a given NumPy type.
+            offset (int): Number of bytes to skip before interpreting a ``dtype``;
+                can be helpful if the numerical values are out of phase with
+                the first byte shown. Not to be confused with ``skip_bytes``,
+                which determines which bytes are shown at all. Any ``offset``
+                values that are equivalent modulo ``dtype.itemsize`` show
+                equivalent interpretations.
+            stream (object with a ``write(str)`` method): Stream to write the
+                debugging output to.
+
+        Presents the byte stream at the point where this instance would have been
+        deserialized.
+
+        Example output with dtype=">f4" and offset=3.
+
+            --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+            123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
+              {   {   {   ? --- --- ---   @ --- --- ---   @   S   3   3   @ --- --- ---   @
+                                    1.1             2.2             3.3             4.4
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                176   0   0  64 211  51  51  64 246 102 102  65  12 204 205  65  30 102 102  66
+                --- --- ---   @ ---   3   3   @ ---   f   f   A --- --- ---   A ---   f   f   B
+                        5.5             6.6             7.7             8.8             9.9
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                202   0   0  67  74   0   0  67 151 128   0 123 123
+                --- --- ---   C   J --- ---   C --- --- ---   {   {
+                      101.0           202.0           303.0
+        """
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self._chunk,
+            context=self._context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream,
         )
 
-    @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
-        versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
-        return versioned_cls.awkward_form(file, index_format, header, tobject_header)
+
+class UnknownClassVersion(VersionedModel):
+    """
+    Placeholder for a C++ class instance that has no ``TStreamerInfo`` in the
+    current :doc:`uproot4.reading.ReadOnlyFile` to produce one.
+    """
+    @property
+    def chunk(self):
+        """
+        The ``chunk`` of data associated with the class of unknown version,
+        referred to by a weak reference (to avoid memory leaks in
+        :doc:`uproot4.model.UnknownClassVersion` objects). If the original
+        ``chunk`` has been garbage-collected, this raises ``RuntimeError``.
+
+        Primarily useful in the :doc:`uproot4.model.UnknownClassVersion.debug`
+        method.
+        """
+        chunk = self._chunk()
+        if chunk is None:
+            raise RuntimeError(
+                "the 'chunk' associated with this class of unknown version has "
+                "been deleted"
+            )
+        else:
+            return chunk
+
+    @property
+    def context(self):
+        """
+        The auxiliary data used in deserialization.
+
+        Primarily useful in the :doc:`uproot4.model.UnknownClass.debug` method.
+        """
+        return self._context
+
+    def debug(
+        self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
+    ):
+        """
+        Args:
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the :doc:`uproot4.source.chunk.Chunk`. May be
+                negative, to examine the byte stream leading up to the attempted
+                instantiation. The default, ``0``, starts where the number
+                of bytes and version number would be (just before
+                :doc:`uproot4.model.Model.read_numbytes_version`).
+            limit_bytes (None or int): Number of bytes to limit the output to.
+                A line of debugging output (without any ``offset``) is 20 bytes,
+                so multiples of 20 show full lines. If None, everything is
+                shown to the end of the :doc:`uproot4.source.chunk.Chunk`,
+                which might be large.
+            dtype (None, ``numpy.dtype``, or its constructor argument): If None,
+                present only the bytes as decimal values (0-255). Otherwise,
+                also interpret them as an array of a given NumPy type.
+            offset (int): Number of bytes to skip before interpreting a ``dtype``;
+                can be helpful if the numerical values are out of phase with
+                the first byte shown. Not to be confused with ``skip_bytes``,
+                which determines which bytes are shown at all. Any ``offset``
+                values that are equivalent modulo ``dtype.itemsize`` show
+                equivalent interpretations.
+            stream (object with a ``write(str)`` method): Stream to write the
+                debugging output to.
+
+        Presents the byte stream at the point where this instance would have been
+        deserialized.
+
+        Example output with dtype=">f4" and offset=3.
+
+            --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+            123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
+              {   {   {   ? --- --- ---   @ --- --- ---   @   S   3   3   @ --- --- ---   @
+                                    1.1             2.2             3.3             4.4
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                176   0   0  64 211  51  51  64 246 102 102  65  12 204 205  65  30 102 102  66
+                --- --- ---   @ ---   3   3   @ ---   f   f   A --- --- ---   A ---   f   f   B
+                        5.5             6.6             7.7             8.8             9.9
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                202   0   0  67  74   0   0  67 151 128   0 123 123
+                --- --- ---   C   J --- ---   C --- --- ---   {   {
+                      101.0           202.0           303.0
+        """
+        cursor = self._cursor.copy()
+        cursor.skip(skip_bytes)
+        cursor.debug(
+            self._chunk,
+            context=self._context,
+            limit_bytes=limit_bytes,
+            dtype=dtype,
+            offset=offset,
+            stream=stream,
+        )
+
+    def read_members(self, chunk, cursor, context, file):
+        self._chunk = weakref.ref(chunk)
+        self._context = context
+
+        if self._num_bytes is not None:
+            cursor.skip(self._num_bytes - cursor.displacement(self._cursor))
+
+        else:
+            raise ValueError(
+                """class {0} with unknown version {1} cannot be skipped """
+                """because its number of bytes is unknown
+in file {2}""".format(
+                    self.classname, self._instance_version, file.file_path
+                )
+            )
+
+    def __repr__(self):
+        return "<{0} with unknown version {1} at 0x{2:012x}>".format(
+            self.classname, self._instance_version, id(self)
+        )
+
+
+class DynamicModel(VersionedModel):
+    """
+    A :doc:`uproot4.model.VersionedModel` subclass generated by any attempt to
+    extract it from the ``uproot4.dynamic`` namespace in Python 3.7 and later.
+
+    This dynamically generated model allows ROOT object types without predefined
+    :doc:`uproot4.model.Model` classes to be pickled in Python 3.7 and later.
+    """
+    def __setstate__(self, state):
+        cls = type(self)
+        class_data, instance_data = state
+        for k, v in class_data.items():
+            if not hasattr(cls, k):
+                setattr(cls, k, v)
+        cls.__bases__ = (
+            tuple(x for x in class_data["behaviors"] if x not in cls.__bases__)
+            + cls.__bases__
+        )
+        self.__dict__.update(instance_data)
