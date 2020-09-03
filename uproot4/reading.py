@@ -48,9 +48,9 @@ def open(
             and an object path within the ROOT file, to return an object,
             rather than a file. Path objects are interpreted strictly as
             filesystem paths or URLs.
-            Examples: "rel/file.root", "C:\abs\file.root", "http://where/what.root",
-                      "rel/file.root:tdirectory/ttree",
-                      Path("rel:/file.root"), Path("/abs/path:stuff.root")
+            Examples: ``"rel/file.root"``, ``"C:\abs\file.root"``,
+            ``"http://where/what.root"``, ``"rel/file.root:tdirectory/ttree"``,
+            ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
         object_cache (None, MutableMapping, or int): Cache of objects drawn
             from ROOT directories (e.g histograms, TTrees, other directories);
             if None, do not use a cache; if an int, create a new cache of this
@@ -61,7 +61,7 @@ def open(
         custom_classes (None or MutableMapping): If None, classes come from
             uproot4.classes; otherwise, a container of class definitions that
             is both used to fill with new classes and search for dependencies.
-        options: see below.
+        options: See below.
 
     Opens a ROOT file, possibly through a remote protocol.
 
@@ -74,6 +74,18 @@ def open(
     :doc:`uproot4.reading.ReadOnlyFile`. ROOT objects can be extracted from a
     :doc:`uproot4.reading.ReadOnlyDirectory` but not a
     :doc:`uproot4.reading.ReadOnlyFile`.
+
+    Options (type; default):
+
+        * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
+        * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
+        * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+        * timeout (float for HTTP, int for XRootD; 30)
+        * max_num_elements (None or int; None)
+        * num_workers (int; 1)
+        * num_fallback_workers (int; 10)
+        * begin_chunk_size (memory_size; 512)
+        * minimal_ttree_metadata (bool; True)
 
     Any object derived from a ROOT file is a context manager (works in Python's
     ``with`` statement) that closes the file when exiting the ``with`` block.
@@ -88,17 +100,14 @@ def open(
 
         # file is now closed, even if an exception was raised in the block
 
-    Options (type; default):
+    If, instead of opening a single file to read anything from it, you want to
+    open many files to read arrays, use one of
 
-        * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
-        * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
-        * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
-        * timeout (float for HTTP, int for XRootD; 30)
-        * max_num_elements (None or int; None)
-        * num_workers (int; 1)
-        * num_fallback_workers (int; 10)
-        * begin_chunk_size (memory_size; 512)
-        * minimal_ttree_metadata (bool; True)
+    * :doc:`uproot4.behaviors.TBranch.iterate`: iterates through chunks of
+      contiguous entries.
+    * :doc:`uproot4.behaviors.TBranch.concatenate`: returns a single concatenated
+      array (if you have enough memory for it).
+    * :doc:`uproot4.behaviors.TBranch.lazy`: returns a lazily read array.
     """
 
     if isinstance(path, dict) and len(path) == 1:
@@ -455,7 +464,7 @@ class ReadOnlyFile(CommonFileMethods):
         custom_classes (None or MutableMapping): If None, classes come from
             uproot4.classes; otherwise, a container of class definitions that
             is both used to fill with new classes and search for dependencies.
-        options: see below.
+        options: See below.
 
     Handle to an open ROOT file, the way to access data in ``TDirectories``
     (:doc:`uproot4.reading.ReadOnlyDirectory`) and create new classes from

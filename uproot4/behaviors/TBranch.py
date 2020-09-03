@@ -86,6 +86,56 @@ def iterate(
     allow_missing=False,
     **options  # NOTE: a comma after **options breaks Python 2
 ):
+    u"""
+    Args:
+        files: See below.
+        expressions (None, str, or list of str): Names of ``TBranches`` or
+            aliases to convert to arrays or mathematical expressions of them.
+            Uses the ``compute`` engine to evaluate. If None, all ``TBranches``
+            selected by the filters are included.
+        cut (None or str): If not None, this expression filters all of the
+            ``expressions``.
+        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by name.
+        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by type.
+        filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+            filter to select ``TBranches`` using the full
+            :doc:`uproot4.behaviors.TBranch.TBranch` object. If the function
+            returns False or None, the ``TBranch`` is excluded; if the function
+            returns True, it is included with its standard
+            :doc:`uproot4.behaviors.TBranch.TBranch.interpretation`; if an
+            :doc:`uproot4.interpretation.Interpretation`, this interpretation
+            overrules the standard one.
+        aliases (None or dict of str \u2192 str): Mathematical expressions that
+            can be used in ``expressions`` or other aliases (without cycles).
+            Uses the ``compute`` engine to evaluate. If None, only the
+            :doc:`uproot4.behaviors.TBranch.TBranch.aliases` are available.
+        compute (:doc:`uproot4.compute.Compute`): Compute engine used to interpret
+            the ``expressions`` and ``aliases``.
+
+
+    Iterates through contiguous chunks of entries from a set of files.
+
+    Allowed types for the ``files`` parameter:
+
+    * str/bytes: relative or absolute filesystem path or URL, without any colons
+      other than Windows drive letter or URL schema.
+      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
+    * str/bytes: same with an object-within-ROOT path, separated by a colon.
+      Example: ``"rel/file.root:tdirectory/ttree"``
+    * pathlib.Path: always interpreted as a filesystem path or URL only (no
+      object-within-ROOT path), regardless of whether there are any colons.
+      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+    * glob syntax in str/bytes and pathlib.Path.
+      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
+    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
+      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
+    * already-open TTree objects.
+    * iterables of the above.
+
+
+    """
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor
