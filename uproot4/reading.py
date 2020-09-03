@@ -36,7 +36,6 @@ from uproot4._util import no_filter
 
 def open(
     path,
-    parse_object=True,
     object_cache=100,
     array_cache="100 MB",
     custom_classes=None,
@@ -44,15 +43,14 @@ def open(
 ):
     """
     Args:
-        path (str or Path): The filesystem path or remote URL of the file to open.
-            If a string, it may be followed by a colon (`:`) and an object path
-            within the ROOT file, to return an object, rather than a file.
-            Path objects are interpreted strictly as filesystem paths or URLs.
+        path (str or ``pathlib.Path``): The filesystem path or remote URL of
+            the file to open. If a string, it may be followed by a colon (``:``)
+            and an object path within the ROOT file, to return an object,
+            rather than a file. Path objects are interpreted strictly as
+            filesystem paths or URLs.
             Examples: "rel/file.root", "C:\abs\file.root", "http://where/what.root",
                       "rel/file.root:tdirectory/ttree",
                       Path("rel:/file.root"), Path("/abs/path:stuff.root")
-        parse_object (bool): If False, interpret the `path` purely as a file
-            path (no colon-delimited object path).
         object_cache (None, MutableMapping, or int): Cache of objects drawn
             from ROOT directories (e.g histograms, TTrees, other directories);
             if None, do not use a cache; if an int, create a new cache of this
@@ -69,14 +67,14 @@ def open(
 
     Options (type; default):
 
-        * file_handler (Source class; uproot4.source.file.MemmapSource)
-        * xrootd_handler (Source class; uproot4.source.xrootd.XRootDSource)
-        * http_handler (Source class; uproot4.source.http.HTTPSource)
+        * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
+        * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
+        * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
         * timeout (float for HTTP, int for XRootD; 30)
         * max_num_elements (None or int; None)
         * num_workers (int; 1)
         * num_fallback_workers (int; 10)
-        * begin_guess_bytes (memory_size; 512)
+        * begin_chunk_size (memory_size; 512)
         * minimal_ttree_metadata (bool; True)
     """
 
@@ -94,7 +92,7 @@ def open(
 
     if not uproot4._util.isstr(file_path):
         raise ValueError(
-            "'path' must be a string, Path, or a length-1 dict of "
+            "'path' must be a string, pathlib.Path, or a length-1 dict of "
             "{{file_path: object_path}}, not {0}".format(repr(path))
         )
 
@@ -120,26 +118,76 @@ open.defaults = {
     "max_num_elements": None,
     "num_workers": 1,
     "num_fallback_workers": 10,
-    "begin_guess_bytes": 512,
+    "begin_chunk_size": 512,
     "minimal_ttree_metadata": True,
 }
 
 
-_file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
-_file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
+must_be_attached = [
+    "TROOT",
+    "TDirectory",
+    "TDirectoryFile",
+    "RooWorkspace::WSDir",
+    "TTree",
+    "TChain",
+    "TProofChain",
+    "THbookTree",
+    "TNtuple",
+    "TNtupleD",
+    "TTreeSQL",
+]
 
 
 class CommonFileMethods(object):
+    """
+    Abstract class for :doc:`uproot4.reading.ReadOnlyFile` and
+    :doc:`uproot4.reading.DetachedFile`. The latter is a placeholder for file
+    information, such as the :doc:`uproot4.reading.CommonFileMethods.file_path`
+    used in many error messages, without holding a reference to the active
+    :doc:`uproot4.source.chunk.Source`.
+
+    This allows the file to be closed and deleted while objects that were read
+    from it still exist. Also, only objects that hold detached file references,
+    rather than active ones, can be pickled.
+
+    The (unpickleable) objects that must hold a reference to an active
+    :doc:`uproot4.reading.ReadOnlyFile` are listed by C++ (decoded) classname
+    in ``uproot4.must_be_attached``.
+    """
     @property
     def file_path(self):
+        """
+        The original path to the file (converted to ``str`` if it was originally
+        a ``pathlib.Path``).
+        """
         return self._file_path
 
     @property
     def options(self):
+        """
+        The dict of ``options`` originally passed to the
+        :doc:`uproot4.reading.ReadOnlyFile` constructor.
+        """
         return self._options
 
     @property
+    def root_version(self):
+        """
+        Version of ROOT used to write the file as a string.
+
+        See :doc:`uproot4.reading.CommonFileMethods.root_version_tuple` and
+        :doc:`uproot4.reading.CommonFileMethods.fVersion`.
+        """
+        return "{0}.{1:02d}/{2:02d}".format(*self.root_version_tuple)
+
+    @property
     def root_version_tuple(self):
+        """
+        Version of ROOT used to write teh file as a tuple.
+
+        See :doc:`uproot4.reading.CommonFileMethods.root_version` and
+        :doc:`uproot4.reading.CommonFileMethods.fVersion`.
+        """
         version = self._fVersion
         if version >= 1000000:
             version -= 1000000
@@ -152,19 +200,43 @@ class CommonFileMethods(object):
         return major, minor, version
 
     @property
-    def root_version(self):
-        return "{0}.{1:02d}/{2:02d}".format(*self.root_version_tuple)
-
-    @property
     def is_64bit(self):
+        """
+        True if the ROOT file contains 64-bit seek points; False otherwise.
+
+        A file that is larger than 4 GiB must have 64-bit seek points, though
+        any file might.
+        """
         return self._fVersion >= 1000000
 
     @property
     def compression(self):
+        """
+        A :doc:`uproot4.compression.Compression` object describing the
+        compression setting for the ROOT file.
+
+        Note that different objects (even different ``TBranches`` within a
+        ``TTree``) can be compressed differently, so this file-level
+        compression is only a strong hint of how the objects are likely to
+        be compressed.
+
+        For some versions of ROOT ``TStreamerInfo`` is always compressed with
+        :doc:`uproot4.compression.ZLIB`, even if the compression is set to a
+        different algorithm.
+
+        See :doc:`uproot4.reading.CommonFileMethods.fCompress`.
+        """
         return uproot4.compression.Compression.from_code(self._fCompress)
 
     @property
     def hex_uuid(self):
+        """
+        The unique identifier (UUID) of the ROOT file expressed as a hexadecimal
+        string.
+
+        See :doc:`uproot4.reading.CommonFileMethods.uuid` and
+        :doc:`uproot4.reading.CommonFileMethods.fUUID`.
+        """
         if uproot4._util.py2:
             out = "".join("{0:02x}".format(ord(x)) for x in self._fUUID)
         else:
@@ -173,58 +245,147 @@ class CommonFileMethods(object):
 
     @property
     def uuid(self):
+        """
+        The unique identifier (UUID) of the ROOT file expressed as a Python
+        ``uuid.UUID`` object.
+
+        See :doc:`uproot4.reading.CommonFileMethods.hex_uuid` and
+        :doc:`uproot4.reading.CommonFileMethods.fUUID`.
+        """
         return uuid.UUID(self.hex_uuid.replace("-", ""))
 
     @property
     def fVersion(self):
+        """
+        Raw version information for the ROOT file; this number is used to derive
+        :doc:`uproot4.reading.CommonFileMethods.root_version`,
+        :doc:`uproot4.reading.CommonFileMethods.root_version_tuple`, and
+        :doc:`uproot4.reading.CommonFileMethods.is_64bit`.
+        """
         return self._fVersion
 
     @property
     def fBEGIN(self):
+        """
+        The seek point (int) for the first data record, past the TFile header.
+
+        Usually 100.
+        """
         return self._fBEGIN
 
     @property
     def fEND(self):
+        """
+        The seek point (int) to the last free word at the end of the ROOT file.
+        """
         return self._fEND
 
     @property
     def fSeekFree(self):
+        """
+        The seek point (int) to the ``TFree`` data, for managing empty spaces
+        in a ROOT file (filesystem-like fragmentation).
+        """
         return self._fSeekFree
 
     @property
     def fNbytesFree(self):
+        """
+        The number of bytes in the ``TFree` data, for managing empty spaces
+        in a ROOT file (filesystem-like fragmentation).
+        """
         return self._fNbytesFree
 
     @property
     def nfree(self):
+        """
+        The number of objects in the ``TFree`` data, for managing empty spaces
+        in a ROOT file (filesystem-like fragmentation).
+        """
         return self._nfree
 
     @property
     def fNbytesName(self):
+        """
+        The number of bytes in the filename (``TNamed``) that is embedded in
+        the ROOT file.
+        """
         return self._fNbytesName
 
     @property
     def fUnits(self):
+        """
+        Number of bytes in the serialization of file seek points.
+
+        Usually 4 or 8.
+        """
         return self._fUnits
 
     @property
     def fCompress(self):
+        """
+        The raw integer describing the compression setting for the ROOT file.
+
+        Note that different objects (even different ``TBranches`` within a
+        ``TTree``) can be compressed differently, so this file-level
+        compression is only a strong hint of how the objects are likely to
+        be compressed.
+
+        For some versions of ROOT ``TStreamerInfo`` is always compressed with
+        :doc:`uproot4.compression.ZLIB`, even if the compression is set to a
+        different algorithm.
+
+        See :doc:`uproot4.reading.CommonFileMethods.compression`.
+        """
         return self._fCompress
 
     @property
     def fSeekInfo(self):
+        """
+        The seek point (int) to the ``TStreamerInfo`` data, where
+        :doc:`uproot4.reading.ReadOnlyFile.streamers` are located.
+        """
         return self._fSeekInfo
 
     @property
     def fNbytesInfo(self):
+        """
+        The number of bytes in the ``TStreamerInfo`` data, where
+        :doc:`uproot4.reading.ReadOnlyFile.streamers` are located.
+        """
         return self._fNbytesInfo
 
     @property
     def fUUID(self):
+        """
+        The unique identifier (UUID) of the ROOT file as a raw bytestring
+        (Python ``bytes``).
+
+        See :doc:`uproot4.reading.CommonFileMethods.hex_uuid` and
+        :doc:`uproot4.reading.CommonFileMethods.uuid`.
+        """
         return self._fUUID
 
 
 class DetachedFile(CommonFileMethods):
+    """
+    Args:
+        file (:doc:`uproot4.reading.ReadOnlyFile`): The active file object to
+            convert into a detached file.
+
+    A placeholder for a :doc:`uproot4.reading.ReadOnlyFile` with useful
+    information, such as the :doc:`uproot4.reading.CommonFileMethods.file_path`
+    used in many error messages, without holding a reference to the active
+    :doc:`uproot4.source.chunk.Source`.
+
+    This allows the file to be closed and deleted while objects that were read
+    from it still exist. Also, only objects that hold detached file references,
+    rather than active ones, can be pickled.
+
+    The (unpickleable) objects that must hold a reference to an active
+    :doc:`uproot4.reading.ReadOnlyFile` are listed by C++ (decoded) classname
+    in ``uproot4.must_be_attached``.
+    """
     def __init__(self, file):
         self._file_path = file._file_path
         self._options = file._options
@@ -243,22 +404,52 @@ class DetachedFile(CommonFileMethods):
         self._fUUID = file._fUUID
 
 
-must_be_attached = [
-    "TROOT",
-    "TDirectory",
-    "TDirectoryFile",
-    "RooWorkspace::WSDir",
-    "TTree",
-    "TChain",
-    "TProofChain",
-    "THbookTree",
-    "TNtuple",
-    "TNtupleD",
-    "TTreeSQL",
-]
+_file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
+_file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
 
 class ReadOnlyFile(CommonFileMethods):
+    """
+    Args:
+        file_path (str or ``pathlib.Path``): The filesystem path or remote URL
+            of the file to open. Unlike :doc:`uproot4.reading.open`, it cannot
+            be followed by a colon (``:``) and an object path within the ROOT
+            file.
+        object_cache (None, MutableMapping, or int): Cache of objects drawn
+            from ROOT directories (e.g histograms, TTrees, other directories);
+            if None, do not use a cache; if an int, create a new cache of this
+            size.
+        array_cache (None, MutableMapping, or memory size): Cache of arrays
+            drawn from TTrees; if None, do not use a cache; if a memory size,
+            create a new cache of this size.
+        custom_classes (None or MutableMapping): If None, classes come from
+            uproot4.classes; otherwise, a container of class definitions that
+            is both used to fill with new classes and search for dependencies.
+        options: see below.
+
+    Handle to an open ROOT file, the way to access data in ``TDirectories``
+    (:doc:`uproot4.reading.ReadOnlyDirectory`) and create new classes from
+    ``TStreamerInfo`` (:doc:`uproot4.reading.ReadOnlyFile.streamers`).
+
+    All objects derived from ROOT files have a pointer back to the file,
+    though this is a :doc:`uproot4.reading.DetachedFile` (no active connection,
+    cannot read more data) if the object's :doc:`uproot4.model.Model.classname`
+    is not in ``uproot4.reading.must_be_attached``: objects that can read
+    more data and need to have an active connection (like ``TTree``,
+    ``TBranch``, and ``TDirectory``).
+
+    Options (type; default):
+
+        * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
+        * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
+        * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+        * timeout (float for HTTP, int for XRootD; 30)
+        * max_num_elements (None or int; None)
+        * num_workers (int; 1)
+        * num_fallback_workers (int; 10)
+        * begin_chunk_size (memory_size; 512)
+        * minimal_ttree_metadata (bool; True)
+    """
     def __init__(
         self,
         file_path,
@@ -274,7 +465,7 @@ class ReadOnlyFile(CommonFileMethods):
 
         self._options = dict(open.defaults)
         self._options.update(options)
-        for option in ["begin_guess_bytes"]:
+        for option in ["begin_chunk_size"]:
             self._options[option] = uproot4._util.memory_size(self._options[option])
 
         self._streamers = None
@@ -291,17 +482,17 @@ class ReadOnlyFile(CommonFileMethods):
 
         self.hook_before_get_chunks()
 
-        if self._options["begin_guess_bytes"] < _file_header_fields_big.size:
+        if self._options["begin_chunk_size"] < _file_header_fields_big.size:
             raise ValueError(
-                "begin_guess_bytes={0} is not enough to read the TFile header ({1})".format(
-                    self._options["begin_guess_bytes"],
+                "begin_chunk_size={0} is not enough to read the TFile header ({1})".format(
+                    self._options["begin_chunk_size"],
                     self._file_header_fields_big.size,
                 )
             )
 
-        self._begin_chunk = self._source.chunk(0, self._options["begin_guess_bytes"])
+        self._begin_chunk = self._source.chunk(0, self._options["begin_chunk_size"])
 
-        self.hook_before_read()
+        self.hook_before_interpret()
 
         (
             magic,
@@ -342,7 +533,7 @@ class ReadOnlyFile(CommonFileMethods):
                 self._begin_chunk, _file_header_fields_big, {}
             )
 
-        self.hook_after_read(magic=magic)
+        self.hook_after_interpret(magic=magic)
 
         if magic != b"root":
             raise ValueError(
@@ -357,36 +548,81 @@ in file {1}""".format(
             repr(self._file_path), id(self)
         )
 
-    def hook_before_create_source(self, **kwargs):
-        pass
-
-    def hook_before_get_chunks(self, **kwargs):
-        pass
-
-    def hook_before_read(self, **kwargs):
-        pass
-
-    def hook_after_read(self, **kwargs):
-        pass
-
-    def hook_before_read_streamer_key(self, **kwargs):
-        pass
-
-    def hook_before_decompress_streamers(self, **kwargs):
-        pass
-
-    def hook_before_read_streamers(self, **kwargs):
-        pass
-
-    def hook_after_read_streamers(self, **kwargs):
-        pass
-
     @property
     def detached(self):
+        """
+        A :doc:`uproot4.reading.DetachedFile` version of this file.
+        """
         return DetachedFile(self)
+
+    def close(self):
+        """
+        Explicitly close the file.
+
+        (Files can also be closed with the Python ``with`` statement, as context
+        managers.)
+
+        After closing, new objects and classes cannot be extracted from the file,
+        but objects with :doc:`uproot4.reading.DetachedFile` references instead
+        of :doc:`uproot4.reading.ReadOnlyFile` that are still in the
+        :doc:`uproot4.reading.ReadOnlyFile.object_cache` would still be
+        accessible.
+        """
+        self._source.close()
+
+    @property
+    def closed(self):
+        """
+        True if the file has been closed; False otherwise.
+
+        The file may have been closed explicitly with
+        :doc:`uproot4.reading.ReadOnlyFile.close` or implicitly in the Python
+        ``with`` statement, as a context manager.
+
+        After closing, new objects and classes cannot be extracted from the file,
+        but objects with :doc:`uproot4.reading.DetachedFile` references instead
+        of :doc:`uproot4.reading.ReadOnlyFile` that are still in the
+        :doc:`uproot4.reading.ReadOnlyFile.object_cache` would still be
+        accessible.
+        """
+        return self._source.closed
+
+    def __enter__(self):
+        self._source.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._source.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def source(self):
+        """
+        The :doc:`uproot4.source.chunk.Source` associated with this file, which
+        is the "physical layer" that knows how to communicate with local file
+        systems or through remote protocols like HTTP(S) or XRootD, but does not
+        know what the bytes mean.
+        """
+        return self._source
 
     @property
     def object_cache(self):
+        """
+        A cache used to hold previously extracted objects, so that code like
+
+        .. code-block:: python
+
+            h = my_file["histogram"]
+            h = my_file["histogram"]
+            h = my_file["histogram"]
+
+        only reads the ``"histogram"`` once.
+
+        Any Python ``MutableMapping`` can be used as a cache (i.e. a Python
+        dict would be a cache that never evicts old objects), though
+        :doc:`uproot4.cache.LRUCache` is a good choice because it is thread-safe
+        and evicts least-recently used objects when a maximum number of objects
+        is reached.
+        """
         return self._object_cache
 
     @object_cache.setter
@@ -400,6 +636,23 @@ in file {1}""".format(
 
     @property
     def array_cache(self):
+        """
+        A cache used to hold previously extracted arrays, so that code like
+
+        .. code-block:: python
+
+            a = my_tree["branch"].array()
+            a = my_tree["branch"].array()
+            a = my_tree["branch"].array()
+
+        only reads the ``"branch"`` once.
+
+        Any Python ``MutableMapping`` can be used as a cache (i.e. a Python
+        dict would be a cache that never evicts old objects), though
+        :doc:`uproot4.cache.LRUArrayCache` is a good choice because it is
+        thread-safe and evicts least-recently used objects when a size limit is
+        reached.
+        """
         return self._array_cache
 
     @array_cache.setter
@@ -414,40 +667,11 @@ in file {1}""".format(
             )
 
     @property
-    def custom_classes(self):
-        return self._custom_classes
-
-    @custom_classes.setter
-    def custom_classes(self, value):
-        if value is None or isinstance(value, MutableMapping):
-            self._custom_classes = value
-        else:
-            raise TypeError("custom_classes must be None or a MutableMapping")
-
-    def remove_class_definition(self, classname):
-        if self._custom_classes is None:
-            self._custom_classes = dict(uproot4.classes)
-        if classname in self._custom_classes:
-            del self._custom_classes[classname]
-
-    @property
-    def source(self):
-        return self._source
-
-    @property
-    def begin_chunk(self):
-        return self._begin_chunk
-
-    def chunk(self, start, stop):
-        if self.closed:
-            raise OSError("file {0} is closed".format(repr(self._file_path)))
-        elif (start, stop) in self._begin_chunk:
-            return self._begin_chunk
-        else:
-            return self._source.chunk(start, stop)
-
-    @property
     def root_directory(self):
+        """
+        The root ``TDirectory`` of the file
+        (:doc:`uproot4.reading.ReadOnlyDirectory`).
+        """
         return ReadOnlyDirectory(
             (),
             uproot4.source.cursor.Cursor(self._fBEGIN + self._fNbytesName),
@@ -456,8 +680,47 @@ in file {1}""".format(
             self,
         )
 
+    def show_streamers(self, classname=None, version="max", stream=sys.stdout):
+        """
+        Args:
+            classname (None or str): If None, all streamers that are
+                defined in the file are shown; if a class name, only
+                this class and its dependencies are shown.
+            version (int, "min", or "max"): Version number of the desired
+                class; "min" or "max" returns the minimum or maximum version
+                number, respectively.
+            stream: Object with a `write` method for writing the output.
+        """
+        if classname is None:
+            names = []
+            for name, streamer_versions in self.streamers.items():
+                for version in streamer_versions:
+                    names.append((name, version))
+        else:
+            names = self.streamer_dependencies(classname, version=version)
+        first = True
+        for name, version in names:
+            for v, streamer in self.streamers[name].items():
+                if v == version:
+                    if not first:
+                        stream.write(u"\n")
+                    streamer.show(stream=stream)
+                    first = False
+
     @property
     def streamers(self):
+        """
+        A list of :doc:`uproot4.streamers.Model_TStreamerInfo` objects
+        representing the ``TStreamerInfos`` in the ROOT file.
+
+        A file's ``TStreamerInfos`` are only read the first time they are needed.
+        Uproot has a suite of predefined models in ``uproot4.models`` to reduce
+        the probability that ``TStreamerInfos`` will need to be read (depending
+        on the choice of classes or versions of the classes that are accessed).
+
+        See also :doc:`uproot4.reading.ReadOnlyFile.streamer_rules`, which are
+        read in the same pass with ``TStreamerInfos``.
+        """
         import uproot4.streamers
         import uproot4.models.TList
         import uproot4.models.TObjArray
@@ -481,7 +744,7 @@ in file {1}""".format(
 
                 streamer_key = ReadOnlyKey(key_chunk, key_cursor, {}, self, self)
 
-                self.hook_before_decompress_streamers(
+                self.hook_before_read_decompress_streamers(
                     key_chunk=key_chunk,
                     key_cursor=key_cursor,
                     streamer_key=streamer_key,
@@ -492,7 +755,7 @@ in file {1}""".format(
                     streamer_cursor,
                 ) = streamer_key.get_uncompressed_chunk_cursor()
 
-                self.hook_before_read_streamers(
+                self.hook_before_interpret_streamers(
                     key_chunk=key_chunk,
                     key_cursor=key_cursor,
                     streamer_key=streamer_key,
@@ -528,7 +791,7 @@ in file {1}""".format(
                             )
                         )
 
-                self.hook_after_read_streamers(
+                self.hook_after_interpret_streamers(
                     key_chunk=key_chunk,
                     key_cursor=key_cursor,
                     streamer_key=streamer_key,
@@ -540,44 +803,50 @@ in file {1}""".format(
 
     @property
     def streamer_rules(self):
+        """
+        A list of strings of C++ code that help schema evolution of
+        ``TStreamerInfo`` by providing rules to evaluate when new objects are
+        accessed by old ROOT versions.
+
+        Uproot does not evaluate these rules because they are written in C++ and
+        Uproot does not have access to a C++ compiler.
+
+        These rules are read in the same pass that produces
+        :doc:`uproot4.reading.ReadOnlyFile.streamers`.
+        """
         if self._streamer_rules is None:
             self.streamers
         return self._streamer_rules
 
-    def streamer_dependencies(self, classname, version="max"):
-        streamer = self.streamer_named(classname, version=version)
-        out = []
-        streamer._dependencies(self.streamers, out)
-        return out[::-1]
+    def streamers_named(self, classname):
+        """
+        Returns a list of :doc:`uproot4.streamers.Model_TStreamerInfo` objects
+        that match C++ (decoded) ``classname``.
 
-    def show_streamers(self, classname=None, version="max", stream=sys.stdout):
+        More that one streamer matching a given name is unlikely, but possible
+        because there may be different versions of the same class. (Perhaps such
+        files can be created by merging data from different ROOT versions with
+        hadd?)
+
+        See also :doc:`uproot4.reading.ReadOnlyFile.streamer_named` (singular).
         """
-        Args:
-            classname (None or str): If None, all streamers that are
-                defined in the file are shown; if a class name, only
-                this class and its dependencies are shown.
-            version (int, "min", or "max"): Version number of the desired
-                class; "min" or "max" returns the minimum or maximum version
-                number, respectively.
-            stream: Object with a `write` method for writing the output.
-        """
-        if classname is None:
-            names = []
-            for name, streamer_versions in self.streamers.items():
-                for version in streamer_versions:
-                    names.append((name, version))
+        streamer_versions = self.streamers.get(classname)
+        if streamer_versions is None:
+            return []
         else:
-            names = self.streamer_dependencies(classname, version=version)
-        first = True
-        for name, version in names:
-            for v, streamer in self.streamers[name].items():
-                if v == version:
-                    if not first:
-                        stream.write(u"\n")
-                    streamer.show(stream=stream)
-                    first = False
+            return list(streamer_versions.values())
 
     def streamer_named(self, classname, version="max"):
+        """
+        Returns a single :doc:`uproot4.streamers.Model_TStreamerInfo` object
+        that matches C++ (decoded) ``classname`` and ``version``.
+
+        The ``version`` can be an integer or ``"min"`` or ``"max"`` for the
+        minimum and maximum version numbers available in the file. The default
+        is ``"max"`` because there's usually only one.
+
+        See also :doc:`uproot4.reading.ReadOnlyFile.streamers_named` (plural).
+        """
         streamer_versions = self.streamers.get(classname)
         if streamer_versions is None or len(streamer_versions) == 0:
             return None
@@ -588,14 +857,72 @@ in file {1}""".format(
         else:
             return streamer_versions.get(version)
 
-    def streamers_named(self, classname):
-        streamer_versions = self.streamers.get(classname)
-        if streamer_versions is None:
-            return []
+    def streamer_dependencies(self, classname, version="max"):
+        """
+        Returns a list of :doc:`uproot4.streamers.Model_TStreamerInfo` objects
+        that depend on the one that matches C++ (decoded) ``classname`` and
+        ``version``.
+
+        The ``classname`` and ``version`` are interpreted the same way as
+        :doc:`uproot4.reading.ReadOnlyFile.streamer_named`.
+        """
+        streamer = self.streamer_named(classname, version=version)
+        out = []
+        streamer._dependencies(self.streamers, out)
+        return out[::-1]
+
+    @property
+    def custom_classes(self):
+        """
+        Either a dict of class objects specific to this file or None if it uses
+        the common ``uproot4.classes`` pool.
+        """
+        return self._custom_classes
+
+    @custom_classes.setter
+    def custom_classes(self, value):
+        if value is None or isinstance(value, MutableMapping):
+            self._custom_classes = value
         else:
-            return list(streamer_versions.values())
+            raise TypeError("custom_classes must be None or a MutableMapping")
+
+    def remove_class_definition(self, classname):
+        """
+        Removes all versions of a class, specified by C++ (decoded)
+        ``classname``, from the :doc:`uproot4.reading.ReadOnlyFile.custom_classes`.
+
+        If the file doesn't have a
+        :doc:`uproot4.reading.ReadOnlyFile.custom_classes`, this function adds
+        one, so it does not remove the class from the common pool.
+
+        If you want to remove a class from the common pool, you can do so with
+
+        .. code-block:: python
+
+            del uproot4.classes[classname]
+        """
+        if self._custom_classes is None:
+            self._custom_classes = dict(uproot4.classes)
+        if classname in self._custom_classes:
+            del self._custom_classes[classname]
 
     def class_named(self, classname, version=None):
+        """
+        Returns or creates a class with a given C++ (decoded) ``classname``
+        and possible ``version``.
+
+        * If the ``version`` is None, this function may return a
+          :doc:`uproot4.model.DispatchByVersion`.
+        * If the ``version`` is an integer, ``"min"`` or ``"max"``, then it
+          returns a :doc:`uproot4.model.VersionedModel`. Using ``"min"`` or
+          ``"max"`` specifies the minium or maximum version ``TStreamerInfo``
+          defined by the file; most files define only one so ``"max"`` is
+          usually safe.
+
+        If this file has :doc:`uproot4.reading.ReadOnlyFile.custom_classes`,
+        the new class is added to that dict; otherwise, it is added to the
+        global ``uproot4.classes``.
+        """
         classes = uproot4.model.maybe_custom_classes(self._custom_classes)
         cls = classes.get(classname)
 
@@ -651,27 +978,106 @@ in file {1}""".format(
 
         return cls
 
-    def __enter__(self):
+    def chunk(self, start, stop):
         """
-        Passes __enter__ to the file's Source and returns self.
-        """
-        self._source.__enter__()
-        return self
+        Returns a :doc:`uproot4.source.chunk.Chunk` from the
+        :doc:`uproot4.source.chunk.Source` that is guaranteed to include bytes
+        from ``start`` up to ``stop`` seek points in the file.
 
-    def __exit__(self, exception_type, exception_value, traceback):
+        If the desired range is satisfied by a previously saved chunk, such as
+        :doc:`uproot4.reading.ReadOnlyFile.begin_chunk`, then that is returned.
+        Hence, the returned chunk may include more data than the range from
+        ``start`` up to ``stop``.
         """
-        Passes __exit__ to the file's Source, which closes physical files
-        and shuts down any other resources, such as thread pools for parallel
-        reading.
-        """
-        self._source.__exit__(exception_type, exception_value, traceback)
-
-    def close(self):
-        self._source.close()
+        if self.closed:
+            raise OSError("file {0} is closed".format(repr(self._file_path)))
+        elif (start, stop) in self._begin_chunk:
+            return self._begin_chunk
+        else:
+            return self._source.chunk(start, stop)
 
     @property
-    def closed(self):
-        return self._source.closed
+    def begin_chunk(self):
+        """
+        A special :doc:`uproot4.source.chunk.Chunk` corresponding to the
+        beginning of the file, from seek point ``0`` up to
+        ``options["begin_chunk_size"]``.
+        """
+        return self._begin_chunk
+
+    def hook_before_create_source(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyFile` constructor before the
+        :doc:`uproot4.source.chunk.Source` is created.
+
+        This is the first hook called in the :doc:`uproot4.reading.ReadOnlyFile`
+        constructor.
+        """
+        pass
+
+    def hook_before_get_chunks(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyFile` constructor after the
+        :doc:`uproot4.source.chunk.Source` is created but before attempting to
+        get any :doc:`uproot4.source.chunk.Chunk`, specifically the
+        :doc:`uproot4.reading.ReadOnlyFile.begin_chunk`.
+        """
+        pass
+
+    def hook_before_interpret(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyFile` constructor after
+        loading the :doc:`uproot4.reading.ReadOnlyFile.begin_chunk` and before
+        interpreting its ``TFile`` header.
+        """
+        pass
+
+    def hook_after_interpret(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyFile` constructor after
+        interpreting the ``TFile`` header and before raising an error if
+        the first four bytes are not ``b"root"``.
+
+        This is the last hook called in the :doc:`uproot4.reading.ReadOnlyFile`
+        constructor.
+        """
+        pass
+
+    def hook_before_read_streamer_key(self, **kwargs):
+        """
+        Called in :doc:`uproot4.reading.ReadOnlyFile.streamers` before reading
+        the ``TKey`` associated with the ``TStreamerInfo``.
+
+        This is the first hook called in
+        :doc:`uproot4.reading.ReadOnlyFile.streamers`.
+        """
+        pass
+
+    def hook_before_read_decompress_streamers(self, **kwargs):
+        """
+        Called in :doc:`uproot4.reading.ReadOnlyFile.streamers` after reading
+        the ``TKey`` associated with the ``TStreamerInfo`` and before reading
+        and decompressing the ``TStreamerInfo`` data.
+        """
+        pass
+
+    def hook_before_interpret_streamers(self, **kwargs):
+        """
+        Called in :doc:`uproot4.reading.ReadOnlyFile.streamers` after reading
+        and decompressing the ``TStreamerInfo`` data, but before interpreting
+        it.
+        """
+        pass
+
+    def hook_after_interpret_streamers(self, **kwargs):
+        """
+        Called in :doc:`uproot4.reading.ReadOnlyFile.streamers` after
+        interpreting the ``TStreamerInfo`` data.
+
+        This is the last hook called in
+        :doc:`uproot4.reading.ReadOnlyFile.streamers`.
+        """
+        pass
 
 
 class ReadOnlyKey(object):
