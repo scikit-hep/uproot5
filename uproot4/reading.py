@@ -177,6 +177,7 @@ class CommonFileMethods(object):
     :doc:`uproot4.reading.ReadOnlyFile` are listed by C++ (decoded) classname
     in ``uproot4.must_be_attached``.
     """
+
     @property
     def file_path(self):
         """
@@ -414,6 +415,7 @@ class DetachedFile(CommonFileMethods):
     :doc:`uproot4.reading.ReadOnlyFile` are listed by C++ (decoded) classname
     in ``uproot4.must_be_attached``.
     """
+
     def __init__(self, file):
         self._file_path = file._file_path
         self._options = file._options
@@ -471,7 +473,7 @@ class ReadOnlyFile(CommonFileMethods):
     returned by :doc:`uproot4.reading.ReadOnlyFile.root_directory`. This is why
     :doc:`uproot4.reading.open` returns a :doc:`uproot4.reading.ReadOnlyDirectory`
     and not a :doc:`uproot4.reading.ReadOnlyFile`.
-    
+
     Options (type; default):
 
         * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
@@ -484,6 +486,7 @@ class ReadOnlyFile(CommonFileMethods):
         * begin_chunk_size (memory_size; 512)
         * minimal_ttree_metadata (bool; True)
     """
+
     def __init__(
         self,
         file_path,
@@ -519,8 +522,7 @@ class ReadOnlyFile(CommonFileMethods):
         if self._options["begin_chunk_size"] < _file_header_fields_big.size:
             raise ValueError(
                 "begin_chunk_size={0} is not enough to read the TFile header ({1})".format(
-                    self._options["begin_chunk_size"],
-                    _file_header_fields_big.size,
+                    self._options["begin_chunk_size"], _file_header_fields_big.size,
                 )
             )
 
@@ -1182,6 +1184,7 @@ class ReadOnlyDirectory(Mapping):
 
     with the same parameters.
     """
+
     _format_small = struct.Struct(">hIIiiiii")
     _format_big = struct.Struct(">hIIiiqqq")
     _format_num_keys = struct.Struct(">i")
@@ -1251,9 +1254,8 @@ class ReadOnlyDirectory(Mapping):
                 keys_cursor=keys_cursor,
             )
 
-            header_key = ReadOnlyKey(
-                keys_chunk, keys_cursor, {}, file, self, read_strings=True
-            )
+            # header_key is never used, but we do need to seek past it
+            ReadOnlyKey(keys_chunk, keys_cursor, {}, file, self, read_strings=True)
 
             num_keys = keys_cursor.field(keys_chunk, self._format_num_keys, context)
 

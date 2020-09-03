@@ -332,6 +332,7 @@ class DeserializationError(Exception):
     * :doc:`uproot4.deserialization.DeserializationError.debug_array`
     * :doc:`uproot4.deserialization.DeserializationError.partial_object`
     """
+
     def __init__(self, message, chunk, cursor, context, file_path):
         self.message = message
         self.chunk = chunk

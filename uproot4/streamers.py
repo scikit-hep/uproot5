@@ -141,6 +141,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def __repr__(self):
         return "<TStreamerInfo for {0} version {1} at 0x{2:012x}>".format(
             self.name, self.class_version, id(self)
@@ -410,6 +411,7 @@ class Model_TStreamerElement(uproot4.model.Model):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def show(self, stream=sys.stdout):
         """
         Args:
@@ -530,6 +532,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -595,6 +598,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     @property
     def base_version(self):
         """
@@ -681,6 +685,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     @property
     def count_name(self):
         """
@@ -771,6 +776,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def class_code(
         self,
         streamerinfo,
@@ -978,6 +984,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     @property
     def count_name(self):
         """
@@ -1176,6 +1183,7 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerSTL.read(
@@ -1196,6 +1204,7 @@ class TStreamerPointerTypes(object):
     :doc:`uproot4.streamers.Model_TStreamerObjectAnyPointer` and
     :doc:`uproot4.streamers.Model_TStreamerObjectPointer`.
     """
+
     def class_code(
         self,
         streamerinfo,
@@ -1273,6 +1282,7 @@ class Model_TStreamerObjectAnyPointer(TStreamerPointerTypes, Model_TStreamerElem
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -1295,6 +1305,7 @@ class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -1316,6 +1327,7 @@ class TStreamerObjectTypes(object):
     :doc:`uproot4.streamers.Model_TStreamerObjectAny`, and
     :doc:`uproot4.streamers.Model_TStreamerString`.
     """
+
     def class_code(
         self,
         streamerinfo,
@@ -1370,6 +1382,7 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -1392,6 +1405,7 @@ class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -1414,6 +1428,7 @@ class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
     (not to be directly accessed by most users), it is defined on the model
     instead of creating a behavior class to mix in functionality.
     """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
