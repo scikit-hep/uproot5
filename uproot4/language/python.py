@@ -1,11 +1,11 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a :doc:`uproot4.compute.Compute` engine for expressions passed to
-:doc:`uproot4.behavior.TBranch.HasBranches.arrays`.
+Defines a :doc:`uproot4.language.Language` for expressions passed to
+:doc:`uproot4.behavior.TBranch.HasBranches.arrays` (and similar).
 
-The :doc:`uproot4.compute.python.ComputePython` evaluates Python code. It is
-the default compute engine.
+The :doc:`uproot4.language.python.PythonLanguage` evaluates Python code. It is
+the default language.
 """
 
 from __future__ import absolute_import
@@ -14,7 +14,7 @@ import ast
 
 import numpy
 
-import uproot4.compute
+import uproot4.language
 
 
 def _expression_to_node(expression, file_path, object_path):
@@ -234,7 +234,7 @@ def _vectorized_gamma(logarithm):
 _lgamma = _vectorized_gamma(True)
 
 
-class ComputePython(uproot4.compute.Compute):
+class PythonLanguage(uproot4.language.Language):
     """
     Args:
         functions (None or dict): Mapping from function name to function, or
@@ -243,11 +243,11 @@ class ComputePython(uproot4.compute.Compute):
             needed for branches whose names are not valid Python symbols.
             Default is "get".
 
-    ComputePython is the default :doc:`uproot4.compute.Compute` for
+    PythonLanguage is the default :doc:`uproot4.language.Language` for
     interpreting expressions passed to
-    :doc:`uproot4.behavior.TBranch.HasBranches.arrays`. This interpretation
-    assumes that these expressions have Python syntax and semantics, with math
-    functions loaded into the namespace.
+    :doc:`uproot4.behavior.TBranch.HasBranches.arrays` (and similar). This
+    interpretation assumes that the expressions have Python syntax and
+    semantics, with math functions loaded into the namespace.
 
     Unlike standard Python, an expression with attributes, such as
     ``some.thing``, can be a single identifier, so that a ``TBranch`` whose

@@ -49,7 +49,7 @@ import uproot4.interpretation.jagged
 import uproot4.interpretation.library
 import uproot4.interpretation.identify
 import uproot4.reading
-import uproot4.compute.python
+import uproot4.language.python
 import uproot4.models.TBasket
 import uproot4.models.TObjArray
 import uproot4._util
@@ -75,7 +75,7 @@ def iterate(
     filter_typename=no_filter,
     filter_branch=no_filter,
     aliases=None,
-    compute=uproot4.compute.python.ComputePython(),
+    language=uproot4.language.python.PythonLanguage(),
     step_size="100 MB",
     decompression_executor=None,
     interpretation_executor=None,
@@ -91,7 +91,7 @@ def iterate(
         files: See below.
         expressions (None, str, or list of str): Names of ``TBranches`` or
             aliases to convert to arrays or mathematical expressions of them.
-            Uses the ``compute`` engine to evaluate. If None, all ``TBranches``
+            Uses the ``language`` to evaluate. If None, all ``TBranches``
             selected by the filters are included.
         cut (None or str): If not None, this expression filters all of the
             ``expressions``.
@@ -109,9 +109,9 @@ def iterate(
             overrules the standard one.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
-            Uses the ``compute`` engine to evaluate. If None, only the
+            Uses the ``language`` engine to evaluate. If None, only the
             :doc:`uproot4.behaviors.TBranch.TBranch.aliases` are available.
-        compute (:doc:`uproot4.compute.Compute`): Compute engine used to interpret
+        language (:doc:`uproot4.language.Language`): Language used to interpret
             the ``expressions`` and ``aliases``.
 
 
@@ -157,7 +157,7 @@ def iterate(
                     filter_typename=filter_typename,
                     filter_branch=filter_branch,
                     aliases=aliases,
-                    compute=compute,
+                    language=language,
                     step_size=step_size,
                     decompression_executor=decompression_executor,
                     interpretation_executor=interpretation_executor,
@@ -195,7 +195,7 @@ def concatenate(
     filter_typename=no_filter,
     filter_branch=no_filter,
     aliases=None,
-    compute=uproot4.compute.python.ComputePython(),
+    language=uproot4.language.python.PythonLanguage(),
     decompression_executor=None,
     interpretation_executor=None,
     array_cache=None,
@@ -228,7 +228,7 @@ def concatenate(
                     filter_typename=filter_typename,
                     filter_branch=filter_branch,
                     aliases=aliases,
-                    compute=compute,
+                    language=language,
                     decompression_executor=decompression_executor,
                     interpretation_executor=interpretation_executor,
                     array_cache=array_cache,
@@ -491,7 +491,7 @@ class HasBranches(Mapping):
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
-        compute=uproot4.compute.python.ComputePython(),
+        language=uproot4.language.python.PythonLanguage(),
         entry_start=None,
         entry_stop=None,
         decompression_executor=None,
@@ -510,7 +510,7 @@ class HasBranches(Mapping):
                 filter_typename=filter_typename,
                 filter_branch=lambda branch: branch is self and filter_branch(branch),
                 aliases=aliases,
-                compute=compute,
+                language=language,
                 entry_start=entry_start,
                 entry_stop=entry_stop,
                 decompression_executor=decompression_executor,
@@ -553,7 +553,7 @@ class HasBranches(Mapping):
             filter_branch,
             keys,
             aliases,
-            compute,
+            language,
             get_from_cache,
         )
 
@@ -594,7 +594,7 @@ class HasBranches(Mapping):
                         )
                     array_cache[cache_key] = arrays[branch.cache_key]
 
-        output = compute.compute_expressions(
+        output = language.compute_expressions(
             arrays,
             expression_context,
             keys,
@@ -617,7 +617,7 @@ class HasBranches(Mapping):
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
-        compute=uproot4.compute.python.ComputePython(),
+        language=uproot4.language.python.PythonLanguage(),
         entry_start=None,
         entry_stop=None,
         step_size="100 MB",
@@ -637,7 +637,7 @@ class HasBranches(Mapping):
                 filter_typename=filter_typename,
                 filter_branch=lambda branch: branch is self and filter_branch(branch),
                 aliases=aliases,
-                compute=compute,
+                language=language,
                 entry_start=entry_start,
                 entry_stop=entry_stop,
                 step_size=step_size,
@@ -672,7 +672,7 @@ class HasBranches(Mapping):
                 filter_branch,
                 keys,
                 aliases,
-                compute,
+                language,
                 (lambda branchname, interpretation: None),
             )
 
@@ -726,7 +726,7 @@ class HasBranches(Mapping):
                     arrays,
                 )
 
-                output = compute.compute_expressions(
+                output = language.compute_expressions(
                     arrays,
                     expression_context,
                     keys,
@@ -938,7 +938,7 @@ class HasBranches(Mapping):
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
-        compute=uproot4.compute.python.ComputePython(),
+        language=uproot4.language.python.PythonLanguage(),
         entry_start=None,
         entry_stop=None,
     ):
@@ -959,7 +959,7 @@ class HasBranches(Mapping):
             filter_branch,
             keys,
             aliases,
-            compute,
+            language,
             (lambda branchname, interpretation: None),
         )
 
@@ -1821,7 +1821,7 @@ def _regularize_expression(
     expression,
     keys,
     aliases,
-    compute,
+    language,
     get_from_cache,
     arrays,
     expression_context,
@@ -1853,7 +1853,7 @@ def _regularize_expression(
             to_compute = expression
 
         is_jagged = False
-        for symbol in compute.free_symbols(
+        for symbol in language.free_symbols(
             to_compute,
             keys,
             aliases,
@@ -1881,7 +1881,7 @@ in file {2} at {3}""".format(
                 symbol,
                 keys,
                 aliases,
-                compute,
+                language,
                 get_from_cache,
                 arrays,
                 expression_context,
@@ -1909,7 +1909,7 @@ def _regularize_expressions(
     filter_branch,
     keys,
     aliases,
-    compute,
+    language,
     get_from_cache,
 ):
     arrays = {}
@@ -1950,7 +1950,7 @@ def _regularize_expressions(
             expressions,
             keys,
             aliases,
-            compute,
+            language,
             get_from_cache,
             arrays,
             expression_context,
@@ -1983,7 +1983,7 @@ def _regularize_expressions(
                     expression,
                     keys,
                     aliases,
-                    compute,
+                    language,
                     get_from_cache,
                     arrays,
                     expression_context,
@@ -2023,7 +2023,7 @@ def _regularize_expressions(
             cut,
             keys,
             aliases,
-            compute,
+            language,
             get_from_cache,
             arrays,
             expression_context,
