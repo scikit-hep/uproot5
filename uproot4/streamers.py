@@ -153,7 +153,15 @@ class Model_TStreamerInfo(uproot4.model.Model):
             stream (object with a ``write(str)`` method): Stream to write the
                 output to.
 
-        Examine a ``TStreamerInfo``.
+        Interactively display a ``TStreamerInfo``.
+
+        Example:
+
+        .. code-block:: raw
+
+            TLorentzVector (v4): TObject (v1)
+                fP: TVector3 (TStreamerObject)
+                fE: double (TStreamerBasicType)
         """
         bases = []
         for element in self.elements:
@@ -418,7 +426,7 @@ class Model_TStreamerElement(uproot4.model.Model):
             stream (object with a ``write(str)`` method): Stream to write the
                 output to.
 
-        Examine a ``TStreamerElement``.
+        Interactively display a ``TStreamerElement``.
         """
         stream.write(
             u"    {0}: {1} ({2})\n".format(

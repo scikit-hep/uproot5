@@ -739,7 +739,27 @@ in file {1}""".format(
             version (int, "min", or "max"): Version number of the desired
                 class; "min" or "max" returns the minimum or maximum version
                 number, respectively.
-            stream: Object with a `write` method for writing the output.
+            stream (object with a ``write(str)`` method): Stream to write the
+                output to.
+
+        Interactively display a file's ``TStreamerInfo``.
+
+        Example with ``classname="TLorentzVector"``:
+
+        .. code-block:: raw
+
+            TVector3 (v3): TObject (v1)
+                fX: double (TStreamerBasicType)
+                fY: double (TStreamerBasicType)
+                fZ: double (TStreamerBasicType)
+
+            TObject (v1)
+                fUniqueID: unsigned int (TStreamerBasicType)
+                fBits: unsigned int (TStreamerBasicType)
+
+            TLorentzVector (v4): TObject (v1)
+                fP: TVector3 (TStreamerObject)
+                fE: double (TStreamerBasicType)
         """
         if classname is None:
             names = []
@@ -1421,7 +1441,8 @@ class ReadOnlyDirectory(Mapping):
             filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select keys by C++ (decoded) classname.
 
-        Returns the names of the objects in this ``TDirectory`` as a list.
+        Returns the names of the objects in this ``TDirectory`` as a list of
+        strings.
 
         Note that this does not read any data from the file.
         """
@@ -1447,7 +1468,8 @@ class ReadOnlyDirectory(Mapping):
             filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select keys by C++ (decoded) classname.
 
-        Returns objects in this ``TDirectory`` as a list.
+        Returns objects in this ``TDirectory`` as a list of
+        :doc:`uproot4.model.Model`.
 
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
@@ -1478,7 +1500,8 @@ class ReadOnlyDirectory(Mapping):
             filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select keys by C++ (decoded) classname.
 
-        Returns (name, object) pairs for objects in this ``TDirectory`` as a list.
+        Returns (name, object) pairs for objects in this ``TDirectory`` as a
+        list of 2-tuples of (str, :doc:`uproot4.model.Model`).
 
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
@@ -1511,7 +1534,7 @@ class ReadOnlyDirectory(Mapping):
                 filter to select keys by C++ (decoded) classname.
 
         Returns the names and C++ (decoded) classnames of the objects in this
-        ``TDirectory`` as a dict.
+        ``TDirectory`` as a dict of str \u2192 str.
 
         Note that this does not read any data from the file.
         """
@@ -1542,7 +1565,8 @@ class ReadOnlyDirectory(Mapping):
             filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select keys by C++ (decoded) classname.
 
-        Returns the names of the objects in this ``TDirectory`` as an iterator.
+        Returns the names of the objects in this ``TDirectory`` as an iterator
+        over strings.
 
         Note that this does not read any data from the file.
         """
@@ -1579,7 +1603,8 @@ class ReadOnlyDirectory(Mapping):
             filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select keys by C++ (decoded) classname.
 
-        Returns objects in this ``TDirectory`` as an iterator.
+        Returns objects in this ``TDirectory`` as an iterator over
+        :doc:`uproot4.model.Model`.
 
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
@@ -1610,7 +1635,8 @@ class ReadOnlyDirectory(Mapping):
             filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select keys by C++ (decoded) classname.
 
-        Returns (name, object) pairs for objects in this ``TDirectory`` as an iterator.
+        Returns (name, object) pairs for objects in this ``TDirectory`` as an
+        iterator over 2-tuples of (str, :doc:`uproot4.model.Model`).
 
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
@@ -1654,7 +1680,7 @@ class ReadOnlyDirectory(Mapping):
                 filter to select keys by C++ (decoded) classname.
 
         Returns the names and C++ (decoded) classnames of the objects in this
-        ``TDirectory`` as an iterator of 2-tuples.
+        ``TDirectory`` as an iterator of 2-tuples of (str, str).
 
         Note that this does not read any data from the file.
         """

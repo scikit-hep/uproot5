@@ -692,16 +692,36 @@ Report = collections.namedtuple(
 
 
 class HasBranches(Mapping):
+    """
+    Abstract class for anything that "has branches," namely
+    :doc:`uproot4.behavior.TTree.TTree` and
+    :doc:`uproot4.behavior.TBranch.TBranch`.
+
+    A :doc:`uproot4.behavior.TBranch.HasBranches` is a Python ``Mapping``, which
+    uses square bracket syntax to extract subbranches:
+
+    .. code-block:: python
+
+        my_tree["branch"]
+        my_tree["branch"]["subbranch"]
+        my_tree["branch/subbranch"]
+        my_tree["branch/subbranch/subsubbranch"]
+    """
     @property
     def branches(self):
+        """
+        The list of :doc:`uproot4.behavior.TBranch.TBranch` directly under
+        this :doc:`uproot4.behavior.TTree.TTree` or
+        :doc:`uproot4.behavior.TBranch.TBranch` (i.e. not recursive).
+        """
         return self.member("fBranches")
 
     def show(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
         full_paths=True,
         name_width=20,
         typename_width=20,
@@ -710,7 +730,43 @@ class HasBranches(Mapping):
     ):
         """
         Args:
-            stream: Object with a `write` method for writing the output.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, recursively descend into the branches'
+                branches.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``); otherwise, use the descendant's name as
+                the display name.
+            name_width (int): Number of characters to reserve for the ``TBranch``
+                names.
+            typename_width (int): Number of characters to reserve for the C++
+                typenames.
+            interpretation_width (int): Number of characters to reserve for the
+                :doc:`uproot4.interpretation.Interpretation` displays.
+            stream (object with a ``write(str)`` method): Stream to write the
+                output to.
+
+        Interactively display the ``TBranches``.
+
+        Example:
+
+        .. code-block:: raw
+
+            name                 | typename             | interpretation
+            ---------------------+----------------------+-----------------------------------
+            event_number         | int32_t              | AsDtype('>i4')
+            trigger_isomu24      | bool                 | AsDtype('bool')
+            eventweight          | float                | AsDtype('>f4')
+            MET                  | TVector2             | AsStridedObjects(Model_TVector2_v3
+            jetp4                | std::vector<TLorentz | AsJagged(AsStridedObjects(Model_TL
+            jetbtag              | std::vector<float>   | AsJagged(AsDtype('>f4'), header_by
+            jetid                | std::vector<bool>    | AsJagged(AsDtype('bool'), header_b
         """
         formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}\n".format(
             name_width, typename_width, interpretation_width,
@@ -732,10 +788,10 @@ class HasBranches(Mapping):
             )
 
         for name, branch in self.iteritems(
-            recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            recursive=recursive,
             full_paths=full_paths,
         ):
             stream.write(
@@ -759,6 +815,75 @@ class HasBranches(Mapping):
         library="ak",
         how=None,
     ):
+        u"""
+        Args:
+            expressions (None, str, or list of str): Names of ``TBranches`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``TBranches``
+                selected by the filters are included.
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. If the function
+                returns False or None, the ``TBranch`` is excluded; if the function
+                returns True, it is included with its standard
+                :doc:`uproot4.behaviors.TBranch.TBranch.interpretation`; if an
+                :doc:`uproot4.interpretation.Interpretation`, this interpretation
+                overrules the standard one.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases (without cycles).
+                Uses the ``language`` engine to evaluate. If None, only the
+                :doc:`uproot4.behaviors.TBranch.TBranch.aliases` are available.
+            language (:doc:`uproot4.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``.
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :doc:`uproot4.behavior.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``TBaskets``; if None, the
+                global ``uproot4.decompression_executor`` is used.
+            interpretation_executor (None or Executor with a ``submit`` method): The
+                executor that is used to interpret uncompressed ``TBasket`` data as
+                arrays; if None, the global ``uproot4.interpretation_executor`` is
+                used.
+            array_cache (None, MutableMapping, or memory size): Cache of arrays;
+                if None, do not use a cache; if a memory size, create a new cache
+                of this size.
+            library (str or :doc:`uproot4.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
+                CuPy.
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+
+        Returns a group of arrays from the ``TTree``.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> array = tree.arrays(["x", "y"])    # only reads branches "x" and "y"
+            >>> array
+            <Array [{x: -41.2, y: 17.4}, ... {x: 32.5, y: 1.2}], type='2304 * {"x": float64,...'>
+            >>> array["x"]
+            <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
+            >>> array["y"]
+            <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
+
+        See also :doc:`uproot4.behavior.TBranch.TBranch.iterate` to iterate over
+        the array in contiguous ranges of entries.
+        """
         keys = set(self.keys(recursive=True, full_paths=False))
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot4._util.regularize_filter(filter_branch)
@@ -886,6 +1011,79 @@ class HasBranches(Mapping):
         how=None,
         report=False,
     ):
+        u"""
+        Args:
+            expressions (None, str, or list of str): Names of ``TBranches`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``TBranches``
+                selected by the filters are included.
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. If the function
+                returns False or None, the ``TBranch`` is excluded; if the function
+                returns True, it is included with its standard
+                :doc:`uproot4.behaviors.TBranch.TBranch.interpretation`; if an
+                :doc:`uproot4.interpretation.Interpretation`, this interpretation
+                overrules the standard one.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases (without cycles).
+                Uses the ``language`` engine to evaluate. If None, only the
+                :doc:`uproot4.behaviors.TBranch.TBranch.aliases` are available.
+            language (:doc:`uproot4.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``.
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :doc:`uproot4.behavior.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+            step_size (int or str): If an integer, the maximum number of entries to
+                include in each iteration step; if a string, the maximum memory size
+                to include. The string must be a number followed by a memory unit,
+                such as "100 MB".
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``TBaskets``; if None, the
+                global ``uproot4.decompression_executor`` is used.
+            interpretation_executor (None or Executor with a ``submit`` method): The
+                executor that is used to interpret uncompressed ``TBasket`` data as
+                arrays; if None, the global ``uproot4.interpretation_executor`` is
+                used.
+            library (str or :doc:`uproot4.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
+                CuPy.
+            how (None, str, or container type): Library-dependent instructions
+                for grouping. The only recognized container types are ``tuple``,
+                ``list``, and ``dict``. Note that the container *type itself*
+                must be passed as ``how``, not an instance of that type (i.e.
+                ``how=tuple``, not ``how=()``).
+            report (bool): If True, this generator yields
+                (:doc:`uproot4.behaviors.TBranch.Report, arrays) pairs; if False,
+                it only yields arrays. The report has data about the ``TFile``,
+                ``TTree``, and global and local entry ranges.
+
+        Iterates through contiguous chunks of entries from the ``TTree``.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> for array in tree.iterate(["x", "y"], step_size=100):
+            ...     # each of the following have 100 entries
+            ...     array["x"], array["y"]
+
+        See also :doc:`uproot4.behavior.TBranch.TBranch.array` to read whole
+        ``TBranches`` in a single step.
+
+        See also :doc:`uproot4.behavior.TBranch.iterate` to iterate over many
+        files.
+        """
         keys = set(self.keys(recursive=True, full_paths=False))
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot4._util.regularize_filter(filter_branch)
@@ -1021,115 +1219,253 @@ class HasBranches(Mapping):
 
     def keys(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
         full_paths=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return the names of branches directly accessible
+                under this object.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``); otherwise, use the descendant's name as
+                the output name.
+
+        Returns the names of the subbranches as a list of strings.
+        """
         return list(
             self.iterkeys(
-                recursive=recursive,
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                recursive=recursive,
                 full_paths=full_paths,
             )
         )
 
     def values(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return branches that are directly accessible
+                under this object.
+
+        Returns the subbranches as a list of
+        :doc:`uproot4.behavior.TBranch.TBranch`.
+
+        (Note: with ``recursive=False``, this is the same as
+        :doc:`uproot4.behavior.TBranch.HasBranches.branches`.)
+        """
         return list(
             self.itervalues(
-                recursive=recursive,
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                recursive=recursive,
             )
         )
 
     def items(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
         full_paths=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return (name, branch) pairs for branches
+                directly accessible under this object.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``) in the name; otherwise, use the descendant's
+                name as the name without modification.
+
+        Returns (name, branch) pairs of the subbranches as a list of 2-tuples
+        of (str, :doc:`uproot4.behavior.TBranch.TBranch`).
+        """
         return list(
             self.iteritems(
-                recursive=recursive,
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                recursive=recursive,
                 full_paths=full_paths,
             )
         )
 
     def typenames(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
         full_paths=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return (name, typename) pairs for branches
+                directly accessible under this object.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``) in the name; otherwise, use the descendant's
+                name as the name without modification.
+
+        Returns (name, typename) pairs of the subbranches as a dict of
+        str \u2192 str.
+        """
         return dict(
             self.itertypenames(
-                recursive=recursive,
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
+                recursive=recursive,
                 full_paths=full_paths,
             )
         )
 
     def iterkeys(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
         full_paths=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return the names of branches directly accessible
+                under this object.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``); otherwise, use the descendant's name as
+                the output name.
+
+        Returns the names of the subbranches as an iterator over strings.
+        """
         for k, v in self.iteritems(
-            recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            recursive=recursive,
             full_paths=full_paths,
         ):
             yield k
 
     def itervalues(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return branches that are directly accessible
+                under this object.
+
+        Returns the subbranches as an iterator over
+        :doc:`uproot4.behavior.TBranch.TBranch`.
+
+        (Note: with ``recursive=False``, this is the same as
+        :doc:`uproot4.behavior.TBranch.HasBranches.branches`.)
+        """
         for k, v in self.iteritems(
-            recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            recursive=recursive,
             full_paths=False,
         ):
             yield v
 
     def iteritems(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
         full_paths=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return (name, branch) pairs for branches
+                directly accessible under this object.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``) in the name; otherwise, use the descendant's
+                name as the name without modification.
+
+        Returns (name, branch) pairs of the subbranches as an iterator over
+        2-tuples of (str, :doc:`uproot4.behavior.TBranch.TBranch`).
+        """
         filter_name = uproot4._util.regularize_filter(filter_name)
         filter_typename = uproot4._util.regularize_filter(filter_typename)
         if filter_branch is None:
@@ -1167,17 +1503,37 @@ class HasBranches(Mapping):
 
     def itertypenames(
         self,
-        recursive=True,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
+        recursive=True,
         full_paths=True,
     ):
+        u"""
+        Args:
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only return (name, typename) pairs for branches
+                directly accessible under this object.
+            full_paths (bool): If True, include the full path to each subbranch
+                with slashes (``/``) in the name; otherwise, use the descendant's
+                name as the name without modification.
+
+        Returns (name, typename) pairs of the subbranches as an iterator over
+        2-tuples of (str, str).
+        """
         for k, v in self.iteritems(
-            recursive=recursive,
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            recursive=recursive,
             full_paths=full_paths,
         ):
             yield k, v.typename
@@ -1201,6 +1557,55 @@ class HasBranches(Mapping):
         entry_start=None,
         entry_stop=None,
     ):
+        """
+        Args:
+            memory_size (int or str): An integer is interpreted as a number of
+                bytes and a string must be a number followed by a unit, such as
+                "100 MB".
+            expressions (None, str, or list of str): Names of ``TBranches`` or
+                aliases to convert to arrays or mathematical expressions of them.
+                Uses the ``language`` to evaluate. If None, all ``TBranches``
+                selected by the filters are included.
+            cut (None or str): If not None, this expression filters all of the
+                ``expressions``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            aliases (None or dict of str \u2192 str): Mathematical expressions that
+                can be used in ``expressions`` or other aliases (without cycles).
+                Uses the ``language`` engine to evaluate. If None, only the
+                :doc:`uproot4.behaviors.TBranch.TBranch.aliases` are available.
+            language (:doc:`uproot4.language.Language`): Language used to interpret
+                the ``expressions`` and ``aliases``.
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :doc:`uproot4.behavior.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+
+        Returns an *approximate* step size as a number of entries to read
+        a given ``memory_size`` in each step.
+
+        This method does not actually read the ``TBranch`` data or compute any
+        expressions to arrive at its estimate. It only uses metadata from the
+        already-loaded ``TTree``; it only needs ``language`` to parse the
+        expressions, not to evaluate them.
+
+        In addition, the estimate is based on compressed ``TBasket`` sizes
+        (the amount of data that would have to be read), not uncompressed
+        ``TBasket`` sizes (the amount of data that the final arrays would use
+        in memory, without considering ``cuts``).
+
+        This is the algorithm that
+        :doc:`uproot4.behavior.TBranch.HasBranches.iterate` uses to convert a
+        ``step_size`` expressed in memory units into a number of entries.
+        """
         target_num_bytes = uproot4._util.memory_size(memory_size)
 
         entry_start, entry_stop = _regularize_entries_start_stop(
@@ -1226,29 +1631,45 @@ class HasBranches(Mapping):
             self, target_num_bytes, entry_start, entry_stop, branchid_interpretation
         )
 
-    def common_entry_offsets(self, branches=None):
-        """Find common breakpoints in baskets
-
+    def common_entry_offsets(
+        self,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        recursive=True,
+    ):
+        u"""
         Args:
-            branches (list): If None, compute common
-            offsets for all branches, otherwise only compute
-            common offsets for listed branch names
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by name.
+            filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select ``TBranches`` by type.
+            filter_branch (None or function of :doc:`uproot4.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot4.interpretation.Interpretation`, or None): A
+                filter to select ``TBranches`` using the full
+                :doc:`uproot4.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                included if the function returns True, excluded if it returns False.
+            recursive (bool): If True, descend into any nested subbranches.
+                If False, only consider branches directly accessible under this
+                object. (Only applies when ``branches=None``.)
 
-        Returns a list of integers
+        Returns entry offsets in which ``TBasket`` boundaries align in the
+        specified set of branches.
+
+        If this :doc:`uproot4.behaviors.TBranch.TBranch` has no subbranches,
+        the output is identical to
+        :doc:`uproot4.behaviors.TBranch.TBranch.entry_offsets`.
         """
-        if not len(self):
-            # assume it is a "leaf" branch
-            return self.entry_offsets
-        elif branches is None:
-            branches = self
-        else:
-            branches = (self[b] for b in branches)
         common_offsets = None
-        for branch in branches:
+        for branch in self.itervalues(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            recursive=recursive,
+        ):
             if common_offsets is None:
-                common_offsets = set(branch.common_entry_offsets())
+                common_offsets = set(branch.entry_offsets)
             else:
-                common_offsets &= set(branch.common_entry_offsets())
+                common_offsets = common_offsets.intersection(set(branch.entry_offsets))
         return sorted(common_offsets)
 
     def __getitem__(self, where):
@@ -2177,10 +2598,10 @@ def _regularize_expressions(
 
     if expressions is None:
         for branchname, branch in hasbranches.iteritems(
-            recursive=True,
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
+            recursive=True,
             full_paths=False,
         ):
             if not isinstance(
