@@ -221,14 +221,14 @@ def test_streamerless_read():
 
 def test_list_streamers():
     with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
-        assert f.streamer_dependencies("TNamed") == [
+        assert f.file.streamer_dependencies("TNamed") == [
             ("TString", 2),
             ("TObject", 1),
             ("TNamed", 1),
         ]
 
         output = StringIO()
-        f.show_streamers("TNamed", stream=output)
+        f.file.show_streamers("TNamed", stream=output)
         assert (
             output.getvalue()
             == """TString (v2)

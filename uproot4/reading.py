@@ -65,6 +65,29 @@ def open(
 
     Opens a ROOT file, possibly through a remote protocol.
 
+    If an object path is given, the return type of this function can be anything
+    that can be extracted from a ROOT file (subclass of
+    :doc:`uproot4.model.Model`).
+
+    If an object path is not given, the return type is a
+    :doc:`uproot4.reading.ReadOnlyDirectory` *and not*
+    :doc:`uproot4.reading.ReadOnlyFile`. ROOT objects can be extracted from a
+    :doc:`uproot4.reading.ReadOnlyDirectory` but not a
+    :doc:`uproot4.reading.ReadOnlyFile`.
+
+    Any object derived from a ROOT file is a context manager (works in Python's
+    ``with`` statement) that closes the file when exiting the ``with`` block.
+    Therefore, the :doc:`uproot4.reading.open` function can and usually should
+    be used in a ``with`` statement to clean up file handles and threads
+    associated with open files:
+
+    .. code-block:: python
+
+        with uproot4.open("/path/to/file.root:path/to/histogram") as h:
+            h.to_hist().plot()
+
+        # file is now closed, even if an exception was raised in the block
+
     Options (type; default):
 
         * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
@@ -202,10 +225,15 @@ class CommonFileMethods(object):
     @property
     def is_64bit(self):
         """
-        True if the ROOT file contains 64-bit seek points; False otherwise.
+        True if the ROOT file is 64-bit ready; False otherwise.
 
-        A file that is larger than 4 GiB must have 64-bit seek points, though
-        any file might.
+        A file that is larger than 4 GiB must be 64-bit ready, though any file
+        might be. This refers to seek points like
+        :doc:`uproot4.reading.ReadOnlyFile.fSeekFree` being 64-bit integers,
+        rather than 32-bit.
+
+        Note that a file being 64-bit is distinct from a ``TDirectory`` being
+        64-bit; see :doc:`uproot4.reading.ReadOnlyDirectory.is_64bit`.
         """
         return self._fVersion >= 1000000
 
@@ -438,6 +466,12 @@ class ReadOnlyFile(CommonFileMethods):
     more data and need to have an active connection (like ``TTree``,
     ``TBranch``, and ``TDirectory``).
 
+    Note that a :doc:`uproot4.reading.ReadOnlyFile` can't be directly used to
+    extract objects. To read data, use the :doc:`uproot4.reading.ReadOnlyDirectory`
+    returned by :doc:`uproot4.reading.ReadOnlyFile.root_directory`. This is why
+    :doc:`uproot4.reading.open` returns a :doc:`uproot4.reading.ReadOnlyDirectory`
+    and not a :doc:`uproot4.reading.ReadOnlyFile`.
+    
     Options (type; default):
 
         * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
@@ -486,7 +520,7 @@ class ReadOnlyFile(CommonFileMethods):
             raise ValueError(
                 "begin_chunk_size={0} is not enough to read the TFile header ({1})".format(
                     self._options["begin_chunk_size"],
-                    self._file_header_fields_big.size,
+                    _file_header_fields_big.size,
                 )
             )
 
@@ -1080,6 +1114,846 @@ in file {1}""".format(
         pass
 
 
+class ReadOnlyDirectory(Mapping):
+    """
+    Args:
+        path (tuple of str): Object path of the ``TDirectory`` as a tuple of
+            nested ``TDirectory`` names.
+        cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
+            the :doc:`uproot4.reading.ReadOnlyFile`.
+        context (dict): Auxiliary data used in deserialization.
+        file (:doc:`uproot4.reading.ReadOnlyFile`): The open file object.
+        parent (None or calling object): The previous ``read`` in the
+            recursive descent.
+
+    Represents a ``TDirectory`` from a ROOT file, most notably, the root
+    directory (:doc:`uproot4.reading.ReadOnlyFile.root_directory`).
+
+    Be careful not to confuse :doc:`uproot4.reading.ReadOnlyFile` and
+    :doc:`uproot4.reading.ReadOnlyDirectory`: files are for accessing global
+    information such as :doc:`uproot4.reading.ReadOnlyFile.streamers` and
+    directories are for data in local hierarchies.
+
+    A :doc:`uproot4.reading.ReadOnlyDirectory` is a Python ``Mapping``, which
+    uses square bracket syntax to extract objects:
+
+    .. code-block:: python
+
+        my_directory["histogram"]
+        my_directory["tree"]
+        my_directory["directory"]["another_tree"]
+
+    Objects in ROOT files also have "cycle numbers," which allow multiple
+    versions of an object to be retrievable using the same name. A cycle number
+    may be specified after a semicolon:
+
+    .. code-block:: python
+
+        my_directory["histogram;2"]
+
+    but without one, the directory defaults to the latest (highest cycle number).
+
+    It's also possible to navigate through nested directories with a slash (``/``)
+    instead of sequences of square brackets. The following are equivalent:
+
+    .. code-block:: python
+
+        my_directory["directory"]["another_tree"]["branch_in_tree"]  # long form
+        my_directory["directory/another_tree"]["branch_in_tree"]     # / for dir
+        my_directory["directory/another_tree/branch_in_tree"]        # / for branch
+        my_directory["/directory/another_tree/branch_in_tree"]       # absolute
+        my_directory["/directory////another_tree/branch_in_tree"]    # extra ///
+
+    As a Python ``Mapping``, :doc:`uproot4.reading.ReadOnlyDirectory` also has
+
+    * :doc:`uproot4.reading.ReadOnlyDirectory.keys`: names of objects in the
+      ``TDirectory``
+    * :doc:`uproot4.reading.ReadOnlyDirectory.values`: objects in the
+      ``TDirectory``
+    * :doc:`uproot4.reading.ReadOnlyDirectory.items`: 2-tuple (name, object)
+      pairs.
+
+    However, the :doc:`uproot4.reading.ReadOnlyDirectory` versions of these
+    methods have extra parameters for navigating a complex ROOT file. In addition,
+    there is a
+
+    * :doc:`uproot4.reading.ReadOnlyDirectory.classnames`: returns a dict of
+      (name, classname) pairs.
+
+    with the same parameters.
+    """
+    _format_small = struct.Struct(">hIIiiiii")
+    _format_big = struct.Struct(">hIIiiqqq")
+    _format_num_keys = struct.Struct(">i")
+
+    def __init__(self, path, cursor, context, file, parent):
+        self._path = path
+        self._cursor = cursor.copy()
+        self._file = file
+        self._parent = parent
+
+        self.hook_before_read(cursor=cursor)
+
+        directory_start = cursor.index
+        directory_stop = min(directory_start + self._format_big.size, file.fEND)
+        chunk = file.chunk(directory_start, directory_stop)
+
+        self.hook_before_interpret(chunk=chunk, cursor=cursor)
+
+        (
+            self._fVersion,
+            self._fDatimeC,
+            self._fDatimeM,
+            self._fNbytesKeys,
+            self._fNbytesName,
+            self._fSeekDir,
+            self._fSeekParent,
+            self._fSeekKeys,
+        ) = cursor.fields(chunk, self._format_small, context, move=False)
+
+        if self.is_64bit:
+            (
+                self._fVersion,
+                self._fDatimeC,
+                self._fDatimeM,
+                self._fNbytesKeys,
+                self._fNbytesName,
+                self._fSeekDir,
+                self._fSeekParent,
+                self._fSeekKeys,
+            ) = cursor.fields(chunk, self._format_big, context)
+
+        else:
+            cursor.skip(self._format_small.size)
+
+        if self._fSeekKeys == 0:
+            self._header_key = None
+            self._keys = []
+
+        else:
+            keys_start = self._fSeekKeys
+            keys_stop = min(keys_start + self._fNbytesKeys + 8, file.fEND)
+            keys_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
+
+            self.hook_before_read_keys(
+                chunk=chunk, cursor=cursor, keys_cursor=keys_cursor
+            )
+
+            if (keys_start, keys_stop) in chunk:
+                keys_chunk = chunk
+            else:
+                keys_chunk = file.chunk(keys_start, keys_stop)
+
+            self.hook_before_header_key(
+                chunk=chunk,
+                cursor=cursor,
+                keys_chunk=keys_chunk,
+                keys_cursor=keys_cursor,
+            )
+
+            header_key = ReadOnlyKey(
+                keys_chunk, keys_cursor, {}, file, self, read_strings=True
+            )
+
+            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys, context)
+
+            self.hook_before_keys(
+                chunk=chunk,
+                cursor=cursor,
+                keys_chunk=keys_chunk,
+                keys_cursor=keys_cursor,
+                num_keys=num_keys,
+            )
+
+            self._keys = []
+            for i in uproot4._util.range(num_keys):
+                key = ReadOnlyKey(
+                    keys_chunk, keys_cursor, {}, file, self, read_strings=True
+                )
+                self._keys.append(key)
+
+            self.hook_after_keys(
+                chunk=chunk,
+                cursor=cursor,
+                keys_chunk=keys_chunk,
+                keys_cursor=keys_cursor,
+                num_keys=num_keys,
+            )
+
+    def __repr__(self):
+        return "<ReadOnlyDirectory {0} at 0x{1:012x}>".format(
+            repr("/" + "/".join(self._path)), id(self)
+        )
+
+    @property
+    def path(self):
+        """
+        Object path of the ``TDirectory`` as a tuple of nested ``TDirectory``
+        names. The root directory is an empty tuple, ``()``.
+
+        See :doc:`uproot4.reading.ReadOnlyDirectory.object_path` for the path
+        as a string.
+        """
+        return self._path
+
+    @property
+    def object_path(self):
+        """
+        Object path of the ``TDirectory`` as a single string, beginning and
+        ending with ``/``. The root directory is a single slash, ``"/"``.
+
+        See :doc:`uproot4.reading.ReadOnlyDirectory.path` for the path as a
+        tuple of strings.
+        """
+        return "/".join(("",) + self._path + ("",)).replace("//", "/")
+
+    @property
+    def file(self):
+        """
+        The :doc:`uproot4.reading.ReadOnlyFile` in which this ``TDirectory``
+        resides.
+
+        This property is useful for getting global information, in idioms like
+
+        .. code-block:: python
+
+            with uproot4.open("/path/to/file.root") as handle:
+                handle.file.show_streamers()
+        """
+        return self._file
+
+    def close(self):
+        """
+        Close the :doc:`uproot4.reading.ReadOnlyFile` in which this ``TDirectory``
+        resides.
+        """
+        self._file.close()
+
+    @property
+    def closed(self):
+        """
+        True if the :doc:`uproot4.reading.ReadOnlyDirectory.file` is closed;
+        False otherwise.
+        """
+        return self._file.closed
+
+    def __enter__(self):
+        self._file.source.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._file.source.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def cursor(self):
+        """
+        A :doc:`uproot4.source.cursor.Cursor` pointing to the seek point in the
+        file where this ``TDirectory`` is defined (at the start of the
+        ``TDirectory`` header).
+        """
+        return self._cursor
+
+    @property
+    def parent(self):
+        """
+        The object that was deserialized before this one in recursive descent,
+        usually the containing object (or the container's container).
+        """
+        return self._parent
+
+    @property
+    def is_64bit(self):
+        """
+        True if the ``TDirectory`` is 64-bit ready; False otherwise.
+
+        This refers to seek points like
+        :doc:`uproot4.reading.ReadOnlyDirectory.fSeekDir` being 64-bit integers,
+        rather than 32-bit.
+
+        Note that a file being 64-bit is distinct from a ``TDirectory`` being
+        64-bit; see :doc:`uproot4.reading.ReadOnlyFile.is_64bit`.
+        """
+        return self._fVersion > 1000
+
+    @property
+    def cache_key(self):
+        """
+        String that uniquely specifies this ``TDirectory`` path, to use as part
+        of object and array cache keys.
+        """
+        return self.file.hex_uuid + ":" + self.object_path
+
+    def keys(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names of objects directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in those names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names of the objects in this ``TDirectory`` as a list.
+
+        Note that this does not read any data from the file.
+        """
+        return list(
+            self.iterkeys(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def values(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return objects directly accessible in this
+                ``TDirectory``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns objects in this ``TDirectory`` as a list.
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        return list(
+            self.itervalues(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def items(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return (name, object) pairs directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns (name, object) pairs for objects in this ``TDirectory`` as a list.
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        return list(
+            self.iteritems(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def classnames(
+        self,
+        recursive=True,
+        cycle=False,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names and classnames of objects
+                directly accessible in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names and C++ (decoded) classnames of the objects in this
+        ``TDirectory`` as a dict.
+
+        Note that this does not read any data from the file.
+        """
+        return dict(
+            self.iterclassnames(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def iterkeys(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names of objects directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in those names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names of the objects in this ``TDirectory`` as an iterator.
+
+        Note that this does not read any data from the file.
+        """
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
+        for key in self._keys:
+            if (filter_name is no_filter or filter_name(key.fName)) and (
+                filter_classname is no_filter or filter_classname(key.fClassName)
+            ):
+                yield key.name(cycle=cycle)
+
+            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
+                for k1 in key.get().iterkeys(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=no_filter,
+                    filter_classname=filter_classname,
+                ):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name is no_filter or filter_name(k3):
+                        yield k2
+
+    def itervalues(
+        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return objects directly accessible in this
+                ``TDirectory``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns objects in this ``TDirectory`` as an iterator.
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        for k, v in self.iteritems(
+            recursive=recursive,
+            cycle=False,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        ):
+            yield v
+
+    def iteritems(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return (name, object) pairs directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns (name, object) pairs for objects in this ``TDirectory`` as an iterator.
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
+        for key in self._keys:
+            if (filter_name is no_filter or filter_name(key.fName)) and (
+                filter_classname is no_filter or filter_classname(key.fClassName)
+            ):
+                yield key.name(cycle=cycle), key.get()
+
+            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
+                for k1, v in key.get().iteritems(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=no_filter,
+                    filter_classname=filter_classname,
+                ):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name is no_filter or filter_name(k3):
+                        yield k2, v
+
+    def iterclassnames(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names and classnames of objects
+                directly accessible in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names and C++ (decoded) classnames of the objects in this
+        ``TDirectory`` as an iterator of 2-tuples.
+
+        Note that this does not read any data from the file.
+        """
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_classname = uproot4._util.regularize_filter(filter_classname)
+        for key in self._keys:
+            if (filter_name is no_filter or filter_name(key.fName)) and (
+                filter_classname is no_filter or filter_classname(key.fClassName)
+            ):
+                yield key.name(cycle=cycle), key.fClassName
+
+            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
+                for k1, v in key.get().iterclassnames(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=no_filter,
+                    filter_classname=filter_classname,
+                ):
+                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name is no_filter or filter_name(k3):
+                        yield k2, v
+
+    def __len__(self):
+        return len(self._keys) + sum(
+            len(x.get())
+            for x in self._keys
+            if x.fClassName in ("TDirectory", "TDirectoryFile")
+        )
+
+    def __contains__(self, where):
+        try:
+            self.key(where)
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def __iter__(self):
+        return self.iterkeys()
+
+    def _ipython_key_completions_(self):
+        "Support key-completion in an IPython or Jupyter kernel."
+        return self.iterkeys()
+
+    def classname_of(self, where, encoded=False, version=None):
+        """
+        Returns the classname of the object selected by ``where``. If
+        ``encoded`` with a possible ``version``, return a Python classname;
+        otherwise, return a C++ (decoded) classname.
+
+        The syntax for ``where`` is the same as in square brakets, namely that
+        cycle numbers can be specified after semicolons (``;``) and nested
+        ``TDirectories`` can be specified with slashes (``/``).
+
+        Unlike the square bracket syntax, this method cannot descend into the
+        ``TBranches`` of a ``TTree``.
+
+        Note that this does not read any data from the file.
+        """
+        key = self.key(where)
+        return key.classname(encoded=encoded, version=version)
+
+    def class_of(self, where, version=None):
+        """
+        Returns a class object for the ROOT object selected by ``where``. If
+        ``version`` is specified, get a :doc:`uproot4.model.VersionedModel`;
+        otherwise, get a :doc:`uproot4.model.DispatchByVersion` or a versionless
+        :doc:`uproot4.model.Model`.
+
+        The syntax for ``where`` is the same as in square brakets, namely that
+        cycle numbers can be specified after semicolons (``;``) and nested
+        ``TDirectories`` can be specified with slashes (``/``).
+
+        Unlike the square bracket syntax, this method cannot descend into the
+        ``TBranches`` of a ``TTree``.
+
+        Note that this does not read any data from the file.
+        """
+        key = self.key(where)
+        return self._file.class_named(key.fClassName, version=version)
+
+    def streamer_of(self, where, version):
+        """
+        Returns a ``TStreamerInfo`` (:doc:`uproot4.streamers.Model_TStreamerInfo`)
+        for the object selected by ``where`` and ``version``.
+
+        The syntax for ``where`` is the same as in square brakets, namely that
+        cycle numbers can be specified after semicolons (``;``) and nested
+        ``TDirectories`` can be specified with slashes (``/``).
+
+        Unlike the square bracket syntax, this method cannot descend into the
+        ``TBranches`` of a ``TTree``.
+
+        Note that this does not read any data from the file.
+        """
+        key = self.key(where)
+        return self._file.streamer_named(key.fClassName, version)
+
+    def key(self, where):
+        """
+        Returns a ``TKey`` (:doc:`uproot4.reading.ReadOnlyKey`) for the object
+        selected by ``where``.
+
+        The syntax for ``where`` is the same as in square brakets, namely that
+        cycle numbers can be specified after semicolons (``;``) and nested
+        ``TDirectories`` can be specified with slashes (``/``).
+
+        Unlike the square bracket syntax, this method cannot descend into the
+        ``TBranches`` of a ``TTree`` (since they have no ``TKeys``).
+
+        Note that this does not read any data from the file.
+        """
+        where = uproot4._util.ensure_str(where)
+
+        if "/" in where:
+            items = where.split("/")
+            step = last = self
+            for item in items[:-1]:
+                if item != "":
+                    if isinstance(step, ReadOnlyDirectory):
+                        last = step
+                        step = step[item]
+                    else:
+                        raise uproot4.KeyInFileError(
+                            where,
+                            repr(item) + " is not a TDirectory",
+                            keys=[key.fName for key in last._keys],
+                            file_path=self._file.file_path,
+                        )
+            return step.key(items[-1])
+
+        if ";" in where:
+            at = where.rindex(";")
+            item, cycle = where[:at], where[at + 1 :]
+            try:
+                cycle = int(cycle)
+            except ValueError:
+                item, cycle = where, None
+        else:
+            item, cycle = where, None
+
+        last = None
+        for key in self._keys:
+            if key.fName == item:
+                if cycle == key.fCycle:
+                    return key
+                elif cycle is None and last is None:
+                    last = key
+                elif cycle is None and last.fCycle < key.fCycle:
+                    last = key
+
+        if last is not None:
+            return last
+        elif cycle is None:
+            raise uproot4.KeyInFileError(
+                item, cycle="any", keys=self.keys(), file_path=self._file.file_path
+            )
+        else:
+            raise uproot4.KeyInFileError(
+                item, cycle=cycle, keys=self.keys(), file_path=self._file.file_path
+            )
+
+    def __getitem__(self, where):
+        if "/" in where or ":" in where:
+            items = where.split("/")
+            step = last = self
+
+            for i, item in enumerate(items):
+                if item != "":
+                    if isinstance(step, ReadOnlyDirectory):
+                        if ":" in item and item not in step:
+                            index = item.index(":")
+                            head, tail = item[:index], item[index + 1 :]
+                            last = step
+                            step = step[head]
+                            if isinstance(step, uproot4.behaviors.TBranch.HasBranches):
+                                return step["/".join([tail] + items[i + 1 :])]
+                            else:
+                                raise uproot4.KeyInFileError(
+                                    where,
+                                    repr(head)
+                                    + " is not a TDirectory, TTree, or TBranch",
+                                    keys=[key.fName for key in last._keys],
+                                    file_path=self._file.file_path,
+                                )
+                        else:
+                            last = step
+                            step = step[item]
+
+                    elif isinstance(step, uproot4.behaviors.TBranch.HasBranches):
+                        return step["/".join(items[i:])]
+
+                    else:
+                        raise uproot4.KeyInFileError(
+                            where,
+                            repr(item) + " is not a TDirectory, TTree, or TBranch",
+                            keys=[key.fName for key in last._keys],
+                            file_path=self._file.file_path,
+                        )
+
+            return step
+
+        else:
+            return self.key(where).get()
+
+    @property
+    def fVersion(self):
+        """
+        Raw integer version of the ``TDirectory`` class.
+        """
+        return self._fVersion
+
+    @property
+    def fDatimeC(self):
+        """
+        Raw integer creation date/time.
+
+        FIXME: include a property that converts this to a Python ``datetime``.
+        """
+        return self._fDatimeC
+
+    @property
+    def fDatimeM(self):
+        """
+        Raw integer date/time of last modification.
+
+        FIXME: include a property that converts this to a Python ``datetime``.
+        """
+        return self._fDatimeM
+
+    @property
+    def fNbytesKeys(self):
+        """
+        Number of bytes in the collection of ``TKeys`` (header key, number of
+        directory keys, and directory keys).
+        """
+        return self._fNbytesKeys
+
+    @property
+    def fNbytesName(self):
+        """
+        Number of bytes in the header up to its title.
+        """
+        return self._fNbytesName
+
+    @property
+    def fSeekDir(self):
+        """
+        File seek position (int) of the ``TDirectory``.
+        """
+        return self._fSeekDir
+
+    @property
+    def fSeekParent(self):
+        """
+        File seek position (int) of the parent object (``TDirectory`` or ``TFile``).
+        """
+        return self._fSeekParent
+
+    @property
+    def fSeekKeys(self):
+        """
+        File seek position (int) to the collection of ``TKeys`` (header key,
+        number of directory keys, and directory keys).
+        """
+        return self._fSeekKeys
+
+    def hook_before_read(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyDirectory` constructor before
+        reading the ``TDirectory`` header fields.
+
+        This is the first hook called in the
+        :doc:`uproot4.reading.ReadOnlyDirecotry` constructor.
+        """
+        pass
+
+    def hook_before_interpret(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyDirectory` constructor after
+        reading the ``TDirectory`` header fields and before interpreting them.
+        """
+        pass
+
+    def hook_before_read_keys(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyDirectory` constructor after
+        interpreting the ``TDirectory`` header fields and before reading the
+        chunk of ``TKeys``.
+        """
+        pass
+
+    def hook_before_header_key(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyDirectory` constructor after
+        reading the chunk of ``TKeys`` and before interpreting the header ``TKey``.
+        """
+        pass
+
+    def hook_before_keys(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyDirectory` constructor after
+        interpreting the header ``TKey`` and number of keys, and before
+        interpeting the object ``TKeys``.
+        """
+        pass
+
+    def hook_after_keys(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyDirectory` constructor after
+        interpeting the object ``TKeys``.
+
+        This is the last hook called in the
+        :doc:`uproot4.reading.ReadOnlyDirecotry` constructor.
+        """
+        pass
+
+
 class ReadOnlyKey(object):
     _format_small = struct.Struct(">ihiIhhii")
     _format_big = struct.Struct(">ihiIhhqq")
@@ -1369,537 +2243,3 @@ class ReadOnlyKey(object):
         if self._file.object_cache is not None:
             self._file.object_cache[self.cache_key] = out
         return out
-
-
-class ReadOnlyDirectory(Mapping):
-    _format_small = struct.Struct(">hIIiiiii")
-    _format_big = struct.Struct(">hIIiiqqq")
-    _format_num_keys = struct.Struct(">i")
-
-    def __init__(self, path, cursor, context, file, parent):
-        self._path = path
-        self._cursor = cursor.copy()
-        self._file = file
-        self._parent = parent
-
-        directory_start = cursor.index
-        directory_stop = min(directory_start + self._format_big.size, file.fEND)
-        chunk = file.chunk(directory_start, directory_stop)
-
-        self.hook_before_read(
-            path=path, chunk=chunk, cursor=cursor, file=file, parent=parent,
-        )
-
-        (
-            self._fVersion,
-            self._fDatimeC,
-            self._fDatimeM,
-            self._fNbytesKeys,
-            self._fNbytesName,
-            self._fSeekDir,
-            self._fSeekParent,
-            self._fSeekKeys,
-        ) = cursor.fields(chunk, self._format_small, context, move=False)
-
-        if self.is_64bit:
-            (
-                self._fVersion,
-                self._fDatimeC,
-                self._fDatimeM,
-                self._fNbytesKeys,
-                self._fNbytesName,
-                self._fSeekDir,
-                self._fSeekParent,
-                self._fSeekKeys,
-            ) = cursor.fields(chunk, self._format_big, context)
-
-        else:
-            cursor.skip(self._format_small.size)
-
-        if self._fSeekKeys == 0:
-            self._header_key = None
-            self._keys = []
-
-        else:
-            keys_start = self._fSeekKeys
-            keys_stop = min(keys_start + self._fNbytesKeys + 8, file.fEND)
-
-            if (keys_start, keys_stop) in chunk:
-                keys_chunk = chunk
-            else:
-                keys_chunk = file.chunk(keys_start, keys_stop)
-
-            keys_cursor = uproot4.source.cursor.Cursor(self._fSeekKeys)
-
-            self.hook_before_header_key(
-                path=path,
-                chunk=chunk,
-                cursor=cursor,
-                file=file,
-                parent=parent,
-                keys_chunk=keys_chunk,
-                keys_cursor=keys_cursor,
-            )
-
-            self._header_key = ReadOnlyKey(
-                keys_chunk, keys_cursor, {}, file, self, read_strings=True
-            )
-
-            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys, context)
-
-            self.hook_before_keys(
-                path=path,
-                chunk=chunk,
-                cursor=cursor,
-                file=file,
-                parent=parent,
-                keys_chunk=keys_chunk,
-                keys_cursor=keys_cursor,
-                num_keys=num_keys,
-            )
-
-            self._keys = []
-            for i in uproot4._util.range(num_keys):
-                key = ReadOnlyKey(
-                    keys_chunk, keys_cursor, {}, file, self, read_strings=True
-                )
-                self._keys.append(key)
-
-            self.hook_after_read(
-                path=path,
-                chunk=chunk,
-                cursor=cursor,
-                file=file,
-                parent=parent,
-                keys_chunk=keys_chunk,
-                keys_cursor=keys_cursor,
-                num_keys=num_keys,
-            )
-
-    def __repr__(self):
-        return "<ReadOnlyDirectory {0} at 0x{1:012x}>".format(
-            repr("/" + "/".join(self._path)), id(self)
-        )
-
-    def hook_before_read(self, **kwargs):
-        pass
-
-    def hook_before_header_key(self, **kwargs):
-        pass
-
-    def hook_before_keys(self, **kwargs):
-        pass
-
-    def hook_after_read(self, **kwargs):
-        pass
-
-    @property
-    def path(self):
-        return self._path
-
-    @property
-    def cursor(self):
-        return self._cursor
-
-    @property
-    def file(self):
-        return self._file
-
-    @property
-    def parent(self):
-        return self._parent
-
-    @property
-    def header_key(self):
-        return self._header_key
-
-    @property
-    def is_64bit(self):
-        return self._fVersion > 1000
-
-    @property
-    def fVersion(self):
-        return self._fVersion
-
-    @property
-    def fDatimeC(self):
-        return self._fDatimeC
-
-    @property
-    def fDatimeM(self):
-        return self._fDatimeM
-
-    @property
-    def fNbytesKeys(self):
-        return self._fNbytesKeys
-
-    @property
-    def fNbytesName(self):
-        return self._fNbytesName
-
-    @property
-    def fSeekDir(self):
-        return self._fSeekDir
-
-    @property
-    def fSeekParent(self):
-        return self._fSeekParent
-
-    @property
-    def fSeekKeys(self):
-        return self._fSeekKeys
-
-    def __enter__(self):
-        """
-        Passes __enter__ to the file and returns self.
-        """
-        self._file.source.__enter__()
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        """
-        Passes __exit__ to the file, which closes physical files and shuts down
-        any other resources, such as thread pools for parallel reading.
-        """
-        self._file.source.__exit__(exception_type, exception_value, traceback)
-
-    def close(self):
-        """
-        Closes the file from which this object is derived.
-        """
-        self._file.close()
-
-    @property
-    def closed(self):
-        """
-        True if the associated file is closed; False otherwise.
-        """
-        return self._file.closed
-
-    def streamer_dependencies(self, classname, version="max"):
-        return self._file.streamer_dependencies(classname=classname, version=version)
-
-    def show_streamers(self, classname=None, stream=sys.stdout):
-        """
-        Args:
-            classname (None or str): If None, all streamers that are
-                defined in the file are shown; if a class name, only
-                this class and its dependencies are shown.
-            stream: Object with a `write` method for writing the output.
-        """
-        self._file.show_streamers(classname=classname, stream=stream)
-
-    @property
-    def cache_key(self):
-        return self.file.hex_uuid + ":" + self.object_path
-
-    @property
-    def object_path(self):
-        return "/".join(("",) + self._path + ("",)).replace("//", "/")
-
-    @property
-    def object_cache(self):
-        return self._file._object_cache
-
-    @object_cache.setter
-    def object_cache(self, value):
-        if value is None or isinstance(value, MutableMapping):
-            self._file._object_cache = value
-        elif uproot4._util.isint(value):
-            self._file._object_cache = uproot4.cache.LRUCache(value)
-        else:
-            raise TypeError("object_cache must be None, a MutableMapping, or an int")
-
-    @property
-    def array_cache(self):
-        return self._file._array_cache
-
-    @array_cache.setter
-    def array_cache(self, value):
-        if value is None or isinstance(value, MutableMapping):
-            self._file._array_cache = value
-        elif uproot4._util.isint(value) or uproot4._util.isstr(value):
-            self._file._array_cache = uproot4.cache.LRUArrayCache(value)
-        else:
-            raise TypeError(
-                "array_cache must be None, a MutableMapping, or a memory size"
-            )
-
-    def iterclassnames(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
-    ):
-        filter_name = uproot4._util.regularize_filter(filter_name)
-        filter_classname = uproot4._util.regularize_filter(filter_classname)
-        for key in self._keys:
-            if (filter_name is no_filter or filter_name(key.fName)) and (
-                filter_classname is no_filter or filter_classname(key.fClassName)
-            ):
-                yield key.name(cycle=cycle), key.fClassName
-
-            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iterclassnames(
-                    recursive=recursive,
-                    cycle=cycle,
-                    filter_name=no_filter,
-                    filter_classname=filter_classname,
-                ):
-                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
-                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name is no_filter or filter_name(k3):
-                        yield k2, v
-
-    def classnames(
-        self,
-        recursive=True,
-        cycle=False,
-        filter_name=no_filter,
-        filter_classname=no_filter,
-    ):
-        return dict(
-            self.iterclassnames(
-                recursive=recursive,
-                cycle=cycle,
-                filter_name=filter_name,
-                filter_classname=filter_classname,
-            )
-        )
-
-    def iterkeys(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
-    ):
-        filter_name = uproot4._util.regularize_filter(filter_name)
-        filter_classname = uproot4._util.regularize_filter(filter_classname)
-        for key in self._keys:
-            if (filter_name is no_filter or filter_name(key.fName)) and (
-                filter_classname is no_filter or filter_classname(key.fClassName)
-            ):
-                yield key.name(cycle=cycle)
-
-            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1 in key.get().iterkeys(
-                    recursive=recursive,
-                    cycle=cycle,
-                    filter_name=no_filter,
-                    filter_classname=filter_classname,
-                ):
-                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
-                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name is no_filter or filter_name(k3):
-                        yield k2
-
-    def keys(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
-    ):
-        return list(
-            self.iterkeys(
-                recursive=recursive,
-                cycle=cycle,
-                filter_name=filter_name,
-                filter_classname=filter_classname,
-            )
-        )
-
-    def iteritems(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
-    ):
-        filter_name = uproot4._util.regularize_filter(filter_name)
-        filter_classname = uproot4._util.regularize_filter(filter_classname)
-        for key in self._keys:
-            if (filter_name is no_filter or filter_name(key.fName)) and (
-                filter_classname is no_filter or filter_classname(key.fClassName)
-            ):
-                yield key.name(cycle=cycle), key.get()
-
-            if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iteritems(
-                    recursive=recursive,
-                    cycle=cycle,
-                    filter_name=no_filter,
-                    filter_classname=filter_classname,
-                ):
-                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
-                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
-                    if filter_name is no_filter or filter_name(k3):
-                        yield k2, v
-
-    def items(
-        self,
-        recursive=True,
-        cycle=True,
-        filter_name=no_filter,
-        filter_classname=no_filter,
-    ):
-        return list(
-            self.iteritems(
-                recursive=recursive,
-                cycle=cycle,
-                filter_name=filter_name,
-                filter_classname=filter_classname,
-            )
-        )
-
-    def itervalues(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
-    ):
-        for k, v in self.iteritems(
-            recursive=recursive,
-            cycle=False,
-            filter_name=filter_name,
-            filter_classname=filter_classname,
-        ):
-            yield v
-
-    def values(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
-    ):
-        return list(
-            self.itervalues(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_classname=filter_classname,
-            )
-        )
-
-    def __len__(self):
-        return len(self._keys) + sum(
-            len(x.get())
-            for x in self._keys
-            if x.fClassName in ("TDirectory", "TDirectoryFile")
-        )
-
-    def __contains__(self, where):
-        try:
-            self.key(where)
-        except KeyError:
-            return False
-        else:
-            return True
-
-    def __iter__(self):
-        return self.iterkeys()
-
-    def _ipython_key_completions_(self):
-        "Support key-completion in an IPython or Jupyter kernel."
-        return self.iterkeys()
-
-    def __getitem__(self, where):
-        if "/" in where or ":" in where:
-            items = where.split("/")
-            step = last = self
-
-            for i, item in enumerate(items):
-                if item != "":
-                    if isinstance(step, ReadOnlyDirectory):
-                        if ":" in item and item not in step:
-                            index = item.index(":")
-                            head, tail = item[:index], item[index + 1 :]
-                            last = step
-                            step = step[head]
-                            if isinstance(step, uproot4.behaviors.TBranch.HasBranches):
-                                return step["/".join([tail] + items[i + 1 :])]
-                            else:
-                                raise uproot4.KeyInFileError(
-                                    where,
-                                    repr(head)
-                                    + " is not a TDirectory, TTree, or TBranch",
-                                    keys=[key.fName for key in last._keys],
-                                    file_path=self._file.file_path,
-                                )
-                        else:
-                            last = step
-                            step = step[item]
-
-                    elif isinstance(step, uproot4.behaviors.TBranch.HasBranches):
-                        return step["/".join(items[i:])]
-
-                    else:
-                        raise uproot4.KeyInFileError(
-                            where,
-                            repr(item) + " is not a TDirectory, TTree, or TBranch",
-                            keys=[key.fName for key in last._keys],
-                            file_path=self._file.file_path,
-                        )
-
-            return step
-
-        else:
-            return self.key(where).get()
-
-    def classname_of(self, where, encoded=False, version=None):
-        key = self.key(where)
-        return key.classname(encoded=encoded, version=version)
-
-    def streamer_of(self, where, version):
-        key = self.key(where)
-        return self._file.streamer_named(key.fClassName, version)
-
-    def class_of(self, where, version=None):
-        key = self.key(where)
-        return self._file.class_named(key.fClassName, version=version)
-
-    def key(self, where):
-        where = uproot4._util.ensure_str(where)
-
-        if "/" in where:
-            items = where.split("/")
-            step = last = self
-            for item in items[:-1]:
-                if item != "":
-                    if isinstance(step, ReadOnlyDirectory):
-                        last = step
-                        step = step[item]
-                    else:
-                        raise uproot4.KeyInFileError(
-                            where,
-                            repr(item) + " is not a TDirectory",
-                            keys=[key.fName for key in last._keys],
-                            file_path=self._file.file_path,
-                        )
-            return step.key(items[-1])
-
-        if ";" in where:
-            at = where.rindex(";")
-            item, cycle = where[:at], where[at + 1 :]
-            try:
-                cycle = int(cycle)
-            except ValueError:
-                item, cycle = where, None
-        else:
-            item, cycle = where, None
-
-        last = None
-        for key in self._keys:
-            if key.fName == item:
-                if cycle == key.fCycle:
-                    return key
-                elif cycle is None and last is None:
-                    last = key
-                elif cycle is None and last.fCycle < key.fCycle:
-                    last = key
-
-        if last is not None:
-            return last
-        elif cycle is None:
-            raise uproot4.KeyInFileError(
-                item, cycle="any", keys=self.keys(), file_path=self._file.file_path
-            )
-        else:
-            raise uproot4.KeyInFileError(
-                item, cycle=cycle, keys=self.keys(), file_path=self._file.file_path
-            )
