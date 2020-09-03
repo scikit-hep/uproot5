@@ -1667,6 +1667,12 @@ class ReadOnlyDirectory(Mapping):
                     if filter_name is no_filter or filter_name(k3):
                         yield k2, v
 
+    def _ipython_key_completions_(self):
+        """
+        Supports key-completion in an IPython or Jupyter kernel.
+        """
+        return self.iterkeys()
+
     def __len__(self):
         return len(self._keys) + sum(
             len(x.get())
@@ -1683,10 +1689,6 @@ class ReadOnlyDirectory(Mapping):
             return True
 
     def __iter__(self):
-        return self.iterkeys()
-
-    def _ipython_key_completions_(self):
-        "Support key-completion in an IPython or Jupyter kernel."
         return self.iterkeys()
 
     def classname_of(self, where, encoded=False, version=None):

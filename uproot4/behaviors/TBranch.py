@@ -56,6 +56,1585 @@ import uproot4._util
 from uproot4._util import no_filter
 
 
+class _NoClose(object):
+    def __init__(self, hasbranches):
+        self.hasbranches = hasbranches
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        pass
+
+
+def iterate(
+    files,
+    expressions=None,
+    cut=None,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    aliases=None,
+    compute=uproot4.compute.python.ComputePython(),
+    step_size="100 MB",
+    decompression_executor=None,
+    interpretation_executor=None,
+    library="ak",
+    how=None,
+    report=False,
+    custom_classes=None,
+    allow_missing=False,
+    **options  # NOTE: a comma after **options breaks Python 2
+):
+    files = _regularize_files(files)
+    decompression_executor, interpretation_executor = _regularize_executors(
+        decompression_executor, interpretation_executor
+    )
+    library = uproot4.interpretation.library._regularize_library(library)
+
+    global_start = 0
+    for file_path, object_path in files:
+        hasbranches = _regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, options
+        )
+
+        if hasbranches is not None:
+            with hasbranches:
+                for item in hasbranches.iterate(
+                    expressions=expressions,
+                    cut=cut,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    aliases=aliases,
+                    compute=compute,
+                    step_size=step_size,
+                    decompression_executor=decompression_executor,
+                    interpretation_executor=interpretation_executor,
+                    library=library,
+                    how=how,
+                    report=report,
+                ):
+                    if report:
+                        arrays, local_report = item
+                        global_entry_start = local_report.tree_entry_start
+                        global_entry_stop = local_report.tree_entry_stop
+                        global_entry_start += global_start
+                        global_entry_stop += global_start
+                        global_report = type(local_report)(
+                            *(
+                                (global_entry_start, global_entry_stop)
+                                + local_report[2:]
+                            )
+                        )
+                        arrays = library.global_index(arrays, global_start)
+                        yield arrays, global_report
+
+                    else:
+                        arrays = library.global_index(item, global_start)
+                        yield arrays
+
+                global_start += hasbranches.num_entries
+
+
+def concatenate(
+    files,
+    expressions=None,
+    cut=None,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    aliases=None,
+    compute=uproot4.compute.python.ComputePython(),
+    decompression_executor=None,
+    interpretation_executor=None,
+    array_cache=None,
+    library="ak",
+    how=None,
+    report=False,
+    custom_classes=None,
+    allow_missing=False,
+    **options  # NOTE: a comma after **options breaks Python 2
+):
+    files = _regularize_files(files)
+    decompression_executor, interpretation_executor = _regularize_executors(
+        decompression_executor, interpretation_executor
+    )
+    library = uproot4.interpretation.library._regularize_library(library)
+
+    all_arrays = []
+    global_start = 0
+    for file_path, object_path in files:
+        hasbranches = _regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, options
+        )
+
+        if hasbranches is not None:
+            with hasbranches:
+                arrays = hasbranches.arrays(
+                    expressions=expressions,
+                    cut=cut,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    aliases=aliases,
+                    compute=compute,
+                    decompression_executor=decompression_executor,
+                    interpretation_executor=interpretation_executor,
+                    array_cache=array_cache,
+                    library=library,
+                    how=how,
+                )
+                arrays = library.global_index(arrays, global_start)
+                all_arrays.append(arrays)
+
+                global_start += hasbranches.num_entries
+
+    return library.concatenate(all_arrays)
+
+
+def lazy(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    step_size="100 MB",
+    decompression_executor=None,
+    interpretation_executor=None,
+    array_cache="100 MB",
+    library="ak",
+    report=False,
+    custom_classes=None,
+    allow_missing=False,
+    **options  # NOTE: a comma after **options breaks Python 2
+):
+    files = _regularize_files(files)
+    decompression_executor, interpretation_executor = _regularize_executors(
+        decompression_executor, interpretation_executor
+    )
+    array_cache = _regularize_array_cache(array_cache, None)
+    library = uproot4.interpretation.library._regularize_library_lazy(library)
+    import awkward1
+
+    if array_cache is not None:
+        array_cache = awkward1.layout.ArrayCache(array_cache)
+
+    real_options = dict(options)
+    if "num_workers" not in real_options:
+        real_options["num_workers"] = 1
+    if "num_fallback_workers" not in real_options:
+        real_options["num_fallback_workers"] = 1
+
+    filter_branch = uproot4._util.regularize_filter(filter_branch)
+
+    hasbranches = []
+    common_keys = None
+    is_self = []
+
+    count = 0
+    for file_path, object_path in files:
+        obj = _regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+
+        if obj is not None:
+            count += 1
+
+            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+                original = obj
+                obj = obj.parent
+                is_self.append(True)
+
+                def real_filter_branch(branch):
+                    return branch is original and filter_branch(branch)
+
+            else:
+                is_self.append(False)
+                real_filter_branch = filter_branch
+
+            hasbranches.append(obj)
+
+            new_keys = obj.keys(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=real_filter_branch,
+                full_paths=full_paths,
+            )
+
+            if common_keys is None:
+                common_keys = new_keys
+            else:
+                new_keys = set(new_keys)
+                common_keys = [key for key in common_keys if key in new_keys]
+
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {0}".format(
+                "\n    ".join(
+                    "{"
+                    + "{0}: {1}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
+        raise ValueError(
+            "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
+                "\n    ".join(
+                    "{"
+                    + "{0}: {1}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    partitions = []
+    global_offsets = [0]
+    global_cache_key = []
+    for obj in hasbranches:
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            obj.tree.num_entries, None, None
+        )
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = obj[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        entry_step = _regularize_step_size(
+            obj, step_size, entry_start, entry_stop, branchid_interpretation
+        )
+
+        for start in uproot4._util.range(entry_start, entry_stop, entry_step):
+            stop = min(start + entry_step, entry_stop)
+            length = stop - start
+
+            fields = []
+            names = []
+            for key in common_keys:
+                branch = obj[key]
+                form = branchid_interpretation[branch.cache_key].awkward_form(
+                    obj.file, index_format="i64"
+                )
+                generator = awkward1.layout.ArrayGenerator(
+                    branch.array,
+                    (
+                        None,
+                        start,
+                        stop,
+                        decompression_executor,
+                        interpretation_executor,
+                        None,
+                        "ak",
+                    ),
+                    {},
+                    uproot4._util.awkward_form_remove_uproot(awkward1, form),
+                    length,
+                )
+                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                    branch.cache_key,
+                    branchid_interpretation[branch.cache_key].cache_key,
+                    start,
+                    stop,
+                    library.name,
+                )
+                global_cache_key.append(cache_key)
+                virtualarray = awkward1.layout.VirtualArray(
+                    generator, cache=array_cache, cache_key=cache_key
+                )
+                fields.append(virtualarray)
+                names.append(key)
+
+            recordarray = awkward1.layout.RecordArray(fields, names, length)
+            partitions.append(recordarray)
+            global_offsets.append(global_offsets[-1] + length)
+
+    out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
+    out = awkward1.Array(out)
+
+    return library.wrap_awkward_lazy(
+        out, common_keys, global_offsets, ",".join(global_cache_key)
+    )
+
+
+Report = collections.namedtuple(
+    "Report",
+    [
+        "global_entry_start",
+        "global_entry_stop",
+        "tree_entry_start",
+        "tree_entry_stop",
+        "container",
+        "tree",
+        "file",
+        "file_path",
+    ],
+)
+
+
+class HasBranches(Mapping):
+    @property
+    def branches(self):
+        return self.member("fBranches")
+
+    def show(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+        name_width=20,
+        typename_width=20,
+        interpretation_width=34,
+        stream=sys.stdout,
+    ):
+        """
+        Args:
+            stream: Object with a `write` method for writing the output.
+        """
+        formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}\n".format(
+            name_width, typename_width, interpretation_width,
+        )
+
+        stream.write(formatter.format("name", "typename", "interpretation"))
+        stream.write(
+            "-" * name_width
+            + "-+-"
+            + "-" * typename_width
+            + "-+-"
+            + "-" * interpretation_width
+            + "\n"
+        )
+
+        if isinstance(self, TBranch):
+            stream.write(
+                formatter.format(self.name, self.typename, repr(self.interpretation))
+            )
+
+        for name, branch in self.iteritems(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            full_paths=full_paths,
+        ):
+            stream.write(
+                formatter.format(name, branch.typename, repr(branch.interpretation))
+            )
+
+    def arrays(
+        self,
+        expressions=None,
+        cut=None,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        aliases=None,
+        compute=uproot4.compute.python.ComputePython(),
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache=None,
+        library="ak",
+        how=None,
+    ):
+        keys = set(self.keys(recursive=True, full_paths=False))
+        if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
+            filter_branch = uproot4._util.regularize_filter(filter_branch)
+            return self.parent.arrays(
+                expressions=expressions,
+                cut=cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=lambda branch: branch is self and filter_branch(branch),
+                aliases=aliases,
+                compute=compute,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                array_cache=array_cache,
+                library=library,
+                how=how,
+            )
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.tree.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+        library = uproot4.interpretation.library._regularize_library(library)
+
+        def get_from_cache(branchname, interpretation):
+            if array_cache is not None:
+                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                    self.cache_key,
+                    branchname,
+                    interpretation.cache_key,
+                    entry_start,
+                    entry_stop,
+                    library.name,
+                )
+                return array_cache.get(cache_key)
+            else:
+                return None
+
+        aliases = _regularize_aliases(self, aliases)
+        arrays, expression_context, branchid_interpretation = _regularize_expressions(
+            self,
+            expressions,
+            cut,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            keys,
+            aliases,
+            compute,
+            get_from_cache,
+        )
+
+        ranges_or_baskets = []
+        for expression, context in expression_context:
+            branch = context.get("branch")
+            if branch is not None and not context["is_duplicate"]:
+                for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+                    entry_start, entry_stop
+                ):
+                    ranges_or_baskets.append((branch, basket_num, range_or_basket))
+
+        _ranges_or_baskets_to_arrays(
+            self,
+            ranges_or_baskets,
+            branchid_interpretation,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            library,
+            arrays,
+        )
+
+        if array_cache is not None:
+            for expression, context in expression_context:
+                branch = context.get("branch")
+                if branch is not None:
+                    interpretation = branchid_interpretation[branch.cache_key]
+                    if branch is not None:
+                        cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                            self.cache_key,
+                            expression,
+                            interpretation.cache_key,
+                            entry_start,
+                            entry_stop,
+                            library.name,
+                        )
+                    array_cache[cache_key] = arrays[branch.cache_key]
+
+        output = compute.compute_expressions(
+            arrays,
+            expression_context,
+            keys,
+            aliases,
+            self.file.file_path,
+            self.object_path,
+        )
+
+        expression_context = [
+            (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
+        ]
+
+        return library.group(output, expression_context, how)
+
+    def iterate(
+        self,
+        expressions=None,
+        cut=None,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        aliases=None,
+        compute=uproot4.compute.python.ComputePython(),
+        entry_start=None,
+        entry_stop=None,
+        step_size="100 MB",
+        decompression_executor=None,
+        interpretation_executor=None,
+        library="ak",
+        how=None,
+        report=False,
+    ):
+        keys = set(self.keys(recursive=True, full_paths=False))
+        if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
+            filter_branch = uproot4._util.regularize_filter(filter_branch)
+            for x in self.parent.iterate(
+                expressions=expressions,
+                cut=cut,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=lambda branch: branch is self and filter_branch(branch),
+                aliases=aliases,
+                compute=compute,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                step_size=step_size,
+                decompression_executor=decompression_executor,
+                interpretation_executor=interpretation_executor,
+                library=library,
+                how=how,
+                report=report,
+            ):
+                yield x
+
+        else:
+            entry_start, entry_stop = _regularize_entries_start_stop(
+                self.tree.num_entries, entry_start, entry_stop
+            )
+            decompression_executor, interpretation_executor = _regularize_executors(
+                decompression_executor, interpretation_executor
+            )
+            library = uproot4.interpretation.library._regularize_library(library)
+
+            aliases = _regularize_aliases(self, aliases)
+            (
+                arrays,
+                expression_context,
+                branchid_interpretation,
+            ) = _regularize_expressions(
+                self,
+                expressions,
+                cut,
+                filter_name,
+                filter_typename,
+                filter_branch,
+                keys,
+                aliases,
+                compute,
+                (lambda branchname, interpretation: None),
+            )
+
+            entry_step = _regularize_step_size(
+                self, step_size, entry_start, entry_stop, branchid_interpretation
+            )
+
+            if report:
+                tree = self.tree
+
+            previous_baskets = {}
+            for sub_entry_start in uproot4._util.range(
+                entry_start, entry_stop, entry_step
+            ):
+                sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
+                if sub_entry_stop - sub_entry_start == 0:
+                    continue
+
+                ranges_or_baskets = []
+                for expression, context in expression_context:
+                    branch = context.get("branch")
+                    if branch is not None and not context["is_duplicate"]:
+                        for (
+                            basket_num,
+                            range_or_basket,
+                        ) in branch.entries_to_ranges_or_baskets(
+                            sub_entry_start, sub_entry_stop
+                        ):
+                            previous_basket = previous_baskets.get(
+                                (branch.cache_key, basket_num)
+                            )
+                            if previous_basket is None:
+                                ranges_or_baskets.append(
+                                    (branch, basket_num, range_or_basket)
+                                )
+                            else:
+                                ranges_or_baskets.append(
+                                    (branch, basket_num, previous_basket)
+                                )
+
+                arrays = {}
+                _ranges_or_baskets_to_arrays(
+                    self,
+                    ranges_or_baskets,
+                    branchid_interpretation,
+                    sub_entry_start,
+                    sub_entry_stop,
+                    decompression_executor,
+                    interpretation_executor,
+                    library,
+                    arrays,
+                )
+
+                output = compute.compute_expressions(
+                    arrays,
+                    expression_context,
+                    keys,
+                    aliases,
+                    self.file.file_path,
+                    self.object_path,
+                )
+
+                expression_context = [
+                    (e, c)
+                    for e, c in expression_context
+                    if c["is_primary"] and not c["is_cut"]
+                ]
+
+                arrays = library.group(output, expression_context, how)
+
+                if report:
+                    yield arrays, Report(
+                        sub_entry_start,
+                        sub_entry_stop,
+                        sub_entry_start,
+                        sub_entry_stop,
+                        self,
+                        tree,
+                        self.file,
+                        self.file.file_path,
+                    )
+                else:
+                    yield arrays
+
+                for branch, basket_num, basket in ranges_or_baskets:
+                    previous_baskets[branch.cache_key, basket_num] = basket
+
+    def keys(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+    ):
+        return list(
+            self.iterkeys(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                full_paths=full_paths,
+            )
+        )
+
+    def values(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+    ):
+        return list(
+            self.itervalues(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+            )
+        )
+
+    def items(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+    ):
+        return list(
+            self.iteritems(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                full_paths=full_paths,
+            )
+        )
+
+    def typenames(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+    ):
+        return dict(
+            self.itertypenames(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                full_paths=full_paths,
+            )
+        )
+
+    def iterkeys(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+    ):
+        for k, v in self.iteritems(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            full_paths=full_paths,
+        ):
+            yield k
+
+    def itervalues(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+    ):
+        for k, v in self.iteritems(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            full_paths=False,
+        ):
+            yield v
+
+    def iteritems(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+    ):
+        filter_name = uproot4._util.regularize_filter(filter_name)
+        filter_typename = uproot4._util.regularize_filter(filter_typename)
+        if filter_branch is None:
+            filter_branch = no_filter
+        elif callable(filter_branch):
+            pass
+        else:
+            raise TypeError(
+                "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
+                    repr(filter_branch)
+                )
+            )
+        for branch in self.branches:
+            if (
+                (filter_name is no_filter or filter_name(branch.name))
+                and (filter_typename is no_filter or filter_typename(branch.typename))
+                and (filter_branch is no_filter or filter_branch(branch))
+            ):
+                yield branch.name, branch
+
+            if recursive:
+                for k1, v in branch.iteritems(
+                    recursive=recursive,
+                    filter_name=no_filter,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    full_paths=full_paths,
+                ):
+                    if full_paths:
+                        k2 = "{0}/{1}".format(branch.name, k1)
+                    else:
+                        k2 = k1
+                    if filter_name is no_filter or filter_name(k2):
+                        yield k2, v
+
+    def itertypenames(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        full_paths=True,
+    ):
+        for k, v in self.iteritems(
+            recursive=recursive,
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            full_paths=full_paths,
+        ):
+            yield k, v.typename
+
+    def _ipython_key_completions_(self):
+        """
+        Supports key-completion in an IPython or Jupyter kernel.
+        """
+        return self.iterkeys()
+
+    def num_entries_for(
+        self,
+        memory_size,
+        expressions=None,
+        cut=None,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        aliases=None,
+        compute=uproot4.compute.python.ComputePython(),
+        entry_start=None,
+        entry_stop=None,
+    ):
+        target_num_bytes = uproot4._util.memory_size(memory_size)
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.tree.num_entries, entry_start, entry_stop
+        )
+
+        keys = set(self.keys(recursive=True, full_paths=False))
+        aliases = _regularize_aliases(self, aliases)
+        arrays, expression_context, branchid_interpretation = _regularize_expressions(
+            self,
+            expressions,
+            cut,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            keys,
+            aliases,
+            compute,
+            (lambda branchname, interpretation: None),
+        )
+
+        return _hasbranches_num_entries_for(
+            self, target_num_bytes, entry_start, entry_stop, branchid_interpretation
+        )
+
+    def common_entry_offsets(self, branches=None):
+        """Find common breakpoints in baskets
+
+        Args:
+            branches (list): If None, compute common
+            offsets for all branches, otherwise only compute
+            common offsets for listed branch names
+
+        Returns a list of integers
+        """
+        if not len(self):
+            # assume it is a "leaf" branch
+            return self.entry_offsets
+        elif branches is None:
+            branches = self
+        else:
+            branches = (self[b] for b in branches)
+        common_offsets = None
+        for branch in branches:
+            if common_offsets is None:
+                common_offsets = set(branch.common_entry_offsets())
+            else:
+                common_offsets &= set(branch.common_entry_offsets())
+        return sorted(common_offsets)
+
+    def __getitem__(self, where):
+        original_where = where
+
+        got = self._lookup.get(original_where)
+        if got is not None:
+            return got
+
+        if uproot4._util.isint(where):
+            return self.branches[where]
+        elif uproot4._util.isstr(where):
+            where = uproot4._util.ensure_str(where)
+        else:
+            raise TypeError(
+                "where must be an integer or a string, not {0}".format(repr(where))
+            )
+
+        if where.startswith("/"):
+            recursive = False
+            where = where[1:]
+        else:
+            recursive = True
+
+        if "/" in where:
+            where = "/".join([x for x in where.split("/") if x != ""])
+            for k, v in self.iteritems(recursive=True, full_paths=True):
+                if where == k:
+                    self._lookup[original_where] = v
+                    return v
+            else:
+                raise uproot4.KeyInFileError(
+                    original_where,
+                    keys=self.keys(recursive=recursive),
+                    file_path=self._file.file_path,
+                    object_path=self.object_path,
+                )
+
+        elif recursive:
+            got = _get_recursive(self, where)
+            if got is not None:
+                self._lookup[original_where] = got
+                return got
+            else:
+                raise uproot4.KeyInFileError(
+                    original_where,
+                    file_path=self._file.file_path,
+                    keys=self.keys(recursive=recursive),
+                    object_path=self.object_path,
+                )
+
+        else:
+            for branch in self.branches:
+                if branch.name == where:
+                    self._lookup[original_where] = branch
+                    return branch
+            else:
+                raise uproot4.KeyInFileError(
+                    original_where,
+                    keys=self.keys(recursive=recursive),
+                    file_path=self._file.file_path,
+                    object_path=self.object_path,
+                )
+
+    def __iter__(self):
+        for x in self.branches:
+            yield x
+
+    def __len__(self):
+        return len(self.branches)
+
+
+_branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
+_branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\])*")
+
+
+class TBranch(HasBranches):
+    def __repr__(self):
+        if len(self) == 0:
+            return "<{0} {1} at 0x{2:012x}>".format(
+                self.classname, repr(self.name), id(self)
+            )
+        else:
+            return "<{0} {1} ({2} subbranches) at 0x{3:012x}>".format(
+                self.classname, repr(self.name), len(self), id(self)
+            )
+
+    def array(
+        self,
+        interpretation=None,
+        entry_start=None,
+        entry_stop=None,
+        decompression_executor=None,
+        interpretation_executor=None,
+        array_cache=None,
+        library="ak",
+    ):
+        if interpretation is None:
+            interpretation = self.interpretation
+        else:
+            interpretation = _regularize_interpretation(interpretation)
+        branchid_interpretation = {self.cache_key: interpretation}
+
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            self.num_entries, entry_start, entry_stop
+        )
+        decompression_executor, interpretation_executor = _regularize_executors(
+            decompression_executor, interpretation_executor
+        )
+        array_cache = _regularize_array_cache(array_cache, self._file)
+        library = uproot4.interpretation.library._regularize_library(library)
+
+        cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+            self.cache_key,
+            interpretation.cache_key,
+            entry_start,
+            entry_stop,
+            library.name,
+        )
+        if array_cache is not None:
+            got = array_cache.get(cache_key)
+            if got is not None:
+                return got
+
+        ranges_or_baskets = []
+        for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
+            entry_start, entry_stop
+        ):
+            ranges_or_baskets.append((self, basket_num, range_or_basket))
+
+        arrays = {}
+        _ranges_or_baskets_to_arrays(
+            self,
+            ranges_or_baskets,
+            branchid_interpretation,
+            entry_start,
+            entry_stop,
+            decompression_executor,
+            interpretation_executor,
+            library,
+            arrays,
+        )
+
+        if array_cache is not None:
+            array_cache[cache_key] = arrays[self.cache_key]
+
+        return arrays[self.cache_key]
+
+    def __array__(self, *args, **kwargs):
+        out = self.array(library="np")
+        if args == () and kwargs == {}:
+            return out
+        else:
+            return numpy.array(out, *args, **kwargs)
+
+    @property
+    def name(self):
+        return self.member("fName")
+
+    @property
+    def title(self):
+        return self.member("fTitle")
+
+    @property
+    def object_path(self):
+        if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
+            sep = ":"
+        else:
+            sep = "/"
+        return "{0}{1}{2}".format(self.parent.object_path, sep, self.name)
+
+    @property
+    def cache_key(self):
+        if self._cache_key is None:
+            if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
+                sep = ":"
+            else:
+                sep = "/"
+            self._cache_key = "{0}{1}{2}({3})".format(
+                self.parent.cache_key, sep, self.name, self.index
+            )
+        return self._cache_key
+
+    @property
+    def index(self):
+        for i, branch in enumerate(self.parent.branches):
+            if branch is self:
+                return i
+        else:
+            raise AssertionError
+
+    @property
+    def interpretation(self):
+        if self._interpretation is None:
+            try:
+                self._interpretation = uproot4.interpretation.identify.interpretation_of(
+                    self, {}
+                )
+            except uproot4.interpretation.identify.UnknownInterpretation as err:
+                self._interpretation = err
+        return self._interpretation
+
+    @property
+    def typename(self):
+        if self.interpretation is None:
+            return "unknown"
+        else:
+            return self.interpretation.typename
+
+    @property
+    def num_entries(self):
+        return int(self.member("fEntries"))  # or fEntryNumber?
+
+    @property
+    def entry_offsets(self):
+        if self._num_normal_baskets == 0:
+            out = [0]
+        else:
+            out = self.member("fBasketEntry")[: self._num_normal_baskets + 1].tolist()
+        num_entries_normal = out[-1]
+
+        for basket in self.embedded_baskets:
+            out.append(out[-1] + basket.num_entries)
+
+        if out[-1] != self.num_entries and self.interpretation is not None:
+            raise ValueError(
+                """entries in normal baskets ({0}) plus embedded baskets ({1}) """
+                """don't add up to expected number of entries ({2})
+in file {3}""".format(
+                    num_entries_normal,
+                    sum(basket.num_entries for basket in self.embedded_baskets),
+                    self.num_entries,
+                    self._file.file_path,
+                )
+            )
+        else:
+            return out
+
+    @property
+    def tree(self):
+        out = self
+        while not isinstance(out, uproot4.behaviors.TTree.TTree):
+            out = out.parent
+        return out
+
+    @property
+    def top_level(self):
+        return isinstance(self.parent, uproot4.behaviors.TTree.TTree)
+
+    @property
+    def streamer(self):
+        if self._streamer is None:
+            clean_name = _branch_clean_name.match(self.name).group(2)
+            clean_parentname = _branch_clean_parent_name.match(self.name)
+            fParentName = self.member("fParentName", none_if_missing=True)
+            fClassName = self.member("fClassName", none_if_missing=True)
+
+            if fParentName is not None and fParentName != "":
+                matches = self._file.streamers.get(fParentName)
+
+                if matches is not None:
+                    streamerinfo = matches[max(matches)]
+
+                    for element in streamerinfo.walk_members(self._file.streamers):
+                        if element.name == clean_name:
+                            self._streamer = element
+                            break
+
+                    if self._streamer is None and clean_parentname is not None:
+                        clean_parentname = clean_parentname.group(2)
+                        for element in streamerinfo.walk_members(self._file.streamers):
+                            if element.name == clean_parentname:
+                                substreamerinfo = self._file.streamer_named(
+                                    element.typename
+                                )
+                                for subelement in substreamerinfo.walk_members(
+                                    self._file.streamers
+                                ):
+                                    if subelement.name == clean_name:
+                                        self._streamer = subelement
+                                        break
+                                break
+
+                    if (
+                        self.parent.member("fClassName") == "TClonesArray"
+                        or self.parent.member("fClonesName", none_if_missing=True)
+                        == fParentName
+                    ):
+                        self._streamer_isTClonesArray = True
+
+            elif fClassName is not None and fClassName != "":
+                if fClassName == "TClonesArray":
+                    self._streamer_isTClonesArray = True
+                    matches = self._file.streamers.get(
+                        self.member("fClonesName", none_if_missing=True)
+                    )
+                else:
+                    matches = self._file.streamers.get(fClassName)
+
+                if matches is not None:
+                    self._streamer = matches[max(matches)]
+
+        return self._streamer
+
+    @property
+    def context(self):
+        return self._context
+
+    @property
+    def aliases(self):
+        return self.tree.aliases
+
+    @property
+    def count_branch(self):
+        leaf = self.count_leaf
+        if leaf is None:
+            return None
+        else:
+            return leaf.parent
+
+    @property
+    def count_leaf(self):
+        leaves = self.member("fLeaves")
+        if len(leaves) != 1:
+            return None
+        return leaves[0].member("fLeafCount")
+
+    @property
+    def num_baskets(self):
+        return self._num_normal_baskets + len(self.embedded_baskets)
+
+    def basket(self, basket_num):
+        if 0 <= basket_num < self._num_normal_baskets:
+            chunk, cursor = self.basket_chunk_cursor(basket_num)
+            return uproot4.models.TBasket.Model_TBasket.read(
+                chunk, cursor, {"basket_num": basket_num}, self._file, self._file, self
+            )
+        elif 0 <= basket_num < self.num_baskets:
+            return self.embedded_baskets[basket_num - self._num_normal_baskets]
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get basket {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
+
+    def basket_chunk_cursor(self, basket_num):
+        if 0 <= basket_num < self._num_normal_baskets:
+            start = self.member("fBasketSeek")[basket_num]
+            stop = start + self.basket_compressed_bytes(basket_num)
+            cursor = uproot4.source.cursor.Cursor(start)
+            chunk = self._file.source.chunk(start, stop)
+            return chunk, cursor
+        elif 0 <= basket_num < self.num_baskets:
+            raise IndexError(
+                """branch {0} has {1} normal baskets; cannot get chunk and """
+                """cursor for basket {2} because only normal baskets have cursors
+in file {3}""".format(
+                    repr(self.name),
+                    self._num_normal_baskets,
+                    basket_num,
+                    self._file.file_path,
+                )
+            )
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get cursor and chunk """
+                """for basket {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
+
+    def basket_compressed_bytes(self, basket_num):
+        if 0 <= basket_num < self._num_normal_baskets:
+            return int(self.member("fBasketBytes")[basket_num])
+        elif 0 <= basket_num < self.num_baskets:
+            return self.embedded_baskets[
+                basket_num - self._num_normal_baskets
+            ].compressed_bytes
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get basket chunk {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
+
+    def basket_key(self, basket_num):
+        start = self.member("fBasketSeek")[basket_num]
+        stop = start + uproot4.reading._key_format_big.size
+        cursor = uproot4.source.cursor.Cursor(start)
+        chunk = self._file.source.chunk(start, stop)
+        return uproot4.reading.ReadOnlyKey(
+            chunk, cursor, {}, self._file, self, read_strings=False
+        )
+
+    @property
+    def embedded_baskets(self):
+        if self._embedded_baskets is None:
+            cursor = self._cursor_baskets.copy()
+            baskets = uproot4.models.TObjArray.Model_TObjArrayOfTBaskets.read(
+                self.tree.chunk, cursor, {}, self._file, self._file, self
+            )
+            with self._embedded_baskets_lock:
+                self._embedded_baskets = []
+                for basket in baskets:
+                    if basket is not None:
+                        basket._basket_num = self._num_normal_baskets + len(
+                            self._embedded_baskets
+                        )
+                        self._embedded_baskets.append(basket)
+
+        return self._embedded_baskets
+
+    def entries_to_ranges_or_baskets(self, entry_start, entry_stop):
+        entry_offsets = self.entry_offsets
+        out = []
+        start = entry_offsets[0]
+        for basket_num, stop in enumerate(entry_offsets[1:]):
+            if entry_start < stop and start <= entry_stop:
+                if 0 <= basket_num < self._num_normal_baskets:
+                    byte_start = self.member("fBasketSeek")[basket_num]
+                    byte_stop = byte_start + self.basket_compressed_bytes(basket_num)
+                    out.append((basket_num, (byte_start, byte_stop)))
+                elif 0 <= basket_num < self.num_baskets:
+                    out.append((basket_num, self.basket(basket_num)))
+                else:
+                    raise AssertionError((self.name, basket_num))
+            start = stop
+        return out
+
+    def postprocess(self, chunk, cursor, context, file):
+        fWriteBasket = self.member("fWriteBasket")
+
+        self._lookup = {}
+        self._interpretation = None
+        self._typename = None
+        self._streamer = None
+        self._streamer_isTClonesArray = False
+        self._cache_key = None
+        self._context = dict(context)
+        self._context["breadcrumbs"] = ()
+        self._context["in_TBranch"] = True
+
+        self._num_normal_baskets = 0
+        for i, x in enumerate(self.member("fBasketSeek")):
+            if x == 0 or i == fWriteBasket:
+                break
+            self._num_normal_baskets += 1
+
+        if (
+            self.member("fEntries")
+            == self.member("fBasketEntry")[self._num_normal_baskets]
+        ):
+            self._embedded_baskets = []
+            self._embedded_baskets_lock = None
+
+        elif self.has_member("fBaskets"):
+            self._embedded_baskets = []
+            for basket in self.member("fBaskets"):
+                if basket is not None:
+                    basket._basket_num = self._num_normal_baskets + len(
+                        self._embedded_baskets
+                    )
+                    self._embedded_baskets.append(basket)
+            self._embedded_baskets_lock = None
+
+        else:
+            self._embedded_baskets = None
+            self._embedded_baskets_lock = threading.Lock()
+
+        if "fIOFeatures" in self._parent.members:
+            self._tree_iofeatures = self._parent.member("fIOFeatures").member("fIOBits")
+
+        return self
+
+    def debug(
+        self,
+        entry,
+        skip_bytes=None,
+        limit_bytes=None,
+        dtype=None,
+        offset=0,
+        stream=sys.stdout,
+    ):
+        """
+        Args:
+            entry (int): Entry number to inspect. Note: this debugging routine
+                is not applicable to data without entry offsets (nor would it
+                be needed).
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the ``entry``. May be negative, to examine the
+                byte stream before the ``entry``.
+            limit_bytes (None or int): Number of bytes to limit the output to.
+                A line of debugging output (without any ``offset``) is 20 bytes,
+                so multiples of 20 show full lines. If None, everything is
+                shown to the end of the ``entry``, which might be large.
+            dtype (None, ``numpy.dtype``, or its constructor argument): If None,
+                present only the bytes as decimal values (0-255). Otherwise,
+                also interpret them as an array of a given NumPy type.
+            offset (int): Number of bytes to skip before interpreting a ``dtype``;
+                can be helpful if the numerical values are out of phase with
+                the first byte shown. Not to be confused with ``skip_bytes``,
+                which determines which bytes are shown at all. Any ``offset``
+                values that are equivalent modulo ``dtype.itemsize`` show
+                equivalent interpretations.
+            stream (object with a ``write(str)`` method): Stream to write the
+                debugging output to.
+
+        Presents the data for one entry as raw bytes.
+
+        Example output with ``dtype=">f4"`` and ``offset=3``.
+
+        .. code-block:: raw
+
+            --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+            123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
+              {   {   {   ? --- --- ---   @ --- --- ---   @   S   3   3   @ --- --- ---   @
+                                    1.1             2.2             3.3             4.4
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                176   0   0  64 211  51  51  64 246 102 102  65  12 204 205  65  30 102 102  66
+                --- --- ---   @ ---   3   3   @ ---   f   f   A --- --- ---   A ---   f   f   B
+                        5.5             6.6             7.7             8.8             9.9
+                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
+                202   0   0  67  74   0   0  67 151 128   0 123 123
+                --- --- ---   C   J --- ---   C --- --- ---   {   {
+                      101.0           202.0           303.0
+        """
+        data = self.debug_array(entry)
+        chunk = uproot4.source.chunk.Chunk.wrap(self._file.source, data)
+        if skip_bytes is None:
+            cursor = uproot4.source.cursor.Cursor(0)
+        else:
+            cursor = uproot4.source.cursor.Cursor(skip_bytes)
+        cursor.debug(
+            chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
+        )
+
+    def debug_array(self, entry, skip_bytes=0, dtype=numpy.dtype("u1")):
+        """
+        Args:
+            entry (int): Entry number to inspect. Note: this debugging routine
+                is not applicable to data without entry offsets (nor would it
+                be needed).
+            skip_bytes (int): Number of bytes to skip before presenting the
+                remainder of the ``entry``. May be negative, to examine the
+                byte stream before the ``entry``.
+            dtype (``numpy.dtype`` or its constructor argument): Data type in
+                which to interpret the data. (The size of the array returned is
+                truncated to this ``dtype.itemsize``.)
+
+        Like :doc:`uproot4.behaviors.TBranch.TBranch.debug`, but returns a
+        NumPy array for further inspection.
+        """
+        dtype = numpy.dtype(dtype)
+        interpretation = uproot4.interpretation.jagged.AsJagged(
+            uproot4.interpretation.numerical.AsDtype("u1")
+        )
+        out = self.array(
+            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
+        )[0][skip_bytes:]
+        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+
+
+_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
+
+
+def _regularize_files_inner(files, parse_colon):
+    files2 = uproot4._util.regularize_path(files)
+
+    if uproot4._util.isstr(files2) and not uproot4._util.isstr(files):
+        parse_colon = False
+        files = files2
+
+    if uproot4._util.isstr(files):
+        if parse_colon:
+            file_path, object_path = uproot4._util.file_object_path_split(files)
+        else:
+            file_path, object_path = files, None
+
+        parsed_url = urlparse(file_path)
+
+        if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
+            yield file_path, object_path
+
+        else:
+            expanded = os.path.expanduser(file_path)
+            matches = list(_regularize_files_braces.finditer(expanded))
+            if len(matches) == 0:
+                results = [expanded]
+            else:
+                results = []
+                for combination in itertools.product(
+                    *[match.group(0)[1:-1].split(",") for match in matches]
+                ):
+                    tmp = expanded
+                    for c, m in list(zip(combination, matches))[::-1]:
+                        tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
+                    results.append(tmp)
+
+            seen = set()
+            for result in results:
+                for match in glob.glob(result):
+                    if match not in seen:
+                        yield match, object_path
+                        seen.add(match)
+
+    elif isinstance(files, HasBranches):
+        yield files, None
+
+    elif isinstance(files, dict):
+        for key, object_path in files.items():
+            for file_path, _ in _regularize_files_inner(key, False):
+                yield file_path, object_path
+
+    elif isinstance(files, Iterable):
+        for file in files:
+            for file_path, object_path in _regularize_files_inner(file, parse_colon):
+                yield file_path, object_path
+
+    else:
+        raise TypeError(
+            "'files' must be a file path/URL (string or Path), possibly with "
+            "a glob pattern (for local files), a dict of "
+            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
+            "an iterable of such things, not {0}".format(repr(files))
+        )
+
+
+def _regularize_files(files):
+    out = []
+    seen = set()
+    for file_path, object_path in _regularize_files_inner(files, True):
+        if uproot4._util.isstr(file_path):
+            if (file_path, object_path) not in seen:
+                out.append((file_path, object_path))
+                seen.add((file_path, object_path))
+        else:
+            out.append((file_path, object_path))
+
+    if len(out) == 0:
+        uproot4._util._file_not_found(files)
+
+    return out
+
+
+def _regularize_object_path(
+    file_path, object_path, custom_classes, allow_missing, options
+):
+    if isinstance(file_path, HasBranches):
+        return _NoClose(file_path)
+
+    else:
+        file = uproot4.reading.ReadOnlyFile(
+            file_path,
+            object_cache=None,
+            array_cache=None,
+            custom_classes=custom_classes,
+            **options  # NOTE: a comma after **options breaks Python 2
+        ).root_directory
+        if object_path is None:
+            trees = [k for k, v in file.classnames().items() if v == "TTree"]
+            if len(trees) == 0:
+                if allow_missing:
+                    return None
+                else:
+                    raise ValueError(
+                        """no TTrees found
+in file {0}""".format(
+                            file_path
+                        )
+                    )
+            elif len(trees) == 1:
+                return file[trees[0]]
+            else:
+                raise ValueError(
+                    """TTree object paths must be specified in the 'files' """
+                    """as {{\"filenames*.root\": \"path\"}} if any files have """
+                    """more than one TTree
+
+    TTrees: {0}
+
+in file {1}""".format(
+                        ", ".join(repr(x) for x in trees), file_path
+                    )
+                )
+
+        else:
+            if allow_missing and object_path not in file:
+                return None
+            return file[object_path]
+
+
 def _get_recursive(hasbranches, where):
     for branch in hasbranches.branches:
         if branch.name == where:
@@ -564,1581 +2143,4 @@ def _regularize_step_size(
     )
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
-    )
-
-
-Report = collections.namedtuple(
-    "Report",
-    [
-        "global_entry_start",
-        "global_entry_stop",
-        "tree_entry_start",
-        "tree_entry_stop",
-        "container",
-        "tree",
-        "file",
-        "file_path",
-    ],
-)
-
-
-class HasBranches(Mapping):
-    @property
-    def branches(self):
-        return self.member("fBranches")
-
-    def __getitem__(self, where):
-        original_where = where
-
-        got = self._lookup.get(original_where)
-        if got is not None:
-            return got
-
-        if uproot4._util.isint(where):
-            return self.branches[where]
-        elif uproot4._util.isstr(where):
-            where = uproot4._util.ensure_str(where)
-        else:
-            raise TypeError(
-                "where must be an integer or a string, not {0}".format(repr(where))
-            )
-
-        if where.startswith("/"):
-            recursive = False
-            where = where[1:]
-        else:
-            recursive = True
-
-        if "/" in where:
-            where = "/".join([x for x in where.split("/") if x != ""])
-            for k, v in self.iteritems(recursive=True, full_paths=True):
-                if where == k:
-                    self._lookup[original_where] = v
-                    return v
-            else:
-                raise uproot4.KeyInFileError(
-                    original_where,
-                    keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
-                )
-
-        elif recursive:
-            got = _get_recursive(self, where)
-            if got is not None:
-                self._lookup[original_where] = got
-                return got
-            else:
-                raise uproot4.KeyInFileError(
-                    original_where,
-                    file_path=self._file.file_path,
-                    keys=self.keys(recursive=recursive),
-                    object_path=self.object_path,
-                )
-
-        else:
-            for branch in self.branches:
-                if branch.name == where:
-                    self._lookup[original_where] = branch
-                    return branch
-            else:
-                raise uproot4.KeyInFileError(
-                    original_where,
-                    keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
-                )
-
-    def iteritems(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        full_paths=True,
-    ):
-        filter_name = uproot4._util.regularize_filter(filter_name)
-        filter_typename = uproot4._util.regularize_filter(filter_typename)
-        if filter_branch is None:
-            filter_branch = no_filter
-        elif callable(filter_branch):
-            pass
-        else:
-            raise TypeError(
-                "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
-                    repr(filter_branch)
-                )
-            )
-        for branch in self.branches:
-            if (
-                (filter_name is no_filter or filter_name(branch.name))
-                and (filter_typename is no_filter or filter_typename(branch.typename))
-                and (filter_branch is no_filter or filter_branch(branch))
-            ):
-                yield branch.name, branch
-
-            if recursive:
-                for k1, v in branch.iteritems(
-                    recursive=recursive,
-                    filter_name=no_filter,
-                    filter_typename=filter_typename,
-                    filter_branch=filter_branch,
-                    full_paths=full_paths,
-                ):
-                    if full_paths:
-                        k2 = "{0}/{1}".format(branch.name, k1)
-                    else:
-                        k2 = k1
-                    if filter_name is no_filter or filter_name(k2):
-                        yield k2, v
-
-    def items(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        full_paths=True,
-    ):
-        return list(
-            self.iteritems(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-                full_paths=full_paths,
-            )
-        )
-
-    def iterkeys(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        full_paths=True,
-    ):
-        for k, v in self.iteritems(
-            recursive=recursive,
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_branch=filter_branch,
-            full_paths=full_paths,
-        ):
-            yield k
-
-    def keys(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        full_paths=True,
-    ):
-        return list(
-            self.iterkeys(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-                full_paths=full_paths,
-            )
-        )
-
-    def _ipython_key_completions_(self):
-        "Support key-completion in an IPython or Jupyter kernel."
-        return self.iterkeys()
-
-    def itervalues(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-    ):
-        for k, v in self.iteritems(
-            recursive=recursive,
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_branch=filter_branch,
-            full_paths=False,
-        ):
-            yield v
-
-    def values(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-    ):
-        return list(
-            self.itervalues(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-            )
-        )
-
-    def itertypenames(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        full_paths=True,
-    ):
-        for k, v in self.iteritems(
-            recursive=recursive,
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_branch=filter_branch,
-            full_paths=full_paths,
-        ):
-            yield k, v.typename
-
-    def typenames(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        full_paths=True,
-    ):
-        return dict(
-            self.itertypenames(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=filter_branch,
-                full_paths=full_paths,
-            )
-        )
-
-    def __iter__(self):
-        for x in self.branches:
-            yield x
-
-    def __len__(self):
-        return len(self.branches)
-
-    def show(
-        self,
-        recursive=True,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        full_paths=True,
-        name_width=20,
-        typename_width=20,
-        interpretation_width=34,
-        stream=sys.stdout,
-    ):
-        """
-        Args:
-            stream: Object with a `write` method for writing the output.
-        """
-        formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}\n".format(
-            name_width, typename_width, interpretation_width,
-        )
-
-        stream.write(formatter.format("name", "typename", "interpretation"))
-        stream.write(
-            "-" * name_width
-            + "-+-"
-            + "-" * typename_width
-            + "-+-"
-            + "-" * interpretation_width
-            + "\n"
-        )
-
-        if isinstance(self, TBranch):
-            stream.write(
-                formatter.format(self.name, self.typename, repr(self.interpretation))
-            )
-
-        for name, branch in self.iteritems(
-            recursive=recursive,
-            filter_name=filter_name,
-            filter_typename=filter_typename,
-            filter_branch=filter_branch,
-            full_paths=full_paths,
-        ):
-            stream.write(
-                formatter.format(name, branch.typename, repr(branch.interpretation))
-            )
-
-    def arrays(
-        self,
-        expressions=None,
-        cut=None,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        aliases=None,
-        compute=uproot4.compute.python.ComputePython(),
-        entry_start=None,
-        entry_stop=None,
-        decompression_executor=None,
-        interpretation_executor=None,
-        array_cache=None,
-        library="ak",
-        how=None,
-    ):
-        keys = set(self.keys(recursive=True, full_paths=False))
-        if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
-            filter_branch = uproot4._util.regularize_filter(filter_branch)
-            return self.parent.arrays(
-                expressions=expressions,
-                cut=cut,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=lambda branch: branch is self and filter_branch(branch),
-                aliases=aliases,
-                compute=compute,
-                entry_start=entry_start,
-                entry_stop=entry_stop,
-                decompression_executor=decompression_executor,
-                interpretation_executor=interpretation_executor,
-                array_cache=array_cache,
-                library=library,
-                how=how,
-            )
-
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            self.tree.num_entries, entry_start, entry_stop
-        )
-        decompression_executor, interpretation_executor = _regularize_executors(
-            decompression_executor, interpretation_executor
-        )
-        array_cache = _regularize_array_cache(array_cache, self._file)
-        library = uproot4.interpretation.library._regularize_library(library)
-
-        def get_from_cache(branchname, interpretation):
-            if array_cache is not None:
-                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
-                    self.cache_key,
-                    branchname,
-                    interpretation.cache_key,
-                    entry_start,
-                    entry_stop,
-                    library.name,
-                )
-                return array_cache.get(cache_key)
-            else:
-                return None
-
-        aliases = _regularize_aliases(self, aliases)
-        arrays, expression_context, branchid_interpretation = _regularize_expressions(
-            self,
-            expressions,
-            cut,
-            filter_name,
-            filter_typename,
-            filter_branch,
-            keys,
-            aliases,
-            compute,
-            get_from_cache,
-        )
-
-        ranges_or_baskets = []
-        for expression, context in expression_context:
-            branch = context.get("branch")
-            if branch is not None and not context["is_duplicate"]:
-                for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
-                    entry_start, entry_stop
-                ):
-                    ranges_or_baskets.append((branch, basket_num, range_or_basket))
-
-        _ranges_or_baskets_to_arrays(
-            self,
-            ranges_or_baskets,
-            branchid_interpretation,
-            entry_start,
-            entry_stop,
-            decompression_executor,
-            interpretation_executor,
-            library,
-            arrays,
-        )
-
-        if array_cache is not None:
-            for expression, context in expression_context:
-                branch = context.get("branch")
-                if branch is not None:
-                    interpretation = branchid_interpretation[branch.cache_key]
-                    if branch is not None:
-                        cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
-                            self.cache_key,
-                            expression,
-                            interpretation.cache_key,
-                            entry_start,
-                            entry_stop,
-                            library.name,
-                        )
-                    array_cache[cache_key] = arrays[branch.cache_key]
-
-        output = compute.compute_expressions(
-            arrays,
-            expression_context,
-            keys,
-            aliases,
-            self.file.file_path,
-            self.object_path,
-        )
-
-        expression_context = [
-            (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
-        ]
-
-        return library.group(output, expression_context, how)
-
-    def num_entries_for(
-        self,
-        memory_size,
-        expressions=None,
-        cut=None,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        aliases=None,
-        compute=uproot4.compute.python.ComputePython(),
-        entry_start=None,
-        entry_stop=None,
-    ):
-        target_num_bytes = uproot4._util.memory_size(memory_size)
-
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            self.tree.num_entries, entry_start, entry_stop
-        )
-
-        keys = set(self.keys(recursive=True, full_paths=False))
-        aliases = _regularize_aliases(self, aliases)
-        arrays, expression_context, branchid_interpretation = _regularize_expressions(
-            self,
-            expressions,
-            cut,
-            filter_name,
-            filter_typename,
-            filter_branch,
-            keys,
-            aliases,
-            compute,
-            (lambda branchname, interpretation: None),
-        )
-
-        return _hasbranches_num_entries_for(
-            self, target_num_bytes, entry_start, entry_stop, branchid_interpretation
-        )
-
-    def iterate(
-        self,
-        expressions=None,
-        cut=None,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        aliases=None,
-        compute=uproot4.compute.python.ComputePython(),
-        entry_start=None,
-        entry_stop=None,
-        step_size="100 MB",
-        decompression_executor=None,
-        interpretation_executor=None,
-        library="ak",
-        how=None,
-        report=False,
-    ):
-        keys = set(self.keys(recursive=True, full_paths=False))
-        if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
-            filter_branch = uproot4._util.regularize_filter(filter_branch)
-            for x in self.parent.iterate(
-                expressions=expressions,
-                cut=cut,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=lambda branch: branch is self and filter_branch(branch),
-                aliases=aliases,
-                compute=compute,
-                entry_start=entry_start,
-                entry_stop=entry_stop,
-                step_size=step_size,
-                decompression_executor=decompression_executor,
-                interpretation_executor=interpretation_executor,
-                library=library,
-                how=how,
-                report=report,
-            ):
-                yield x
-
-        else:
-            entry_start, entry_stop = _regularize_entries_start_stop(
-                self.tree.num_entries, entry_start, entry_stop
-            )
-            decompression_executor, interpretation_executor = _regularize_executors(
-                decompression_executor, interpretation_executor
-            )
-            library = uproot4.interpretation.library._regularize_library(library)
-
-            aliases = _regularize_aliases(self, aliases)
-            (
-                arrays,
-                expression_context,
-                branchid_interpretation,
-            ) = _regularize_expressions(
-                self,
-                expressions,
-                cut,
-                filter_name,
-                filter_typename,
-                filter_branch,
-                keys,
-                aliases,
-                compute,
-                (lambda branchname, interpretation: None),
-            )
-
-            entry_step = _regularize_step_size(
-                self, step_size, entry_start, entry_stop, branchid_interpretation
-            )
-
-            if report:
-                tree = self.tree
-
-            previous_baskets = {}
-            for sub_entry_start in uproot4._util.range(
-                entry_start, entry_stop, entry_step
-            ):
-                sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
-                if sub_entry_stop - sub_entry_start == 0:
-                    continue
-
-                ranges_or_baskets = []
-                for expression, context in expression_context:
-                    branch = context.get("branch")
-                    if branch is not None and not context["is_duplicate"]:
-                        for (
-                            basket_num,
-                            range_or_basket,
-                        ) in branch.entries_to_ranges_or_baskets(
-                            sub_entry_start, sub_entry_stop
-                        ):
-                            previous_basket = previous_baskets.get(
-                                (branch.cache_key, basket_num)
-                            )
-                            if previous_basket is None:
-                                ranges_or_baskets.append(
-                                    (branch, basket_num, range_or_basket)
-                                )
-                            else:
-                                ranges_or_baskets.append(
-                                    (branch, basket_num, previous_basket)
-                                )
-
-                arrays = {}
-                _ranges_or_baskets_to_arrays(
-                    self,
-                    ranges_or_baskets,
-                    branchid_interpretation,
-                    sub_entry_start,
-                    sub_entry_stop,
-                    decompression_executor,
-                    interpretation_executor,
-                    library,
-                    arrays,
-                )
-
-                output = compute.compute_expressions(
-                    arrays,
-                    expression_context,
-                    keys,
-                    aliases,
-                    self.file.file_path,
-                    self.object_path,
-                )
-
-                expression_context = [
-                    (e, c)
-                    for e, c in expression_context
-                    if c["is_primary"] and not c["is_cut"]
-                ]
-
-                arrays = library.group(output, expression_context, how)
-
-                if report:
-                    yield arrays, Report(
-                        sub_entry_start,
-                        sub_entry_stop,
-                        sub_entry_start,
-                        sub_entry_stop,
-                        self,
-                        tree,
-                        self.file,
-                        self.file.file_path,
-                    )
-                else:
-                    yield arrays
-
-                for branch, basket_num, basket in ranges_or_baskets:
-                    previous_baskets[branch.cache_key, basket_num] = basket
-
-    def common_entry_offsets(self, branches=None):
-        """Find common breakpoints in baskets
-
-        Args:
-            branches (list): If None, compute common
-            offsets for all branches, otherwise only compute
-            common offsets for listed branch names
-
-        Returns a list of integers
-        """
-        if not len(self):
-            # assume it is a "leaf" branch
-            return self.entry_offsets
-        elif branches is None:
-            branches = self
-        else:
-            branches = (self[b] for b in branches)
-        common_offsets = None
-        for branch in branches:
-            if common_offsets is None:
-                common_offsets = set(branch.common_entry_offsets())
-            else:
-                common_offsets &= set(branch.common_entry_offsets())
-        return sorted(common_offsets)
-
-
-_branch_clean_name = re.compile(r"(.*\.)*([^\.\[\]]*)(\[.*\])*")
-_branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\])*")
-
-
-class TBranch(HasBranches):
-    def postprocess(self, chunk, cursor, context, file):
-        fWriteBasket = self.member("fWriteBasket")
-
-        self._lookup = {}
-        self._interpretation = None
-        self._typename = None
-        self._streamer = None
-        self._streamer_isTClonesArray = False
-        self._cache_key = None
-        self._context = dict(context)
-        self._context["breadcrumbs"] = ()
-        self._context["in_TBranch"] = True
-
-        self._num_normal_baskets = 0
-        for i, x in enumerate(self.member("fBasketSeek")):
-            if x == 0 or i == fWriteBasket:
-                break
-            self._num_normal_baskets += 1
-
-        if (
-            self.member("fEntries")
-            == self.member("fBasketEntry")[self._num_normal_baskets]
-        ):
-            self._embedded_baskets = []
-            self._embedded_baskets_lock = None
-
-        elif self.has_member("fBaskets"):
-            self._embedded_baskets = []
-            for basket in self.member("fBaskets"):
-                if basket is not None:
-                    basket._basket_num = self._num_normal_baskets + len(
-                        self._embedded_baskets
-                    )
-                    self._embedded_baskets.append(basket)
-            self._embedded_baskets_lock = None
-
-        else:
-            self._embedded_baskets = None
-            self._embedded_baskets_lock = threading.Lock()
-
-        if "fIOFeatures" in self._parent.members:
-            self._tree_iofeatures = self._parent.member("fIOFeatures").member("fIOBits")
-
-        return self
-
-    @property
-    def tree(self):
-        out = self
-        while not isinstance(out, uproot4.behaviors.TTree.TTree):
-            out = out.parent
-        return out
-
-    @property
-    def context(self):
-        return self._context
-
-    @property
-    def aliases(self):
-        return self.tree.aliases
-
-    @property
-    def index(self):
-        for i, branch in enumerate(self.parent.branches):
-            if branch is self:
-                return i
-        else:
-            raise AssertionError
-
-    @property
-    def cache_key(self):
-        if self._cache_key is None:
-            if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
-                sep = ":"
-            else:
-                sep = "/"
-            self._cache_key = "{0}{1}{2}({3})".format(
-                self.parent.cache_key, sep, self.name, self.index
-            )
-        return self._cache_key
-
-    @property
-    def object_path(self):
-        if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
-            sep = ":"
-        else:
-            sep = "/"
-        return "{0}{1}{2}".format(self.parent.object_path, sep, self.name)
-
-    @property
-    def entry_offsets(self):
-        if self._num_normal_baskets == 0:
-            out = [0]
-        else:
-            out = self.member("fBasketEntry")[: self._num_normal_baskets + 1].tolist()
-        num_entries_normal = out[-1]
-
-        for basket in self.embedded_baskets:
-            out.append(out[-1] + basket.num_entries)
-
-        if out[-1] != self.num_entries and self.interpretation is not None:
-            raise ValueError(
-                """entries in normal baskets ({0}) plus embedded baskets ({1}) """
-                """don't add up to expected number of entries ({2})
-in file {3}""".format(
-                    num_entries_normal,
-                    sum(basket.num_entries for basket in self.embedded_baskets),
-                    self.num_entries,
-                    self._file.file_path,
-                )
-            )
-        else:
-            return out
-
-    @property
-    def embedded_baskets(self):
-        if self._embedded_baskets is None:
-            cursor = self._cursor_baskets.copy()
-            baskets = uproot4.models.TObjArray.Model_TObjArrayOfTBaskets.read(
-                self.tree.chunk, cursor, {}, self._file, self._file, self
-            )
-            with self._embedded_baskets_lock:
-                self._embedded_baskets = []
-                for basket in baskets:
-                    if basket is not None:
-                        basket._basket_num = self._num_normal_baskets + len(
-                            self._embedded_baskets
-                        )
-                        self._embedded_baskets.append(basket)
-
-        return self._embedded_baskets
-
-    @property
-    def name(self):
-        return self.member("fName")
-
-    @property
-    def title(self):
-        return self.member("fTitle")
-
-    @property
-    def typename(self):
-        if self.interpretation is None:
-            return "unknown"
-        else:
-            return self.interpretation.typename
-
-    @property
-    def top_level(self):
-        return isinstance(self.parent, uproot4.behaviors.TTree.TTree)
-
-    @property
-    def streamer(self):
-        if self._streamer is None:
-            clean_name = _branch_clean_name.match(self.name).group(2)
-            clean_parentname = _branch_clean_parent_name.match(self.name)
-            fParentName = self.member("fParentName", none_if_missing=True)
-            fClassName = self.member("fClassName", none_if_missing=True)
-
-            if fParentName is not None and fParentName != "":
-                matches = self._file.streamers.get(fParentName)
-
-                if matches is not None:
-                    streamerinfo = matches[max(matches)]
-
-                    for element in streamerinfo.walk_members(self._file.streamers):
-                        if element.name == clean_name:
-                            self._streamer = element
-                            break
-
-                    if self._streamer is None and clean_parentname is not None:
-                        clean_parentname = clean_parentname.group(2)
-                        for element in streamerinfo.walk_members(self._file.streamers):
-                            if element.name == clean_parentname:
-                                substreamerinfo = self._file.streamer_named(
-                                    element.typename
-                                )
-                                for subelement in substreamerinfo.walk_members(
-                                    self._file.streamers
-                                ):
-                                    if subelement.name == clean_name:
-                                        self._streamer = subelement
-                                        break
-                                break
-
-                    if (
-                        self.parent.member("fClassName") == "TClonesArray"
-                        or self.parent.member("fClonesName", none_if_missing=True)
-                        == fParentName
-                    ):
-                        self._streamer_isTClonesArray = True
-
-            elif fClassName is not None and fClassName != "":
-                if fClassName == "TClonesArray":
-                    self._streamer_isTClonesArray = True
-                    matches = self._file.streamers.get(
-                        self.member("fClonesName", none_if_missing=True)
-                    )
-                else:
-                    matches = self._file.streamers.get(fClassName)
-
-                if matches is not None:
-                    self._streamer = matches[max(matches)]
-
-        return self._streamer
-
-    @property
-    def interpretation(self):
-        if self._interpretation is None:
-            try:
-                self._interpretation = uproot4.interpretation.identify.interpretation_of(
-                    self, {}
-                )
-            except uproot4.interpretation.identify.UnknownInterpretation as err:
-                self._interpretation = err
-        return self._interpretation
-
-    @property
-    def count_branch(self):
-        leaf = self.count_leaf
-        if leaf is None:
-            return None
-        else:
-            return leaf.parent
-
-    @property
-    def count_leaf(self):
-        leaves = self.member("fLeaves")
-        if len(leaves) != 1:
-            return None
-        return leaves[0].member("fLeafCount")
-
-    @property
-    def num_entries(self):
-        return int(self.member("fEntries"))  # or fEntryNumber?
-
-    @property
-    def num_baskets(self):
-        return self._num_normal_baskets + len(self.embedded_baskets)
-
-    def __repr__(self):
-        if len(self) == 0:
-            return "<{0} {1} at 0x{2:012x}>".format(
-                self.classname, repr(self.name), id(self)
-            )
-        else:
-            return "<{0} {1} ({2} subbranches) at 0x{3:012x}>".format(
-                self.classname, repr(self.name), len(self), id(self)
-            )
-
-    def basket_compressed_bytes(self, basket_num):
-        if 0 <= basket_num < self._num_normal_baskets:
-            return int(self.member("fBasketBytes")[basket_num])
-        elif 0 <= basket_num < self.num_baskets:
-            return self.embedded_baskets[
-                basket_num - self._num_normal_baskets
-            ].compressed_bytes
-        else:
-            raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket chunk {2}
-in file {3}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
-            )
-
-    def basket_chunk_cursor(self, basket_num):
-        if 0 <= basket_num < self._num_normal_baskets:
-            start = self.member("fBasketSeek")[basket_num]
-            stop = start + self.basket_compressed_bytes(basket_num)
-            cursor = uproot4.source.cursor.Cursor(start)
-            chunk = self._file.source.chunk(start, stop)
-            return chunk, cursor
-        elif 0 <= basket_num < self.num_baskets:
-            raise IndexError(
-                """branch {0} has {1} normal baskets; cannot get chunk and """
-                """cursor for basket {2} because only normal baskets have cursors
-in file {3}""".format(
-                    repr(self.name),
-                    self._num_normal_baskets,
-                    basket_num,
-                    self._file.file_path,
-                )
-            )
-        else:
-            raise IndexError(
-                """branch {0} has {1} baskets; cannot get cursor and chunk """
-                """for basket {2}
-in file {3}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
-            )
-
-    def basket_key(self, basket_num):
-        start = self.member("fBasketSeek")[basket_num]
-        stop = start + uproot4.reading._key_format_big.size
-        cursor = uproot4.source.cursor.Cursor(start)
-        chunk = self._file.source.chunk(start, stop)
-        return uproot4.reading.ReadOnlyKey(
-            chunk, cursor, {}, self._file, self, read_strings=False
-        )
-
-    def basket(self, basket_num):
-        if 0 <= basket_num < self._num_normal_baskets:
-            chunk, cursor = self.basket_chunk_cursor(basket_num)
-            return uproot4.models.TBasket.Model_TBasket.read(
-                chunk, cursor, {"basket_num": basket_num}, self._file, self._file, self
-            )
-        elif 0 <= basket_num < self.num_baskets:
-            return self.embedded_baskets[basket_num - self._num_normal_baskets]
-        else:
-            raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket {2}
-in file {3}""".format(
-                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
-                )
-            )
-
-    def entries_to_ranges_or_baskets(self, entry_start, entry_stop):
-        entry_offsets = self.entry_offsets
-        out = []
-        start = entry_offsets[0]
-        for basket_num, stop in enumerate(entry_offsets[1:]):
-            if entry_start < stop and start <= entry_stop:
-                if 0 <= basket_num < self._num_normal_baskets:
-                    byte_start = self.member("fBasketSeek")[basket_num]
-                    byte_stop = byte_start + self.basket_compressed_bytes(basket_num)
-                    out.append((basket_num, (byte_start, byte_stop)))
-                elif 0 <= basket_num < self.num_baskets:
-                    out.append((basket_num, self.basket(basket_num)))
-                else:
-                    raise AssertionError((self.name, basket_num))
-            start = stop
-        return out
-
-    def debug(
-        self,
-        entry,
-        skip_bytes=None,
-        limit_bytes=None,
-        dtype=None,
-        offset=0,
-        stream=sys.stdout,
-    ):
-        """
-        Args:
-            entry (int): Entry number to inspect. Note: this debugging routine
-                is not applicable to data without entry offsets (nor would it
-                be needed).
-            skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the ``entry``. May be negative, to examine the
-                byte stream before the ``entry``.
-            limit_bytes (None or int): Number of bytes to limit the output to.
-                A line of debugging output (without any ``offset``) is 20 bytes,
-                so multiples of 20 show full lines. If None, everything is
-                shown to the end of the ``entry``, which might be large.
-            dtype (None, ``numpy.dtype``, or its constructor argument): If None,
-                present only the bytes as decimal values (0-255). Otherwise,
-                also interpret them as an array of a given NumPy type.
-            offset (int): Number of bytes to skip before interpreting a ``dtype``;
-                can be helpful if the numerical values are out of phase with
-                the first byte shown. Not to be confused with ``skip_bytes``,
-                which determines which bytes are shown at all. Any ``offset``
-                values that are equivalent modulo ``dtype.itemsize`` show
-                equivalent interpretations.
-            stream (object with a ``write(str)`` method): Stream to write the
-                debugging output to.
-
-        Presents the data for one entry as raw bytes.
-
-        Example output with ``dtype=">f4"`` and ``offset=3``.
-
-        .. code-block:: raw
-
-            --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
-            123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
-              {   {   {   ? --- --- ---   @ --- --- ---   @   S   3   3   @ --- --- ---   @
-                                    1.1             2.2             3.3             4.4
-                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
-                176   0   0  64 211  51  51  64 246 102 102  65  12 204 205  65  30 102 102  66
-                --- --- ---   @ ---   3   3   @ ---   f   f   A --- --- ---   A ---   f   f   B
-                        5.5             6.6             7.7             8.8             9.9
-                --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
-                202   0   0  67  74   0   0  67 151 128   0 123 123
-                --- --- ---   C   J --- ---   C --- --- ---   {   {
-                      101.0           202.0           303.0
-        """
-        data = self.debug_array(entry)
-        chunk = uproot4.source.chunk.Chunk.wrap(self._file.source, data)
-        if skip_bytes is None:
-            cursor = uproot4.source.cursor.Cursor(0)
-        else:
-            cursor = uproot4.source.cursor.Cursor(skip_bytes)
-        cursor.debug(
-            chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
-        )
-
-    def debug_array(self, entry, skip_bytes=0, dtype=numpy.dtype("u1")):
-        """
-        Args:
-            entry (int): Entry number to inspect. Note: this debugging routine
-                is not applicable to data without entry offsets (nor would it
-                be needed).
-            skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the ``entry``. May be negative, to examine the
-                byte stream before the ``entry``.
-            dtype (``numpy.dtype`` or its constructor argument): Data type in
-                which to interpret the data. (The size of the array returned is
-                truncated to this ``dtype.itemsize``.)
-
-        Like :doc:`uproot4.behaviors.TBranch.TBranch.debug`, but returns a
-        NumPy array for further inspection.
-        """
-        dtype = numpy.dtype(dtype)
-        interpretation = uproot4.interpretation.jagged.AsJagged(
-            uproot4.interpretation.numerical.AsDtype("u1")
-        )
-        out = self.array(
-            interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
-        )[0][skip_bytes:]
-        return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
-
-    def __array__(self, *args, **kwargs):
-        out = self.array(library="np")
-        if args == () and kwargs == {}:
-            return out
-        else:
-            return numpy.array(out, *args, **kwargs)
-
-    def array(
-        self,
-        interpretation=None,
-        entry_start=None,
-        entry_stop=None,
-        decompression_executor=None,
-        interpretation_executor=None,
-        array_cache=None,
-        library="ak",
-    ):
-        if interpretation is None:
-            interpretation = self.interpretation
-        else:
-            interpretation = _regularize_interpretation(interpretation)
-        branchid_interpretation = {self.cache_key: interpretation}
-
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            self.num_entries, entry_start, entry_stop
-        )
-        decompression_executor, interpretation_executor = _regularize_executors(
-            decompression_executor, interpretation_executor
-        )
-        array_cache = _regularize_array_cache(array_cache, self._file)
-        library = uproot4.interpretation.library._regularize_library(library)
-
-        cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-            self.cache_key,
-            interpretation.cache_key,
-            entry_start,
-            entry_stop,
-            library.name,
-        )
-        if array_cache is not None:
-            got = array_cache.get(cache_key)
-            if got is not None:
-                return got
-
-        ranges_or_baskets = []
-        for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
-            entry_start, entry_stop
-        ):
-            ranges_or_baskets.append((self, basket_num, range_or_basket))
-
-        arrays = {}
-        _ranges_or_baskets_to_arrays(
-            self,
-            ranges_or_baskets,
-            branchid_interpretation,
-            entry_start,
-            entry_stop,
-            decompression_executor,
-            interpretation_executor,
-            library,
-            arrays,
-        )
-
-        if array_cache is not None:
-            array_cache[cache_key] = arrays[self.cache_key]
-
-        return arrays[self.cache_key]
-
-
-_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
-
-
-def _regularize_files_inner(files, parse_colon):
-    files2 = uproot4._util.regularize_path(files)
-
-    if uproot4._util.isstr(files2) and not uproot4._util.isstr(files):
-        parse_colon = False
-        files = files2
-
-    if uproot4._util.isstr(files):
-        if parse_colon:
-            file_path, object_path = uproot4._util.file_object_path_split(files)
-        else:
-            file_path, object_path = files, None
-
-        parsed_url = urlparse(file_path)
-
-        if parsed_url.scheme.upper() in uproot4._util._remote_schemes:
-            yield file_path, object_path
-
-        else:
-            expanded = os.path.expanduser(file_path)
-            matches = list(_regularize_files_braces.finditer(expanded))
-            if len(matches) == 0:
-                results = [expanded]
-            else:
-                results = []
-                for combination in itertools.product(
-                    *[match.group(0)[1:-1].split(",") for match in matches]
-                ):
-                    tmp = expanded
-                    for c, m in list(zip(combination, matches))[::-1]:
-                        tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
-                    results.append(tmp)
-
-            seen = set()
-            for result in results:
-                for match in glob.glob(result):
-                    if match not in seen:
-                        yield match, object_path
-                        seen.add(match)
-
-    elif isinstance(files, HasBranches):
-        yield files, None
-
-    elif isinstance(files, dict):
-        for key, object_path in files.items():
-            for file_path, _ in _regularize_files_inner(key, False):
-                yield file_path, object_path
-
-    elif isinstance(files, Iterable):
-        for file in files:
-            for file_path, object_path in _regularize_files_inner(file, parse_colon):
-                yield file_path, object_path
-
-    else:
-        raise TypeError(
-            "'files' must be a file path/URL (string or Path), possibly with "
-            "a glob pattern (for local files), a dict of "
-            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
-            "an iterable of such things, not {0}".format(repr(files))
-        )
-
-
-def _regularize_files(files):
-    out = []
-    seen = set()
-    for file_path, object_path in _regularize_files_inner(files, True):
-        if uproot4._util.isstr(file_path):
-            if (file_path, object_path) not in seen:
-                out.append((file_path, object_path))
-                seen.add((file_path, object_path))
-        else:
-            out.append((file_path, object_path))
-
-    if len(out) == 0:
-        uproot4._util._file_not_found(files)
-
-    return out
-
-
-def _regularize_object_path(
-    file_path, object_path, custom_classes, allow_missing, options
-):
-    if isinstance(file_path, HasBranches):
-        return _NoClose(file_path)
-
-    else:
-        file = uproot4.reading.ReadOnlyFile(
-            file_path,
-            object_cache=None,
-            array_cache=None,
-            custom_classes=custom_classes,
-            **options  # NOTE: a comma after **options breaks Python 2
-        ).root_directory
-        if object_path is None:
-            trees = [k for k, v in file.classnames().items() if v == "TTree"]
-            if len(trees) == 0:
-                if allow_missing:
-                    return None
-                else:
-                    raise ValueError(
-                        """no TTrees found
-in file {0}""".format(
-                            file_path
-                        )
-                    )
-            elif len(trees) == 1:
-                return file[trees[0]]
-            else:
-                raise ValueError(
-                    """TTree object paths must be specified in the 'files' """
-                    """as {{\"filenames*.root\": \"path\"}} if any files have """
-                    """more than one TTree
-
-    TTrees: {0}
-
-in file {1}""".format(
-                        ", ".join(repr(x) for x in trees), file_path
-                    )
-                )
-
-        else:
-            if allow_missing and object_path not in file:
-                return None
-            return file[object_path]
-
-
-class _NoClose(object):
-    def __init__(self, hasbranches):
-        self.hasbranches = hasbranches
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        pass
-
-
-def iterate(
-    files,
-    expressions=None,
-    cut=None,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    aliases=None,
-    compute=uproot4.compute.python.ComputePython(),
-    step_size="100 MB",
-    decompression_executor=None,
-    interpretation_executor=None,
-    library="ak",
-    how=None,
-    report=False,
-    custom_classes=None,
-    allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
-):
-    files = _regularize_files(files)
-    decompression_executor, interpretation_executor = _regularize_executors(
-        decompression_executor, interpretation_executor
-    )
-    library = uproot4.interpretation.library._regularize_library(library)
-
-    global_start = 0
-    for file_path, object_path in files:
-        hasbranches = _regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, options
-        )
-
-        if hasbranches is not None:
-            with hasbranches:
-                for item in hasbranches.iterate(
-                    expressions=expressions,
-                    cut=cut,
-                    filter_name=filter_name,
-                    filter_typename=filter_typename,
-                    filter_branch=filter_branch,
-                    aliases=aliases,
-                    compute=compute,
-                    step_size=step_size,
-                    decompression_executor=decompression_executor,
-                    interpretation_executor=interpretation_executor,
-                    library=library,
-                    how=how,
-                    report=report,
-                ):
-                    if report:
-                        arrays, local_report = item
-                        global_entry_start = local_report.tree_entry_start
-                        global_entry_stop = local_report.tree_entry_stop
-                        global_entry_start += global_start
-                        global_entry_stop += global_start
-                        global_report = type(local_report)(
-                            *(
-                                (global_entry_start, global_entry_stop)
-                                + local_report[2:]
-                            )
-                        )
-                        arrays = library.global_index(arrays, global_start)
-                        yield arrays, global_report
-
-                    else:
-                        arrays = library.global_index(item, global_start)
-                        yield arrays
-
-                global_start += hasbranches.num_entries
-
-
-def concatenate(
-    files,
-    expressions=None,
-    cut=None,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    aliases=None,
-    compute=uproot4.compute.python.ComputePython(),
-    decompression_executor=None,
-    interpretation_executor=None,
-    array_cache=None,
-    library="ak",
-    how=None,
-    report=False,
-    custom_classes=None,
-    allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
-):
-    files = _regularize_files(files)
-    decompression_executor, interpretation_executor = _regularize_executors(
-        decompression_executor, interpretation_executor
-    )
-    library = uproot4.interpretation.library._regularize_library(library)
-
-    all_arrays = []
-    global_start = 0
-    for file_path, object_path in files:
-        hasbranches = _regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, options
-        )
-
-        if hasbranches is not None:
-            with hasbranches:
-                arrays = hasbranches.arrays(
-                    expressions=expressions,
-                    cut=cut,
-                    filter_name=filter_name,
-                    filter_typename=filter_typename,
-                    filter_branch=filter_branch,
-                    aliases=aliases,
-                    compute=compute,
-                    decompression_executor=decompression_executor,
-                    interpretation_executor=interpretation_executor,
-                    array_cache=array_cache,
-                    library=library,
-                    how=how,
-                )
-                arrays = library.global_index(arrays, global_start)
-                all_arrays.append(arrays)
-
-                global_start += hasbranches.num_entries
-
-    return library.concatenate(all_arrays)
-
-
-def lazy(
-    files,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    recursive=True,
-    full_paths=False,
-    step_size="100 MB",
-    decompression_executor=None,
-    interpretation_executor=None,
-    array_cache="100 MB",
-    library="ak",
-    report=False,
-    custom_classes=None,
-    allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
-):
-    files = _regularize_files(files)
-    decompression_executor, interpretation_executor = _regularize_executors(
-        decompression_executor, interpretation_executor
-    )
-    array_cache = _regularize_array_cache(array_cache, None)
-    library = uproot4.interpretation.library._regularize_library_lazy(library)
-    import awkward1
-
-    if array_cache is not None:
-        array_cache = awkward1.layout.ArrayCache(array_cache)
-
-    real_options = dict(options)
-    if "num_workers" not in real_options:
-        real_options["num_workers"] = 1
-    if "num_fallback_workers" not in real_options:
-        real_options["num_fallback_workers"] = 1
-
-    filter_branch = uproot4._util.regularize_filter(filter_branch)
-
-    hasbranches = []
-    common_keys = None
-    is_self = []
-
-    count = 0
-    for file_path, object_path in files:
-        obj = _regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, real_options
-        )
-
-        if obj is not None:
-            count += 1
-
-            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-                original = obj
-                obj = obj.parent
-                is_self.append(True)
-
-                def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)
-
-            else:
-                is_self.append(False)
-                real_filter_branch = filter_branch
-
-            hasbranches.append(obj)
-
-            new_keys = obj.keys(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=real_filter_branch,
-                full_paths=full_paths,
-            )
-
-            if common_keys is None:
-                common_keys = new_keys
-            else:
-                new_keys = set(new_keys)
-                common_keys = [key for key in common_keys if key in new_keys]
-
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {0}".format(
-                "\n    ".join(
-                    "{"
-                    + "{0}: {1}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
-                    for f, o in files
-                )
-            )
-        )
-
-    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
-        raise ValueError(
-            "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
-                "\n    ".join(
-                    "{"
-                    + "{0}: {1}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
-                    for f, o in files
-                )
-            )
-        )
-
-    partitions = []
-    global_offsets = [0]
-    global_cache_key = []
-    for obj in hasbranches:
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            obj.tree.num_entries, None, None
-        )
-        branchid_interpretation = {}
-        for key in common_keys:
-            branch = obj[key]
-            branchid_interpretation[branch.cache_key] = branch.interpretation
-        entry_step = _regularize_step_size(
-            obj, step_size, entry_start, entry_stop, branchid_interpretation
-        )
-
-        for start in uproot4._util.range(entry_start, entry_stop, entry_step):
-            stop = min(start + entry_step, entry_stop)
-            length = stop - start
-
-            fields = []
-            names = []
-            for key in common_keys:
-                branch = obj[key]
-                form = branchid_interpretation[branch.cache_key].awkward_form(
-                    obj.file, index_format="i64"
-                )
-                generator = awkward1.layout.ArrayGenerator(
-                    branch.array,
-                    (
-                        None,
-                        start,
-                        stop,
-                        decompression_executor,
-                        interpretation_executor,
-                        None,
-                        "ak",
-                    ),
-                    {},
-                    uproot4._util.awkward_form_remove_uproot(awkward1, form),
-                    length,
-                )
-                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-                    branch.cache_key,
-                    branchid_interpretation[branch.cache_key].cache_key,
-                    start,
-                    stop,
-                    library.name,
-                )
-                global_cache_key.append(cache_key)
-                virtualarray = awkward1.layout.VirtualArray(
-                    generator, cache=array_cache, cache_key=cache_key
-                )
-                fields.append(virtualarray)
-                names.append(key)
-
-            recordarray = awkward1.layout.RecordArray(fields, names, length)
-            partitions.append(recordarray)
-            global_offsets.append(global_offsets[-1] + length)
-
-    out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
-    out = awkward1.Array(out)
-
-    return library.wrap_awkward_lazy(
-        out, common_keys, global_offsets, ",".join(global_cache_key)
     )
