@@ -100,7 +100,7 @@ def open(
 
         # file is now closed, even if an exception was raised in the block
 
-    Alternative entry points:
+    Other file entry points:
 
     * :doc:`uproot4.reading.open` (this function): opens one file to read any
       of its objects.

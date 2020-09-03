@@ -182,7 +182,10 @@ def iterate(
     * begin_chunk_size (memory_size; 512)
     * minimal_ttree_metadata (bool; True)
 
-    Alternative entry points:
+    See also :doc:`uproot4.behavior.TBranch.HasBranches.iterate` to iterate
+    within a single file.
+
+    Other file entry points:
 
     * :doc:`uproot4.reading.open`: opens one file to read any of its objects.
     * :doc:`uproot4.behaviors.TBranch.iterate` (this function): iterates through
@@ -354,7 +357,7 @@ def concatenate(
     * begin_chunk_size (memory_size; 512)
     * minimal_ttree_metadata (bool; True)
 
-    Alternative entry points:
+    Other file entry points:
 
     * :doc:`uproot4.reading.open`: opens one file to read any of its objects.
     * :doc:`uproot4.behaviors.TBranch.iterate`: iterates through chunks of
@@ -509,7 +512,7 @@ def lazy(
     * begin_chunk_size (memory_size; 512)
     * minimal_ttree_metadata (bool; True)
 
-    Alternative entry points:
+    Other file entry points:
 
     * :doc:`uproot4.reading.open`: opens one file to read any of its objects.
     * :doc:`uproot4.behaviors.TBranch.iterate`: iterates through chunks of
@@ -693,9 +696,10 @@ Report = collections.namedtuple(
 
 class HasBranches(Mapping):
     """
-    Abstract class for anything that "has branches," namely
+    Abstract class of behaviors for anything that "has branches," namely
     :doc:`uproot4.behavior.TTree.TTree` and
-    :doc:`uproot4.behavior.TBranch.TBranch`.
+    :doc:`uproot4.behavior.TBranch.TBranch`, which mostly consist of array-reading
+    methods.
 
     A :doc:`uproot4.behavior.TBranch.HasBranches` is a Python ``Mapping``, which
     uses square bracket syntax to extract subbranches:
@@ -707,6 +711,7 @@ class HasBranches(Mapping):
         my_tree["branch/subbranch"]
         my_tree["branch/subbranch/subsubbranch"]
     """
+
     @property
     def branches(self):
         """
@@ -873,15 +878,15 @@ class HasBranches(Mapping):
 
         .. code-block:: python
 
-            >>> array = tree.arrays(["x", "y"])    # only reads branches "x" and "y"
-            >>> array
-            <Array [{x: -41.2, y: 17.4}, ... {x: 32.5, y: 1.2}], type='2304 * {"x": float64,...'>
-            >>> array["x"]
+            >>> my_tree["x"].array()
             <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
-            >>> array["y"]
+            >>> my_tree["y"].array()
             <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
 
-        See also :doc:`uproot4.behavior.TBranch.TBranch.iterate` to iterate over
+        See also :doc:`uproot4.behavior.TBranch.TBranch.array` to read a single
+        ``TBranch`` as an array.
+
+        See also :doc:`uproot4.behavior.TBranch.HasBranches.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
         keys = set(self.keys(recursive=True, full_paths=False))
@@ -1078,8 +1083,8 @@ class HasBranches(Mapping):
             ...     # each of the following have 100 entries
             ...     array["x"], array["y"]
 
-        See also :doc:`uproot4.behavior.TBranch.TBranch.array` to read whole
-        ``TBranches`` in a single step.
+        See also :doc:`uproot4.behavior.TBranch.HasBranches.arrays` to read
+        everything in a single step, without iteration.
 
         See also :doc:`uproot4.behavior.TBranch.iterate` to iterate over many
         files.
@@ -1747,6 +1752,20 @@ _branch_clean_parent_name = re.compile(r"(.*\.)*([^\.\[\]]*)\.([^\.\[\]]*)(\[.*\
 
 
 class TBranch(HasBranches):
+    """
+    Behaviors for a ``TBranch``, which mostly consist of array-reading methods.
+
+    Since a :doc:`uproot4.behavior.TBranch.TBranch` is a
+    :doc:`uproot4.behavior.TBranch.HasBranches`, it is also a Python
+    ``Mapping``, which uses square bracket syntax to extract subbranches:
+
+    .. code-block:: python
+
+        my_branch["subbranch"]
+        my_branch["subbranch"]["subsubbranch"]
+        my_branch["subbranch/subsubbranch"]
+    """
+
     def __repr__(self):
         if len(self) == 0:
             return "<{0} {1} at 0x{2:012x}>".format(
@@ -1767,6 +1786,52 @@ class TBranch(HasBranches):
         array_cache=None,
         library="ak",
     ):
+        u"""
+        Args:
+            interpretation (None or :doc:`uproot4.interpretation.Interpretation`): An
+                interpretation of the ``TBranch`` data as an array. If None, the
+                standard :doc:`uproot4.behavior.TBranch.TBranch.interpretation`
+                is used, which is derived from
+                :doc:`uproot4.interpretation.identify.interpretation_of`.
+            entry_start (None or int): The first entry to include. If None, start
+                at zero. If negative, count from the end, like a Python slice.
+            entry_stop (None or int): The first entry to exclude (i.e. one greater
+                than the last entry to include). If None, stop at
+                :doc:`uproot4.behavior.TTree.TTree.num_entries`. If negative,
+                count from the end, like a Python slice.
+            decompression_executor (None or Executor with a ``submit`` method): The
+                executor that is used to decompress ``TBaskets``; if None, the
+                global ``uproot4.decompression_executor`` is used.
+            interpretation_executor (None or Executor with a ``submit`` method): The
+                executor that is used to interpret uncompressed ``TBasket`` data as
+                arrays; if None, the global ``uproot4.interpretation_executor`` is
+                used.
+            array_cache (None, MutableMapping, or memory size): Cache of arrays;
+                if None, do not use a cache; if a memory size, create a new cache
+                of this size.
+            library (str or :doc:`uproot4.interpretation.library.Library`): The library
+                that is used to represent arrays. Options are ``"np"`` for NumPy,
+                ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
+                CuPy.
+
+        Returns the ``TBranch`` data as an array.
+
+        For example:
+
+        .. code-block:: python
+
+            >>> array = tree
+            >>> array = tree.arrays(["x", "y"])    # only reads branches "x" and "y"
+            >>> array
+            <Array [{x: -41.2, y: 17.4}, ... {x: 32.5, y: 1.2}], type='2304 * {"x": float64,...'>
+            >>> array["x"]
+            <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
+            >>> array["y"]
+            <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
+
+        See also :doc:`uproot4.behavior.TBranch.HasBranches.arrays` to read
+        multiple ``TBranches`` into a group of arrays or an array-group.
+        """
         if interpretation is None:
             interpretation = self.interpretation
         else:

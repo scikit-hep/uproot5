@@ -11,6 +11,21 @@ import uproot4.behaviors.TBranch
 
 
 class TTree(uproot4.behaviors.TBranch.HasBranches):
+    """
+    Behaviors for a ``TTree``, which mostly consist of array-reading methods.
+
+    Since a :doc:`uproot4.behavior.TTree.TTree` is a
+    :doc:`uproot4.behavior.TBranch.HasBranches`, it is also a Python
+    ``Mapping``, which uses square bracket syntax to extract subbranches:
+
+    .. code-block:: python
+
+        my_tree["branch"]
+        my_tree["branch"]["subbranch"]
+        my_tree["branch/subbranch"]
+        my_tree["branch/subbranch/subsubbranch"]
+    """
+
     @property
     def name(self):
         return self.member("fName")
