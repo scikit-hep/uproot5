@@ -137,6 +137,9 @@ class Interpretation(object):
         """
         Called in :doc:`uproot4.interpretation.Interpretation.basket_array`,
         before any interpretation.
+
+        This is the first hook called in
+        :doc:`uproot4.interpretation.Interpretation.basket_array`.
         """
         pass
 
@@ -144,6 +147,9 @@ class Interpretation(object):
         """
         Called in :doc:`uproot4.interpretation.Interpretation.basket_array`,
         after all interpretation.
+
+        This is the last hook called in
+        :doc:`uproot4.interpretation.Interpretation.basket_array`.
         """
         pass
 
@@ -151,6 +157,9 @@ class Interpretation(object):
         """
         Called in :doc:`uproot4.interpretation.Interpretation.final_array`,
         before any trimming, finalization, or grouping.
+
+        This is the first hook called in
+        :doc:`uproot4.interpretation.Interpretation.final_array`.
         """
         pass
 
@@ -166,5 +175,8 @@ class Interpretation(object):
         """
         Called in :doc:`uproot4.interpretation.Interpretation.final_array`,
         after all trimming, finalization, and grouping.
+
+        This is the last hook called in
+        :doc:`uproot4.interpretation.Interpretation.final_array`.
         """
         pass

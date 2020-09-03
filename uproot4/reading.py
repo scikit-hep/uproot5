@@ -485,6 +485,9 @@ class ReadOnlyFile(CommonFileMethods):
         * num_fallback_workers (int; 10)
         * begin_chunk_size (memory_size; 512)
         * minimal_ttree_metadata (bool; True)
+
+    See the `ROOT TFile documentation <https://root.cern.ch/doc/master/classTFile.html>`__
+    for a specification of ``TFile`` header fields.
     """
 
     def __init__(
@@ -769,9 +772,7 @@ in file {1}""".format(
             else:
                 key_cursor = uproot4.source.cursor.Cursor(self._fSeekInfo)
                 key_start = self._fSeekInfo
-                key_stop = min(
-                    self._fSeekInfo + ReadOnlyKey._format_big.size, self._fEND
-                )
+                key_stop = min(self._fSeekInfo + _key_format_big.size, self._fEND)
                 key_chunk = self.chunk(key_start, key_stop)
 
                 self.hook_before_read_streamer_key(
@@ -1116,6 +1117,11 @@ in file {1}""".format(
         pass
 
 
+_directory_format_small = struct.Struct(">hIIiiiii")
+_directory_format_big = struct.Struct(">hIIiiqqq")
+_directory_format_num_keys = struct.Struct(">i")
+
+
 class ReadOnlyDirectory(Mapping):
     """
     Args:
@@ -1183,11 +1189,10 @@ class ReadOnlyDirectory(Mapping):
       (name, classname) pairs.
 
     with the same parameters.
-    """
 
-    _format_small = struct.Struct(">hIIiiiii")
-    _format_big = struct.Struct(">hIIiiqqq")
-    _format_num_keys = struct.Struct(">i")
+    See the `ROOT TDirectoryFile documentation <https://root.cern.ch/doc/master/classTDirectoryFile.html>`__
+    for a specification of ``TDirectory`` header fields (in an image).
+    """
 
     def __init__(self, path, cursor, context, file, parent):
         self._path = path
@@ -1198,7 +1203,7 @@ class ReadOnlyDirectory(Mapping):
         self.hook_before_read(cursor=cursor)
 
         directory_start = cursor.index
-        directory_stop = min(directory_start + self._format_big.size, file.fEND)
+        directory_stop = min(directory_start + _directory_format_big.size, file.fEND)
         chunk = file.chunk(directory_start, directory_stop)
 
         self.hook_before_interpret(chunk=chunk, cursor=cursor)
@@ -1212,7 +1217,7 @@ class ReadOnlyDirectory(Mapping):
             self._fSeekDir,
             self._fSeekParent,
             self._fSeekKeys,
-        ) = cursor.fields(chunk, self._format_small, context, move=False)
+        ) = cursor.fields(chunk, _directory_format_small, context, move=False)
 
         if self.is_64bit:
             (
@@ -1224,10 +1229,10 @@ class ReadOnlyDirectory(Mapping):
                 self._fSeekDir,
                 self._fSeekParent,
                 self._fSeekKeys,
-            ) = cursor.fields(chunk, self._format_big, context)
+            ) = cursor.fields(chunk, _directory_format_big, context)
 
         else:
-            cursor.skip(self._format_small.size)
+            cursor.skip(_directory_format_small.size)
 
         if self._fSeekKeys == 0:
             self._header_key = None
@@ -1257,7 +1262,9 @@ class ReadOnlyDirectory(Mapping):
             # header_key is never used, but we do need to seek past it
             ReadOnlyKey(keys_chunk, keys_cursor, {}, file, self, read_strings=True)
 
-            num_keys = keys_cursor.field(keys_chunk, self._format_num_keys, context)
+            num_keys = keys_cursor.field(
+                keys_chunk, _directory_format_num_keys, context
+            )
 
             self.hook_before_keys(
                 chunk=chunk,
@@ -1956,16 +1963,36 @@ class ReadOnlyDirectory(Mapping):
         pass
 
 
+_key_format_small = struct.Struct(">ihiIhhii")
+_key_format_big = struct.Struct(">ihiIhhqq")
+
+
 class ReadOnlyKey(object):
-    _format_small = struct.Struct(">ihiIhhii")
-    _format_big = struct.Struct(">ihiIhhqq")
+    """
+    Args:
+        chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
+            from the file :doc:`uproot4.source.chunk.Source`.
+        cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
+            the :doc:`uproot4.reading.ReadOnlyFile`.
+        context (dict): Auxiliary data used in deserialization.
+        file (:doc:`uproot4.reading.ReadOnlyFile`): The open file object.
+        parent (None or calling object): The previous ``read`` in the
+            recursive descent.
+        read_strings (bool): If True, interpret the `fClassName`, `fName`, and
+            `fTitle` attributes; otherwise, ignore them.
+
+    Represents a ``TKey`` in a ROOT file, which aren't often accessed by users.
+
+    See the `ROOT TKey documentation <https://root.cern.ch/doc/master/classTKey.html>`__
+    for a specification of ``TKey`` header fields.
+    """
 
     def __init__(self, chunk, cursor, context, file, parent, read_strings=False):
         self._cursor = cursor.copy()
         self._file = file
         self._parent = parent
 
-        self.hook_before_read(
+        self.hook_before_interpret(
             chunk=chunk,
             cursor=cursor,
             context=context,
@@ -1983,7 +2010,7 @@ class ReadOnlyKey(object):
             self._fCycle,
             self._fSeekKey,
             self._fSeekPdir,
-        ) = cursor.fields(chunk, self._format_small, context, move=False)
+        ) = cursor.fields(chunk, _key_format_small, context, move=False)
 
         if self.is_64bit:
             (
@@ -1995,13 +2022,13 @@ class ReadOnlyKey(object):
                 self._fCycle,
                 self._fSeekKey,
                 self._fSeekPdir,
-            ) = cursor.fields(chunk, self._format_big, context)
+            ) = cursor.fields(chunk, _key_format_big, context)
 
         else:
-            cursor.skip(self._format_small.size)
+            cursor.skip(_key_format_small.size)
 
         if read_strings:
-            self.hook_before_read_strings(
+            self.hook_before_strings(
                 chunk=chunk,
                 cursor=cursor,
                 context=context,
@@ -2019,7 +2046,7 @@ class ReadOnlyKey(object):
             self._fName = None
             self._fTitle = None
 
-        self.hook_after_read(
+        self.hook_after_interpret(
             chunk=chunk,
             cursor=cursor,
             context=context,
@@ -2037,137 +2064,70 @@ class ReadOnlyKey(object):
             nameclass, self.data_cursor.index, id(self)
         )
 
-    def hook_before_read(self, **kwargs):
-        pass
-
-    def hook_before_read_strings(self, **kwargs):
-        pass
-
-    def hook_after_read(self, **kwargs):
-        pass
-
     @property
     def cursor(self):
+        """
+        A :doc:`uproot4.source.cursor.Cursor` pointing to the seek point in the
+        file where this ``TKey`` starts (before its header fields).
+        """
         return self._cursor
 
     @property
+    def data_cursor(self):
+        """
+        A :doc:`uproot4.source.cursor.Cursor` pointing to the seek point in the
+        file where the data begins (the object to be read, after its copy of the
+        ``TKey`` and before the object's number of bytes/version header).
+        """
+        return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
+
+    @property
     def file(self):
+        """
+        The :doc:`uproot4.reading.ReadOnlyFile` in which this ``TKey`` resides.
+        """
         return self._file
 
     @property
     def parent(self):
+        """
+        The object that was deserialized before this one in recursive descent,
+        usually the containing object (or the container's container).
+        """
         return self._parent
 
-    @property
-    def data_compressed_bytes(self):
-        return self._fNbytes - self._fKeylen
-
-    @property
-    def data_uncompressed_bytes(self):
-        return self._fObjlen
-
-    @property
-    def is_compressed(self):
-        return self.data_compressed_bytes != self.data_uncompressed_bytes
-
-    @property
-    def is_64bit(self):
-        return self._fVersion > 1000
-
     def name(self, cycle=False):
+        """
+        The name of this ``TKey``, with semicolon (``;``) and cycle number if
+        ``cycle`` is True.
+        """
         if cycle:
             return "{0};{1}".format(self.fName, self.fCycle)
         else:
             return self.fName
 
     def classname(self, encoded=False, version=None):
+        """
+        The classname of the object pointed to by this ``TKey``.
+
+        If ``encoded`` is True, the classname is a Python (encoded) classname
+        (optionally with ``version`` number).
+
+        If ``encoded`` is False, the classname is a C++ (decoded) classname.
+        """
         if encoded:
             return uproot4.model.classname_encode(self.fClassName, version=version)
         else:
             return self.fClassName
 
     @property
-    def fNbytes(self):
-        return self._fNbytes
-
-    @property
-    def fVersion(self):
-        return self._fVersion
-
-    @property
-    def fObjlen(self):
-        return self._fObjlen
-
-    @property
-    def fDatime(self):
-        return self._fDatime
-
-    @property
-    def fKeylen(self):
-        return self._fKeylen
-
-    @property
-    def fCycle(self):
-        return self._fCycle
-
-    @property
-    def fSeekKey(self):
-        return self._fSeekKey
-
-    @property
-    def fSeekPdir(self):
-        return self._fSeekPdir
-
-    @property
-    def fClassName(self):
-        return self._fClassName
-
-    @property
-    def fName(self):
-        return self._fName
-
-    @property
-    def fTitle(self):
-        return self._fTitle
-
-    @property
-    def data_cursor(self):
-        return uproot4.source.cursor.Cursor(self._fSeekKey + self._fKeylen)
-
-    def get_uncompressed_chunk_cursor(self):
-        cursor = uproot4.source.cursor.Cursor(0, origin=-self._fKeylen)
-
-        data_start = self.data_cursor.index
-        data_stop = data_start + self.data_compressed_bytes
-        chunk = self._file.chunk(data_start, data_stop)
-
-        if self.is_compressed:
-            uncompressed_chunk = uproot4.compression.decompress(
-                chunk,
-                self.data_cursor,
-                {},
-                self.data_compressed_bytes,
-                self.data_uncompressed_bytes,
-            )
-        else:
-            uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
-                chunk.source,
-                chunk.get(
-                    data_start,
-                    data_stop,
-                    self.data_cursor,
-                    {"breadcrumbs": (), "TKey": self},
-                ),
-            )
-
-        return uncompressed_chunk, cursor
-
-    @property
-    def cache_key(self):
-        return "{0}:{1}".format(self._file.hex_uuid, self._fSeekKey)
-
-    @property
     def object_path(self):
+        """
+        Object path of the object pointed to by this ``TKey``.
+
+        If an object path is not known (e.g. the object does not reside in a
+        ``TDirectory``), this returns a message with the raw seek position.
+        """
         if isinstance(self._parent, ReadOnlyDirectory):
             return "{0}{1};{2}".format(
                 self._parent.object_path, self.name(False), self._fCycle
@@ -2175,7 +2135,70 @@ class ReadOnlyKey(object):
         else:
             return "(seek pos {0})/{1}".format(self.data_cursor.index, self.name(False))
 
+    @property
+    def cache_key(self):
+        """
+        String that uniquely specifies this ``TKey``, to use as part
+        of object and array cache keys.
+        """
+        return "{0}:{1}".format(self._file.hex_uuid, self._fSeekKey)
+
+    @property
+    def is_64bit(self):
+        """
+        True if the ``TKey`` is 64-bit ready; False otherwise.
+
+        This refers to seek points like
+        :doc:`uproot4.reading.ReadOnlyKey.fSeekKey` being 64-bit integers,
+        rather than 32-bit.
+        """
+        return self._fVersion > 1000
+
+    @property
+    def is_compressed(self):
+        """
+        True if the object is compressed; False otherwise.
+
+        Note: compression is determined by comparing ``fObjlen`` and
+        ``fNbytes - fKeylen``; if they are the same, the object is uncompressed.
+        """
+        return self.data_compressed_bytes != self.data_uncompressed_bytes
+
+    @property
+    def data_uncompressed_bytes(self):
+        """
+        Number of bytes in the uncompressed object (excluding any keys)
+
+        This is equal to :doc:`uproot4.reading.ReadOnlyKey.fObjlen``.
+        """
+        return self._fObjlen
+
+    @property
+    def data_compressed_bytes(self):
+        """
+        Number of bytes in the compressed object (excluding any keys)
+
+        This is equal to :doc:`uproot4.reading.ReadOnlyKey.fNbytes``
+        minus :doc:`uproot4.reading.ReadOnlyKey.fKeylen``.
+        """
+        return self._fNbytes - self._fKeylen
+
     def get(self):
+        """
+        Returns the object pointed to by this ``TKey``, decompressing it if
+        necessary.
+
+        If the first attempt to deserialize the object fails with
+        :doc:`uproot4.deserialization.DeserializationError` and any of the
+        models used in that attempt were predefined (not from
+        :doc:`uproot4.reading.ReadOnlyFile.streamers`), this method will
+        try again with the file's own
+        :doc:`uproot4.reading.ReadOnlyFile.streamers`.
+
+        (Some ROOT files do have classes that don't match the standard
+        ``TStreamerInfo``; they may have been produced from private builds of
+        ROOT between official releases.)
+        """
         if self._file.object_cache is not None:
             out = self._file.object_cache.get(self.cache_key)
             if out is not None:
@@ -2245,3 +2268,155 @@ class ReadOnlyKey(object):
         if self._file.object_cache is not None:
             self._file.object_cache[self.cache_key] = out
         return out
+
+    def get_uncompressed_chunk_cursor(self):
+        """
+        Returns an uncompressed :doc:`uproot4.source.chunk.Chunk` and
+        :doc:`uproot4.source.cursor.Cursor` for the object pointed to by this
+        ``TKey`` as a 2-tuple.
+        """
+        cursor = uproot4.source.cursor.Cursor(0, origin=-self._fKeylen)
+
+        data_start = self.data_cursor.index
+        data_stop = data_start + self.data_compressed_bytes
+        chunk = self._file.chunk(data_start, data_stop)
+
+        if self.is_compressed:
+            uncompressed_chunk = uproot4.compression.decompress(
+                chunk,
+                self.data_cursor,
+                {},
+                self.data_compressed_bytes,
+                self.data_uncompressed_bytes,
+            )
+        else:
+            uncompressed_chunk = uproot4.source.chunk.Chunk.wrap(
+                chunk.source,
+                chunk.get(
+                    data_start,
+                    data_stop,
+                    self.data_cursor,
+                    {"breadcrumbs": (), "TKey": self},
+                ),
+            )
+
+        return uncompressed_chunk, cursor
+
+    @property
+    def fNbytes(self):
+        """
+        The total number of bytes in the compressed object and ``TKey``.
+        """
+        return self._fNbytes
+
+    @property
+    def fVersion(self):
+        """
+        Raw integer version of the ``TKey`` class.
+        """
+        return self._fVersion
+
+    @property
+    def fObjlen(self):
+        """
+        The number of bytes in the uncompressed object, not including its
+        ``TKey``.
+        """
+        return self._fObjlen
+
+    @property
+    def fDatime(self):
+        """
+        Raw integer date/time when the object was written.
+
+        FIXME: include a property that converts this to a Python ``datetime``.
+        """
+        return self._fDatime
+
+    @property
+    def fKeylen(self):
+        """
+        The number of bytes in the ``TKey``, not including the object.
+        """
+        return self._fKeylen
+
+    @property
+    def fCycle(self):
+        """
+        The cycle number of the object, which disambiguates different versions
+        of an object with the same name.
+        """
+        return self._fCycle
+
+    @property
+    def fSeekKey(self):
+        """
+        File seek position (int) pointing to a second copy of this ``TKey``, just
+        before the object itself.
+        """
+        return self._fSeekKey
+
+    @property
+    def fSeekPdir(self):
+        """
+        File seek position (int) to the ``TDirectory`` in which this object
+        resides.
+        """
+        return self._fSeekPdir
+
+    @property
+    def fClassName(self):
+        """
+        The C++ (decoded) classname of the object or None if the
+        :doc:`uproot4.reading.ReadOnlyKey` was constructed with
+        ``read_strings=False``.
+        """
+        return self._fClassName
+
+    @property
+    def fName(self):
+        """
+        The name of the object or None if the :doc:`uproot4.reading.ReadOnlyKey`
+        was constructed with ``read_strings=False``.
+        """
+        return self._fName
+
+    @property
+    def fTitle(self):
+        """
+        The title of the object or None if the :doc:`uproot4.reading.ReadOnlyKey`
+        was constructed with ``read_strings=False``.
+        """
+        return self._fTitle
+
+    def hook_before_interpret(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyKey` constructor before
+        interpeting anything.
+
+        This is the first hook called in the
+        :doc:`uproot4.reading.ReadOnlyKey` constructor.
+        """
+        pass
+
+    def hook_before_strings(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyKey` constructor after
+        interpeting the header and before interpreting
+        :doc:`uproot4.reading.ReadOnlyKey.fClassName`,
+        :doc:`uproot4.reading.ReadOnlyKey.fName`, and
+        :doc:`uproot4.reading.ReadOnlyKey.fTitle`.
+
+        Only called if ``read_strings=True`` is passed to the constructor.
+        """
+        pass
+
+    def hook_after_interpret(self, **kwargs):
+        """
+        Called in the :doc:`uproot4.reading.ReadOnlyKey` constructor after
+        interpeting everything.
+
+        This is the last hook called in the
+        :doc:`uproot4.reading.ReadOnlyKey` constructor.
+        """
+        pass

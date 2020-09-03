@@ -1508,7 +1508,7 @@ in file {3}""".format(
 
     def basket_key(self, basket_num):
         start = self.member("fBasketSeek")[basket_num]
-        stop = start + uproot4.reading.ReadOnlyKey._format_big.size
+        stop = start + uproot4.reading._key_format_big.size
         cursor = uproot4.source.cursor.Cursor(start)
         chunk = self._file.source.chunk(start, stop)
         return uproot4.reading.ReadOnlyKey(
