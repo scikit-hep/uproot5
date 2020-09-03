@@ -56,8 +56,8 @@ def open(
             if None, do not use a cache; if an int, create a new cache of this
             size.
         array_cache (None, MutableMapping, or memory size): Cache of arrays
-            drawn from TTrees; if None, do not use a cache; if a memory size,
-            create a new cache of this size.
+            drawn from ``TTrees``; if None, do not use a cache; if a memory
+            size, create a new cache of this size.
         custom_classes (None or MutableMapping): If None, classes come from
             uproot4.classes; otherwise, a container of class definitions that
             is both used to fill with new classes and search for dependencies.
@@ -77,15 +77,15 @@ def open(
 
     Options (type; default):
 
-        * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
-        * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
-        * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
-        * timeout (float for HTTP, int for XRootD; 30)
-        * max_num_elements (None or int; None)
-        * num_workers (int; 1)
-        * num_fallback_workers (int; 10)
-        * begin_chunk_size (memory_size; 512)
-        * minimal_ttree_metadata (bool; True)
+    * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+    * timeout (float for HTTP, int for XRootD; 30)
+    * max_num_elements (None or int; None)
+    * num_workers (int; 1)
+    * num_fallback_workers (int; 10)
+    * begin_chunk_size (memory_size; 512)
+    * minimal_ttree_metadata (bool; True)
 
     Any object derived from a ROOT file is a context manager (works in Python's
     ``with`` statement) that closes the file when exiting the ``with`` block.
@@ -100,14 +100,16 @@ def open(
 
         # file is now closed, even if an exception was raised in the block
 
-    If, instead of opening a single file to read anything from it, you want to
-    open many files to read arrays, use one of
+    Alternative entry points:
 
+    * :doc:`uproot4.reading.open` (this function): opens one file to read any
+      of its objects.
     * :doc:`uproot4.behaviors.TBranch.iterate`: iterates through chunks of
-      contiguous entries.
+      contiguous entries in ``TTrees``.
     * :doc:`uproot4.behaviors.TBranch.concatenate`: returns a single concatenated
-      array (if you have enough memory for it).
-    * :doc:`uproot4.behaviors.TBranch.lazy`: returns a lazily read array.
+      array from ``TTrees``.
+    * :doc:`uproot4.behaviors.TBranch.lazy`: returns a lazily read array from
+      ``TTrees``.
     """
 
     if isinstance(path, dict) and len(path) == 1:
@@ -485,15 +487,15 @@ class ReadOnlyFile(CommonFileMethods):
 
     Options (type; default):
 
-        * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
-        * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
-        * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
-        * timeout (float for HTTP, int for XRootD; 30)
-        * max_num_elements (None or int; None)
-        * num_workers (int; 1)
-        * num_fallback_workers (int; 10)
-        * begin_chunk_size (memory_size; 512)
-        * minimal_ttree_metadata (bool; True)
+    * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+    * timeout (float for HTTP, int for XRootD; 30)
+    * max_num_elements (None or int; None)
+    * num_workers (int; 1)
+    * num_fallback_workers (int; 10)
+    * begin_chunk_size (memory_size; 512)
+    * minimal_ttree_metadata (bool; True)
 
     See the `ROOT TFile documentation <https://root.cern.ch/doc/master/classTFile.html>`__
     for a specification of ``TFile`` header fields.
