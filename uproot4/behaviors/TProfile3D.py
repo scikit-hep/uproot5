@@ -15,6 +15,7 @@ class TProfile3D(uproot4.behaviors.TProfile.Profile):
     """
     Behaviors for three-dimensional profiles: ROOT's ``TProfile3D``.
     """
+
     no_inherit = (uproot4.behaviors.TH3.TH3,)
 
     def edges(self, axis):

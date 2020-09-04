@@ -15,6 +15,7 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
     """
     Behaviors for two-dimensional profiles: ROOT's ``TProfile2D``.
     """
+
     no_inherit = (uproot4.behaviors.TH2.TH2,)
 
     def edges(self, axis):

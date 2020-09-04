@@ -18,6 +18,7 @@ class TH3(uproot4.behaviors.TH1.Histogram):
     Behaviors for three-dimensional histograms: descendants of ROOT's
     ``TH3``, not including ``TProfile3D``.
     """
+
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
     def edges(self, axis):

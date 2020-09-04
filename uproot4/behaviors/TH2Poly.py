@@ -13,6 +13,7 @@ class TH2Poly(uproot4.behaviors.TH1.Histogram):
     """
     Behaviors for two-dimensional polygon histograms: ROOT's ``TH2Poly``.
     """
+
     no_inherit = (uproot4.behaviors.TH2.TH2,)
 
     def edges(self, axis):

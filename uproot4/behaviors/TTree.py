@@ -25,6 +25,7 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
         my_tree["branch/subbranch"]
         my_tree["branch/subbranch/subsubbranch"]
     """
+
     def __repr__(self):
         if len(self) == 0:
             return "<TTree {0} at 0x{1:012x}>".format(repr(self.name), id(self))

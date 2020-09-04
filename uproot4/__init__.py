@@ -162,6 +162,25 @@ import uproot4.behaviors
 
 
 def behavior_of(classname):
+    """
+    Finds and loads the behavior class for C++ (decoded) classname or returns
+    None if there isn't one.
+
+    Behaviors do not have a required base class, and they may be used with
+    Awkward Array's ``ak.behavior``.
+
+    The search strategy for finding behavior classes is:
+
+    1. Translate the ROOT class name from C++ to Python with
+       :doc:`uproot4.model.classname_encode`. For example,
+       ``"ROOT::RThing"`` becomes ``"Model_ROOT_3a3a_RThing"``.
+    2. Look for a submodule of ``uproot4.behaviors`` without
+       the ``"Model_"`` prefix. For example, ``"ROOT_3a3a_RThing"``.
+    3. Look for a class in that submodule with the fully encoded
+       name. For example, ``"Model_ROOT_3a3a_RThing"``.
+
+    See :doc:`uproot4.behaviors` for details.
+    """
     name = classname_encode(classname)
     assert name.startswith("Model_")
     name = name[6:]
@@ -191,6 +210,25 @@ del pkgutil
 
 
 class KeyInFileError(KeyError):
+    """
+    Exception raised by attempts to find ROOT objects in ``TDirectories``
+    or ``TBranches`` in :doc:`uproot4.behaviors.TBranch.HasBranches`, which
+    both have a Python ``Mapping`` interface (square bracket syntax to extract
+    items).
+
+    This exception descends from Python's ``KeyError``, so it can be used in
+    the normal way by interfaces that expect a missing item in a ``Mapping``
+    to raise ``KeyError``, but it provides more information, depending on
+    availability:
+
+    * ``because``: an explanatory message
+    * ``cycle``: the ROOT cycle number requested, if any
+    * ``keys``: a list or partial list of keys that *are* in the object, in case
+      of misspelling
+    * ``file_path``: a path (or URL) to the file
+    * ``object_path``: a path to the object within the ROOT file.
+    """
+
     def __init__(
         self, key, because="", cycle=None, keys=None, file_path=None, object_path=None
     ):

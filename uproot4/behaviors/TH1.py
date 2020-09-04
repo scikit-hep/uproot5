@@ -67,6 +67,7 @@ class Histogram(object):
     """
     Abstract class for histograms.
     """
+
     def edges(self, axis):
         """
         Axis boundaries as a ``numpy.ndarray`` of ``numpy.float64``.
@@ -146,6 +147,7 @@ class TH1(Histogram):
     Behaviors for one-dimensional histograms: descendants of ROOT's
     ``TH1``, not including ``TProfile``, ``TH2``, ``TH3``, or their descendants.
     """
+
     def edges(self, axis=0):
         if axis == 0 or axis == -1 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))

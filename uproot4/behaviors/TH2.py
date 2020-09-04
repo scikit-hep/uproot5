@@ -18,6 +18,7 @@ class TH2(uproot4.behaviors.TH1.Histogram):
     Behaviors for two-dimensional histograms: descendants of ROOT's
     ``TH2``, not including ``TProfile2D`` or ``TH2Poly``.
     """
+
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
     def edges(self, axis):

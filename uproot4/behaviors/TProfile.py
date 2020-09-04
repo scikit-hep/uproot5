@@ -50,10 +50,12 @@ class Profile(uproot4.behaviors.TH1.Histogram):
         """
         pass
 
+
 class TProfile(Profile):
     """
     Behaviors for one-dimensional profiles: ROOT's ``TProfile``.
     """
+
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
     def edges(self, axis=0):
