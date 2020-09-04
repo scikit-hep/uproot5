@@ -26,20 +26,76 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
         my_tree["branch/subbranch/subsubbranch"]
     """
 
+    def __repr__(self):
+        if len(self) == 0:
+            return "<TTree {0} at 0x{1:012x}>".format(repr(self.name), id(self))
+        else:
+            return "<TTree {0} ({1} branches) at 0x{2:012x}>".format(
+                repr(self.name), len(self), id(self)
+            )
+
     @property
     def name(self):
+        """
+        Name of the ``TTree``.
+        """
         return self.member("fName")
 
     @property
     def title(self):
+        """
+        Title of the ``TTree``.
+        """
         return self.member("fTitle")
 
     @property
+    def object_path(self):
+        """
+        Object path of the ``TTree``.
+        """
+        return self.parent.object_path
+
+    @property
+    def cache_key(self):
+        """
+        String that uniquely specifies this ``TTree`` in its path, to use as
+        part of object and array cache keys.
+        """
+        return "{0}{1};{2}".format(
+            self.parent.parent.cache_key, self.name, self.parent.fCycle
+        )
+
+    @property
     def num_entries(self):
+        """
+        The number of entries in the ``TTree``, as reported by ``fEntries``.
+
+        In principle, this could disagree with the
+        :doc:`uproot4.behaviors.TBranch.TBranch.num_entries`, which is from the
+        ``TBranch``'s ``fEntries``. See that method's documentation for yet more
+        ways the number of entries could, in principle, be inconsistent.
+        """
         return self.member("fEntries")
 
     @property
+    def tree(self):
+        """
+        Returns ``self`` because this is a ``TTree``.
+        """
+        return self
+
+    @property
     def aliases(self):
+        u"""
+        The ``TTree``'s ``fAliases``, which are used as the ``aliases``
+        argument to :doc:`uproot4.behaviors.TBranch.HasBranches.arrays`,
+        :doc:`uproot4.behaviors.TBranch.HasBranches.iterate`,
+        :doc:`uproot4.behaviors.TBranch.iterate`, and
+        :doc:`uproot4.behaviors.TBranch.concatenate` if one is not given.
+
+        The return type is always a dict of str \u2192 str, even if there
+        are no aliases (an empty dict).
+        """
         aliases = self.member("fAliases", none_if_missing=True)
         if aliases is None:
             return {}
@@ -49,32 +105,26 @@ class TTree(uproot4.behaviors.TBranch.HasBranches):
             )
 
     @property
-    def tree(self):
-        return self
+    def chunk(self):
+        """
+        The :doc:`uproot4.source.chunk.Chunk` from which this ``TTree`` was
+        read (as a strong, not weak, reference).
 
-    def __repr__(self):
-        if len(self) == 0:
-            return "<TTree {0} at 0x{1:012x}>".format(repr(self.name), id(self))
-        else:
-            return "<TTree {0} ({1} branches) at 0x{2:012x}>".format(
-                repr(self.name), len(self), id(self)
-            )
+        The reason the chunk is retained is to read
+        :doc:`uproot4.behaviors.TBranch.TBranch.embedded_baskets` only if
+        necessary (if the file was opened with
+        ``options["minimal_ttree_metadata"]=True``, the reading of these
+        ``TBaskets`` is deferred until they are accessed).
+
+        Holding a strong reference to a chunk holds a strong reference to
+        its :doc:`uproot4.source.chunk.Source`, preventing open file handles
+        from going out of scope, but so does the
+        :doc:`uproot4.reading.ReadOnlyFile` that ``TTree`` needs to read data
+        on demand.
+        """
+        return self._chunk
 
     def postprocess(self, chunk, cursor, context, file):
         self._chunk = chunk
         self._lookup = {}
         return self
-
-    @property
-    def cache_key(self):
-        return "{0}{1};{2}".format(
-            self.parent.parent.cache_key, self.name, self.parent.fCycle
-        )
-
-    @property
-    def object_path(self):
-        return self.parent.object_path
-
-    @property
-    def chunk(self):
-        return self._chunk

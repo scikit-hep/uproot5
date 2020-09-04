@@ -14,6 +14,9 @@ import os
 
 
 def awkward1():
+    """
+    Imports and returns ``awkward1``.
+    """
     try:
         import awkward1
     except ImportError:
@@ -27,6 +30,9 @@ def awkward1():
 
 
 def pandas():
+    """
+    Imports and returns ``pandas``.
+    """
     try:
         import pandas
     except ImportError:
@@ -44,6 +50,9 @@ or
 
 
 def cupy():
+    """
+    Imports and returns ``cupy``.
+    """
     try:
         import cupy
     except ImportError:
@@ -61,6 +70,11 @@ or
 
 
 def XRootD_client():
+    """
+    Imports and returns ``XRootD.client`` (after setting the
+    ```XRD_RUNFORKHANDLER`` environment variable to ``"1"``, to allow
+    multiprocessing).
+    """
     os.environ["XRD_RUNFORKHANDLER"] = "1"  # set multiprocessing flag
     try:
         import XRootD
@@ -99,6 +113,10 @@ def XRootD_client():
 
 
 def lzma():
+    """
+    Imports and returns ``lzma`` (which is part of the Python 3 standard
+    library, but not Python 2).
+    """
     try:
         import lzma
     except ImportError:
@@ -123,11 +141,17 @@ or use Python >= 3.3."""
 
 
 def lz4_block():
+    """
+    Imports and returns ``lz4``.
+
+    Attempts to import ``xxhash`` as well.
+    """
     try:
         import lz4.block
+        import xxhash  # noqa: F401
     except ImportError:
         raise ImportError(
-            """install the 'lz4' package with (you probably also need 'xxhash'):
+            """install the 'lz4' and `xxhash` packages with:
 
     pip install lz4 xxhash
 
@@ -140,23 +164,32 @@ or
 
 
 def xxhash():
+    """
+    Imports and returns ``xxhash``.
+
+    Attempts to import ``lz4`` as well.
+    """
     try:
         import xxhash
+        import lz4.block  # noqa: F401
     except ImportError:
         raise ImportError(
-            """install the 'xxhash' package with (you probably also need 'lz4'):
+            """install the 'lz4' and `xxhash` packages with:
 
-    pip install xxhash lz4
+    pip install lz4 xxhash
 
 or
 
-    conda install python-xxhash lz4"""
+    conda install lz4 python-xxhash"""
         )
     else:
         return xxhash
 
 
 def zstandard():
+    """
+    Imports and returns ``zstandard``.
+    """
     try:
         import zstandard
     except ImportError:
@@ -174,6 +207,9 @@ or
 
 
 def boost_histogram():
+    """
+    Imports and returns ``boost-histogram``.
+    """
     try:
         import boost_histogram
     except ImportError:
@@ -191,6 +227,9 @@ or
 
 
 def hist():
+    """
+    Imports and returns ``hist``.
+    """
     try:
         import hist
     except ImportError:

@@ -18,8 +18,30 @@ import uproot4.extras
 
 
 class Compression(object):
+    """
+    Abstract class for objects that describe compression algorithms and levels.
+    """
+
+    def __init__(self, level):
+        self.level = level
+
+    def __repr__(self):
+        return "{0}({1})".format(type(self).__name__, self._level)
+
+    @classmethod
+    def from_code(cls, code):
+        """
+        Constructs a :doc:`uproot4.compression.Compression` from a raw
+        ``fCompress`` integer.
+        """
+        return cls.from_code_pair(code // 100, code % 100)
+
     @classmethod
     def from_code_pair(cls, algorithm, level):
+        """
+        Constructs a :doc:`uproot4.compression.Compression` from a pair of
+        integers representing ``algorithm`` and ``level``.
+        """
         if algorithm == 0 or level == 0:
             return None
         elif algorithm in algorithm_codes:
@@ -29,15 +51,33 @@ class Compression(object):
                 "unrecognized compression algorithm code: {0}".format(algorithm)
             )
 
-    @classmethod
-    def from_code(cls, code):
-        return cls.from_code_pair(code // 100, code % 100)
+    @property
+    def code(self):
+        """
+        This :doc:`uproot4.compression.Compression` as a raw ``fCompress``
+        integer.
+        """
+        algorithm, level = self.code_pair
+        return algorithm * 100 + level
 
-    def __init__(self, level):
-        self.level = level
+    @property
+    def code_pair(self):
+        """
+        This :doc:`uproot4.compression.Compression` as a 2-tuple of integers
+        representing algorithm and level.
+        """
+        for const, cls in algorithm_codes.items():
+            if type(self) is cls:
+                return const, self._level
+        else:
+            raise ValueError("unrecognized compression type: {0}".format(type(self)))
 
     @property
     def level(self):
+        """
+        The compression level: 0 is uncompressed, 1 is minimally compressed, and
+        9 is maximally compressed.
+        """
         return self._level
 
     @level.setter
@@ -48,24 +88,18 @@ class Compression(object):
             raise ValueError("Compression level must be between 0 and 9 (inclusive)")
         self._level = int(value)
 
-    def __repr__(self):
-        return "{0}({1})".format(type(self).__name__, self._level)
-
-    @property
-    def code_pair(self):
-        for const, cls in algorithm_codes.items():
-            if type(self) is cls:
-                return const, self._level
-        else:
-            raise ValueError("unrecognized compression type: {0}".format(type(self)))
-
-    @property
-    def code(self):
-        algorithm, level = self.code_pair
-        return algorithm * 100 + level
-
 
 class ZLIB(Compression):
+    """
+    Args:
+        level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
+            compressed, and 9 is maximally compressed.
+
+    Represents the ZLIB compression algorithm.
+
+    Uproot uses ``zlib`` from the Python standard library.
+    """
+
     @classmethod
     def decompress(cls, data, uncompressed_bytes=None):
         import zlib
@@ -74,6 +108,18 @@ class ZLIB(Compression):
 
 
 class LZMA(Compression):
+    """
+    Args:
+        level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
+            compressed, and 9 is maximally compressed.
+
+    Represents the LZMA compression algorithm.
+
+    Uproot uses ``lzma`` from the Python 3 standard library.
+
+    In Python 2, ``backports.lzma`` must be installed.
+    """
+
     @classmethod
     def decompress(cls, data, uncompressed_bytes=None):
         lzma = uproot4.extras.lzma()
@@ -81,6 +127,16 @@ class LZMA(Compression):
 
 
 class LZ4(Compression):
+    """
+    Args:
+        level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
+            compressed, and 9 is maximally compressed.
+
+    Represents the LZ4 compression algorithm.
+
+    The ``zl4`` and ``xxhash`` libraries must be installed.
+    """
+
     @classmethod
     def decompress(cls, data, uncompressed_bytes=None):
         lz4_block = uproot4.extras.lz4_block()
@@ -92,6 +148,16 @@ class LZ4(Compression):
 
 
 class ZSTD(Compression):
+    """
+    Args:
+        level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
+            compressed, and 9 is maximally compressed.
+
+    Represents the ZSTD compression algorithm.
+
+    The ``zstandard`` library must be installed.
+    """
+
     @classmethod
     def decompress(cls, data, uncompressed_bytes=None):
         zstandard = uproot4.extras.zstandard()
@@ -112,6 +178,24 @@ _decompress_checksum_format = struct.Struct(">Q")
 
 
 def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
+    """
+    Args:
+        chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
+            from the file :doc:`uproot4.source.chunk.Source`.
+        cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
+            that ``chunk``.
+        context (dict): Auxiliary data used in deserialization.
+        compressed_bytes (int): Number of compressed bytes to decompress.
+        uncompressed_bytes (int): Number of uncompressed bytes to expect after
+            decompression.
+
+    Decompresses ``compressed_bytes`` of a :doc:`uproot4.source.chunk.Chunk`
+    of data, starting at the ``cursor``.
+
+    This function parses ROOT's 9-byte compression headers (17 bytes for LZ4
+    because it includes a checksum), combining blocks if there are more than
+    one, returning the result as a new :doc:`uproot4.source.chunk.Chunk`.
+    """
     assert compressed_bytes >= 0
     assert uncompressed_bytes >= 0
 
