@@ -24,6 +24,13 @@ import uproot4._util
 
 
 class FileResource(uproot4.source.chunk.Resource):
+    """
+    Args:
+        file_path (str): The filesystem path of the file to open.
+
+    A :doc:`uproot4.source.chunk.Resource` for a simple file handle.
+    """
+
     def __init__(self, file_path):
         self._file_path = file_path
         try:
@@ -33,6 +40,9 @@ class FileResource(uproot4.source.chunk.Resource):
 
     @property
     def file(self):
+        """
+        The Python file handle.
+        """
         return self._file
 
     @property
@@ -45,35 +55,47 @@ class FileResource(uproot4.source.chunk.Resource):
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.__exit__(exception_type, exception_value, traceback)
 
+    def get(self, start, stop):
+        """
+        Args:
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+
+        Returns a Python buffer of data between ``start`` and ``stop``.
+        """
+        self._file.seek(start)
+        return self._file.read(stop - start)
+
     @staticmethod
     def future(source, start, stop):
+        """
+        Args:
+            source (:doc:`uproot4.source.chunk.MultithreadedFileSource`): The
+                data source.
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+
+        Returns a :doc:`uproot4.source.futures.ResourceFuture` that calls
+        :doc:`uproot4.source.file.FileResource.get` with ``start`` and ``stop``.
+        """
+
         def task(resource):
             return resource.get(start, stop)
 
         return uproot4.source.futures.ResourceFuture(task)
 
-    def get(self, start, stop):
-        self._file.seek(start)
-        return self._file.read(stop - start)
-
-
-class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
-    ResourceClass = FileResource
-
-    def __init__(self, file_path, **options):
-        num_workers = options["num_workers"]
-        self._num_requests = 0
-        self._num_requested_chunks = 0
-        self._num_requested_bytes = 0
-
-        self._file_path = file_path
-        self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
-            [FileResource(file_path) for x in uproot4._util.range(num_workers)]
-        )
-        self._num_bytes = os.path.getsize(self._file_path)
-
 
 class MemmapSource(uproot4.source.chunk.Source):
+    """
+    Args:
+        file_path (str): The filesystem path of the file to open.
+        options: Must include ``"num_fallback_workers"``.
+
+    A :doc:`uproot4.source.chunk.Source` that manages one memory-mapped file.
+    """
+
     _dtype = uproot4.source.chunk.Chunk._dtype
 
     def __init__(self, file_path, **options):
@@ -105,53 +127,6 @@ class MemmapSource(uproot4.source.chunk.Source):
         return "<{0} {1}{2} at 0x{3:012x}>".format(
             type(self).__name__, path, fallback, id(self)
         )
-
-    @property
-    def file(self):
-        return self._file
-
-    @property
-    def fallback(self):
-        return self._fallback
-
-    def __enter__(self):
-        if self._fallback is None:
-            if hasattr(self._file._mmap, "__enter__"):
-                self._file._mmap.__enter__()
-        else:
-            self._fallback.__enter__()
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        if self._fallback is None:
-            if hasattr(self._file._mmap, "__exit__"):
-                self._file._mmap.__exit__(exception_type, exception_value, traceback)
-            else:
-                self._file._mmap.close()
-        else:
-            self._fallback.__exit__(exception_type, exception_value, traceback)
-
-    @property
-    def closed(self):
-        if self._fallback is None:
-            if uproot4._util.py2:
-                try:
-                    self._file._mmap.tell()
-                except ValueError:
-                    return True
-                else:
-                    return False
-            else:
-                return self._file._mmap.closed
-        else:
-            return self._fallback.closed
-
-    @property
-    def num_bytes(self):
-        if self._fallback is None:
-            return self._file._mmap.size()
-        else:
-            return self._fallback.num_bytes
 
     def chunk(self, start, stop):
         if self._fallback is None:
@@ -189,3 +164,85 @@ class MemmapSource(uproot4.source.chunk.Source):
 
         else:
             return self._fallback.chunks(ranges, notifications)
+
+    @property
+    def file(self):
+        """
+        The ``numpy.memmap`` array/file.
+        """
+        return self._file
+
+    @property
+    def fallback(self):
+        """
+        If None, the :doc:`uproot4.source.file.MemmapSource.file` opened
+        successfully and no fallback is needed.
+
+        Otherwise, this is a :doc:`uproot4.source.file.MultithreadedFileSource`
+        to which all requests are forwarded.
+        """
+        return self._fallback
+
+    @property
+    def closed(self):
+        if self._fallback is None:
+            if uproot4._util.py2:
+                try:
+                    self._file._mmap.tell()
+                except ValueError:
+                    return True
+                else:
+                    return False
+            else:
+                return self._file._mmap.closed
+        else:
+            return self._fallback.closed
+
+    def __enter__(self):
+        if self._fallback is None:
+            if hasattr(self._file._mmap, "__enter__"):
+                self._file._mmap.__enter__()
+        else:
+            self._fallback.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        if self._fallback is None:
+            if hasattr(self._file._mmap, "__exit__"):
+                self._file._mmap.__exit__(exception_type, exception_value, traceback)
+            else:
+                self._file._mmap.close()
+        else:
+            self._fallback.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def num_bytes(self):
+        if self._fallback is None:
+            return self._file._mmap.size()
+        else:
+            return self._fallback.num_bytes
+
+
+class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
+    """
+    Args:
+        file_path (str): The filesystem path of the file to open.
+        options: Must include ``"num_workers"``.
+
+    A :doc:`uproot4.source.chunk.MultithreadedSource` that manages many
+    :doc:`uproot4.source.file.FileResource` objects.
+    """
+
+    ResourceClass = FileResource
+
+    def __init__(self, file_path, **options):
+        num_workers = options["num_workers"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
+
+        self._file_path = file_path
+        self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
+            [FileResource(file_path) for x in uproot4._util.range(num_workers)]
+        )
+        self._num_bytes = os.path.getsize(self._file_path)
