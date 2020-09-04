@@ -21,32 +21,78 @@ import uproot4.source.cursor
 
 class Resource(object):
     """
-    Abstract base class for a file handle whose lifetime is linked to Threads
-    and/or a thread pool Executor.
+    Abstract class for a file handle whose lifetime may be linked to threads
+    in a thread pool executor.
 
-    A Resource instance is passed as the first argument of a TaskFuture's task
-    function.
+    A :doc:`uproot4.source.chunk.Resource` instance is always the first
+    argument of functions evaluated by a
+    :doc:`uproot4.source.future.ResourceFuture`.
     """
 
     def file_path(self):
         """
-        The original path to the file (or URL, etc).
+        A path to the file (or URL).
         """
         return self._file_path
 
 
 class Source(object):
     """
-    Abstract base class for physical I/O in Uproot.
+    Abstract class for physically reading and writing data from a file, which
+    might be remote.
 
-    These are all context managers that shut down any thread pools (Executors)
-    and close any file handles (Resources) when finished.
+    In addition to the file handle, a :doc:`uproot4.source.chunk.Source` might
+    manage a :doc:`uproot4.source.future.ResourceThreadPoolExecutor` to read
+    the file in parallel. Stopping these threads is part of the act of closing
+    the file.
     """
+
+    def chunk(self, start, stop):
+        """
+        Args:
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+
+        Request a byte range of data from the file as a
+        :doc:`uproot4.source.chunk.Chunk`.
+        """
+        pass
+
+    def chunks(self, ranges, notifications):
+        """
+        Args:
+            ranges (list of (int, int) 2-tuples): Intervals to fetch
+                as (start, stop) pairs in a single request, if possible.
+            notifications (``queue.Queue``): Indicator of completed
+                chunks. After each gets filled, it is ``put`` on the
+                queue; a listener should ``get`` from this queue
+                ``len(ranges)`` times.
+
+        Request a set of byte ranges from the file.
+
+        This method has two outputs:
+
+        * The method returns a list of unfilled
+          :doc:`uproot4.source.chunk.Chunk` objects, which get filled
+          in a background thread. If you try to read data from an
+          unfilled chunk, it will wait until it is filled.
+        * The method also puts the same :doc:`uproot4.source.chunk.Chunk`
+          objects onto the ``notifications`` queue as soon as they are
+          filled.
+
+        Reading data from chunks on the queue can be more efficient than
+        reading them from the returned list. The total reading time is the
+        same, but work on the filled chunks can be better parallelized if
+        it is triggered by already-filled chunks, rather than waiting for
+        chunks to be filled.
+        """
+        pass
 
     @property
     def file_path(self):
         """
-        The original path to the file (or URL, etc).
+        A path to the file (or URL).
         """
         return self._file_path
 
@@ -60,27 +106,28 @@ class Source(object):
     @property
     def num_requests(self):
         """
-        The number of requests that have been made.
+        The number of requests that have been made (performance counter).
         """
         return self._num_requests
 
     @property
     def num_requested_chunks(self):
         """
-        The number of chunks that have been requested.
+        The number of :doc:`uproot4.source.chunk.Chunk` objects that have been
+        requested (performance counter).
         """
         return self._num_requested_chunks
 
     @property
     def num_requested_bytes(self):
         """
-        The number of bytes that have been requested.
+        The number of bytes that have been requested (performance counter).
         """
         return self._num_requested_bytes
 
     def close(self):
         """
-        Manually calls `__exit__`.
+        Manually closes the file(s) and stops any running threads.
         """
         self.__exit__(None, None, None)
 
@@ -95,7 +142,8 @@ class Source(object):
 
 class MultithreadedSource(Source):
     """
-    Base class for Sources that maintain an ResourceThreadPoolExecutor.
+    Abstract class for a :doc:`uproot4.source.chunk.Source` that maintains a
+    :doc:`uproot4.source.future.ResourceThreadPoolExecutor`.
     """
 
     def __repr__(self):
@@ -105,25 +153,6 @@ class MultithreadedSource(Source):
         return "<{0} {1} ({2} workers) at 0x{3:012x}>".format(
             type(self).__name__, path, self.num_workers, id(self)
         )
-
-    @property
-    def executor(self):
-        return self._executor
-
-    @property
-    def num_workers(self):
-        return self._executor.num_workers
-
-    @property
-    def closed(self):
-        return self._executor.closed
-
-    def __enter__(self):
-        self._executor.__enter__()
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._executor.__exit__(exception_type, exception_value, traceback)
 
     def chunk(self, start, stop):
         self._num_requests += 1
@@ -149,6 +178,36 @@ class MultithreadedSource(Source):
             chunks.append(chunk)
         return chunks
 
+    @property
+    def executor(self):
+        """
+        The :doc:`uproot4.source.future.ResourceThreadPoolExecutor`
+        """
+        return self._executor
+
+    @property
+    def num_workers(self):
+        """
+        The number of :doc:`uproot4.source.future.ResourceWorker` threads in
+        the :doc:`uproot4.source.future.ResourceThreadPoolExecutor`.
+        """
+        return self._executor.num_workers
+
+    @property
+    def closed(self):
+        """
+        True if the :doc:`uproot4.source.future.ResourceThreadPoolExecutor` has
+        been shut down and the file handles have been closed.
+        """
+        return self._executor.closed
+
+    def __enter__(self):
+        self._executor.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._executor.__exit__(exception_type, exception_value, traceback)
+
 
 def notifier(chunk, notifications):
     def notify():
@@ -159,10 +218,30 @@ def notifier(chunk, notifications):
 
 class Chunk(object):
     """
-    A range of bytes from a Source, which may be synchronously filled by
-    Source.chunks or asynchronously filled.
+    Args:
+        source (:doc:`uproot4.source.chunk.Source`): Source from which the
+            data were derived.
+        start (int): Seek position of the first byte to include.
+        stop (int): Seek position of the first byte to exclude
+            (one greater than the last byte to include).
+        future (:doc:`uproot4.source.futures.NoFuture` or :doc:`uproot4.source.futures.Future`): Handle
+            to the synchronous or asynchronous data. A chunk is "filled"
+            when the ``future`` completes.
 
-    It only blocks when `raw_data`, `get`, or `remainder` is called.
+    A range of bytes from a :doc:`uproot4.source.chunk.Source`, which may be
+    synchronously or asynchronously filled.
+
+    The following methods must wait for the
+    :doc:`uproot4.source.chunk.Chunk.future` to complete (to be filled):
+
+    * :doc:`uproot4.source.chunk.Chunk.wait`: Waits and nothing else.
+    * :doc:`uproot4.source.chunk.Chunk.raw_data`: The data as a
+      ``numpy.ndarray`` of ``numpy.uint8``.
+    * :doc:`uproot4.source.chunk.Chunk.get`: A subinterval of the data as
+      a ``numpy.ndarray`` of ``numpy.uint8``.
+    * :doc:`uproot4.source.chunk.Chunk.remainder`: A subinterval from the
+      :doc:`uproot4.source.cursor.Cursor` to the end of the
+      :doc:`uproot4.source.chunk.Chunk`.
     """
 
     _dtype = numpy.dtype(numpy.uint8)
@@ -170,20 +249,17 @@ class Chunk(object):
     @classmethod
     def wrap(cls, source, data):
         """
-        Wrap a `data` buffer with a Chunk interface, linking it to a given
-        Source. Used for presenting uncompressed data as Chunks.
+        Args:
+            source (:doc:`uproot4.source.chunk.Source`): Source to attach to
+                the new chunk.
+            data (``numpy.ndarray`` of ``numpy.uint8``): Data for the new chunk.
+
+        Manually creates a synchronous :doc:`uproot4.source.chunk.Chunk`.
         """
         future = uproot4.source.futures.NoFuture(data)
         return Chunk(source, 0, len(data), future)
 
     def __init__(self, source, start, stop, future):
-        """
-        Args:
-            source (Source): Parent from which this Chunk is derived.
-            start (int): Starting byte position (inclusive, global in Source).
-            stop (int): Stopping byte position (exclusive, global in Source).
-            future (Future): Fills `raw_data` on demand.
-        """
         self._source = source
         self._start = start
         self._stop = stop
@@ -203,29 +279,27 @@ class Chunk(object):
     @property
     def start(self):
         """
-        Starting byte position (inclusive, global in Source).
+        Seek position of the first byte to include.
         """
         return self._start
 
     @property
     def stop(self):
         """
-        Stopping byte position (exclusive, global in Source).
+        Seek position of the first byte to exclude (one greater than the last
+        byte to include).
         """
         return self._stop
 
     @property
     def future(self):
         """
-        Fills `raw_data` on demand.
+        Handle to the synchronous or asynchronous data. A chunk is "filled"
+        when the ``future`` completes.
         """
         return self._future
 
     def __contains__(self, range):
-        """
-        True if the range (start, stop) is fully contained within the Chunk;
-        False otherwise.
-        """
         start, stop = range
         if isinstance(start, uproot4.source.cursor.Cursor):
             start = start.index
@@ -235,7 +309,8 @@ class Chunk(object):
 
     def wait(self):
         """
-        Explicitly block until `raw_data` is filled.
+        Explicitly wait until the chunk is filled (the
+        :doc:`uproot4.source.chunk.Chunk.future` completes).
         """
         if self._raw_data is None:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
@@ -253,9 +328,11 @@ for file path {2}""".format(
     @property
     def raw_data(self):
         """
-        Data from the Source as a NumPy array with dtype uint8.
+        Data from the Source as a ``numpy.ndarray`` of ``numpy.uint8``.
 
-        Accessing this member blocks until it is filled.
+        This method will wait until the chunk is filled (the
+        :doc:`uproot4.source.chunk.Chunk.future` completes), if it isn't
+        already.
         """
         self.wait()
         return self._raw_data
@@ -263,19 +340,24 @@ for file path {2}""".format(
     def get(self, start, stop, cursor, context):
         """
         Args:
-            start (int): Starting byte position to extract (inclusive, global
-                in Source).
-            stop (int): Stopping byte position to extract (exclusive, global
-                in Source).
-            cursor (Cursor): The Cursor that is currently reading this Chunk.
-            context (dict): Information about the current state of deserialization.
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+            cursor (:doc:`uproot4.source.cursor.Cursor`): A pointer to the
+                current position in this chunk.
+            context (dict): Auxiliary data used in deserialization.
 
-        Returns a subinterval of the `raw_data` using global coordinates as a
-        NumPy array with dtype uint8.
+        Returns a subinterval of the :doc:`uproot4.source.chunk.Chunk.raw_data`
+        as a ``numpy.ndarray`` of ``numpy.uint8``.
 
-        The start and stop must be `Chunk.start <= start <= stop <= Chunk.stop`.
+        Note that this ``start`` and ``stop`` are in the same coordinate
+        system as the :doc:`uproot4.source.chunk.Chunk.start` and
+        :doc:`uproot4.source.chunk.Chunk.stop`. That is, to get the whole
+        chunk, use ``start=chunk.start`` and ``stop=chunk.stop``.
 
-        Calling this function blocks until `raw_data` is filled.
+        This method will wait until the chunk is filled (the
+        :doc:`uproot4.source.chunk.Chunk.future` completes), if it isn't
+        already.
         """
         self.wait()
 
@@ -299,16 +381,22 @@ outside expected range {2}:{3} for this Chunk""".format(
     def remainder(self, start, cursor, context):
         """
         Args:
-            start (int): Starting byte position to extract (inclusive, global
-                in Source).
-            context (dict): Information about the current state of deserialization.
+            start (int): Seek position of the first byte to include.
+            cursor (:doc:`uproot4.source.cursor.Cursor`): A pointer to the
+                current position in this chunk.
+            context (dict): Auxiliary data used in deserialization.
 
-        Returns a subinterval of the `raw_data` from `start` to the end of the
-        Chunk as a NumPy array with dtype uint8.
+        Returns a subinterval of the :doc:`uproot4.source.chunk.Chunk.raw_data`
+        as a ``numpy.ndarray`` of ``numpy.uint8`` from ``start`` to the end
+        of the chunk.
 
-        The start must be `Chunk.start <= start < Chunk.stop`.
+        Note that this ``start`` is in the same coordinate system as the
+        :doc:`uproot4.source.chunk.Chunk.start`. That is, to get the whole
+        chunk, use ``start=chunk.start``.
 
-        Calling this function blocks until `raw_data` is filled.
+        This method will wait until the chunk is filled (the
+        :doc:`uproot4.source.chunk.Chunk.future` completes), if it isn't
+        already.
         """
         self.wait()
 
