@@ -148,7 +148,7 @@ def lz4_block():
     """
     try:
         import lz4.block
-        import xxhash
+        import xxhash   # noqa: F401
     except ImportError:
         raise ImportError(
             """install the 'lz4' and `xxhash` packages with:
@@ -171,7 +171,7 @@ def xxhash():
     """
     try:
         import xxhash
-        import lz4.block
+        import lz4.block   # noqa: F401
     except ImportError:
         raise ImportError(
             """install the 'lz4' and `xxhash` packages with:
