@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines versionless models for ``TArray`` and its subclasses.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -19,6 +23,12 @@ _tarray_format1 = struct.Struct(">i")
 
 
 class Model_TArray(uproot4.model.Model, Sequence):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArray`` and its subclasses.
+
+    These also satisfy Python's abstract ``Sequence`` protocol.
+    """
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -50,8 +60,13 @@ in file {1}""".format(
         return len(self._data)
 
     def __repr__(self):
-        return "<{0} {1} at 0x{2:012x}>".format(
-            uproot4.model.classname_pretty(self.classname, self.class_version),
+        if self.class_version is None:
+            version = ""
+        else:
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            self.classname,
+            version,
             numpy.array2string(
                 self._data,
                 max_line_width=numpy.inf,
@@ -79,30 +94,79 @@ in file {1}""".format(
 
 
 class Model_TArrayC(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayC``
+    (``dtype(">i1")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i1")
 
 
 class Model_TArrayS(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayS``
+    (``dtype(">i2")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i2")
 
 
 class Model_TArrayI(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayI``
+    (``dtype(">i4")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i4")
 
 
 class Model_TArrayL(Model_TArray):
-    dtype = numpy.dtype(numpy.int_).newbyteorder(">")
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayL``
+    (``dtype(">i8")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
+    dtype = numpy.dtype(">i8")
 
 
 class Model_TArrayL64(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayL64``
+    (``dtype(">i8")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">i8")
 
 
 class Model_TArrayF(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayF``
+    (``dtype(">f4")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">f4")
 
 
 class Model_TArrayD(Model_TArray):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TArrayD``
+    (``dtype(">f8")``).
+
+    It also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     dtype = numpy.dtype(">f8")
 
 

@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines a versionless model for ``TObject``.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -15,6 +19,10 @@ _tobject_format2 = struct.Struct(">II")
 
 
 class Model_TObject(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TObject``.
+    """
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 

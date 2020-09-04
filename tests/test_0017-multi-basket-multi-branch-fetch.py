@@ -321,9 +321,9 @@ def test_cache():
             == "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4(16)"
         )
         i4 = f["sample/i4"]
-        assert list(f.array_cache) == []
+        assert list(f.file.array_cache) == []
         i4.array(uproot4.interpretation.numerical.AsDtype(">i4"), library="np")
-        assert list(f.array_cache) == [
+        assert list(f.file.array_cache) == [
             "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4(16):AsDtype(Bi4(),Li4()):0-30:np"
         ]
 

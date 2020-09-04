@@ -1,5 +1,18 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array for
+string data.
+
+Note that :doc:`uproot4.interpretation.strings.AsStrings` is an interpretation for
+top-level strings, but :doc:`uproot4.containers.AsString` can be nested within
+other :doc:`uproot4.containers`.
+
+The :doc:`uproot4.interpretation.strings.StringArray` class only holds data while
+an array is being built from ``TBaskets``. Its final form is determined by
+:doc:`uproot4.interpretation.library`.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -9,46 +22,42 @@ import numpy
 import uproot4.interpretation
 
 
-class StringArray(object):
-    def __init__(self, offsets, content):
-        self._offsets = offsets
-        self._content = content
-
-    def __repr__(self):
-        if len(self._content) > 100:
-            left, right = self._content[:45], self._content[-45:]
-            content = repr(left) + " ... " + repr(right)
-        else:
-            content = repr(self._content)
-        return "StringArray({0}, {1})".format(self._offsets, content)
-
-    @property
-    def offsets(self):
-        return self._offsets
-
-    @property
-    def content(self):
-        return self._content
-
-    def __getitem__(self, where):
-        data = self._content[self._offsets[where] : self._offsets[where + 1]]
-        return uproot4._util.ensure_str(data)
-
-    def __len__(self):
-        return len(self._offsets) - 1
-
-    def __iter__(self):
-        start = self._offsets[0]
-        content = self._content
-        for stop in self._offsets[1:]:
-            yield uproot4._util.ensure_str(content[start:stop])
-            start = stop
-
-
 _string_4byte_size = struct.Struct(">I")
 
 
 class AsStrings(uproot4.interpretation.Interpretation):
+    """
+    Args:
+        header_bytes (int): Number of bytes to skip at the beginning of each
+            entry.
+        length_bytes ("1-5" or "4"): Method used to determine the length of
+            a string: "1-5" means one byte if the length is less than 256,
+            otherwise the true length is in the next four bytes; "4" means
+            always four bytes.
+        typename (None or str): If None, construct a plausible C++ typename.
+            Otherwise, take the suggestion as given.
+        original (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): If
+            this interpretation is derived from
+            :doc:`uproot4.interpretation.objects.AsObjects.simplify`, this is a
+            reminder of the original
+            :doc:`uproot4.interpretation.objects.AsObjects.model`.
+
+    An :doc:`uproot4.interpretation.Interpretation` for an array of strings.
+
+    This cannot be nested within other
+    :doc:`uproot4.interpretation.Interpretation` objects; it can only represent
+    a ``TBranch`` that only contains strings (not strings within ``std::vector``,
+    for instance).
+
+    Note that the :doc:`uproot4.containers.AsString` class is for strings nested
+    within other objects.
+
+    (:doc:`uproot4.interpretation.objects.AsObjects.simplify` converts an
+    :doc:`uproot4.interpretation.objects.AsObjects` of
+    :doc:`uproot4.containers.AsString` into a
+    :doc:`uproot4.interpretation.strings.AsStrings`.)
+    """
+
     def __init__(
         self, header_bytes=0, length_bytes="1-5", typename=None, original=None
     ):
@@ -62,11 +71,29 @@ class AsStrings(uproot4.interpretation.Interpretation):
 
     @property
     def header_bytes(self):
+        """
+        The number of bytes to skip at the beginning of each entry.
+        """
         return self._header_bytes
 
     @property
     def length_bytes(self):
+        """
+        Method used to determine the length of a string: "1-5" means one byte
+        if the length is less than 256, otherwise the true length is in the
+        next four bytes; "4" means always four bytes.
+        """
         return self._length_bytes
+
+    @property
+    def original(self):
+        """
+        If not None, this was the original
+        :doc:`uproot4.interpretation.objects.AsObjects.model` from an
+        :doc:`uproot4.interpretation.objects.AsObjects` that was simplified
+        into this :doc:`uproot4.interpretation.jagged.AsJagged`.
+        """
+        return self._original
 
     def __repr__(self):
         args = []
@@ -89,10 +116,6 @@ class AsStrings(uproot4.interpretation.Interpretation):
             return "char*"
         else:
             return self._typename
-
-    @property
-    def original(self):
-        return self._original
 
     @property
     def numpy_dtype(self):
@@ -320,3 +343,60 @@ class AsStrings(uproot4.interpretation.Interpretation):
         )
 
         return output
+
+
+class StringArray(object):
+    """
+    Args:
+        offsets (array of ``numpy.int32``): Starting and stopping indexes for
+            each string. The length of the ``offsets`` is one greater than the
+            number of strings.
+        content (array): Contiguous array of character data for all strings of
+            the array.
+
+    Temporary array filled by
+    :doc:`uproot4.interpretation.strings.AsStrings.basket_array`, which will be
+    turned into a NumPy, Awkward, or other array, depending on the specified
+    :doc:`uproot4.interpretation.library.Library`.
+    """
+
+    def __init__(self, offsets, content):
+        self._offsets = offsets
+        self._content = content
+
+    def __repr__(self):
+        if len(self._content) > 100:
+            left, right = self._content[:45], self._content[-45:]
+            content = repr(left) + " ... " + repr(right)
+        else:
+            content = repr(self._content)
+        return "StringArray({0}, {1})".format(self._offsets, content)
+
+    @property
+    def offsets(self):
+        """
+        Starting and stopping indexes for each string. The length of the
+        ``offsets`` is one greater than the number of strings.
+        """
+        return self._offsets
+
+    @property
+    def content(self):
+        """
+        Contiguous array of character data for all strings of the array.
+        """
+        return self._content
+
+    def __getitem__(self, where):
+        data = self._content[self._offsets[where] : self._offsets[where + 1]]
+        return uproot4._util.ensure_str(data)
+
+    def __len__(self):
+        return len(self._offsets) - 1
+
+    def __iter__(self):
+        start = self._offsets[0]
+        content = self._content
+        for stop in self._offsets[1:]:
+            yield uproot4._util.ensure_str(content[start:stop])
+            start = stop

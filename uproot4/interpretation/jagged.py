@@ -1,5 +1,14 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array for
+jagged (variable-length list) data.
+
+The :doc:`uproot4.interpretation.jagged.JaggedArray` class only holds data while
+an array is being built from ``TBaskets``. Its final form is determined by
+:doc:`uproot4.interpretation.library`.
+"""
+
 from __future__ import absolute_import
 
 import numpy
@@ -7,54 +16,11 @@ import numpy
 import uproot4.interpretation
 
 
-class JaggedArray(object):
-    def __init__(self, offsets, content):
-        self._offsets = offsets
-        self._content = content
-
-    def __repr__(self):
-        return "JaggedArray({0}, {1})".format(self._offsets, self._content)
-
-    @property
-    def offsets(self):
-        return self._offsets
-
-    @property
-    def content(self):
-        return self._content
-
-    def __getitem__(self, where):
-        return self._content[self._offsets[where] : self._offsets[where + 1]]
-
-    def __len__(self):
-        return len(self._offsets) - 1
-
-    def __iter__(self):
-        start = self._offsets[0]
-        content = self._content
-        for stop in self._offsets[1:]:
-            yield content[start:stop]
-            start = stop
-
-    def parents_localindex(self, entry_start, entry_stop):
-        counts = self._offsets[1:] - self._offsets[:-1]
-        if uproot4._util.win:
-            counts = counts.astype(numpy.int32)
-
-        assert entry_stop - entry_start == len(self._offsets) - 1
-        indexes = numpy.arange(len(self._offsets) - 1, dtype=numpy.int64)
-
-        parents = numpy.repeat(indexes, counts)
-
-        localindex = numpy.arange(
-            self._offsets[0], self._offsets[-1], dtype=numpy.int64
-        )
-        localindex -= self._offsets[parents]
-
-        return parents + entry_start, localindex
-
-
 def fast_divide(array, divisor):
+    """
+    Vectorized division function for a scalar divisor that is often a power of
+    2. Usually bit-shifts, rather than dividing.
+    """
     if divisor == 1:
         return array
     elif divisor == 2:
@@ -68,6 +34,24 @@ def fast_divide(array, divisor):
 
 
 class AsJagged(uproot4.interpretation.Interpretation):
+    """
+    Args:
+        content (:doc:`uproot4.interpretation.numerical.AsDtype` or :doc:`uproot4.interpretation.objects.AsStridedObjects`): Interpretation
+            for data in the nested, variable-length lists.
+        header_bytes (int): Number of bytes to skip at the beginning of each
+            entry.
+        typename (None or str): If None, construct a plausible C++ typename.
+            Otherwise, take the suggestion as given.
+        original (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): If
+            this interpretation is derived from
+            :doc:`uproot4.interpretation.objects.AsObjects.simplify`, this is a
+            reminder of the original
+            :doc:`uproot4.interpretation.objects.AsObjects.model`.
+
+    Interpretation for any array that can be described as variable-length lists
+    of :doc:`uproot4.interpretation.numerical.AsDtype`.
+    """
+
     def __init__(self, content, header_bytes=0, typename=None, original=None):
         if not isinstance(content, uproot4.interpretation.numerical.Numerical):
             raise TypeError("AsJagged content can only be Numerical")
@@ -78,14 +62,28 @@ class AsJagged(uproot4.interpretation.Interpretation):
 
     @property
     def content(self):
+        """
+        The :doc:`uproot4.interpretation.numerical.AsDtype` or
+        :doc:`uproot4.interpretation.objects.AsStridedObjects` that interprets
+        data in the nested, variable-length lists.
+        """
         return self._content
 
     @property
     def header_bytes(self):
+        """
+        The number of bytes to skip at the beginning of each entry.
+        """
         return self._header_bytes
 
     @property
     def original(self):
+        """
+        If not None, this was the original
+        :doc:`uproot4.interpretation.objects.AsObjects.model` from an
+        :doc:`uproot4.interpretation.objects.AsObjects` that was simplified
+        into this :doc:`uproot4.interpretation.jagged.AsJagged`.
+        """
         return self._original
 
     def __repr__(self):
@@ -323,3 +321,87 @@ class AsJagged(uproot4.interpretation.Interpretation):
         )
 
         return output
+
+
+class JaggedArray(object):
+    """
+    Args:
+        offsets (array of ``numpy.int32``): Starting and stopping entries for
+            each variable-length list. The length of the ``offsets`` is one
+            greater than the number of lists.
+        content (array): Contiguous array for data in all nested lists of the
+            jagged array.
+
+    Temporary array filled by
+    :doc:`uproot4.interpretation.jagged.AsJagged.basket_array`, which will be
+    turned into a NumPy, Awkward, or other array, depending on the specified
+    :doc:`uproot4.interpretation.library.Library`.
+    """
+
+    def __init__(self, offsets, content):
+        self._offsets = offsets
+        self._content = content
+
+    def __repr__(self):
+        return "JaggedArray({0}, {1})".format(self._offsets, self._content)
+
+    @property
+    def offsets(self):
+        """
+        Starting and stopping entries for each variable-length list. The length
+        of the ``offsets`` is one greater than the number of lists.
+        """
+        return self._offsets
+
+    @property
+    def content(self):
+        """
+        Contiguous array for data in all nested lists of the jagged array.
+        """
+        return self._content
+
+    def __getitem__(self, where):
+        return self._content[self._offsets[where] : self._offsets[where + 1]]
+
+    def __len__(self):
+        return len(self._offsets) - 1
+
+    def __iter__(self):
+        start = self._offsets[0]
+        content = self._content
+        for stop in self._offsets[1:]:
+            yield content[start:stop]
+            start = stop
+
+    def parents_localindex(self, entry_start, entry_stop):
+        """
+        Args:
+            entry_start (int): First entry to include.
+            entry_stop (int): FIrst entry to exclude (one greater than the last
+                entry to include)
+
+        Returns the "parents" and "localindex" of this jagged array, using
+        Awkward 0 terminology.
+
+        The "parents" is an array of integers with the same length as
+        :doc:`uproot4.interpretation.jagged.JaggedArray.content` that indicates
+        which list each item belongs to.
+
+        The "localindex" is an array of integers with the same length that
+        indicates which subentry each item is, within its nested list.
+        """
+        counts = self._offsets[1:] - self._offsets[:-1]
+        if uproot4._util.win:
+            counts = counts.astype(numpy.int32)
+
+        assert entry_stop - entry_start == len(self._offsets) - 1
+        indexes = numpy.arange(len(self._offsets) - 1, dtype=numpy.int64)
+
+        parents = numpy.repeat(indexes, counts)
+
+        localindex = numpy.arange(
+            self._offsets[0], self._offsets[-1], dtype=numpy.int64
+        )
+        localindex -= self._offsets[parents]
+
+        return parents + entry_start, localindex

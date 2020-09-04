@@ -1,11 +1,21 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines a versionless model of ``TString``.
+"""
+
 from __future__ import absolute_import
 
 import uproot4.model
 
 
 class Model_TString(uproot4.model.Model, str):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TString``.
+
+    This is also a Python ``str`` (string).
+    """
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -31,10 +41,12 @@ in file {1}""".format(
         return out
 
     def __repr__(self):
-        return "<{0} {1} at 0x{2:012x}>".format(
-            uproot4.model.classname_pretty(self.classname, self.class_version),
-            str.__repr__(self),
-            id(self),
+        if self.class_version is None:
+            version = ""
+        else:
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            self.classname, version, str.__repr__(self), id(self)
         )
 
     def tojson(self):

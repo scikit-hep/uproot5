@@ -1,5 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines versioned models for ``TTree``.
+
+See :doc:`uproot4.behaviors.TBranch` for definitions of ``TTree``-reading
+functions.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -15,6 +22,10 @@ _ttree16_format1 = struct.Struct(">qqqqdiiiqqqqq")
 
 
 class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 16.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -24,7 +35,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -35,7 +46,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -46,7 +57,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -57,7 +68,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -82,10 +93,10 @@ in file {1}""".format(
             self._members["fAutoSave"],
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree16_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -95,10 +106,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -161,6 +172,10 @@ _ttree17_format1 = struct.Struct(">qqqqdiiiiqqqqq")
 
 
 class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 17.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -170,7 +185,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -181,7 +196,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -192,7 +207,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -203,7 +218,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -229,10 +244,10 @@ in file {1}""".format(
             self._members["fAutoSave"],
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree17_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -241,10 +256,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -308,6 +323,10 @@ _ttree18_format1 = struct.Struct(">qqqqqdiiiiqqqqqq")
 
 
 class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 18.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -317,7 +336,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -328,7 +347,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -339,7 +358,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -350,7 +369,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -378,10 +397,10 @@ in file {1}""".format(
             self._members["fAutoFlush"],
             self._members["fEstimate"],
         ) = cursor.fields(chunk, _ttree18_format1, context)
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -390,10 +409,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -461,6 +480,10 @@ _ttree19_dtype2 = numpy.dtype(">i8")
 
 
 class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 19.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -470,7 +493,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -481,7 +504,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 1).read(
+            file.class_named("TAttLine", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -492,7 +515,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 1).read(
+            file.class_named("TAttFill", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -503,7 +526,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -544,10 +567,10 @@ in file {1}""".format(
         self._members["fClusterSize"] = cursor.array(
             chunk, self.member("fNClusterRange"), tmp, context
         )
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -556,10 +579,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -630,6 +653,10 @@ _ttree20_dtype2 = numpy.dtype(">i8")
 
 
 class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
+    """
+    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 20.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -639,7 +666,7 @@ in file {1}""".format(
                 )
             )
         self._bases.append(
-            self.class_named("TNamed", 1).read(
+            file.class_named("TNamed", 1).read(
                 chunk,
                 cursor,
                 context,
@@ -650,7 +677,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttLine", 2).read(
+            file.class_named("TAttLine", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -661,7 +688,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttFill", 2).read(
+            file.class_named("TAttFill", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -672,7 +699,7 @@ in file {1}""".format(
             )
         )
         self._bases.append(
-            self.class_named("TAttMarker", 2).read(
+            file.class_named("TAttMarker", 2).read(
                 chunk,
                 cursor,
                 context,
@@ -713,13 +740,13 @@ in file {1}""".format(
         self._members["fClusterSize"] = cursor.array(
             chunk, self.member("fNClusterRange"), tmp, context
         )
-        self._members["fIOFeatures"] = self.class_named("ROOT::TIOFeatures").read(
+        self._members["fIOFeatures"] = file.class_named("ROOT::TIOFeatures").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fBranches"] = self.class_named("TObjArray").read(
+        self._members["fBranches"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
-        self._members["fLeaves"] = self.class_named("TObjArray").read(
+        self._members["fLeaves"] = file.class_named("TObjArray").read(
             chunk, cursor, context, file, self._file, self._concrete
         )
         self._members["fAliases"] = uproot4.deserialization.read_object_any(
@@ -728,10 +755,10 @@ in file {1}""".format(
         if file.options["minimal_ttree_metadata"]:
             cursor.skip_after(self)
         else:
-            self._members["fIndexValues"] = self.class_named("TArrayD").read(
+            self._members["fIndexValues"] = file.class_named("TArrayD").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
-            self._members["fIndex"] = self.class_named("TArrayI").read(
+            self._members["fIndex"] = file.class_named("TArrayI").read(
                 chunk, cursor, context, file, self._file, self._concrete
             )
             self._members["fTreeIndex"] = uproot4.deserialization.read_object_any(
@@ -798,6 +825,10 @@ in file {1}""".format(
 
 
 class Model_TTree(uproot4.model.DispatchByVersion):
+    """
+    A :doc:`uproot4.model.DispatchByVersion` for ``TTree``.
+    """
+
     known_versions = {
         16: Model_TTree_v16,
         17: Model_TTree_v17,
@@ -811,6 +842,10 @@ _tiofeatures_format1 = struct.Struct(">B")
 
 
 class Model_ROOT_3a3a_TIOFeatures(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``ROOT::TIOFeatures``.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(

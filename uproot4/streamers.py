@@ -1,5 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines models for ``TStreamerInfo`` and its elements, as well as routines for
+generating Python code for new classes from streamer data.
+"""
+
 from __future__ import absolute_import
 
 import sys
@@ -129,73 +134,34 @@ _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 
 class Model_TStreamerInfo(uproot4.model.Model):
-    def read_members(self, chunk, cursor, context, file):
-        self._bases.append(
-            uproot4.models.TNamed.Model_TNamed.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._file,
-                self._parent,
-                concrete=self._concrete,
-            )
-        )
-        self._bases[0]._members["fName"] = _canonical_typename(
-            self._bases[0]._members["fName"]
-        )
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerInfo``.
 
-        self._members["fCheckSum"], self._members["fClassVersion"] = cursor.fields(
-            chunk, _tstreamerinfo_format1, context
-        )
-
-        self._members["fElements"] = uproot4.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
-        )
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
 
     def __repr__(self):
         return "<TStreamerInfo for {0} version {1} at 0x{2:012x}>".format(
             self.name, self.class_version, id(self)
         )
 
-    @property
-    def name(self):
-        return self.member("fName")
-
-    @property
-    def typename(self):
-        return self.member("fName")
-
-    @property
-    def class_version(self):
-        return self._members["fClassVersion"]
-
-    @property
-    def elements(self):
-        return self._members["fElements"]
-
-    def walk_members(self, streamers):
-        for element in self._members["fElements"]:
-            if isinstance(element, Model_TStreamerBase):
-                base = streamers[element.name][element.base_version]
-                for x in base.walk_members(streamers):
-                    yield x
-            else:
-                yield element
-
-    @property
-    def file_uuid(self):
-        return self._file.uuid
-
-    def _dependencies(self, streamers, out):
-        out.append((self.name, self.class_version))
-        for element in self.elements:
-            element._dependencies(streamers, out)
-
     def show(self, stream=sys.stdout):
         """
         Args:
-            stream: Object with a `write` method for writing the output.
+            stream (object with a ``write(str)`` method): Stream to write the
+                output to.
+
+        Interactively display a ``TStreamerInfo``.
+
+        Example:
+
+        .. code-block:: raw
+
+            TLorentzVector (v4): TObject (v1)
+                fP: TVector3 (TStreamerObject)
+                fE: double (TStreamerBasicType)
         """
         bases = []
         for element in self.elements:
@@ -209,15 +175,40 @@ class Model_TStreamerInfo(uproot4.model.Model):
         for element in self.elements:
             element.show(stream=stream)
 
-    def new_class(self, file):
-        class_code = self.class_code()
-        class_name = uproot4.model.classname_encode(self.name, self.class_version)
-        classes = uproot4.model.maybe_custom_classes(file.custom_classes)
-        return uproot4.deserialization.compile_class(
-            file, classes, class_code, class_name
-        )
+    @property
+    def name(self):
+        """
+        The name (``fName``) of this ``TStreamerInfo``.
+        """
+        return self.member("fName")
+
+    @property
+    def typename(self):
+        """
+        The typename/classname (``fName``) of this ``TStreamerInfo``.
+        """
+        return self.member("fName")
+
+    @property
+    def elements(self):
+        """
+        This ``TStreamerInfo``'s list of ``TStreamerElements``
+        (:doc:`uproot4.streamers.TStreamerElement`).
+        """
+        return self._members["fElements"]
+
+    @property
+    def class_version(self):
+        """
+        The class version (``fClassVersion``) of this ``TStreamerInfo``.
+        """
+        return self._members["fClassVersion"]
 
     def class_code(self):
+        """
+        Returns Python code as a string that, when evaluated, would be a suitable
+        :doc:`uproot4.model.VersionedModel` for this class and version.
+        """
         read_members = [
             "    def read_members(self, chunk, cursor, context, file):",
             "        if self.is_memberwise:",
@@ -336,6 +327,83 @@ class Model_TStreamerInfo(uproot4.model.Model):
             + class_data
         )
 
+    def new_class(self, file):
+        """
+        Args:
+            file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot4.model.Model` classes as needed from its
+                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+                for error messages.
+
+        Returns a new subclass of :doc:`uproot4.model.VersionedModel` for this
+        class and version.
+        """
+        class_code = self.class_code()
+        class_name = uproot4.model.classname_encode(self.name, self.class_version)
+        classes = uproot4.model.maybe_custom_classes(file.custom_classes)
+        return uproot4.deserialization.compile_class(
+            file, classes, class_code, class_name
+        )
+
+    @property
+    def file_uuid(self):
+        """
+        The unique identifier (:doc:`uproot4.reading.ReadOnlyFile`) of the file
+        from which this ``TStreamerInfo`` was extracted.
+        """
+        return self._file.uuid
+
+    def walk_members(self, streamers):
+        """
+        Args:
+            streamers (list of :doc:`uproot4.streamers.TStreamerInfo`): The
+                complete set of ``TStreamerInfos``, probably including this one.
+
+        Generator that yields all ``TStreamerElements``
+        (:doc:`uproot4.streamers.TStreamerElement`) for this class and its
+        superclasses.
+
+        The ``TStreamerBase`` elements (:doc:`uproot4.streamers.TStreamerBase`)
+        are not yielded, but they are extracted from ``streamers`` to include
+        their elements.
+        """
+        for element in self._members["fElements"]:
+            if isinstance(element, Model_TStreamerBase):
+                base = streamers[element.name][element.base_version]
+                for x in base.walk_members(streamers):
+                    yield x
+            else:
+                yield element
+
+    def read_members(self, chunk, cursor, context, file):
+        self._bases.append(
+            uproot4.models.TNamed.Model_TNamed.read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
+            )
+        )
+        self._bases[0]._members["fName"] = _canonical_typename(
+            self._bases[0]._members["fName"]
+        )
+
+        self._members["fCheckSum"], self._members["fClassVersion"] = cursor.fields(
+            chunk, _tstreamerinfo_format1, context
+        )
+
+        self._members["fElements"] = uproot4.deserialization.read_object_any(
+            chunk, cursor, context, file, self._file, self._concrete
+        )
+
+    def _dependencies(self, streamers, out):
+        out.append((self.name, self.class_version))
+        for element in self.elements:
+            element._dependencies(streamers, out)
+
 
 _tstreamerelement_format1 = struct.Struct(">iiii")
 _tstreamerelement_format2 = struct.Struct(">i")
@@ -344,6 +412,73 @@ _tstreamerelement_dtype1 = numpy.dtype(">i4")
 
 
 class Model_TStreamerElement(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerElement``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
+    def show(self, stream=sys.stdout):
+        """
+        Args:
+            stream (object with a ``write(str)`` method): Stream to write the
+                output to.
+
+        Interactively display a ``TStreamerElement``.
+        """
+        stream.write(
+            u"    {0}: {1} ({2})\n".format(
+                self.name,
+                self.typename,
+                uproot4.model.classname_decode(type(self).__name__)[0],
+            )
+        )
+
+    @property
+    def name(self):
+        """
+        The name (``fName``) of this ``TStreamerElement``.
+        """
+        return self.member("fName")
+
+    @property
+    def title(self):
+        """
+        The title (``fTitle``) of this ``TStreamerElement``.
+        """
+        return self.member("fTitle")
+
+    @property
+    def typename(self):
+        """
+        The typename (``fTypeName``) of this ``TStreamerElement``.
+        """
+        return self.member("fTypeName")
+
+    @property
+    def array_length(self):
+        """
+        The array length (``fArrayLength``) of this ``TStreamerElement``.
+        """
+        return self.member("fArrayLength")
+
+    @property
+    def file_uuid(self):
+        """
+        The unique identifier (:doc:`uproot4.reading.ReadOnlyFile`) of the file
+        from which this ``TStreamerElement`` was extracted.
+        """
+        return self._file.uuid
+
+    @property
+    def fType(self):
+        """
+        The type code (``fType``) of this ``TStreamerElement``.
+        """
+        return self.member("fType")
+
     def read_members(self, chunk, cursor, context, file):
         # https://github.com/root-project/root/blob/master/core/meta/src/TStreamerElement.cxx#L505
 
@@ -393,48 +528,19 @@ class Model_TStreamerElement(uproot4.model.Model):
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
 
-    @property
-    def name(self):
-        return self.member("fName")
-
-    @property
-    def title(self):
-        return self.member("fTitle")
-
-    @property
-    def typename(self):
-        return self.member("fTypeName")
-
-    @property
-    def array_length(self):
-        return self.member("fArrayLength")
-
-    @property
-    def fType(self):
-        return self.member("fType")
-
-    @property
-    def file_uuid(self):
-        return self._file.uuid
-
     def _dependencies(self, streamers, out):
         pass
 
-    def show(self, stream=sys.stdout):
-        """
-        Args:
-            stream: Object with a `write` method for writing the output.
-        """
-        stream.write(
-            u"    {0}: {1} ({2})\n".format(
-                self.name,
-                self.typename,
-                uproot4.model.classname_decode(type(self).__name__)[0],
-            )
-        )
-
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerArtificial``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -493,42 +599,23 @@ _tstreamerbase_format1 = struct.Struct(">i")
 
 
 class Model_TStreamerBase(Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context, file):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._file,
-                self._parent,
-                concrete=self._concrete,
-            )
-        )
-        if self._instance_version >= 2:
-            self._members["fBaseVersion"] = cursor.field(
-                chunk, _tstreamerbase_format1, context
-            )
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerBase``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
 
     @property
     def base_version(self):
+        """
+        The base version (``fBaseVersion``) of this ``TStreamerBase``.
+        """
         return self._members["fBaseVersion"]
 
-    def _dependencies(self, streamers, out):
-        streamer_versions = streamers.get(self.name)
-        if streamer_versions is not None:
-            streamer = streamer_versions.get(self.base_version)
-            if (
-                streamer is not None
-                and (streamer.name, streamer.class_version) not in out
-            ):
-                streamer._dependencies(streamers, out)
-
     def show(self, stream=sys.stdout):
-        """
-        Args:
-            stream: Object with a `write` method for writing the output.
-        """
+        pass
 
     def class_code(
         self,
@@ -567,11 +654,6 @@ class Model_TStreamerBase(Model_TStreamerElement):
 
         base_names_versions.append((self.name, self.base_version))
 
-
-_tstreamerbasicpointer_format1 = struct.Struct(">i")
-
-
-class Model_TStreamerBasicPointer(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -584,14 +666,39 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 concrete=self._concrete,
             )
         )
-        self._members["fCountVersion"] = cursor.field(
-            chunk, _tstreamerbasicpointer_format1, context
-        )
-        self._members["fCountName"] = cursor.string(chunk, context)
-        self._members["fCountClass"] = cursor.string(chunk, context)
+        if self._instance_version >= 2:
+            self._members["fBaseVersion"] = cursor.field(
+                chunk, _tstreamerbase_format1, context
+            )
+
+    def _dependencies(self, streamers, out):
+        streamer_versions = streamers.get(self.name)
+        if streamer_versions is not None:
+            streamer = streamer_versions.get(self.base_version)
+            if (
+                streamer is not None
+                and (streamer.name, streamer.class_version) not in out
+            ):
+                streamer._dependencies(streamers, out)
+
+
+_tstreamerbasicpointer_format1 = struct.Struct(">i")
+
+
+class Model_TStreamerBasicPointer(Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerBasicPointer``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
 
     @property
     def count_name(self):
+        """
+        The count name (``fCountName``) of this ``TStreamerBasicPointer``.
+        """
         return self._members["fCountName"]
 
     def class_code(
@@ -650,8 +757,6 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         member_names.append(self.name)
         dtypes.append(_ftype_to_dtype(self.fType - uproot4.const.kOffsetP))
 
-
-class Model_TStreamerBasicType(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -664,68 +769,21 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 concrete=self._concrete,
             )
         )
-        if (
-            uproot4.const.kOffsetL
-            < self._bases[0]._members["fType"]
-            < uproot4.const.kOffsetP
-        ):
-            self._bases[0]._members["fType"] -= uproot4.const.kOffsetL
+        self._members["fCountVersion"] = cursor.field(
+            chunk, _tstreamerbasicpointer_format1, context
+        )
+        self._members["fCountName"] = cursor.string(chunk, context)
+        self._members["fCountClass"] = cursor.string(chunk, context)
 
-        basic = True
 
-        if self._bases[0]._members["fType"] in (
-            uproot4.const.kBool,
-            uproot4.const.kUChar,
-            uproot4.const.kChar,
-        ):
-            self._bases[0]._members["fSize"] = 1
+class Model_TStreamerBasicType(Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerBasicType``.
 
-        elif self._bases[0]._members["fType"] in (
-            uproot4.const.kUShort,
-            uproot4.const.kShort,
-        ):
-            self._bases[0]._members["fSize"] = 2
-
-        elif self._bases[0]._members["fType"] in (
-            uproot4.const.kBits,
-            uproot4.const.kUInt,
-            uproot4.const.kInt,
-            uproot4.const.kCounter,
-        ):
-            self._bases[0]._members["fSize"] = 4
-
-        elif self._bases[0]._members["fType"] in (
-            uproot4.const.kULong,
-            uproot4.const.kLong,
-        ):
-            self._bases[0]._members["fSize"] = numpy.dtype(numpy.long).itemsize
-
-        elif self._bases[0]._members["fType"] in (
-            uproot4.const.kULong64,
-            uproot4.const.kLong64,
-        ):
-            self._bases[0]._members["fSize"] = 8
-
-        elif self._bases[0]._members["fType"] in (
-            uproot4.const.kFloat,
-            uproot4.const.kFloat16,
-        ):
-            self._bases[0]._members["fSize"] = 4
-
-        elif self._bases[0]._members["fType"] in (
-            uproot4.const.kDouble,
-            uproot4.const.kDouble32,
-        ):
-            self._bases[0]._members["fSize"] = 8
-
-        elif self._bases[0]._members["fType"] == uproot4.const.kCharStar:
-            self._bases[0]._members["fSize"] = numpy.dtype(numpy.intp).itemsize
-
-        else:
-            basic = False
-
-        if basic and self._bases[0]._members["fArrayLength"] > 0:
-            self._bases[0]._members["fSize"] *= self._bases[0]._members["fArrayLength"]
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
 
     def class_code(
         self,
@@ -847,11 +905,6 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         member_names.append(self.name)
 
-
-_tstreamerloop_format1 = struct.Struct(">i")
-
-
-class Model_TStreamerLoop(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -864,22 +917,88 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 concrete=self._concrete,
             )
         )
-        self._members["fCountVersion"] = cursor.field(
-            chunk, _tstreamerloop_format1, context
-        )
-        self._members["fCountName"] = cursor.string(chunk, context)
-        self._members["fCountClass"] = cursor.string(chunk, context)
+        if (
+            uproot4.const.kOffsetL
+            < self._bases[0]._members["fType"]
+            < uproot4.const.kOffsetP
+        ):
+            self._bases[0]._members["fType"] -= uproot4.const.kOffsetL
+
+        basic = True
+
+        if self._bases[0]._members["fType"] in (
+            uproot4.const.kBool,
+            uproot4.const.kUChar,
+            uproot4.const.kChar,
+        ):
+            self._bases[0]._members["fSize"] = 1
+
+        elif self._bases[0]._members["fType"] in (
+            uproot4.const.kUShort,
+            uproot4.const.kShort,
+        ):
+            self._bases[0]._members["fSize"] = 2
+
+        elif self._bases[0]._members["fType"] in (
+            uproot4.const.kBits,
+            uproot4.const.kUInt,
+            uproot4.const.kInt,
+            uproot4.const.kCounter,
+        ):
+            self._bases[0]._members["fSize"] = 4
+
+        elif self._bases[0]._members["fType"] in (
+            uproot4.const.kULong,
+            uproot4.const.kLong,
+        ):
+            self._bases[0]._members["fSize"] = numpy.dtype(numpy.long).itemsize
+
+        elif self._bases[0]._members["fType"] in (
+            uproot4.const.kULong64,
+            uproot4.const.kLong64,
+        ):
+            self._bases[0]._members["fSize"] = 8
+
+        elif self._bases[0]._members["fType"] in (
+            uproot4.const.kFloat,
+            uproot4.const.kFloat16,
+        ):
+            self._bases[0]._members["fSize"] = 4
+
+        elif self._bases[0]._members["fType"] in (
+            uproot4.const.kDouble,
+            uproot4.const.kDouble32,
+        ):
+            self._bases[0]._members["fSize"] = 8
+
+        elif self._bases[0]._members["fType"] == uproot4.const.kCharStar:
+            self._bases[0]._members["fSize"] = numpy.dtype(numpy.intp).itemsize
+
+        else:
+            basic = False
+
+        if basic and self._bases[0]._members["fArrayLength"] > 0:
+            self._bases[0]._members["fSize"] *= self._bases[0]._members["fArrayLength"]
+
+
+_tstreamerloop_format1 = struct.Struct(">i")
+
+
+class Model_TStreamerLoop(Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerLoop``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
 
     @property
     def count_name(self):
+        """
+        The count name (``fCountName``) of this ``TStreamerLoop``.
+        """
         return self._members["fCountName"]
-
-    def _dependencies(self, streamers, out):
-        streamer_versions = streamers.get(self.typename.rstrip("*"))
-        if streamer_versions is not None:
-            for streamer in streamer_versions.values():
-                if (streamer.name, streamer.class_version) not in out:
-                    streamer._dependencies(streamers, out)
 
     def class_code(
         self,
@@ -935,11 +1054,6 @@ class Model_TStreamerLoop(Model_TStreamerElement):
 
         member_names.append(self.name)
 
-
-_tstreamerstl_format1 = struct.Struct(">ii")
-
-
-class Model_TStreamerSTL(Model_TStreamerElement):
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -952,30 +1066,44 @@ class Model_TStreamerSTL(Model_TStreamerElement):
                 concrete=self._concrete,
             )
         )
-        self._members["fSTLtype"], self._members["fCtype"] = cursor.fields(
-            chunk, _tstreamerstl_format1, context
+        self._members["fCountVersion"] = cursor.field(
+            chunk, _tstreamerloop_format1, context
         )
+        self._members["fCountName"] = cursor.string(chunk, context)
+        self._members["fCountClass"] = cursor.string(chunk, context)
 
-        if self._members["fSTLtype"] in (
-            uproot4.const.kSTLmultimap,
-            uproot4.const.kSTLset,
-        ):
-            if self._bases[0]._members["fTypeName"].startswith(
-                "std::set"
-            ) or self._bases[0]._members["fTypeName"].startswith("set"):
-                self._members["fSTLtype"] = uproot4.const.kSTLset
+    def _dependencies(self, streamers, out):
+        streamer_versions = streamers.get(self.typename.rstrip("*"))
+        if streamer_versions is not None:
+            for streamer in streamer_versions.values():
+                if (streamer.name, streamer.class_version) not in out:
+                    streamer._dependencies(streamers, out)
 
-            elif self._bases[0]._members["fTypeName"].startswith(
-                "std::multimap"
-            ) or self._bases[0]._members["fTypeName"].startswith("multimap"):
-                self._members["fSTLtype"] = uproot4.const.kSTLmultimap
+
+_tstreamerstl_format1 = struct.Struct(">ii")
+
+
+class Model_TStreamerSTL(Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerSTL``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
 
     @property
     def stl_type(self):
+        """
+        The STL type code (``fSTLtype``) of this ``TStreamerSTL``.
+        """
         return self._members["fSTLtype"]
 
     @property
     def fCtype(self):
+        """
+        The type code (``fCtype``) of this ``TStreamerSTL``.
+        """
         return self._members["fCtype"]
 
     def class_code(
@@ -1024,8 +1152,46 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         containers.append(stl_container)
         member_names.append(self.name)
 
+    def read_members(self, chunk, cursor, context, file):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
+            )
+        )
+        self._members["fSTLtype"], self._members["fCtype"] = cursor.fields(
+            chunk, _tstreamerstl_format1, context
+        )
+
+        if self._members["fSTLtype"] in (
+            uproot4.const.kSTLmultimap,
+            uproot4.const.kSTLset,
+        ):
+            if self._bases[0]._members["fTypeName"].startswith(
+                "std::set"
+            ) or self._bases[0]._members["fTypeName"].startswith("set"):
+                self._members["fSTLtype"] = uproot4.const.kSTLset
+
+            elif self._bases[0]._members["fTypeName"].startswith(
+                "std::multimap"
+            ) or self._bases[0]._members["fTypeName"].startswith("multimap"):
+                self._members["fSTLtype"] = uproot4.const.kSTLmultimap
+
 
 class Model_TStreamerSTLstring(Model_TStreamerSTL):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerSTLString``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerSTL.read(
@@ -1040,13 +1206,12 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
         )
 
 
-class pointer_types(object):
-    def _dependencies(self, streamers, out):
-        streamer_versions = streamers.get(self.typename.rstrip("*"))
-        if streamer_versions is not None:
-            for streamer in streamer_versions.values():
-                if (streamer.name, streamer.class_version) not in out:
-                    streamer._dependencies(streamers, out)
+class TStreamerPointerTypes(object):
+    """
+    A class to share code between
+    :doc:`uproot4.streamers.Model_TStreamerObjectAnyPointer` and
+    :doc:`uproot4.streamers.Model_TStreamerObjectPointer`.
+    """
 
     def class_code(
         self,
@@ -1109,44 +1274,67 @@ class pointer_types(object):
 
         member_names.append(self.name)
 
-
-class Model_TStreamerObjectAnyPointer(pointer_types, Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context, file):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._file,
-                self._parent,
-                concrete=self._concrete,
-            )
-        )
-
-
-class Model_TStreamerObjectPointer(pointer_types, Model_TStreamerElement):
-    def read_members(self, chunk, cursor, context, file):
-        self._bases.append(
-            Model_TStreamerElement.read(
-                chunk,
-                cursor,
-                context,
-                file,
-                self._file,
-                self._parent,
-                concrete=self._concrete,
-            )
-        )
-
-
-class object_types(object):
     def _dependencies(self, streamers, out):
         streamer_versions = streamers.get(self.typename.rstrip("*"))
         if streamer_versions is not None:
             for streamer in streamer_versions.values():
                 if (streamer.name, streamer.class_version) not in out:
                     streamer._dependencies(streamers, out)
+
+
+class Model_TStreamerObjectAnyPointer(TStreamerPointerTypes, Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerObjectAnyPointer``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
+    def read_members(self, chunk, cursor, context, file):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
+            )
+        )
+
+
+class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerObjectPointer``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
+    def read_members(self, chunk, cursor, context, file):
+        self._bases.append(
+            Model_TStreamerElement.read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self._concrete,
+            )
+        )
+
+
+class TStreamerObjectTypes(object):
+    """
+    A class to share code between
+    :doc:`uproot4.streamers.Model_TStreamerObject`,
+    :doc:`uproot4.streamers.Model_TStreamerObjectAny`, and
+    :doc:`uproot4.streamers.Model_TStreamerString`.
+    """
 
     def class_code(
         self,
@@ -1186,8 +1374,23 @@ class object_types(object):
 
         member_names.append(self.name)
 
+    def _dependencies(self, streamers, out):
+        streamer_versions = streamers.get(self.typename.rstrip("*"))
+        if streamer_versions is not None:
+            for streamer in streamer_versions.values():
+                if (streamer.name, streamer.class_version) not in out:
+                    streamer._dependencies(streamers, out)
 
-class Model_TStreamerObject(object_types, Model_TStreamerElement):
+
+class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerObject``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -1202,7 +1405,15 @@ class Model_TStreamerObject(object_types, Model_TStreamerElement):
         )
 
 
-class Model_TStreamerObjectAny(object_types, Model_TStreamerElement):
+class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerObjectAny``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(
@@ -1217,7 +1428,15 @@ class Model_TStreamerObjectAny(object_types, Model_TStreamerElement):
         )
 
 
-class Model_TStreamerString(object_types, Model_TStreamerElement):
+class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TStreamerString``.
+
+    Since this model is versionless and most of its functionality is internal
+    (not to be directly accessed by most users), it is defined on the model
+    instead of creating a behavior class to mix in functionality.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         self._bases.append(
             Model_TStreamerElement.read(

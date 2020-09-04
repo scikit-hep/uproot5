@@ -1,11 +1,19 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines the behavior of ``TH2Poly``.
+"""
+
 from __future__ import absolute_import
 
 import uproot4.behaviors.TH2
 
 
-class TH2Poly(object):
+class TH2Poly(uproot4.behaviors.TH1.Histogram):
+    """
+    Behaviors for two-dimensional polygon histograms: ROOT's ``TH2Poly``.
+    """
+
     no_inherit = (uproot4.behaviors.TH2.TH2,)
 
     def edges(self, axis):

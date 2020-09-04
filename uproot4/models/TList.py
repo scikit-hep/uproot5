@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines a versionless model for ``TList``.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -19,6 +23,10 @@ _tlist_format2 = struct.Struct(">B")
 
 
 class Model_TList(uproot4.model.Model, Sequence):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TList``.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -54,10 +62,12 @@ in file {1}""".format(
             cursor.skip(n)
 
     def __repr__(self):
-        return "<{0} of {1} items at 0x{2:012x}>".format(
-            uproot4.model.classname_pretty(self.classname, self.class_version),
-            len(self),
-            id(self),
+        if self.class_version is None:
+            version = ""
+        else:
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} of {2} items at 0x{3:012x}>".format(
+            self.classname, version, len(self), id(self),
         )
 
     def __getitem__(self, where):

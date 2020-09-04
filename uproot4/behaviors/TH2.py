@@ -1,5 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines the behaviors of ``TH2`` and its subclasses (not including
+``TProfile2D`` and ``TH2Poly``).
+"""
+
 from __future__ import absolute_import
 
 import numpy
@@ -8,13 +13,18 @@ import uproot4.models.TArray
 import uproot4.behaviors.TH1
 
 
-class TH2(object):
+class TH2(uproot4.behaviors.TH1.Histogram):
+    """
+    Behaviors for two-dimensional histograms: descendants of ROOT's
+    ``TH2``, not including ``TProfile2D`` or ``TH2Poly``.
+    """
+
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
     def edges(self, axis):
-        if axis == 0 or axis == "x":
+        if axis == 0 or axis == -2 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
-        elif axis == 1 or axis == "y":
+        elif axis == 1 or axis == -1 or axis == "y":
             return uproot4.behaviors.TH1._edges(self.member("fYaxis"))
         else:
             raise ValueError("axis must be 0, 1 or 'x', 'y' for a TH2")

@@ -1,5 +1,19 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Physical layer for remote files, accessed via HTTP(S).
+
+Defines a :doc:`uproot4.source.http.HTTPResource` (stateless) and two sources:
+:doc:`uproot4.source.http.MultithreadedHTTPSource` and
+:doc:`uproot4.source.http.HTTPSource`. The multi-threaded source only requires
+the server to support byte range requests (code 206), but the general source
+requires the server to support multi-part byte range requests. If the server
+does not support multi-part GET, :doc:`uproot4.source.http.HTTPSource`
+automatically falls back to :doc:`uproot4.source.http.MultithreadedHTTPSource`.
+
+Despite the name, both sources support secure HTTPS (selected by URL scheme).
+"""
+
 from __future__ import absolute_import
 
 import sys
@@ -25,9 +39,14 @@ import uproot4._util
 
 def make_connection(parsed_url, timeout):
     """
-    Helper function to create a HTTPConnection or HTTPSConnection.
-    """
+    Args:
+        parsed_url (``urllib.parse.ParseResult``): The URL to connect to, which
+            may be HTTP or HTTPS.
+        timeout (None or float): An optional timeout in seconds.
 
+    Creates a ``http.client.HTTPConnection`` or a ``http.client.HTTPSConnection``,
+    depending on the URL scheme.
+    """
     if parsed_url.scheme == "https":
         if uproot4._util.py2:
             return HTTPSConnection(
@@ -53,6 +72,14 @@ def make_connection(parsed_url, timeout):
 
 
 def get_num_bytes(file_path, parsed_url, timeout):
+    """
+    Args:
+        file_path (str): The URL to access as a raw string.
+        parsed_url (``urllib.parse.ParseResult``): The URL to access.
+        timeout (None or float): An optional timeout in seconds.
+
+    Returns the number of bytes in the file by making a HEAD request.
+    """
     connection = make_connection(parsed_url, timeout)
     connection.request("HEAD", parsed_url.path)
     response = connection.getresponse()
@@ -85,6 +112,18 @@ in file {1}""".format(
 
 
 class HTTPResource(uproot4.source.chunk.Resource):
+    """
+    Args:
+        file_path (str): A URL of the file to open.
+        timeout (None or float): An optional timeout in seconds.
+
+    A :doc:`uproot4.source.chunk.Resource` for HTTP(S) connections.
+
+    For simplicity, this resource does not manage a live
+    ``http.client.HTTPConnection`` or ``http.client.HTTPSConnection``, though
+    in principle, it could.
+    """
+
     def __init__(self, file_path, timeout):
         self._file_path = file_path
         self._timeout = timeout
@@ -92,10 +131,16 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
     @property
     def timeout(self):
+        """
+        The timeout in seconds or None.
+        """
         return self._timeout
 
     @property
     def parsed_url(self):
+        """
+        A ``urllib.parse.ParseResult`` version of the ``file_path``.
+        """
         return self._parsed_url
 
     def __enter__(self):
@@ -104,21 +149,15 @@ class HTTPResource(uproot4.source.chunk.Resource):
     def __exit__(self, exception_type, exception_value, traceback):
         pass
 
-    @staticmethod
-    def future(source, start, stop):
-        connection = make_connection(source.parsed_url, source.timeout)
-        connection.request(
-            "GET",
-            source.parsed_url.path,
-            headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
-        )
-
-        def task(resource):
-            return resource.get(connection, start, stop)
-
-        return uproot4.source.futures.ResourceFuture(task)
-
     def get(self, connection, start, stop):
+        """
+        Args:
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+
+        Returns a Python buffer of data between ``start`` and ``stop``.
+        """
         response = connection.getresponse()
 
         if response.status == 404:
@@ -139,7 +178,54 @@ for URL {0}""".format(
             connection.close()
 
     @staticmethod
+    def future(source, start, stop):
+        """
+        Args:
+            source (:doc:`uproot4.source.chunk.HTTPSource` or :doc:`uproot4.source.chunk.MultithreadedHTTPSource`): The
+                data source.
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+
+        Returns a :doc:`uproot4.source.futures.ResourceFuture` that calls
+        :doc:`uproot4.source.file.HTTPResource.get` with ``start`` and ``stop``.
+        """
+        connection = make_connection(source.parsed_url, source.timeout)
+        connection.request(
+            "GET",
+            source.parsed_url.path,
+            headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
+        )
+
+        def task(resource):
+            return resource.get(connection, start, stop)
+
+        return uproot4.source.futures.ResourceFuture(task)
+
+    @staticmethod
     def multifuture(source, ranges, futures, results):
+        u"""
+        Args:
+            source (:doc:`uproot4.source.chunk.HTTPSource`): The data source.
+            ranges (list of (int, int) 2-tuples): Intervals to fetch
+                as (start, stop) pairs in a single request, if possible.
+            futures (dict of (int, int) \u2192 :doc:`uproot4.source.futures.ResourceFuture`): Mapping
+                from (start, stop) to a future that is awaiting its result.
+            results (dict of (int, int) \u2192 None or ``numpy.ndarray`` of ``numpy.uint8``): Mapping
+                from (start, stop) to None or results.
+
+        Returns a :doc:`uproot4.source.futures.ResourceFuture` that attempts
+        to perform an HTTP(S) multipart GET, filling ``results`` to satisfy
+        the individual :doc:`uproot4.source.chunk.Chunk`'s ``futures`` with
+        its multipart response.
+
+        If the server does not support multipart GET, that same future
+        sets :doc:`uproot4.source.chunk.HTTPSource.fallback` and retries the
+        request without multipart, using a
+        :doc:`uproot4.source.http.MultithreadedHTTPSource` to fill the same
+        ``results`` and ``futures``. Subsequent attempts would immediately
+        use the :doc:`uproot4.source.chunk.HTTPSource.fallback`.
+        """
         connection = make_connection(source.parsed_url, source.timeout)
 
         range_strings = []
@@ -176,6 +262,10 @@ for URL {0}""".format(
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
 
     def is_multipart_supported(self, ranges, response):
+        """
+        Helper function for :doc:`uproot4.source.http.HTTPResource.multifuture`
+        to check for multipart GET support.
+        """
         if response.status != 206:
             return False
 
@@ -189,6 +279,10 @@ for URL {0}""".format(
             return True
 
     def handle_no_multipart(self, source, ranges, futures, results):
+        """
+        Helper function for :doc:`uproot4.source.http.HTTPResource.multifuture`
+        to handle a lack of multipart GET support.
+        """
         source._set_fallback()
 
         notifications = queue.Queue()
@@ -200,6 +294,10 @@ for URL {0}""".format(
             futures[chunk.start, chunk.stop]._run(self)
 
     def handle_multipart(self, source, futures, results, response):
+        """
+        Helper function for :doc:`uproot4.source.http.HTTPResource.multifuture`
+        to handle the multipart GET response.
+        """
         for i in uproot4._util.range(len(futures)):
             range_string, size = self.next_header(response)
             if range_string is None:
@@ -242,6 +340,10 @@ for URL {3}""".format(
             future._run(self)
 
     def next_header(self, response):
+        """
+        Helper function for :doc:`uproot4.source.http.HTTPResource.multifuture`
+        to return the next header from the ``response``.
+        """
         line = response.fp.readline()
         range_string, size = None, None
         while range_string is None:
@@ -261,48 +363,38 @@ for URL {3}""".format(
 
     @staticmethod
     def partfuture(results, start, stop):
+        """
+        Returns a :doc:`uproot4.source.futures.ResourceFuture` to simply select
+        the ``(start, stop)`` item from the ``results`` dict.
+
+        In :doc:`uproot4.source.http.HTTPSource.chunks`, each chunk has a
+        :doc:`uproot4.source.http.HTTPResource.partfuture` that are collectively
+        filled by a single :doc:`uproot4.source.http.HTTPResource.multifuture`.
+        """
+
         def task(resource):
             return results[start, stop]
 
         return uproot4.source.futures.ResourceFuture(task)
 
 
-class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
-    ResourceClass = HTTPResource
-
-    def __init__(self, file_path, **options):
-        num_workers = options["num_workers"]
-        timeout = options["timeout"]
-        self._num_requests = 0
-        self._num_requested_chunks = 0
-        self._num_requested_bytes = 0
-
-        self._file_path = file_path
-        self._num_bytes = None
-        self._timeout = timeout
-
-        self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(file_path, timeout) for x in uproot4._util.range(num_workers)]
-        )
-
-    @property
-    def timeout(self):
-        return self._timeout
-
-    @property
-    def num_bytes(self):
-        if self._num_bytes is None:
-            self._num_bytes = get_num_bytes(
-                self._file_path, self.parsed_url, self._timeout
-            )
-        return self._num_bytes
-
-    @property
-    def parsed_url(self):
-        return self._executor.workers[0].resource.parsed_url
-
-
 class HTTPSource(uproot4.source.chunk.Source):
+    """
+    Args:
+        file_path (str): A URL of the file to open.
+        options: Must include ``"num_fallback_workers"`` and ``"timeout"``.
+
+    A :doc:`uproot4.source.chunk.Source` that first attempts an HTTP(S)
+    multipart GET, but if the server doesn't support it, it falls back to many
+    HTTP(S) connections in threads
+    (:doc:`uproot4.source.http.MultithreadedHTTPSource).
+
+    Since the multipart GET is a single request and response, it needs only one
+    thread, but it is a background thread (a single
+    :doc:`uproot4.source.futures.ResourceWorker` in a
+    :doc:`uproot4.source.futures.ResourceThreadPoolExecutor`).
+    """
+
     ResourceClass = HTTPResource
 
     def __init__(self, file_path, **options):
@@ -333,46 +425,6 @@ class HTTPSource(uproot4.source.chunk.Source):
         return "<{0} {1}{2} at 0x{3:012x}>".format(
             type(self).__name__, path, fallback, id(self)
         )
-
-    @property
-    def timeout(self):
-        return self._timeout
-
-    @property
-    def num_bytes(self):
-        if self._num_bytes is None:
-            self._num_bytes = get_num_bytes(
-                self._file_path, self.parsed_url, self._timeout
-            )
-        return self._num_bytes
-
-    @property
-    def parsed_url(self):
-        return self._executor.workers[0].resource.parsed_url
-
-    @property
-    def executor(self):
-        return self._executor
-
-    @property
-    def fallback(self):
-        return self._fallback
-
-    def _set_fallback(self):
-        self._fallback = MultithreadedHTTPSource(
-            self._file_path,
-            **self._fallback_options    # NOTE: a comma after **fallback_options breaks Python 2
-        )
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._executor.shutdown()
-
-    @property
-    def closed(self):
-        return self._executor.closed
 
     def chunk(self, start, stop):
         self._num_requests += 1
@@ -410,3 +462,110 @@ class HTTPSource(uproot4.source.chunk.Source):
 
         else:
             return self._fallback.chunks(ranges, notifications)
+
+    @property
+    def executor(self):
+        """
+        The :doc:`uproot4.source.futures.ResourceThreadPoolExecutor` that
+        manages this source's single background thread.
+        """
+        return self._executor
+
+    @property
+    def closed(self):
+        return self._executor.closed
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._executor.shutdown()
+
+    @property
+    def timeout(self):
+        """
+        The timeout in seconds or None.
+        """
+        return self._timeout
+
+    @property
+    def num_bytes(self):
+        if self._num_bytes is None:
+            self._num_bytes = get_num_bytes(
+                self._file_path, self.parsed_url, self._timeout
+            )
+        return self._num_bytes
+
+    @property
+    def parsed_url(self):
+        """
+        A ``urllib.parse.ParseResult`` version of the ``file_path``.
+        """
+        return self._executor.workers[0].resource.parsed_url
+
+    @property
+    def fallback(self):
+        """
+        If None, the source has not encountered an unsuccessful multipart GET
+        and no fallback is needed yet.
+
+        Otherwise, this is a :doc:`uproot4.source.http.MultithreadedHTTPSource`
+        to which all requests are forwarded.
+        """
+        return self._fallback
+
+    def _set_fallback(self):
+        self._fallback = MultithreadedHTTPSource(
+            self._file_path,
+            **self._fallback_options  # NOTE: a comma after **fallback_options breaks Python 2
+        )
+
+
+class MultithreadedHTTPSource(uproot4.source.chunk.MultithreadedSource):
+    """
+    Args:
+        file_path (str): A URL of the file to open.
+        options: Must include ``"num_workers"`` and ``"timeout"``.
+
+    A :doc:`uproot4.source.chunk.MultithreadedSource` that manages many
+    :doc:`uproot4.source.http.HTTPResource` objects.
+    """
+
+    ResourceClass = HTTPResource
+
+    def __init__(self, file_path, **options):
+        num_workers = options["num_workers"]
+        timeout = options["timeout"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
+
+        self._file_path = file_path
+        self._num_bytes = None
+        self._timeout = timeout
+
+        self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
+            [HTTPResource(file_path, timeout) for x in uproot4._util.range(num_workers)]
+        )
+
+    @property
+    def timeout(self):
+        """
+        The timeout in seconds or None.
+        """
+        return self._timeout
+
+    @property
+    def num_bytes(self):
+        if self._num_bytes is None:
+            self._num_bytes = get_num_bytes(
+                self._file_path, self.parsed_url, self._timeout
+            )
+        return self._num_bytes
+
+    @property
+    def parsed_url(self):
+        """
+        A ``urllib.parse.ParseResult`` version of the ``file_path``.
+        """
+        return self._executor.workers[0].resource.parsed_url

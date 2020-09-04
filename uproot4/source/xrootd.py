@@ -1,5 +1,15 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Physical layer for remote files, accessed via the XRootD protocol.
+
+Defines a :doc:`uproot4.source.http.XRootDResource` (``XRootD.File``) and two
+sources: :doc:`uproot4.source.http.MultithreadedXRootDSource` and
+:doc:`uproot4.source.http.XRootDSource`. The latter requires the server to
+support vector-read requests; if not, it automatically falls back to
+:doc:`uproot4.source.http.MultithreadedXRootDSource`.
+"""
+
 from __future__ import absolute_import
 
 import uproot4.source.chunk
@@ -9,16 +19,17 @@ import uproot4.extras
 
 def get_server_config(file):
     """
-    Query a XRootD server for its configuration
-
     Args:
-        file (XRootD.client.File): The XRootD File object of the resource
+        file (``XRootD.client.File``): An XRootD file object.
 
-    Returns:
-        readv_iov_max (int): The maximum number of elements that can be
-            requested in a single vector read
-        readv_ior_max (int): The maximum number of bytes that can be requested
-            per **element** in a vector read
+    Query a XRootD server for its configuration.
+
+    Returns a 2-tuple of integers:
+
+    * ``readv_iov_max``: The maximum number of elements that can be
+      requested in a single vector read.
+    * ``readv_ior_max``: The maximum number of bytes that can be requested
+      per *element* in a vector read.
     """
     # Set from some sensible defaults in case this fails
     readv_iov_max = 1024
@@ -57,6 +68,14 @@ def get_server_config(file):
 
 
 class XRootDResource(uproot4.source.chunk.Resource):
+    """
+    Args:
+        file_path (str): A URL of the file to open.
+        timeout (None or float): An optional timeout in seconds.
+
+    A :doc:`uproot4.source.chunk.Resource` for XRootD connections.
+    """
+
     def __init__(self, file_path, timeout):
         XRootD_client = uproot4.extras.XRootD_client()
         self._file_path = file_path
@@ -92,10 +111,16 @@ in file {1}""".format(
 
     @property
     def timeout(self):
+        """
+        The timeout in seconds or None.
+        """
         return self._timeout
 
     @property
     def file(self):
+        """
+        The ``XRootD.client.File`` object.
+        """
         return self._file
 
     @property
@@ -105,6 +130,10 @@ in file {1}""".format(
             self._xrd_error(status)
         return info.size
 
+    @property
+    def closed(self):
+        return not self._file.is_open()
+
     def __enter__(self):
         return self
 
@@ -112,17 +141,34 @@ in file {1}""".format(
         self._file.close(timeout=self._xrd_timeout())
 
     def get(self, start, stop):
+        """
+        Args:
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+
+        Returns a Python buffer of data between ``start`` and ``stop``.
+        """
         status, data = self._file.read(start, stop - start, timeout=self._xrd_timeout())
         if status.error:
             self._xrd_error(status)
         return data
 
-    @property
-    def closed(self):
-        return not self._file.is_open()
-
     @staticmethod
     def future(source, start, stop):
+        """
+        Args:
+            source (:doc:`uproot4.source.chunk.MultithreadedXRootDSource`): The
+                data source.
+            start (int): Seek position of the first byte to include.
+            stop (int): Seek position of the first byte to exclude
+                (one greater than the last byte to include).
+
+        Returns a :doc:`uproot4.source.futures.ResourceFuture` that calls
+        :doc:`uproot4.source.xrootd.XRootDResource.get` with ``start`` and
+        ``stop``.
+        """
+
         def task(resource):
             return resource.get(start, stop)
 
@@ -130,6 +176,15 @@ in file {1}""".format(
 
     @staticmethod
     def partfuture(results, start, stop):
+        """
+        Returns a :doc:`uproot4.source.futures.ResourceFuture` to simply select
+        the ``(start, stop)`` item from the ``results`` dict.
+
+        In :doc:`uproot4.source.xrootd.XRootDSource.chunks`, each chunk has a
+        :doc:`uproot4.source.xrootd.XRootDResource.partfuture` that are collectively
+        filled by callbacks from :doc:`uproot4.source.xrootd.XRootDResource.callbacker`.
+        """
+
         def task(resource):
             return results[start, stop]
 
@@ -137,6 +192,11 @@ in file {1}""".format(
 
     @staticmethod
     def callbacker(futures, results):
+        """
+        Returns an XRootD callback function to fill the ``futures`` and
+        ``results``.
+        """
+
         def callback(status, response, hosts):
             for chunk in response.chunks:
                 start, stop = chunk.offset, chunk.offset + chunk.length
@@ -146,39 +206,16 @@ in file {1}""".format(
         return callback
 
 
-class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
-    ResourceClass = XRootDResource
-
-    def __init__(self, file_path, **options):
-        num_workers = options["num_workers"]
-        timeout = options["timeout"]
-        self._num_requests = 0
-        self._num_requested_chunks = 0
-        self._num_requested_bytes = 0
-
-        self._file_path = file_path
-        self._num_bytes = None
-        self._timeout = timeout
-
-        self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
-            [
-                XRootDResource(file_path, timeout)
-                for x in uproot4._util.range(num_workers)
-            ]
-        )
-
-    @property
-    def timeout(self):
-        return self._timeout
-
-    @property
-    def num_bytes(self):
-        if self._num_bytes is None:
-            self._num_bytes = self._executor.workers[0].resource.num_bytes
-        return self._num_bytes
-
-
 class XRootDSource(uproot4.source.chunk.Source):
+    """
+    Args:
+        file_path (str): A URL of the file to open.
+        options: Must include ``"timeout"`` and ``"max_num_elements"``.
+
+    A :doc:`uproot4.source.chunk.Source` that uses XRootD's vector-read
+    to get many chunks in one request.
+    """
+
     ResourceClass = XRootDResource
 
     def __init__(self, file_path, **options):
@@ -205,34 +242,6 @@ class XRootDSource(uproot4.source.chunk.Source):
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
         return "<{0} {1} at 0x{2:012x}>".format(type(self).__name__, path, id(self))
-
-    @property
-    def resource(self):
-        return self._resource
-
-    @property
-    def timeout(self):
-        return self._timeout
-
-    @property
-    def file(self):
-        return self._resource.file
-
-    @property
-    def closed(self):
-        return self._resource.closed
-
-    @property
-    def num_bytes(self):
-        if self._num_bytes is None:
-            self._num_bytes = self._resource.num_bytes
-        return self._num_bytes
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._resource.__exit__(exception_type, exception_value, traceback)
 
     def chunk(self, start, stop):
         self._num_requests += 1
@@ -281,3 +290,84 @@ class XRootDSource(uproot4.source.chunk.Source):
                 self._resource._xrd_error(status)
 
         return chunks
+
+    @property
+    def resource(self):
+        """
+        The :doc:`uproot4.source.xrootd.XRootDResource` object.
+        """
+        return self._resource
+
+    @property
+    def timeout(self):
+        """
+        The timeout in seconds or None.
+        """
+        return self._timeout
+
+    @property
+    def file(self):
+        """
+        The ``XRootD.client.File`` object.
+        """
+        return self._resource.file
+
+    @property
+    def closed(self):
+        return self._resource.closed
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._resource.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def num_bytes(self):
+        if self._num_bytes is None:
+            self._num_bytes = self._resource.num_bytes
+        return self._num_bytes
+
+
+class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
+    """
+    Args:
+        file_path (str): A URL of the file to open.
+        options: Must include ``"num_workers"`` and ``"timeout"``.
+
+    A :doc:`uproot4.source.chunk.MultithreadedSource` that manages many
+    :doc:`uproot4.source.xrootd.XRootDResource` objects.
+    """
+
+    ResourceClass = XRootDResource
+
+    def __init__(self, file_path, **options):
+        num_workers = options["num_workers"]
+        timeout = options["timeout"]
+        self._num_requests = 0
+        self._num_requested_chunks = 0
+        self._num_requested_bytes = 0
+
+        self._file_path = file_path
+        self._num_bytes = None
+        self._timeout = timeout
+
+        self._executor = uproot4.source.futures.ResourceThreadPoolExecutor(
+            [
+                XRootDResource(file_path, timeout)
+                for x in uproot4._util.range(num_workers)
+            ]
+        )
+
+    @property
+    def timeout(self):
+        """
+        The timeout in seconds or None.
+        """
+        return self._timeout
+
+    @property
+    def num_bytes(self):
+        if self._num_bytes is None:
+            self._num_bytes = self._executor.workers[0].resource.num_bytes
+        return self._num_bytes

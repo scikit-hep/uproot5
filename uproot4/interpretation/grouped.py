@@ -1,16 +1,37 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array
+for grouped data; usually applied to a ``TBranch`` that does not contain data
+but has subbranches that do.
+"""
+
 from __future__ import absolute_import
 
 import uproot4.interpretation
 import uproot4.extras
 
 
-class Group(object):
-    pass
-
-
 class AsGrouped(uproot4.interpretation.Interpretation):
+    """
+    Args:
+        branch (:doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch`` that
+            represents the group.
+        subbranches (list of :doc:`uproot4.behavior.TBranch.TBranch`): The
+            ``TBranches`` that contain the actual data.
+        typename (None or str): If None, construct a plausible C++ typename.
+            Otherwise, take the suggestion as given.
+
+    Interpretation for a group of arrays, usually because they are all
+    subbranches of the same :doc:`uproot4.behavior.TBranch.TBranch`.
+
+    Each :doc:`uproot4.interpretation.library.Library` presents a group
+    differently: :doc:`uproot4.interpretation.library.NumPy` puts arrays
+    in a dict, :doc:`uproot4.interpretation.library.Awkward` makes an
+    array of records, :doc:`uproot4.interpretation.library.Pandas` makes
+    a ``pandas.DataFrame``, etc.
+    """
+
     def __init__(self, branch, subbranches, typename=None):
         self._branch = branch
         self._subbranches = subbranches
@@ -18,10 +39,16 @@ class AsGrouped(uproot4.interpretation.Interpretation):
 
     @property
     def branch(self):
+        """
+        The ``TBranch`` that represents the group.
+        """
         return self._branch
 
     @property
     def subbranches(self):
+        """
+        The ``TBranches`` that contain the actual data.
+        """
         return self._subbranches
 
     def __repr__(self):

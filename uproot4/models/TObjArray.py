@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines a versionless model for ``TObjArray``.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -19,6 +23,12 @@ _tobjarray_format1 = struct.Struct(">ii")
 
 
 class Model_TObjArray(uproot4.model.Model, Sequence):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TObjArray``.
+
+    This also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -51,10 +61,12 @@ in file {1}""".format(
             self._data.append(item)
 
     def __repr__(self):
-        return "<{0} of {1} items at 0x{2:012x}>".format(
-            uproot4.model.classname_pretty(self.classname, self.class_version),
-            len(self),
-            id(self),
+        if self.class_version is None:
+            version = ""
+        else:
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} of {2} items at 0x{3:012x}>".format(
+            self.classname, version, len(self), id(self),
         )
 
     def __getitem__(self, where):
@@ -75,6 +87,10 @@ uproot4.classes["TObjArray"] = Model_TObjArray
 
 
 class Model_TObjArrayOfTBaskets(Model_TObjArray):
+    """
+    A specialized :doc:`uproot4.model.Model` for a ``TObjArray`` of ``TBaskets``.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(

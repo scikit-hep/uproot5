@@ -1,5 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+Defines versionless models of ``TRef`` and ``TRefArray``.
+"""
+
 from __future__ import absolute_import
 
 import struct
@@ -18,6 +22,19 @@ _tref_format1 = struct.Struct(">xxIxxxxxx")
 
 
 class Model_TRef(uproot4.model.Model):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TRef``.
+
+    This model does not deserialize all fields, only the reference number.
+    """
+
+    @property
+    def ref(self):
+        """
+        The reference number as an integer.
+        """
+        return self._ref
+
     def read_numbytes_version(self, chunk, cursor, context):
         pass
 
@@ -30,10 +47,6 @@ in file {1}""".format(
                 )
             )
         self._ref = cursor.field(chunk, _tref_format1, context)
-
-    @property
-    def ref(self):
-        return self._ref
 
     def __repr__(self):
         return "<TRef {0}>".format(self._ref)
@@ -78,6 +91,33 @@ _trefarray_dtype = numpy.dtype(">i4")
 
 
 class Model_TRefArray(uproot4.model.Model, Sequence):
+    """
+    A versionless :doc:`uproot4.model.Model` for ``TRefArray``.
+
+    This also satisfies Python's abstract ``Sequence`` protocol.
+    """
+
+    @property
+    def refs(self):
+        """
+        The reference number as a ``numpy.ndarray`` of ``dtype(">i4")``.
+        """
+        return self._data
+
+    @property
+    def nbytes(self):
+        """
+        The number of bytes in :doc:`uproot4.models.TRef.TRefArray.nbytes`.
+        """
+        return self._data.nbytes
+
+    @property
+    def name(self):
+        """
+        The name of this TRefArray.
+        """
+        return self._members["fName"]
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -94,18 +134,6 @@ in file {1}""".format(
             chunk, self._members["fSize"], _trefarray_dtype, context
         )
 
-    @property
-    def name(self):
-        return self._members["fName"]
-
-    @property
-    def nbytes(self):
-        return self._data.nbytes
-
-    @property
-    def refs(self):
-        return self._data
-
     def __getitem__(self, where):
         return self._data[where]
 
@@ -113,8 +141,13 @@ in file {1}""".format(
         return len(self._data)
 
     def __repr__(self):
-        return "<{0} {1} at 0x{2:012x}>".format(
-            uproot4.model.classname_pretty(self.classname, self.class_version),
+        if self.class_version is None:
+            version = ""
+        else:
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            self.classname,
+            version,
             numpy.array2string(
                 self._data,
                 max_line_width=numpy.inf,
