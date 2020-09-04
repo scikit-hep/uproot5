@@ -13,15 +13,19 @@ import uproot4.models.TArray
 import uproot4.behaviors.TH1
 
 
-class TH3(object):
+class TH3(uproot4.behaviors.TH1.Histogram):
+    """
+    Behaviors for three-dimensional histograms: descendants of ROOT's
+    ``TH3``, not including ``TProfile3D``.
+    """
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
     def edges(self, axis):
-        if axis == 0 or axis == "x":
+        if axis == 0 or axis == -3 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
-        elif axis == 1 or axis == "y":
+        elif axis == 1 or axis == -2 or axis == "y":
             return uproot4.behaviors.TH1._edges(self.member("fYaxis"))
-        elif axis == 2 or axis == "z":
+        elif axis == 2 or axis == -1 or axis == "z":
             return uproot4.behaviors.TH1._edges(self.member("fZaxis"))
         else:
             raise ValueError("axis must be 0, 1, 2 or 'x', 'y', 'z' for a TH3")

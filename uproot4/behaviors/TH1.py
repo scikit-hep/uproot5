@@ -63,9 +63,91 @@ def _boost_axis(axis):
         )
 
 
-class TH1(object):
+class Histogram(object):
+    """
+    Abstract class for histograms.
+    """
+    def edges(self, axis):
+        """
+        Axis boundaries as a ``numpy.ndarray`` of ``numpy.float64``.
+
+        The length of this array is one greater than the number of bins,
+        including underflow and overflow. Since the first and last bins are
+        underflow and overflow, the first and last boundaries are ``-inf``
+        and ``inf``.
+
+        The ``axis`` can be specified as
+
+        * a non-negative integer: ``0`` is the first axis, ``1`` is the second,
+          and ``2`` is the third.
+        * a negative integer: ``-1`` is the last axis, ``-2`` is the
+          second-to-last, and ``-3`` is the third-to-last.
+        * a string: ``"x"`` is the first axis, ``"y"`` is the second, and ``"z"``
+          is the third
+
+        (assuming that the histogram dimension supports a given ``axis``).
+        """
+        pass
+
+    def values(self):
+        """
+        Bin contents as a 1, 2, or 3 dimensional ``numpy.ndarray``. The
+        ``numpy.dtype`` of this array depends on the histogram type.
+
+        The bins include underflow and overflow, with the bin at index ``0``
+        being underflow and the bin at index ``-1`` being overflow.
+        """
+        pass
+
+    def values_errors(self):
+        """
+        The :doc:`uproot4.behaviors.TH1.Histogram.values` and their associated
+        errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
+        same ``shape``.
+
+        If ``fSumw2`` (weights) are available, they will be used in the
+        calculation of the errors. If not, errors are assumed to be the square
+        root of the values.
+        """
+        pass
+
+    def to_numpy(self, flow=False, dd=False, errors=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins; otherwise,
+                only finite-width bins are included.
+            dd (bool): If True, the return type follows
+                `numpy.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__;
+                otherwise, it follows `numpy.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__
+                and `numpy.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__.
+            errors (bool): If True, errors (uncertainties) are included, unlike
+                a NumPy histogram.
+
+        Converts the histogram into a form like the ones produced by the NumPy
+        histogram functions.
+        """
+        pass
+
+    def to_boost(self):
+        """
+        Converts the histogram into a ``boost-histogram`` object.
+        """
+        pass
+
+    def to_hist(self):
+        """
+        Converts the histogram into a ``hist`` object.
+        """
+        pass
+
+
+class TH1(Histogram):
+    """
+    Behaviors for one-dimensional histograms: descendants of ROOT's
+    ``TH1``, not including ``TProfile``, ``TH2``, ``TH3``, or their descendants.
+    """
     def edges(self, axis=0):
-        if axis == 0 or axis == "x":
+        if axis == 0 or axis == -1 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
         else:
             raise ValueError("axis must be 0 or 'x' for a TH1")

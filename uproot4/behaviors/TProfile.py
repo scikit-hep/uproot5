@@ -18,11 +18,46 @@ _kERRORSPREADI = 2
 _kERRORSPREADG = 3
 
 
-class TProfile(object):
+class Profile(uproot4.behaviors.TH1.Histogram):
+    """
+    Abstract class for profile plots.
+    """
+
+    def effective_entries(self):
+        """
+        The effective number of entries, which is a step in the calculation of
+        :doc:`uproot4.behaviors.TProfile.Profile.values`.
+        """
+        pass
+
+    def values_errors(self, error_mode=""):
+        """
+        The :doc:`uproot4.behaviors.TH1.Histogram.values` and their associated
+        errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
+        same ``shape``.
+
+        The calculation of profile errors exactly follows ROOT's function, but
+        in a vectorized NumPy form.
+
+        The ``error_mode`` may be
+
+        * ``""`` for standard error on the mean
+        * ``"s"`` for spread
+        * ``"i"`` for integer data
+        * ``"g"`` for Gaussian
+
+        following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
+        """
+        pass
+
+class TProfile(Profile):
+    """
+    Behaviors for one-dimensional profiles: ROOT's ``TProfile``.
+    """
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
     def edges(self, axis=0):
-        if axis == 0 or axis == "x":
+        if axis == 0 or axis == -1 or axis == "x":
             return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
         else:
             raise ValueError("axis must be 0 or 'x' for a TH1")
@@ -67,7 +102,7 @@ class TProfile(object):
 
         return root_contsum
 
-    def values_errors(self, error_mode=0):
+    def values_errors(self, error_mode=""):
         # closely follows the ROOT function, using the same names (with 'root_' prepended)
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L660-L721
 

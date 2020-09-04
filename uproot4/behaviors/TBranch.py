@@ -2140,6 +2140,9 @@ in file {3}""".format(
         :doc:`uproot4.behaviors.TBranch.HasBranches.iterate`,
         :doc:`uproot4.behaviors.TBranch.iterate`, and
         :doc:`uproot4.behaviors.TBranch.concatenate` if one is not given.
+
+        The return type is always a dict of str \u2192 str, even if there
+        are no aliases (an empty dict).
         """
         return self.tree.aliases
 
