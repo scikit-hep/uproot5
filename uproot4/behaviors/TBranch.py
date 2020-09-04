@@ -1892,14 +1892,27 @@ class TBranch(HasBranches):
 
     @property
     def name(self):
+        """
+        Name of the ``TBranch``.
+
+        Note that ``TBranch`` names are not guaranteed to be unique; it is
+        sometimes necessary to address a branch by its
+        :doc:`uproot4.behavior.TBranch.TBranch.index`.
+        """
         return self.member("fName")
 
     @property
     def title(self):
+        """
+        Title of the ``TBranch``.
+        """
         return self.member("fTitle")
 
     @property
     def object_path(self):
+        """
+        Object path of the ``TBranch``.
+        """
         if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
             sep = ":"
         else:
@@ -1908,6 +1921,10 @@ class TBranch(HasBranches):
 
     @property
     def cache_key(self):
+        """
+        String that uniquely specifies this ``TBranch`` in its path, to use as
+        part of object and array cache keys.
+        """
         if self._cache_key is None:
             if isinstance(self._parent, uproot4.behaviors.TTree.TTree):
                 sep = ":"
@@ -1920,6 +1937,13 @@ class TBranch(HasBranches):
 
     @property
     def index(self):
+        """
+        Integer position of this ``TBranch`` in its parent's list of branches.
+
+        Useful for cases in which the
+        :doc:`uproot4.behavior.TBranch.TBranch.name` is not unique: the
+        non-recursive index is always unique.
+        """
         for i, branch in enumerate(self.parent.branches):
             if branch is self:
                 return i
@@ -1928,6 +1952,21 @@ class TBranch(HasBranches):
 
     @property
     def interpretation(self):
+        """
+        The standard :doc:`uproot4.interpretation.Interpretation` of this
+        ``TBranch`` as an array, derived from
+        :doc:`uproot4.interpretation.identify.interpretation_of`.
+
+        If no interpretation could be found, the value of this property
+        would be a :doc:`uproot4.interpretation.identify.UnknownInterpretation`,
+        which is a Python ``Exception``. Since the exception is *returned*,
+        rather than *raised*, a branch lacking an interpretation is not a fatal
+        error.
+
+        However, any attempt to use this exception object as an
+        :doc:`uproot4.interpretation.Interpretation` causes it to raise itself:
+        attempting to read a branch lacking an interpretation is a fatal error.
+        """
         if self._interpretation is None:
             try:
                 self._interpretation = uproot4.interpretation.identify.interpretation_of(
@@ -1939,6 +1978,13 @@ class TBranch(HasBranches):
 
     @property
     def typename(self):
+        """
+        The C++ typename of the ``TBranch``, derived from its
+        :doc:`uproot4.behavior.TBranch.TBranch.interpretation`. If the
+        interpretation is
+        :doc:`uproot4.interpretation.identify.UnknownInterpretation`, the
+        typename is ``"unknown"``.
+        """
         if self.interpretation is None:
             return "unknown"
         else:
@@ -1946,10 +1992,31 @@ class TBranch(HasBranches):
 
     @property
     def num_entries(self):
+        """
+        The number of entries in the ``TBranch``, as reported by ``fEntries``.
+
+        In principle, this could disagree with the
+        :doc:`uproot4.behaviors.TTree.TTree.num_entries`, which is from the
+        ``TTree``'s ``fEntries``.
+
+        The ``TBranch`` also has a ``fEntryNumber``, which ought to be equal to
+        the ``TBranch`` and ``TTree``'s ``fEntries``, and the last value of
+        :doc:`uproot4.behaviors.TBranch.TBranch.entry_offsets` ought to be
+        equal to the number of entries as well.
+        """
         return int(self.member("fEntries"))  # or fEntryNumber?
 
     @property
     def entry_offsets(self):
+        """
+        The starting and stopping entry numbers for all the ``TBaskets`` in the
+        ``TBranch`` as a list of increasing, non-negative integers.
+
+        The number of ``entry_offsets`` in this list of integers is one more
+        than the number of ``TBaskets``. The first is ``0`` and the last is
+        the number of entries
+        (:doc:`uproot4.behaviors.TBranch.TBranch.num_entries`).
+        """
         if self._num_normal_baskets == 0:
             out = [0]
         else:
@@ -1975,6 +2042,10 @@ in file {3}""".format(
 
     @property
     def tree(self):
+        """
+        The ``TTree`` to which this ``TBranch`` belongs. The branch might be
+        deeply nested; this property ascends all the way to the top.
+        """
         out = self
         while not isinstance(out, uproot4.behaviors.TTree.TTree):
             out = out.parent
@@ -1982,10 +2053,22 @@ in file {3}""".format(
 
     @property
     def top_level(self):
+        """
+        True if the immediate :doc:`uproot4.behaviors.TBranch.TBranch.parent`
+        is the ``TTree``; False otherwise.
+        """
         return isinstance(self.parent, uproot4.behaviors.TTree.TTree)
 
     @property
     def streamer(self):
+        """
+        The ``TStreamerInfo`` or ``TStreamerElement`` for this ``TBranch``,
+        which may be None.
+
+        If the :doc:`uproot4.reading.ReadOnlyFile.streamers` have not yet been
+        read, this method *might* cause them to be read. (Only
+        ``TBranchElements`` can have streamers.)
+        """
         if self._streamer is None:
             clean_name = _branch_clean_name.match(self.name).group(2)
             clean_parentname = _branch_clean_parent_name.match(self.name)
@@ -2041,14 +2124,31 @@ in file {3}""".format(
 
     @property
     def context(self):
+        """
+        Auxiliary data used in deserialization. This is a *copy* of the
+        ``context`` dict at the time that the ``TBranch`` was deserialized
+        with ``"in_TBranch": True`` added.
+        """
         return self._context
 
     @property
     def aliases(self):
+        """
+        The :doc:`uproot4.behaviors.TTree.TTree.aliases`, which are used as the
+        ``aliases`` argument to
+        :doc:`uproot4.behaviors.TBranch.HasBranches.arrays`,
+        :doc:`uproot4.behaviors.TBranch.HasBranches.iterate`,
+        :doc:`uproot4.behaviors.TBranch.iterate`, and
+        :doc:`uproot4.behaviors.TBranch.concatenate` if one is not given.
+        """
         return self.tree.aliases
 
     @property
     def count_branch(self):
+        """
+        The ``TBranch`` object in which this branch's "counts" reside or None
+        if this branch has no "counts".
+        """
         leaf = self.count_leaf
         if leaf is None:
             return None
@@ -2057,6 +2157,10 @@ in file {3}""".format(
 
     @property
     def count_leaf(self):
+        """
+        The ``TLeaf`` object of this branch's "counts" or None if this branch
+        has no "counts".
+        """
         leaves = self.member("fLeaves")
         if len(leaves) != 1:
             return None
@@ -2064,9 +2168,20 @@ in file {3}""".format(
 
     @property
     def num_baskets(self):
+        """
+        The number of ``TBaskets`` in this ``TBranch``, including both normal
+        (free) ``TBaskets`` and
+        :doc:`uproot4.behaviors.TBranch.TBranch.embedded_baskets`.
+        """
         return self._num_normal_baskets + len(self.embedded_baskets)
 
     def basket(self, basket_num):
+        """
+        The :doc:`uproot4.models.TBasket.Model_TBasket` at index ``basket_num``.
+
+        It may be a normal (free) ``TBasket`` or one of the
+        :doc:`uproot4.behaviors.TBranch.TBranch.embedded_baskets`.
+        """
         if 0 <= basket_num < self._num_normal_baskets:
             chunk, cursor = self.basket_chunk_cursor(basket_num)
             return uproot4.models.TBasket.Model_TBasket.read(
@@ -2083,6 +2198,11 @@ in file {3}""".format(
             )
 
     def basket_chunk_cursor(self, basket_num):
+        """
+        Returns a :doc:`uproot4.source.chunk.Chunk` and
+        :doc:`uproot4.source.cursor.Cursor` as a 2-tuple for a given
+        ``basket_num``.
+        """
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
             stop = start + self.basket_compressed_bytes(basket_num)
@@ -2110,6 +2230,13 @@ in file {3}""".format(
             )
 
     def basket_compressed_bytes(self, basket_num):
+        """
+        The number of compressed bytes for the ``TBasket`` at ``basket_num``.
+
+        The number of compressed bytes is specified in the ``TBranch`` metadata
+        and can be determined without reading any additional data. The
+        uncompressed bytes requires reading the ``TBasket``'s ``TKey`` at least.
+        """
         if 0 <= basket_num < self._num_normal_baskets:
             return int(self.member("fBasketBytes")[basket_num])
         elif 0 <= basket_num < self.num_baskets:
@@ -2124,17 +2251,56 @@ in file {3}""".format(
                 )
             )
 
+    def basket_uncompressed_bytes(self, basket_num):
+        """
+        The number of uncompressed bytes for the ``TBasket`` at ``basket_num``.
+
+        The number of uncompressed bytes cannot be determined without reading a
+        ``TKey``, which are small, but may be slow for remote connections because
+        of the latency of round-trip requests.
+        """
+        if 0 <= basket_num < self.num_baskets:
+            return self.basket(basket_num).uncompressed_bytes
+        else:
+            return self.basket_key(basket_num).data_uncompressed_bytes
+
     def basket_key(self, basket_num):
-        start = self.member("fBasketSeek")[basket_num]
-        stop = start + uproot4.reading._key_format_big.size
-        cursor = uproot4.source.cursor.Cursor(start)
-        chunk = self._file.source.chunk(start, stop)
-        return uproot4.reading.ReadOnlyKey(
-            chunk, cursor, {}, self._file, self, read_strings=False
-        )
+        """
+        The ``TKey`` (:doc:`uproot4.reading.ReadOnlyKey`) for the ``TBasket``
+        at ``basket_num``.
+
+        Only applies to normal (free) ``TBaskets``, not
+        :doc:`uproot4.behaviors.TBranch.TBranch.embedded_baskets`.
+        """
+        if 0 <= basket_num < self._num_normal_baskets:
+            start = self.member("fBasketSeek")[basket_num]
+            stop = start + uproot4.reading._key_format_big.size
+            cursor = uproot4.source.cursor.Cursor(start)
+            chunk = self._file.source.chunk(start, stop)
+            return uproot4.reading.ReadOnlyKey(
+                chunk, cursor, {}, self._file, self, read_strings=False
+            )
+        elif 0 <= basket_num < self.num_baskets:
+            raise ValueError(
+                "branch {0} basket {1} is an embedded basket, which has no TKey".format(
+                    repr(self.name), basket_num
+                )
+            )
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get basket chunk {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
 
     @property
     def embedded_baskets(self):
+        """
+        The ``TBaskets`` that are embedded within the ``TBranch`` metadata,
+        usually because the ROOT process that was writing the file closed
+        unexpectedly.
+        """
         if self._embedded_baskets is None:
             cursor = self._cursor_baskets.copy()
             baskets = uproot4.models.TObjArray.Model_TObjArrayOfTBaskets.read(
@@ -2152,6 +2318,16 @@ in file {3}""".format(
         return self._embedded_baskets
 
     def entries_to_ranges_or_baskets(self, entry_start, entry_stop):
+        """
+        Returns a list of (start, stop) integer pairs for free (normal)
+        ``TBaskets`` and :doc:`uproot4.models.TBasket.Model_TBasket` objects
+        for embedded ``TBaskets``.
+
+        The intention is for this list to be updated in place, replacing
+        (start, stop) integer pairs with
+        :doc:`uproot4.models.TBasket.Model_TBasket` objects as they get
+        read and interpreted.
+        """
         entry_offsets = self.entry_offsets
         out = []
         start = entry_offsets[0]
