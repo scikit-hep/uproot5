@@ -36,8 +36,8 @@ from uproot4._util import no_filter
 
 def open(
     path,
-    object_cache=100,
-    array_cache="100 MB",
+    object_cache=uproot4.object_cache,
+    array_cache=uproot4.array_cache,
     custom_classes=None,
     **options  # NOTE: a comma after **options breaks Python 2
 ):
@@ -504,8 +504,8 @@ class ReadOnlyFile(CommonFileMethods):
     def __init__(
         self,
         file_path,
-        object_cache=100,
-        array_cache="100 MB",
+        object_cache=uproot4.object_cache,
+        array_cache=uproot4.array_cache,
         custom_classes=None,
         **options  # NOTE: a comma after **options breaks Python 2
     ):

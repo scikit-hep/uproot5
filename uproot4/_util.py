@@ -492,3 +492,113 @@ def awkward_form_remove_uproot(awkward1, form):
         )
     else:
         raise RuntimeError("unrecognized form: {0}".format(type(form)))
+
+
+# FIXME: Until we get Awkward reading these bytes directly, rather than
+# going through ak.from_iter, the integer dtypes will be int64 and the
+# floating dtypes will be float64 because that's what ak.from_iter makes.
+def awkward_form_of_iter(awkward1, form):
+    if isinstance(form, awkward1.forms.BitMaskedForm):
+        return awkward1.forms.BitMaskedForm(
+            form.mask,
+            awkward_form_of_iter(awkward1, form.content),
+            form.valid_when,
+            form.lsb_order,
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.ByteMaskedForm):
+        return awkward1.forms.ByteMaskedForm(
+            form.mask,
+            awkward_form_of_iter(awkward1, form.content),
+            form.valid_when,
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.EmptyForm):
+        return awkward1.forms.EmptyForm(form.has_identities, form.parameters,)
+    elif isinstance(form, awkward1.forms.IndexedForm):
+        return awkward1.forms.IndexedForm(
+            form.index,
+            awkward_form_of_iter(awkward1, form.content),
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.IndexedOptionForm):
+        return awkward1.forms.IndexedOptionForm(
+            form.index,
+            awkward_form_of_iter(awkward1, form.content),
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.ListForm):
+        return awkward1.forms.ListForm(
+            form.starts,
+            form.stops,
+            awkward_form_of_iter(awkward1, form.content),
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.ListOffsetForm):
+        return awkward1.forms.ListOffsetForm(
+            form.offsets,
+            awkward_form_of_iter(awkward1, form.content),
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.NumpyForm):
+        if form.parameter("__array__") in ("char", "byte"):
+            f = form
+        else:
+            d = form.to_numpy()
+            if issubclass(d.type, numpy.integer):
+                d = numpy.dtype(numpy.int64)
+            elif issubclass(d.type, numpy.floating):
+                d = numpy.dtype(numpy.float64)
+            f = awkward1.forms.Form.from_numpy(d)
+        out = awkward1.forms.NumpyForm(
+            form.inner_shape,
+            f.itemsize,
+            f.format,
+            form.has_identities,
+            form.parameters,
+        )
+        return out
+    elif isinstance(form, awkward1.forms.RecordForm):
+        return awkward1.forms.RecordForm(
+            dict(
+                (k, awkward_form_of_iter(awkward1, v)) for k, v in form.contents.items()
+            ),
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.RegularForm):
+        return awkward1.forms.RegularForm(
+            awkward_form_of_iter(awkward1, form.content),
+            form.size,
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.UnionForm):
+        return awkward1.forms.UnionForm(
+            form.tags,
+            form.index,
+            [awkward_form_of_iter(awkward1, x) for x in form.contents],
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.UnmaskedForm):
+        return awkward1.forms.UnmaskedForm(
+            awkward_form_of_iter(awkward1, form.content),
+            form.has_identities,
+            form.parameters,
+        )
+    elif isinstance(form, awkward1.forms.VirtualForm):
+        return awkward1.forms.VirtualForm(
+            awkward_form_of_iter(awkward1, form.form),
+            form.has_length,
+            form.has_identities,
+            form.parameters,
+        )
+    else:
+        raise RuntimeError("unrecognized form: {0}".format(type(form)))

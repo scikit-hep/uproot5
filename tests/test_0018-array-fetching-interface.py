@@ -94,7 +94,9 @@ def test_compute():
     awkward1 = pytest.importorskip("awkward1")
 
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        object_cache=100,
+        array_cache="100 MB",
     )["sample"] as sample:
         result = sample.arrays(["stuff", "i4"], aliases={"stuff": "abs(i4) + Ai8"})
         assert result.tolist() == [
@@ -151,7 +153,9 @@ def test_arrays():
     )
 
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        object_cache=100,
+        array_cache="100 MB",
     )["sample"] as sample:
         result = sample.arrays(["I4", "F4"], aliases={"I4": "i4", "F4": "f4"})
         assert result.tolist() == [
