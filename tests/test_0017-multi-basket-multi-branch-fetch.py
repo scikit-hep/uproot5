@@ -312,7 +312,9 @@ def test_branch_array_4(file_handler):
 
 def test_cache():
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        object_cache=100,
+        array_cache="100 MB",
     ) as f:
         assert f.cache_key == "db4be408-93ad-11ea-9027-d201a8c0beef:/"
         assert f["sample"].cache_key == "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1"

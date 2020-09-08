@@ -601,10 +601,6 @@ in object {3}""".format(
         elif isinstance(all_arrays[0], dict):
             return concatenated
 
-    def wrap_awkward_lazy(self, layout, common_keys, global_offsets, global_cache_key):
-        awkward1 = self.imported
-        return awkward1.Array(layout)
-
 
 def _pandas_rangeindex():
     import pandas

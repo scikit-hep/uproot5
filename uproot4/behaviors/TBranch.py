@@ -66,6 +66,12 @@ class _NoClose(object):
     def __exit__(self, exception_type, exception_value, traceback):
         pass
 
+    def __getattr__(self, attr):
+        return getattr(self.hasbranches, attr)
+
+    def __getitem__(self, where):
+        return self.hasbranches[where]
+
 
 def iterate(
     files,
@@ -257,7 +263,7 @@ def concatenate(
     language=uproot4.language.python.PythonLanguage(),
     decompression_executor=None,
     interpretation_executor=None,
-    array_cache=None,
+    array_cache=uproot4.array_cache,
     library="ak",
     how=None,
     custom_classes=None,
@@ -414,7 +420,7 @@ def lazy(
     step_size="100 MB",
     decompression_executor=None,
     interpretation_executor=None,
-    array_cache="100 MB",
+    array_cache=uproot4.array_cache,
     library="ak",
     custom_classes=None,
     allow_missing=False,
@@ -522,16 +528,20 @@ def lazy(
     * :doc:`uproot4.behaviors.TBranch.lazy` (this function): returns a lazily
       read array from ``TTrees``.
     """
+    import awkward1
+
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor
     )
     array_cache = _regularize_array_cache(array_cache, None)
     library = uproot4.interpretation.library._regularize_library_lazy(library)
-    import awkward1
+
+    if type(array_cache) == dict:
+        array_cache = _WrapDict(array_cache)
 
     if array_cache is not None:
-        array_cache = awkward1.layout.ArrayCache(array_cache)
+        layout_array_cache = awkward1.layout.ArrayCache(array_cache)
 
     real_options = dict(options)
     if "num_workers" not in real_options:
@@ -635,9 +645,12 @@ def lazy(
             names = []
             for key in common_keys:
                 branch = obj[key]
-                form = branchid_interpretation[branch.cache_key].awkward_form(
+                interpretation = branchid_interpretation[branch.cache_key]
+                form = interpretation.awkward_form(
                     obj.file, index_format="i64"
                 )
+                if isinstance(interpretation, uproot4.interpretation.objects.AsObjects):
+                    form = uproot4._util.awkward_form_of_iter(awkward1, form)
                 generator = awkward1.layout.ArrayGenerator(
                     branch.array,
                     (
@@ -650,19 +663,19 @@ def lazy(
                         "ak",
                     ),
                     {},
-                    uproot4._util.awkward_form_remove_uproot(awkward1, form),
+                    uproot4._util.awkward_form_remove_uproot(awkward1, form),  # , interpretation
                     length,
                 )
                 cache_key = "{0}:{1}:{2}-{3}:{4}".format(
                     branch.cache_key,
-                    branchid_interpretation[branch.cache_key].cache_key,
+                    interpretation.cache_key,
                     start,
                     stop,
                     library.name,
                 )
                 global_cache_key.append(cache_key)
                 virtualarray = awkward1.layout.VirtualArray(
-                    generator, cache=array_cache, cache_key=cache_key
+                    generator, cache=layout_array_cache, cache_key=cache_key
                 )
                 fields.append(virtualarray)
                 names.append(key)
@@ -672,11 +685,7 @@ def lazy(
             global_offsets.append(global_offsets[-1] + length)
 
     out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
-    out = awkward1.Array(out)
-
-    return library.wrap_awkward_lazy(
-        out, common_keys, global_offsets, ",".join(global_cache_key)
-    )
+    return awkward1.Array(out, cache=array_cache)
 
 
 Report = collections.namedtuple(
@@ -860,7 +869,7 @@ class HasBranches(Mapping):
                 arrays; if None, the global ``uproot4.interpretation_executor`` is
                 used.
             array_cache (None, MutableMapping, or memory size): Cache of arrays;
-                if None, do not use a cache; if a memory size, create a new cache
+                if None, use the file's cache; if a memory size, create a new cache
                 of this size.
             library (str or :doc:`uproot4.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
@@ -1807,7 +1816,7 @@ class TBranch(HasBranches):
                 arrays; if None, the global ``uproot4.interpretation_executor`` is
                 used.
             array_cache (None, MutableMapping, or memory size): Cache of arrays;
-                if None, do not use a cache; if a memory size, create a new cache
+                if None, use the file's cache; if a memory size, create a new cache
                 of this size.
             library (str or :doc:`uproot4.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
@@ -3118,3 +3127,30 @@ def _regularize_step_size(
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     )
+
+
+class _WrapDict(MutableMapping):
+    def __init__(self, dict):
+        self.dict = dict
+
+    def __str__(self):
+        return str(self.dict)
+
+    def __repr__(self):
+        return repr(self.dict)
+
+    def __getitem__(self, where):
+        return self.dict[where]
+
+    def __setitem__(self, where, what):
+        self.dict[where] = what
+
+    def __delitem__(self, where):
+        del self.dict[where]
+
+    def __iter__(self, where):
+        for x in self.dict:
+            yield x
+
+    def __len__(self):
+        return len(self.dict)

@@ -35,8 +35,8 @@ class LRUCache(MutableMapping):
     Get and set (or explicitly remove) items with ``MutableMapping`` syntax:
     square bracket subscripting.
 
-    LRUCache is thread-safe for getting, setting, and deleting, but not for
-    iterating.
+    LRUCache is thread-safe for all options: getting, setting, deleting,
+    iterating, listing keys, values, and items.
 
     This cache is insensitive to the size of the objects it stores, and hence
     is a better ``object_cache`` than an ``array_cache``.
@@ -78,6 +78,48 @@ class LRUCache(MutableMapping):
         """
         return self._current
 
+    def keys(self):
+        """
+        Returns a copy of the keys currently in the cache, in least-recently
+        used order.
+
+        The list ascends from least-recently used to most-recently used: index
+        ``0`` is the least-recently used and index ``-1`` is the most-recently
+        used.
+
+        (Calling this method does not change the order.)
+        """
+        with self._lock:
+            return list(self._order)
+
+    def values(self):
+        """
+        Returns a copy of the values currently in the cache, in least-recently
+        used order.
+
+        The list ascends from least-recently used to most-recently used: index
+        ``0`` is the least-recently used and index ``-1`` is the most-recently
+        used.
+
+        (Calling this method does not change the order.)
+        """
+        with self._lock:
+            return [self._data[where] for where in self._order]
+
+    def items(self):
+        """
+        Returns a copy of the items currently in the cache, in least-recently
+        used order.
+
+        The list ascends from least-recently used to most-recently used: index
+        ``0`` is the least-recently used and index ``-1`` is the most-recently
+        used.
+
+        (Calling this method does not change the order.)
+        """
+        with self._lock:
+            return [(where, self._data[where]) for where in self._order]
+
     def __getitem__(self, where):
         with self._lock:
             out = self._data[where]
@@ -106,11 +148,14 @@ class LRUCache(MutableMapping):
             self._order.remove(where)
 
     def __iter__(self):
-        for x in self._order:
+        with self._lock:
+            order = list(self._order)
+        for x in order:
             yield x
 
     def __len__(self):
-        return len(self._order)
+        with self._lock:
+            return len(self._order)
 
 
 class LRUArrayCache(LRUCache):
@@ -129,8 +174,8 @@ class LRUArrayCache(LRUCache):
     Get and set (or explicitly remove) items with ``MutableMapping`` syntax:
     square bracket subscripting.
 
-    LRUArrayCache is thread-safe for getting, setting, and deleting, but not
-    for iterating.
+    LRUArrayCache is thread-safe for all options: getting, setting, deleting,
+    iterating, listing keys, values, and items.
 
     This cache is sensitive to the size of the objects it stores, but only if
     those objects have meaningful ``nbytes``. It is therefore a better
