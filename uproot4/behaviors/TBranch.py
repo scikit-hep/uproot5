@@ -646,9 +646,7 @@ def lazy(
             for key in common_keys:
                 branch = obj[key]
                 interpretation = branchid_interpretation[branch.cache_key]
-                form = interpretation.awkward_form(
-                    obj.file, index_format="i64"
-                )
+                form = interpretation.awkward_form(obj.file, index_format="i64")
                 if isinstance(interpretation, uproot4.interpretation.objects.AsObjects):
                     form = uproot4._util.awkward_form_of_iter(awkward1, form)
                 generator = awkward1.layout.ArrayGenerator(
@@ -663,7 +661,9 @@ def lazy(
                         "ak",
                     ),
                     {},
-                    uproot4._util.awkward_form_remove_uproot(awkward1, form),  # , interpretation
+                    uproot4._util.awkward_form_remove_uproot(
+                        awkward1, form
+                    ),  # , interpretation
                     length,
                 )
                 cache_key = "{0}:{1}:{2}-{3}:{4}".format(
