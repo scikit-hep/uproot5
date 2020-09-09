@@ -1809,7 +1809,7 @@ class ReadOnlyDirectory(Mapping):
                     else:
                         raise uproot4.KeyInFileError(
                             where,
-                            repr(item) + " is not a TDirectory",
+                            because=repr(item) + " is not a TDirectory",
                             keys=[key.fName for key in last._keys],
                             file_path=self._file.file_path,
                         )
@@ -1864,8 +1864,7 @@ class ReadOnlyDirectory(Mapping):
                             else:
                                 raise uproot4.KeyInFileError(
                                     where,
-                                    repr(head)
-                                    + " is not a TDirectory, TTree, or TBranch",
+                                    because=repr(head) + " is not a TDirectory, TTree, or TBranch",
                                     keys=[key.fName for key in last._keys],
                                     file_path=self._file.file_path,
                                 )
@@ -1879,7 +1878,7 @@ class ReadOnlyDirectory(Mapping):
                     else:
                         raise uproot4.KeyInFileError(
                             where,
-                            repr(item) + " is not a TDirectory, TTree, or TBranch",
+                            because=repr(item) + " is not a TDirectory, TTree, or TBranch",
                             keys=[key.fName for key in last._keys],
                             file_path=self._file.file_path,
                         )

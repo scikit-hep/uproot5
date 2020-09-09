@@ -501,7 +501,7 @@ class Model(object):
         else:
             raise uproot4.KeyInFileError(
                 name,
-                """{0}.{1} has only the following members:
+                because="""{0}.{1} has only the following members:
 
     {2}
 """.format(

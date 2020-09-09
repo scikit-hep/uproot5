@@ -363,7 +363,7 @@ class PythonLanguage(uproot4.language.Language):
             )
         except KeyError as err:
             raise uproot4.KeyInFileError(
-                err.args[0], file_path, object_path=object_path
+                err.args[0], file_path=file_path, object_path=object_path
             )
 
     def compute_expressions(

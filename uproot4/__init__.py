@@ -239,9 +239,9 @@ class KeyInFileError(KeyError):
         self.key = key
         self.because = because
         self.cycle = cycle
+        self.keys = keys
         self.file_path = file_path
         self.object_path = object_path
-        self.keys = keys
 
     def __str__(self):
         if self.because == "":

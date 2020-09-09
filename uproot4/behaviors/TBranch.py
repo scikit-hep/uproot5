@@ -1730,8 +1730,8 @@ class HasBranches(Mapping):
             else:
                 raise uproot4.KeyInFileError(
                     original_where,
-                    file_path=self._file.file_path,
                     keys=self.keys(recursive=recursive),
+                    file_path=self._file.file_path,
                     object_path=self.object_path,
                 )
 
