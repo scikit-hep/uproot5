@@ -75,28 +75,34 @@ class Model_TBasket(uproot4.model.Model):
         """
         return self._byte_offsets
 
-    def array(self, interpretation=None):
+    def array(self, interpretation=None, library="ak"):
         """
         The ``TBasket`` data and entry offsets as an array, given an
         :doc:`uproot4.interpretation.Interpretation` (or the ``TBranch`` parent's
-        :doc:`uproot4.behaviors.TBranch.TBranch.interpretation`).
-
-        This calls the :doc:`uproot4.interpretation.Interpretation.basket_array`
-        method and not :doc:`uproot4.interpretation.Interpretation.final_array`,
-        so the resulting array might be a temporary object like
-        :doc:`uproot4.interpretation.jagged.JaggedArray`, rather than a NumPy
-        array, an Awkward Array, or other
-        :doc:`uproot4.interpretation.library.Library`-specific array.
+        :doc:`uproot4.behaviors.TBranch.TBranch.interpretation`) and a
+        ``library``.
         """
         if interpretation is None:
             interpretation = self._parent.interpretation
-        return interpretation.basket_array(
+        library = uproot4.interpretation.library._regularize_library(library)
+
+        basket_array = interpretation.basket_array(
             self.data,
             self.byte_offsets,
             self,
-            self.parent,
-            self.parent.context,
+            self._parent,
+            self._parent.context,
             self._members["fKeylen"],
+            library,
+        )
+
+        return interpretation.final_array(
+            [basket_array],
+            0,
+            self.num_entries,
+            [0, self.num_entries],
+            library,
+            self._parent,
         )
 
     @property

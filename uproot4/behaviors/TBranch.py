@@ -3059,6 +3059,7 @@ def _ranges_or_baskets_to_arrays(
                 branch,
                 branch.context,
                 basket.member("fKeylen"),
+                library,
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(

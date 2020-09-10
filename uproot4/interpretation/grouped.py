@@ -95,7 +95,9 @@ class AsGrouped(uproot4.interpretation.Interpretation):
 
         return awkward1.forms.RecordForm(fields, names)
 
-    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
+    def basket_array(
+        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+    ):
         raise ValueError(
             """grouping branches like {0} should not be read directly; instead read the subbranches:
 

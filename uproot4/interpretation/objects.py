@@ -107,7 +107,9 @@ class AsObjects(uproot4.interpretation.Interpretation):
                 self._branch.file, index_format, header, tobject_header
             )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
+    def basket_array(
+        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+    ):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
@@ -115,6 +117,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             cursor_offset=cursor_offset,
+            library=library,
         )
 
         assert basket.byte_offsets is not None
@@ -131,6 +134,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             context=context,
             output=output,
             cursor_offset=cursor_offset,
+            library=library,
         )
 
         return output

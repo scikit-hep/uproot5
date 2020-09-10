@@ -78,7 +78,9 @@ class Interpretation(object):
         """
         raise AssertionError
 
-    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
+    def basket_array(
+        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+    ):
         """
         Args:
             data (array of ``numpy.uint8``): Raw but uncompressed data from the
@@ -94,6 +96,8 @@ class Interpretation(object):
                 :doc:`uproot4.source.cursor.Cursor.refs` for objects
                 deserialized by reference
                 (:doc:`uproot4.deserialization.read_object_any`).
+            library (:doc:`uproot4.interpretation.library.Library`): The
+                requested library for output.
 
         Performs the first step of interpretation, from uncompressed ``TBasket``
         data to a temporary array.
