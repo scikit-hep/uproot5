@@ -738,8 +738,8 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
         name_width=20,
-        typename_width=20,
-        interpretation_width=34,
+        typename_width=24,
+        interpretation_width=30,
         stream=sys.stdout,
     ):
         """
@@ -782,7 +782,14 @@ class HasBranches(Mapping):
             jetbtag              | std::vector<float>   | AsJagged(AsDtype('>f4'), header_by
             jetid                | std::vector<bool>    | AsJagged(AsDtype('bool'), header_b
         """
-        formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}\n".format(
+        if name_width < 3:
+            raise ValueError("'name_width' must be at least 3")
+        if typename_width < 3:
+            raise ValueError("'typename_width' must be at least 3")
+        if interpretation_width < 3:
+            raise ValueError("'interpretation_width' must be at least 3")
+
+        formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}".format(
             name_width, typename_width, interpretation_width,
         )
 
@@ -808,8 +815,18 @@ class HasBranches(Mapping):
             recursive=recursive,
             full_paths=full_paths,
         ):
+            typename = branch.typename
+            interp = repr(branch.interpretation)
+
+            if len(name) > name_width:
+                name = name[: name_width - 3] + "..."
+            if len(typename) > typename_width:
+                typename = typename[: typename_width - 3] + "..."
+            if len(interp) > interpretation_width:
+                interp = interp[: interpretation_width - 3] + "..."
+
             stream.write(
-                formatter.format(name, branch.typename, repr(branch.interpretation))
+                formatter.format(name, typename, interp).rstrip(" ") + "\n"
             )
 
     def arrays(
