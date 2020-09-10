@@ -35,15 +35,15 @@ class TH2(uproot4.behaviors.TH1.Histogram):
 
         xaxis_fNbins = self.member("fXaxis").member("fNbins")
         yaxis_fNbins = self.member("fYaxis").member("fNbins")
-        return values.reshape(xaxis_fNbins + 2, yaxis_fNbins + 2)
+        return numpy.transpose(values.reshape(yaxis_fNbins + 2, xaxis_fNbins + 2))
 
     def values_errors(self):
         values = self.values()
-        errors = numpy.zeros(values.shape, dtype=numpy.float64)
+        errors = numpy.transpose(numpy.zeros(values.shape[::-1], dtype=numpy.float64))
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
         if sumw2 is not None and len(sumw2) == self.member("fNcells"):
-            sumw2 = numpy.reshape(sumw2, values.shape)
+            sumw2 = numpy.transpose(numpy.reshape(sumw2, values.shape[::-1]))
             positive = sumw2 > 0
             errors[positive] = numpy.sqrt(sumw2[positive])
         else:
