@@ -397,7 +397,10 @@ class Awkward(Library):
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         awkward1 = self.imported
 
-        if isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
+        if isinstance(array, awkward1.layout.Content):
+            return awkward1.Array(array)
+
+        elif isinstance(array, uproot4.interpretation.objects.StridedObjectArray):
             return awkward1.Array(
                 _strided_to_awkward(awkward1, "", array.interpretation, array.array)
             )

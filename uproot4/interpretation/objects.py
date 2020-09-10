@@ -139,6 +139,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
 
         assert basket.byte_offsets is not None
 
+        output = None
         if isinstance(library, uproot4.interpretation.library.Awkward):
             form = self.awkward_form(branch.file, index_format="i64")
 
@@ -152,15 +153,14 @@ class AsObjects(uproot4.interpretation.Interpretation):
                     "context": context,
                     "cursor_offset": cursor_offset,
                 }
-                print(
-                    awkward1._connect._uproot.basket_array(
-                        form, data, byte_offsets, extra
-                    )
+                output = awkward1._connect._uproot.basket_array(
+                    form, data, byte_offsets, extra
                 )
 
-        output = ObjectArray(
-            self._model, branch, context, byte_offsets, data, cursor_offset
-        )
+        if output is None:
+            output = ObjectArray(
+                self._model, branch, context, byte_offsets, data, cursor_offset
+            )
 
         self.hook_after_basket_array(
             data=data,
@@ -187,35 +187,66 @@ class AsObjects(uproot4.interpretation.Interpretation):
             branch=branch,
         )
 
-        output = numpy.empty(entry_stop - entry_start, dtype=numpy.dtype(numpy.object))
+        if any(type(x).__module__.startswith("awkward1") for x in basket_arrays):
+            assert isinstance(library, uproot4.interpretation.library.Awkward)
 
-        start = entry_offsets[0]
-        for basket_num, stop in enumerate(entry_offsets[1:]):
-            if start <= entry_start and entry_stop <= stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(entry_start, entry_stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+            import awkward1
 
-            elif start <= entry_start < stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(entry_start, stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+            trimmed = []
+            start = entry_offsets[0]
+            for basket_num, stop in enumerate(entry_offsets[1:]):
+                if start <= entry_start and entry_stop <= stop:
+                    local_start = entry_start - start
+                    local_stop = entry_stop - start
+                    trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
-            elif start <= entry_stop <= stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(start, entry_stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+                elif start <= entry_start < stop:
+                    local_start = entry_start - start
+                    local_stop = stop - start
+                    trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
-            elif entry_start < stop and start <= entry_stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(start, stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+                elif start <= entry_stop <= stop:
+                    local_start = 0
+                    local_stop = entry_stop - start
+                    trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
-            start = stop
+                elif entry_start < stop and start <= entry_stop:
+                    trimmed.append(basket_arrays[basket_num])
+
+                start = stop
+
+            output = awkward1.concatenate(trimmed, mergebool=False, highlevel=False)
+
+        else:
+            output = numpy.empty(entry_stop - entry_start, dtype=numpy.dtype(numpy.object))
+
+            start = entry_offsets[0]
+            for basket_num, stop in enumerate(entry_offsets[1:]):
+                if start <= entry_start and entry_stop <= stop:
+                    basket_array = basket_arrays[basket_num]
+                    for global_i in uproot4._util.range(entry_start, entry_stop):
+                        local_i = global_i - start
+                        output[global_i - entry_start] = basket_array[local_i]
+
+                elif start <= entry_start < stop:
+                    basket_array = basket_arrays[basket_num]
+                    for global_i in uproot4._util.range(entry_start, stop):
+                        local_i = global_i - start
+                        output[global_i - entry_start] = basket_array[local_i]
+
+                elif start <= entry_stop <= stop:
+                    basket_array = basket_arrays[basket_num]
+                    for global_i in uproot4._util.range(start, entry_stop):
+                        local_i = global_i - start
+                        output[global_i - entry_start] = basket_array[local_i]
+
+                elif entry_start < stop and start <= entry_stop:
+                    basket_array = basket_arrays[basket_num]
+                    for global_i in uproot4._util.range(start, stop):
+                        local_i = global_i - start
+                        output[global_i - entry_start] = basket_array[local_i]
+
+                start = stop
 
         self.hook_before_library_finalize(
             basket_arrays=basket_arrays,
