@@ -218,7 +218,9 @@ class AsObjects(uproot4.interpretation.Interpretation):
             output = awkward1.concatenate(trimmed, mergebool=False, highlevel=False)
 
         else:
-            output = numpy.empty(entry_stop - entry_start, dtype=numpy.dtype(numpy.object))
+            output = numpy.empty(
+                entry_stop - entry_start, dtype=numpy.dtype(numpy.object)
+            )
 
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
