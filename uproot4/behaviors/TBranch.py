@@ -645,10 +645,15 @@ def lazy(
             names = []
             for key in common_keys:
                 branch = obj[key]
+
                 interpretation = branchid_interpretation[branch.cache_key]
                 form = interpretation.awkward_form(obj.file, index_format="i64")
                 if isinstance(interpretation, uproot4.interpretation.objects.AsObjects):
-                    form = uproot4._util.awkward_form_of_iter(awkward1, form)
+                    if not uproot4.interpretation.objects.awkward_can_optimize(
+                        interpretation, form
+                    ):
+                        form = uproot4._util.awkward_form_of_iter(awkward1, form)
+
                 generator = awkward1.layout.ArrayGenerator(
                     branch.array,
                     (
@@ -825,9 +830,7 @@ class HasBranches(Mapping):
             if len(interp) > interpretation_width:
                 interp = interp[: interpretation_width - 3] + "..."
 
-            stream.write(
-                formatter.format(name, typename, interp).rstrip(" ") + "\n"
-            )
+            stream.write(formatter.format(name, typename, interp).rstrip(" ") + "\n")
 
     def arrays(
         self,

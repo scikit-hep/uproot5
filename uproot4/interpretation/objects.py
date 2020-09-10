@@ -35,6 +35,23 @@ import uproot4.source.cursor
 import uproot4._util
 
 
+def awkward_can_optimize(interpretation, form):
+    """
+    If True, the Awkward Array library can convert data of a given
+    :doc:`uproot4.interpretation.Interpretation` and ``ak.forms.Form`` into
+    arrays without resorting to ``ak.from_iter`` (i.e. rapidly).
+
+    If ``awkward1._connect._uproot`` cannot be imported, this function always
+    returns False.
+    """
+    try:
+        import awkward1._connect._uproot
+    except ImportError:
+        return False
+    else:
+        return awkward1._connect._uproot.can_optimize(interpretation, form)
+
+
 class AsObjects(uproot4.interpretation.Interpretation):
     """
     Args:
@@ -121,6 +138,25 @@ class AsObjects(uproot4.interpretation.Interpretation):
         )
 
         assert basket.byte_offsets is not None
+
+        if isinstance(library, uproot4.interpretation.library.Awkward):
+            form = self.awkward_form(branch.file, index_format="i64")
+
+            if awkward_can_optimize(self, form):
+                import awkward1._connect._uproot
+
+                extra = {
+                    "interpretation": self,
+                    "basket": basket,
+                    "branch": branch,
+                    "context": context,
+                    "cursor_offset": cursor_offset,
+                }
+                print(
+                    awkward1._connect._uproot.basket_array(
+                        form, data, byte_offsets, extra
+                    )
+                )
 
         output = ObjectArray(
             self._model, branch, context, byte_offsets, data, cursor_offset
