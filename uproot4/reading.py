@@ -80,6 +80,7 @@ def open(
     * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
     * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -124,10 +125,13 @@ def open(
 
     file_path = uproot4._util.regularize_path(file_path)
 
-    if not uproot4._util.isstr(file_path):
+    if not uproot4._util.isstr(file_path) and not (
+        hasattr(file_path, "read") and hasattr(file_path, "seek")
+    ):
         raise ValueError(
-            "'path' must be a string, pathlib.Path, or a length-1 dict of "
-            "{{file_path: object_path}}, not {0}".format(repr(path))
+            "'path' must be a string, pathlib.Path, an object with 'read' and "
+            "'seek' methods, or a length-1 dict of {{file_path: object_path}}, "
+            "not {0}".format(repr(path))
         )
 
     file = ReadOnlyFile(
@@ -148,6 +152,7 @@ open.defaults = {
     "file_handler": uproot4.source.file.MemmapSource,
     "xrootd_handler": uproot4.source.xrootd.XRootDSource,
     "http_handler": uproot4.source.http.HTTPSource,
+    "object_handler": uproot4.source.object.ObjectSource,
     "timeout": 30,
     "max_num_elements": None,
     "num_workers": 1,
@@ -490,6 +495,7 @@ class ReadOnlyFile(CommonFileMethods):
     * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
     * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
