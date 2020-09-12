@@ -143,7 +143,9 @@ class AsStrings(uproot4.interpretation.Interpretation):
             type(self).__name__, self._header_bytes, repr(self._length_bytes)
         )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
+    def basket_array(
+        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+    ):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
@@ -151,6 +153,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             cursor_offset=cursor_offset,
+            library=library,
         )
 
         if byte_offsets is None:
@@ -233,6 +236,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
             context=context,
             output=output,
             cursor_offset=cursor_offset,
+            library=library,
         )
 
         return output

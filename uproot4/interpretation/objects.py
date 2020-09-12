@@ -35,6 +35,23 @@ import uproot4.source.cursor
 import uproot4._util
 
 
+def awkward_can_optimize(interpretation, form):
+    """
+    If True, the Awkward Array library can convert data of a given
+    :doc:`uproot4.interpretation.Interpretation` and ``ak.forms.Form`` into
+    arrays without resorting to ``ak.from_iter`` (i.e. rapidly).
+
+    If ``awkward1._connect._uproot`` cannot be imported, this function always
+    returns False.
+    """
+    try:
+        import awkward1._connect._uproot
+    except ImportError:
+        return False
+    else:
+        return awkward1._connect._uproot.can_optimize(interpretation, form)
+
+
 class AsObjects(uproot4.interpretation.Interpretation):
     """
     Args:
@@ -107,7 +124,9 @@ class AsObjects(uproot4.interpretation.Interpretation):
                 self._branch.file, index_format, header, tobject_header
             )
 
-    def basket_array(self, data, byte_offsets, basket, branch, context, cursor_offset):
+    def basket_array(
+        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+    ):
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
@@ -115,13 +134,32 @@ class AsObjects(uproot4.interpretation.Interpretation):
             branch=branch,
             context=context,
             cursor_offset=cursor_offset,
+            library=library,
         )
-
         assert basket.byte_offsets is not None
 
-        output = ObjectArray(
-            self._model, branch, context, byte_offsets, data, cursor_offset
-        )
+        output = None
+        if isinstance(library, uproot4.interpretation.library.Awkward):
+            form = self.awkward_form(branch.file, index_format="i64")
+
+            if awkward_can_optimize(self, form):
+                import awkward1._connect._uproot
+
+                extra = {
+                    "interpretation": self,
+                    "basket": basket,
+                    "branch": branch,
+                    "context": context,
+                    "cursor_offset": cursor_offset,
+                }
+                output = awkward1._connect._uproot.basket_array(
+                    form, data, byte_offsets, extra
+                )
+
+        if output is None:
+            output = ObjectArray(
+                self._model, branch, context, byte_offsets, data, cursor_offset
+            ).to_numpy()
 
         self.hook_after_basket_array(
             data=data,
@@ -131,6 +169,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             context=context,
             output=output,
             cursor_offset=cursor_offset,
+            library=library,
         )
 
         return output
@@ -146,36 +185,35 @@ class AsObjects(uproot4.interpretation.Interpretation):
             library=library,
             branch=branch,
         )
-
-        output = numpy.empty(entry_stop - entry_start, dtype=numpy.dtype(numpy.object))
-
+        trimmed = []
         start = entry_offsets[0]
         for basket_num, stop in enumerate(entry_offsets[1:]):
             if start <= entry_start and entry_stop <= stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(entry_start, entry_stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+                local_start = entry_start - start
+                local_stop = entry_stop - start
+                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
             elif start <= entry_start < stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(entry_start, stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+                local_start = entry_start - start
+                local_stop = stop - start
+                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
             elif start <= entry_stop <= stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(start, entry_stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+                local_start = 0
+                local_stop = entry_stop - start
+                trimmed.append(basket_arrays[basket_num][local_start:local_stop])
 
             elif entry_start < stop and start <= entry_stop:
-                basket_array = basket_arrays[basket_num]
-                for global_i in uproot4._util.range(start, stop):
-                    local_i = global_i - start
-                    output[global_i - entry_start] = basket_array[local_i]
+                trimmed.append(basket_arrays[basket_num])
 
             start = stop
+
+        if all(type(x).__module__.startswith("awkward1") for x in basket_arrays.values()):
+            assert isinstance(library, uproot4.interpretation.library.Awkward)
+            awkward1 = library.imported
+            output = awkward1.concatenate(trimmed, mergebool=False, highlevel=False)
+        else:
+            output = numpy.concatenate(trimmed)
 
         self.hook_before_library_finalize(
             basket_arrays=basket_arrays,
@@ -513,6 +551,15 @@ class ObjectArray(object):
         reference (:doc:`uproot4.deserialization.read_object_any`).
         """
         return self._cursor_offset
+
+    def to_numpy(self):
+        """
+        Convert this ObjectArray into a NumPy ``dtype="O"`` (object) array.
+        """
+        output = numpy.empty(len(self), dtype=numpy.dtype(numpy.object))
+        for i in range(len(self)):
+            output[i] = self[i]
+        return output
 
     def __len__(self):
         return len(self._byte_offsets) - 1
