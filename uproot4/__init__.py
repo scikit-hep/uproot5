@@ -91,6 +91,7 @@ from uproot4.source.http import HTTPSource
 from uproot4.source.http import MultithreadedHTTPSource
 from uproot4.source.xrootd import XRootDSource
 from uproot4.source.xrootd import MultithreadedXRootDSource
+from uproot4.source.object import ObjectSource
 from uproot4.source.cursor import Cursor
 from uproot4.source.futures import TrivialExecutor
 from uproot4.source.futures import ThreadPoolExecutor

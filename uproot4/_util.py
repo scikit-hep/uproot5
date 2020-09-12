@@ -190,6 +190,13 @@ _schemes = ["FILE"] + _remote_schemes
 def file_path_to_source_class(file_path, options):
     file_path = regularize_path(file_path)
 
+    if (
+        not isstr(file_path)
+        and hasattr(file_path, "read")
+        and hasattr(file_path, "seek")
+    ):
+        return options["object_handler"], file_path
+
     windows_absolute_path = None
 
     if os.name == "nt":

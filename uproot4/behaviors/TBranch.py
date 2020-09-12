@@ -181,6 +181,7 @@ def iterate(
     * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
     * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -356,6 +357,7 @@ def concatenate(
     * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
     * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -511,6 +513,7 @@ def lazy(
     * file_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.xrootd.XRootDSource`)
     * http_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot4.source.chunk.Source` class; :doc:`uproot4.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -825,9 +828,7 @@ class HasBranches(Mapping):
             if len(interp) > interpretation_width:
                 interp = interp[: interpretation_width - 3] + "..."
 
-            stream.write(
-                formatter.format(name, typename, interp).rstrip(" ") + "\n"
-            )
+            stream.write(formatter.format(name, typename, interp).rstrip(" ") + "\n")
 
     def arrays(
         self,
