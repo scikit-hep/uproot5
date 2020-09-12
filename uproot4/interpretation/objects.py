@@ -187,7 +187,7 @@ class AsObjects(uproot4.interpretation.Interpretation):
             branch=branch,
         )
 
-        if any(type(x).__module__.startswith("awkward1") for x in basket_arrays):
+        if any(type(x).__module__.startswith("awkward1") for x in basket_arrays.values()):
             assert isinstance(library, uproot4.interpretation.library.Awkward)
 
             import awkward1
