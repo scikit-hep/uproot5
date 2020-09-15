@@ -6,10 +6,21 @@
     :width: 300px
     :alt: Uproot
 
-|br| Uproot is a library for reading (and soon, writing) ROOT files in pure Python and NumPy.
+|br|
+
+.. toctree::
+    :hidden:
+
+    index
+    uproot3-to-4
+
+Introduction
+============
+
+Uproot is a library for reading (and soon, writing) ROOT files in pure Python and NumPy.
 
 How to install
-**************
+==============
 
 Usually, you'll want to install Uproot with `Awkward Array <https://awkward-array.org>`__ because this is the default array format.
 
@@ -26,25 +37,25 @@ But if you are working in a limited environment, Uproot can be installed without
 Just be sure to pass ``library="np"`` to any function that returns arrays to specify that you want NumPy arrays, rather than Awkward arrays. Other array libraries include `Pandas <https://pandas.pydata.org/>`__ and `CuPy <https://cupy.dev/>`__, which, like Awkward, would need to be explicitly installed.
 
 Getting help
-************
+============
 
-Report bugs, request features, and ask for additional documentation on `GitHub Issues <https://github.com/scikit-hep/uproot4/issues>`__. If you have a general "How do I…?" question, we'll answer it as a new example on this site.
+Report bugs, request features, and ask for additional documentation on `GitHub Issues <https://github.com/scikit-hep/uproot4/issues>`__.
 
 If you have a problem that's too specific to be new documentation or it isn't exclusively related to Uproot, it might be more appropriate to ask on `StackOverflow with the [uproot] tag <https://stackoverflow.com/questions/tagged/uproot>`__. Be sure to include tags for any other libraries that you use, such as boost-histogram or Pandas.
-
-If you're migrating from Uproot 3 to Uproot 4, see the `Uproot 3 → 4 cheat-sheet <uproot3-to-4.html>`__.
 
 The `Gitter Scikit-HEP/community <https://gitter.im/Scikit-HEP/community>`__ is a way to get in touch with all Scikit-HEP developers and users.
 
 Basic use
-*********
+=========
 
-If you've never used Uproot (or Uproot 4) before, start here. Otherwise, see the `Advanced use <#advanced-use>`__ tutorials, or the `Reference <#reference>`__ for each class and function, below. They're also accessible in the left side-bar.
+If you've never used Uproot before, start here. Otherwise, see the advanced topics and reference in the left-bar (≡ button on mobile).
+
+If you're migrating from Uproot 3 to Uproot 4, see the `Uproot 3 → 4 cheat-sheet <uproot3-to-4.html>`__.
 
 If you're unfamiliar with ROOT, see the `ROOT project's documentation <https://root.cern/get_started/>`__. ROOT is a C++ toolkit for data analysis; the ROOT file format is a part of that ecosystem. ROOT has a Python interface called PyROOT, but be aware that Uproot is an independent Python implementation of the file format only.
 
 Opening a file
-""""""""""""""
+--------------
 
 Open a ROOT file with the :doc:`uproot4.reading.open` function.
 
@@ -56,7 +67,7 @@ Open a ROOT file with the :doc:`uproot4.reading.open` function.
 This function can take a string or `pathlib.Path <https://docs.python.org/3/library/pathlib.html>`__, can be used in a ``with`` statement to close the file at the end of the ``with`` block, can point to a local file name, an HTTP URL, or an XRootD ("``root://``") URL. See the documentation for more options.
 
 Finding objects in a file
-"""""""""""""""""""""""""
+-------------------------
 
 The object returned by :doc:`uproot4.reading.open` represents a TDirectory inside the file (``/``).
 
@@ -66,7 +77,7 @@ The object returned by :doc:`uproot4.reading.open` represents a TDirectory insid
     >>> file
     <ReadOnlyDirectory '/' at 0x7c070dc03040>
 
-This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__, which means that you can get a list of contents with :doc:`uproot4.reading.ReadOnlyDirectory.keys`.
+This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__, which means that you can get a list of contents with :doc:`uproot4.reading.ReadOnlyDirectory.keys`.
 
 .. code-block:: python
 
@@ -107,9 +118,9 @@ As a shortcut, you can open a file and jump straight to the object by separating
 Colon separators are only allowed in strings, so you can open files that have colons in their names by wrapping them in a `pathlib.Path <https://docs.python.org/3/library/pathlib.html>`__.
 
 Inspecting a TBranches of a TTree
-"""""""""""""""""""""""""""""""""
+---------------------------------
 
-ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__ objects with :doc:`uproot4.behaviors.TBranch.HasBranches.keys`, :doc:`uproot4.behaviors.TBranch.HasBranches.values`, and :doc:`uproot4.behaviors.TBranch.HasBranches.items` functions. In this case, the values are TBranch objects (with subbranches accessible through ``/`` paths).
+ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__ objects with :doc:`uproot4.behaviors.TBranch.HasBranches.keys`, :doc:`uproot4.behaviors.TBranch.HasBranches.values`, and :doc:`uproot4.behaviors.TBranch.HasBranches.items` functions. In this case, the values are TBranch objects (with subbranches accessible through ``/`` paths).
 
 .. code-block:: python
 
@@ -175,7 +186,7 @@ In an interactive session, it's often more convenient to call :doc:`uproot4.beha
 The third column, ``interpretation``, indicates how data in the TBranch will be interpreted as an array.
 
 Reading a TBranch as an array
-"""""""""""""""""""""""""""""
+-----------------------------
 
 A TBranch may be turned into an array with the :doc:`uproot4.behavior.TBranch.TBranch.array` method. The array is not read from disk until this method (or equivalent) is called.
 
@@ -185,7 +196,7 @@ A TBranch may be turned into an array with the :doc:`uproot4.behavior.TBranch.TB
     >>> events["M"].array()
     <Array [82.5, 83.6, 83.3, ... 96, 96.5, 96.7] type='2304 * float64'>
 
-By default, the array is an Awkward array, as shown above. This assumes that Awkward Array is installed (see `How to install <#how-to-install>`__). If you can't install it or want to use NumPy for other reasons, pass ``library="np"`` instead of the default ``library="ak"``.
+By default, the array is an Awkward array, as shown above. This assumes that Awkward Array is installed (see `How to install <-how-to-install>`__). If you can't install it or want to use NumPy for other reasons, pass ``library="np"`` instead of the default ``library="ak"``.
 
 .. code-block:: python
 
@@ -236,7 +247,7 @@ If you don't have the specified library (including the default, Awkward), you'll
 The :doc:`uproot4.behavior.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). See the documentation for details.
 
 Reading multiple TBranches as a group of arrays
-"""""""""""""""""""""""""""""""""""""""""""""""
+-----------------------------------------------
 
 To read more than one TBranch, you could use the :doc:`uproot4.behavior.TBranch.TBranch.array` method from the previous section multiple times, but you could also use :doc:`uproot4.behavior.TBranch.HasBranches.arrays` (plural) on the TTree itself.
 
@@ -307,7 +318,7 @@ For Pandas, a group is a `pandas.DataFrame <https://pandas.pydata.org/pandas-doc
     Name: px1, Length: 2304, dtype: float64
 
 Choosing TBranches to read
-""""""""""""""""""""""""""
+--------------------------
 
 If no arguments are passed to :doc:`uproot4.behavior.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also pass a filter (``filter_name``, ``filter_typename``, or ``filter_branch``):
 
@@ -365,30 +376,13 @@ language is Python
 
 
 Iterating over intervals of entries
-"""""""""""""""""""""""""""""""""""
+-----------------------------------
 
 Iterating over many files
-"""""""""""""""""""""""""
+-------------------------
 
 Reading many files into big arrays
-""""""""""""""""""""""""""""""""""
+----------------------------------
 
 Reading data on demand into lazy arrays
-"""""""""""""""""""""""""""""""""""""""
-
-Advanced use
-************
-
-FIXME: a list of tutorials
-
-Reference
-*********
-
-FIXME: a list of modules
-
-FIXME: also, the toctree
-
-.. toctree::
-    :hidden:
-
-    uproot3-to-4.rst
+---------------------------------------
