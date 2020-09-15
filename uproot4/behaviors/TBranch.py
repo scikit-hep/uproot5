@@ -803,7 +803,8 @@ class HasBranches(Mapping):
 
         stream.write(formatter.format("name", "typename", "interpretation"))
         stream.write(
-            "-" * name_width
+            "\n"
+            + "-" * name_width
             + "-+-"
             + "-" * typename_width
             + "-+-"
@@ -2200,6 +2201,40 @@ in file {3}""".format(
         if len(leaves) != 1:
             return None
         return leaves[0].member("fLeafCount")
+
+    @property
+    def compressed_bytes(self):
+        """
+        The number of compressed bytes in all ``TBaskets`` of this ``TBranch``.
+
+        The number of compressed bytes is specified in the ``TBranch`` metadata
+        and can be determined without reading any additional data. The
+        uncompressed bytes requires reading all of the ``TBasket`` ``TKeys`` at
+        least.
+        """
+        return sum(self.basket_compressed_bytes(i) for i in range(self.num_baskets))
+
+    @property
+    def uncompressed_bytes(self):
+        """
+        The number of uncompressed bytes in all ``TBaskets`` of this ``TBranch``.
+
+        The number of uncompressed bytes cannot be determined without reading a
+        ``TKey``, which are small, but may be slow for remote connections because
+        of the latency of round-trip requests.
+        """
+        return sum(self.basket_uncompressed_bytes(i) for i in range(self.num_baskets))
+
+    @property
+    def compression_ratio(self):
+        """
+        The number of uncompressed bytes divided by the number of compressed
+        bytes for this ``TBranch``.
+
+        See :doc:`uproot4.behaviors.TBranch.TBranch.compressed_bytes` and
+        :doc:`uproot4.behaviors.TBranch.TBranch.uncompressed_bytes`.
+        """
+        return float(self.uncompressed_bytes) / float(self.compressed_bytes)
 
     @property
     def num_baskets(self):
