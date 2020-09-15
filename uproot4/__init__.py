@@ -36,38 +36,38 @@ from files.
 
 The submodules of Uproot are:
 
-* :doc:`uproot4.version`: for access to the version number.
-* :doc:`uproot4.extras`: import functions for the libraries that Uproot can
-  use, but does not require as dependencies. If a library can't be imported,
-  these functions provide instructions for installing them.
-* :doc:`uproot4.dynamic`: initially empty module, in which dynamically
-  generated classes are defined.
-* :doc:`uproot4.source`: the "physical layer," which reads bytes without
-  interpreting them from various backends, like files, HTTP(S), and XRootD.
-* :doc:`uproot4.compression`: functions for compressing and decompressing data.
 * :doc:`uproot4.reading`: entry-point for reading files, as well as classes
   for the three basic types that can't be modeled: ``TFile``, ``TDirectory``,
   and ``TKey``.
+* :doc:`uproot4.cache`: defines caches with least-recently used eviction
+  policies.
+* :doc:`uproot4.model`: utilities for modeling C++ objects as Python objects.
 * :doc:`uproot4.streamers`: models for ``TStreamerInfo`` and its elements
   to generate code for new models for classes in ROOT files.
+* :doc:`uproot4.compression`: functions for compressing and decompressing data.
 * :doc:`uproot4.deserialization`: utility functions for deserialization,
   including the generation of new classes.
-* :doc:`uproot4.model`: utilities for modeling C++ objects as Python objects.
-* :doc:`uproot4.models`: predefined models for classes that are too basic
-  to rely on ``TStreamerInfo`` or too common to justify reading it.
-* :doc:`uproot4.behaviors`: methods and properties to mix into instantiated
-  models, for a high-level user interface.
+* :doc:`uproot4.source`: the "physical layer," which reads bytes without
+  interpreting them from various backends, like files, HTTP(S), and XRootD.
 * :doc:`uproot4.interpretation`: prescriptions for converting ROOT types
   into Pythonic arrays.
 * :doc:`uproot4.containers`: interpretations and models for standard
   containers, such as ``std::vector`` and arrays.
-* :doc:`uproot4.compute`: computational backends for expressions in
+* :doc:`uproot4.language`: computational backends for expressions in
   :doc:`uproot4.behavior.TBranch.HasBranches.arrays`.
-* :doc:`uproot4.cache`: defines caches with least-recently used eviction
-  policies.
+* :doc:`uproot4.models`: predefined models for classes that are too basic
+  to rely on ``TStreamerInfo`` or too common to justify reading it.
+* :doc:`uproot4.behaviors`: methods and properties to mix into instantiated
+  models, for a high-level user interface.
 * :doc:`uproot4.const`: integer constants used in ROOT serialization and
   deserialization.
-* :doc:`uproot4._util`: non-public utilities used by any of the above.
+* :doc:`uproot4.extras`: import functions for the libraries that Uproot can
+  use, but does not require as dependencies. If a library can't be imported,
+  these functions provide instructions for installing them.
+* :doc:`uproot4.version`: for access to the version number.
+* :doc:`uproot4.dynamic`: initially empty module, in which dynamically
+  generated classes are defined.
+* :doc:`uproot4._util`: non-public utilities used by the above.
 """
 
 from __future__ import absolute_import

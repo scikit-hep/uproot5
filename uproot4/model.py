@@ -618,7 +618,7 @@ class Model(object):
             cls (subclass of :doc:`uproot4.model.Model`): This class.
             file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot4.model.Model` classes from its
-                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+                :py:attr:`~uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             header (bool): If True, assume the outermost object has a header.
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
@@ -1205,7 +1205,7 @@ class UnknownClass(Model):
 
         Example output with ``dtype=">f4"`` and ``offset=3``.
 
-        .. code-block:: raw
+        .. code-block::
 
             --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
             123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64
@@ -1338,7 +1338,7 @@ class UnknownClassVersion(VersionedModel):
 
         Example output with ``dtype=">f4"`` and ``offset=3``.
 
-        .. code-block:: raw
+        .. code-block::
 
             --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
             123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64

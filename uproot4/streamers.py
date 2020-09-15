@@ -157,7 +157,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
         Example:
 
-        .. code-block:: raw
+        .. code-block::
 
             TLorentzVector (v4): TObject (v1)
                 fP: TVector3 (TStreamerObject)

@@ -778,7 +778,7 @@ class HasBranches(Mapping):
 
         Example:
 
-        .. code-block:: raw
+        .. code-block::
 
             name                 | typename             | interpretation
             ---------------------+----------------------+-----------------------------------
@@ -2496,7 +2496,7 @@ in file {3}""".format(
 
         Example output with ``dtype=">f4"`` and ``offset=3``.
 
-        .. code-block:: raw
+        .. code-block::
 
             --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
             123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64

@@ -25,7 +25,7 @@ author = "Jim Pivarski"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named "sphinx.ext.*") or your custom
 # ones.
-extensions = []
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -52,4 +52,5 @@ html_static_path = []   # "_static"
 # Additional stuff
 master_doc = "index"
 
+exec(open("prepare_docstrings.py").read(), dict(globals()))
 # exec(open("make_changelog.py").read(), dict(globals()))
