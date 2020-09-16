@@ -500,7 +500,7 @@ In general, array-based workflows must iterate over batches with an optimized st
 
 Procedural workflows, which operate on one entry (e.g. one particle physics collision event) at a time can be seen as an extreme of the latter, in which the batch size is one.
 
-The :py:meth:`~uproot4.behavior.TBranch.TBranch.iterate` method has an interface like :py:meth:`~uproot4.behavior.TBranch.TBranch.arrays`, except that takes a ``step_size`` parameter and iterates over batches of that size, rather than returning a single array group.
+The :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` method has an interface like :py:meth:`~uproot4.behavior.TBranch.TBranch.arrays`, except that takes a ``step_size`` parameter and iterates over batches of that size, rather than returning a single array group.
 
 .. code-block:: python
 
@@ -547,10 +547,80 @@ For this reason, it's better to set the ``step_size`` to a number of bytes, such
 
 The number of entries for ``"50 kB"`` depends strongly on which TBranches are being requested. It's the memory size, not the number of entries, that matters most when tuning a workflow for a computer with limited memory.
 
+See the :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` documentation for more, including a ``report=True`` option to get a :py:class:`~uproot4.behavior.TBranch.Report` with each batch of data with entry numbers for bookkeeping.
+
+.. code-block:: python
+
+    >>> for batch, report in events.iterate(step_size="50 kB", report=True):
+    ...     print(report)
+    ... 
+    Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 0, 667)
+    Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 667, 1334)
+    Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 1334, 2001)
+    Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 2001, 2304)
+
+Just as ``library="np"`` and ``library="pd"`` can be used to get NumPy and Pandas output in :py:meth:`~uproot4.behaviors.TBranch.TBranch.array` and :py:meth:`~uproot4.behaviors.TBranch.HasBranches.arrays`, it can be used to yield NumPy arrays and Pandas DataFrames iteratively:
+
+.. code-block:: python
+
+    >>> for batch in events.iterate(step_size="100 kB", library="pd"):
+    ...     print(batch)
+    ... 
+         Type     Run      Event         E1  ...     eta2      phi2  Q2          M
+    0      GT  148031   10507008  82.201866  ... -1.05139 -0.440873  -1  82.462692
+    1      TT  148031   10507008  62.344929  ... -1.21769  2.741260   1  83.626204
+    2      GT  148031   10507008  62.344929  ... -1.21769  2.741260   1  83.308465
+    3      GG  148031   10507008  60.621875  ... -1.21769  2.741260   1  82.149373
+    4      GT  148031  105238546  41.826389  ...  1.44434 -2.707650  -1  90.469123
+    ...   ...     ...        ...        ...  ...      ...       ...  ..        ...
+    1328   GT  148031  607496200   4.385337  ...  1.76576 -0.582806   1   7.039820
+    1329   GT  148031  607496200   4.385337  ...  1.81014  2.523670  -1  11.655561
+    1330   TT  148031  607496200   8.301393  ...  1.76576 -0.582806   1  18.127933
+    1331   TT  148031  607496200   8.301393  ...  1.81014  2.523670  -1   6.952658
+    1332   TT  148031  607496200   8.301393  ...  2.18148  0.343855   1   1.759080
+
+    [1333 rows x 20 columns]
+         Type     Run      Event          E1  ...      eta2      phi2  Q2          M
+    1333   GT  148031  607496200    8.301393  ...  1.765760 -0.582806   1  18.099339
+    1334   GT  148031  607496200    8.301393  ...  1.810140  2.523670  -1   6.959646
+    1335   GG  148031  607496200  132.473942  ...  1.765760 -0.582806   1  93.373860
+    1336   GT  148031  608388587   59.548441  ... -0.565288  0.529327  -1  90.782261
+    1337   TT  148031  608388587   51.504863  ... -0.746182 -2.573870   1  90.685446
+    ...   ...     ...        ...         ...  ...       ...       ...  ..        ...
+    2299   GG  148029   99768888   32.701650  ... -0.645971 -2.404430  -1  60.047138
+    2300   GT  148029   99991333  168.780121  ... -1.570440  0.037027   1  96.125376
+    2301   TT  148029   99991333   81.270136  ... -1.482700 -2.775240  -1  95.965480
+    2302   GT  148029   99991333   81.270136  ... -1.482700 -2.775240  -1  96.495944
+    2303   GG  148029   99991333   81.566217  ... -1.482700 -2.775240  -1  96.656728
+
+    [971 rows x 20 columns]
+
 Iterating over many files
 -------------------------
 
-HERE
+Large datasets usually consist of many files, and abstractions like `ROOT's TChain <https://root.cern.ch/doc/master/classTChain.html>`__ simplify multi-file workflows by making a collection of files look like a single file.
+
+Uproot's :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` takes a step in the opposite direction: it breaks single-file access into batches, and designing a workflow around batches is like designing a workflow around files. To apply such an interface to many files, all that is needed is a way to express the list of files.
+
+The `uproot4.iterate <uproot4.behavior.TBranch.iterate>`__ function (as opposed to the `HasBranches.iterate <uproot4.behavior.TBranch.HasBranches.iterate>`__ method) takes a list of files as its first argument:
+
+.. code-block:: python
+
+    >>> for batch in uproot4.iterate(["dir1/*.root:events", "dir2/*.root:events"]):
+    ...     do_something...
+
+As with the single-file method, you'll want to restrict the set of TBranches to include only those you use. (See `Filtering TBranches <#filtering-tbranches>`__ above.)
+
+The specification of file names has to include paths to the ``TTree`` objects (more generally, :py:class:`~uproot4.behaviors.TBranch.HasBranches` objects), so the colon (``:``) separating file path and object path `described above <#finding-objects-in-a-file>` is more than just a convenience in this case. Since it is possible for file paths to include colons as part of the file or directory name, the following alternate syntax can also be used:
+
+.. code-block:: python
+
+    >>> for batch in uproot4.iterate([{"dir1/*.root": "events"}, {"dir2/*.root": "events"}]):
+    ...     do_something...
+
+If the ``step_size`` (same meaning as in previous section) is smaller than the file size, the last batch of each file will likely be smaller than the rest: batches from one file are not mixed with batches from another file. Thus, the largest meaningful ``step_size`` is the number of entries in the file (:py:attr:`~uproot4.behavior.TBranch.HasBranches.num_entries`). See the next section for concatenating small files.
+
+In multi-file iteration, the :py:class:`~uproot4.behavior.TBranch.Report` returned by ``report=True`` distinguishes between global entry numbers (:py:attr:`~uproot4.behavior.TBranch.Report.global_entry_start` and :py:attr:`~uproot4.behavior.TBranch.Report.global_entry_stop`), which start once at the beginning of iteration, and TTree entry numbers (:py:attr:`~uproot4.behavior.TBranch.Report.tree_entry_start` and :py:attr:`~uproot4.behavior.TBranch.Report.tree_entry_stop`), which restart at the beginning of each TTree. The :py:attr:`~uproot4.behavior.TBranch.Report.tree`, :py:attr:`~uproot4.behavior.TBranch.Report.file`, and :py:attr:`~uproot4.behavior.TBranch.Report.file_path` attributes are also more useful in multi-file iteration.
 
 Reading many files into big arrays
 ----------------------------------
