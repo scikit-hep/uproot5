@@ -347,7 +347,7 @@ Note that expressions are *not*, in general, computed more quickly if expressed 
 
 but perhaps more convenient. If what you want to compute requires more than one expression, you'll have to move it out of strings into Python.
 
-The default ``language`` is :doc:`~uproot4.language.python.PythonLanguage`, but other languages, like ROOT's `TTree::Draw syntax <https://root.cern.ch/doc/master/classTTree.html#a73450649dc6e54b5b94516c468523e45>`_ are foreseen *in the future*. Thus, implicit loops (e.g. ``Sum$(...)``) have to be translated to their Awkward equivalents and ``ROOT::Math`` functions have to be translated to their NumPy equivalents.
+The default ``language`` is :py:class:`~uproot4.language.python.PythonLanguage`, but other languages, like ROOT's `TTree::Draw syntax <https://root.cern.ch/doc/master/classTTree.html#a73450649dc6e54b5b94516c468523e45>`_ are foreseen *in the future*. Thus, implicit loops (e.g. ``Sum$(...)``) have to be translated to their Awkward equivalents and ``ROOT::Math`` functions have to be translated to their NumPy equivalents.
 
 Nested data structures
 ----------------------
@@ -443,9 +443,9 @@ These "nested" NumPy arrays are not slicable as multidimensional arrays because 
     <Array [-52.9, -0.816, 49, ... -53.2, -67] type='10 * float32'>
 
     >>> np_arrays["Muon_Px"][:10, 0]
-    Traceback (most recent call last):
-    File "<stdin>", line 1, in <module>
-    IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
+    # Traceback (most recent call last):
+    # File "<stdin>", line 1, in <module>
+    # IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
 
 The Pandas form for this type of data is a `DataFrame with MultiIndex rows <https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html>`__.
 
@@ -491,19 +491,66 @@ Each row of the DataFrame represents one particle and the row index is broken do
 Iterating over intervals of entries
 -----------------------------------
 
-If you're working with large datasets, you might run out of memory before you can read all the TBranches you need, or you might run out of memory later because the derived quantities are too large.
+If you're working with large datasets, you might not have enough memory to read all entries from the TBranches you need or you might not be able to compute derived quantities for the same number of entries.
 
-In general, you will want to analyze large datasets in batches. If the batches are too small (like one collision event at a time), then the process will be slowed by the overhead of setting things up before doing the real mathematical work. If the batches are too large, you'll run out of memory.
+In general, array-based workflows must iterate over batches with an optimized step size:
 
-Iterate over batches from a 
+- If the batches are too large, you'll run out of memory.
+- If the batches are too small, the process will be slowed by the overhead of preparing to calculate each batch. (Array functions like the ones in NumPy and Awkward Array do one-time setup operations in slow Python and large-scale number crunching in compiled code.)
 
+Procedural workflows, which operate on one entry (e.g. one particle physics collision event) at a time can be seen as an extreme of the latter, in which the batch size is one.
 
+The :py:meth:`~uproot4.behavior.TBranch.TBranch.iterate` method has an interface like :py:meth:`~uproot4.behavior.TBranch.TBranch.arrays`, except that takes a ``step_size`` parameter and iterates over batches of that size, rather than returning a single array group.
 
+.. code-block:: python
 
+    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
 
+    >>> for batch in events.iterate(step_size=500):
+    ...     print(repr(batch))
+    ... 
+    <Array [{Type: 'GT', Run: 148031, ... M: 87.7}] type='500 * {"Type": string, "Ru...'>
+    <Array [{Type: 'GT', Run: 148031, ... M: 72.5}] type='500 * {"Type": string, "Ru...'>
+    <Array [{Type: 'TT', Run: 148031, ... M: 92.9}] type='500 * {"Type": string, "Ru...'>
+    <Array [{Type: 'GT', Run: 148031, ... M: 94.6}] type='500 * {"Type": string, "Ru...'>
+    <Array [{Type: 'TT', Run: 148029, ... M: 96.7}] type='304 * {"Type": string, "Ru...'>
+
+With a ``step_size`` of 500, each array group has 500 entries except the last, which can have fewer (304 in this case). Also be aware that the above example reads all TBranches! You will likely want to select TBranches (columns) and the number of entries (rows) to define a batch. (See `Filtering TBranches <#filtering-tbranches>`__ above.)
+
+Since the optimal step size is "whatever fits in memory," it's better to tune it in memory-size units than number-of-entries units. Different data types have different numbers of bytes per item, but more importantly, different applications extract different sets of TBranches, so "*N* entries" tuned for one application would not be a good tune for another.
+
+For this reason, it's better to set the ``step_size`` to a number of bytes, such as
+
+.. code-block:: python
+
+    >>> for batch in events.iterate(step_size="50 kB"):
+    ...     print(repr(batch))
+    ... 
+    <Array [{Type: 'GT', Run: 148031, ... M: 89.6}] type='667 * {"Type": string, "Ru...'>
+    <Array [{Type: 'TT', Run: 148031, ... M: 18.1}] type='667 * {"Type": string, "Ru...'>
+    <Array [{Type: 'GT', Run: 148031, ... M: 94.7}] type='667 * {"Type": string, "Ru...'>
+    <Array [{Type: 'GT', Run: 148029, ... M: 96.7}] type='303 * {"Type": string, "Ru...'>
+
+(but much larger in a real case). Here, ``"50 kB"`` corresponds to 667 entries (with the last step being the remainder). It's possible to calculate the number of entries for a given memory size outside of iteration using :py:meth:`~uproot4.behaviors.TBranch.HasBranches.num_entries_for`.
+
+.. code-block:: python
+
+    >>> events.num_entries_for("50 kB")
+    667
+    >>> events.num_entries_for("50 kB", filter_name="/p[xyz][12]/")
+    1530
+    >>> events.keys(filter_typename="double")
+    ['E1', 'px1', 'py1', 'pz1', 'pt1', 'eta1', 'phi1', 'E2', 'px2', 'py2', 'pz2', 'pt2', 'eta2',
+     'phi2', 'M']
+    >>> events.num_entries_for("50 kB", filter_typename="double")
+    702
+
+The number of entries for ``"50 kB"`` depends strongly on which TBranches are being requested. It's the memory size, not the number of entries, that matters most when tuning a workflow for a computer with limited memory.
 
 Iterating over many files
 -------------------------
+
+HERE
 
 Reading many files into big arrays
 ----------------------------------
