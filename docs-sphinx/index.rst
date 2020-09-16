@@ -5,7 +5,39 @@
     basic
     uproot3-to-4
 
-.. include:: toctree.txt
+.. include:: uproot4.toctree
+
+.. include:: uproot4.reading.toctree
+
+.. include:: uproot4.behaviors.toctree
+
+.. include:: uproot4.model.toctree
+
+.. include:: uproot4.streamers.toctree
+
+.. include:: uproot4.cache.toctree
+
+.. include:: uproot4.compression.toctree
+
+.. include:: uproot4.deserialization.toctree
+
+.. include:: uproot4.source.toctree
+
+.. include:: uproot4.interpretation.toctree
+
+.. include:: uproot4.containers.toctree
+
+.. include:: uproot4.language.toctree
+
+.. include:: uproot4.models.toctree
+
+.. include:: uproot4.const.toctree
+
+.. include:: uproot4.extras.toctree
+
+.. include:: uproot4.version.toctree
+
+.. include:: uproot4.dynamic.toctree
 
 .. |br| raw:: html
 

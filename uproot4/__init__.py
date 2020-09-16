@@ -39,11 +39,13 @@ The submodules of Uproot are:
 * :doc:`uproot4.reading`: entry-point for reading files, as well as classes
   for the three basic types that can't be modeled: ``TFile``, ``TDirectory``,
   and ``TKey``.
-* :doc:`uproot4.cache`: defines caches with least-recently used eviction
-  policies.
+* :doc:`uproot4.behaviors`: methods and properties to mix into instantiated
+  models, for a high-level user interface.
 * :doc:`uproot4.model`: utilities for modeling C++ objects as Python objects.
 * :doc:`uproot4.streamers`: models for ``TStreamerInfo`` and its elements
   to generate code for new models for classes in ROOT files.
+* :doc:`uproot4.cache`: defines caches with least-recently used eviction
+  policies.
 * :doc:`uproot4.compression`: functions for compressing and decompressing data.
 * :doc:`uproot4.deserialization`: utility functions for deserialization,
   including the generation of new classes.
@@ -57,8 +59,6 @@ The submodules of Uproot are:
   :doc:`uproot4.behavior.TBranch.HasBranches.arrays`.
 * :doc:`uproot4.models`: predefined models for classes that are too basic
   to rely on ``TStreamerInfo`` or too common to justify reading it.
-* :doc:`uproot4.behaviors`: methods and properties to mix into instantiated
-  models, for a high-level user interface.
 * :doc:`uproot4.const`: integer constants used in ROOT serialization and
   deserialization.
 * :doc:`uproot4.extras`: import functions for the libraries that Uproot can

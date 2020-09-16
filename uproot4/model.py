@@ -618,7 +618,7 @@ class Model(object):
             cls (subclass of :doc:`uproot4.model.Model`): This class.
             file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot4.model.Model` classes from its
-                :py:attr:`~uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             header (bool): If True, assume the outermost object has a header.
             tobject_header (bool): If True, assume that ``TObjects`` have headers.

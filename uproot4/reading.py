@@ -48,7 +48,7 @@ def open(
             and an object path within the ROOT file, to return an object,
             rather than a file. Path objects are interpreted strictly as
             filesystem paths or URLs.
-            Examples: ``"rel/file.root"``, ``"C:\abs\file.root"``,
+            Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``,
             ``"http://where/what.root"``, ``"rel/file.root:tdirectory/ttree"``,
             ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
         object_cache (None, MutableMapping, or int): Cache of objects drawn

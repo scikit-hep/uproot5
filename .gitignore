@@ -2,7 +2,7 @@
 docs-sphinx/_build
 docs-sphinx/uproot4.rst
 docs-sphinx/uproot4.*.rst
-docs-sphinx/toctree.txt
+docs-sphinx/*.toctree
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
