@@ -4,14 +4,14 @@ Basic use: start here!
 Opening a file
 --------------
 
-Open a ROOT file for reading with the :py:func:`~uproot4.reading.open` function.
+Open a ROOT file for reading with the `uproot4.open <uproot4.reading.open.html>`__ function.
 
 .. code-block:: python
 
     >>> import uproot4
     >>> file = uproot4.open("path/to/dataset.root")
 
-The :py:func:`~uproot4.reading.open` function can also be used like this:
+The `uproot4.open <uproot4.reading.open.html>`__ function can also be used like this:
 
 .. code-block:: python
 
@@ -20,12 +20,12 @@ The :py:func:`~uproot4.reading.open` function can also be used like this:
 
 to automatically close the file after leaving the ``with`` block. The path-name argument can be a local file (as above), a URL ("``http://``" or "``https://``"), or XRootD ("``root://``") if you have the `Python interface to XRootD <https://anaconda.org/conda-forge/xrootd>`__ installed. It can also be a Python file-like object with ``read`` and ``seek`` methods, but such objects can't be read in parallel.
 
-The :py:func:`~uproot4.reading.open` function has many options, including alternate handlers for each input type, ``num_workers`` to control parallel reading, and caches (``object_cache`` and ``array_cache``). The defaults attempt to optimize parallel processing, caching, and batching of remote requests, but better performance can often be obtained by tuning these parameters.
+The `uproot4.open <uproot4.reading.open.html>`__ function has many options, including alternate handlers for each input type, ``num_workers`` to control parallel reading, and caches (``object_cache`` and ``array_cache``). The defaults attempt to optimize parallel processing, caching, and batching of remote requests, but better performance can often be obtained by tuning these parameters.
 
 Finding objects in a file
 -------------------------
 
-The object returned by :py:func:`~uproot4.reading.open` represents a TDirectory inside the file (``/``).
+The object returned by `uproot4.open <uproot4.reading.open.html>`__ represents a TDirectory inside the file (``/``).
 
 .. code-block:: python
 
@@ -33,7 +33,7 @@ The object returned by :py:func:`~uproot4.reading.open` represents a TDirectory 
     >>> file
     <ReadOnlyDirectory '/' at 0x7c070dc03040>
 
-This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__, which means that you can get a list of contents with :py:meth:`~uproot4.reading.ReadOnlyDirectory.keys`.
+This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__, which means that you can get a list of contents with :py:meth:`~uproot4.reading.ReadOnlyDirectory.keys`.
 
 .. code-block:: python
 
@@ -76,7 +76,7 @@ Colon separators are only allowed in strings, so you can open files that have co
 Inspecting a TBranches of a TTree
 ---------------------------------
 
-ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__ objects with :py:meth:`~uproot4.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot4.behaviors.TBranch.HasBranches.values`, and :py:meth:`~uproot4.behaviors.TBranch.HasBranches.items` functions. In this case, the values are TBranch objects (with subbranches accessible through ``/`` paths).
+ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__ objects with :py:meth:`~uproot4.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot4.behaviors.TBranch.HasBranches.values`, and :py:meth:`~uproot4.behaviors.TBranch.HasBranches.items` functions. In this case, the values are TBranch objects (with subbranches accessible through ``/`` paths).
 
 .. code-block:: python
 
@@ -144,7 +144,7 @@ The third column, ``interpretation``, indicates how data in the TBranch will be 
 Reading a TBranch as an array
 -----------------------------
 
-A TBranch may be turned into an array with the :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method. The array is not read from disk until this method is called (or other array-fetching methods described below).
+A TBranch may be turned into an array with the :py:meth:`~uproot4.behaviors.TBranch.TBranch.array` method. The array is not read from disk until this method is called (or other array-fetching methods described below).
 
 .. code-block:: python
 
@@ -200,12 +200,12 @@ If you don't have the specified library (including the default, Awkward), you'll
 
 (CuPy can only be used on computers with GPUs.)
 
-The :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). For details, see the reference documentation for :py:meth:`~uproot4.behavior.TBranch.TBranch.array`.
+The :py:meth:`~uproot4.behaviors.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). For details, see the reference documentation for :py:meth:`~uproot4.behaviors.TBranch.TBranch.array`.
 
 Reading multiple TBranches as a group of arrays
 -----------------------------------------------
 
-To read more than one TBranch, you could use the :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method from the previous section multiple times, but you could also use :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays` (plural) on the TTree itself.
+To read more than one TBranch, you could use the :py:meth:`~uproot4.behaviors.TBranch.TBranch.array` method from the previous section multiple times, but you could also use :py:meth:`~uproot4.behaviors.TBranch.HasBranches.arrays` (plural) on the TTree itself.
 
 .. code-block:: python
 
@@ -279,9 +279,9 @@ Even though you can extract individual arrays from these objects, they're read, 
 Filtering TBranches
 -------------------
 
-If no arguments are passed to :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also use a filter (``filter_name``, ``filter_typename``, or ``filter_branch``) to select TBranches by name, type, or other attributes.
+If no arguments are passed to :py:meth:`~uproot4.behaviors.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also use a filter (``filter_name``, ``filter_typename``, or ``filter_branch``) to select TBranches by name, type, or other attributes.
 
-The :py:meth:`~uproot4.behavior.TBranch.HasBranches.keys`, :py:meth:`~uproot4.behavior.TBranch.HasBranches.values`, :py:meth:`~uproot4.behavior.TBranch.HasBranches.items`, and :py:meth:`~uproot4.behavior.TBranch.HasBranches.typenames` methods take the same arguments, so you can test your filters before reading any data.
+The :py:meth:`~uproot4.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot4.behaviors.TBranch.HasBranches.values`, :py:meth:`~uproot4.behaviors.TBranch.HasBranches.items`, and :py:meth:`~uproot4.behaviors.TBranch.HasBranches.typenames` methods take the same arguments, so you can test your filters before reading any data.
 
 .. code-block:: python
 
@@ -305,7 +305,7 @@ The :py:meth:`~uproot4.behavior.TBranch.HasBranches.keys`, :py:meth:`~uproot4.be
 Computing expressions and cuts
 ------------------------------
 
-The first argument of :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays`, which we used above to pass explicit TBranch names,
+The first argument of :py:meth:`~uproot4.behaviors.TBranch.HasBranches.arrays`, which we used above to pass explicit TBranch names,
 
 .. code-block:: python
 
@@ -500,7 +500,7 @@ In general, array-based workflows must iterate over batches with an optimized st
 
 Procedural workflows, which operate on one entry (e.g. one particle physics collision event) at a time can be seen as an extreme of the latter, in which the batch size is one.
 
-The :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` method has an interface like :py:meth:`~uproot4.behavior.TBranch.TBranch.arrays`, except that takes a ``step_size`` parameter and iterates over batches of that size, rather than returning a single array group.
+The :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate` method has an interface like :py:meth:`~uproot4.behaviors.TBranch.TBranch.arrays`, except that takes a ``step_size`` parameter and iterates over batches of that size, rather than returning a single array group.
 
 .. code-block:: python
 
@@ -547,7 +547,7 @@ For this reason, it's better to set the ``step_size`` to a number of bytes, such
 
 The number of entries for ``"50 kB"`` depends strongly on which TBranches are being requested. It's the memory size, not the number of entries, that matters most when tuning a workflow for a computer with limited memory.
 
-See the :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` documentation for more, including a ``report=True`` option to get a :py:class:`~uproot4.behavior.TBranch.Report` with each batch of data with entry numbers for bookkeeping.
+See the :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate` documentation for more, including a ``report=True`` option to get a :py:class:`~uproot4.behaviors.TBranch.Report` with each batch of data with entry numbers for bookkeeping.
 
 .. code-block:: python
 
@@ -600,9 +600,9 @@ Iterating over many files
 
 Large datasets usually consist of many files, and abstractions like `ROOT's TChain <https://root.cern.ch/doc/master/classTChain.html>`__ simplify multi-file workflows by making a collection of files look like a single file.
 
-Uproot's :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` takes a step in the opposite direction: it breaks single-file access into batches, and designing a workflow around batches is like designing a workflow around files. To apply such an interface to many files, all that is needed is a way to express the list of files.
+Uproot's :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate` takes a step in the opposite direction: it breaks single-file access into batches, and designing a workflow around batches is like designing a workflow around files. To apply such an interface to many files, all that is needed is a way to express the list of files.
 
-The `uproot4.iterate <uproot4.behavior.TBranch.iterate>`__ function (as opposed to the `HasBranches.iterate <uproot4.behavior.TBranch.HasBranches.iterate>`__ method) takes a list of files as its first argument:
+The `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__ function (as opposed to the `HasBranches.iterate <uproot4.behaviors.TBranch.HasBranches.html#iterate>`__ method) takes a list of files as its first argument:
 
 .. code-block:: python
 
@@ -618,12 +618,124 @@ The specification of file names has to include paths to the ``TTree`` objects (m
     >>> for batch in uproot4.iterate([{"dir1/*.root": "events"}, {"dir2/*.root": "events"}]):
     ...     do_something...
 
-If the ``step_size`` (same meaning as in previous section) is smaller than the file size, the last batch of each file will likely be smaller than the rest: batches from one file are not mixed with batches from another file. Thus, the largest meaningful ``step_size`` is the number of entries in the file (:py:attr:`~uproot4.behavior.TBranch.HasBranches.num_entries`). See the next section for concatenating small files.
+If the ``step_size`` (same meaning as in previous section) is smaller than the file size, the last batch of each file will likely be smaller than the rest: batches from one file are not mixed with batches from another file. Thus, the largest meaningful ``step_size`` is the number of entries in the file (:py:attr:`~uproot4.behaviors.TBranch.HasBranches.num_entries`). See the next section for concatenating small files.
 
-In multi-file iteration, the :py:class:`~uproot4.behavior.TBranch.Report` returned by ``report=True`` distinguishes between global entry numbers (:py:attr:`~uproot4.behavior.TBranch.Report.global_entry_start` and :py:attr:`~uproot4.behavior.TBranch.Report.global_entry_stop`), which start once at the beginning of iteration, and TTree entry numbers (:py:attr:`~uproot4.behavior.TBranch.Report.tree_entry_start` and :py:attr:`~uproot4.behavior.TBranch.Report.tree_entry_stop`), which restart at the beginning of each TTree. The :py:attr:`~uproot4.behavior.TBranch.Report.tree`, :py:attr:`~uproot4.behavior.TBranch.Report.file`, and :py:attr:`~uproot4.behavior.TBranch.Report.file_path` attributes are also more useful in multi-file iteration.
+In multi-file iteration, the :py:class:`~uproot4.behaviors.TBranch.Report` returned by ``report=True`` distinguishes between global entry numbers (:py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_start` and :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_stop`), which start once at the beginning of iteration, and TTree entry numbers (:py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_start` and :py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_stop`), which restart at the beginning of each TTree. The :py:attr:`~uproot4.behaviors.TBranch.Report.tree`, :py:attr:`~uproot4.behaviors.TBranch.Report.file`, and :py:attr:`~uproot4.behaviors.TBranch.Report.file_path` attributes are also more useful in multi-file iteration.
 
 Reading many files into big arrays
 ----------------------------------
 
+Although it iterates over multiple files, the `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__ function is not a direct analogy of `ROOT's TChain <https://root.cern.ch/doc/master/classTChain.html>`__ because it does not make multi-file workflows look like single-file (non-iterating) workflows.
+
+The simplest way to access many files is to concatenate them into one array. The `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__ function is a multi-file analogue of the `HasBranches.arrays <uproot4.behaviors.TBranch.HasBranches.html#arrays>`__ method, in that it returns a single array group.
+
+.. code-block:: python
+
+    >>> events.concatenate(["dir1/*.root:events", "dir2/*.root:events"], filter_name="p*1")
+    <Array [{px1: -41.2, ... pz1: -74.8}] type='23040 * {"px1": float64, "py1": float...'>
+
+The arrays of all files have been entirely read into memory. In general, this is only possible if
+
+- the files are small,
+- the number of files is small, or
+- the selected branches do not represent a large fraction of the files.
+
+If your computer has enough memory to do this, then it will likely be the fastest way to process the data, and it's certainly easier than accumulating partial results in a loop. However, if you're working on a small subsample that will be scaled up to a bigger analysis, then it would be a bad idea to develop your analysis with this interface. You would likely need to restructure it as a loop later.
+
+(As a multi-file function, `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__ specifies file paths and TTree object paths just like `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__.)
+
 Reading on demand with lazy arrays
 ----------------------------------
+
+Lazy-loading is a third way to access multi-file datasets, like `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__ and `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__ above. As such, it's a third analogy with `ROOT's TChain <https://root.cern.ch/doc/master/classTChain.html>`__.
+
+The interface to `uproot4.lazy <uproot4.behaviors.TBranch.lazy.html>`__ is like `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__ in that it returns a single object, not an iterator that you have to iterate through, but it is like `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__ in that the data are not loaded immediately and do not need to reside in memory all at once.
+
+.. code-block:: python
+
+    >>> array = events.lazy(["dir1/*.root:events", "dir2/*.root:events"])
+    >>> array
+    <Array [{Type: 'GT', Run: 148031, ... M: 96.7}] type='23040 * {"Type": string, "R...'>
+
+When `uproot4.lazy <uproot4.behaviors.TBranch.lazy.html>`__ is called, it opens all of the specified files and TTree metadata, but none of the TBranch data. It uses the TBranch names and types, as well as the TTree :py:attr:`~uproot4.behaviors.TTree.TTree.num_entries`, to define the data type and prepare batches for reading. Only when you access items in the array, such as printing them to the screen or performing a calculation on them, are the relevant TBranches read (in batches).
+
+This lazy-loading uses an Awkward Array feature, so ``library="ak"`` is the only library option.
+
+The fact that the data are being loaded on demand is (intentionally) hidden; one of the few ways to demonstrate that it is happening is by watching its cache fill up. When we first open a lazy array, the cache is empty.
+
+.. code-block:: python
+
+    >>> array = uproot4.lazy("https://scikit-hep.org/uproot/examples/Zmumu.root:events",
+    ...                      step_size=100)
+    >>> array.cache
+    <LRUArrayCache (0/100000000 bytes full) at 0x7faf787abd00>
+
+If we then ask for a single element from a single field, it loads one TBranch-batch. Since we specified the ``step_size=100`` (much too small for a real case; the default is ``"100 MB"``), this TBranch-bath is 100 entries, or 800 bytes.
+
+.. code-block:: python
+
+    >>> array["px1", 0]
+    -41.1952876442
+    >>> array.cache
+    <LRUArrayCache (800/100000000 bytes full) at 0x7faf787abd00>
+
+Requesting another element from the same TBranch-batch doesn't load anything else. The whole batch is already in memory.
+
+.. code-block:: python
+
+    >>> array["px1", 1]
+    35.1180497674
+    >>> array.cache
+    <LRUArrayCache (800/100000000 bytes full) at 0x7faf787abd00>
+
+Requesting an element from the next TBranch-batch loads the next batch.
+
+.. code-block:: python
+
+    >>> array["px1", 100]
+    27.3430272161
+    >>> array.cache
+    <LRUArrayCache (1600/100000000 bytes full) at 0x7faf787abd00>
+
+Requesting a different TBranch also loads a batch.
+
+.. code-block:: python
+
+    >>> array["py1", 100]
+    11.351229626
+    >>> array.cache
+    <LRUArrayCache (2400/100000000 bytes full) at 0x7faf787abd00>
+
+Performing a calculation on these two fields, ``array.px1`` and ``array.py1``, loads all batches for these two TBranches. Derived quantities, such as the result of the square root operation, are normal arrays (not lazy).
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> np.sqrt(array.px1**2 + array.py1**2)
+    <Array [44.7, 38.8, 38.8, ... 32.4, 32.4, 32.5] type='2304 * float64'>
+    >>> array.cache
+    <LRUArrayCache (36864/100000000 bytes full) at 0x7faf787abd00>
+
+Although lazy arrays combine the convenience of `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__ with the gradual loading of `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__, it is not always the most efficient way to process data. Derived quantities are fully resident in memory, and most data analyses compute more quantities than they read.
+
+Moreover, if a lazy array is larger than its cache, reading the last batches will cause the first batches to be evicted from the cache. If it is accessed again, the first batches will need to be fully re-read, which evicts the last batches, guaranteeing that data will never be found in the cache when it's needed.
+
+For example, in a calculation like this:
+
+.. code-block:: python
+
+    >>> p = np.sqrt(array.px1**2 + array.py1**2 + array.pz1**2)
+    >>> pt = np.sqrt(array.px1**2 + array.py1**2)
+
+if the three TBranches ``px1``, ``py1``, ``pz1`` don't entirely fit into their shared cache or individual caches, then none of the data loaded while computing ``p`` will be available to compute ``pt``. Small enough caches can guarantee file re-reading, which would be the slowest step in simple calculations like the above.
+
+On the other hand, if you make the cache(s) large enough to accommodate all the arrays you'll be loading, then you might as well load them entirely into memory (with `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__). Avoiding the overhead of managing lazy batch-loading can only streamline a workflow.
+
+So when are lazy arrays useful?
+
+Lazy arrays are especially useful for exploring a large dataset in a convenient way. If you don't know which TBranches you will be looking at, lazy arrays save you the upfront cost of reading them all, if that were even possible. You can perform calculations interactively without having to set up iterative loops, developing the pieces of a data analysis that will later be incorporated into an efficient loop based on `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__.
+
+Caching and memory management
+-----------------------------
+
+HERE
