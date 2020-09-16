@@ -23,7 +23,6 @@ order = [
     "uproot4.const",
     "uproot4.extras",
     "uproot4.version",
-    "uproot4.dynamic",
 ]
 
 toctree = open("uproot4.toctree", "w")
@@ -58,10 +57,8 @@ def handle_module(modulename, module):
     ensure(modulename, modulename + ".rst", content)
     toctree.write("    " + modulename + "\n")
 
-    if (
-        modulename != "uproot4"
-        and modulename != "uproot4.dynamic"
-        and all(not x.startswith("_") for x in modulename.split("."))
+    if modulename != "uproot4" and all(
+        not x.startswith("_") for x in modulename.split(".")
     ):
 
         def good(obj):

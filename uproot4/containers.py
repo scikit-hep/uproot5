@@ -4,7 +4,7 @@
 Interpretations and models for standard containers, such as ``std::vector`` and
 simple arrays.
 
-See :doc:`uproot4.interpretation` and :doc:`uproot4.model`.
+See :py:mod:`uproot4.interpretation` and :py:mod:`uproot4.model`.
 """
 
 from __future__ import absolute_import
@@ -132,13 +132,13 @@ class AsContainer(object):
     Abstract class for all descriptions of data as containers, such as
     ``std::vector``.
 
-    Note that these are not :doc:`uproot4.interpretation.Interpretation`
+    Note that these are not :py:class:`~uproot4.interpretation.Interpretation`
     objects, since they are recursively nestable and have a ``read``
-    instance method like :doc:`uproot4.model.Model`'s ``read`` classmethod.
+    instance method like :py:class:`~uproot4.model.Model`'s ``read`` classmethod.
 
-    A nested tree of :doc:`uproot4.containers.AsContainer` instances and
-    :doc:`uproot4.model.Model` class objects may be the ``model`` argument
-    of a :doc:`uproot4.interpretation.objects.AsObjects`.
+    A nested tree of :py:class:`~uproot4.containers.AsContainer` instances and
+    :py:class:`~uproot4.model.Model` class objects may be the ``model`` argument
+    of a :py:class:`~uproot4.interpretation.objects.AsObjects`.
     """
 
     @property
@@ -162,7 +162,7 @@ class AsContainer(object):
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         """
         Args:
-            file (:doc:`uproot4.reading.CommonFileMethods`): The file associated
+            file (:py:class:`~uproot4.reading.CommonFileMethods`): The file associated
                 with this interpretation's ``TBranch``.
             index_format (str): Format to use for indexes of the
                 ``awkward1.forms.Form``; may be ``"i32"``, ``"u32"``, or
@@ -182,17 +182,17 @@ class AsContainer(object):
     ):
         """
         Args:
-            file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
-                :doc:`uproot4.model.Model` classes from its
-                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+            file (:py:class:`~uproot4.reading.ReadOnlyFile`): File to use to generate
+                :py:class:`~uproot4.model.Model` classes from its
+                :py:attr:`~uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             header (bool): If True, assume the outermost object has a header.
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
-            original (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): The
+            original (None, :py:class:`~uproot4.model.Model`, or :py:class:`~uproot4.containers.Container`): The
                 original, non-strided model or container.
 
         Returns a list of (str, ``numpy.dtype``) pairs to build a
-        :doc:`uproot4.interpretation.objects.AsStridedObjects` interpretation.
+        :py:class:`~uproot4.interpretation.objects.AsStridedObjects` interpretation.
         """
         raise uproot4.interpretation.objects.CannotBeStrided(self.typename)
 
@@ -215,20 +215,20 @@ class AsContainer(object):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
-            cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
+            cursor (:py:class:`~uproot4.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
-            file (:doc:`uproot4.reading.ReadOnlyFile`): An open file object,
-                capable of generating new :doc:`uproot4.model.Model` classes
-                from its :doc:`uproot4.reading.ReadOnlyFile.streamers`.
-            selffile (:doc:`uproot4.reading.CommonFileMethods`): A possibly
-                :doc:`uproot4.reading.DetachedFile` associated with this object.
+            file (:py:class:`~uproot4.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :py:class:`~uproot4.model.Model` classes
+                from its :py:class:`~uproot4.reading.ReadOnlyFile.streamers`.
+            selffile (:py:class:`~uproot4.reading.CommonFileMethods`): A possibly
+                :py:class:`~uproot4.reading.DetachedFile` associated with this object.
             parent (None or calling object): The previous ``read`` in the
                 recursive descent.
             header (bool): If True, enable the container's
-                :doc:`uproot4.containers.AsContainer.header`.
+                :py:attr:`~uproot4.containers.AsContainer.header`.
 
         Read one object as part of a recursive descent.
         """
@@ -244,12 +244,12 @@ class AsContainer(object):
 class AsDynamic(AsContainer):
     """
     Args:
-        model (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): Optional
+        model (None, :py:class:`~uproot4.model.Model`, or :py:class:`~uproot4.containers.Container`): Optional
             description of the data, used in
-            :doc:`uproot4.containers.AsDynamic.awkward_form` but ignored in
-            :doc:`uproot4.containers.AsDynamic.read`.
+            :py:meth:`~uproot4.containers.AsDynamic.awkward_form` but ignored in
+            :py:meth:`~uproot4.containers.AsDynamic.read`.
 
-    A :doc:`uproot4.containers.AsContainer` for one object whose class may
+    A :py:class:`~uproot4.containers.AsContainer` for one object whose class may
     not be known before reading.
 
     The byte-stream consists of a class name followed by instance data. Only
@@ -263,8 +263,8 @@ class AsDynamic(AsContainer):
     def model(self):
         """
         Optional description of the data, used in
-        :doc:`uproot4.containers.AsDynamic.awkward_form` but ignored in
-        :doc:`uproot4.containers.AsDynamic.read`.
+        :py:meth:`~uproot4.containers.AsDynamic.awkward_form` but ignored in
+        :py:meth:`~uproot4.containers.AsDynamic.read`.
         """
         return self._model
 
@@ -317,12 +317,12 @@ class AsFIXME(AsContainer):
     Args:
         message (str): Required string, prefixes the error message.
 
-    A :doc:`uproot4.containers.AsContainer` for types that are known to be
+    A :py:class:`~uproot4.containers.AsContainer` for types that are known to be
     unimplemented. The name is intended to be conspicuous, so that such cases
     may be more easily fixed.
 
-    :doc:`uproot4.containers.AsFIXME.read` raises a
-    :doc:`uproot4.deserialization.DeserializationError` asking for a bug-report.
+    :py:meth:`~uproot4.containers.AsFIXME.read` raises a
+    :py:exc:`~uproot4.deserialization.DeserializationError` asking for a bug-report.
     """
 
     def __init__(self, message):
@@ -360,7 +360,7 @@ class AsFIXME(AsContainer):
 class AsString(AsContainer):
     """
     Args:
-        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
+        header (bool): Sets the :py:attr:`~uproot4.containers.AsContainer.header`.
         length_bytes ("1-5" or "4"): Method used to determine the length of
             a string: "1-5" means one byte if the length is less than 256,
             otherwise the true length is in the next four bytes; "4" means
@@ -368,19 +368,19 @@ class AsString(AsContainer):
         typename (None or str): If None, construct a plausible C++ typename.
             Otherwise, take the suggestion as given.
 
-    A :doc:`uproot4.containers.AsContainer` for strings nested withing other
+    A :py:class:`~uproot4.containers.AsContainer` for strings nested withing other
     objects.
 
-    This is not an :doc:`uproot4.interpretation.Interpretation`; it *must* be
-    nested, at least within :doc:`uproot4.interpretation.objects.AsObjects`.
+    This is not an :py:class:`~uproot4.interpretation.Interpretation`; it *must* be
+    nested, at least within :py:class:`~uproot4.interpretation.objects.AsObjects`.
 
-    Note that the :doc:`uproot4.interpretation.strings.AsStrings` class is
+    Note that the :py:class:`~uproot4.interpretation.strings.AsStrings` class is
     for a ``TBranch`` that contains only strings.
 
-    (:doc:`uproot4.interpretation.objects.AsObjects.simplify` converts an
-    :doc:`uproot4.interpretation.objects.AsObjects` of
-    :doc:`uproot4.containers.AsString` into a
-    :doc:`uproot4.interpretation.strings.AsStrings`.)
+    (:py:meth:`~uproot4.interpretation.objects.AsObjects.simplify` converts an
+    :py:class:`~uproot4.interpretation.objects.AsObjects` of
+    :py:class:`~uproot4.containers.AsString` into a
+    :py:class:`~uproot4.interpretation.strings.AsStrings`.)
     """
 
     def __init__(self, header, length_bytes="1-5", typename=None):
@@ -477,17 +477,17 @@ class AsString(AsContainer):
 class AsPointer(AsContainer):
     """
     Args:
-        pointee (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): Optional
+        pointee (None, :py:class:`~uproot4.model.Model`, or :py:class:`~uproot4.containers.Container`): Optional
             description of the data, used in
-            :doc:`uproot4.containers.AsPointer.awkward_form` but ignored in
-            :doc:`uproot4.containers.AsPointer.read`.
+            :py:meth:`~uproot4.containers.AsPointer.awkward_form` but ignored in
+            :py:meth:`~uproot4.containers.AsPointer.read`.
 
-    A :doc:`uproot4.containers.AsContainer` for an object referred to by
+    A :py:class:`~uproot4.containers.AsContainer` for an object referred to by
     pointer, meaning that it could be None (``nullptr``) or identical to
     an already-read object.
 
     The deserialization procedure calls
-    :doc:`uproot4.deserialization.read_object_any`.
+    :py:func:`~uproot4.deserialization.read_object_any`.
     """
 
     def __init__(self, pointee=None):
@@ -497,8 +497,8 @@ class AsPointer(AsContainer):
     def pointee(self):
         """
         Optional description of the data, used in
-        :doc:`uproot4.containers.AsPointer.awkward_form` but ignored in
-        :doc:`uproot4.containers.AsPointer.read`.
+        :py:meth:`~uproot4.containers.AsPointer.awkward_form` but ignored in
+        :py:meth:`~uproot4.containers.AsPointer.read`.
         """
         return self._pointee
 
@@ -546,13 +546,13 @@ class AsPointer(AsContainer):
 class AsArray(AsContainer):
     """
     Args:
-        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
+        header (bool): Sets the :py:attr:`~uproot4.containers.AsContainer.header`.
         speedbump (bool): If True, one byte must be skipped before reading the
             data.
-        values (:doc:`uproot4.model.Model`, :doc:`uproot4.containers.Container`, or ``numpy.dtype``): Data
+        values (:py:class:`~uproot4.model.Model`, :py:class:`~uproot4.containers.Container`, or ``numpy.dtype``): Data
             type for data nested in the array.
 
-    A :doc:`uproot4.containers.AsContainer` for simple arrays (not
+    A :py:class:`~uproot4.containers.AsContainer` for simple arrays (not
     ``std::vector``).
     """
 
@@ -572,7 +572,7 @@ class AsArray(AsContainer):
     def values(self):
         """
         Data type for data nested in the array. May be a
-        :doc:`uproot4.model.Model`, :doc:`uproot4.containers.Container`, or
+        :py:class:`~uproot4.model.Model`, :py:class:`~uproot4.containers.Container`, or
         ``numpy.dtype``.
         """
         return self._values
@@ -677,11 +677,11 @@ in file {1}""".format(
 class AsVector(AsContainer):
     """
     Args:
-        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
-        values (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+        header (bool): Sets the :py:attr:`~uproot4.containers.AsContainer.header`.
+        values (:py:class:`~uproot4.model.Model` or :py:class:`~uproot4.containers.Container`): Data
             type for data nested in the container.
 
-    A :doc:`uproot4.containers.AsContainer` for ``std::vector``.
+    A :py:class:`~uproot4.containers.AsContainer` for ``std::vector``.
     """
 
     def __init__(self, header, values):
@@ -794,11 +794,11 @@ in file {1}""".format(
 class AsSet(AsContainer):
     """
     Args:
-        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
-        keys (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+        header (bool): Sets the :py:attr:`~uproot4.containers.AsContainer.header`.
+        keys (:py:class:`~uproot4.model.Model` or :py:class:`~uproot4.containers.Container`): Data
             type for data nested in the container.
 
-    A :doc:`uproot4.containers.AsContainer` for ``std::set``.
+    A :py:class:`~uproot4.containers.AsContainer` for ``std::set``.
     """
 
     def __init__(self, header, keys):
@@ -917,13 +917,13 @@ def _has_nested_header(obj):
 class AsMap(AsContainer):
     """
     Args:
-        header (bool): Sets the :doc:`uproot4.containers.AsContainer.header`.
-        keys (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+        header (bool): Sets the :py:attr:`~uproot4.containers.AsContainer.header`.
+        keys (:py:class:`~uproot4.model.Model` or :py:class:`~uproot4.containers.Container`): Data
             type for the map's keys.
-        values (:doc:`uproot4.model.Model` or :doc:`uproot4.containers.Container`): Data
+        values (:py:class:`~uproot4.model.Model` or :py:class:`~uproot4.containers.Container`): Data
             type for the map's values.
 
-    A :doc:`uproot4.containers.AsContainer` for ``std::map``.
+    A :py:class:`~uproot4.containers.AsContainer` for ``std::map``.
     """
 
     def __init__(self, header, keys, values):
@@ -1260,7 +1260,7 @@ class STLMap(Container, Mapping):
     @classmethod
     def from_mapping(cls, mapping):
         """
-        Construct a :doc:`uproot4.containers.STLMap` from a Python object with
+        Construct a :py:class:`~uproot4.containers.STLMap` from a Python object with
         ``keys()`` and ``values()``.
         """
         return STLMap(mapping.keys(), mapping.values())

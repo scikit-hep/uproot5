@@ -3,7 +3,7 @@
 """
 Defines versioned models for ``TTree``.
 
-See :doc:`uproot4.behaviors.TBranch` for definitions of ``TTree``-reading
+See :py:mod:`uproot4.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
 
@@ -23,7 +23,7 @@ _ttree16_format1 = struct.Struct(">qqqqdiiiqqqqq")
 
 class Model_TTree_v16(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 16.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TTree`` version 16.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -173,7 +173,7 @@ _ttree17_format1 = struct.Struct(">qqqqdiiiiqqqqq")
 
 class Model_TTree_v17(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 17.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TTree`` version 17.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -324,7 +324,7 @@ _ttree18_format1 = struct.Struct(">qqqqqdiiiiqqqqqq")
 
 class Model_TTree_v18(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 18.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TTree`` version 18.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -481,7 +481,7 @@ _ttree19_dtype2 = numpy.dtype(">i8")
 
 class Model_TTree_v19(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 19.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TTree`` version 19.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -654,7 +654,7 @@ _ttree20_dtype2 = numpy.dtype(">i8")
 
 class Model_TTree_v20(uproot4.behaviors.TTree.TTree, uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TTree`` version 20.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TTree`` version 20.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -826,7 +826,7 @@ in file {1}""".format(
 
 class Model_TTree(uproot4.model.DispatchByVersion):
     """
-    A :doc:`uproot4.model.DispatchByVersion` for ``TTree``.
+    A :py:class:`~uproot4.model.DispatchByVersion` for ``TTree``.
     """
 
     known_versions = {
@@ -843,7 +843,7 @@ _tiofeatures_format1 = struct.Struct(">B")
 
 class Model_ROOT_3a3a_TIOFeatures(uproot4.model.Model):
     """
-    A versionless :doc:`uproot4.model.Model` for ``ROOT::TIOFeatures``.
+    A versionless :py:class:`~uproot4.model.Model` for ``ROOT::TIOFeatures``.
     """
 
     def read_members(self, chunk, cursor, context, file):

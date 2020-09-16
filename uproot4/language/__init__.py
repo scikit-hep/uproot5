@@ -2,11 +2,11 @@
 
 """
 Defines languages for expressions passed to
-:doc:`uproot4.behavior.TBranch.HasBranches.arrays` (and similar).
+:py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays` (and similar).
 
-The default is :doc:`uproot4.language.python.PythonLanguage`.
+The default is :py:class:`~uproot4.language.python.PythonLanguage`.
 
-All languages must be subclasses of :doc:`uproot4.language.Language`.
+All languages must be subclasses of :py:class:`~uproot4.language.Language`.
 """
 
 from __future__ import absolute_import
@@ -15,10 +15,10 @@ from __future__ import absolute_import
 class Language(object):
     """
     Abstract class for all languages, which are used to compute the expressions
-    that are passed to :doc:`uproot4.behavior.TBranch.HasBranches.arrays` (and
+    that are passed to :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays` (and
     similar).
 
-    The default is :doc:`uproot4.language.python.PythonLanguage`.
+    The default is :py:class:`~uproot4.language.python.PythonLanguage`.
     """
 
     pass

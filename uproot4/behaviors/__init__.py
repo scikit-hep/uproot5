@@ -10,7 +10,7 @@ Awkward Array's ``ak.behavior``.
 To add a behavior for a ROOT class:
 
 1. Translate the ROOT class name from C++ to Python with
-   :doc:`uproot4.model.classname_encode`. For example,
+   :py:func:`~uproot4.model.classname_encode`. For example,
    ``"ROOT::RThing"`` becomes ``"Model_ROOT_3a3a_RThing"``.
 2. Create a submodule of ``uproot4.behaviors`` without
    the ``"Model_"`` prefix. For example, ``"ROOT_3a3a_RThing"``.
@@ -22,7 +22,7 @@ deserialization model if one is not predefined. But if a behavior with the
 appropriate name exist, the new class will inherit from the behavior, giving
 the newly created object specialized methods and properties.
 
-See also :doc:`uproot4.models`.
+See also :py:mod:`uproot4.models`.
 """
 
 from __future__ import absolute_import

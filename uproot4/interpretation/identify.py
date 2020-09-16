@@ -2,11 +2,11 @@
 
 """
 Defines utilities for identifying the
-:doc:`uproot4.interpretation.Interpretation` of a
-:doc:`uproot4.behavior.TBranch.TBranch`.
+:py:class:`~uproot4.interpretation.Interpretation` of a
+:py:class:`~uproot4.behavior.TBranch.TBranch`.
 
 This includes a tokenizer/parser for C++ types and heuristics encoded in
-:doc:`uproot4.interpretation.identify.interpretation_of`. The latter will
+:py:func:`~uproot4.interpretation.identify.interpretation_of`. The latter will
 need to be tweaked by new types, type combinations, and serialization methods
 observed in ROOT files (perhaps forever), unless a systematic study can be
 performed to exhaustively discover all cases.
@@ -284,19 +284,19 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
 def interpretation_of(branch, context, simplify=True):
     """
     Args:
-        branch (:doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch`` to
+        branch (:py:class:`~uproot4.behavior.TBranch.TBranch`): The ``TBranch`` to
             interpret as an array.
         context (dict): Auxiliary data used in deserialization.
         simplify (bool): If True, call
-            :doc:`uproot4.interpretation.objects.AsObjects.simplify` on any
-            :doc:`uproot4.interpretation.objects.AsObjects` to try to get a
+            :py:meth:`~uproot4.interpretation.objects.AsObjects.simplify` on any
+            :py:class:`~uproot4.interpretation.objects.AsObjects` to try to get a
             more efficient interpretation.
 
-    Attempts to derive an :doc:`uproot4.interpretation.Interpretation` of the
+    Attempts to derive an :py:class:`~uproot4.interpretation.Interpretation` of the
     ``branch`` (within some ``context``).
 
     If no interpretation can be found, it raises
-    :doc:`uproot4.interpretation.identify.UnknownInterpretation`.
+    :py:exc:`~uproot4.interpretation.identify.UnknownInterpretation`.
     """
     if len(branch.branches) != 0:
         if branch.top_level and branch.has_member("fClassName"):
@@ -1052,19 +1052,19 @@ def parse_typename(
     """
     Args:
         typename (str): The C++ type to parse.
-        file (None or :doc:`uproot4.reading.CommonFileMethods`): Used to provide
+        file (None or :py:class:`~uproot4.reading.CommonFileMethods`): Used to provide
             error messages with the ``file_path``.
         quote (bool): If True, return the output as a string to evaluate. This
-            is used to build code for a :doc:`uproot4.model.Model`, rather than
-            the :doc:`uproot4.model.Model` itself.
+            is used to build code for a :py:class:`~uproot4.model.Model`, rather than
+            the :py:class:`~uproot4.model.Model` itself.
         outer_header (bool): If True, set the ``header`` flag for the outermost
-            :doc:`uproot4.containers.AsContainer` to True.
+            :py:class:`~uproot4.containers.AsContainer` to True.
         inner_header (bool): If True, set the ``header`` flag for inner
-            :doc:`uproot4.containers.AsContainer` objects to True.
+            :py:class:`~uproot4.containers.AsContainer` objects to True.
         string_header (bool): If True, set the ``header`` flag for
-            :doc:`uproot4.containers.AsString` objects to True.
+            :py:class:`~uproot4.containers.AsString` objects to True.
 
-    Return a :doc:`uproot4.model.Model` or :doc:`uproot4.containers.AsContainer`
+    Return a :py:class:`~uproot4.model.Model` or :py:class:`~uproot4.containers.AsContainer`
     for the C++ ``typename``.
     """
     tokens = list(_tokenize_typename_pattern.finditer(typename))
@@ -1093,7 +1093,7 @@ def parse_typename(
 class NotNumerical(Exception):
     """
     Exception used to stop searches for a numerical interpretation in
-    :doc:`uproot4.interpretation.identify.interpretation_of` as soon as a
+    :py:func:`~uproot4.interpretation.identify.interpretation_of` as soon as a
     non-conforming type is found.
     """
 
@@ -1102,14 +1102,14 @@ class NotNumerical(Exception):
 
 class UnknownInterpretation(Exception):
     """
-    Exception raised by :doc:`uproot4.interpretation.identify.interpretation_of`
-    if an :doc:`uproot4.interpretation.Interpretation` cannot be found.
+    Exception raised by :py:func:`~uproot4.interpretation.identify.interpretation_of`
+    if an :py:class:`~uproot4.interpretation.Interpretation` cannot be found.
 
-    The :doc:`uproot4.behavior.TBranch.TBranch.interpretation` property may have
-    :doc:`uproot4.interpretation.identify.UnknownInterpretation` as a value.
+    The :py:attr:`~uproot4.behavior.TBranch.TBranch.interpretation` property may have
+    :py:exc:`~uproot4.interpretation.identify.UnknownInterpretation` as a value.
 
     Any attempts to use this class as a
-    :doc:`uproot4.interpretation.Interpretation` causes it to raise itself.
+    :py:class:`~uproot4.interpretation.Interpretation` causes it to raise itself.
     Thus, failing to find an interpretation for a ``TBranch`` is not a fatal
     error, but attempting to use it to deserialize arrays is a fatal error.
     """

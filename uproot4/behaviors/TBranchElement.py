@@ -2,7 +2,7 @@
 
 """
 Defines the behaviors of ``TBranchElement``, which is entirely inherited from
-functions in :doc:`uproot4.behaviors.TBranch.TBranch`.
+functions in :py:class:`~uproot4.behaviors.TBranch.TBranch`.
 """
 
 from __future__ import absolute_import
@@ -15,8 +15,8 @@ class TBranchElement(uproot4.behaviors.TBranch.TBranch):
     Behaviors for a ``TBranchElement``, which mostly consist of array-reading
     methods.
 
-    Since a :doc:`uproot4.behavior.TBranchElement.TBranchElement` is a
-    :doc:`uproot4.behavior.TBranch.HasBranches`, it is also a Python
+    Since a :py:class:`~uproot4.behavior.TBranchElement.TBranchElement` is a
+    :py:class:`~uproot4.behavior.TBranch.HasBranches`, it is also a Python
     ``Mapping``, which uses square bracket syntax to extract subbranches:
 
     .. code-block:: python

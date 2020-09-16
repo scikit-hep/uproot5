@@ -1,10 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a :doc:`uproot4.language.Language` for expressions passed to
-:doc:`uproot4.behavior.TBranch.HasBranches.arrays` (and similar).
+Defines a :py:class:`~uproot4.language.Language` for expressions passed to
+:py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays` (and similar).
 
-The :doc:`uproot4.language.python.PythonLanguage` evaluates Python code. It is
+The :py:class:`~uproot4.language.python.PythonLanguage` evaluates Python code. It is
 the default language.
 """
 
@@ -243,9 +243,9 @@ class PythonLanguage(uproot4.language.Language):
             needed for branches whose names are not valid Python symbols.
             Default is "get".
 
-    PythonLanguage is the default :doc:`uproot4.language.Language` for
+    PythonLanguage is the default :py:class:`~uproot4.language.Language` for
     interpreting expressions passed to
-    :doc:`uproot4.behavior.TBranch.HasBranches.arrays` (and similar). This
+    :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays` (and similar). This
     interpretation assumes that the expressions have Python syntax and
     semantics, with math functions loaded into the namespace.
 

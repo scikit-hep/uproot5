@@ -11,63 +11,63 @@ used function in Uproot is
 
     uproot4.open("path/to/filename.root")
 
-but we refer to it in the documentation as :doc:`uproot4.reading.open`.
+but we refer to it in the documentation as :py:func:`~uproot4.reading.open`.
 
 Typical entry points for file-reading are
 
-* :doc:`uproot4.reading.open`
-* :doc:`uproot4.behaviors.TBranch.iterate`
-* :doc:`uproot4.behaviors.TBranch.concatenate`
-* :doc:`uproot4.behaviors.TBranch.lazy`
+* :py:func:`~uproot4.reading.open`
+* :py:func:`~uproot4.behaviors.TBranch.iterate`
+* :py:func:`~uproot4.behaviors.TBranch.concatenate`
+* :py:func:`~uproot4.behaviors.TBranch.lazy`
 
 though they would usually be accessed as ``uproot4.iterate``,
 ``uproot4.concatenate``, and ``uproot4.lazy``.
 
 The most useful classes are
 
-* :doc:`uproot4.behaviors.TBranch.HasBranches` (``TTree`` or ``TBranch``)
-* :doc:`uproot4.behaviors.TBranch.TBranch`
-* :doc:`uproot4.behaviors.TH1`
-* :doc:`uproot4.behaviors.TH2`
-* :doc:`uproot4.behaviors.TProfile`
+* :py:class:`~uproot4.behaviors.TBranch.HasBranches` (``TTree`` or ``TBranch``)
+* :py:class:`~uproot4.behaviors.TBranch.TBranch`
+* :py:class:`~uproot4.behaviors.TH1`
+* :py:class:`~uproot4.behaviors.TH2`
+* :py:class:`~uproot4.behaviors.TProfile`
 
 though they would usually be accessed through instances that have been read
 from files.
 
 The submodules of Uproot are:
 
-* :doc:`uproot4.reading`: entry-point for reading files, as well as classes
+* :py:mod:`uproot4.reading`: entry-point for reading files, as well as classes
   for the three basic types that can't be modeled: ``TFile``, ``TDirectory``,
   and ``TKey``.
-* :doc:`uproot4.behaviors`: methods and properties to mix into instantiated
+* :py:mod:`uproot4.behaviors`: methods and properties to mix into instantiated
   models, for a high-level user interface.
-* :doc:`uproot4.model`: utilities for modeling C++ objects as Python objects.
-* :doc:`uproot4.streamers`: models for ``TStreamerInfo`` and its elements
+* :py:mod:`uproot4.model`: utilities for modeling C++ objects as Python objects.
+* :py:mod:`uproot4.streamers`: models for ``TStreamerInfo`` and its elements
   to generate code for new models for classes in ROOT files.
-* :doc:`uproot4.cache`: defines caches with least-recently used eviction
+* :py:mod:`uproot4.cache`: defines caches with least-recently used eviction
   policies.
-* :doc:`uproot4.compression`: functions for compressing and decompressing data.
-* :doc:`uproot4.deserialization`: utility functions for deserialization,
+* :py:mod:`uproot4.compression`: functions for compressing and decompressing data.
+* :py:mod:`uproot4.deserialization`: utility functions for deserialization,
   including the generation of new classes.
-* :doc:`uproot4.source`: the "physical layer," which reads bytes without
+* :py:mod:`uproot4.source`: the "physical layer," which reads bytes without
   interpreting them from various backends, like files, HTTP(S), and XRootD.
-* :doc:`uproot4.interpretation`: prescriptions for converting ROOT types
+* :py:mod:`uproot4.interpretation`: prescriptions for converting ROOT types
   into Pythonic arrays.
-* :doc:`uproot4.containers`: interpretations and models for standard
+* :py:mod:`uproot4.containers`: interpretations and models for standard
   containers, such as ``std::vector`` and arrays.
-* :doc:`uproot4.language`: computational backends for expressions in
-  :doc:`uproot4.behavior.TBranch.HasBranches.arrays`.
-* :doc:`uproot4.models`: predefined models for classes that are too basic
+* :py:mod:`uproot4.language`: computational backends for expressions in
+  :py:mod:`uproot4.behavior.TBranch.HasBranches.arrays`.
+* :py:mod:`uproot4.models`: predefined models for classes that are too basic
   to rely on ``TStreamerInfo`` or too common to justify reading it.
-* :doc:`uproot4.const`: integer constants used in ROOT serialization and
+* :py:mod:`uproot4.const`: integer constants used in ROOT serialization and
   deserialization.
-* :doc:`uproot4.extras`: import functions for the libraries that Uproot can
+* :py:mod:`uproot4.extras`: import functions for the libraries that Uproot can
   use, but does not require as dependencies. If a library can't be imported,
   these functions provide instructions for installing them.
-* :doc:`uproot4.version`: for access to the version number.
-* :doc:`uproot4.dynamic`: initially empty module, in which dynamically
+* :py:mod:`uproot4.version`: for access to the version number.
+* :py:mod:`uproot4.dynamic`: initially empty module, in which dynamically
   generated classes are defined.
-* :doc:`uproot4._util`: non-public utilities used by the above.
+* :py:mod:`uproot4._util`: non-public utilities used by the above.
 """
 
 from __future__ import absolute_import
@@ -176,14 +176,14 @@ def behavior_of(classname):
     The search strategy for finding behavior classes is:
 
     1. Translate the ROOT class name from C++ to Python with
-       :doc:`uproot4.model.classname_encode`. For example,
+       :py:func:`~uproot4.model.classname_encode`. For example,
        ``"ROOT::RThing"`` becomes ``"Model_ROOT_3a3a_RThing"``.
     2. Look for a submodule of ``uproot4.behaviors`` without
        the ``"Model_"`` prefix. For example, ``"ROOT_3a3a_RThing"``.
     3. Look for a class in that submodule with the fully encoded
        name. For example, ``"Model_ROOT_3a3a_RThing"``.
 
-    See :doc:`uproot4.behaviors` for details.
+    See :py:mod:`uproot4.behaviors` for details.
     """
     name = classname_encode(classname)
     assert name.startswith("Model_")
@@ -216,7 +216,7 @@ del pkgutil
 class KeyInFileError(KeyError):
     """
     Exception raised by attempts to find ROOT objects in ``TDirectories``
-    or ``TBranches`` in :doc:`uproot4.behaviors.TBranch.HasBranches`, which
+    or ``TBranches`` in :py:class:`~uproot4.behaviors.TBranch.HasBranches`, which
     both have a Python ``Mapping`` interface (square bracket syntax to extract
     items).
 

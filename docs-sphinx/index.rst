@@ -37,7 +37,10 @@
 
 .. include:: uproot4.version.toctree
 
-.. include:: uproot4.dynamic.toctree
+.. toctree::
+    :hidden:
+
+    uproot4.dynamic
 
 .. |br| raw:: html
 

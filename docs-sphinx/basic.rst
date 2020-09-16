@@ -1,12 +1,10 @@
-Basic Uproot
-============
-
-This page is not an exhaustive overview, but it should get you started.
+Basic use: start here!
+======================
 
 Opening a file
 --------------
 
-Open a ROOT file with the :doc:`uproot4.reading.open` function.
+Open a ROOT file with the :py:func:`~uproot4.reading.open` function.
 
 .. code-block:: python
 
@@ -18,7 +16,7 @@ This function can take a string or `pathlib.Path <https://docs.python.org/3/libr
 Finding objects in a file
 -------------------------
 
-The object returned by :doc:`uproot4.reading.open` represents a TDirectory inside the file (``/``).
+The object returned by :py:func:`~uproot4.reading.open` represents a TDirectory inside the file (``/``).
 
 .. code-block:: python
 
@@ -26,7 +24,7 @@ The object returned by :doc:`uproot4.reading.open` represents a TDirectory insid
     >>> file
     <ReadOnlyDirectory '/' at 0x7c070dc03040>
 
-This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__, which means that you can get a list of contents with :doc:`uproot4.reading.ReadOnlyDirectory.keys`.
+This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__, which means that you can get a list of contents with :py:meth:`uproot4.reading.ReadOnlyDirectory.keys`.
 
 .. code-block:: python
 
@@ -46,9 +44,9 @@ and extract an item (read it from the file) with square brackets. The cycle numb
     >>> file["one/two/tree"]
     <TTree 'tree' (20 branches) at 0x78a2045fcf40>
 
-Data, including nested TDirectories, are not read from disk until they are explicitly requested with square brackets (or another Mapping function, like :doc:`uproot4.reading.ReadOnlyDirectory.values` or :doc:`uproot4.reading.ReadOnlyDirectory.items`).
+Data, including nested TDirectories, are not read from disk until they are explicitly requested with square brackets (or another Mapping function, like :py:meth:`~uproot4.reading.ReadOnlyDirectory.values` or :py:meth:`~uproot4.reading.ReadOnlyDirectory.items`).
 
-You can get the names of classes without reading the objects using :doc:`uproot4.reading.ReadOnlyDirectory.classnames`.
+You can get the names of classes without reading the objects using :py:meth:`~uproot4.reading.ReadOnlyDirectory.classnames`.
 
 .. code-block:: python
 
@@ -69,7 +67,7 @@ Colon separators are only allowed in strings, so you can open files that have co
 Inspecting a TBranches of a TTree
 ---------------------------------
 
-ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__ objects with :doc:`uproot4.behaviors.TBranch.HasBranches.keys`, :doc:`uproot4.behaviors.TBranch.HasBranches.values`, and :doc:`uproot4.behaviors.TBranch.HasBranches.items` functions. In this case, the values are TBranch objects (with subbranches accessible through ``/`` paths).
+ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__ objects with :py:meth:`~uproot4.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot4.behaviors.TBranch.HasBranches.values`, and :py:meth:`~uproot4.behaviors.TBranch.HasBranches.items` functions. In this case, the values are TBranch objects (with subbranches accessible through ``/`` paths).
 
 .. code-block:: python
 
@@ -94,7 +92,7 @@ ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtyp
     >>> events["M"]
     <TBranch 'M' at 0x78e574c1e970>
 
-Like a TDirectory's classnames, you can access the data types without reading data by calling :doc:`uproot4.behaviors.TBranch.HasBranches.typenames`.
+Like a TDirectory's classnames, you can access the data types without reading data by calling :py:meth:`~uproot4.behaviors.TBranch.HasBranches.typenames`.
 
 .. code-block:: python
 
@@ -104,7 +102,7 @@ Like a TDirectory's classnames, you can access the data types without reading da
      'Q1': 'int32_t', 'E2': 'double', 'px2': 'double', 'py2': 'double', 'pz2': 'double',
      'pt2': 'double', 'eta2': 'double', 'phi2': 'double', 'Q2': 'int32_t', 'M': 'double'}
 
-In an interactive session, it's often more convenient to call :doc:`uproot4.behaviors.TBranch.HasBranches.show`.
+In an interactive session, it's often more convenient to call :py:meth:`~uproot4.behaviors.TBranch.HasBranches.show`.
 
 .. code-block:: python
 
@@ -137,7 +135,7 @@ The third column, ``interpretation``, indicates how data in the TBranch will be 
 Reading a TBranch as an array
 -----------------------------
 
-A TBranch may be turned into an array with the :doc:`uproot4.behavior.TBranch.TBranch.array` method. The array is not read from disk until this method (or equivalent) is called.
+A TBranch may be turned into an array with the :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method. The array is not read from disk until this method (or equivalent) is called.
 
 .. code-block:: python
 
@@ -193,12 +191,12 @@ If you don't have the specified library (including the default, Awkward), you'll
 
 (CuPy can only be used on computers with GPUs.)
 
-The :doc:`uproot4.behavior.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). See the documentation for details.
+The :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). See the documentation for details.
 
 Reading multiple TBranches as a group of arrays
 -----------------------------------------------
 
-To read more than one TBranch, you could use the :doc:`uproot4.behavior.TBranch.TBranch.array` method from the previous section multiple times, but you could also use :doc:`uproot4.behavior.TBranch.HasBranches.arrays` (plural) on the TTree itself.
+To read more than one TBranch, you could use the :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method from the previous section multiple times, but you could also use :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays` (plural) on the TTree itself.
 
 .. code-block:: python
 
@@ -269,7 +267,7 @@ For Pandas, a group is a `pandas.DataFrame <https://pandas.pydata.org/pandas-doc
 Choosing TBranches to read
 --------------------------
 
-If no arguments are passed to :doc:`uproot4.behavior.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also pass a filter (``filter_name``, ``filter_typename``, or ``filter_branch``):
+If no arguments are passed to :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also pass a filter (``filter_name``, ``filter_typename``, or ``filter_branch``):
 
 .. code-block:: python
 

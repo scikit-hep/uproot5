@@ -12,7 +12,7 @@ import uproot4.models.TObject
 
 class Model_TObjString(uproot4.model.Model, str):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TObjString``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TObjString``.
 
     This is also a Python ``str`` (string).
     """

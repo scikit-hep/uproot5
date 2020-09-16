@@ -23,7 +23,7 @@ _tref_format1 = struct.Struct(">xxIxxxxxx")
 
 class Model_TRef(uproot4.model.Model):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TRef``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TRef``.
 
     This model does not deserialize all fields, only the reference number.
     """
@@ -92,7 +92,7 @@ _trefarray_dtype = numpy.dtype(">i4")
 
 class Model_TRefArray(uproot4.model.Model, Sequence):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TRefArray``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TRefArray``.
 
     This also satisfies Python's abstract ``Sequence`` protocol.
     """
@@ -107,7 +107,7 @@ class Model_TRefArray(uproot4.model.Model, Sequence):
     @property
     def nbytes(self):
         """
-        The number of bytes in :doc:`uproot4.models.TRef.TRefArray.nbytes`.
+        The number of bytes in :py:attr:`~uproot4.models.TRef.TRefArray.refs`.
         """
         return self._data.nbytes
 
