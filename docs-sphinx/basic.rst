@@ -73,6 +73,186 @@ As a shortcut, you can open a file and jump straight to the object by separating
 
 Colon separators are only allowed in strings, so you can open files that have colons in their names by wrapping them in a `pathlib.Path <https://docs.python.org/3/library/pathlib.html>`__.
 
+Extracting histograms from a file
+---------------------------------
+
+Uproot can read most types of objects, but only a few of them have been overloaded with specialized behaviors.
+
+.. code-block:: python
+
+    >>> file = uproot4.open("https://scikit-hep.org/uproot/examples/hepdata-example.root")
+    >>> file.classnames()
+    {'hpx': 'TH1F', 'hpxpy': 'TH2F', 'hprof': 'TProfile', 'ntuple': 'TNtuple'}
+
+Classes unknown to Uproot can be accessed through their members (raw C++ members that have been serialized into the file):
+
+.. code-block:: python
+
+    >>> file["hpx"].all_members
+    {'@fUniqueID': 0, '@fBits': 50331656, 'fName': 'hpx', 'fTitle': 'This is the px distribution',
+     'fLineColor': 602, 'fLineStyle': 1, 'fLineWidth': 1, 'fFillColor': 0, 'fFillStyle': 1001,
+     'fMarkerColor': 1, 'fMarkerStyle': 1, 'fMarkerSize': 1.0, 'fNcells': 102,
+     'fXaxis': <TAxis (version 9) at 0x7ca18fdb83a0>,
+     'fYaxis': <TAxis (version 9) at 0x7ca18fdb8940>,
+     'fZaxis': <TAxis (version 9) at 0x7ca18fdb8ca0>, 'fBarOffset': 0, 'fBarWidth': 1000,
+     'fEntries': 75000.0, 'fTsumw': 74994.0, 'fTsumw2': 74994.0, 'fTsumwx': -97.16475860591163,
+     'fTsumwx2': 75251.86518025988, 'fMaximum': -1111.0, 'fMinimum': -1111.0, 'fNormFactor': 0.0,
+     'fContour': <TArrayD [] at 0x7ca18fdb80d0>, 'fSumw2': <TArrayD [] at 0x7ca18fdb8f70>,
+     'fOption': <TString '' at 0x7ca18fdbd120>, 'fFunctions': <TList of 1 items at 0x7ca18fdc30d0>,
+     'fBufferSize': 0, 'fBuffer': array([], dtype=float64), 'fBinStatErrOpt': 0, 'fN': 102}
+
+    >>> file["hpx"].member("fName")
+    'hpx'
+
+But some classes, like :py:class:`~uproot4.behaviors.TH1.TH1`, :py:class:`~uproot4.behaviors.TProfile.TProfile`, and :py:class:`~uproot4.behaviors.TH2.TH2`, have high-level "behaviors" defined in :py:mod:`uproot4.behaviors` to make them easier to use.
+
+Histograms have :py:meth:`~uproot4.behaviors.TH1.TH1.edges`, :py:meth:`~uproot4.behaviors.TH1.TH1.values`, and :py:meth:`~uproot4.behaviors.TH1.TH1.values_errors` methods to extract histogram axes and bin contents directly into NumPy arrays. (Keep in mind that a histogram axis with *N* bins has *N + 1* edges, and that the edges include underflow and overflow as ``-np.inf`` and ``np.inf`` endpoints.)
+
+.. code-block:: python
+
+    >>> file["hpx"].edges()
+    array([ -inf, -4.  , -3.92, -3.84, -3.76, -3.68, -3.6 , -3.52, -3.44,
+           -3.36, -3.28, -3.2 , -3.12, -3.04, -2.96, -2.88, -2.8 , -2.72,
+           -2.64, -2.56, -2.48, -2.4 , -2.32, -2.24, -2.16, -2.08, -2.  ,
+           -1.92, -1.84, -1.76, -1.68, -1.6 , -1.52, -1.44, -1.36, -1.28,
+           -1.2 , -1.12, -1.04, -0.96, -0.88, -0.8 , -0.72, -0.64, -0.56,
+           -0.48, -0.4 , -0.32, -0.24, -0.16, -0.08,  0.  ,  0.08,  0.16,
+            0.24,  0.32,  0.4 ,  0.48,  0.56,  0.64,  0.72,  0.8 ,  0.88,
+            0.96,  1.04,  1.12,  1.2 ,  1.28,  1.36,  1.44,  1.52,  1.6 ,
+            1.68,  1.76,  1.84,  1.92,  2.  ,  2.08,  2.16,  2.24,  2.32,
+            2.4 ,  2.48,  2.56,  2.64,  2.72,  2.8 ,  2.88,  2.96,  3.04,
+            3.12,  3.2 ,  3.28,  3.36,  3.44,  3.52,  3.6 ,  3.68,  3.76,
+            3.84,  3.92,  4.  ,   inf])
+    >>> file["hpx"].values()
+    array([2.000e+00, 2.000e+00, 3.000e+00, 1.000e+00, 1.000e+00, 2.000e+00,
+           4.000e+00, 6.000e+00, 1.200e+01, 8.000e+00, 9.000e+00, 1.500e+01,
+           1.500e+01, 3.100e+01, 3.500e+01, 4.000e+01, 6.400e+01, 6.400e+01,
+           8.100e+01, 1.080e+02, 1.240e+02, 1.560e+02, 1.650e+02, 2.090e+02,
+           2.620e+02, 2.970e+02, 3.920e+02, 4.320e+02, 4.660e+02, 5.210e+02,
+           6.040e+02, 6.570e+02, 7.880e+02, 9.030e+02, 1.079e+03, 1.135e+03,
+           1.160e+03, 1.383e+03, 1.458e+03, 1.612e+03, 1.770e+03, 1.868e+03,
+           1.861e+03, 1.946e+03, 2.114e+03, 2.175e+03, 2.207e+03, 2.273e+03,
+           2.276e+03, 2.329e+03, 2.325e+03, 2.381e+03, 2.417e+03, 2.364e+03,
+           2.284e+03, 2.188e+03, 2.164e+03, 2.130e+03, 1.940e+03, 1.859e+03,
+           1.763e+03, 1.700e+03, 1.611e+03, 1.459e+03, 1.390e+03, 1.237e+03,
+           1.083e+03, 1.046e+03, 8.880e+02, 7.520e+02, 7.420e+02, 6.730e+02,
+           5.550e+02, 5.330e+02, 3.660e+02, 3.780e+02, 2.720e+02, 2.560e+02,
+           2.000e+02, 1.740e+02, 1.320e+02, 1.180e+02, 1.000e+02, 8.900e+01,
+           8.600e+01, 3.900e+01, 3.700e+01, 2.500e+01, 2.300e+01, 2.000e+01,
+           1.600e+01, 1.400e+01, 9.000e+00, 1.300e+01, 8.000e+00, 2.000e+00,
+           2.000e+00, 6.000e+00, 1.000e+00, 0.000e+00, 1.000e+00, 4.000e+00],
+          dtype=float32)
+    >>> file["hprof"].values_errors()
+    (array([17.99833584, 17.05295467, 16.96826426, 15.18948269, 13.73788834,
+           13.37521982, 13.5103693 , 12.64630063, 12.6601193 , 11.82483637,
+           11.62344678, 11.47207673, 10.05298678, 10.03059732,  9.61441732,
+            8.77662256,  8.6208066 ,  8.17996864,  7.41270794,  7.49722647,
+            6.98081953,  6.505285  ,  6.25185173,  5.81357581,  5.58440386,
+            5.01104751,  4.91228925,  4.52465974,  4.24002511,  4.07746299,
+            3.63879339,  3.52214183,  3.25587136,  2.96102029,  2.70619968,
+            2.58419117,  2.36279976,  2.14934465,  2.00779036,  1.83823925,
+            1.71255197,  1.61313089,  1.44907926,  1.34713526,  1.24584489,
+            1.17076595,  1.12473963,  1.11984797,  1.02812853,  1.04176022,
+            1.01975455,  1.00031317,  1.07947053,  1.02964734,  1.06030445,
+            1.15428476,  1.17458553,  1.31746264,  1.29098442,  1.45532587,
+            1.58397301,  1.72741128,  1.8171251 ,  1.99961636,  2.19764745,
+            2.33289525,  2.57368246,  2.74573281,  2.91219718,  3.15770185,
+            3.33105952,  3.6855651 ,  4.01111874,  4.31449181,  4.54825707,
+            4.93563452,  5.19188255,  5.47676609,  5.73479857,  6.18110869,
+            6.40689125,  7.04866284,  7.23857685,  7.55534168,  8.16915879,
+            9.01906589,  8.7895729 ,  9.3652438 ,  9.57024695, 10.27966509,
+           11.08611178, 11.11813177, 12.65668541, 12.17647505, 12.39317608,
+           16.51897812, 13.30313969, 14.63502661, 14.96741772,  0.        ,
+           18.32199478, 17.84037463]),
+     array([0.24254264, 0.74212103, 0.49400663, 0.        , 0.        ,
+           0.24649804, 0.55553737, 0.24357922, 0.22461613, 0.34906168,
+           0.43563347, 0.51286511, 0.20863074, 0.28308077, 0.28915414,
+           0.16769727, 0.17257732, 0.12765099, 0.10176558, 0.15209837,
+           0.11509671, 0.1014912 , 0.1143207 , 0.09759737, 0.09257268,
+           0.06761853, 0.07883833, 0.06391972, 0.07016808, 0.06790635,
+           0.05330255, 0.05630489, 0.05523831, 0.04797496, 0.04255815,
+           0.04422412, 0.04089869, 0.03453675, 0.03943858, 0.03461427,
+           0.03618794, 0.03408547, 0.03170797, 0.03121938, 0.03011256,
+           0.02926609, 0.03012814, 0.02977365, 0.02974839, 0.03081958,
+           0.0313295 , 0.0293942 , 0.02925847, 0.0293043 , 0.02804402,
+           0.03117598, 0.03010833, 0.03149117, 0.02909491, 0.0325676 ,
+           0.03445547, 0.03480207, 0.0327122 , 0.03860859, 0.03885261,
+           0.03856341, 0.04624045, 0.04543318, 0.04864621, 0.05203739,
+           0.04324402, 0.05850656, 0.05970975, 0.0659423 , 0.07220151,
+           0.08170132, 0.08712811, 0.08092333, 0.09191357, 0.10837656,
+           0.10509033, 0.15493381, 0.12013956, 0.11435862, 0.183943  ,
+           0.36368702, 0.13346263, 0.18325723, 0.17988976, 0.19265302,
+           0.35247309, 0.18420323, 0.59593532, 0.21540243, 0.11755951,
+           1.66198443, 0.13528127, 0.45343914, 0.        , 0.        ,
+           0.        , 0.1681792 ]))
+
+Since Uproot is an I/O library, it intentionally does not have methods for plotting or manipulating histograms. Instead, it has methods for exporting them to other libraries.
+
+.. code-block:: python
+
+    >>> file["hpxpy"].to_numpy()
+    (array([[0., 0., 0., ..., 0., 0., 0.],
+           [0., 0., 0., ..., 0., 0., 0.],
+           [0., 0., 0., ..., 0., 0., 0.],
+           ...,
+           [0., 0., 0., ..., 0., 0., 0.],
+           [0., 0., 0., ..., 0., 0., 0.],
+           [0., 0., 0., ..., 0., 0., 0.]], dtype=float32),
+     array([-4. , -3.8, -3.6, -3.4, -3.2, -3. , -2.8, -2.6, -2.4, -2.2, -2. ,
+           -1.8, -1.6, -1.4, -1.2, -1. , -0.8, -0.6, -0.4, -0.2,  0. ,  0.2,
+            0.4,  0.6,  0.8,  1. ,  1.2,  1.4,  1.6,  1.8,  2. ,  2.2,  2.4,
+            2.6,  2.8,  3. ,  3.2,  3.4,  3.6,  3.8,  4. ]),
+     array([-4. , -3.8, -3.6, -3.4, -3.2, -3. , -2.8, -2.6, -2.4, -2.2, -2. ,
+           -1.8, -1.6, -1.4, -1.2, -1. , -0.8, -0.6, -0.4, -0.2,  0. ,  0.2,
+            0.4,  0.6,  0.8,  1. ,  1.2,  1.4,  1.6,  1.8,  2. ,  2.2,  2.4,
+            2.6,  2.8,  3. ,  3.2,  3.4,  3.6,  3.8,  4. ]))
+
+    >>> file["hpxpy"].to_boost()
+    Histogram(
+      Regular(40, -4, 4, metadata={
+          '@fUniqueID': 0, '@fBits': 50331648, 'fNdivisions': 510, 'fAxisColor': 1,
+          'fLabelColor': 1, 'fLabelFont': 42, 'fLabelOffset': 0.004999999888241291,
+          'fLabelSize': 0.03500000014901161, 'fTickLength': 0.029999999329447746,
+          'fTitleOffset': 1.0, 'fTitleSize': 0.03500000014901161, 'fTitleColor': 1,
+          'fTitleFont': 42, 'fNbins': 40, 'fXmin': -4.0, 'fXmax': 4.0, 'fFirst': 0,
+          'fLast': 0, 'fBits2': 0, 'fTimeDisplay': False,
+          'fTimeFormat': <TString '' at 0x784dc592da50>, 'name': 'xaxis', 'title': ''}),
+      Regular(40, -4, 4, metadata={
+          '@fUniqueID': 0, '@fBits': 50331648, 'fNdivisions': 510, 'fAxisColor': 1,
+          'fLabelColor': 1, 'fLabelFont': 42, 'fLabelOffset': 0.004999999888241291,
+          'fLabelSize': 0.03500000014901161, 'fTickLength': 0.029999999329447746,
+          'fTitleOffset': 1.0, 'fTitleSize': 0.03500000014901161, 'fTitleColor': 1,
+          'fTitleFont': 42, 'fNbins': 40, 'fXmin': -4.0, 'fXmax': 4.0, 'fFirst': 0,
+          'fLast': 0, 'fBits2': 0, 'fTimeDisplay': False,
+          'fTimeFormat': <TString '' at 0x784dc592d740>, 'name': 'yaxis', 'title': ''}),
+      storage=Double()) # Sum: 74985.0 (75000.0 with flow)
+
+    >>> file["hpxpy"].to_hist()
+    # Traceback (most recent call last):
+    #   File "/home/jpivarski/irishep/uproot4/uproot4/extras.py", line 237, in hist
+    #     import hist
+    # ModuleNotFoundError: No module named 'hist'
+    # 
+    # During handling of the above exception, another exception occurred:
+    # 
+    # Traceback (most recent call last):
+    #   File "<stdin>", line 1, in <module>
+    #   File "/home/jpivarski/irishep/uproot4/uproot4/behaviors/TH2.py", line 127, in to_hist
+    #     return uproot4.extras.hist().Hist(self.to_boost())
+    #   File "/home/jpivarski/irishep/uproot4/uproot4/extras.py", line 239, in hist
+    #     raise ImportError(
+    # ImportError: install the 'hist' package with:
+    # 
+    #     pip install hist
+
+If one of those libraries is not currently installed, a hint is provided for how to get it.
+
+For histogramming, I recommend
+
+- `mplhep <https://github.com/scikit-hep/mplhep>`__ for plotting NumPy-like histograms in Matplotlib.
+- `boost-histogram <https://boost-histogram.readthedocs.io/en/latest/>`__ for fast filling and manipulation.
+- `hist <https://hist.readthedocs.io/en/latest/>`__ for plotting, filling, manipulation, and fitting all in one package.
+
 Inspecting a TBranches of a TTree
 ---------------------------------
 
@@ -738,4 +918,11 @@ Lazy arrays are especially useful for exploring a large dataset in a convenient 
 Caching and memory management
 -----------------------------
 
-HERE
+Many of the functions described above have ``object_cache`` and ``array_cache`` options. The ``object_cache`` stores a number of objects like histograms, 
+
+
+
+
+
+Parallel processing
+-------------------
