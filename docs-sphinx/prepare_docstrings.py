@@ -63,7 +63,7 @@ def handle_module(modulename, module):
 
         def good(obj):
             if inspect.isfunction(obj) or inspect.isclass(obj):
-                if obj.__module__ == modulename and obj.__name__ != "Report":
+                if obj.__module__ == modulename:
                     return True
             return False
 

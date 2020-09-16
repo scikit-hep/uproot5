@@ -18,7 +18,6 @@ import glob
 import sys
 import re
 import threading
-import collections
 import itertools
 
 try:
@@ -141,7 +140,7 @@ def iterate(
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
         report (bool): If True, this generator yields
-            (:py:class:`~uproot4.behaviors.TBranch.Report, arrays) pairs; if False,
+            (arrays, :py:class:`~uproot4.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
             ``TTree``, and global and local entry ranges.
         custom_classes (None or dict): If a dict, override the classes from
@@ -209,8 +208,10 @@ def iterate(
     )
     library = uproot4.interpretation.library._regularize_library(library)
 
-    global_start = 0
+    global_offset = 0
     for file_path, object_path in files:
+        print(file_path, global_offset)
+
         hasbranches = _regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
@@ -233,25 +234,15 @@ def iterate(
                     report=report,
                 ):
                     if report:
-                        arrays, local_report = item
-                        global_entry_start = local_report.tree_entry_start
-                        global_entry_stop = local_report.tree_entry_stop
-                        global_entry_start += global_start
-                        global_entry_stop += global_start
-                        global_report = type(local_report)(
-                            *(
-                                (global_entry_start, global_entry_stop)
-                                + local_report[2:]
-                            )
-                        )
-                        arrays = library.global_index(arrays, global_start)
-                        yield arrays, global_report
-
+                        arrays, report = item
+                        arrays = library.global_index(arrays, global_offset)
+                        report = report.to_global(global_offset)
+                        yield arrays, report
                     else:
-                        arrays = library.global_index(item, global_start)
+                        arrays = library.global_index(item, global_offset)
                         yield arrays
 
-                global_start += hasbranches.num_entries
+                global_offset += hasbranches.num_entries
 
 
 def concatenate(
@@ -697,19 +688,160 @@ def lazy(
     return awkward1.Array(out, cache=array_cache)
 
 
-Report = collections.namedtuple(
-    "Report",
-    [
-        "global_entry_start",
-        "global_entry_stop",
-        "tree_entry_start",
-        "tree_entry_stop",
-        "container",
-        "tree",
-        "file",
-        "file_path",
-    ],
-)
+class Report(object):
+    """
+    Args:
+        source (:py:class:`~uproot4.behaviors.TBranch.HasBranches`): The
+            object (:py:class:`~uproot4.behaviors.TBranch.TBranch` or
+            :py:class:`~uproot4.behaviors.TTree.TTree`) that this batch of data
+            came from.
+        tree_entry_start (int): First entry in the batch, counting zero at
+            the start of the current ``TTree`` (current file).
+        tree_entry_stop (int): First entry *after* the batch (last entry plus
+            one), counting zero at the start of the ``TTree`` (current file).
+        global_offset (int): Number of entries between the start of iteration
+            and the start of this ``TTree``. The
+            :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_start` and
+            :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_stop` are
+            equal to :py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_start`
+            and :py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_stop` plus
+            ``global_offset``.
+
+    Information about the current iteration of
+    :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate` (the method) or
+    :py:func:`~uproot4.behaviors.TBranch.iterate` (the function).
+
+    Since the :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate` method
+    only iterates over data from one ``TTree``, its ``global_offset`` is always
+    zero; :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_start` and
+    :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_stop` are equal to
+    :py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_start` and
+    :py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_stop`, respectively.
+
+    """
+
+    def __init__(self, source, tree_entry_start, tree_entry_stop, global_offset=0):
+        self._source = source
+        self._tree_entry_start = tree_entry_start
+        self._tree_entry_stop = tree_entry_stop
+        self._global_offset = global_offset
+
+    def __repr__(self):
+        if self._global_offset == 0:
+            return "Report({0}, {1}, {2})".format(
+                self._source, self._tree_entry_start, self._tree_entry_stop
+            )
+        else:
+            return "Report({0}, {1}, {2}, global_offset={3})".format(
+                self._source,
+                self._tree_entry_start,
+                self._tree_entry_stop,
+                self._global_offset,
+            )
+
+    @property
+    def source(self):
+        """
+        The object (:py:class:`~uproot4.behaviors.TBranch.TBranch` or
+        :py:class:`~uproot4.behaviors.TTree.TTree`) that this batch of data
+        came from.
+        """
+        return self._source
+
+    @property
+    def tree(self):
+        """
+        The :py:class:`~uproot4.behaviors.TTree.TTree` that this batch of data
+        came from.
+        """
+        return self._source.tree
+
+    @property
+    def file(self):
+        """
+        The :py:class:`~uproot4.reading.ReadOnlyFile` that this batch of data
+        came from.
+        """
+        return self._source.file
+
+    @property
+    def file_path(self):
+        """
+        The path/name of the :py:class:`~uproot4.reading.ReadOnlyFile` that
+        this batch of data came from.
+        """
+        return self._source.file.file_path
+
+    @property
+    def tree_entry_start(self):
+        """
+        First entry in the batch, counting zero at the start of the current
+        ``TTree`` (current file).
+        """
+        return self._tree_entry_start
+
+    @property
+    def tree_entry_stop(self):
+        """
+        First entry *after* the batch (last entry plus one), counting zero at
+        the start of the ``TTree`` (current file).
+        """
+        return self._tree_entry_stop
+
+    @property
+    def global_entry_start(self):
+        """
+        First entry in the batch, counting zero at the start of iteration
+        (potentially over many files).
+        """
+        return self._tree_entry_start + self._global_offset
+
+    @property
+    def global_entry_stop(self):
+        """
+        First entry *after* the batch (last entry plust one), counting zero at
+        the start of iteration (potentially over many files).
+        """
+        return self._tree_entry_stop + self._global_offset
+
+    @property
+    def start(self):
+        """
+        A synonym for
+        :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_start`.
+        """
+        return self._tree_entry_start + self._global_offset
+
+    @property
+    def stop(self):
+        """
+        A synonym for
+        :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_stop`.
+        """
+        return self._tree_entry_stop + self._global_offset
+
+    @property
+    def global_offset(self):
+        """
+        Number of entries between the start of iteration and the start of this
+        ``TTree``. The
+        :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_start` and
+        :py:attr:`~uproot4.behaviors.TBranch.Report.global_entry_stop` are
+        equal to :py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_start`
+        and :py:attr:`~uproot4.behaviors.TBranch.Report.tree_entry_stop` plus
+        ``global_offset``.
+        """
+        return self._global_offset
+
+    def to_global(self, global_offset):
+        """
+        Copies the data in this :py:class:`~uproot4.branches.TBranch.Report` to
+        another with a new
+        :py:attr:`~uproot4.branches.TBranch.Report.global_offset`.
+        """
+        return Report(
+            self._source, self._tree_entry_start, self._tree_entry_stop, global_offset
+        )
 
 
 class HasBranches(Mapping):
@@ -1103,7 +1235,7 @@ class HasBranches(Mapping):
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
             report (bool): If True, this generator yields
-                (:py:class:`~uproot4.behaviors.TBranch.Report, arrays) pairs; if False,
+                (arrays, :py:class:`~uproot4.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
                 ``TTree``, and global and local entry ranges.
 
@@ -1176,9 +1308,6 @@ class HasBranches(Mapping):
                 self, step_size, entry_start, entry_stop, branchid_interpretation
             )
 
-            if report:
-                tree = self.tree
-
             previous_baskets = {}
             for sub_entry_start in uproot4._util.range(
                 entry_start, entry_stop, entry_step
@@ -1240,16 +1369,7 @@ class HasBranches(Mapping):
                 arrays = library.group(output, expression_context, how)
 
                 if report:
-                    yield arrays, Report(
-                        sub_entry_start,
-                        sub_entry_stop,
-                        sub_entry_start,
-                        sub_entry_stop,
-                        self,
-                        tree,
-                        self.file,
-                        self.file.file_path,
-                    )
+                    yield arrays, Report(self, sub_entry_start, sub_entry_stop)
                 else:
                     yield arrays
 

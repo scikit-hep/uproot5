@@ -4,14 +4,23 @@ Basic use: start here!
 Opening a file
 --------------
 
-Open a ROOT file with the :py:func:`~uproot4.reading.open` function.
+Open a ROOT file for reading with the :py:func:`~uproot4.reading.open` function.
 
 .. code-block:: python
 
     >>> import uproot4
     >>> file = uproot4.open("path/to/dataset.root")
 
-This function can take a string or `pathlib.Path <https://docs.python.org/3/library/pathlib.html>`__, can be used in a ``with`` statement to close the file at the end of the ``with`` block, can point to a local file name, an HTTP URL, or an XRootD ("``root://``") URL. See the documentation for more options.
+The :py:func:`~uproot4.reading.open` function can also be used like this:
+
+.. code-block:: python
+
+    >>> with uproot4.open("path/to/dataset.root") as file:
+    ...     do_something...
+
+to automatically close the file after leaving the ``with`` block. The path-name argument can be a local file (as above), a URL ("``http://``" or "``https://``"), or XRootD ("``root://``") if you have the `Python interface to XRootD <https://anaconda.org/conda-forge/xrootd>`__ installed. It can also be a Python file-like object with ``read`` and ``seek`` methods, but such objects can't be read in parallel.
+
+The :py:func:`~uproot4.reading.open` function has many options, including alternate handlers for each input type, ``num_workers`` to control parallel reading, and caches (``object_cache`` and ``array_cache``). The defaults attempt to optimize parallel processing, caching, and batching of remote requests, but better performance can often be obtained by tuning these parameters.
 
 Finding objects in a file
 -------------------------
@@ -24,7 +33,7 @@ The object returned by :py:func:`~uproot4.reading.open` represents a TDirectory 
     >>> file
     <ReadOnlyDirectory '/' at 0x7c070dc03040>
 
-This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__, which means that you can get a list of contents with :py:meth:`uproot4.reading.ReadOnlyDirectory.keys`.
+This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html-mapping-types-dict>`__, which means that you can get a list of contents with :py:meth:`~uproot4.reading.ReadOnlyDirectory.keys`.
 
 .. code-block:: python
 
@@ -46,7 +55,7 @@ and extract an item (read it from the file) with square brackets. The cycle numb
 
 Data, including nested TDirectories, are not read from disk until they are explicitly requested with square brackets (or another Mapping function, like :py:meth:`~uproot4.reading.ReadOnlyDirectory.values` or :py:meth:`~uproot4.reading.ReadOnlyDirectory.items`).
 
-You can get the names of classes without reading the objects using :py:meth:`~uproot4.reading.ReadOnlyDirectory.classnames`.
+You can get the names of classes without reading the objects by using :py:meth:`~uproot4.reading.ReadOnlyDirectory.classnames`.
 
 .. code-block:: python
 
@@ -135,7 +144,7 @@ The third column, ``interpretation``, indicates how data in the TBranch will be 
 Reading a TBranch as an array
 -----------------------------
 
-A TBranch may be turned into an array with the :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method. The array is not read from disk until this method (or equivalent) is called.
+A TBranch may be turned into an array with the :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method. The array is not read from disk until this method is called (or other array-fetching methods described below).
 
 .. code-block:: python
 
@@ -143,7 +152,7 @@ A TBranch may be turned into an array with the :py:meth:`~uproot4.behavior.TBran
     >>> events["M"].array()
     <Array [82.5, 83.6, 83.3, ... 96, 96.5, 96.7] type='2304 * float64'>
 
-By default, the array is an Awkward array, as shown above. This assumes that Awkward Array is installed (see `How to install <-how-to-install>`__). If you can't install it or want to use NumPy for other reasons, pass ``library="np"`` instead of the default ``library="ak"``.
+By default, the array is an Awkward array, as shown above. This assumes that Awkward Array is installed (see `How to install <index.html#how-to-install>`__). If you can't install it or want to use NumPy for other reasons, pass ``library="np"`` instead of the default ``library="ak"``.
 
 .. code-block:: python
 
@@ -191,7 +200,7 @@ If you don't have the specified library (including the default, Awkward), you'll
 
 (CuPy can only be used on computers with GPUs.)
 
-The :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). See the documentation for details.
+The :py:meth:`~uproot4.behavior.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). For details, see the reference documentation for :py:meth:`~uproot4.behavior.TBranch.TBranch.array`.
 
 Reading multiple TBranches as a group of arrays
 -----------------------------------------------
@@ -225,6 +234,7 @@ For NumPy, a group is a dict of arrays.
              1.19940578,   1.2013503 ]),
      'pz1': array([-68.96496181, -48.77524654, -48.77524654, ..., -74.53243061,
            -74.53243061, -74.80837247])}
+
     >>> momentum["px1"]
     array([-41.19528764,  35.11804977,  35.11804977, ...,  32.37749196,
             32.37749196,  32.48539387])
@@ -264,10 +274,14 @@ For Pandas, a group is a `pandas.DataFrame <https://pandas.pydata.org/pandas-doc
     2303    32.485394
     Name: px1, Length: 2304, dtype: float64
 
-Choosing TBranches to read
---------------------------
+Even though you can extract individual arrays from these objects, they're read, decompressed, and interpreted as soon as you ask for them. Unless you're working with small files, be sure not to read everything when you only want a few of the arrays!
 
-If no arguments are passed to :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also pass a filter (``filter_name``, ``filter_typename``, or ``filter_branch``):
+Filtering TBranches
+-------------------
+
+If no arguments are passed to :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also use a filter (``filter_name``, ``filter_typename``, or ``filter_branch``) to select TBranches by name, type, or other attributes.
+
+The :py:meth:`~uproot4.behavior.TBranch.HasBranches.keys`, :py:meth:`~uproot4.behavior.TBranch.HasBranches.values`, :py:meth:`~uproot4.behavior.TBranch.HasBranches.items`, and :py:meth:`~uproot4.behavior.TBranch.HasBranches.typenames` methods take the same arguments, so you can test your filters before reading any data.
 
 .. code-block:: python
 
@@ -288,44 +302,205 @@ If no arguments are passed to :py:meth:`~uproot4.behavior.TBranch.HasBranches.ar
     >>> events.arrays(filter_branch=lambda b: b.compression_ratio > 10)
     <Array [{Run: 148031, Q1: 1, ... Q2: -1}] type='2304 * {"Run": int32, "Q1": int3...'>
 
-The first argument, which we used in the previous section to pass explicit TBranch names,
+Computing expressions and cuts
+------------------------------
+
+The first argument of :py:meth:`~uproot4.behavior.TBranch.HasBranches.arrays`, which we used above to pass explicit TBranch names,
 
 .. code-block:: python
+
+    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
 
     >>> events.arrays(["px1", "py1", "pz1"])
     <Array [{px1: -41.2, ... pz1: -74.8}] type='2304 * {"px1": float64, "py1": float...'>
 
-can also compute arbitrary expressions.
+can also compute expressions:
 
 .. code-block:: python
 
     >>> events.arrays("sqrt(px1**2 + py1**2)")
     <Array [{'sqrt(px1**2 + py1**2)': 44.7, ... ] type='2304 * {"sqrt(px1**2 + py1**...'>
 
-If the TTree has any aliases, you can refer to these aliases by name, or you can create new aliases to give better names to the keys of the NumPy dict, Awkward records, or Pandas columns.
+If the TTree has any aliases, you can refer to those aliases by name, or you can create new aliases to give better names to the keys of the output dict, Awkward records, or Pandas columns.
 
 .. code-block:: python
 
     >>> events.arrays("pt1", aliases={"pt1": "sqrt(px1**2 + py1**2)"})
     <Array [{pt1: 44.7}, ... {pt1: 32.4}] type='2304 * {"pt1": float64}'>
 
-The second argument (must be a string, not a list of strings) is a ``cut``, or filter on entries.
+The second argument is a ``cut``, or filter on entries. Whereas the uncut array (above) has 2304 entries, the cut array (below) has 290 entries.
 
 .. code-block:: python
 
     >>> events.arrays(["M"], "pt1 > 50", aliases={"pt1": "sqrt(px1**2 + py1**2)"})
     <Array [{M: 91.8}, {M: 91.9, ... {M: 96.1}] type='290 * {"M": float64}'>
 
-Note that expressions are *not*, in general, computed more quickly if expressed in these strings. The above is equivalent to the following
+Note that expressions are *not*, in general, computed more quickly if expressed in these strings. The above is equivalent to the following:
 
-language is Python
+.. code-block:: python
 
+    >>> import numpy as np
+    >>> arrays = events.arrays(["px1", "py1", "M"])
+    >>> pt1 = np.sqrt(arrays.px1**2 + arrays.py1**2)
+    >>> arrays.M[pt1 > 50]
+    <Array [91.8, 91.9, 91.7, ... 90.1, 90.1, 96.1] type='289 * float64'>
+
+but perhaps more convenient. If what you want to compute requires more than one expression, you'll have to move it out of strings into Python.
+
+The default ``language`` is :doc:`~uproot4.language.python.PythonLanguage`, but other languages, like ROOT's `TTree::Draw syntax <https://root.cern.ch/doc/master/classTTree.html#a73450649dc6e54b5b94516c468523e45>`_ are foreseen *in the future*. Thus, implicit loops (e.g. ``Sum$(...)``) have to be translated to their Awkward equivalents and ``ROOT::Math`` functions have to be translated to their NumPy equivalents.
 
 Nested data structures
 ----------------------
 
+Not all datasets have one value per entry. In particle physics, we often have different numbers of particles (and particle attributes) per collision event.
+
+.. code-block:: python
+
+    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/HZZ.root:events")
+    >>> events.show()
+    name                 | typename                 | interpretation                
+    ---------------------+--------------------------+-------------------------------
+    NJet                 | int32_t                  | AsDtype('>i4')
+    Jet_Px               | float[]                  | AsJagged(AsDtype('>f4'))
+    Jet_Py               | float[]                  | AsJagged(AsDtype('>f4'))
+    Jet_Pz               | float[]                  | AsJagged(AsDtype('>f4'))
+    Jet_E                | float[]                  | AsJagged(AsDtype('>f4'))
+    Jet_btag             | float[]                  | AsJagged(AsDtype('>f4'))
+    Jet_ID               | bool[]                   | AsJagged(AsDtype('bool'))
+    NMuon                | int32_t                  | AsDtype('>i4')
+    Muon_Px              | float[]                  | AsJagged(AsDtype('>f4'))
+    Muon_Py              | float[]                  | AsJagged(AsDtype('>f4'))
+    Muon_Pz              | float[]                  | AsJagged(AsDtype('>f4'))
+    Muon_E               | float[]                  | AsJagged(AsDtype('>f4'))
+    Muon_Charge          | int32_t[]                | AsJagged(AsDtype('>i4'))
+    Muon_Iso             | float[]                  | AsJagged(AsDtype('>f4'))
+
+These datasets have a natural expression as Awkward Arrays:
+
+.. code-block:: python
+
+    >>> events.keys(filter_name="/(Jet|Muon)_P[xyz]/")
+    ['Jet_Px', 'Jet_Py', 'Jet_Pz', 'Muon_Px', 'Muon_Py', 'Muon_Pz']
+    >>> ak_arrays = events.arrays(filter_name="/(Jet|Muon)_P[xyz]/")
+    >>> ak_arrays[:2].tolist()
+    [{'Jet_Px': [],
+      'Jet_Py': [],
+      'Jet_Pz': [],
+      'Muon_Px': [-52.89945602416992, 37.7377815246582],
+      'Muon_Py': [-11.654671669006348, 0.6934735774993896],
+      'Muon_Pz': [-8.16079330444336, -11.307581901550293]},
+     {'Jet_Px': [-38.87471389770508],
+      'Jet_Py': [19.863452911376953],
+      'Jet_Pz': [-0.8949416279792786],
+      'Muon_Px': [-0.8164593577384949],
+      'Muon_Py': [-24.404258728027344],
+      'Muon_Pz': [20.199968338012695]}]
+
+See the `Awkward Array documentation <https://awkward-array.org>`__ for data analysis techniques using these types. (Python for loops work, but it's faster and usually more convenient to use Awkward Array's suite of NumPy-like functions.)
+
+The same dataset *can* be read as a NumPy array with ``dtype="O"`` (Python objects), which puts NumPy arrays inside of NumPy arrays.
+
+.. code-block:: python
+
+    >>> np_arrays = events.arrays(filter_name="/(Jet|Muon)_P[xyz]/", library="np")
+    >>> np_arrays
+    {'Jet_Px': array([array([], dtype=float32), array([-38.874714], dtype=float32),
+           array([], dtype=float32), ..., array([-3.7148185], dtype=float32),
+           array([-36.361286, -15.256871], dtype=float32),
+           array([], dtype=float32)], dtype=object),
+     'Jet_Py': array([array([], dtype=float32), array([19.863453], dtype=float32),
+           array([], dtype=float32), ..., array([-37.202377], dtype=float32),
+           array([ 10.173571, -27.175364], dtype=float32),
+           array([], dtype=float32)], dtype=object),
+     'Jet_Pz': array([array([], dtype=float32), array([-0.8949416], dtype=float32),
+           array([], dtype=float32), ..., array([41.012222], dtype=float32),
+           array([226.42921 ,  12.119683], dtype=float32),
+           array([], dtype=float32)], dtype=object),
+     'Muon_Px': array([array([-52.899456,  37.73778 ], dtype=float32),
+           array([-0.81645936], dtype=float32),
+           array([48.98783  ,  0.8275667], dtype=float32), ...,
+           array([-29.756786], dtype=float32),
+           array([1.1418698], dtype=float32),
+           array([23.913206], dtype=float32)], dtype=object),
+     'Muon_Py': array([array([-11.654672 ,   0.6934736], dtype=float32),
+           array([-24.404259], dtype=float32),
+           array([-21.723139,  29.800508], dtype=float32), ...,
+           array([-15.303859], dtype=float32),
+           array([63.60957], dtype=float32),
+           array([-35.665077], dtype=float32)], dtype=object),
+     'Muon_Pz': array([array([ -8.160793, -11.307582], dtype=float32),
+           array([20.199968], dtype=float32),
+           array([11.168285, 36.96519 ], dtype=float32), ...,
+           array([-52.66375], dtype=float32),
+           array([162.17632], dtype=float32),
+           array([54.719437], dtype=float32)], dtype=object)}
+
+These "nested" NumPy arrays are not slicable as multidimensional arrays because NumPy can't assume that all of the Python objects it contains have NumPy type.
+
+.. code-block:: python
+
+    >>> ak_arrays["Muon_Px"][:10, 0]    # first Muon_Px of the first 10 events
+    <Array [-52.9, -0.816, 49, ... -53.2, -67] type='10 * float32'>
+
+    >>> np_arrays["Muon_Px"][:10, 0]
+    Traceback (most recent call last):
+    File "<stdin>", line 1, in <module>
+    IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
+
+The Pandas form for this type of data is a `DataFrame with MultiIndex rows <https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html>`__.
+
+.. code-block:: python
+
+    >>> events.arrays(filter_name="/(Jet|Muon)_P[xyz]/", library="pd")
+    (
+                           Jet_Px     Jet_Py      Jet_Pz
+        entry subentry                                  
+        1     0        -38.874714  19.863453   -0.894942
+        3     0        -71.695213  93.571579  196.296432
+              1         36.606369  21.838793   91.666283
+              2        -28.866419   9.320708   51.243221
+        4     0          3.880162 -75.234055 -359.601624
+        ...                   ...        ...         ...
+        2417  0        -33.196457 -59.664749  -29.040150
+              1        -26.086025 -19.068407   26.774284
+        2418  0         -3.714818 -37.202377   41.012222
+        2419  0        -36.361286  10.173571  226.429214
+              1        -15.256871 -27.175364   12.119683
+
+        [2773 rows x 3 columns],
+
+                           Muon_Px    Muon_Py     Muon_Pz
+        entry subentry                                  
+        0     0        -52.899456 -11.654672   -8.160793
+              1         37.737782   0.693474  -11.307582
+        1     0         -0.816459 -24.404259   20.199968
+        2     0         48.987831 -21.723139   11.168285
+              1          0.827567  29.800508   36.965191
+        ...                   ...        ...         ...
+        2416  0        -39.285824 -14.607491   61.715790
+        2417  0         35.067146 -14.150043  160.817917
+        2418  0        -29.756786 -15.303859  -52.663750
+        2419  0          1.141870  63.609570  162.176315
+        2420  0         23.913206 -35.665077   54.719437
+
+        [3825 rows x 3 columns]
+    )
+
+Each row of the DataFrame represents one particle and the row index is broken down into "entry" and "subentry" levels. If the selected TBranches include data with different numbers of values per entry, then the return value is not a DataFrame, but a tuple of DataFrames, one for each multiplicity. See the `Pandas documentation on joining <https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html>`__ for tips on how to analyze DataFrames with partially shared keys ("entry" but not "subentry").
+
 Iterating over intervals of entries
 -----------------------------------
+
+If you're working with large datasets, you might run out of memory before you can read all the TBranches you need, or you might run out of memory later because the derived quantities are too large.
+
+In general, you will want to analyze large datasets in batches. If the batches are too small (like one collision event at a time), then the process will be slowed by the overhead of setting things up before doing the real mathematical work. If the batches are too large, you'll run out of memory.
+
+Iterate over batches from a 
+
+
+
+
+
 
 Iterating over many files
 -------------------------
