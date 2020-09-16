@@ -76,7 +76,7 @@ Documentation
 - If you need help understanding ROOT and its ecosystem, see the `ROOT project documentation <https://root.cern/get_started/>`__.
 - If you understand what a ROOT file is but have never used Uproot, see :doc:`basic`.
 - If you are migrating from an older version to Uproot 4, see the :doc:`uproot3-to-4`.
-- If you need detailed descriptions of a class's properties or a function's parameters, use Python's ``help`` command, Jupyter's ``?`` or shift-tab, or the online reference at the end of the left-bar on this site (≡ button on mobile).
+- If you need detailed descriptions of a class's properties or a function's parameters, see the left-bar on this site (≡ button on mobile) or use ``help`` in Python, ``?`` or shift-tab in iPython/Jupyter.
 
 Getting help
 ============
