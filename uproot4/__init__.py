@@ -82,9 +82,6 @@ unknown_classes = {}
 from uproot4.cache import LRUCache
 from uproot4.cache import LRUArrayCache
 
-object_cache = LRUCache(100)
-array_cache = LRUArrayCache("100 MB")
-
 from uproot4.source.file import MemmapSource
 from uproot4.source.file import MultithreadedFileSource
 from uproot4.source.http import HTTPSource

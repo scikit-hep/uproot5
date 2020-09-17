@@ -187,10 +187,20 @@ class LRUArrayCache(LRUCache):
     @classmethod
     def sizeof(cls, what):
         """
-        The "size of" an object in this cache is its ``nbytes`` attribute or,
-        if it doesn't have one, ``default_nbytes``.
+        The "size of" an object in this cache is its
+
+        - ``nbytes`` attribute/property if it has one (NumPy and Awkward Arrays,
+          Pandas Series),
+        - ``memory_usage().sum()`` if it exists (Pandas DataFrames),
+        - ``default_nbytes`` otherwise.
         """
-        return getattr(what, "nbytes", cls.default_nbytes)
+        if hasattr(what, "nbytes"):
+            return what.nbytes
+        if hasattr(what, "memory_usage") and callable(what.memory_usage):
+            tmp = what.memory_usage()
+            if hasattr(tmp, "sum") and callable(tmp.sum):
+                return tmp.sum()
+        return cls.default_nbytes
 
     def __init__(self, limit_bytes):
         if limit_bytes is None:

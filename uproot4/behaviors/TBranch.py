@@ -256,7 +256,6 @@ def concatenate(
     language=uproot4.language.python.PythonLanguage(),
     decompression_executor=None,
     interpretation_executor=None,
-    array_cache=uproot4.array_cache,
     library="ak",
     how=None,
     custom_classes=None,
@@ -297,9 +296,6 @@ def concatenate(
             executor that is used to interpret uncompressed ``TBasket`` data as
             arrays; if None, the global ``uproot4.interpretation_executor`` is
             used.
-        array_cache (None, MutableMapping, or memory size): Cache of arrays;
-            if None, do not use a cache; if a memory size, create a new cache
-            of this size.
         library (str or :py:class:`~uproot4.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
@@ -392,7 +388,7 @@ def concatenate(
                     language=language,
                     decompression_executor=decompression_executor,
                     interpretation_executor=interpretation_executor,
-                    array_cache=array_cache,
+                    array_cache=None,
                     library=library,
                     how=how,
                 )
@@ -414,7 +410,7 @@ def lazy(
     step_size="100 MB",
     decompression_executor=None,
     interpretation_executor=None,
-    array_cache=uproot4.array_cache,
+    array_cache="100 MB",
     library="ak",
     custom_classes=None,
     allow_missing=False,
@@ -982,7 +978,7 @@ class HasBranches(Mapping):
         entry_stop=None,
         decompression_executor=None,
         interpretation_executor=None,
-        array_cache=None,
+        array_cache="inherit",
         library="ak",
         how=None,
     ):
@@ -1025,9 +1021,9 @@ class HasBranches(Mapping):
                 executor that is used to interpret uncompressed ``TBasket`` data as
                 arrays; if None, the global ``uproot4.interpretation_executor`` is
                 used.
-            array_cache (None, MutableMapping, or memory size): Cache of arrays;
-                if None, use the file's cache; if a memory size, create a new cache
-                of this size.
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size.
             library (str or :py:class:`~uproot4.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
@@ -1937,7 +1933,7 @@ class TBranch(HasBranches):
         entry_stop=None,
         decompression_executor=None,
         interpretation_executor=None,
-        array_cache=None,
+        array_cache="inherit",
         library="ak",
     ):
         u"""
@@ -1960,9 +1956,9 @@ class TBranch(HasBranches):
                 executor that is used to interpret uncompressed ``TBasket`` data as
                 arrays; if None, the global ``uproot4.interpretation_executor`` is
                 used.
-            array_cache (None, MutableMapping, or memory size): Cache of arrays;
-                if None, use the file's cache; if a memory size, create a new cache
-                of this size.
+            array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
+                if "inherit", use the file's cache; if None, do not use a cache;
+                if a memory size, create a new cache of this size.
             library (str or :py:class:`~uproot4.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
@@ -2838,7 +2834,7 @@ def _regularize_executors(decompression_executor, interpretation_executor):
 def _regularize_array_cache(array_cache, file):
     if isinstance(array_cache, MutableMapping):
         return array_cache
-    elif array_cache is None and file is not None:
+    elif uproot4._util.isstr(array_cache) and array_cache == "inherit":
         return file._array_cache
     elif array_cache is None:
         return None

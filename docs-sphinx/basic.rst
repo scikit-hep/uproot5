@@ -918,7 +918,7 @@ Lazy arrays are especially useful for exploring a large dataset in a convenient 
 Caching and memory management
 -----------------------------
 
-Many of the functions described above have ``object_cache`` and ``array_cache`` options.
+Each file has an associated ``object_cache`` and ``array_cache``, which streamline interactive use but could be surprising if you're trying to track down memory use.
 
 The ``object_cache`` stores a number of objects like TDirectories, histograms, and TTrees. The main effect of this is that
 
@@ -938,7 +938,7 @@ and
 
 have identical performance. Not having to declare names for things that are already referenced by name simplifies bookkeeping.
 
-The ``array_cache`` stores array outputs up to a maximum number of bytes. The arrays must have an ``nbytes`` attribute or property to track usage. As with the ``object_cache``, the ``array_cache`` ensures that
+The ``array_cache`` stores array outputs up to a maximum number of bytes. The arrays must have an ``nbytes`` or ``memory_usage`` attribute/property to track usage, which NumPy, Awkward Array, Pandas, and CuPy all have. As with the ``object_cache``, the ``array_cache`` ensures that
 
 .. code-block:: python
 
@@ -958,27 +958,9 @@ and
 
 have the same performance, assuming that the caches are not overrun.
 
-The default caches are global objects, ``uproot4.object_cache`` (:py:class:`~uproot4.cache.LRUCache`) and ``uproot4.array_cache`` (:py:class:`~uproot4.cache.LRUArrayCache`).
+By default, each file has a separate cache of ``100`` objects and ``"100 MB"`` of arrays. However, these can be overridden by passing an ``object_cache`` or ``array_cache`` argument to `uproot4.open <uproot4.reading.open.html>`__ or setting the :py:attr:`~uproot4.reading.ReadOnlyFile.object_cache` and :py:attr:`~uproot4.reading.ReadOnlyFile.array_cache` properties.
 
-.. code-block:: python
-
-    >>> uproot4.object_cache
-    <LRUCache (2/100 full) at 0x7f75ed5ccca0>
-    >>> uproot4.array_cache
-    <LRUArrayCache (18432/100000000 bytes full) at 0x7f75ed5ccd00>
-
-The defaults should be fine for general use, but you may want to override them for performance tuning. The `uproot4.open <uproot4.reading.open.html>`__ function lets you specify a new ``object_cache`` and ``array_cache`` for a specific file, which can be any `MutableMapping <https://docs.python.org/3/library/collections.abc.html#collections-abstract-base-classes>`__ (including a plain dict, which would keep objects forever) or ``None`` if you don't want any cache.
-
-Similarly, the array-fetching methods and functions:
-
-- :py:meth:`~uproot4.behaviors.TBranch.TBranch.array`
-- :py:meth:`~uproot4.behaviors.TBranch.HasBranches.arrays`
-- :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate`
-- `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__
-- `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__
-- `uproot4.lazy <uproot4.behaviors.TBranch.lazy.html>`__
-
-have an ``array_cache`` option that allows you to override the file's ``array_cache``.
+Any `MutableMapping <https://docs.python.org/3/library/collections.abc.html#collections-abstract-base-classes>`__ will do (including a plain dict, which would keep objects forever), or you can set them to ``None`` to prevent caching.
 
 Parallel processing
 -------------------
