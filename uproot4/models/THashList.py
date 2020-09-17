@@ -11,7 +11,7 @@ import uproot4.models.TList
 
 class Model_THashList(uproot4.model.Model):
     """
-    A versionless :doc:`uproot4.model.Model` for ``THashList``.
+    A versionless :py:class:`~uproot4.model.Model` for ``THashList``.
     """
 
     def read_numbytes_version(self, chunk, cursor, context):

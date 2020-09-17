@@ -1,12 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array for
+Defines an :py:class:`~uproot4.interpretation.Interpretation` and temporary array for
 jagged (variable-length list) data.
 
-The :doc:`uproot4.interpretation.jagged.JaggedArray` class only holds data while
+The :py:class:`~uproot4.interpretation.jagged.JaggedArray` class only holds data while
 an array is being built from ``TBaskets``. Its final form is determined by
-:doc:`uproot4.interpretation.library`.
+:py:mod:`uproot4.interpretation.library`.
 """
 
 from __future__ import absolute_import
@@ -36,20 +36,20 @@ def fast_divide(array, divisor):
 class AsJagged(uproot4.interpretation.Interpretation):
     """
     Args:
-        content (:doc:`uproot4.interpretation.numerical.AsDtype` or :doc:`uproot4.interpretation.objects.AsStridedObjects`): Interpretation
+        content (:py:class:`~uproot4.interpretation.numerical.AsDtype` or :py:class:`~uproot4.interpretation.objects.AsStridedObjects`): Interpretation
             for data in the nested, variable-length lists.
         header_bytes (int): Number of bytes to skip at the beginning of each
             entry.
         typename (None or str): If None, construct a plausible C++ typename.
             Otherwise, take the suggestion as given.
-        original (None, :doc:`uproot4.model.Model`, or :doc:`uproot4.containers.Container`): If
+        original (None, :py:class:`~uproot4.model.Model`, or :py:class:`~uproot4.containers.Container`): If
             this interpretation is derived from
-            :doc:`uproot4.interpretation.objects.AsObjects.simplify`, this is a
+            :py:meth:`~uproot4.interpretation.objects.AsObjects.simplify`, this is a
             reminder of the original
-            :doc:`uproot4.interpretation.objects.AsObjects.model`.
+            :py:attr:`~uproot4.interpretation.objects.AsObjects.model`.
 
     Interpretation for any array that can be described as variable-length lists
-    of :doc:`uproot4.interpretation.numerical.AsDtype`.
+    of :py:class:`~uproot4.interpretation.numerical.AsDtype`.
     """
 
     def __init__(self, content, header_bytes=0, typename=None, original=None):
@@ -63,8 +63,8 @@ class AsJagged(uproot4.interpretation.Interpretation):
     @property
     def content(self):
         """
-        The :doc:`uproot4.interpretation.numerical.AsDtype` or
-        :doc:`uproot4.interpretation.objects.AsStridedObjects` that interprets
+        The :py:class:`~uproot4.interpretation.numerical.AsDtype` or
+        :py:class:`~uproot4.interpretation.objects.AsStridedObjects` that interprets
         data in the nested, variable-length lists.
         """
         return self._content
@@ -80,9 +80,9 @@ class AsJagged(uproot4.interpretation.Interpretation):
     def original(self):
         """
         If not None, this was the original
-        :doc:`uproot4.interpretation.objects.AsObjects.model` from an
-        :doc:`uproot4.interpretation.objects.AsObjects` that was simplified
-        into this :doc:`uproot4.interpretation.jagged.AsJagged`.
+        :py:attr:`~uproot4.interpretation.objects.AsObjects.model` from an
+        :py:class:`~uproot4.interpretation.objects.AsObjects` that was simplified
+        into this :py:class:`~uproot4.interpretation.jagged.AsJagged`.
         """
         return self._original
 
@@ -337,9 +337,9 @@ class JaggedArray(object):
             jagged array.
 
     Temporary array filled by
-    :doc:`uproot4.interpretation.jagged.AsJagged.basket_array`, which will be
+    :py:meth:`~uproot4.interpretation.jagged.AsJagged.basket_array`, which will be
     turned into a NumPy, Awkward, or other array, depending on the specified
-    :doc:`uproot4.interpretation.library.Library`.
+    :py:class:`~uproot4.interpretation.library.Library`.
     """
 
     def __init__(self, offsets, content):
@@ -388,7 +388,7 @@ class JaggedArray(object):
         Awkward 0 terminology.
 
         The "parents" is an array of integers with the same length as
-        :doc:`uproot4.interpretation.jagged.JaggedArray.content` that indicates
+        :py:attr:`~uproot4.interpretation.jagged.JaggedArray.content` that indicates
         which list each item belongs to.
 
         The "localindex" is an array of integers with the same length that

@@ -4,26 +4,26 @@
 Represents external libraries that define "array-like" types so that users can
 choose an output format.
 
-The :doc:`uproot4.interpretation.library.NumPy` library always works (NumPy is
+The :py:class:`~uproot4.interpretation.library.NumPy` library always works (NumPy is
 Uproot's only strict dependency) and outputs NumPy arrays for single arrays
 and dict/tuple/list as groups. Objects and jagged arrays are not efficiently
 represented, but it provides a zero-dependency least common denominator.
 
-The :doc:`uproot4.interpretation.library.Awkward` library is the default and
+The :py:class:`~uproot4.interpretation.library.Awkward` library is the default and
 depends on Awkward Array (``awkward1``). It is usually the best option, as it
 was designed for Uproot.
 
-The :doc:`uproot4.interpretation.library.Pandas` library outputs
+The :py:class:`~uproot4.interpretation.library.Pandas` library outputs
 ``pandas.Series`` for single arrays and ``pandas.DataFrame`` as groups. Objects
 are not efficiently represented, but some jagged arrays are encoded as
 ``pandas.MultiIndex``.
 
-The :doc:`uproot4.interpretation.library.CuPy` library outputs arrays on a
+The :py:class:`~uproot4.interpretation.library.CuPy` library outputs arrays on a
 GPU, but the types that it supports are limited. Note that Awkward Arrays can
 be GPU-resident as well.
 
-Lazy arrays (:doc:`uproot4.behavior.TBranch.TBranch.lazy`) can only use the
-:doc:`uproot4.interpretation.library.Awkward` library.
+Lazy arrays (:py:func:`~uproot4.behavior.TBranch.lazy`) can only use the
+:py:class:`~uproot4.interpretation.library.Awkward` library.
 """
 
 from __future__ import absolute_import
@@ -47,14 +47,14 @@ class Library(object):
 
     A library is used in the finalization and grouping stages of producing an
     array, converting it from internal representations like
-    :doc:`uproot4.interpretation.jagged.JaggedArray`,
-    :doc:`uproot4.interpretation.strings.StringArray`, and
-    :doc:`uproot4.interpretation.objects.ObjectArray` into the library's
+    :py:class:`~uproot4.interpretation.jagged.JaggedArray`,
+    :py:class:`~uproot4.interpretation.strings.StringArray`, and
+    :py:class:`~uproot4.interpretation.objects.ObjectArray` into the library's
     equivalents. It can also be required for concatenation and other late-stage
     operations on the output arrays.
 
     Libraries are usually selected by a string name. These names are held in a
-    private registry in the :doc:`uproot4.interpretation.library` module.
+    private registry in the :py:mod:`uproot4.interpretation.library` module.
     """
 
     @property
@@ -81,9 +81,9 @@ class Library(object):
         Args:
             array (array): Internal, temporary, trimmed array. If this is a
                 NumPy array, it may be identical to the output array.
-            branch (:doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch``
+            branch (:py:class:`~uproot4.behavior.TBranch.TBranch`): The ``TBranch``
                 that is represented by this array.
-            interpretation (:doc:`uproot4.interpretation.Interpretation`): The
+            interpretation (:py:class:`~uproot4.interpretation.Interpretation`): The
                 interpretation that produced the ``array``.
             entry_start (int): First entry that is included in the output.
             entry_stop (int): FIrst entry that is excluded (one greater than
@@ -122,16 +122,16 @@ class Library(object):
                 "dict)".format(self.name)
             )
 
-    def global_index(self, array, global_start):
+    def global_index(self, array, global_offset):
         """
         Args:
             array (array): The library-appropriate array whose global index
                 needs adjustment.
-            global_start (int): A number to add to the global index of
+            global_offset (int): A number to add to the global index of
                 ``array`` to correct it.
 
         Apply *in-place* corrections to the global index of ``array`` by adding
-        ``global_start``.
+        ``global_offset``.
 
         Even though the operation is performed *in-place*, this method returns
         the ``array``.
@@ -157,7 +157,7 @@ class Library(object):
 
 class NumPy(Library):
     u"""
-    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    A :py:class:`~uproot4.interpetation.library.Library` that presents ``TBranch``
     data as NumPy arrays. The standard name for this library is ``"np"``.
 
     The single-``TBranch`` form for this library is a ``numpy.ndarray``. If
@@ -363,14 +363,14 @@ def _awkward_json_to_array(awkward1, form, array):
 
 class Awkward(Library):
     u"""
-    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    A :py:class:`~uproot4.interpetation.library.Library` that presents ``TBranch``
     data as Awkward Arrays. The standard name for this library is ``"ak"``.
 
     This is the default for all functions that require a
-    :doc:`uproot4.interpetation.library.Library`, though Uproot does not
+    :py:class:`~uproot4.interpetation.library.Library`, though Uproot does not
     explicitly depend on Awkward Array. If you are confronted with a message
     that Awkward Array is not installed, either install ``awkward1`` or
-    select another library (likely :doc:`uproot4.interpretation.library.NumPy`).
+    select another library (likely :py:class:`~uproot4.interpretation.library.NumPy`).
 
     Both the single-``TBranch`` and "group" forms for this library are
     ``ak.Array``, though groups are always arrays of records. Awkward Array
@@ -631,7 +631,7 @@ def _pandas_basic_index(pandas, entry_start, entry_stop):
 
 class Pandas(Library):
     u"""
-    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    A :py:class:`~uproot4.interpetation.library.Library` that presents ``TBranch``
     data as Pandas Series and DataFrames. The standard name for this library is
     ``"pd"``.
 
@@ -911,13 +911,13 @@ class Pandas(Library):
                 "DataFrames without merging)".format(self.name)
             )
 
-    def global_index(self, arrays, global_start):
+    def global_index(self, arrays, global_offset):
         if type(arrays.index).__name__ == "MultiIndex":
             if hasattr(arrays.index.levels[0], "arrays"):
                 index = arrays.index.levels[0].arrays  # pandas>=0.24.0
             else:
                 index = arrays.index.levels[0].values  # pandas<0.24.0
-            numpy.add(index, global_start, out=index)
+            numpy.add(index, global_offset, out=index)
 
         elif type(arrays.index).__name__ == "RangeIndex":
             if hasattr(arrays.index, "start") and hasattr(arrays.index, "stop"):
@@ -927,7 +927,7 @@ class Pandas(Library):
                 index_start = arrays.index._start  # pandas<0.25.0
                 index_stop = arrays.index._stop
             arrays.index = type(arrays.index)(
-                index_start + global_start, index_stop + global_start
+                index_start + global_offset, index_stop + global_offset
             )
 
         else:
@@ -935,7 +935,7 @@ class Pandas(Library):
                 index = arrays.index.arrays  # pandas>=0.24.0
             else:
                 index = arrays.index.values  # pandas<0.24.0
-            numpy.add(index, global_start, out=index)
+            numpy.add(index, global_offset, out=index)
 
         return arrays
 
@@ -969,7 +969,7 @@ class Pandas(Library):
 
 class CuPy(Library):
     u"""
-    A :doc:`uproot4.interpetation.library.Library` that presents ``TBranch``
+    A :py:class:`~uproot4.interpetation.library.Library` that presents ``TBranch``
     data as CuPy arrays on a GPU. The standard name for this library is ``"cp"``.
 
     The single-``TBranch`` form for this library is a ``cupy.ndarray``.

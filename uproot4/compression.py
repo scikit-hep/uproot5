@@ -2,7 +2,7 @@
 
 """
 Defines an interface to compression algorithms used by ROOT, as well as functions
-for compressing and decompressing a :doc:`uproot4.source.chunk.Chunk`.
+for compressing and decompressing a :py:class:`~uproot4.source.chunk.Chunk`.
 """
 
 from __future__ import absolute_import
@@ -31,7 +31,7 @@ class Compression(object):
     @classmethod
     def from_code(cls, code):
         """
-        Constructs a :doc:`uproot4.compression.Compression` from a raw
+        Constructs a :py:class:`~uproot4.compression.Compression` from a raw
         ``fCompress`` integer.
         """
         return cls.from_code_pair(code // 100, code % 100)
@@ -39,7 +39,7 @@ class Compression(object):
     @classmethod
     def from_code_pair(cls, algorithm, level):
         """
-        Constructs a :doc:`uproot4.compression.Compression` from a pair of
+        Constructs a :py:class:`~uproot4.compression.Compression` from a pair of
         integers representing ``algorithm`` and ``level``.
         """
         if algorithm == 0 or level == 0:
@@ -54,7 +54,7 @@ class Compression(object):
     @property
     def code(self):
         """
-        This :doc:`uproot4.compression.Compression` as a raw ``fCompress``
+        This :py:class:`~uproot4.compression.Compression` as a raw ``fCompress``
         integer.
         """
         algorithm, level = self.code_pair
@@ -63,7 +63,7 @@ class Compression(object):
     @property
     def code_pair(self):
         """
-        This :doc:`uproot4.compression.Compression` as a 2-tuple of integers
+        This :py:class:`~uproot4.compression.Compression` as a 2-tuple of integers
         representing algorithm and level.
         """
         for const, cls in algorithm_codes.items():
@@ -180,21 +180,21 @@ _decompress_checksum_format = struct.Struct(">Q")
 def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
     """
     Args:
-        chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-            from the file :doc:`uproot4.source.chunk.Source`.
-        cursor (:doc:`uproot4.source.cursor.Cursor`): Current position in
+        chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+            from the file :py:class:`~uproot4.source.chunk.Source`.
+        cursor (:py:class:`~uproot4.source.cursor.Cursor`): Current position in
             that ``chunk``.
         context (dict): Auxiliary data used in deserialization.
         compressed_bytes (int): Number of compressed bytes to decompress.
         uncompressed_bytes (int): Number of uncompressed bytes to expect after
             decompression.
 
-    Decompresses ``compressed_bytes`` of a :doc:`uproot4.source.chunk.Chunk`
+    Decompresses ``compressed_bytes`` of a :py:class:`~uproot4.source.chunk.Chunk`
     of data, starting at the ``cursor``.
 
     This function parses ROOT's 9-byte compression headers (17 bytes for LZ4
     because it includes a checksum), combining blocks if there are more than
-    one, returning the result as a new :doc:`uproot4.source.chunk.Chunk`.
+    one, returning the result as a new :py:class:`~uproot4.source.chunk.Chunk`.
     """
     assert compressed_bytes >= 0
     assert uncompressed_bytes >= 0

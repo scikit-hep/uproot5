@@ -135,7 +135,7 @@ _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 class Model_TStreamerInfo(uproot4.model.Model):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerInfo``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerInfo``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -157,7 +157,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
 
         Example:
 
-        .. code-block:: raw
+        .. code-block::
 
             TLorentzVector (v4): TObject (v1)
                 fP: TVector3 (TStreamerObject)
@@ -193,7 +193,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def elements(self):
         """
         This ``TStreamerInfo``'s list of ``TStreamerElements``
-        (:doc:`uproot4.streamers.TStreamerElement`).
+        (:py:class:`~uproot4.streamers.TStreamerElement`).
         """
         return self._members["fElements"]
 
@@ -207,7 +207,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def class_code(self):
         """
         Returns Python code as a string that, when evaluated, would be a suitable
-        :doc:`uproot4.model.VersionedModel` for this class and version.
+        :py:class:`~uproot4.model.VersionedModel` for this class and version.
         """
         read_members = [
             "    def read_members(self, chunk, cursor, context, file):",
@@ -330,12 +330,12 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def new_class(self, file):
         """
         Args:
-            file (:doc:`uproot4.reading.ReadOnlyFile`): File to use to generate
-                :doc:`uproot4.model.Model` classes as needed from its
-                :doc:`uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
+            file (:py:class:`~uproot4.reading.ReadOnlyFile`): File to use to generate
+                :py:class:`~uproot4.model.Model` classes as needed from its
+                :py:attr:`~uproot4.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
 
-        Returns a new subclass of :doc:`uproot4.model.VersionedModel` for this
+        Returns a new subclass of :py:class:`~uproot4.model.VersionedModel` for this
         class and version.
         """
         class_code = self.class_code()
@@ -348,7 +348,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
     @property
     def file_uuid(self):
         """
-        The unique identifier (:doc:`uproot4.reading.ReadOnlyFile`) of the file
+        The unique identifier (:py:class:`~uproot4.reading.ReadOnlyFile`) of the file
         from which this ``TStreamerInfo`` was extracted.
         """
         return self._file.uuid
@@ -356,14 +356,14 @@ class Model_TStreamerInfo(uproot4.model.Model):
     def walk_members(self, streamers):
         """
         Args:
-            streamers (list of :doc:`uproot4.streamers.TStreamerInfo`): The
+            streamers (list of :py:class:`~uproot4.streamers.TStreamerInfo`): The
                 complete set of ``TStreamerInfos``, probably including this one.
 
         Generator that yields all ``TStreamerElements``
-        (:doc:`uproot4.streamers.TStreamerElement`) for this class and its
+        (:py:class:`~uproot4.streamers.TStreamerElement`) for this class and its
         superclasses.
 
-        The ``TStreamerBase`` elements (:doc:`uproot4.streamers.TStreamerBase`)
+        The ``TStreamerBase`` elements (:py:class:`~uproot4.streamers.TStreamerBase`)
         are not yielded, but they are extracted from ``streamers`` to include
         their elements.
         """
@@ -413,7 +413,7 @@ _tstreamerelement_dtype1 = numpy.dtype(">i4")
 
 class Model_TStreamerElement(uproot4.model.Model):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerElement``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerElement``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -467,7 +467,7 @@ class Model_TStreamerElement(uproot4.model.Model):
     @property
     def file_uuid(self):
         """
-        The unique identifier (:doc:`uproot4.reading.ReadOnlyFile`) of the file
+        The unique identifier (:py:class:`~uproot4.reading.ReadOnlyFile`) of the file
         from which this ``TStreamerElement`` was extracted.
         """
         return self._file.uuid
@@ -534,7 +534,7 @@ class Model_TStreamerElement(uproot4.model.Model):
 
 class Model_TStreamerArtificial(Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerArtificial``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerArtificial``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -600,7 +600,7 @@ _tstreamerbase_format1 = struct.Struct(">i")
 
 class Model_TStreamerBase(Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerBase``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerBase``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -687,7 +687,7 @@ _tstreamerbasicpointer_format1 = struct.Struct(">i")
 
 class Model_TStreamerBasicPointer(Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerBasicPointer``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerBasicPointer``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -778,7 +778,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
 
 class Model_TStreamerBasicType(Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerBasicType``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerBasicType``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -986,7 +986,7 @@ _tstreamerloop_format1 = struct.Struct(">i")
 
 class Model_TStreamerLoop(Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerLoop``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerLoop``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -1085,7 +1085,7 @@ _tstreamerstl_format1 = struct.Struct(">ii")
 
 class Model_TStreamerSTL(Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerSTL``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerSTL``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -1185,7 +1185,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
 class Model_TStreamerSTLstring(Model_TStreamerSTL):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerSTLString``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerSTLString``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -1209,8 +1209,8 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
 class TStreamerPointerTypes(object):
     """
     A class to share code between
-    :doc:`uproot4.streamers.Model_TStreamerObjectAnyPointer` and
-    :doc:`uproot4.streamers.Model_TStreamerObjectPointer`.
+    :py:class:`~uproot4.streamers.Model_TStreamerObjectAnyPointer` and
+    :py:class:`~uproot4.streamers.Model_TStreamerObjectPointer`.
     """
 
     def class_code(
@@ -1284,7 +1284,7 @@ class TStreamerPointerTypes(object):
 
 class Model_TStreamerObjectAnyPointer(TStreamerPointerTypes, Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerObjectAnyPointer``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerObjectAnyPointer``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -1307,7 +1307,7 @@ class Model_TStreamerObjectAnyPointer(TStreamerPointerTypes, Model_TStreamerElem
 
 class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerObjectPointer``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerObjectPointer``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -1331,9 +1331,9 @@ class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement
 class TStreamerObjectTypes(object):
     """
     A class to share code between
-    :doc:`uproot4.streamers.Model_TStreamerObject`,
-    :doc:`uproot4.streamers.Model_TStreamerObjectAny`, and
-    :doc:`uproot4.streamers.Model_TStreamerString`.
+    :py:class:`~uproot4.streamers.Model_TStreamerObject`,
+    :py:class:`~uproot4.streamers.Model_TStreamerObjectAny`, and
+    :py:class:`~uproot4.streamers.Model_TStreamerString`.
     """
 
     def class_code(
@@ -1384,7 +1384,7 @@ class TStreamerObjectTypes(object):
 
 class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerObject``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerObject``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -1407,7 +1407,7 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
 
 class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerObjectAny``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerObjectAny``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -1430,7 +1430,7 @@ class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
 
 class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TStreamerString``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TStreamerString``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model

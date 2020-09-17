@@ -3,13 +3,13 @@
 """
 Physical layer for local files.
 
-Defines a :doc:`uproot4.source.file.FileResource` (wrapped Python file handle)
-and two sources: :doc:`uproot4.source.file.MultithreadedFileSource` and
-:doc:`uproot4.source.file.MemmapSource`, which provide thread-safe local
+Defines a :py:class:`~uproot4.source.file.FileResource` (wrapped Python file handle)
+and two sources: :py:class:`~uproot4.source.file.MultithreadedFileSource` and
+:py:class:`~uproot4.source.file.MemmapSource`, which provide thread-safe local
 file readers using many file handles or a memory-mapped file, respectively.
 
 If the filesystem or operating system does not support memory-mapped files, the
-:doc:`uproot4.source.file.MultithreadedFileSource` is an automatic fallback.
+:py:class:`~uproot4.source.file.MultithreadedFileSource` is an automatic fallback.
 """
 
 from __future__ import absolute_import
@@ -28,7 +28,7 @@ class FileResource(uproot4.source.chunk.Resource):
     Args:
         file_path (str): The filesystem path of the file to open.
 
-    A :doc:`uproot4.source.chunk.Resource` for a simple file handle.
+    A :py:class:`~uproot4.source.chunk.Resource` for a simple file handle.
     """
 
     def __init__(self, file_path):
@@ -71,14 +71,14 @@ class FileResource(uproot4.source.chunk.Resource):
     def future(source, start, stop):
         """
         Args:
-            source (:doc:`uproot4.source.chunk.MultithreadedFileSource`): The
+            source (:py:class:`~uproot4.source.chunk.MultithreadedFileSource`): The
                 data source.
             start (int): Seek position of the first byte to include.
             stop (int): Seek position of the first byte to exclude
                 (one greater than the last byte to include).
 
-        Returns a :doc:`uproot4.source.futures.ResourceFuture` that calls
-        :doc:`uproot4.source.file.FileResource.get` with ``start`` and ``stop``.
+        Returns a :py:class:`~uproot4.source.futures.ResourceFuture` that calls
+        :py:meth:`~uproot4.source.file.FileResource.get` with ``start`` and ``stop``.
         """
 
         def task(resource):
@@ -93,7 +93,7 @@ class MemmapSource(uproot4.source.chunk.Source):
         file_path (str): The filesystem path of the file to open.
         options: Must include ``"num_fallback_workers"``.
 
-    A :doc:`uproot4.source.chunk.Source` that manages one memory-mapped file.
+    A :py:class:`~uproot4.source.chunk.Source` that manages one memory-mapped file.
     """
 
     _dtype = uproot4.source.chunk.Chunk._dtype
@@ -175,10 +175,10 @@ class MemmapSource(uproot4.source.chunk.Source):
     @property
     def fallback(self):
         """
-        If None, the :doc:`uproot4.source.file.MemmapSource.file` opened
+        If None, the :py:attr:`~uproot4.source.file.MemmapSource.file` opened
         successfully and no fallback is needed.
 
-        Otherwise, this is a :doc:`uproot4.source.file.MultithreadedFileSource`
+        Otherwise, this is a :py:class:`~uproot4.source.file.MultithreadedFileSource`
         to which all requests are forwarded.
         """
         return self._fallback
@@ -229,8 +229,8 @@ class MultithreadedFileSource(uproot4.source.chunk.MultithreadedSource):
         file_path (str): The filesystem path of the file to open.
         options: Must include ``"num_workers"``.
 
-    A :doc:`uproot4.source.chunk.MultithreadedSource` that manages many
-    :doc:`uproot4.source.file.FileResource` objects.
+    A :py:class:`~uproot4.source.chunk.MultithreadedSource` that manages many
+    :py:class:`~uproot4.source.file.FileResource` objects.
     """
 
     ResourceClass = FileResource

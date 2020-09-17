@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :doc:`uproot4.interpretation.Interpretation` and temporary array
+Defines an :py:class:`~uproot4.interpretation.Interpretation` and temporary array
 for grouped data; usually applied to a ``TBranch`` that does not contain data
 but has subbranches that do.
 """
@@ -15,20 +15,20 @@ import uproot4.extras
 class AsGrouped(uproot4.interpretation.Interpretation):
     """
     Args:
-        branch (:doc:`uproot4.behavior.TBranch.TBranch`): The ``TBranch`` that
+        branch (:py:class:`~uproot4.behavior.TBranch.TBranch`): The ``TBranch`` that
             represents the group.
-        subbranches (list of :doc:`uproot4.behavior.TBranch.TBranch`): The
+        subbranches (list of :py:class:`~uproot4.behavior.TBranch.TBranch`): The
             ``TBranches`` that contain the actual data.
         typename (None or str): If None, construct a plausible C++ typename.
             Otherwise, take the suggestion as given.
 
     Interpretation for a group of arrays, usually because they are all
-    subbranches of the same :doc:`uproot4.behavior.TBranch.TBranch`.
+    subbranches of the same :py:class:`~uproot4.behavior.TBranch.TBranch`.
 
-    Each :doc:`uproot4.interpretation.library.Library` presents a group
-    differently: :doc:`uproot4.interpretation.library.NumPy` puts arrays
-    in a dict, :doc:`uproot4.interpretation.library.Awkward` makes an
-    array of records, :doc:`uproot4.interpretation.library.Pandas` makes
+    Each :py:class:`~uproot4.interpretation.library.Library` presents a group
+    differently: :py:class:`~uproot4.interpretation.library.NumPy` puts arrays
+    in a dict, :py:class:`~uproot4.interpretation.library.Awkward` makes an
+    array of records, :py:class:`~uproot4.interpretation.library.Pandas` makes
     a ``pandas.DataFrame``, etc.
     """
 

@@ -33,11 +33,19 @@ Note that Uproot 3 returns old-style [Awkward 0](https://github.com/scikit-hep/a
 
 # Installation
 
-Install uproot like any other Python package:
+Usually, you'll want to install Uproot with `Awkward Array <https://awkward-array.org>`__ because this is the default array format.
 
-```bash
-pip install uproot     # maybe with sudo or --user, -U to update, or in venv
-```
+.. code-block:: bash
+
+    pip install uproot4 awkward1
+
+But if you are working in a limited environment, Uproot can be installed without Awkward Array.
+
+.. code-block:: bash
+
+    pip install uproot4
+
+Just be sure to pass ``library="np"`` to any function that returns arrays to specify that you want NumPy arrays, rather than Awkward arrays. Other array libraries include `Pandas <https://pandas.pydata.org/>`__ and `CuPy <https://cupy.dev/>`__, which, like Awkward, would need to be explicitly installed.
 
 # Dependencies
 

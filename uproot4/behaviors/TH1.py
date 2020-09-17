@@ -102,7 +102,7 @@ class Histogram(object):
 
     def values_errors(self):
         """
-        The :doc:`uproot4.behaviors.TH1.Histogram.values` and their associated
+        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
         errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
         same ``shape``.
 

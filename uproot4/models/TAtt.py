@@ -19,7 +19,7 @@ _tattline1_format1 = struct.Struct(">hhh")
 
 class Model_TAttLine_v1(uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TAttLine`` version 1.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TAttLine`` version 1.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -84,7 +84,7 @@ in file {1}""".format(
 
 class Model_TAttLine_v2(uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TAttLine`` version 2.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TAttLine`` version 2.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -149,7 +149,7 @@ in file {1}""".format(
 
 class Model_TAttLine(uproot4.model.DispatchByVersion):
     """
-    A :doc:`uproot4.model.DispatchByVersion` for ``TAttLine``.
+    A :py:class:`~uproot4.model.DispatchByVersion` for ``TAttLine``.
     """
 
     known_versions = {1: Model_TAttLine_v1, 2: Model_TAttLine_v2}
@@ -161,7 +161,7 @@ _tattfill2_format1 = struct.Struct(">hh")
 
 class Model_TAttFill_v1(uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TAttFill`` version 1.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TAttFill`` version 1.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -220,7 +220,7 @@ in file {1}""".format(
 
 class Model_TAttFill_v2(uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TAttFill`` version 2.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TAttFill`` version 2.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -279,7 +279,7 @@ in file {1}""".format(
 
 class Model_TAttFill(uproot4.model.DispatchByVersion):
     """
-    A :doc:`uproot4.model.DispatchByVersion` for ``TAttFill``.
+    A :py:class:`~uproot4.model.DispatchByVersion` for ``TAttFill``.
     """
 
     known_versions = {1: Model_TAttFill_v1, 2: Model_TAttFill_v2}
@@ -290,7 +290,7 @@ _tattmarker2_format1 = struct.Struct(">hhf")
 
 class Model_TAttMarker_v2(uproot4.model.VersionedModel):
     """
-    A :doc:`uproot4.model.VersionedModel` for ``TAttMarker`` version 2.
+    A :py:class:`~uproot4.model.VersionedModel` for ``TAttMarker`` version 2.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -355,7 +355,7 @@ in file {1}""".format(
 
 class Model_TAttMarker(uproot4.model.DispatchByVersion):
     """
-    A :doc:`uproot4.model.DispatchByVersion` for ``TAttMarker``.
+    A :py:class:`~uproot4.model.DispatchByVersion` for ``TAttMarker``.
     """
 
     known_versions = {2: Model_TAttMarker_v2}

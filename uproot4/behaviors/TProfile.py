@@ -26,13 +26,13 @@ class Profile(uproot4.behaviors.TH1.Histogram):
     def effective_entries(self):
         """
         The effective number of entries, which is a step in the calculation of
-        :doc:`uproot4.behaviors.TProfile.Profile.values`.
+        :py:meth:`~uproot4.behaviors.TProfile.Profile.values`.
         """
         pass
 
     def values_errors(self, error_mode=""):
         """
-        The :doc:`uproot4.behaviors.TH1.Histogram.values` and their associated
+        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
         errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
         same ``shape``.
 

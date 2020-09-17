@@ -24,7 +24,7 @@ _tlist_format2 = struct.Struct(">B")
 
 class Model_TList(uproot4.model.Model, Sequence):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TList``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TList``.
     """
 
     def read_members(self, chunk, cursor, context, file):

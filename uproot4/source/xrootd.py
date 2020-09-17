@@ -3,11 +3,11 @@
 """
 Physical layer for remote files, accessed via the XRootD protocol.
 
-Defines a :doc:`uproot4.source.http.XRootDResource` (``XRootD.File``) and two
-sources: :doc:`uproot4.source.http.MultithreadedXRootDSource` and
-:doc:`uproot4.source.http.XRootDSource`. The latter requires the server to
+Defines a :py:class:`~uproot4.source.http.XRootDResource` (``XRootD.File``) and two
+sources: :py:class:`~uproot4.source.http.MultithreadedXRootDSource` and
+:py:class:`~uproot4.source.http.XRootDSource`. The latter requires the server to
 support vector-read requests; if not, it automatically falls back to
-:doc:`uproot4.source.http.MultithreadedXRootDSource`.
+:py:class:`~uproot4.source.http.MultithreadedXRootDSource`.
 """
 
 from __future__ import absolute_import
@@ -73,7 +73,7 @@ class XRootDResource(uproot4.source.chunk.Resource):
         file_path (str): A URL of the file to open.
         timeout (None or float): An optional timeout in seconds.
 
-    A :doc:`uproot4.source.chunk.Resource` for XRootD connections.
+    A :py:class:`~uproot4.source.chunk.Resource` for XRootD connections.
     """
 
     def __init__(self, file_path, timeout):
@@ -158,14 +158,14 @@ in file {1}""".format(
     def future(source, start, stop):
         """
         Args:
-            source (:doc:`uproot4.source.chunk.MultithreadedXRootDSource`): The
+            source (:py:class:`~uproot4.source.chunk.MultithreadedXRootDSource`): The
                 data source.
             start (int): Seek position of the first byte to include.
             stop (int): Seek position of the first byte to exclude
                 (one greater than the last byte to include).
 
-        Returns a :doc:`uproot4.source.futures.ResourceFuture` that calls
-        :doc:`uproot4.source.xrootd.XRootDResource.get` with ``start`` and
+        Returns a :py:class:`~uproot4.source.futures.ResourceFuture` that calls
+        :py:meth:`~uproot4.source.xrootd.XRootDResource.get` with ``start`` and
         ``stop``.
         """
 
@@ -177,12 +177,12 @@ in file {1}""".format(
     @staticmethod
     def partfuture(results, start, stop):
         """
-        Returns a :doc:`uproot4.source.futures.ResourceFuture` to simply select
+        Returns a :py:class:`~uproot4.source.futures.ResourceFuture` to simply select
         the ``(start, stop)`` item from the ``results`` dict.
 
-        In :doc:`uproot4.source.xrootd.XRootDSource.chunks`, each chunk has a
-        :doc:`uproot4.source.xrootd.XRootDResource.partfuture` that are collectively
-        filled by callbacks from :doc:`uproot4.source.xrootd.XRootDResource.callbacker`.
+        In :py:meth:`~uproot4.source.xrootd.XRootDSource.chunks`, each chunk has a
+        :py:meth:`~uproot4.source.xrootd.XRootDResource.partfuture` that are collectively
+        filled by callbacks from :py:meth:`~uproot4.source.xrootd.XRootDResource.callbacker`.
         """
 
         def task(resource):
@@ -212,7 +212,7 @@ class XRootDSource(uproot4.source.chunk.Source):
         file_path (str): A URL of the file to open.
         options: Must include ``"timeout"`` and ``"max_num_elements"``.
 
-    A :doc:`uproot4.source.chunk.Source` that uses XRootD's vector-read
+    A :py:class:`~uproot4.source.chunk.Source` that uses XRootD's vector-read
     to get many chunks in one request.
     """
 
@@ -294,7 +294,7 @@ class XRootDSource(uproot4.source.chunk.Source):
     @property
     def resource(self):
         """
-        The :doc:`uproot4.source.xrootd.XRootDResource` object.
+        The :py:class:`~uproot4.source.xrootd.XRootDResource` object.
         """
         return self._resource
 
@@ -335,8 +335,8 @@ class MultithreadedXRootDSource(uproot4.source.chunk.MultithreadedSource):
         file_path (str): A URL of the file to open.
         options: Must include ``"num_workers"`` and ``"timeout"``.
 
-    A :doc:`uproot4.source.chunk.MultithreadedSource` that manages many
-    :doc:`uproot4.source.xrootd.XRootDResource` objects.
+    A :py:class:`~uproot4.source.chunk.MultithreadedSource` that manages many
+    :py:class:`~uproot4.source.xrootd.XRootDResource` objects.
     """
 
     ResourceClass = XRootDResource

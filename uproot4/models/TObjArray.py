@@ -24,7 +24,7 @@ _tobjarray_format1 = struct.Struct(">ii")
 
 class Model_TObjArray(uproot4.model.Model, Sequence):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TObjArray``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TObjArray``.
 
     This also satisfies Python's abstract ``Sequence`` protocol.
     """
@@ -88,7 +88,7 @@ uproot4.classes["TObjArray"] = Model_TObjArray
 
 class Model_TObjArrayOfTBaskets(Model_TObjArray):
     """
-    A specialized :doc:`uproot4.model.Model` for a ``TObjArray`` of ``TBaskets``.
+    A specialized :py:class:`~uproot4.model.Model` for a ``TObjArray`` of ``TBaskets``.
     """
 
     def read_members(self, chunk, cursor, context, file):

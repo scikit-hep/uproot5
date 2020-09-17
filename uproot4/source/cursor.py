@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the :doc:`uproot4.source.cursor.Cursor`, which maintains a thread-local
-pointer into a :doc:`uproot.source.chunk.Chunk` and performs the lowest level
+Defines the :py:class:`~uproot4.source.cursor.Cursor`, which maintains a thread-local
+pointer into a :py:class:`~uproot.source.chunk.Chunk` and performs the lowest level
 of interpretation (numbers, strings, raw arrays, etc.).
 """
 
@@ -29,17 +29,17 @@ class Cursor(object):
     """
     Args:
         index (int): Global seek position in the ROOT file or local position
-            in an uncompressed :doc:`uproot4.source.chunk.Chunk`.
+            in an uncompressed :py:class:`~uproot4.source.chunk.Chunk`.
         origin (int): Zero-point for numerical keys in ``refs``.
         refs (None or dict): References to data already read in
-            :doc:`uproot4.deserialization.read_object_any`.
+            :py:func:`~uproot4.deserialization.read_object_any`.
 
     Represents a seek point in a ROOT file, which may be held for later
     reference or advanced while interpreting data from a
-    :doc:`uproot4.source.chunk.Chunk`.
+    :py:class:`~uproot4.source.chunk.Chunk`.
 
     A cursor also holds references to previously read data that might be
-    requested by :doc:`uproot4.deserialization.read_object_any`.
+    requested by :py:func:`~uproot4.deserialization.read_object_any`.
     """
 
     def __init__(self, index, origin=0, refs=None):
@@ -70,7 +70,7 @@ class Cursor(object):
     def index(self):
         """
         Global seek position in the ROOT file or local position in an
-        uncompressed :doc:`uproot4.source.chunk.Chunk`.
+        uncompressed :py:class:`~uproot4.source.chunk.Chunk`.
         """
         return self._index
 
@@ -78,7 +78,7 @@ class Cursor(object):
     def origin(self):
         """
         Zero-point for numerical keys in
-        :doc:`uproot4.source.cursor.Cursor.refs`.
+        :py:attr:`~uproot4.source.cursor.Cursor.refs`.
         """
         return self._origin
 
@@ -86,7 +86,7 @@ class Cursor(object):
     def refs(self):
         """
         References to data already read in
-        :doc:`uproot4.deserialization.read_object_any`.
+        :py:func:`~uproot4.deserialization.read_object_any`.
         """
         if self._refs is None:
             self._refs = {}
@@ -94,9 +94,9 @@ class Cursor(object):
 
     def displacement(self, other=None):
         """
-        The number of bytes between this :doc:`uproot4.source.cursor.Cursor`
-        and its :doc:`uproot4.source.cursor.Cursor.origin` (if None)
-        or the ``other`` :doc:`uproot4.source.cursor.Cursor` (if provided).
+        The number of bytes between this :py:class:`~uproot4.source.cursor.Cursor`
+        and its :py:attr:`~uproot4.source.cursor.Cursor.origin` (if None)
+        or the ``other`` :py:class:`~uproot4.source.cursor.Cursor` (if provided).
 
         If the displacement is positive, ``self`` is later in the file than the
         ``origin`` or ``other``; if negative, it is earlier.
@@ -108,8 +108,8 @@ class Cursor(object):
 
     def copy(self, link_refs=True):
         """
-        Returns a copy of this :doc:`uproot4.source.cursor.Cursor`. If
-        ``link_refs`` is True, any :doc:`uproot4.source.cursor.Cursor.refs`
+        Returns a copy of this :py:class:`~uproot4.source.cursor.Cursor`. If
+        ``link_refs`` is True, any :py:attr:`~uproot4.source.cursor.Cursor.refs`
         will be *referenced*, rather than *copied*.
         """
         if link_refs or self._refs is None:
@@ -119,21 +119,21 @@ class Cursor(object):
 
     def move_to(self, index):
         """
-        Move the :doc:`uproot4.source.cursor.Cursor.index` to a specified seek
+        Move the :py:attr:`~uproot4.source.cursor.Cursor.index` to a specified seek
         position.
         """
         self._index = index
 
     def skip(self, num_bytes):
         """
-        Move the :doc:`uproot4.source.cursor.Cursor.index` forward
+        Move the :py:attr:`~uproot4.source.cursor.Cursor.index` forward
         ``num_bytes``.
         """
         self._index += num_bytes
 
     def skip_after(self, obj):
         """
-        Move the :doc:`uproot4.source.cursor.Cursor.index` just after an object
+        Move the :py:attr:`~uproot4.source.cursor.Cursor.index` just after an object
         that has a starting ``obj.cursor`` and an expected ``obj.num_bytes``.
         """
         start_cursor = getattr(obj, "cursor", None)
@@ -152,13 +152,13 @@ class Cursor(object):
     def skip_over(self, chunk, context):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             context (dict): Auxiliary data used in deserialization.
 
-        Move the :doc:`uproot4.source.cursor.Cursor.index` to a seek position
+        Move the :py:attr:`~uproot4.source.cursor.Cursor.index` to a seek position
         beyond the serialized data for an object that can be interpreted with
-        :doc:`uproot4.deserialization.numbytes_version`.
+        :py:func:`~uproot4.deserialization.numbytes_version`.
 
         Returns True if successful (cursor has moved), False otherwise (cursor
         has NOT moved).
@@ -175,16 +175,16 @@ class Cursor(object):
     def fields(self, chunk, format, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             format (``struct.Struct``): Specification to interpret the bytes of
                 data.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` with a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` with a
         specified format. Returns a tuple of data whose types and length are
         determined by the ``format``.
         """
@@ -197,16 +197,16 @@ class Cursor(object):
     def field(self, chunk, format, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             format (``struct.Struct``): Specification to interpret the bytes of
                 data.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` with a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` with a
         format that only specifies one field, returning a single item instead of
         a tuple.
         """
@@ -219,14 +219,14 @@ class Cursor(object):
     def double32(self, chunk, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as
         ROOT's ``Double32_t`` type, returning the Python ``float``.
         """
         # https://github.com/root-project/root/blob/e87a6311278f859ca749b491af4e9a2caed39161/io/io/src/TBufferFile.cxx#L448-L464
@@ -239,15 +239,15 @@ class Cursor(object):
     def float16(self, chunk, num_bits, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             num_bits (int): Number of bits in the mantissa.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as
         ROOT's ``Float16_t`` type, returning the Python ``float``.
         """
         # https://github.com/root-project/root/blob/e87a6311278f859ca749b491af4e9a2caed39161/io/io/src/TBufferFile.cxx#L432-L442
@@ -272,15 +272,15 @@ class Cursor(object):
     def bytes(self, chunk, length, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             length (int): Number of bytes to retrieve.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as raw
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as raw
         bytes with a given ``length``.
         """
         start = self._index
@@ -292,16 +292,16 @@ class Cursor(object):
     def array(self, chunk, length, dtype, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             length (int): Number of bytes to retrieve.
             dtype (``numpy.dtype``): Data type for the array.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as a
         one-dimensional array with a given ``length`` and ``dtype``.
         """
         start = self._index
@@ -316,14 +316,14 @@ class Cursor(object):
     def bytestring(self, chunk, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as a
         bytestring.
 
         The first byte is taken to be the length of the subsequent string unless
@@ -351,14 +351,14 @@ class Cursor(object):
     def string(self, chunk, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as a
         UTF-8 encoded string.
 
         The first byte is taken to be the length of the subsequent string unless
@@ -374,15 +374,15 @@ class Cursor(object):
     def bytestring_with_length(self, chunk, context, length, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             context (dict): Auxiliary data used in deserialization.
             length (int): Number of bytes in the bytestring.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as a
         bytestring.
         """
         start = self._index
@@ -398,15 +398,15 @@ class Cursor(object):
     def string_with_length(self, chunk, context, length, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             context (dict): Auxiliary data used in deserialization.
             length (int): Number of bytes in the string.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as a
         UTF-8 encoded string.
         """
         out = self.bytestring_with_length(chunk, context, length, move=move)
@@ -418,14 +418,14 @@ class Cursor(object):
     def classname(self, chunk, context, move=True):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :doc:`uproot4.source.chunk.Source`.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :py:class:`~uproot4.source.chunk.Source`.
             context (dict): Auxiliary data used in deserialization.
             move (bool): If True, move the
-                :doc:`uproot4.source.cursor.Cursor.index` past the fields;
+                :py:attr:`~uproot4.source.cursor.Cursor.index` past the fields;
                 otherwise, leave it where it is.
 
-        Interpret data at this :doc:`uproot4.source.cursor.Cursor.index` as a
+        Interpret data at this :py:attr:`~uproot4.source.cursor.Cursor.index` as a
         null-terminated, UTF-8 encoded string.
         """
         remainder = chunk.remainder(self._index, self, context)
@@ -467,12 +467,12 @@ of file path {2}""".format(
     ):
         """
         Args:
-            chunk (:doc:`uproot4.source.chunk.Chunk`): Data to examine.
+            chunk (:py:class:`~uproot4.source.chunk.Chunk`): Data to examine.
             context (dict): Auxiliary data used in deserialization.
             limit_bytes (None or int): Number of bytes to limit the output to.
                 A line of debugging output (without any ``offset``) is 20 bytes,
                 so multiples of 20 show full lines. If None, everything is
-                shown to the end of the :doc:`uproot4.source.chunk.Chunk`,
+                shown to the end of the :py:class:`~uproot4.source.chunk.Chunk`,
                 which might be large.
             dtype (None, ``numpy.dtype``, or its constructor argument): If None,
                 present only the bytes as decimal values (0-255). Otherwise,
@@ -492,7 +492,7 @@ of file path {2}""".format(
 
         Example output with ``dtype=">f4"`` and ``offset=3``.
 
-        .. code-block:: raw
+        .. code-block::
 
             --+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+-
             123 123 123  63 140 204 205  64  12 204 205  64  83  51  51  64 140 204 205  64

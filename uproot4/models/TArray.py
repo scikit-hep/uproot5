@@ -24,7 +24,7 @@ _tarray_format1 = struct.Struct(">i")
 
 class Model_TArray(uproot4.model.Model, Sequence):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArray`` and its subclasses.
+    A versionless :py:class:`~uproot4.model.Model` for ``TArray`` and its subclasses.
 
     These also satisfy Python's abstract ``Sequence`` protocol.
     """
@@ -95,7 +95,7 @@ in file {1}""".format(
 
 class Model_TArrayC(Model_TArray):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArrayC``
+    A versionless :py:class:`~uproot4.model.Model` for ``TArrayC``
     (``dtype(">i1")``).
 
     It also satisfies Python's abstract ``Sequence`` protocol.
@@ -106,7 +106,7 @@ class Model_TArrayC(Model_TArray):
 
 class Model_TArrayS(Model_TArray):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArrayS``
+    A versionless :py:class:`~uproot4.model.Model` for ``TArrayS``
     (``dtype(">i2")``).
 
     It also satisfies Python's abstract ``Sequence`` protocol.
@@ -117,7 +117,7 @@ class Model_TArrayS(Model_TArray):
 
 class Model_TArrayI(Model_TArray):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArrayI``
+    A versionless :py:class:`~uproot4.model.Model` for ``TArrayI``
     (``dtype(">i4")``).
 
     It also satisfies Python's abstract ``Sequence`` protocol.
@@ -128,7 +128,7 @@ class Model_TArrayI(Model_TArray):
 
 class Model_TArrayL(Model_TArray):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArrayL``
+    A versionless :py:class:`~uproot4.model.Model` for ``TArrayL``
     (``dtype(">i8")``).
 
     It also satisfies Python's abstract ``Sequence`` protocol.
@@ -139,7 +139,7 @@ class Model_TArrayL(Model_TArray):
 
 class Model_TArrayL64(Model_TArray):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArrayL64``
+    A versionless :py:class:`~uproot4.model.Model` for ``TArrayL64``
     (``dtype(">i8")``).
 
     It also satisfies Python's abstract ``Sequence`` protocol.
@@ -150,7 +150,7 @@ class Model_TArrayL64(Model_TArray):
 
 class Model_TArrayF(Model_TArray):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArrayF``
+    A versionless :py:class:`~uproot4.model.Model` for ``TArrayF``
     (``dtype(">f4")``).
 
     It also satisfies Python's abstract ``Sequence`` protocol.
@@ -161,7 +161,7 @@ class Model_TArrayF(Model_TArray):
 
 class Model_TArrayD(Model_TArray):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TArrayD``
+    A versionless :py:class:`~uproot4.model.Model` for ``TArrayD``
     (``dtype(">f8")``).
 
     It also satisfies Python's abstract ``Sequence`` protocol.

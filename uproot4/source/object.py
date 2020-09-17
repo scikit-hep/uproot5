@@ -3,8 +3,8 @@
 """
 Physical layer for file-like objects.
 
-Defines a :doc:`uproot4.source.object.ObjectResource` (wrapped Python file-like
-object) and one source :doc:`uproot4.source.object.ObjectSource` which always
+Defines a :py:class:`~uproot4.source.object.ObjectResource` (wrapped Python file-like
+object) and one source :py:class:`~uproot4.source.object.ObjectSource` which always
 has exactly one worker (we can't assume that the object is thread-safe).
 """
 
@@ -20,7 +20,7 @@ class ObjectResource(uproot4.source.chunk.Resource):
     Args:
         obj: The file-like object to use.
 
-    A :doc:`uproot4.source.chunk.Resource` for a file-like object.
+    A :py:class:`~uproot4.source.chunk.Resource` for a file-like object.
 
     This object must have the following methods:
 
@@ -69,13 +69,13 @@ class ObjectResource(uproot4.source.chunk.Resource):
     def future(source, start, stop):
         """
         Args:
-            source (:doc:`uproot4.source.chunk.ObjectSource`): The data source.
+            source (:py:class:`~uproot4.source.chunk.ObjectSource`): The data source.
             start (int): Seek position of the first byte to include.
             stop (int): Seek position of the first byte to exclude
                 (one greater than the last byte to include).
 
-        Returns a :doc:`uproot4.source.futures.ResourceFuture` that calls
-        :doc:`uproot4.source.object.ObjectResource.get` with ``start`` and
+        Returns a :py:class:`~uproot4.source.futures.ResourceFuture` that calls
+        :py:meth:`~uproot4.source.object.ObjectResource.get` with ``start`` and
         ``stop``.
         """
 
@@ -90,8 +90,8 @@ class ObjectSource(uproot4.source.chunk.MultithreadedSource):
     Args:
         obj: The file-like object to use.
 
-    A :doc:`uproot4.source.chunk.Source` for a file-like object. (Although this
-    is a :doc:`uproot4.source.chunk.MultithreadedSource`, it never has more or
+    A :py:class:`~uproot4.source.chunk.Source` for a file-like object. (Although this
+    is a :py:class:`~uproot4.source.chunk.MultithreadedSource`, it never has more or
     less than one thread.)
 
     This object must have the following methods:

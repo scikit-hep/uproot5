@@ -1,18 +1,18 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :doc:`uproot4.interpretation.Interpretation` for several numerical
+Defines an :py:class:`~uproot4.interpretation.Interpretation` for several numerical
 types:
 
-* :doc:`uproot4.interpretation.numerical.AsDtype`: numbers, which can simply be
+* :py:class:`~uproot4.interpretation.numerical.AsDtype`: numbers, which can simply be
   described as a ``numpy.dtype``.
-* :doc:`uproot4.interpretation.numerical.AsDtypeInPlace`: a predefined array
+* :py:class:`~uproot4.interpretation.numerical.AsDtypeInPlace`: a predefined array
   into which data may be overwritten.
-* :doc:`uproot4.interpretation.numerical.AsDouble32`: ROOT's ``Double32_t``
+* :py:class:`~uproot4.interpretation.numerical.AsDouble32`: ROOT's ``Double32_t``
   packed data type.
-* :doc:`uproot4.interpretation.numerical.AsFloat16`: ROOT's ``Float16_t``
+* :py:class:`~uproot4.interpretation.numerical.AsFloat16`: ROOT's ``Float16_t``
   packed data type.
-* :doc:`uproot4.interpretation.numerical.AsSTLBits`: an ``std::bitset<N>``
+* :py:class:`~uproot4.interpretation.numerical.AsSTLBits`: an ``std::bitset<N>``
   for some ``N``.
 """
 
@@ -35,9 +35,9 @@ class Numerical(uproot4.interpretation.Interpretation):
     """
     Abstract superclass of numerical interpretations, including
 
-    * :doc:`uproot4.interpretation.numerical.AsDtype`
-    * :doc:`uproot4.interpretation.numerical.AsSTLBits`
-    * :doc:`uproot4.interpretation.numerical.TruncatedNumerical`
+    * :py:class:`~uproot4.interpretation.numerical.AsDtype`
+    * :py:class:`~uproot4.interpretation.numerical.AsSTLBits`
+    * :py:class:`~uproot4.interpretation.numerical.TruncatedNumerical`
     """
 
     def _wrap_almost_finalized(self, array):
@@ -199,7 +199,7 @@ class AsDtype(Numerical):
 
         A shape (``dtype.shape``) can be used to construct a fixed-size array
         for each entry. (Not applicable to variable-length lists! See
-        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        :py:class:`~uproot4.interpretation.jagged.AsJagged`.) The finalized array's
         ``array.shape[1:] == dtype.shape``.
         """
         return self._from_dtype
@@ -208,7 +208,7 @@ class AsDtype(Numerical):
     def to_dtype(self):
         """
         Data type to convert the data into. Usually the native-endian
-        equivalent of :doc:`uproot4.interpretation.numerical.AsDtype.from_dtype`;
+        equivalent of :py:meth:`~uproot4.interpretation.numerical.AsDtype.from_dtype`;
         may include named fields and a shape.
 
         Named fields (``dtype.names``) can be used to construct a NumPy
@@ -216,7 +216,7 @@ class AsDtype(Numerical):
 
         A shape (``dtype.shape``) can be used to construct a fixed-size array
         for each entry. (Not applicable to variable-length lists! See
-        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        :py:class:`~uproot4.interpretation.jagged.AsJagged`.) The finalized array's
         ``array.shape[1:] == dtype.shape``.
         """
         return self._to_dtype
@@ -225,7 +225,7 @@ class AsDtype(Numerical):
     def itemsize(self):
         """
         Number of bytes per item of
-        :doc:`uproot4.interpretation.numerical.AsDtype.from_dtype`.
+        :py:meth:`~uproot4.interpretation.numerical.AsDtype.from_dtype`.
 
         This number of bytes includes the fields and shape, like
         ``dtype.itemsize`` in NumPy.
@@ -347,7 +347,7 @@ in file {4}""".format(
 
 class AsDtypeInPlace(AsDtype):
     """
-    Like :doc:`uproot4.interpretation.numerical.AsDtype`, but a given array is
+    Like :py:class:`~uproot4.interpretation.numerical.AsDtype`, but a given array is
     filled in-place, rather than creating a new output array.
     """
 
@@ -375,8 +375,8 @@ class TruncatedNumerical(Numerical):
 
     Subclasses are
 
-    * :doc:`uproot4.interpretation.numerical.AsDouble32`
-    * :doc:`uproot4.interpretation.numerical.AsFloat16`
+    * :py:class:`~uproot4.interpretation.numerical.AsDouble32`
+    * :py:class:`~uproot4.interpretation.numerical.AsFloat16`
     """
 
     @property
@@ -418,7 +418,7 @@ class TruncatedNumerical(Numerical):
     def itemsize(self):
         """
         Number of bytes in
-        :doc:`uproot4.interpretation.numerical.TruncatedNumerical.from_dtype`.
+        :py:meth:`~uproot4.interpretation.numerical.TruncatedNumerical.from_dtype`.
         """
         return self.from_dtype.itemsize
 
@@ -432,8 +432,8 @@ class TruncatedNumerical(Numerical):
     @property
     def is_truncated(self):
         """
-        If True (:doc:`uproot4.interpretation.numerical.TruncatedNumerical.low`
-        and :doc:`uproot4.interpretation.numerical.TruncatedNumerical.high` are
+        If True (:py:attr:`~uproot4.interpretation.numerical.TruncatedNumerical.low`
+        and :py:attr:`~uproot4.interpretation.numerical.TruncatedNumerical.high` are
         both ``0``), the data are truly truncated.
         """
         return self._low == 0.0 and self._high == 0.0
@@ -537,7 +537,7 @@ class AsDouble32(TruncatedNumerical):
         high (float): Upper bound on the range of expressible values.
         num_bits (int): Number of bits in the representation.
         to_dims (tuple of ints): Shape of
-            :doc:`uproot4.interpretation.numerical.AsDouble32.to_dtype`.
+            :py:meth:`~uproot4.interpretation.numerical.AsDouble32.to_dtype`.
 
     Interpretation for ROOT's ``Double32_t`` type.
     """
@@ -562,7 +562,7 @@ class AsDouble32(TruncatedNumerical):
 
         A shape (``dtype.shape``) can be used to construct a fixed-size array
         for each entry. (Not applicable to variable-length lists! See
-        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        :py:class:`~uproot4.interpretation.jagged.AsJagged`.) The finalized array's
         ``array.shape[1:] == dtype.shape``.
         """
         return numpy.dtype((numpy.float64, self.to_dims))
@@ -599,7 +599,7 @@ class AsFloat16(TruncatedNumerical):
         high (float): Upper bound on the range of expressible values.
         num_bits (int): Number of bits in the representation.
         to_dims (tuple of ints): Shape of
-            :doc:`uproot4.interpretation.numerical.AsFloat16.to_dtype`.
+            :py:attr:`~uproot4.interpretation.numerical.AsFloat16.to_dtype`.
 
     Interpretation for ROOT's ``Float16_t`` type.
     """
@@ -624,7 +624,7 @@ class AsFloat16(TruncatedNumerical):
 
         A shape (``dtype.shape``) can be used to construct a fixed-size array
         for each entry. (Not applicable to variable-length lists! See
-        :doc:`uproot4.interpretation.jagged.AsJagged`.) The finalized array's
+        :py:class:`~uproot4.interpretation.jagged.AsJagged`.) The finalized array's
         ``array.shape[1:] == dtype.shape``.
         """
         return numpy.dtype((numpy.float32, self.to_dims))

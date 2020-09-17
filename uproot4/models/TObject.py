@@ -20,7 +20,7 @@ _tobject_format2 = struct.Struct(">II")
 
 class Model_TObject(uproot4.model.Model):
     """
-    A versionless :doc:`uproot4.model.Model` for ``TObject``.
+    A versionless :py:class:`~uproot4.model.Model` for ``TObject``.
     """
 
     def read_numbytes_version(self, chunk, cursor, context):

@@ -23,7 +23,10 @@ def awkward1():
         raise ImportError(
             """install the 'awkward1' package with:
 
-    pip install awkward1"""
+    pip install awkward1
+
+or use library="np" to output as NumPy arrays, rather than Awkward arrays.
+"""
         )
     else:
         return awkward1
