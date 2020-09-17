@@ -165,7 +165,9 @@ class Worker(threading.Thread):
         executes each :py:class:`~uproot4.source.futures.Future` it receives until it
         receives None.
         """
+        future = None
         while True:
+            del future   # don't hang onto a reference while waiting for more work
             future = self._work_queue.get()
             if future is None:
                 break
@@ -319,7 +321,9 @@ class ResourceWorker(Worker):
         receives (with :py:attr:`~uproot4.source.futures.ResourceWorker.resource` as
         its first argument) until it receives None.
         """
+        future = None
         while True:
+            del future   # don't hang onto a reference while waiting for more work
             future = self._work_queue.get()
             if future is None:
                 break

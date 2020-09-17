@@ -36,8 +36,8 @@ from uproot4._util import no_filter
 
 def open(
     path,
-    object_cache=uproot4.object_cache,
-    array_cache=uproot4.array_cache,
+    object_cache=100,
+    array_cache="100 MB",
     custom_classes=None,
     **options  # NOTE: a comma after **options breaks Python 2
 ):
@@ -466,7 +466,7 @@ class ReadOnlyFile(CommonFileMethods):
             if None, do not use a cache; if an int, create a new cache of this
             size.
         array_cache (None, MutableMapping, or memory size): Cache of arrays
-            drawn from TTrees; if None, do not use a cache; if a memory size,
+            drawn from ``TTrees``; if None, do not use a cache; if a memory size,
             create a new cache of this size.
         custom_classes (None or MutableMapping): If None, classes come from
             uproot4.classes; otherwise, a container of class definitions that
@@ -510,8 +510,8 @@ class ReadOnlyFile(CommonFileMethods):
     def __init__(
         self,
         file_path,
-        object_cache=uproot4.object_cache,
-        array_cache=uproot4.array_cache,
+        object_cache=100,
+        array_cache="100 MB",
         custom_classes=None,
         **options  # NOTE: a comma after **options breaks Python 2
     ):
