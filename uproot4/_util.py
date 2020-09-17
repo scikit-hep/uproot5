@@ -188,6 +188,8 @@ _schemes = ["FILE"] + _remote_schemes
 
 
 def file_path_to_source_class(file_path, options):
+    import uproot4.source.chunk
+
     file_path = regularize_path(file_path)
 
     if (
@@ -195,7 +197,13 @@ def file_path_to_source_class(file_path, options):
         and hasattr(file_path, "read")
         and hasattr(file_path, "seek")
     ):
-        return options["object_handler"], file_path
+        out = options["object_handler"]
+        if not (isinstance(out, type) and issubclass(out, uproot4.source.chunk.Source)):
+            raise TypeError(
+                "'object_handler' is not a class object inheriting from Source: "
+                + repr(out)
+            )
+        return out, file_path
 
     windows_absolute_path = None
 
@@ -224,13 +232,31 @@ def file_path_to_source_class(file_path, options):
         else:
             file_path = windows_absolute_path
 
-        return options["file_handler"], os.path.expanduser(file_path)
+        out = options["file_handler"]
+        if not (isinstance(out, type) and issubclass(out, uproot4.source.chunk.Source)):
+            raise TypeError(
+                "'file_handler' is not a class object inheriting from Source: "
+                + repr(out)
+            )
+        return out, os.path.expanduser(file_path)
 
     elif parsed_url.scheme.upper() == "ROOT":
-        return options["xrootd_handler"], file_path
+        out = options["xrootd_handler"]
+        if not (isinstance(out, type) and issubclass(out, uproot4.source.chunk.Source)):
+            raise TypeError(
+                "'xrootd_handler' is not a class object inheriting from Source: "
+                + repr(out)
+            )
+        return out, file_path
 
     elif parsed_url.scheme.upper() == "HTTP" or parsed_url.scheme.upper() == "HTTPS":
-        return options["http_handler"], file_path
+        out = options["http_handler"]
+        if not (isinstance(out, type) and issubclass(out, uproot4.source.chunk.Source)):
+            raise TypeError(
+                "'http_handler' is not a class object inheriting from Source: "
+                + repr(out)
+            )
+        return out, file_path
 
     else:
         raise ValueError("URI scheme not recognized: {0}".format(file_path))
