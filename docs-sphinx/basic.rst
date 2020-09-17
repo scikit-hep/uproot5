@@ -1,5 +1,5 @@
-Basic use: start here!
-======================
+Getting started guide
+=====================
 
 Opening a file
 --------------
@@ -53,7 +53,7 @@ and extract an item (read it from the file) with square brackets. The cycle numb
     >>> file["one/two/tree"]
     <TTree 'tree' (20 branches) at 0x78a2045fcf40>
 
-Data, including nested TDirectories, are not read from disk until they are explicitly requested with square brackets (or another Mapping function, like :py:meth:`~uproot4.reading.ReadOnlyDirectory.values` or :py:meth:`~uproot4.reading.ReadOnlyDirectory.items`).
+Data, including nested TDirectories, are not read from disk until they are explicitly requested with square brackets (or another `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__ function, like :py:meth:`~uproot4.reading.ReadOnlyDirectory.values` or :py:meth:`~uproot4.reading.ReadOnlyDirectory.items`).
 
 You can get the names of classes without reading the objects by using :py:meth:`~uproot4.reading.ReadOnlyDirectory.classnames`.
 
@@ -256,7 +256,7 @@ For histogramming, I recommend
 Inspecting a TBranches of a TTree
 ---------------------------------
 
-ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__ objects with :py:meth:`~uproot4.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot4.behaviors.TBranch.HasBranches.values`, and :py:meth:`~uproot4.behaviors.TBranch.HasBranches.items` functions. In this case, the values are TBranch objects (with subbranches accessible through ``/`` paths).
+:py:class:`~uproot4.behaviors.TTree.TTree`, with the lists of :py:class:`~uproot4.behaviors.TBranch.TBranch` it contains, are Uproot's most important "overloaded behaviors." Like :py:class:`~uproot4.reading.ReadOnlyDirectory`, a TTree is a `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__, though it maps TBranch names to the (already read) :py:class:`~uproot4.behaviors.TBranch.TBranch` objects it contains. Since TBranches can contain more TBranches, both of these are subclasses of a general :py:class:`~uproot4.behaviors.TBranch.HasBranches`.
 
 .. code-block:: python
 
@@ -281,7 +281,7 @@ ROOT's TTree objects are also `Mapping <https://docs.python.org/3/library/stdtyp
     >>> events["M"]
     <TBranch 'M' at 0x78e574c1e970>
 
-Like a TDirectory's classnames, you can access the data types without reading data by calling :py:meth:`~uproot4.behaviors.TBranch.HasBranches.typenames`.
+Like a TDirectory's :py:meth:`~uproot4.reading.ReadOnlyDirectory.classnames`, you can access the TBranch data types without reading data by calling :py:meth:`~uproot4.behaviors.TBranch.HasBranches.typenames`.
 
 .. code-block:: python
 
@@ -918,11 +918,77 @@ Lazy arrays are especially useful for exploring a large dataset in a convenient 
 Caching and memory management
 -----------------------------
 
-Many of the functions described above have ``object_cache`` and ``array_cache`` options. The ``object_cache`` stores a number of objects like histograms, 
+Many of the functions described above have ``object_cache`` and ``array_cache`` options.
 
+The ``object_cache`` stores a number of objects like TDirectories, histograms, and TTrees. The main effect of this is that
 
+.. code-block:: python
 
+    >>> file = uproot4.open("https://scikit-hep.org/uproot/examples/hepdata-example.root")
+    >>> histogram = file["hpx"]
+    >>> (histogram, histogram)
+    (<TH1F (version 1) at 0x7d9a05a43370>, <TH1F (version 1) at 0x7d9a05a43370>)
 
+and
+
+.. code-block:: python
+
+    >>> (file["hpx"], file["hpx"])
+    (<TH1F (version 1) at 0x7d9a05a43370>, <TH1F (version 1) at 0x7d9a05a43370>)
+
+have identical performance. Not having to declare names for things that are already referenced by name simplifies bookkeeping.
+
+The ``array_cache`` stores array outputs up to a maximum number of bytes. The arrays must have an ``nbytes`` attribute or property to track usage. As with the ``object_cache``, the ``array_cache`` ensures that
+
+.. code-block:: python
+
+    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> array = events["px1"].array()
+    >>> (array, array)
+    (<Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>,
+     <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>)
+
+and
+
+.. code-block:: python
+
+    >>> (events["px1"].array(), events["px1"].array())
+    (<Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>,
+     <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>)
+
+have the same performance, assuming that the caches are not overrun.
+
+The default caches are global objects, ``uproot4.object_cache`` (:py:class:`~uproot4.cache.LRUCache`) and ``uproot4.array_cache`` (:py:class:`~uproot4.cache.LRUArrayCache`).
+
+.. code-block:: python
+
+    >>> uproot4.object_cache
+    <LRUCache (2/100 full) at 0x7f75ed5ccca0>
+    >>> uproot4.array_cache
+    <LRUArrayCache (18432/100000000 bytes full) at 0x7f75ed5ccd00>
+
+The defaults should be fine for general use, but you may want to override them for performance tuning. The `uproot4.open <uproot4.reading.open.html>`__ function lets you specify a new ``object_cache`` and ``array_cache`` for a specific file, which can be any `MutableMapping <https://docs.python.org/3/library/collections.abc.html#collections-abstract-base-classes>`__ (including a plain dict, which would keep objects forever) or ``None`` if you don't want any cache.
+
+Similarly, the array-fetching methods and functions:
+
+- :py:meth:`~uproot4.behaviors.TBranch.TBranch.array`
+- :py:meth:`~uproot4.behaviors.TBranch.HasBranches.arrays`
+- :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate`
+- `uproot4.iterate <uproot4.behaviors.TBranch.iterate.html>`__
+- `uproot4.concatenate <uproot4.behaviors.TBranch.concatenate.html>`__
+- `uproot4.lazy <uproot4.behaviors.TBranch.lazy.html>`__
+
+have an ``array_cache`` option that allows you to override the file's ``array_cache``.
 
 Parallel processing
 -------------------
+
+Data are or can be read in parallel in each of the following three stages.
+
+- Physically reading bytes from disk or remote sources: the parallel processing or single-thread background processing is handled by the specific :py:class:`~uproot4.source.chunk.Source` type, which can be influenced with `uproot4.open <uproot4.reading.open.html>`__ options (particularly ``num_workers`` and ``num_fallback_workers``).
+- Decompressing TBasket (:py:class:`~uproot4.models.TBasket.Model_TBasket`) data: depends on the ``decompression_executor``.
+- Interpreting decompressed data with an array :py:class:`~uproot4.interpretation.Interpretation`: depends on the ``interpretation_executor``.
+
+Like the caches, the default values for the last two are global ``uproot4.decompression_executor`` and ``uproot4.interpretation_executor`` objects. The default ``decompression_executor`` is a :py:class:`~uproot4..source.futures.ThreadPoolExecutor` with as many workers as your computer has CPU cores. Decompression workloads are executed in compiled extensions with the `Python GIL <https://wiki.python.org/moin/GlobalInterpreterLock>`__ released, so they can afford to run with full parallelism. The default ``interpretation_executor`` is a :py:class:`~uproot4.source.futures.TrivialExecutor` that behaves like an distributed executor, but actually runs sequentially. Most interpretation workflows are not computationally intensive or are currently implemented in Python, so they would not currently benefit from parallelism.
+
+If, however, you're working in an environment that puts limits on parallel processing (e.g. the CMS LPC or informal university computers), you may want to modify the defaults, either locally through a ``decompression_executor`` or ``interpretation_executor`` function parameter, or globally by replacing the global object.
