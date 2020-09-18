@@ -13,7 +13,7 @@ def test_issue510b():
         with uproot4.open(skhep_testdata.data_path("uproot-issue510b.root"))[
             "EDepSimEvents"
         ] as t:
-            t["Event"]["Trajectories.Points"].array()
+            t["Event"]["Trajectories.Points"].array(library="np")
 
 
 def test_issue403():
@@ -21,7 +21,7 @@ def test_issue403():
         with uproot4.open(skhep_testdata.data_path("uproot-issue403.root"))[
             "Model"
         ] as t:
-            t["Model.collimatorInfo"].array()
+            t["Model.collimatorInfo"].array(library="np")
 
 
 def test_issue475():
@@ -29,4 +29,4 @@ def test_issue475():
         with uproot4.open(skhep_testdata.data_path("uproot-issue475.root"))[
             "Event/Elec/ElecEvent"
         ] as t:
-            t["fElecChannels"].array()
+            t["fElecChannels"].array(library="np")
