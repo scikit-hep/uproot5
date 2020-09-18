@@ -174,10 +174,7 @@ class TProfile(Profile):
     def values(self):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
         root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
-        return _values_1d(
-            self.member("fBinEntries"),
-            root_cont,
-        )
+        return _values_1d(self.member("fBinEntries"), root_cont,)
 
     def values_errors(self, error_mode=""):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
