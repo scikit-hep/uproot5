@@ -8,6 +8,9 @@ import skhep_testdata
 import uproot4
 
 
+pytest.importorskip("awkward1")
+
+
 def test_open():
     assert isinstance(
         uproot4.open(skhep_testdata.data_path("uproot-issue63.root")),

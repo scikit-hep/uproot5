@@ -26,7 +26,7 @@ def test_any_basket():
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/i4"] as branch:
-        assert branch.basket(0).array(interpretation).tolist() == [
+        assert branch.basket(0).array(interpretation, library="np").tolist() == [
             -15,
             -14,
             -13,
@@ -35,7 +35,7 @@ def test_any_basket():
             -10,
             -9,
         ]
-        assert branch.basket(1).array(interpretation).tolist() == [
+        assert branch.basket(1).array(interpretation, library="np").tolist() == [
             -8,
             -7,
             -6,
@@ -44,7 +44,7 @@ def test_any_basket():
             -3,
             -2,
         ]
-        assert branch.basket(2).array(interpretation).tolist() == [
+        assert branch.basket(2).array(interpretation, library="np").tolist() == [
             -1,
             0,
             1,
@@ -53,7 +53,7 @@ def test_any_basket():
             4,
             5,
         ]
-        assert branch.basket(3).array(interpretation).tolist() == [
+        assert branch.basket(3).array(interpretation, library="np").tolist() == [
             6,
             7,
             8,
@@ -62,7 +62,7 @@ def test_any_basket():
             11,
             12,
         ]
-        assert branch.basket(4).array(interpretation).tolist() == [
+        assert branch.basket(4).array(interpretation, library="np").tolist() == [
             13,
             14,
         ]
