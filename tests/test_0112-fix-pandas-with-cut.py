@@ -18,6 +18,6 @@ def test():
             ["px1", "pmag"],
             cut="pmag < 30",
             aliases={"pmag": "sqrt(px1**2 + py1**2)"},
-            library="pd"
+            library="pd",
         )
         assert isinstance(df, pandas.DataFrame)  # not an empty tuple
