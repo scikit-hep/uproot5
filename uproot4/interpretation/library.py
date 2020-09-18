@@ -608,7 +608,7 @@ in object {3}""".format(
 def _pandas_rangeindex():
     import pandas
 
-    return getattr(pandas, "RangeIndex", pandas.Int64Index)
+    return (getattr(pandas, "RangeIndex", pandas.Int64Index), pandas.Int64Index)
 
 
 def _strided_to_pandas(path, interpretation, data, arrays, columns):
