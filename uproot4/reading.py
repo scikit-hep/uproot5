@@ -112,7 +112,6 @@ def open(
     * :py:func:`~uproot4.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
-
     if isinstance(path, dict) and len(path) == 1:
         ((file_path, object_path),) = path.items()
 

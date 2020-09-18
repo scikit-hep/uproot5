@@ -4,6 +4,7 @@ import importlib
 import inspect
 import pkgutil
 import os.path
+import sys
 
 
 order = [
@@ -41,9 +42,9 @@ def ensure(objname, filename, content):
         overwrite = open(filename, "r").read() != content
     if overwrite:
         open(filename, "w").write(content)
-        print(objname, "(OVERWRITTEN)")
+        sys.err.write(objname + " (OVERWRITTEN)\n")
     else:
-        print(objname)
+        sys.err.write(objname + "\n")
 
 
 def handle_module(modulename, module):
