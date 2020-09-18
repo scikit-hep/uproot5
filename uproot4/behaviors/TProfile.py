@@ -25,9 +25,7 @@ def _effective_entries_1d(fBinEntries, fBinSumw2, fNcells):
     root_sumOfWeights = numpy.array(root_sumOfWeights, dtype=numpy.float64)
 
     root_sumOfWeightSquare = fBinSumw2
-    root_sumOfWeightSquare = numpy.array(
-        root_sumOfWeightSquare, dtype=numpy.float64
-    )
+    root_sumOfWeightSquare = numpy.array(root_sumOfWeightSquare, dtype=numpy.float64)
 
     if len(root_sumOfWeightSquare) == 0 or len(root_sumOfWeightSquare) != fNcells:
         return root_sumOfWeights
@@ -35,24 +33,21 @@ def _effective_entries_1d(fBinEntries, fBinSumw2, fNcells):
     positive = root_sumOfWeightSquare > 0
 
     out = numpy.zeros(len(root_sumOfWeights), dtype=numpy.float64)
-    out[positive] = (
-        root_sumOfWeights[positive] ** 2 / root_sumOfWeightSquare[positive]
-    )
+    out[positive] = root_sumOfWeights[positive] ** 2 / root_sumOfWeightSquare[positive]
     return out
 
+
 # duplicates the first part of '_values_errors_1d'
-def _values_1d(fBinEntries):
+def _values_1d(fBinEntries, root_cont):
     root_sum = fBinEntries
     root_sum = numpy.array(root_sum, dtype=numpy.float64)
     nonzero = root_sum != 0
-
-    (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
-    root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
 
     root_contsum = numpy.zeros(len(root_cont), dtype=numpy.float64)
     root_contsum[nonzero] = root_cont[nonzero] / root_sum[nonzero]
 
     return root_contsum
+
 
 # closely follows the ROOT function, using the same names (with 'root_' prepended)
 # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L660-L721
@@ -177,7 +172,12 @@ class TProfile(Profile):
         )
 
     def values(self):
-        return _values_1d(self.member("fBinEntries"))
+        (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
+        root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
+        return _values_1d(
+            self.member("fBinEntries"),
+            root_cont,
+        )
 
     def values_errors(self, error_mode=""):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)

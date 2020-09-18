@@ -6,6 +6,8 @@ Defines the behavior of ``TProfile2D``.
 
 from __future__ import absolute_import
 
+import numpy
+
 import uproot4.behaviors.TH1
 import uproot4.behaviors.TH2
 import uproot4.behaviors.TProfile
@@ -27,18 +29,22 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
             raise ValueError("axis must be 0, 1 or 'x', 'y' for a TProfile2D")
 
     def effective_entries(self):
-        fBinEntries = self.member("fBinEntries")
-        out = _effective_entries_1d(
+        fBinEntries = numpy.asarray(self.member("fBinEntries"))
+        out = uproot4.behaviors.TProfile._effective_entries_1d(
             fBinEntries.reshape(-1),
-            self.member("fBinSumw2").reshape(-1),
+            numpy.asarray(self.member("fBinSumw2")).reshape(-1),
             self.member("fNcells"),
         )
-        return out.reshape(shape)
+        return out.reshape(fBinEntries.shape)
 
     def values(self):
-        fBinEntries = self.member("fBinEntries")
-        out = uproot4.behaviors.TProfile._values_1d(fBinEntries.reshape(-1))
-        return out.reshape(fBinEntries.shape)
+        (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
+        root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
+        out = uproot4.behaviors.TProfile._values_1d(
+            numpy.asarray(self.member("fBinEntries")).reshape(-1),
+            root_cont.reshape(-1),
+        )
+        return out.reshape(root_cont.shape)
 
     def values_errors(self, error_mode=""):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
