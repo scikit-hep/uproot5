@@ -26,11 +26,35 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
         else:
             raise ValueError("axis must be 0, 1 or 'x', 'y' for a TProfile2D")
 
+    def effective_entries(self):
+        fBinEntries = self.member("fBinEntries")
+        out = _effective_entries_1d(
+            fBinEntries.reshape(-1),
+            self.member("fBinSumw2").reshape(-1),
+            self.member("fNcells"),
+        )
+        return out.reshape(shape)
+
     def values(self):
-        raise NotImplementedError(repr(self))
+        fBinEntries = self.member("fBinEntries")
+        out = uproot4.behaviors.TProfile._values_1d(fBinEntries.reshape(-1))
+        return out.reshape(fBinEntries.shape)
 
     def values_errors(self, error_mode=""):
-        raise NotImplementedError(repr(self))
+        (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
+        root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
+        fSumw2 = self.member("fSumw2", none_if_missing=True)
+        if fSumw2 is not None:
+            fSumw2 = numpy.asarray(fSumw2).reshape(-1)
+        out = uproot4.behaviors.TProfile._values_errors_1d(
+            error_mode,
+            numpy.asarray(self.member("fBinEntries")).reshape(-1),
+            root_cont.reshape(-1),
+            fSumw2,
+            self.member("fNcells"),
+            numpy.asarray(self.member("fBinSumw2")).reshape(-1),
+        )
+        return out.reshape(root_cont.shape)
 
     def to_numpy(self, flow=False, dd=False, errors=False, error_mode=0):
         raise NotImplementedError(repr(self))
