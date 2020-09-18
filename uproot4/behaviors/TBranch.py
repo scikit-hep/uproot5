@@ -210,8 +210,6 @@ def iterate(
 
     global_offset = 0
     for file_path, object_path in files:
-        print(file_path, global_offset)
-
         hasbranches = _regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
