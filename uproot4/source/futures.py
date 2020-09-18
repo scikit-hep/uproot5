@@ -167,7 +167,7 @@ class Worker(threading.Thread):
         """
         future = None
         while True:
-            del future   # don't hang onto a reference while waiting for more work
+            del future  # don't hang onto a reference while waiting for more work
             future = self._work_queue.get()
             if future is None:
                 break
@@ -323,7 +323,7 @@ class ResourceWorker(Worker):
         """
         future = None
         while True:
-            del future   # don't hang onto a reference while waiting for more work
+            del future  # don't hang onto a reference while waiting for more work
             future = self._work_queue.get()
             if future is None:
                 break
