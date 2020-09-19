@@ -21,8 +21,6 @@ jobs:
             python-version: "3.6"
           - platform: "windows-latest"
             python-version: "3.7"
-        # platform: ["windows-latest"]
-        # python-version: ["3.5", "3.6", "3.7", "3.8"]
 
     runs-on: "${{ matrix.platform }}"
     
@@ -39,12 +37,11 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
+          channels: "conda-forge"
 
       - name: "Install most dependencies"
         run: |
           conda env list
-          conda config --add channels conda-forge
-          conda update -n base -c defaults conda
           conda info
           conda install numpy pandas pytest flake8 lz4 python-xxhash
           pip install scikit-hep-testdata
