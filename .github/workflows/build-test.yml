@@ -25,18 +25,22 @@ jobs:
         # python-version: ["3.5", "3.6", "3.7", "3.8"]
 
     runs-on: "${{ matrix.platform }}"
+    
+    # Required for miniconda to activate conda
+    defaults:
+      run:
+        shell: "bash -l {0}"
 
     steps:
       - uses: "actions/checkout@v2"
 
       - name: "Get conda"
-        uses: "goanpeca/setup-miniconda@v1"
+        uses: "conda-incubator/setup-miniconda@v1"
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
 
       - name: "Install most dependencies"
-        shell: "bash -l {0}"
         run: |
           conda env list
           conda config --add channels conda-forge
@@ -47,24 +51,20 @@ jobs:
           conda list
 
       - name: "Install Awkward"
-        shell: "bash -l {0}"
         run: |
           conda env list
           pip install awkward1
           conda list
 
       - name: "Install XRootD"
-        if: "${{ matrix.python-version != 3.5  &&  !contains(matrix.platform, 'macos')  &&  !contains(matrix.platform, 'windows') }}"
-        shell: "bash -l {0}"
+        if: "matrix.python-version != 3.5 && runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
           conda install xrootd
           conda list
 
       - name: "Run flake8"
-        shell: "bash -l {0}"
         run: python -m flake8
 
       - name: "Run pytest"
-        shell: "bash -l {0}"
         run: python -m pytest -vv tests
