@@ -159,25 +159,29 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
 def _expression_to_function(
     expression, keys, aliases, functions, getter, scope, file_path, object_path
 ):
-    node = _expression_to_node(expression, file_path, object_path)
-    try:
-        expr = _ast_as_branch_expression(
-            node.body[0].value, keys, aliases, functions, getter
-        )
-    except KeyError as err:
-        raise uproot4.KeyInFileError(
-            err.args[0],
-            keys=sorted(keys) + list(aliases),
-            file_path=file_path,
-            object_path=object_path,
-        )
+    if expression in keys:
+        return lambda: scope[getter](expression)
 
-    function = ast.parse("lambda: None").body[0].value
-    function.body = expr
-    expression = ast.Expression(function)
-    expression.lineno = getattr(function, "lineno", 1)
-    expression.col_offset = getattr(function, "col_offset", 0)
-    return eval(compile(expression, "<dynamic>", "eval"), scope)
+    else:
+        node = _expression_to_node(expression, file_path, object_path)
+        try:
+            expr = _ast_as_branch_expression(
+                node.body[0].value, keys, aliases, functions, getter
+            )
+        except KeyError as err:
+            raise uproot4.KeyInFileError(
+                err.args[0],
+                keys=sorted(keys) + list(aliases),
+                file_path=file_path,
+                object_path=object_path,
+            )
+
+        function = ast.parse("lambda: None").body[0].value
+        function.body = expr
+        expression = ast.Expression(function)
+        expression.lineno = getattr(function, "lineno", 1)
+        expression.col_offset = getattr(function, "col_offset", 0)
+        return eval(compile(expression, "<dynamic>", "eval"), scope)
 
 
 def _vectorized_erf(complement):
@@ -363,17 +367,21 @@ class PythonLanguage(uproot4.language.Language):
         include dots (attributes). Known ``functions`` and the ``getter`` are
         excluded.
         """
-        node = _expression_to_node(expression, file_path, object_path)
-        try:
-            return list(
-                _walk_ast_yield_symbols(
-                    node, keys, aliases, self._functions, self._getter
+        if expression in keys:
+            return [expression]
+
+        else:
+            node = _expression_to_node(expression, file_path, object_path)
+            try:
+                return list(
+                    _walk_ast_yield_symbols(
+                        node, keys, aliases, self._functions, self._getter
+                    )
                 )
-            )
-        except KeyError as err:
-            raise uproot4.KeyInFileError(
-                err.args[0], file_path=file_path, object_path=object_path
-            )
+            except KeyError as err:
+                raise uproot4.KeyInFileError(
+                    err.args[0], file_path=file_path, object_path=object_path
+                )
 
     def compute_expressions(
         self, arrays, expression_context, keys, aliases, file_path, object_path
