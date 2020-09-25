@@ -1112,9 +1112,10 @@ class HasBranches(Mapping):
             for branch in context["branches"]:
                 if branch.cache_key not in checked:
                     checked.add(branch.cache_key)
-                    for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
-                        entry_start, entry_stop
-                    ):
+                    for (
+                        basket_num,
+                        range_or_basket,
+                    ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
         _ranges_or_baskets_to_arrays(
@@ -2996,12 +2997,12 @@ in file {2} at {3}""".format(
             expression_branches.extend(expression_context[-1][1]["branches"])
 
         c = {
-                "is_primary": is_primary,
-                "is_cut": is_cut,
-                "is_jagged": is_jagged,
-                "is_branch": False,
-                "branches": expression_branches,
-            }
+            "is_primary": is_primary,
+            "is_cut": is_cut,
+            "is_jagged": is_jagged,
+            "is_branch": False,
+            "branches": expression_branches,
+        }
         if rename is not None:
             c["rename"] = rename
         expression_context.append((expression, c))

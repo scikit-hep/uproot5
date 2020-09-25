@@ -410,7 +410,12 @@ class PythonLanguage(uproot4.language.Language):
         scope = {self._getter: getter, "function": self._functions}
         for expression, context in expression_context:
             for branch in context["branches"]:
-                values[branch.name] = arrays[branch.cache_key]
+                array = arrays[branch.cache_key]
+                name = branch.name
+                while isinstance(branch, uproot4.behaviors.TBranch.TBranch):
+                    values[name] = array
+                    branch = branch.parent
+                    name = branch.name + "/" + name
 
         output = {}
         for expression, context in expression_context:

@@ -122,7 +122,9 @@ class Library(object):
         elif how is list:
             return [arrays[name] for name, _ in expression_context]
         elif how is dict or how is None:
-            return dict((_rename(name, c), arrays[name]) for name, c in expression_context)
+            return dict(
+                (_rename(name, c), arrays[name]) for name, c in expression_context
+            )
         else:
             raise TypeError(
                 "for library {0}, how must be tuple, list, dict, or None (for "
@@ -519,10 +521,14 @@ in object {3}""".format(
         elif how is list:
             return [arrays[name] for name, _ in expression_context]
         elif how is dict:
-            return dict((_rename(name, c), arrays[name]) for name, c in expression_context)
+            return dict(
+                (_rename(name, c), arrays[name]) for name, c in expression_context
+            )
         elif how is None:
             return awkward1.zip(
-                dict((_rename(name, c), arrays[name]) for name, c in expression_context),
+                dict(
+                    (_rename(name, c), arrays[name]) for name, c in expression_context
+                ),
                 depth_limit=1,
             )
         elif how == "zip":
@@ -807,7 +813,9 @@ class Pandas(Library):
             return [arrays[name] for name, _ in expression_context]
 
         elif how is dict:
-            return dict((_rename(name, c), arrays[name]) for name, c in expression_context)
+            return dict(
+                (_rename(name, c), arrays[name]) for name, c in expression_context
+            )
 
         elif uproot4._util.isstr(how) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
