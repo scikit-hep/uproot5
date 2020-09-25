@@ -409,12 +409,8 @@ class PythonLanguage(uproot4.language.Language):
 
         scope = {self._getter: getter, "function": self._functions}
         for expression, context in expression_context:
-            single_branch = context.get("branch", None)
-            if single_branch is not None:
-                values[single_branch.name] = arrays[single_branch.cache_key]
-            else:
-                for branch in context["branches"]:
-                    values[branch.name] = arrays[branch.cache_key]
+            for branch in context["branches"]:
+                values[branch.name] = arrays[branch.cache_key]
 
         output = {}
         for expression, context in expression_context:

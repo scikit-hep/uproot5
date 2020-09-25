@@ -1107,13 +1107,15 @@ class HasBranches(Mapping):
         )
 
         ranges_or_baskets = []
+        checked = set()
         for expression, context in expression_context:
-            branch = context.get("branch")
-            if branch is not None and not context["is_duplicate"]:
-                for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
-                    entry_start, entry_stop
-                ):
-                    ranges_or_baskets.append((branch, basket_num, range_or_basket))
+            for branch in context["branches"]:
+                if branch.cache_key not in checked:
+                    checked.add(branch.cache_key)
+                    for basket_num, range_or_basket in branch.entries_to_ranges_or_baskets(
+                        entry_start, entry_stop
+                    ):
+                        ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
         _ranges_or_baskets_to_arrays(
             self,
@@ -1128,20 +1130,22 @@ class HasBranches(Mapping):
         )
 
         if array_cache is not None:
+            checked = set()
             for expression, context in expression_context:
-                branch = context.get("branch")
-                if branch is not None:
-                    interpretation = branchid_interpretation[branch.cache_key]
-                    if branch is not None:
-                        cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
-                            self.cache_key,
-                            expression,
-                            interpretation.cache_key,
-                            entry_start,
-                            entry_stop,
-                            library.name,
-                        )
-                    array_cache[cache_key] = arrays[branch.cache_key]
+                for branch in context["branches"]:
+                    if branch.cache_key not in checked:
+                        checked.add(branch.cache_key)
+                        interpretation = branchid_interpretation[branch.cache_key]
+                        if branch is not None:
+                            cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                                self.cache_key,
+                                expression,
+                                interpretation.cache_key,
+                                entry_start,
+                                entry_stop,
+                                library.name,
+                            )
+                        array_cache[cache_key] = arrays[branch.cache_key]
 
         output = language.compute_expressions(
             arrays,
@@ -1313,13 +1317,7 @@ class HasBranches(Mapping):
                 ranges_or_baskets = []
                 checked = set()
                 for expression, context in expression_context:
-                    single_branch = context.get("branch", None)
-                    if single_branch is not None:
-                        branches_to_check = [single_branch]
-                    else:
-                        branches_to_check = context["branches"]
-
-                    for branch in branches_to_check:
+                    for branch in context["branches"]:
                         if branch.cache_key not in checked:
                             checked.add(branch.cache_key)
                             for (
@@ -2900,34 +2898,21 @@ def _regularize_branchname(
                     repr(interpretation),
                 )
             )
-        else:
-            expression_context.append(
-                (
-                    branchname,
-                    {
-                        "is_primary": is_primary,
-                        "is_cut": is_cut,
-                        "is_duplicate": True,
-                        "is_jagged": is_jagged,
-                        "branch": branch,
-                    },
-                )
-            )
-
     else:
-        expression_context.append(
-            (
-                branchname,
-                {
-                    "is_primary": is_primary,
-                    "is_cut": is_cut,
-                    "is_duplicate": False,
-                    "is_jagged": is_jagged,
-                    "branch": branch,
-                },
-            )
-        )
         branchid_interpretation[branch.cache_key] = interpretation
+
+    expression_context.append(
+        (
+            branchname,
+            {
+                "is_primary": is_primary,
+                "is_cut": is_cut,
+                "is_jagged": is_jagged,
+                "is_branch": True,
+                "branches": [branch],
+            },
+        )
+    )
 
 
 def _regularize_expression(
@@ -3008,16 +2993,13 @@ in file {2} at {3}""".format(
             )
             if expression_context[-1][1]["is_jagged"]:
                 is_jagged = True
-            single_branch = expression_context[-1][1].get("branch", None)
-            if single_branch is not None:
-                expression_branches.append(single_branch)
-            else:
-                expression_branches.extend(expression_context[-1][1]["branches"])
+            expression_branches.extend(expression_context[-1][1]["branches"])
 
         c = {
                 "is_primary": is_primary,
                 "is_cut": is_cut,
                 "is_jagged": is_jagged,
+                "is_branch": False,
                 "branches": expression_branches,
             }
         if rename is not None:
