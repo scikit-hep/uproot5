@@ -339,6 +339,15 @@ class PythonLanguage(uproot4.language.Language):
         """
         return self._getter
 
+    def getter_of(self, name):
+        """
+        Returns a string, an expression in which the ``getter`` is getting
+        ``name`` as a quoted string.
+
+        For example, ``"get('something')"``.
+        """
+        return "{0}({1})".format(self._getter, repr(name))
+
     def free_symbols(self, expression, keys, aliases, file_path, object_path):
         """
         Args:
@@ -400,9 +409,12 @@ class PythonLanguage(uproot4.language.Language):
 
         scope = {self._getter: getter, "function": self._functions}
         for expression, context in expression_context:
-            branch = context.get("branch")
-            if branch is not None:
-                values[expression] = arrays[branch.cache_key]
+            single_branch = context.get("branch", None)
+            if single_branch is not None:
+                values[single_branch.name] = arrays[single_branch.cache_key]
+            else:
+                for branch in context["branches"]:
+                    values[branch.name] = arrays[branch.cache_key]
 
         output = {}
         for expression, context in expression_context:

@@ -1311,26 +1311,34 @@ class HasBranches(Mapping):
                     continue
 
                 ranges_or_baskets = []
+                checked = set()
                 for expression, context in expression_context:
-                    branch = context.get("branch")
-                    if branch is not None and not context["is_duplicate"]:
-                        for (
-                            basket_num,
-                            range_or_basket,
-                        ) in branch.entries_to_ranges_or_baskets(
-                            sub_entry_start, sub_entry_stop
-                        ):
-                            previous_basket = previous_baskets.get(
-                                (branch.cache_key, basket_num)
-                            )
-                            if previous_basket is None:
-                                ranges_or_baskets.append(
-                                    (branch, basket_num, range_or_basket)
+                    single_branch = context.get("branch", None)
+                    if single_branch is not None:
+                        branches_to_check = [single_branch]
+                    else:
+                        branches_to_check = context["branches"]
+
+                    for branch in branches_to_check:
+                        if branch.cache_key not in checked:
+                            checked.add(branch.cache_key)
+                            for (
+                                basket_num,
+                                range_or_basket,
+                            ) in branch.entries_to_ranges_or_baskets(
+                                sub_entry_start, sub_entry_stop
+                            ):
+                                previous_basket = previous_baskets.get(
+                                    (branch.cache_key, basket_num)
                                 )
-                            else:
-                                ranges_or_baskets.append(
-                                    (branch, basket_num, previous_basket)
-                                )
+                                if previous_basket is None:
+                                    ranges_or_baskets.append(
+                                        (branch, basket_num, range_or_basket)
+                                    )
+                                else:
+                                    ranges_or_baskets.append(
+                                        (branch, basket_num, previous_basket)
+                                    )
 
                 arrays = {}
                 _ranges_or_baskets_to_arrays(
@@ -2934,6 +2942,7 @@ def _regularize_expression(
     branchid_interpretation,
     symbol_path,
     is_cut,
+    rename,
 ):
     is_primary = symbol_path == ()
 
@@ -2959,6 +2968,7 @@ def _regularize_expression(
             to_compute = expression
 
         is_jagged = False
+        expression_branches = []
         for symbol in language.free_symbols(
             to_compute,
             keys,
@@ -2994,16 +3004,25 @@ in file {2} at {3}""".format(
                 branchid_interpretation,
                 symbol_path + (symbol,),
                 False,
+                None,
             )
             if expression_context[-1][1]["is_jagged"]:
                 is_jagged = True
+            single_branch = expression_context[-1][1].get("branch", None)
+            if single_branch is not None:
+                expression_branches.append(single_branch)
+            else:
+                expression_branches.extend(expression_context[-1][1]["branches"])
 
-        expression_context.append(
-            (
-                expression,
-                {"is_primary": is_primary, "is_cut": is_cut, "is_jagged": is_jagged},
-            )
-        )
+        c = {
+                "is_primary": is_primary,
+                "is_cut": is_cut,
+                "is_jagged": is_jagged,
+                "branches": expression_branches,
+            }
+        if rename is not None:
+            c["rename"] = rename
+        expression_context.append((expression, c))
 
 
 def _regularize_expressions(
@@ -3037,17 +3056,19 @@ def _regularize_expressions(
                     uproot4.interpretation.grouped.AsGrouped,
                 ),
             ):
-                _regularize_branchname(
+                _regularize_expression(
                     hasbranches,
-                    branchname,
-                    branch,
-                    branch.interpretation,
+                    language.getter_of(branchname),
+                    keys,
+                    aliases,
+                    language,
                     get_from_cache,
                     arrays,
                     expression_context,
                     branchid_interpretation,
-                    True,
+                    (),
                     False,
+                    branchname,
                 )
 
     elif uproot4._util.isstr(expressions):
@@ -3063,6 +3084,7 @@ def _regularize_expressions(
             branchid_interpretation,
             (),
             False,
+            None,
         )
 
     elif isinstance(expressions, Iterable):
@@ -3096,6 +3118,7 @@ def _regularize_expressions(
                     branchid_interpretation,
                     (),
                     False,
+                    None,
                 )
             else:
                 branch = hasbranches[expression]
@@ -3136,6 +3159,7 @@ def _regularize_expressions(
             branchid_interpretation,
             (),
             True,
+            None,
         )
 
     return arrays, expression_context, branchid_interpretation
