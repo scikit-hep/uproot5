@@ -25,7 +25,7 @@ def test_concatenate_awkward():
     )
     arrays = uproot4.concatenate({files: "sample"}, ["i8", "f8"], library="ak")
     assert isinstance(arrays, awkward1.Array)
-    assert set(awkward1.keys(arrays)) == set(["i8", "f8"])
+    assert set(awkward1.fields(arrays)) == set(["i8", "f8"])
     assert len(arrays) == 420
 
 
