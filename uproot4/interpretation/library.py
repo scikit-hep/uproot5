@@ -40,6 +40,13 @@ import uproot4.containers
 import uproot4.extras
 
 
+def _rename(name, context):
+    if context is None or "rename" not in context:
+        return name
+    else:
+        return context["rename"]
+
+
 class Library(object):
     """
     Abstract superclass of array-library handlers, for libraries such as NumPy,
@@ -115,7 +122,9 @@ class Library(object):
         elif how is list:
             return [arrays[name] for name, _ in expression_context]
         elif how is dict or how is None:
-            return dict((name, arrays[name]) for name, _ in expression_context)
+            return dict(
+                (_rename(name, c), arrays[name]) for name, c in expression_context
+            )
         else:
             raise TypeError(
                 "for library {0}, how must be tuple, list, dict, or None (for "
@@ -512,10 +521,14 @@ in object {3}""".format(
         elif how is list:
             return [arrays[name] for name, _ in expression_context]
         elif how is dict:
-            return dict((name, arrays[name]) for name, _ in expression_context)
+            return dict(
+                (_rename(name, c), arrays[name]) for name, c in expression_context
+            )
         elif how is None:
             return awkward1.zip(
-                dict((name, arrays[name]) for name, _ in expression_context),
+                dict(
+                    (_rename(name, c), arrays[name]) for name, c in expression_context
+                ),
                 depth_limit=1,
             )
         elif how == "zip":
@@ -527,17 +540,17 @@ in object {3}""".format(
                 if context["is_jagged"]:
                     if len(offsets) == 0:
                         offsets.append(array.layout.offsets)
-                        jaggeds.append([name])
+                        jaggeds.append([_rename(name, context)])
                     else:
                         for o, j in zip(offsets, jaggeds):
                             if numpy.array_equal(array.layout.offsets, o):
-                                j.append(name)
+                                j.append(_rename(name, context))
                                 break
                         else:
                             offsets.append(array.layout.offsets)
-                            jaggeds.append([name])
+                            jaggeds.append([_rename(name, context)])
                 else:
-                    nonjagged.append(name)
+                    nonjagged.append(_rename(name, context))
             out = None
             if len(nonjagged) != 0:
                 out = awkward1.zip(
@@ -627,6 +640,28 @@ def _pandas_basic_index(pandas, entry_start, entry_stop):
         return pandas.RangeIndex(entry_start, entry_stop)
     else:
         return pandas.Int64Index(uproot4._util.range(entry_start, entry_stop))
+
+
+def _pandas_only_series(pandas, original_arrays, expression_context):
+    arrays = {}
+    names = []
+    for name, context in expression_context:
+        if isinstance(original_arrays[name], pandas.Series):
+            arrays[_rename(name, context)] = original_arrays[name]
+            names.append(_rename(name, context))
+        else:
+            df = original_arrays[name]
+            for subname in df.columns:
+                if df.leaflist:
+                    if isinstance(subname, tuple):
+                        path = (_rename(name, context),) + subname
+                    else:
+                        path = (_rename(name, context), subname)
+                else:
+                    path = _rename(name, context) + subname
+                arrays[path] = df[subname]
+                names.append(path)
+    return arrays, names
 
 
 class Pandas(Library):
@@ -768,43 +803,22 @@ class Pandas(Library):
             index = _pandas_basic_index(pandas, entry_start, entry_stop)
             return pandas.Series(array, index=index)
 
-    def _only_series(self, original_arrays, original_names):
-        pandas = self.imported
-        arrays = {}
-        names = []
-        for name in original_names:
-            if isinstance(original_arrays[name], pandas.Series):
-                arrays[name] = original_arrays[name]
-                names.append(name)
-            else:
-                df = original_arrays[name]
-                for subname in df.columns:
-                    if df.leaflist:
-                        if isinstance(subname, tuple):
-                            path = (name,) + subname
-                        else:
-                            path = (name, subname)
-                    else:
-                        path = name + subname
-                    arrays[path] = df[subname]
-                    names.append(path)
-        return arrays, names
-
     def group(self, arrays, expression_context, how):
         pandas = self.imported
-        names = [name for name, _ in expression_context]
 
         if how is tuple:
-            return tuple(arrays[name] for name in names)
+            return tuple(arrays[name] for name, _ in expression_context)
 
         elif how is list:
-            return [arrays[name] for name in names]
+            return [arrays[name] for name, _ in expression_context]
 
         elif how is dict:
-            return dict((name, arrays[name]) for name in names)
+            return dict(
+                (_rename(name, c), arrays[name]) for name, c in expression_context
+            )
 
         elif uproot4._util.isstr(how) or how is None:
-            arrays, names = self._only_series(arrays, names)
+            arrays, names = _pandas_only_series(pandas, arrays, expression_context)
 
             if any(isinstance(x, tuple) for x in names):
                 longest = max(len(x) for x in names if isinstance(x, tuple))

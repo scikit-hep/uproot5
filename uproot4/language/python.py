@@ -159,25 +159,29 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
 def _expression_to_function(
     expression, keys, aliases, functions, getter, scope, file_path, object_path
 ):
-    node = _expression_to_node(expression, file_path, object_path)
-    try:
-        expr = _ast_as_branch_expression(
-            node.body[0].value, keys, aliases, functions, getter
-        )
-    except KeyError as err:
-        raise uproot4.KeyInFileError(
-            err.args[0],
-            keys=sorted(keys) + list(aliases),
-            file_path=file_path,
-            object_path=object_path,
-        )
+    if expression in keys:
+        return lambda: scope[getter](expression)
 
-    function = ast.parse("lambda: None").body[0].value
-    function.body = expr
-    expression = ast.Expression(function)
-    expression.lineno = getattr(function, "lineno", 1)
-    expression.col_offset = getattr(function, "col_offset", 0)
-    return eval(compile(expression, "<dynamic>", "eval"), scope)
+    else:
+        node = _expression_to_node(expression, file_path, object_path)
+        try:
+            expr = _ast_as_branch_expression(
+                node.body[0].value, keys, aliases, functions, getter
+            )
+        except KeyError as err:
+            raise uproot4.KeyInFileError(
+                err.args[0],
+                keys=sorted(keys) + list(aliases),
+                file_path=file_path,
+                object_path=object_path,
+            )
+
+        function = ast.parse("lambda: None").body[0].value
+        function.body = expr
+        expression = ast.Expression(function)
+        expression.lineno = getattr(function, "lineno", 1)
+        expression.col_offset = getattr(function, "col_offset", 0)
+        return eval(compile(expression, "<dynamic>", "eval"), scope)
 
 
 def _vectorized_erf(complement):
@@ -339,6 +343,15 @@ class PythonLanguage(uproot4.language.Language):
         """
         return self._getter
 
+    def getter_of(self, name):
+        """
+        Returns a string, an expression in which the ``getter`` is getting
+        ``name`` as a quoted string.
+
+        For example, ``"get('something')"``.
+        """
+        return "{0}({1})".format(self._getter, repr(name))
+
     def free_symbols(self, expression, keys, aliases, file_path, object_path):
         """
         Args:
@@ -354,17 +367,21 @@ class PythonLanguage(uproot4.language.Language):
         include dots (attributes). Known ``functions`` and the ``getter`` are
         excluded.
         """
-        node = _expression_to_node(expression, file_path, object_path)
-        try:
-            return list(
-                _walk_ast_yield_symbols(
-                    node, keys, aliases, self._functions, self._getter
+        if expression in keys:
+            return [expression]
+
+        else:
+            node = _expression_to_node(expression, file_path, object_path)
+            try:
+                return list(
+                    _walk_ast_yield_symbols(
+                        node, keys, aliases, self._functions, self._getter
+                    )
                 )
-            )
-        except KeyError as err:
-            raise uproot4.KeyInFileError(
-                err.args[0], file_path=file_path, object_path=object_path
-            )
+            except KeyError as err:
+                raise uproot4.KeyInFileError(
+                    err.args[0], file_path=file_path, object_path=object_path
+                )
 
     def compute_expressions(
         self, arrays, expression_context, keys, aliases, file_path, object_path
@@ -400,9 +417,13 @@ class PythonLanguage(uproot4.language.Language):
 
         scope = {self._getter: getter, "function": self._functions}
         for expression, context in expression_context:
-            branch = context.get("branch")
-            if branch is not None:
-                values[expression] = arrays[branch.cache_key]
+            for branch in context["branches"]:
+                array = arrays[branch.cache_key]
+                name = branch.name
+                while isinstance(branch, uproot4.behaviors.TBranch.TBranch):
+                    values[name] = array
+                    branch = branch.parent
+                    name = branch.name + "/" + name
 
         output = {}
         for expression, context in expression_context:
