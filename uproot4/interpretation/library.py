@@ -530,7 +530,8 @@ in object {3}""".format(
             else:
                 return awkward1.zip(
                     dict(
-                        (_rename(name, c), arrays[name]) for name, c in expression_context
+                        (_rename(name, c), arrays[name])
+                        for name, c in expression_context
                     ),
                     depth_limit=1,
                 )
@@ -579,7 +580,9 @@ in object {3}""".format(
                 if cut == 0:
                     common = "jagged{0}".format(number)
                     if len(jagged) == 0:
-                        subarray = awkward1.Array(awkward1.layout.RecordArray([], keys=[]))
+                        subarray = awkward1.Array(
+                            awkward1.layout.RecordArray([], keys=[])
+                        )
                     else:
                         subarray = awkward1.zip(
                             dict((name, renamed_arrays[name]) for name in jagged)
@@ -587,7 +590,9 @@ in object {3}""".format(
                 else:
                     common = jagged[0][:cut].strip("_./")
                     if len(jagged) == 0:
-                        subarray = awkward1.Array(awkward1.layout.RecordArray([], keys=[]))
+                        subarray = awkward1.Array(
+                            awkward1.layout.RecordArray([], keys=[])
+                        )
                     else:
                         subarray = awkward1.zip(
                             dict(

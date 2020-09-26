@@ -384,10 +384,19 @@ class PythonLanguage(uproot4.language.Language):
                 )
 
     def compute_expressions(
-        self, arrays, expression_context, keys, aliases, file_path, object_path
+        self,
+        hasbranches,
+        arrays,
+        expression_context,
+        keys,
+        aliases,
+        file_path,
+        object_path,
     ):
         """
         Args:
+            hasbranches (:py:class:`~uproot4.behavior.TBranch.HasBranches`): The
+                ``TTree`` or ``TBranch`` that is requesting a computation.
             arrays (dict of arrays): Inputs to the computation.
             expression_context (list of (str, dict) tuples): Expression strings
                 and a dict of metadata about each.
@@ -420,11 +429,15 @@ class PythonLanguage(uproot4.language.Language):
             for branch in context["branches"]:
                 array = arrays[branch.cache_key]
                 name = branch.name
-                while isinstance(branch, uproot4.behaviors.TBranch.TBranch):
+                while branch is not hasbranches:
                     if name in keys:
                         values[name] = array
                     branch = branch.parent
-                    name = branch.name + "/" + name
+                    if branch is not hasbranches:
+                        name = branch.name + "/" + name
+                name = "/" + name
+                if name in keys:
+                    values[name] = array
 
         output = {}
         for expression, context in expression_context:

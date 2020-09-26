@@ -1149,6 +1149,7 @@ class HasBranches(Mapping):
                         array_cache[cache_key] = arrays[branch.cache_key]
 
         output = language.compute_expressions(
+            self,
             arrays,
             expression_context,
             keys,
@@ -1353,6 +1354,7 @@ class HasBranches(Mapping):
                 )
 
                 output = language.compute_expressions(
+                    self,
                     arrays,
                     expression_context,
                     keys,
