@@ -1638,9 +1638,19 @@ class HasBranches(Mapping):
                     repr(filter_branch)
                 )
             )
+
+        def _filter_name_deep(branch):
+            name = branch.name
+            while branch is not self:
+                if filter_name(name):
+                    return True
+                branch = branch.parent
+                name = branch.name + "/" + name
+            return False
+
         for branch in self.branches:
             if (
-                (filter_name is no_filter or filter_name(branch.name))
+                (filter_name is no_filter or _filter_name_deep(branch))
                 and (filter_typename is no_filter or filter_typename(branch.typename))
                 and (filter_branch is no_filter or filter_branch(branch))
             ):
@@ -1658,7 +1668,7 @@ class HasBranches(Mapping):
                         k2 = "{0}/{1}".format(branch.name, k1)
                     else:
                         k2 = k1
-                    if filter_name is no_filter or filter_name(k2):
+                    if filter_name is no_filter or _filter_name_deep(v):
                         yield k2, v
 
     def itertypenames(
