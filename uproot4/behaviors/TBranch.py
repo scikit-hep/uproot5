@@ -1639,18 +1639,12 @@ class HasBranches(Mapping):
                 )
             )
 
-        def _filter_name_deep(branch):
-            name = branch.name
-            while branch is not self:
-                if filter_name(name):
-                    return True
-                branch = branch.parent
-                name = branch.name + "/" + name
-            return False
-
         for branch in self.branches:
             if (
-                (filter_name is no_filter or _filter_name_deep(branch))
+                (
+                    filter_name is no_filter
+                    or _filter_name_deep(filter_name, self, branch)
+                )
                 and (filter_typename is no_filter or filter_typename(branch.typename))
                 and (filter_branch is no_filter or filter_branch(branch))
             ):
@@ -1668,7 +1662,9 @@ class HasBranches(Mapping):
                         k2 = "{0}/{1}".format(branch.name, k1)
                     else:
                         k2 = k1
-                    if filter_name is no_filter or _filter_name_deep(v):
+                    if filter_name is no_filter or _filter_name_deep(
+                        filter_name, self, v
+                    ):
                         yield k2, v
 
     def itertypenames(
@@ -2677,6 +2673,16 @@ in file {3}""".format(
             interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
         )[0][skip_bytes:]
         return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+
+
+def _filter_name_deep(filter_name, hasbranches, branch):
+    name = branch.name
+    while branch is not hasbranches:
+        if filter_name(name):
+            return True
+        branch = branch.parent
+        name = branch.name + "/" + name
+    return False
 
 
 def _all_keys(hasbranches):
