@@ -1049,7 +1049,7 @@ class HasBranches(Mapping):
         See also :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
-        keys = _all_keys(self)
+        keys = _keys_deep(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot4._util.regularize_filter(filter_branch)
             return self.parent.arrays(
@@ -1254,7 +1254,7 @@ class HasBranches(Mapping):
         See also :py:func:`~uproot4.behavior.TBranch.iterate` to iterate over many
         files.
         """
-        keys = _all_keys(self)
+        keys = _keys_deep(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot4._util.regularize_filter(filter_branch)
             for x in self.parent.iterate(
@@ -1778,7 +1778,7 @@ class HasBranches(Mapping):
             self.tree.num_entries, entry_start, entry_stop
         )
 
-        keys = _all_keys(self)
+        keys = _keys_deep(self)
         aliases = _regularize_aliases(self, aliases)
         arrays, expression_context, branchid_interpretation = _regularize_expressions(
             self,
@@ -2676,24 +2676,29 @@ in file {3}""".format(
 
 
 def _filter_name_deep(filter_name, hasbranches, branch):
-    name = branch.name
+    shallow = name = branch.name
+    if filter_name(name):
+        return True
     while branch is not hasbranches:
-        if filter_name(name):
-            return True
         branch = branch.parent
-        name = branch.name + "/" + name
-    return False
+        if branch is not hasbranches:
+            name = branch.name + "/" + name
+    if name != shallow and filter_name(name):
+        return True
+    return filter_name("/" + name)
 
 
-def _all_keys(hasbranches):
+def _keys_deep(hasbranches):
     out = set()
     for branch in hasbranches.itervalues(recursive=True):
-        tmp = branch
-        name = tmp.name
-        while tmp is not hasbranches:
-            out.add(name)
-            tmp = tmp.parent
-            name = tmp.name + "/" + name
+        name = branch.name
+        out.add(name)
+        while branch is not hasbranches:
+            branch = branch.parent
+            if branch is not hasbranches:
+                name = branch.name + "/" + name
+        out.add(name)
+        out.add("/" + name)
     return out
 
 

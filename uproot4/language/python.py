@@ -421,7 +421,8 @@ class PythonLanguage(uproot4.language.Language):
                 array = arrays[branch.cache_key]
                 name = branch.name
                 while isinstance(branch, uproot4.behaviors.TBranch.TBranch):
-                    values[name] = array
+                    if name in keys:
+                        values[name] = array
                     branch = branch.parent
                     name = branch.name + "/" + name
 
