@@ -525,18 +525,23 @@ in object {3}""".format(
                 (_rename(name, c), arrays[name]) for name, c in expression_context
             )
         elif how is None:
-            return awkward1.zip(
-                dict(
-                    (_rename(name, c), arrays[name]) for name, c in expression_context
-                ),
-                depth_limit=1,
-            )
+            if len(expression_context) == 0:
+                return awkward1.Array(awkward1.layout.RecordArray([], keys=[]))
+            else:
+                return awkward1.zip(
+                    dict(
+                        (_rename(name, c), arrays[name])
+                        for name, c in expression_context
+                    ),
+                    depth_limit=1,
+                )
         elif how == "zip":
             nonjagged = []
             offsets = []
             jaggeds = []
+            renamed_arrays = {}
             for name, context in expression_context:
-                array = arrays[name]
+                array = renamed_arrays[_rename(name, context)] = arrays[name]
                 if context["is_jagged"]:
                     if len(offsets) == 0:
                         offsets.append(array.layout.offsets)
@@ -551,11 +556,16 @@ in object {3}""".format(
                             jaggeds.append([_rename(name, context)])
                 else:
                     nonjagged.append(_rename(name, context))
+
             out = None
             if len(nonjagged) != 0:
-                out = awkward1.zip(
-                    dict((name, arrays[name]) for name in nonjagged), depth_limit=1
-                )
+                if len(nonjagged) == 0:
+                    out = awkward1.Array(awkward1.layout.RecordArray([], keys=[]))
+                else:
+                    out = awkward1.zip(
+                        dict((name, renamed_arrays[name]) for name in nonjagged),
+                        depth_limit=1,
+                    )
             for number, jagged in enumerate(jaggeds):
                 cut = len(jagged[0])
                 for name in jagged:
@@ -569,14 +579,27 @@ in object {3}""".format(
                         break
                 if cut == 0:
                     common = "jagged{0}".format(number)
-                    subarray = awkward1.zip(
-                        dict((name, arrays[name]) for name in jagged)
-                    )
+                    if len(jagged) == 0:
+                        subarray = awkward1.Array(
+                            awkward1.layout.RecordArray([], keys=[])
+                        )
+                    else:
+                        subarray = awkward1.zip(
+                            dict((name, renamed_arrays[name]) for name in jagged)
+                        )
                 else:
                     common = jagged[0][:cut].strip("_./")
-                    subarray = awkward1.zip(
-                        dict((name[cut:].strip("_./"), arrays[name]) for name in jagged)
-                    )
+                    if len(jagged) == 0:
+                        subarray = awkward1.Array(
+                            awkward1.layout.RecordArray([], keys=[])
+                        )
+                    else:
+                        subarray = awkward1.zip(
+                            dict(
+                                (name[cut:].strip("_./"), renamed_arrays[name])
+                                for name in jagged
+                            )
+                        )
                 if out is None:
                     out = awkward1.zip({common: subarray}, depth_limit=1)
                 else:
