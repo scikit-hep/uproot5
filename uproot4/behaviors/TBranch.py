@@ -1049,7 +1049,7 @@ class HasBranches(Mapping):
         See also :py:meth:`~uproot4.behavior.TBranch.HasBranches.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
-        keys = set(self.keys(recursive=True, full_paths=False))
+        keys = _all_keys(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot4._util.regularize_filter(filter_branch)
             return self.parent.arrays(
@@ -1254,7 +1254,7 @@ class HasBranches(Mapping):
         See also :py:func:`~uproot4.behavior.TBranch.iterate` to iterate over many
         files.
         """
-        keys = set(self.keys(recursive=True, full_paths=False))
+        keys = _all_keys(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot4._util.regularize_filter(filter_branch)
             for x in self.parent.iterate(
@@ -1772,7 +1772,7 @@ class HasBranches(Mapping):
             self.tree.num_entries, entry_start, entry_stop
         )
 
-        keys = set(self.keys(recursive=True, full_paths=False))
+        keys = _all_keys(self)
         aliases = _regularize_aliases(self, aliases)
         arrays, expression_context, branchid_interpretation = _regularize_expressions(
             self,
@@ -2667,6 +2667,18 @@ in file {3}""".format(
             interpretation, entry_start=entry, entry_stop=entry + 1, library="np"
         )[0][skip_bytes:]
         return out[: (len(out) // dtype.itemsize) * dtype.itemsize].view(dtype)
+
+
+def _all_keys(hasbranches):
+    out = set()
+    for branch in hasbranches.itervalues(recursive=True):
+        tmp = branch
+        name = tmp.name
+        while tmp is not hasbranches:
+            out.add(name)
+            tmp = tmp.parent
+            name = tmp.name + "/" + name
+    return out
 
 
 _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
