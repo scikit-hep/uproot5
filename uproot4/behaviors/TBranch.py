@@ -2189,7 +2189,13 @@ class TBranch(HasBranches):
         for basket in self.embedded_baskets:
             out.append(out[-1] + basket.num_entries)
 
-        if out[-1] != self.num_entries and self.interpretation is not None:
+        if (
+            out[-1] != self.num_entries
+            and self.interpretation is not None
+            and not isinstance(
+                self.interpretation, uproot4.interpretation.grouped.AsGrouped
+            )
+        ):
             raise ValueError(
                 """entries in normal baskets ({0}) plus embedded baskets ({1}) """
                 """don't add up to expected number of entries ({2})

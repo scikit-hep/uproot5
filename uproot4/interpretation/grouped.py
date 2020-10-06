@@ -94,7 +94,9 @@ class AsGrouped(uproot4.interpretation.Interpretation):
         for x, y in self._subbranches.items():
             if y is not None:
                 names.append(x)
-                fields.append(y.awkward_form(file, index_format, header, tobject_header))
+                fields.append(
+                    y.awkward_form(file, index_format, header, tobject_header)
+                )
 
         return awkward1.forms.RecordForm(fields, names)
 

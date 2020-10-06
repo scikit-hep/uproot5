@@ -344,7 +344,7 @@ def interpretation_of(branch, context, simplify=True):
 
     try:
         if len(branch.member("fLeaves")) == 0:
-            pass
+            raise NotNumerical()
 
         elif len(branch.member("fLeaves")) == 1:
             leaf = branch.member("fLeaves")[0]
@@ -411,19 +411,20 @@ def interpretation_of(branch, context, simplify=True):
         ):
             return uproot4.interpretation.strings.AsStrings(typename="TString")
 
-        if len(branch.member("fLeaves")) != 1:
+        if len(branch.member("fLeaves")) == 1:
+            leaf = branch.member("fLeaves")[0]
+
+            if leaf.classname == "TLeafC":
+                return uproot4.interpretation.strings.AsStrings()
+
+        elif len(branch.member("fLeaves")) > 1:
             raise UnknownInterpretation(
-                "more or less than one TLeaf ({0}) in a non-numerical TBranch".format(
+                "more than one TLeaf ({0}) in a non-numerical TBranch".format(
                     len(branch.member("fLeaves"))
                 ),
                 branch.file.file_path,
                 branch.object_path,
             )
-
-        leaf = branch.member("fLeaves")[0]
-
-        if leaf.classname == "TLeafC":
-            return uproot4.interpretation.strings.AsStrings()
 
         if branch.top_level and branch.has_member("fClassName"):
             model_cls = parse_typename(
@@ -473,9 +474,9 @@ def interpretation_of(branch, context, simplify=True):
             else:
                 return out
 
-        raise UnknownInterpretation(
-            "none of the rules matched", branch.file.file_path, branch.object_path,
-        )
+    raise UnknownInterpretation(
+        "none of the rules matched", branch.file.file_path, branch.object_path,
+    )
 
 
 _tokenize_typename_pattern = re.compile(
