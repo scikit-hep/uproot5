@@ -13,12 +13,12 @@ import uproot4.extras
 
 
 class AsGrouped(uproot4.interpretation.Interpretation):
-    """
+    u"""
     Args:
         branch (:py:class:`~uproot4.behavior.TBranch.TBranch`): The ``TBranch`` that
             represents the group.
-        subbranches (list of :py:class:`~uproot4.behavior.TBranch.TBranch`): The
-            ``TBranches`` that contain the actual data.
+        subbranches (dict of str \u2192 :py:class:`~uproot4.behavior.TBranch.TBranch`): Names
+            and interpretations of the ``TBranches`` that actually contain data.
         typename (None or str): If None, construct a plausible C++ typename.
             Otherwise, take the suggestion as given.
 
