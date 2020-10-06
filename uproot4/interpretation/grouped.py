@@ -69,6 +69,7 @@ class AsGrouped(uproot4.interpretation.Interpretation):
             ",".join(
                 "{0}:{1}".format(repr(x), y.cache_key)
                 for x, y in self._subbranches.items()
+                if y is not None
             ),
         )
 
@@ -81,6 +82,7 @@ class AsGrouped(uproot4.interpretation.Interpretation):
                 ", ".join(
                     "{0}:{1}".format(x, y.typename)
                     for x, y in self._subbranches.items()
+                    if y is not None
                 )
             )
 
@@ -90,8 +92,9 @@ class AsGrouped(uproot4.interpretation.Interpretation):
         names = []
         fields = []
         for x, y in self._subbranches.items():
-            names.append(x)
-            fields.append(y.awkward_form(file, index_format, header, tobject_header))
+            if y is not None:
+                names.append(x)
+                fields.append(y.awkward_form(file, index_format, header, tobject_header))
 
         return awkward1.forms.RecordForm(fields, names)
 
