@@ -1130,6 +1130,10 @@ class HasBranches(Mapping):
             arrays,
         )
 
+        _fix_asgrouped(
+            arrays, expression_context, branchid_interpretation, library, how
+        )
+
         if array_cache is not None:
             checked = set()
             for expression, context in expression_context:
@@ -1351,6 +1355,10 @@ class HasBranches(Mapping):
                     interpretation_executor,
                     library,
                     arrays,
+                )
+
+                _fix_asgrouped(
+                    arrays, expression_context, branchid_interpretation, library, how
                 )
 
                 output = language.compute_expressions(
@@ -2063,25 +2071,9 @@ class TBranch(HasBranches):
             arrays,
         )
 
-        index_start = 0
-        for index_stop, (expression, context) in enumerate(expression_context):
-            if context["is_branch"]:
-                branch = context["branches"][-1]
-                interpretation = branchid_interpretation[branch.cache_key]
-                if isinstance(interpretation, uproot4.interpretation.grouped.AsGrouped):
-                    assert arrays[branch.cache_key] is None
-
-                    limited_context = dict(expression_context[index_start:index_stop])
-
-                    subbranches = context["branches"][:-1]
-                    subarrays = {}
-                    subcontext = []
-                    for subname in interpretation.subbranches:
-                        subbranch = branch[subname]
-                        subarrays[subname] = arrays[subbranch.cache_key]
-                        subcontext.append((subname, limited_context[subname]))
-
-                    arrays[branch.cache_key] = library.group(subarrays, subcontext, None)
+        _fix_asgrouped(
+            arrays, expression_context, branchid_interpretation, library, None
+        )
 
         if array_cache is not None:
             cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
@@ -3301,8 +3293,6 @@ def _ranges_or_baskets_to_arrays(
         ranges_or_baskets[original_index] = branch, basket_num, basket
 
     def chunk_to_basket(chunk, branch, basket_num):
-        print("chunk_to_basket", branch, basket_num)
-
         try:
             cursor = uproot4.source.cursor.Cursor(chunk.start)
             basket = uproot4.models.TBasket.Model_TBasket.read(
@@ -3321,8 +3311,6 @@ def _ranges_or_baskets_to_arrays(
             notifications.put(basket)
 
     def basket_to_array(basket):
-        print("basket_to_array", basket)
-
         try:
             assert basket.basket_num is not None
             branch = basket.parent
@@ -3367,8 +3355,6 @@ def _ranges_or_baskets_to_arrays(
             notifications.put(None)
 
     while len(arrays) < len(branchid_interpretation):
-        print(len(arrays), len(branchid_interpretation))
-
         obj = notifications.get()
 
         if isinstance(obj, uproot4.source.chunk.Chunk):
@@ -3388,6 +3374,29 @@ def _ranges_or_baskets_to_arrays(
 
         else:
             raise AssertionError(obj)
+
+
+def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library, how):
+    index_start = 0
+    for index_stop, (expression, context) in enumerate(expression_context):
+        if context["is_branch"]:
+            branch = context["branches"][-1]
+            interpretation = branchid_interpretation[branch.cache_key]
+            if isinstance(interpretation, uproot4.interpretation.grouped.AsGrouped):
+                assert arrays[branch.cache_key] is None
+
+                limited_context = dict(expression_context[index_start:index_stop])
+
+                subarrays = {}
+                subcontext = []
+                for subname in interpretation.subbranches:
+                    subbranch = branch[subname]
+                    subarrays[subname] = arrays[subbranch.cache_key]
+                    subcontext.append((subname, limited_context[subname]))
+
+                arrays[branch.cache_key] = library.group(subarrays, subcontext, how)
+
+                index_start = index_stop
 
 
 def _hasbranches_num_entries_for(
