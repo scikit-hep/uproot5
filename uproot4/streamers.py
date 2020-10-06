@@ -369,7 +369,12 @@ class Model_TStreamerInfo(uproot4.model.Model):
         """
         for element in self._members["fElements"]:
             if isinstance(element, Model_TStreamerBase):
-                base = streamers[element.name][element.base_version]
+                streamers_with_name = streamers[element.name]
+                base_version = element.base_version
+                if base_version is None:
+                    base = streamers_with_name[max(streamers_with_name)]
+                else:
+                    base = streamers_with_name[base_version]
                 for x in base.walk_members(streamers):
                     yield x
             else:
@@ -612,7 +617,10 @@ class Model_TStreamerBase(Model_TStreamerElement):
         """
         The base version (``fBaseVersion``) of this ``TStreamerBase``.
         """
-        return self._members["fBaseVersion"]
+        if self._members["fBaseVersion"] == -1:
+            return None
+        else:
+            return self._members["fBaseVersion"]
 
     def show(self, stream=sys.stdout):
         pass
