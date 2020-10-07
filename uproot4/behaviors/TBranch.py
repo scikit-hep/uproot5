@@ -1130,6 +1130,10 @@ class HasBranches(Mapping):
             arrays,
         )
 
+        _fix_asgrouped(
+            arrays, expression_context, branchid_interpretation, library, how
+        )
+
         if array_cache is not None:
             checked = set()
             for expression, context in expression_context:
@@ -1351,6 +1355,10 @@ class HasBranches(Mapping):
                     interpretation_executor,
                     library,
                     arrays,
+                )
+
+                _fix_asgrouped(
+                    arrays, expression_context, branchid_interpretation, library, how
                 )
 
                 output = language.compute_expressions(
@@ -1999,7 +2007,6 @@ class TBranch(HasBranches):
             interpretation = self.interpretation
         else:
             interpretation = _regularize_interpretation(interpretation)
-        branchid_interpretation = {self.cache_key: interpretation}
 
         entry_start, entry_stop = _regularize_entries_start_stop(
             self.num_entries, entry_start, entry_stop
@@ -2010,25 +2017,48 @@ class TBranch(HasBranches):
         array_cache = _regularize_array_cache(array_cache, self._file)
         library = uproot4.interpretation.library._regularize_library(library)
 
-        cache_key = "{0}:{1}:{2}-{3}:{4}".format(
-            self.cache_key,
-            interpretation.cache_key,
-            entry_start,
-            entry_stop,
-            library.name,
-        )
-        if array_cache is not None:
-            got = array_cache.get(cache_key)
-            if got is not None:
-                return got
-
-        ranges_or_baskets = []
-        for basket_num, range_or_basket in self.entries_to_ranges_or_baskets(
-            entry_start, entry_stop
-        ):
-            ranges_or_baskets.append((self, basket_num, range_or_basket))
+        def get_from_cache(branchname, interpretation):
+            if array_cache is not None:
+                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                    self.cache_key,
+                    branchname,
+                    interpretation.cache_key,
+                    entry_start,
+                    entry_stop,
+                    library.name,
+                )
+                return array_cache.get(cache_key)
+            else:
+                return None
 
         arrays = {}
+        expression_context = []
+        branchid_interpretation = {}
+        _regularize_branchname(
+            self,
+            self.name,
+            self,
+            interpretation,
+            get_from_cache,
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            True,
+            False,
+        )
+
+        ranges_or_baskets = []
+        checked = set()
+        for expression, context in expression_context:
+            for branch in context["branches"]:
+                if branch.cache_key not in checked:
+                    checked.add(branch.cache_key)
+                    for (
+                        basket_num,
+                        range_or_basket,
+                    ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
+                        ranges_or_baskets.append((branch, basket_num, range_or_basket))
+
         _ranges_or_baskets_to_arrays(
             self,
             ranges_or_baskets,
@@ -2041,7 +2071,19 @@ class TBranch(HasBranches):
             arrays,
         )
 
+        _fix_asgrouped(
+            arrays, expression_context, branchid_interpretation, library, None
+        )
+
         if array_cache is not None:
+            cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                self.cache_key,
+                self.name,
+                interpretation.cache_key,
+                entry_start,
+                entry_stop,
+                library.name,
+            )
             array_cache[cache_key] = arrays[self.cache_key]
 
         return arrays[self.cache_key]
@@ -2189,7 +2231,13 @@ class TBranch(HasBranches):
         for basket in self.embedded_baskets:
             out.append(out[-1] + basket.num_entries)
 
-        if out[-1] != self.num_entries and self.interpretation is not None:
+        if (
+            out[-1] != self.num_entries
+            and self.interpretation is not None
+            and not isinstance(
+                self.interpretation, uproot4.interpretation.grouped.AsGrouped
+            )
+        ):
             raise ValueError(
                 """entries in normal baskets ({0}) plus embedded baskets ({1}) """
                 """don't add up to expected number of entries ({2})
@@ -2922,6 +2970,29 @@ def _regularize_branchname(
 
     is_jagged = isinstance(interpretation, uproot4.interpretation.jagged.AsJagged)
 
+    if isinstance(interpretation, uproot4.interpretation.grouped.AsGrouped):
+        branches = []
+        for subname, subinterp in interpretation.subbranches.items():
+            _regularize_branchname(
+                hasbranches,
+                subname,
+                branch[subname],
+                subinterp,
+                get_from_cache,
+                arrays,
+                expression_context,
+                branchid_interpretation,
+                False,
+                is_cut,
+            )
+            branches.extend(expression_context[-1][1]["branches"])
+
+        branches.append(branch)
+        arrays[branch.cache_key] = None
+
+    else:
+        branches = [branch]
+
     if branch.cache_key in branchid_interpretation:
         if (
             branchid_interpretation[branch.cache_key].cache_key
@@ -2937,18 +3008,14 @@ def _regularize_branchname(
     else:
         branchid_interpretation[branch.cache_key] = interpretation
 
-    expression_context.append(
-        (
-            branchname,
-            {
-                "is_primary": is_primary,
-                "is_cut": is_cut,
-                "is_jagged": is_jagged,
-                "is_branch": True,
-                "branches": [branch],
-            },
-        )
-    )
+    c = {
+        "is_primary": is_primary,
+        "is_cut": is_cut,
+        "is_jagged": is_jagged,
+        "is_branch": True,
+        "branches": branches,
+    }
+    expression_context.append((branchname, c))
 
 
 def _regularize_expression(
@@ -3307,6 +3374,29 @@ def _ranges_or_baskets_to_arrays(
 
         else:
             raise AssertionError(obj)
+
+
+def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library, how):
+    index_start = 0
+    for index_stop, (expression, context) in enumerate(expression_context):
+        if context["is_branch"]:
+            branch = context["branches"][-1]
+            interpretation = branchid_interpretation[branch.cache_key]
+            if isinstance(interpretation, uproot4.interpretation.grouped.AsGrouped):
+                assert arrays[branch.cache_key] is None
+
+                limited_context = dict(expression_context[index_start:index_stop])
+
+                subarrays = {}
+                subcontext = []
+                for subname in interpretation.subbranches:
+                    subbranch = branch[subname]
+                    subarrays[subname] = arrays[subbranch.cache_key]
+                    subcontext.append((subname, limited_context[subname]))
+
+                arrays[branch.cache_key] = library.group(subarrays, subcontext, how)
+
+                index_start = index_stop
 
 
 def _hasbranches_num_entries_for(

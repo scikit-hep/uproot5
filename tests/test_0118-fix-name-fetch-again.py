@@ -66,8 +66,6 @@ def test_numpy():
         assert list(t.arrays("P3.Px", library="np").keys()) == ["P3.Px"]
         with pytest.raises(Exception):
             t.arrays("/P3.Px", library="np")
-        with pytest.raises(Exception):
-            t.arrays("P3/P3.Px", library="np")
         assert list(t.arrays("evt/P3/P3.Px", library="np").keys()) == ["evt/P3/P3.Px"]
         assert list(t.arrays("/evt/P3/P3.Px", library="np").keys()) == ["/evt/P3/P3.Px"]
         assert list(t["evt"].arrays("P3.Px", library="np").keys()) == ["P3.Px"]
@@ -104,8 +102,6 @@ def test_awkward():
         assert t.arrays("P3.Px", library="ak").fields == ["P3.Px"]
         with pytest.raises(Exception):
             t.arrays("/P3.Px", library="ak")
-        with pytest.raises(Exception):
-            t.arrays("P3/P3.Px", library="ak")
         assert t.arrays("evt/P3/P3.Px", library="ak").fields == ["evt/P3/P3.Px"]
         assert t.arrays("/evt/P3/P3.Px", library="ak").fields == ["/evt/P3/P3.Px"]
         assert t["evt"].arrays("P3.Px", library="ak").fields == ["P3.Px"]
@@ -160,8 +156,6 @@ def test_pandas():
         assert t.arrays("P3.Px", library="pd").columns.tolist() == ["P3.Px"]
         with pytest.raises(Exception):
             t.arrays("/P3.Px", library="pd")
-        with pytest.raises(Exception):
-            t.arrays("P3/P3.Px", library="pd")
         assert t.arrays("evt/P3/P3.Px", library="pd").columns.tolist() == [
             "evt/P3/P3.Px"
         ]

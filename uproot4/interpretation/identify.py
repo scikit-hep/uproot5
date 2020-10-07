@@ -344,7 +344,7 @@ def interpretation_of(branch, context, simplify=True):
 
     try:
         if len(branch.member("fLeaves")) == 0:
-            pass
+            raise NotNumerical()
 
         elif len(branch.member("fLeaves")) == 1:
             leaf = branch.member("fLeaves")[0]
@@ -411,19 +411,20 @@ def interpretation_of(branch, context, simplify=True):
         ):
             return uproot4.interpretation.strings.AsStrings(typename="TString")
 
-        if len(branch.member("fLeaves")) != 1:
+        if len(branch.member("fLeaves")) == 1:
+            leaf = branch.member("fLeaves")[0]
+
+            if leaf.classname == "TLeafC":
+                return uproot4.interpretation.strings.AsStrings()
+
+        elif len(branch.member("fLeaves")) > 1:
             raise UnknownInterpretation(
-                "more or less than one TLeaf ({0}) in a non-numerical TBranch".format(
+                "more than one TLeaf ({0}) in a non-numerical TBranch".format(
                     len(branch.member("fLeaves"))
                 ),
                 branch.file.file_path,
                 branch.object_path,
             )
-
-        leaf = branch.member("fLeaves")[0]
-
-        if leaf.classname == "TLeafC":
-            return uproot4.interpretation.strings.AsStrings()
 
         if branch.top_level and branch.has_member("fClassName"):
             model_cls = parse_typename(
@@ -473,9 +474,9 @@ def interpretation_of(branch, context, simplify=True):
             else:
                 return out
 
-        raise UnknownInterpretation(
-            "none of the rules matched", branch.file.file_path, branch.object_path,
-        )
+    raise UnknownInterpretation(
+        "none of the rules matched", branch.file.file_path, branch.object_path,
+    )
 
 
 _tokenize_typename_pattern = re.compile(
@@ -707,6 +708,16 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             ),
         )
 
+    elif has2 and tokens[i].group(0) == "long" and tokens[i + 1].group(0) == "long":
+        return i + 2, _parse_maybe_quote('numpy.dtype(">i8")', quote)
+    elif (
+        i + 2 < len(tokens)
+        and tokens[i].group(0) == "unsigned"
+        and tokens[i + 1].group(0) == "long"
+        and tokens[i + 2].group(0) == "long"
+    ):
+        return i + 3, _parse_maybe_quote('numpy.dtype(">u8")', quote)
+
     elif tokens[i].group(0) == "Long_t":
         return i + 1, _parse_maybe_quote('numpy.dtype(">i8")', quote)
     elif tokens[i].group(0) == "Long64_t":
@@ -720,15 +731,31 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif has2 and tokens[i].group(0) == "unsigned" and tokens[i + 1].group(0) == "long":
         return i + 2, _parse_maybe_quote('numpy.dtype(">u8")', quote)
 
-    elif has2 and tokens[i].group(0) == "long" and tokens[i + 1].group(0) == "long":
-        return i + 2, _parse_maybe_quote('numpy.dtype(">i8")', quote)
+    elif (
+        has2
+        and tokens[i].group(0) == "long"
+        and _simplify_token(tokens[i + 1]) == "long*"
+    ):
+        return (
+            i + 2,
+            _parse_maybe_quote(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">i8"))'.format(header),
+                quote,
+            ),
+        )
     elif (
         i + 2 < len(tokens)
         and tokens[i].group(0) == "unsigned"
-        and tokens[i + 1].group(0) == "long"
-        and tokens[i + 2].group(0) == "long"
+        and _simplify_token(tokens[i + 1]) == "long"
+        and _simplify_token(tokens[i + 2]) == "long*"
     ):
-        return i + 3, _parse_maybe_quote('numpy.dtype(">u8")', quote)
+        return (
+            i + 3,
+            _parse_maybe_quote(
+                'uproot4.containers.AsArray({0}, numpy.dtype(">u8"))'.format(header),
+                quote,
+            ),
+        )
 
     elif _simplify_token(tokens[i]) == "Long_t*":
         return (
@@ -791,32 +818,6 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
                 'uproot4.containers.AsArray(False, {0}, numpy.dtype(">u8"))'.format(
                     header
                 ),
-                quote,
-            ),
-        )
-
-    elif (
-        has2
-        and tokens[i].group(0) == "long"
-        and _simplify_token(tokens[i + 1]) == "long*"
-    ):
-        return (
-            i + 2,
-            _parse_maybe_quote(
-                'uproot4.containers.AsArray({0}, numpy.dtype(">i8"))'.format(header),
-                quote,
-            ),
-        )
-    elif (
-        i + 2 < len(tokens)
-        and tokens[i].group(0) == "unsigned"
-        and _simplify_token(tokens[i + 1]) == "long"
-        and _simplify_token(tokens[i + 2]) == "long*"
-    ):
-        return (
-            i + 3,
-            _parse_maybe_quote(
-                'uproot4.containers.AsArray({0}, numpy.dtype(">u8"))'.format(header),
                 quote,
             ),
         )
@@ -1019,6 +1020,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             stop = tokens[i].span()[1]
 
         classname = _simplify_token(typename[start:stop], is_token=False)
+        classname = uproot4.model.classname_regularize(classname)
 
         pointers = 0
         while classname.endswith("*"):

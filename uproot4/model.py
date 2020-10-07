@@ -98,8 +98,10 @@ def reset_classes():
     reload(uproot4.models.RNTuple)
 
 
+_classname_regularize = re.compile(r"\s*(<|>|::)\s*")
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
-_classname_decode_version = re.compile(br".*_v([0-9]+)")
+_classname_decode_antiversion = re.compile(br".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
+_classname_decode_version = re.compile(br".*_v([0-9]+)$")
 _classname_decode_pattern = re.compile(br"_(([0-9a-f][0-9a-f])+)_")
 
 if uproot4._util.py2:
@@ -126,6 +128,20 @@ else:
         return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
 
 
+def classname_regularize(classname):
+    """
+    Removes spaces around ``<``, ``>``, and ``::`` characters in a classname
+    so that they can be matched by string name.
+
+    If ``classname`` is None, this function returns None. Otherwise, it must be
+    a string and it returns a string.
+    """
+    if classname is None:
+        return classname
+    else:
+        return re.sub(_classname_regularize, r"\1", classname)
+
+
 def classname_decode(encoded_classname):
     """
     Converts a Python (encoded) classname, such as ``Model_Some_3a3a_Thing``
@@ -145,12 +161,15 @@ def classname_decode(encoded_classname):
     else:
         raise ValueError("not an encoded classname: {0}".format(encoded_classname))
 
-    m = _classname_decode_version.match(raw)
-    if m is None:
+    if _classname_decode_antiversion.match(raw) is not None:
         version = None
     else:
-        version = int(m.group(1))
-        raw = raw[: -len(m.group(1)) - 2]
+        m = _classname_decode_version.match(raw)
+        if m is None:
+            version = None
+        else:
+            version = int(m.group(1))
+            raw = raw[: -len(m.group(1)) - 2]
 
     out = _classname_decode_pattern.sub(_classname_decode_convert, raw)
     return out.decode(), version
@@ -199,11 +218,15 @@ def classname_version(encoded_classname):
     A name without a version number, such as ``Model_Some_3a3a_Thing``, returns
     None.
     """
-    m = _classname_decode_version.match(encoded_classname.encode())
-    if m is None:
+    raw = encoded_classname.encode()
+    if _classname_decode_antiversion.match(raw) is not None:
         return None
     else:
-        return int(m.group(1))
+        m = _classname_decode_version.match(raw)
+        if m is None:
+            return None
+        else:
+            return int(m.group(1))
 
 
 def class_named(classname, version=None, custom_classes=None):
@@ -1012,6 +1035,7 @@ class DispatchByVersion(object):
         ``uproo4.unknown_classes`` if it's not already there).
         """
         classname, _ = classname_decode(cls.__name__)
+        classname = classname_regularize(classname)
         streamer = file.streamer_named(classname, version)
 
         if streamer is None:
