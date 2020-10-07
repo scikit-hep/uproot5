@@ -766,6 +766,7 @@ in file {1}""".format(
                 fP: TVector3 (TStreamerObject)
                 fE: double (TStreamerBasicType)
         """
+        classname = uproot4.model.classname_regularize(classname)
         if classname is None:
             names = []
             for name, streamer_versions in self.streamers.items():
@@ -903,6 +904,7 @@ in file {1}""".format(
 
         See also :py:attr:`~uproot4.reading.ReadOnlyFile.streamer_named` (singular).
         """
+        classname = uproot4.model.classname_regularize(classname)
         streamer_versions = self.streamers.get(classname)
         if streamer_versions is None:
             return []
@@ -920,6 +922,7 @@ in file {1}""".format(
 
         See also :py:attr:`~uproot4.reading.ReadOnlyFile.streamers_named` (plural).
         """
+        classname = uproot4.model.classname_regularize(classname)
         streamer_versions = self.streamers.get(classname)
         if streamer_versions is None or len(streamer_versions) == 0:
             return None
@@ -939,9 +942,11 @@ in file {1}""".format(
         The ``classname`` and ``version`` are interpreted the same way as
         :py:attr:`~uproot4.reading.ReadOnlyFile.streamer_named`.
         """
+        classname = uproot4.model.classname_regularize(classname)
         streamer = self.streamer_named(classname, version=version)
         out = []
-        streamer._dependencies(self.streamers, out)
+        if streamer is not None:
+            streamer._dependencies(self.streamers, out)
         return out[::-1]
 
     @property
@@ -974,6 +979,7 @@ in file {1}""".format(
 
             del uproot4.classes[classname]
         """
+        classname = uproot4.model.classname_regularize(classname)
         if self._custom_classes is None:
             self._custom_classes = dict(uproot4.classes)
         if classname in self._custom_classes:
@@ -996,6 +1002,7 @@ in file {1}""".format(
         the new class is added to that dict; otherwise, it is added to the
         global ``uproot4.classes``.
         """
+        classname = uproot4.model.classname_regularize(classname)
         classes = uproot4.model.maybe_custom_classes(self._custom_classes)
         cls = classes.get(classname)
 

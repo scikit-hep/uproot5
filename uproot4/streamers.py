@@ -178,9 +178,10 @@ class Model_TStreamerInfo(uproot4.model.Model):
     @property
     def name(self):
         """
-        The name (``fName``) of this ``TStreamerInfo``.
+        The name (``fName``) of this ``TStreamerInfo``, passed through
+        :py:func:`~uproot4.model.classname_regularize`
         """
-        return self.member("fName")
+        return uproot4.model.classname_regularize(self.member("fName"))
 
     @property
     def typename(self):
@@ -315,12 +316,9 @@ class Model_TStreamerInfo(uproot4.model.Model):
             )
         )
 
+        class_name = uproot4.model.classname_encode(self.name, self.class_version)
         return "\n".join(
-            [
-                "class {0}(uproot4.model.VersionedModel):".format(
-                    uproot4.model.classname_encode(self.name, self.class_version)
-                )
-            ]
+            ["class {0}(uproot4.model.VersionedModel):".format(class_name)]
             + read_members
             + strided_interpretation
             + awkward_form
@@ -371,7 +369,7 @@ class Model_TStreamerInfo(uproot4.model.Model):
             if isinstance(element, Model_TStreamerBase):
                 streamers_with_name = streamers[element.name]
                 base_version = element.base_version
-                if base_version is None:
+                if base_version == "max":
                     base = streamers_with_name[max(streamers_with_name)]
                 else:
                     base = streamers_with_name[base_version]
@@ -613,12 +611,20 @@ class Model_TStreamerBase(Model_TStreamerElement):
     """
 
     @property
+    def name(self):
+        """
+        The name (``fName``) of this ``TStreamerBase``, passed through
+        :py:func:`~uproot4.model.classname_regularize`.
+        """
+        return uproot4.model.classname_regularize(self.member("fName"))
+
+    @property
     def base_version(self):
         """
         The base version (``fBaseVersion``) of this ``TStreamerBase``.
         """
         if self._members["fBaseVersion"] == -1:
-            return None
+            return "max"
         else:
             return self._members["fBaseVersion"]
 
@@ -644,19 +650,19 @@ class Model_TStreamerBase(Model_TStreamerElement):
         read_members.append(
             "        self._bases.append(c({0}, {1}).read(chunk, cursor, "
             "context, file, self._file, self._parent, concrete=self._concrete))".format(
-                repr(self.name), self.base_version
+                repr(self.name), repr(self.base_version)
             )
         )
         strided_interpretation.append(
             "        members.extend(file.class_named({0}, {1})."
             "strided_interpretation(file, header, tobject_header).members)".format(
-                repr(self.name), self.base_version
+                repr(self.name), repr(self.base_version)
             )
         )
         awkward_form.append(
             "        contents.update(file.class_named({0}, {1}).awkward_form(file, "
             "index_format, header, tobject_header).contents)".format(
-                repr(self.name), self.base_version
+                repr(self.name), repr(self.base_version)
             )
         )
 
@@ -682,7 +688,11 @@ class Model_TStreamerBase(Model_TStreamerElement):
     def _dependencies(self, streamers, out):
         streamer_versions = streamers.get(self.name)
         if streamer_versions is not None:
-            streamer = streamer_versions.get(self.base_version)
+            base_version = self.base_version
+            if base_version == "max":
+                streamer = streamer_versions[max(streamer_versions)]
+            else:
+                streamer = streamer_versions[base_version]
             if (
                 streamer is not None
                 and (streamer.name, streamer.class_version) not in out

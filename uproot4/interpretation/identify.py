@@ -1020,6 +1020,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             stop = tokens[i].span()[1]
 
         classname = _simplify_token(typename[start:stop], is_token=False)
+        classname = uproot4.model.classname_regularize(classname)
 
         pointers = 0
         while classname.endswith("*"):

@@ -98,6 +98,7 @@ def reset_classes():
     reload(uproot4.models.RNTuple)
 
 
+_classname_regularize = re.compile(r"\s*(<|>|::)\s*")
 _classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
 _classname_decode_antiversion = re.compile(br".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
 _classname_decode_version = re.compile(br".*_v([0-9]+)$")
@@ -125,6 +126,20 @@ else:
     def _classname_encode_convert(bad_characters):
         g = bad_characters.group(0)
         return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
+
+
+def classname_regularize(classname):
+    """
+    Removes spaces around ``<``, ``>``, and ``::`` characters in a classname
+    so that they can be matched by string name.
+
+    If ``classname`` is None, this function returns None. Otherwise, it must be
+    a string and it returns a string.
+    """
+    if classname is None:
+        return classname
+    else:
+        return re.sub(_classname_regularize, r"\1", classname)
 
 
 def classname_decode(encoded_classname):
@@ -1020,6 +1035,7 @@ class DispatchByVersion(object):
         ``uproo4.unknown_classes`` if it's not already there).
         """
         classname, _ = classname_decode(cls.__name__)
+        classname = classname_regularize(classname)
         streamer = file.streamer_named(classname, version)
 
         if streamer is None:
