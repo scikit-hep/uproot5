@@ -635,3 +635,48 @@ def awkward_form_of_iter(awkward1, form):
         )
     else:
         raise RuntimeError("unrecognized form: {0}".format(type(form)))
+
+
+def damerau_levenshtein(a, b, ratio=False):
+    # Modified Damerau-Levenshtein distance. Adds a middling penalty
+    # for capitalization.
+    # https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
+    M = [[0] * (len(b) + 1) for i in range(len(a) + 1)]
+
+    for i in range(len(a) + 1):
+        M[i][0] = i
+    for j in range(len(b) + 1):
+        M[0][j] = j
+
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            if a[i - 1] == b[j - 1]:  # Same char
+                cost = 0
+            elif a[i - 1].lower() == b[j - 1].lower():  # Same if lowered
+                cost = 0.5
+            else:  # Different char
+                cost = 2
+            M[i][j] = min(
+                M[i - 1][j] + 1,  # Addition
+                M[i][j - 1] + 1,  # Removal
+                M[i - 1][j - 1] + cost,  # Substitution
+            )
+
+            # Transposition
+            if (
+                i > 1
+                and j > 1
+                and a[i - 1].lower() == b[j - 2].lower()
+                and a[i - 2].lower() == b[j - 2].lower()
+            ):
+                if a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                    # Transpose only
+                    M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1)
+                else:
+                    # Traspose and capitalization
+                    M[i][j] = min(M[i][j], M[i - 2][j - 2] + 1.5)
+
+    if not ratio:
+        return M[len(a)][len(b)]
+    else:
+        return (len(a) + len(b)) - M[len(a)][len(b)] / (len(a) + len(b))
