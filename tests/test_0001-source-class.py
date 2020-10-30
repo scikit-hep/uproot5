@@ -359,7 +359,7 @@ def test_cursor_debug():
             numpy.array([123, 123], "u1"),
         ]
     )
-    future = uproot4.source.futures.NoFuture(data)
+    future = uproot4.source.futures.TrivialFuture(data)
 
     chunk = uproot4.source.chunk.Chunk(None, 0, len(data), future)
     cursor = uproot4.source.cursor.Cursor(0)

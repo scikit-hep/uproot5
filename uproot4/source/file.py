@@ -138,7 +138,7 @@ class MemmapSource(uproot4.source.chunk.Source):
             self._num_requested_bytes += stop - start
 
             data = numpy.array(self._file[start:stop], copy=True)
-            future = uproot4.source.futures.NoFuture(data)
+            future = uproot4.source.futures.TrivialFuture(data)
             return uproot4.source.chunk.Chunk(self, start, stop, future)
 
         else:
@@ -156,7 +156,7 @@ class MemmapSource(uproot4.source.chunk.Source):
             chunks = []
             for start, stop in ranges:
                 data = numpy.array(self._file[start:stop], copy=True)
-                future = uproot4.source.futures.NoFuture(data)
+                future = uproot4.source.futures.TrivialFuture(data)
                 chunk = uproot4.source.chunk.Chunk(self, start, stop, future)
                 notifications.put(chunk)
                 chunks.append(chunk)

@@ -224,7 +224,7 @@ class Chunk(object):
         start (int): Seek position of the first byte to include.
         stop (int): Seek position of the first byte to exclude
             (one greater than the last byte to include).
-        future (:py:class:`~uproot4.source.futures.NoFuture` or :py:class:`~uproot4.source.futures.Future`): Handle
+        future (:py:class:`~uproot4.source.futures.TrivialFuture` or :py:class:`~uproot4.source.futures.Future`): Handle
             to the synchronous or asynchronous data. A chunk is "filled"
             when the ``future`` completes.
 
@@ -256,7 +256,7 @@ class Chunk(object):
 
         Manually creates a synchronous :py:class:`~uproot4.source.chunk.Chunk`.
         """
-        future = uproot4.source.futures.NoFuture(data)
+        future = uproot4.source.futures.TrivialFuture(data)
         return Chunk(source, 0, len(data), future)
 
     def __init__(self, source, start, stop, future):

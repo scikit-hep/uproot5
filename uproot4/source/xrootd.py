@@ -249,7 +249,7 @@ class XRootDSource(uproot4.source.chunk.Source):
         self._num_requested_bytes += stop - start
 
         data = self._resource.get(start, stop)
-        future = uproot4.source.futures.NoFuture(data)
+        future = uproot4.source.futures.TrivialFuture(data)
         return uproot4.source.chunk.Chunk(self, start, stop, future)
 
     def chunks(self, ranges, notifications):

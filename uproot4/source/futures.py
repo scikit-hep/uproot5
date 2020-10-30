@@ -3,7 +3,7 @@
 """
 Defines a Python-like Future and Executor for Uproot in three levels:
 
-1. :py:class:`~uproot4.source.futures.NoFuture` and
+1. :py:class:`~uproot4.source.futures.TrivialFuture` and
    :py:class:`~uproot4.source.futures.TrivialExecutor`: interface only, all activity
    is synchronous.
 2. :py:class:`~uproot4.source.futures.Future`, :py:class:`~uproot4.source.futures.Worker`,
@@ -49,7 +49,7 @@ def delayed_raise(exception_class, exception_value, traceback):
 ##################### use-case 1: trivial Futures/Executor (satisfying formalities)
 
 
-class NoFuture(object):
+class TrivialFuture(object):
     """
     Formally satisfies the interface for a :py:class:`~uproot4.source.futures.Future`
     object, but it is already complete at the time when it is constructed.
@@ -60,7 +60,7 @@ class NoFuture(object):
 
     def result(self, timeout=None):
         """
-        The result of this (No)Future.
+        The result of this (Trivial)Future.
         """
         return self._result
 
@@ -80,7 +80,7 @@ class TrivialExecutor(object):
         """
         Immediately runs ``task(*args)``.
         """
-        return task(*args)
+        return TrivialFuture(task(*args))
 
     def shutdown(self, wait=True):
         """
