@@ -102,6 +102,7 @@ Thanks especially to the gracious help of awkward-array contributors (including 
   <tr>
     <td align="center"><a href="https://github.com/nsmith"><img src="https://avatars2.githubusercontent.com/u/116345?v=4" width="100px;" alt=""/><br /><sub><b>Nathan Smith</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=nsmith" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/nbiederbeck"><img src="https://avatars1.githubusercontent.com/u/15156697?v=4" width="100px;" alt=""/><br /><sub><b>Noah Biederbeck</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=nbiederbeck" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/oshadura"><img src="https://avatars2.githubusercontent.com/u/7012420?v=4" width="100px;" alt=""/><br /><sub><b>Oksana Shadura</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=oshadura" title="Code">💻</a> <a href="#infra-oshadura" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
   </tr>
 </table>
 
