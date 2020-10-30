@@ -221,6 +221,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "asymmetry",
+      "name": "Chao Gu",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/679529?v=4",
+      "profile": "https://github.com/asymmetry",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
