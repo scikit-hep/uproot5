@@ -119,6 +119,7 @@ Thanks especially to the gracious help of awkward-array contributors (including 
   </tr>
   <tr>
     <td align="center"><a href="https://github.com/bendavid"><img src="https://avatars2.githubusercontent.com/u/4920798?v=4" width="100px;" alt=""/><br /><sub><b>Josh Bendavid</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=bendavid" title="Code">💻</a></td>
+    <td align="center"><a href="https://ddavis.io/"><img src="https://avatars2.githubusercontent.com/u/3202090?v=4" width="100px;" alt=""/><br /><sub><b>Doug Davis</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=douglasdavis" title="Code">💻</a></td>
   </tr>
 </table>
 
