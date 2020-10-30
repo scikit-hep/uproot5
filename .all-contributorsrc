@@ -45,6 +45,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "matthewfeickert",
+      "name": "Matthew Feickert",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/5142394?v=4",
+      "profile": "http://www.matthewfeickert.com/",
+      "contributions": [
+        "infra"
+      ]
     }
   ],
   "contributorsPerLine": 7,
