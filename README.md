@@ -126,6 +126,9 @@ Thanks especially to the gracious help of awkward-array contributors (including 
     <td align="center"><a href="https://github.com/EdoPro98"><img src="https://avatars1.githubusercontent.com/u/57357892?v=4" width="100px;" alt=""/><br /><sub><b>Edoardo</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=EdoPro98" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/JMSchoeffmann"><img src="https://avatars1.githubusercontent.com/u/26558330?v=4" width="100px;" alt=""/><br /><sub><b>JMSchoeffmann</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=JMSchoeffmann" title="Code">💻</a></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/alexander"><img src="https://avatars3.githubusercontent.com/u/6165?v=4" width="100px;" alt=""/><br /><sub><b>alexander</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=alexander" title="Code">💻</a></td>
+  </tr>
 </table>
 
 <!-- markdownlint-enable -->
