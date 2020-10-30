@@ -97,6 +97,7 @@ Thanks especially to the gracious help of awkward-array contributors (including 
     <td align="center"><a href="https://github.com/plexoos"><img src="https://avatars0.githubusercontent.com/u/5005079?v=4" width="100px;" alt=""/><br /><sub><b>Dmitri Smirnov</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=plexoos" title="Code">💻</a></td>
     <td align="center"><a href="http://www.matthewfeickert.com/"><img src="https://avatars3.githubusercontent.com/u/5142394?v=4" width="100px;" alt=""/><br /><sub><b>Matthew Feickert</b></sub></a><br /><a href="#infra-matthewfeickert" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     <td align="center"><a href="http://www.tamasgal.com"><img src="https://avatars1.githubusercontent.com/u/1730350?v=4" width="100px;" alt=""/><br /><sub><b>Tamas Gal</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=tamasgal" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/kreczko"><img src="https://avatars3.githubusercontent.com/u/1213276?v=4" width="100px;" alt=""/><br /><sub><b>Luke Kreczko</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=kreczko" title="Code">💻</a> <a href="https://github.com/scikit-hep/uproot4/commits?author=kreczko" title="Tests">⚠️</a></td>
   </tr>
 </table>
 

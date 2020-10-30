@@ -63,6 +63,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "kreczko",
+      "name": "Luke Kreczko",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/1213276?v=4",
+      "profile": "https://github.com/kreczko",
+      "contributions": [
+        "code",
+        "test"
+      ]
     }
   ],
   "contributorsPerLine": 7,
