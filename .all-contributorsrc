@@ -194,6 +194,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "andrzejnovak",
+      "name": "Andrzej Novak",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/13226500?v=4",
+      "profile": "http://andrzejnovak.github.io/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
