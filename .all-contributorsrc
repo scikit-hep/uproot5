@@ -1,0 +1,26 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "jpivarski",
+      "name": "Jim Pivarski",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/1852447?v=4",
+      "profile": "https://github.com/jpivarski",
+      "contributions": [
+        "code",
+        "doc",
+        "infra"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "uproot4",
+  "projectOwner": "scikit-hep",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
