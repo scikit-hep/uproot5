@@ -123,6 +123,7 @@ Thanks especially to the gracious help of awkward-array contributors (including 
     <td align="center"><a href="https://github.com/asymmetry"><img src="https://avatars3.githubusercontent.com/u/679529?v=4" width="100px;" alt=""/><br /><sub><b>Chao Gu</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=asymmetry" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/ast0815"><img src="https://avatars2.githubusercontent.com/u/5884065?v=4" width="100px;" alt=""/><br /><sub><b>Lukas Koch</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=ast0815" title="Code">💻</a></td>
     <td align="center"><a href="http://irfu.cea.fr/dap/"><img src="https://avatars1.githubusercontent.com/u/17836610?v=4" width="100px;" alt=""/><br /><sub><b>Michele Peresano</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=HealthyPear" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/EdoPro98"><img src="https://avatars1.githubusercontent.com/u/57357892?v=4" width="100px;" alt=""/><br /><sub><b>Edoardo</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=EdoPro98" title="Code">💻</a></td>
   </tr>
 </table>
 
