@@ -149,6 +149,15 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "riga",
+      "name": "Marcel R.",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/1908734?v=4",
+      "profile": "http://marcelrieger.com",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
