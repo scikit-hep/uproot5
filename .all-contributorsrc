@@ -266,6 +266,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "alexander",
+      "name": "alexander",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/6165?v=4",
+      "profile": "https://github.com/alexander",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
