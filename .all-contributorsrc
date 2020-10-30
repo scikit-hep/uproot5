@@ -239,6 +239,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "HealthyPear",
+      "name": "Michele Peresano",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/17836610?v=4",
+      "profile": "http://irfu.cea.fr/dap/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
