@@ -91,6 +91,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "oshadura",
+      "name": "Oksana Shadura",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/7012420?v=4",
+      "profile": "https://github.com/oshadura",
+      "contributions": [
+        "code",
+        "infra"
+      ]
     }
   ],
   "contributorsPerLine": 7,
