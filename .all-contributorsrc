@@ -101,6 +101,17 @@
         "code",
         "infra"
       ]
+    },
+    {
+      "login": "henryiii",
+      "name": "Henry Schreiner",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/4616906?v=4",
+      "profile": "http://iscinumpy.gitlab.io",
+      "contributions": [
+        "code",
+        "infra",
+        "test"
+      ]
     }
   ],
   "contributorsPerLine": 7,
