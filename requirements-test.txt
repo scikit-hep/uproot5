@@ -4,7 +4,3 @@ flake8-print
 scikit-hep-testdata
 lz4
 xxhash
-pandas
-awkward1
-boost_histogram
-hist>=2.0.0a1

@@ -1,0 +1,4 @@
+pandas
+awkward1
+boost_histogram
+hist
