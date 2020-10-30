@@ -31,6 +31,8 @@ conda config --add channels conda-forge
 conda update --all
 ```
 
+**Note:** if you need to _write_ ROOT files, you'll need to use the deprecated [uproot3](https://github.com/scikit-hep/uproot) for now. This feature is coming to the new version soon.
+
 ## Getting help
 
 **Start with the [tutorials and reference documentation](https://uproot4.readthedocs.io/).**
