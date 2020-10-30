@@ -99,6 +99,9 @@ Thanks especially to the gracious help of awkward-array contributors (including 
     <td align="center"><a href="http://www.tamasgal.com"><img src="https://avatars1.githubusercontent.com/u/1730350?v=4" width="100px;" alt=""/><br /><sub><b>Tamas Gal</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=tamasgal" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/kreczko"><img src="https://avatars3.githubusercontent.com/u/1213276?v=4" width="100px;" alt=""/><br /><sub><b>Luke Kreczko</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=kreczko" title="Code">💻</a> <a href="https://github.com/scikit-hep/uproot4/commits?author=kreczko" title="Tests">⚠️</a></td>
   </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/nsmith"><img src="https://avatars2.githubusercontent.com/u/116345?v=4" width="100px;" alt=""/><br /><sub><b>Nathan Smith</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=nsmith" title="Code">💻</a></td>
+  </tr>
 </table>
 
 <!-- markdownlint-enable -->
