@@ -45,6 +45,7 @@ uproot3
 This will return an ``awkward0.JaggedArray``:
 
 .. code-block:: python
+
     >>> snapshot_hits
     <JaggedArray [[<Row 0> <Row 1> <Row 2> ... <Row 50> <Row 51> <Row 52>]  ...  [<Row 849> <Row 850> <Row 851> ... <Row 887> <Row 888> <Row 889>] [<Row 890> <Row 891> <Row 892> ... <Row 920> <Row 921> <Row 922>]] at 0x7f9b8e6c89d0>
 
@@ -55,6 +56,7 @@ uproot4
 ~~~~~~~
 
 .. code-block:: python
+
     import uproot4 as uproot  # version 4
     from skhep_testdata import data_path
 
@@ -78,5 +80,6 @@ uproot4
 Which will return an ``awkward1.Array``:
 
 .. code-block:: python
+
     >>> snapshot_hits
     <Array [[{dom_id: 808432835, ... tot: 30}]] type='23 * var * {"dom_id": int32, "...'>
