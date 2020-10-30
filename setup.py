@@ -36,7 +36,7 @@ setup(name = "uproot4",
       download_url = "https://github.com/scikit-hep/uproot4/releases",
       license = "BSD 3-clause",
       test_suite = "tests",
-      python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+      python_requires = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
       install_requires = ["numpy"],
       tests_require = tests_require,
       extras_require = {
