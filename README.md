@@ -111,6 +111,7 @@ Thanks especially to the gracious help of awkward-array contributors (including 
   <tr>
     <td align="center"><a href="https://github.com/HDembinski"><img src="https://avatars0.githubusercontent.com/u/2631586?v=4" width="100px;" alt=""/><br /><sub><b>Hans Dembinski</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=HDembinski" title="Documentation">📖</a></td>
     <td align="center"><a href="http://marcelrieger.com"><img src="https://avatars0.githubusercontent.com/u/1908734?v=4" width="100px;" alt=""/><br /><sub><b>Marcel R.</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=riga" title="Code">💻</a></td>
+    <td align="center"><a href="http://turra.web.cern.ch/turra/"><img src="https://avatars3.githubusercontent.com/u/143389?v=4" width="100px;" alt=""/><br /><sub><b>Ruggero Turra</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=wiso" title="Code">💻</a></td>
   </tr>
 </table>
 
