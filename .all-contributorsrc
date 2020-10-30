@@ -122,6 +122,15 @@
         "code",
         "test"
       ]
+    },
+    {
+      "login": "guitargeek",
+      "name": "Jonas Rembser",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/6578603?v=4",
+      "profile": "https://www.linkedin.com/in/jonas-rembser/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
