@@ -82,6 +82,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "nbiederbeck",
+      "name": "Noah Biederbeck",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/15156697?v=4",
+      "profile": "https://github.com/nbiederbeck",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
