@@ -4,22 +4,21 @@ import os.path
 from setuptools import setup
 from setuptools import find_packages
 
+
 def get_version():
     g = {}
     exec(open(os.path.join("uproot4", "version.py")).read(), g)
     return g["__version__"]
 
-tests_require = [
-    "pytest",
-    "flake8",
-    "scikit-hep-testdata",
-    "lz4",
-    "xxhash",
-    "pandas",
-    "awkward1",
-    "boost_histogram",
-    "hist>=2.0.0a1",
-]
+
+extras = {
+    "test": open("requirements-test.txt").read().strip().split("\n"),
+    "dev":  open("requirements-dev.txt").read().strip().split("\n"),
+}
+extras["all"] = sum(extras.values(), [])
+
+install_requires = open("requirements.txt").read().strip().split("\n")
+
 
 setup(name = "uproot4",
       packages = find_packages(exclude = ["tests"]),
@@ -30,18 +29,16 @@ setup(name = "uproot4",
       maintainer = "Jim Pivarski",
       maintainer_email = "pivarski@princeton.edu",
       description = "ROOT I/O in pure Python and NumPy.",
-      long_description = """(FIXME)""",
+      long_description = open("README.md").read(),
       long_description_content_type = "text/markdown",
       url = "https://github.com/scikit-hep/uproot4",
       download_url = "https://github.com/scikit-hep/uproot4/releases",
       license = "BSD 3-clause",
       test_suite = "tests",
-      python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+      python_requires = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
       install_requires = ["numpy"],
-      tests_require = tests_require,
-      extras_require = {
-          "testing": tests_require,
-      },
+      tests_require = extras["test"],
+      extras_require = extras,
 
       classifiers = [
 #         "Development Status :: 1 - Planning",
