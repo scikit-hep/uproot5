@@ -11,12 +11,12 @@ jobs:
     strategy:
       matrix:
         platform: ["windows-latest", "macos-latest", "ubuntu-latest"]
-        python-version: ["3.5", "3.6", "3.7", "3.8"]
+        python-version: ["3.5", "3.6", "3.7", "3.8", "3.9"]
         exclude:
           - platform: "macos-latest"
             python-version: "3.5"
           - platform: "macos-latest"
-            python-version: "3.7"
+            python-version: "3.6"
           - platform: "windows-latest"
             python-version: "3.6"
           - platform: "windows-latest"
