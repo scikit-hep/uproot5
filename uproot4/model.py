@@ -558,16 +558,37 @@ class Model(object):
     def base(self, *cls):
         """
         Extracts instances from :py:attr:`~uproot4.model.Model.bases` by Python class
-        type. The ``cls`` may be a single class or a (varargs) list of classes
-        to match.
+        type.
+
+        The ``cls`` arguments may be Python classes or C++ classname strings to match.
         """
+        cpp_names = [classname_regularize(x) for x in cls if uproot4._util.isstr(x)]
+        py_types = tuple(x for x in cls if not uproot4._util.isstr(x))
+
         out = []
         for x in getattr(self, "_bases", []):
-            if isinstance(x, cls):
+            if (
+                isinstance(x, py_types) or
+                any(getattr(x, "classname", None) == n for n in cpp_names)
+            ):
                 out.append(x)
             if isinstance(x, Model):
                 out.extend(x.base(*cls))
         return out
+
+    def is_instance(self, *cls):
+        """
+        Returns True if this object matches a given type in the C++ class hierarchy.
+
+        The ``cls`` arguments may be Python classes or C++ classname strings to match.
+        """
+        cpp_names = [classname_regularize(x) for x in cls if uproot4._util.isstr(x)]
+        py_types = tuple(x for x in cls if not uproot4._util.isstr(x))
+
+        if isinstance(self, py_types) or any(self.classname == n for n in cpp_names):
+            return True
+        else:
+            return len(self.base(*cls)) != 0
 
     @property
     def num_bytes(self):

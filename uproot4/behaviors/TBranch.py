@@ -727,18 +727,6 @@ class Report(object):
             repr(self._source.file.file_path + ":" + self._source.object_path),
         )
 
-        # if self._global_offset == 0:
-        #     return "Report({0}, {1}, {2})".format(
-        #         self._source, self._tree_entry_start, self._tree_entry_stop
-        #     )
-        # else:
-        #     return "Report({0}, {1}, {2}, global_offset={3})".format(
-        #         self._source,
-        #         self._tree_entry_start,
-        #         self._tree_entry_stop,
-        #         self._global_offset,
-        #     )
-
     @property
     def source(self):
         """
@@ -2369,11 +2357,13 @@ in file {3}""".format(
         The ``TBranch`` object in which this branch's "counts" reside or None
         if this branch has no "counts".
         """
-        leaf = self.count_leaf
-        if leaf is None:
-            return None
+        out = self.count_leaf
+        while isinstance(out, uproot4.model.Model) and out.is_instance("TLeaf"):
+            out = out.parent
+        if isinstance(out, uproot4.model.Model) and out.is_instance("TBranch"):
+            return out
         else:
-            return leaf.parent
+            return None
 
     @property
     def count_leaf(self):
