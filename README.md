@@ -114,6 +114,7 @@ Thanks especially to the gracious help of awkward-array contributors (including 
     <td align="center"><a href="http://turra.web.cern.ch/turra/"><img src="https://avatars3.githubusercontent.com/u/143389?v=4" width="100px;" alt=""/><br /><sub><b>Ruggero Turra</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=wiso" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/jrueb"><img src="https://avatars2.githubusercontent.com/u/30041073?v=4" width="100px;" alt=""/><br /><sub><b>Jonas Rübenach</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=jrueb" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/bfis"><img src="https://avatars0.githubusercontent.com/u/15651150?v=4" width="100px;" alt=""/><br /><sub><b>bfis</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=bfis" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/raymondEhlers"><img src="https://avatars0.githubusercontent.com/u/1571927?v=4" width="100px;" alt=""/><br /><sub><b>Raymond Ehlers</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=raymondEhlers" title="Code">💻</a></td>
   </tr>
 </table>
 
