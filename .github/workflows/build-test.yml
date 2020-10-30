@@ -16,7 +16,7 @@ jobs:
           - platform: "macos-latest"
             python-version: "3.5"
           - platform: "macos-latest"
-            python-version: "3.7"
+            python-version: "3.6"
           - platform: "windows-latest"
             python-version: "3.6"
           - platform: "windows-latest"
