@@ -57,17 +57,26 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 **Awkward Array is highly recommended.** It is not a strict dependency to allow Uproot to be used in highly restrictive environments. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option to return arrays as NumPy arrays (see documentation).
 
+   * `awkward1`: be sure to use Awkward Array 1.x.
+
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
 
-   * `pandas`: only if `library="pd"`.
-   * `cupy`: only if `library="cp"` (reads arrays onto GPUs).
-   * `dask[array]` and `dask[dataframe]`: experimental, for lazy arrays with `library="da"`.
-   * `xrootd`: only if reading files with `root://` URLs.
+**For ROOT files, compressed different ways:**
+
    * `lz4` and `xxhash`: only if reading ROOT files that have been LZ4-compressed.
    * `zstandard`: only if reading ROOT files that have been ZSTD-compressed.
    * `backports.lzma`: only if reading ROOT files that have been LZMA-compressed (in Python 2).
-   * `boost-histogram`: only if converting histograms to Boost with `.to_boost()`.
-   * `hist`: only if converting histograms to hist with `.to_hist()`.
+
+**For remote data:**
+
+   * `xrootd`: only if reading files with `root://` URLs.
+
+**For exporting data to other libraries:**
+
+   * `pandas`: only if `library="pd"`.
+   * `cupy`: only if `library="cp"` (reads arrays onto GPUs).
+   * `boost-histogram`: only if converting histograms to [boost-histogram](https://github.com/scikit-hep/boost-histogram) with `histogram.to_boost()`.
+   * `hist`: only if converting histograms to [hist](https://github.com/scikit-hep/hist) with `histogram.to_hist()`.
 
 # Acknowledgements
 
