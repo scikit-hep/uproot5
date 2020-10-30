@@ -54,6 +54,15 @@
       "contributions": [
         "infra"
       ]
+    },
+    {
+      "login": "tamasgal",
+      "name": "Tamas Gal",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/1730350?v=4",
+      "profile": "http://www.tamasgal.com",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
