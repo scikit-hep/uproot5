@@ -1,4 +1,4 @@
-<img src="https://github.com/scikit-hep/uproot4/raw/jpivarski/point-to-documentation-on-readme/docs-img/logo/logo-300px.png">
+<img src="https://raw.githubusercontent.com/scikit-hep/uproot4/master/docs-img/logo/logo-300px.png">
 
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
 [![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
