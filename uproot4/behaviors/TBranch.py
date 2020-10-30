@@ -721,17 +721,11 @@ class Report(object):
         self._global_offset = global_offset
 
     def __repr__(self):
-        if self._global_offset == 0:
-            return "Report({0}, {1}, {2})".format(
-                self._source, self._tree_entry_start, self._tree_entry_stop
-            )
-        else:
-            return "Report({0}, {1}, {2}, global_offset={3})".format(
-                self._source,
-                self._tree_entry_start,
-                self._tree_entry_stop,
-                self._global_offset,
-            )
+        return "<Report start={0} stop={1} source={2}>".format(
+            self.global_entry_start,
+            self.global_entry_stop,
+            repr(self._source.file.file_path + ":" + self._source.object_path),
+        )
 
     @property
     def source(self):
@@ -2363,11 +2357,13 @@ in file {3}""".format(
         The ``TBranch`` object in which this branch's "counts" reside or None
         if this branch has no "counts".
         """
-        leaf = self.count_leaf
-        if leaf is None:
-            return None
+        out = self.count_leaf
+        while isinstance(out, uproot4.model.Model) and out.is_instance("TLeaf"):
+            out = out.parent
+        if isinstance(out, uproot4.model.Model) and out.is_instance("TBranch"):
+            return out
         else:
-            return leaf.parent
+            return None
 
     @property
     def count_leaf(self):
@@ -2755,7 +2751,7 @@ def _keys_deep(hasbranches):
 _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
 
 
-def _regularize_files_inner(files, parse_colon):
+def _regularize_files_inner(files, parse_colon, counter):
     files2 = uproot4._util.regularize_path(files)
 
     if uproot4._util.isstr(files2) and not uproot4._util.isstr(files):
@@ -2800,12 +2796,15 @@ def _regularize_files_inner(files, parse_colon):
 
     elif isinstance(files, dict):
         for key, object_path in files.items():
-            for file_path, _ in _regularize_files_inner(key, False):
+            for file_path, _ in _regularize_files_inner(key, False, counter):
                 yield file_path, object_path
 
     elif isinstance(files, Iterable):
         for file in files:
-            for file_path, object_path in _regularize_files_inner(file, parse_colon):
+            counter[0] += 1
+            for file_path, object_path in _regularize_files_inner(
+                file, parse_colon, counter
+            ):
                 yield file_path, object_path
 
     else:
@@ -2820,11 +2819,13 @@ def _regularize_files_inner(files, parse_colon):
 def _regularize_files(files):
     out = []
     seen = set()
-    for file_path, object_path in _regularize_files_inner(files, True):
+    counter = [0]
+    for file_path, object_path in _regularize_files_inner(files, True, counter):
         if uproot4._util.isstr(file_path):
-            if (file_path, object_path) not in seen:
+            key = (counter[0], file_path, object_path)
+            if key not in seen:
                 out.append((file_path, object_path))
-                seen.add((file_path, object_path))
+                seen.add(key)
         else:
             out.append((file_path, object_path))
 
