@@ -140,6 +140,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "HDembinski",
+      "name": "Hans Dembinski",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/2631586?v=4",
+      "profile": "https://github.com/HDembinski",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
