@@ -2830,7 +2830,7 @@ def _regularize_files(files):
             out.append((file_path, object_path))
 
     if len(out) == 0:
-        uproot4._util._file_not_found(files)
+        raise uproot4._util._file_not_found(files)
 
     return out
 

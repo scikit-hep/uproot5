@@ -148,3 +148,10 @@ def test_awkward_pluralization():
     )
     array = uproot4.lazy({files: "sample"})
     assert awkward1.to_list(array[:5, "i4"]) == [-15, -14, -13, -12, -11]
+
+
+def test_lazy_called_on_nonexistent_file():
+    filename = "nonexistent_file.root"
+    with pytest.raises(FileNotFoundError) as excinfo:
+        uproot4.lazy(filename)
+    assert filename in str(excinfo.value)
