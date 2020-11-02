@@ -567,9 +567,8 @@ class Model(object):
 
         out = []
         for x in getattr(self, "_bases", []):
-            if (
-                isinstance(x, py_types)
-                or any(getattr(x, "classname", None) == n for n in cpp_names)
+            if isinstance(x, py_types) or any(
+                getattr(x, "classname", None) == n for n in cpp_names
             ):
                 out.append(x)
             if isinstance(x, Model):

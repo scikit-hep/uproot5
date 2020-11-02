@@ -41,7 +41,9 @@ class KeyInFileError(KeyError):
         with_keys = ""
         if self.keys is not None:
             to_show = None
-            sorted_keys = sorted(self.keys, key=lambda x: damerau_levenshtein(self.key, x))
+            sorted_keys = sorted(
+                self.keys, key=lambda x: damerau_levenshtein(self.key, x)
+            )
             for key in sorted_keys:
                 if to_show is None:
                     to_show = repr(key)
