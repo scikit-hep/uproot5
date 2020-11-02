@@ -260,7 +260,7 @@ class AsStrings(uproot4.interpretation.Interpretation):
             basket_content[k] = v.content
 
         if entry_start >= entry_stop:
-            return StringArray(library.zeros((1,), numpy.int64), b"")
+            output = StringArray(library.zeros((1,), numpy.int64), b"")
 
         else:
             length = 0
@@ -324,15 +324,15 @@ class AsStrings(uproot4.interpretation.Interpretation):
 
             output = StringArray(offsets, b"".join(contents))
 
-            self.hook_before_library_finalize(
-                basket_arrays=basket_arrays,
-                entry_start=entry_start,
-                entry_stop=entry_stop,
-                entry_offsets=entry_offsets,
-                library=library,
-                branch=branch,
-                output=output,
-            )
+        self.hook_before_library_finalize(
+            basket_arrays=basket_arrays,
+            entry_start=entry_start,
+            entry_stop=entry_stop,
+            entry_offsets=entry_offsets,
+            library=library,
+            branch=branch,
+            output=output,
+        )
 
         output = library.finalize(output, branch, self, entry_start, entry_stop)
 

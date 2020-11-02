@@ -3271,11 +3271,14 @@ def _ranges_or_baskets_to_arrays(
     range_original_index = {}
     original_index = 0
 
+    for cache_key in branchid_interpretation:
+        branchid_num_baskets[cache_key] = 0
+
     for branch, basket_num, range_or_basket in ranges_or_baskets:
+        branchid_num_baskets[branch.cache_key] += 1
+
         if branch.cache_key not in branchid_arrays:
             branchid_arrays[branch.cache_key] = {}
-            branchid_num_baskets[branch.cache_key] = 0
-        branchid_num_baskets[branch.cache_key] += 1
 
         if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
             range_or_basket = (int(range_or_basket[0]), int(range_or_basket[1]))
@@ -3286,6 +3289,13 @@ def _ranges_or_baskets_to_arrays(
             notifications.put(range_or_basket)
 
         original_index += 1
+
+    for cache_key, interpretation in branchid_interpretation.items():
+        if branchid_num_baskets[cache_key] == 0:
+            if cache_key not in arrays:
+                arrays[cache_key] = interpretation.final_array(
+                    {}, 0, 0, [0], library, None
+                )
 
     hasbranches._file.source.chunks(ranges, notifications=notifications)
 

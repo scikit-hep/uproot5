@@ -13,6 +13,8 @@ that determine the default interpretation of a
 
 from __future__ import absolute_import
 
+import numpy
+
 
 class Interpretation(object):
     """

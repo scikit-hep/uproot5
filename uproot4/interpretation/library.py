@@ -83,6 +83,18 @@ class Library(object):
         """
         return numpy.empty(shape, dtype)
 
+    def zeros(self, shape, dtype):
+        """
+        Args:
+            shape (tuple of int): NumPy array ``shape``. (The first item must
+                be zero.)
+            dtype (``numpy.dtype`` or its constructor argument): NumPy array
+                ``dtype``.
+
+        Returns a NumPy-like array of zeros.
+        """
+        return numpy.zeros(shape, dtype)
+
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         """
         Args:
@@ -1033,6 +1045,10 @@ class CuPy(Library):
     def empty(self, shape, dtype):
         cupy = self.imported
         return cupy.empty(shape, dtype)
+
+    def zeros(self, shape, dtype):
+        cupy = self.imported
+        return cupy.zeros(shape, dtype)
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         cupy = self.imported
