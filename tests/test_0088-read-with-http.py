@@ -16,3 +16,11 @@ def test_issue176():
         assert len(data.Y1) == 100000
         assert len(data.Y2) == 100000
         assert len(data.Y3) == 100000
+
+
+@pytest.mark.network
+@pytest.mark.xfail
+def test_issue121():
+    with uproot4.open("https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root") as f:
+        data = f['Runs'].arrays()
+        assert len(data) == 1
