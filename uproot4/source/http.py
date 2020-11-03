@@ -258,8 +258,9 @@ for URL {0}""".format(
 
         return uproot4.source.futures.ResourceFuture(task)
 
-    _content_range_size = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)")
-    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
+    _content_type = re.compile(r"^multipart/byteranges; boundary=([^;=]+)$", re.IGNORECASE)
+    _content_range_size = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)", re.IGNORECASE)
+    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.IGNORECASE)
 
     def is_multipart_supported(self, ranges, response):
         """
@@ -298,8 +299,16 @@ for URL {0}""".format(
         Helper function for :py:meth:`~uproot4.source.http.HTTPResource.multifuture`
         to handle the multipart GET response.
         """
+        match = self._content_type.match(response.getheader("Content-Type"))
+        if not match:
+            raise NotImplementedError(
+                "Failed to parse Content-Type header {}"
+                .format(response.getheader("Content-Type"))
+            )
+        multipart_boundary = match.groups()[0]
+
         for i in uproot4._util.range(len(futures)):
-            range_string, size = self.next_header(response)
+            range_string, size = self.next_header(response, multipart_boundary)
             if range_string is None:
                 raise OSError(
                     """found {0} of {1} expected headers in HTTP multipart
@@ -323,7 +332,7 @@ for URL {1}""".format(
                 )
 
             length = stop - start
-            results[start, stop] = response.read(length)
+            results[start, stop] = response.fp.read(length)
 
             if len(results[start, stop]) != length:
                 raise OSError(
@@ -339,11 +348,17 @@ for URL {3}""".format(
 
             future._run(self)
 
-    def next_header(self, response):
+    def next_header(self, response, multipart_boundary):
         """
         Helper function for :py:meth:`~uproot4.source.http.HTTPResource.multifuture`
         to return the next header from the ``response``.
         """
+        line = response.fp.readline()
+        while line.strip() != "--{}".format(multipart_boundary).encode():
+            line = response.fp.readline()
+            if not line:
+                raise NotImplementedError("Failed to find multipart boundary")
+
         line = response.fp.readline()
         range_string, size = None, None
         while range_string is None:
