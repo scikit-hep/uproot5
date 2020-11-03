@@ -39,6 +39,8 @@ def open(
     object_cache=100,
     array_cache="100 MB",
     custom_classes=None,
+    decompression_executor=None,
+    interpretation_executor=None,
     **options  # NOTE: a comma after **options breaks Python 2
 ):
     """
@@ -61,6 +63,13 @@ def open(
         custom_classes (None or MutableMapping): If None, classes come from
             uproot4.classes; otherwise, a container of class definitions that
             is both used to fill with new classes and search for dependencies.
+        decompression_executor (None or Executor with a ``submit`` method): The
+            executor that is used to decompress ``TBaskets``; if None, a
+            :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
+        interpretation_executor (None or Executor with a ``submit`` method): The
+            executor that is used to interpret uncompressed ``TBasket`` data as
+            arrays; if None, a :py:class:`~uproot4.source.futures.TrivialExecutor`
+            is created.
         options: See below.
 
     Opens a ROOT file, possibly through a remote protocol.
@@ -138,6 +147,8 @@ def open(
         object_cache=object_cache,
         array_cache=array_cache,
         custom_classes=custom_classes,
+        decompression_executor=decompression_executor,
+        interpretation_executor=interpretation_executor,
         **options  # NOTE: a comma after **options breaks Python 2
     )
 
@@ -470,6 +481,13 @@ class ReadOnlyFile(CommonFileMethods):
         custom_classes (None or MutableMapping): If None, classes come from
             uproot4.classes; otherwise, a container of class definitions that
             is both used to fill with new classes and search for dependencies.
+        decompression_executor (None or Executor with a ``submit`` method): The
+            executor that is used to decompress ``TBaskets``; if None, a
+            :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
+        interpretation_executor (None or Executor with a ``submit`` method): The
+            executor that is used to interpret uncompressed ``TBasket`` data as
+            arrays; if None, a :py:class:`~uproot4.source.futures.TrivialExecutor`
+            is created.
         options: See below.
 
     Handle to an open ROOT file, the way to access data in ``TDirectories``
@@ -512,12 +530,16 @@ class ReadOnlyFile(CommonFileMethods):
         object_cache=100,
         array_cache="100 MB",
         custom_classes=None,
+        decompression_executor=None,
+        interpretation_executor=None,
         **options  # NOTE: a comma after **options breaks Python 2
     ):
         self._file_path = file_path
         self.object_cache = object_cache
         self.array_cache = array_cache
         self.custom_classes = custom_classes
+        self.decompression_executor = decompression_executor
+        self.interpretation_executor = interpretation_executor
 
         self._options = dict(open.defaults)
         self._options.update(options)
@@ -648,6 +670,10 @@ in file {1}""".format(
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._source.__exit__(exception_type, exception_value, traceback)
+        if hasattr(self._decompression_executor, "shutdown"):
+            getattr(self._decompression_executor, "shutdown")()
+        if hasattr(self._interpretation_executor, "shutdown"):
+            getattr(self._interpretation_executor, "shutdown")()
 
     @property
     def source(self):
@@ -963,6 +989,44 @@ in file {1}""".format(
             self._custom_classes = value
         else:
             raise TypeError("custom_classes must be None or a MutableMapping")
+
+    @property
+    def decompression_executor(self):
+        """
+        An object satisfying the Executor interface; ``submit(task, *args, **kwargs)``
+        returns a Future, which blocks and returns ``task(*args, **kwargs)`` when
+        its ``Future.result()`` is called.
+
+        This executor is used to decompress ``TBasket`` data.
+        """
+        return self._decompression_executor
+
+    @decompression_executor.setter
+    def decompression_executor(self, value):
+        if value is None:
+            value = uproot4.source.futures.TrivialExecutor()
+        if not hasattr(value, "submit"):
+            raise TypeError("decompression_executor must have a 'submit' method")
+        self._decompression_executor = value
+
+    @property
+    def interpretation_executor(self):
+        """
+        An object satisfying the Executor interface; ``submit(task, *args, **kwargs)``
+        returns a Future, which blocks and returns ``task(*args, **kwargs)`` when
+        its ``Future.result()`` is called.
+
+        This executor is used to interpret arrays from uncompressed ``TBasket`` data.
+        """
+        return self._interpretation_executor
+
+    @interpretation_executor.setter
+    def interpretation_executor(self, value):
+        if value is None:
+            value = uproot4.source.futures.TrivialExecutor()
+        if not hasattr(value, "submit"):
+            raise TypeError("interpretation_executor must have a 'submit' method")
+        self._interpretation_executor = value
 
     def remove_class_definition(self, classname):
         """
