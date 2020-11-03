@@ -71,6 +71,38 @@ def make_connection(parsed_url, timeout):
         )
 
 
+def get_response(connection, location):
+    """
+    Args:
+        connection (``http.client.HTTPConnection``): The connection object from ``make_connection``
+        location (str): The location of the current request, used for error messages
+
+    Gets the response from ``connection.getresponse()`` and validates its status.
+    """
+    response = connection.getresponse()
+
+    if response.status == 404:
+        connection.close()
+        raise uproot4._util._file_not_found(location, "HTTP(S) returned 404")
+
+    elif str(response.status)[0] == "3":
+        connection.close()
+        raise NotImplementedError(
+            "HTTP(S) redirects are not currently supported "
+            "(https://github.com/scikit-hep/uproot4/issues/121)"
+        )
+
+    elif str(response.status)[0] != "2":
+        connection.close()
+        raise OSError(
+            "HTTP response was {}, rather than 2xx, ".format(response.status)
+            + "in attempt to get file size in file {}".format(location)
+        )
+
+    else:
+        return response
+
+
 def get_num_bytes(file_path, parsed_url, timeout):
     """
     Args:
@@ -82,20 +114,7 @@ def get_num_bytes(file_path, parsed_url, timeout):
     """
     connection = make_connection(parsed_url, timeout)
     connection.request("HEAD", parsed_url.path)
-    response = connection.getresponse()
-
-    if response.status == 404:
-        connection.close()
-        raise uproot4._util._file_not_found(file_path, "HTTP(S) returned 404")
-
-    if response.status != 200:
-        connection.close()
-        raise OSError(
-            """HTTP response was {0}, rather than 200, in attempt to get file size
-in file {1}""".format(
-                response.status, file_path
-            )
-        )
+    response = get_response(connection, parsed_url.path)
 
     for k, x in response.getheaders():
         if k.lower() == "content-length" and x.strip() != "0":
@@ -158,11 +177,7 @@ class HTTPResource(uproot4.source.chunk.Resource):
 
         Returns a Python buffer of data between ``start`` and ``stop``.
         """
-        response = connection.getresponse()
-
-        if response.status == 404:
-            connection.close()
-            raise uproot4._util._file_not_found(self.file_path, "HTTP(S) returned 404")
+        response = get_response(connection, self._file_path)
 
         if response.status != 206:
             connection.close()
@@ -240,7 +255,7 @@ for URL {0}""".format(
 
         def task(resource):
             try:
-                response = connection.getresponse()
+                response = get_response(connection, source.parsed_url.path)
                 multipart_supported = resource.is_multipart_supported(ranges, response)
 
                 if not multipart_supported:
