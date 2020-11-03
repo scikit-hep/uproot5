@@ -92,10 +92,6 @@ from uproot4.source.object import ObjectSource
 from uproot4.source.cursor import Cursor
 from uproot4.source.futures import TrivialExecutor
 from uproot4.source.futures import ThreadPoolExecutor
-
-decompression_executor = ThreadPoolExecutor()
-interpretation_executor = TrivialExecutor()
-
 from uproot4.deserialization import DeserializationError
 
 from uproot4.reading import open

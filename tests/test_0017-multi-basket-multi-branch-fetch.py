@@ -261,15 +261,17 @@ def test_branch_array_2(file_handler):
     [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
 )
 def test_branch_array_3(file_handler):
+    executor = uproot4.ThreadPoolExecutor()
     with uproot4.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         file_handler=file_handler,
+        interpretation_executor=executor,
+        decompression_executor=executor,
     )["sample/i4"] as branch:
         assert branch.array(
             uproot4.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
-            interpretation_executor=uproot4.decompression_executor,
             library="np",
         ).tolist() == [
             -12,
@@ -337,14 +339,16 @@ def test_cache():
 
 def test_pandas():
     pandas = pytest.importorskip("pandas")
+    executor = uproot4.ThreadPoolExecutor()
     with uproot4.open(
-        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
+        skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
+        interpretation_executor=executor,
+        decompression_executor=executor,
     )["sample/i4"] as branch:
         series = branch.array(
             uproot4.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
-            interpretation_executor=uproot4.decompression_executor,
             library="pd",
         )
         assert isinstance(series, pandas.Series)

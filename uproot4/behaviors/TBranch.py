@@ -124,12 +124,12 @@ def iterate(
             to include. The string must be a number followed by a memory unit,
             such as "100 MB".
         decompression_executor (None or Executor with a ``submit`` method): The
-            executor that is used to decompress ``TBaskets``; if None, the
-            global ``uproot4.decompression_executor`` is used.
+            executor that is used to decompress ``TBaskets``; if None, a
+            :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, the global ``uproot4.interpretation_executor`` is
-            used.
+            arrays; if None, a :py:class:`~uproot4.source.futures.TrivialExecutor`
+            is created.
         library (str or :py:class:`~uproot4.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
@@ -204,7 +204,7 @@ def iterate(
     """
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
-        decompression_executor, interpretation_executor
+        decompression_executor, interpretation_executor, None
     )
     library = uproot4.interpretation.library._regularize_library(library)
 
@@ -288,12 +288,12 @@ def concatenate(
         language (:py:class:`~uproot4.language.Language`): Language used to interpret
             the ``expressions`` and ``aliases``.
         decompression_executor (None or Executor with a ``submit`` method): The
-            executor that is used to decompress ``TBaskets``; if None, the
-            global ``uproot4.decompression_executor`` is used.
+            executor that is used to decompress ``TBaskets``; if None, a
+            :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, the global ``uproot4.interpretation_executor`` is
-            used.
+            arrays; if None, a :py:class:`~uproot4.source.futures.TrivialExecutor`
+            is created.
         library (str or :py:class:`~uproot4.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
@@ -363,7 +363,7 @@ def concatenate(
     """
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
-        decompression_executor, interpretation_executor
+        decompression_executor, interpretation_executor, None
     )
     library = uproot4.interpretation.library._regularize_library(library)
 
@@ -435,12 +435,12 @@ def lazy(
             with slashes (``/``); otherwise, use the descendant's name as
             the field name.
         decompression_executor (None or Executor with a ``submit`` method): The
-            executor that is used to decompress ``TBaskets``; if None, the
-            global ``uproot4.decompression_executor`` is used.
+            executor that is used to decompress ``TBaskets``; if None, a
+            :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, the global ``uproot4.interpretation_executor`` is
-            used.
+            arrays; if None, a :py:class:`~uproot4.source.futures.TrivialExecutor`
+            is created.
         array_cache (None, MutableMapping, or memory size): Cache of arrays;
             if None, do not use a cache; if a memory size, create a new cache
             of this size.
@@ -521,7 +521,7 @@ def lazy(
 
     files = _regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
-        decompression_executor, interpretation_executor
+        decompression_executor, interpretation_executor, None
     )
     array_cache = _regularize_array_cache(array_cache, None)
     library = uproot4.interpretation.library._regularize_library_lazy(library)
@@ -1008,11 +1008,12 @@ class HasBranches(Mapping):
                 count from the end, like a Python slice.
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                global ``uproot4.decompression_executor`` is used.
+                file's :py:attr:`~uproot4.reading.ReadOnlyFile.decompression_executor`
+                is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the global ``uproot4.interpretation_executor`` is
-                used.
+                arrays; if None, the file's :py:attr:`~uproot4.reading.ReadOnlyFile.interpretation_executor`
+                is used.
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
                 if a memory size, create a new cache of this size.
@@ -1067,7 +1068,7 @@ class HasBranches(Mapping):
             self.tree.num_entries, entry_start, entry_stop
         )
         decompression_executor, interpretation_executor = _regularize_executors(
-            decompression_executor, interpretation_executor
+            decompression_executor, interpretation_executor, self._file
         )
         array_cache = _regularize_array_cache(array_cache, self._file)
         library = uproot4.interpretation.library._regularize_library(library)
@@ -1218,11 +1219,12 @@ class HasBranches(Mapping):
                 such as "100 MB".
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                global ``uproot4.decompression_executor`` is used.
+                file's :py:attr:`~uproot4.reading.ReadOnlyFile.decompression_executor`
+                is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the global ``uproot4.interpretation_executor`` is
-                used.
+                arrays; if None, the file's :py:attr:`~uproot4.reading.ReadOnlyFile.interpretation_executor`
+                is used.
             library (str or :py:class:`~uproot4.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
@@ -1280,7 +1282,7 @@ class HasBranches(Mapping):
                 self.tree.num_entries, entry_start, entry_stop
             )
             decompression_executor, interpretation_executor = _regularize_executors(
-                decompression_executor, interpretation_executor
+                decompression_executor, interpretation_executor, self._file
             )
             library = uproot4.interpretation.library._regularize_library(library)
 
@@ -1966,11 +1968,12 @@ class TBranch(HasBranches):
                 count from the end, like a Python slice.
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                global ``uproot4.decompression_executor`` is used.
+                file's :py:attr:`~uproot4.reading.ReadOnlyFile.decompression_executor`
+                is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the global ``uproot4.interpretation_executor`` is
-                used.
+                arrays; if None, the file's :py:attr:`~uproot4.reading.ReadOnlyFile.interpretation_executor`
+                is used.
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
                 if a memory size, create a new cache of this size.
@@ -2006,7 +2009,7 @@ class TBranch(HasBranches):
             self.num_entries, entry_start, entry_stop
         )
         decompression_executor, interpretation_executor = _regularize_executors(
-            decompression_executor, interpretation_executor
+            decompression_executor, interpretation_executor, self._file
         )
         array_cache = _regularize_array_cache(array_cache, self._file)
         library = uproot4.interpretation.library._regularize_library(library)
@@ -2912,11 +2915,17 @@ def _regularize_entries_start_stop(num_entries, entry_start, entry_stop):
     return int(entry_start), int(entry_stop)
 
 
-def _regularize_executors(decompression_executor, interpretation_executor):
-    if decompression_executor is None:
-        decompression_executor = uproot4.decompression_executor
-    if interpretation_executor is None:
-        interpretation_executor = uproot4.interpretation_executor
+def _regularize_executors(decompression_executor, interpretation_executor, file):
+    if file is None:
+        if decompression_executor is None:
+            decompression_executor = uproot4.source.futures.TrivialExecutor()
+        if interpretation_executor is None:
+            interpretation_executor = uproot4.source.futures.TrivialExecutor()
+    else:
+        if decompression_executor is None:
+            decompression_executor = file.decompression_executor
+        if interpretation_executor is None:
+            interpretation_executor = file.interpretation_executor
     return decompression_executor, interpretation_executor
 
 
@@ -3271,11 +3280,14 @@ def _ranges_or_baskets_to_arrays(
     range_original_index = {}
     original_index = 0
 
+    for cache_key in branchid_interpretation:
+        branchid_num_baskets[cache_key] = 0
+
     for branch, basket_num, range_or_basket in ranges_or_baskets:
+        branchid_num_baskets[branch.cache_key] += 1
+
         if branch.cache_key not in branchid_arrays:
             branchid_arrays[branch.cache_key] = {}
-            branchid_num_baskets[branch.cache_key] = 0
-        branchid_num_baskets[branch.cache_key] += 1
 
         if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
             range_or_basket = (int(range_or_basket[0]), int(range_or_basket[1]))
@@ -3286,6 +3298,13 @@ def _ranges_or_baskets_to_arrays(
             notifications.put(range_or_basket)
 
         original_index += 1
+
+    for cache_key, interpretation in branchid_interpretation.items():
+        if branchid_num_baskets[cache_key] == 0:
+            if cache_key not in arrays:
+                arrays[cache_key] = interpretation.final_array(
+                    {}, 0, 0, [0], library, None
+                )
 
     hasbranches._file.source.chunks(ranges, notifications=notifications)
 
