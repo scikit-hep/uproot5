@@ -66,10 +66,12 @@ def open(
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
             arrays; if None, a :py:class:`~uproot4.source.futures.TrivialExecutor`
             is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
         options: See below.
 
     Opens a ROOT file, possibly through a remote protocol.
@@ -484,10 +486,12 @@ class ReadOnlyFile(CommonFileMethods):
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
             arrays; if None, a :py:class:`~uproot4.source.futures.TrivialExecutor`
             is created.
+            Executors attached to a file are ``shutdown`` when the file is closed.
         options: See below.
 
     Handle to an open ROOT file, the way to access data in ``TDirectories``
@@ -646,6 +650,10 @@ in file {1}""".format(
         accessible.
         """
         self._source.close()
+        if hasattr(self._decompression_executor, "shutdown"):
+            getattr(self._decompression_executor, "shutdown")()
+        if hasattr(self._interpretation_executor, "shutdown"):
+            getattr(self._interpretation_executor, "shutdown")()
 
     @property
     def closed(self):
@@ -998,6 +1006,8 @@ in file {1}""".format(
         its ``Future.result()`` is called.
 
         This executor is used to decompress ``TBasket`` data.
+
+        Executors attached to a file are ``shutdown`` when the file is closed.
         """
         return self._decompression_executor
 
@@ -1017,6 +1027,8 @@ in file {1}""".format(
         its ``Future.result()`` is called.
 
         This executor is used to interpret arrays from uncompressed ``TBasket`` data.
+
+        Executors attached to a file are ``shutdown`` when the file is closed.
         """
         return self._interpretation_executor
 
