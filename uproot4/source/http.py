@@ -315,15 +315,14 @@ for URL {0}""".format(
         to handle the multipart GET response.
         """
         match = self._content_type.match(response.getheader("Content-Type"))
-        if not match:
-            raise NotImplementedError(
-                "Failed to parse Content-Type header {}"
-                .format(response.getheader("Content-Type"))
-            )
-        multipart_boundary = match.groups()[0]
+        if match:
+            multipart_boundary = match.groups()[0]
+        else:
+            # Infer it from the first response
+            multipart_boundary = None
 
         for i in uproot4._util.range(len(futures)):
-            range_string, size = self.next_header(response, multipart_boundary)
+            range_string, size, multipart_boundary = self.next_header(response, multipart_boundary)
             if range_string is None:
                 raise OSError(
                     """found {0} of {1} expected headers in HTTP multipart
@@ -368,11 +367,29 @@ for URL {3}""".format(
         Helper function for :py:meth:`~uproot4.source.http.HTTPResource.multifuture`
         to return the next header from the ``response``.
         """
-        line = response.fp.readline()
-        while line.strip() != "--{}".format(multipart_boundary).encode():
+        if multipart_boundary is None:
+            # This seems to be purely for testing against example.com where the
+            # response appears to be invalid
+            while True:
+                line = response.fp.readline()
+                if len(line) == 0:
+                    pass
+                elif len(line.strip()) == 0:
+                    continue
+                elif line.startswith(b"--"):
+                    multipart_boundary = line[len(b"--"):].strip().decode()
+                    break
+
+                raise NotImplementedError(
+                    "Failed to parse Content-Type header {}"
+                    .format(response.getheader("Content-Type"))
+                )
+        else:
             line = response.fp.readline()
-            if not line:
-                raise NotImplementedError("Failed to find multipart boundary")
+            while line.strip() != "--{}".format(multipart_boundary).encode():
+                line = response.fp.readline()
+                if not line:
+                    raise NotImplementedError("Failed to find multipart boundary")
 
         line = response.fp.readline()
         range_string, size = None, None
@@ -389,7 +406,7 @@ for URL {3}""".format(
             line = response.fp.readline()
             if len(line.strip()) == 0:
                 break
-        return range_string, size
+        return range_string, size, multipart_boundary
 
     @staticmethod
     def partfuture(results, start, stop):
