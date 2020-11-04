@@ -526,11 +526,15 @@ def lazy(
     array_cache = _regularize_array_cache(array_cache, None)
     library = uproot4.interpretation.library._regularize_library_lazy(library)
 
-    if type(array_cache) == dict:
-        array_cache = _WrapDict(array_cache)
-
-    if array_cache is not None:
-        layout_array_cache = awkward1.layout.ArrayCache(array_cache)
+    hold_cache = array_cache
+    if array_cache is not None and not isinstance(
+        array_cache, awkward1.layout.ArrayCache
+    ):
+        if type(array_cache) is dict:
+            hold_cache = _WrapDict(array_cache)
+        if not isinstance(hold_cache, MutableMapping):
+            raise TypeError("array_cache must be None or a MutableMapping")
+        array_cache = awkward1.layout.ArrayCache(hold_cache)
 
     real_options = dict(options)
     if "num_workers" not in real_options:
@@ -669,7 +673,7 @@ def lazy(
                 )
                 global_cache_key.append(cache_key)
                 virtualarray = awkward1.layout.VirtualArray(
-                    generator, cache=layout_array_cache, cache_key=cache_key
+                    generator, cache=array_cache, cache_key=cache_key
                 )
                 fields.append(virtualarray)
                 names.append(key)
@@ -679,7 +683,7 @@ def lazy(
             global_offsets.append(global_offsets[-1] + length)
 
     out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
-    return awkward1.Array(out, cache=array_cache)
+    return awkward1.Array(out)
 
 
 class Report(object):
