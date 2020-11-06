@@ -133,6 +133,13 @@ class Model_TBasket(uproot4.model.Model):
         return self._basket_num
 
     @property
+    def entry_start_stop(self):
+        """
+        The starting and stopping entry numbers for this ``TBasket``.
+        """
+        return self._parent.basket_entry_start_stop(self._basket_num)
+
+    @property
     def key_version(self):
         """
         The instance version of the ``TKey`` for this ``TBasket`` (which is
