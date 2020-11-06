@@ -434,6 +434,10 @@ def lazy(
         full_paths (bool): If True, include the full path to each subbranch
             with slashes (``/``); otherwise, use the descendant's name as
             the field name.
+        step_size (int or str): If an integer, the maximum number of entries to
+            include in each iteration step; if a string, the maximum memory size
+            to include. The string must be a number followed by a memory unit,
+            such as "100 MB".
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
