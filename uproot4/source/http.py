@@ -71,6 +71,17 @@ def make_connection(parsed_url, timeout):
         )
 
 
+def full_path(parsed_url):
+    """
+    Returns the ``parsed_url.path`` with ``"?"`` and the ``parsed_url.query``
+    if it exists, just the path otherwise.
+    """
+    if parsed_url.query:
+        return parsed_url.path + "?" + parsed_url.query
+    else:
+        return parsed_url.path
+
+
 def get_num_bytes(file_path, parsed_url, timeout):
     """
     Args:
@@ -81,7 +92,7 @@ def get_num_bytes(file_path, parsed_url, timeout):
     Returns the number of bytes in the file by making a HEAD request.
     """
     connection = make_connection(parsed_url, timeout)
-    connection.request("HEAD", parsed_url.path)
+    connection.request("HEAD", full_path(parsed_url))
     response = connection.getresponse()
 
     if response.status == 404:
@@ -193,7 +204,7 @@ for URL {0}""".format(
         connection = make_connection(source.parsed_url, source.timeout)
         connection.request(
             "GET",
-            source.parsed_url.path,
+            source.full_path(parsed_url),
             headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
         )
 
@@ -234,7 +245,7 @@ for URL {0}""".format(
 
         connection.request(
             "GET",
-            source.parsed_url.path,
+            source.full_path(parsed_url),
             headers={"Range": "bytes=" + ", ".join(range_strings)},
         )
 
