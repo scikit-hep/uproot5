@@ -204,7 +204,7 @@ for URL {0}""".format(
         connection = make_connection(source.parsed_url, source.timeout)
         connection.request(
             "GET",
-            source.full_path(parsed_url),
+            full_path(source.parsed_url),
             headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
         )
 
@@ -245,7 +245,7 @@ for URL {0}""".format(
 
         connection.request(
             "GET",
-            source.full_path(parsed_url),
+            full_path(source.parsed_url),
             headers={"Range": "bytes=" + ", ".join(range_strings)},
         )
 
