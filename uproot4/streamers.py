@@ -851,9 +851,9 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             ):
                 if len(fields[-1]) == 1:
                     read_members.append(
-                        "        self._members['{0}'] = cursor.field(chunk, "
+                        "        self._members[{0}] = cursor.field(chunk, "
                         "self._format{1}, context)".format(
-                            fields[-1][0], len(formats) - 1
+                            repr(fields[-1][0]), len(formats) - 1
                         )
                     )
                 else:
@@ -1038,7 +1038,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
             [
                 "        cursor.skip(6)",
                 "        for tmp in uproot4._util.range(self.member({0})):".format(
-                    self.count_name
+                    repr(self.count_name)
                 ),
                 "            self._members[{0}] = c({1}).read(chunk, cursor, "
                 "context, file, self._file, self._concrete)".format(
