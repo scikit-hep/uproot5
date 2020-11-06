@@ -2756,6 +2756,7 @@ def _keys_deep(hasbranches):
 
 
 _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
+_regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
 
 
 def _regularize_files_inner(files, parse_colon, counter):
@@ -2778,25 +2779,29 @@ def _regularize_files_inner(files, parse_colon, counter):
 
         else:
             expanded = os.path.expanduser(file_path)
-            matches = list(_regularize_files_braces.finditer(expanded))
-            if len(matches) == 0:
-                results = [expanded]
-            else:
-                results = []
-                for combination in itertools.product(
-                    *[match.group(0)[1:-1].split(",") for match in matches]
-                ):
-                    tmp = expanded
-                    for c, m in list(zip(combination, matches))[::-1]:
-                        tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
-                    results.append(tmp)
+            if _regularize_files_isglob.search(expanded) is None:
+                yield file_path, object_path
 
-            seen = set()
-            for result in results:
-                for match in glob.glob(result):
-                    if match not in seen:
-                        yield match, object_path
-                        seen.add(match)
+            else:
+                matches = list(_regularize_files_braces.finditer(expanded))
+                if len(matches) == 0:
+                    results = [expanded]
+                else:
+                    results = []
+                    for combination in itertools.product(
+                        *[match.group(0)[1:-1].split(",") for match in matches]
+                    ):
+                        tmp = expanded
+                        for c, m in list(zip(combination, matches))[::-1]:
+                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
+                        results.append(tmp)
+
+                seen = set()
+                for result in results:
+                    for match in glob.glob(result):
+                        if match not in seen:
+                            yield match, object_path
+                            seen.add(match)
 
     elif isinstance(files, HasBranches):
         yield files, None
