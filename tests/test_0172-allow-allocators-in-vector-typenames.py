@@ -12,5 +12,7 @@ def test():
     with uproot4.open(skhep_testdata.data_path("uproot-issue-172.root")) as f:
         t = f["events"]
         t.show()
-        assert t["rec_part_px_VecOps"].typename == "std::vector<float>"  # without the allocator
+        assert (
+            t["rec_part_px_VecOps"].typename == "std::vector<float>"
+        )  # without the allocator
         t["rec_part_px_VecOps"].array()

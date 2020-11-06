@@ -527,9 +527,7 @@ def _parse_ignore_extra_arguments(tokens, i, typename, file, at_most):
     while tokens[i].group(0) == ",":
         if at_most == 0:
             _parse_error(tokens[i].start() + 1, typename, file)
-        i, values = _parse_node(
-            tokens, i + 1, typename, file, True, False, False
-        )
+        i, values = _parse_node(tokens, i + 1, typename, file, True, False, False)
         at_most -= 1
 
     return i
