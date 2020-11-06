@@ -434,6 +434,10 @@ def lazy(
         full_paths (bool): If True, include the full path to each subbranch
             with slashes (``/``); otherwise, use the descendant's name as
             the field name.
+        step_size (int or str): If an integer, the maximum number of entries to
+            include in each iteration step; if a string, the maximum memory size
+            to include. The string must be a number followed by a memory unit,
+            such as "100 MB".
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
@@ -1379,13 +1383,18 @@ class HasBranches(Mapping):
 
                 arrays = library.group(output, expression_context, how)
 
+                next_baskets = {}
+                for branch, basket_num, basket in ranges_or_baskets:
+                    basket_entry_start, basket_entry_stop = basket.entry_start_stop
+                    if basket_entry_stop > sub_entry_stop:
+                        next_baskets[branch.cache_key, basket_num] = basket
+
+                previous_baskets = next_baskets
+
                 if report:
                     yield arrays, Report(self, sub_entry_start, sub_entry_stop)
                 else:
                     yield arrays
-
-                for branch, basket_num, basket in ranges_or_baskets:
-                    previous_baskets[branch.cache_key, basket_num] = basket
 
     def keys(
         self,
@@ -2251,6 +2260,38 @@ in file {3}""".format(
             )
         else:
             return out
+
+    def basket_entry_start_stop(self, basket_num):
+        """
+        The starting and stopping entry number for ``TBasket`` number ``basket_num``.
+        """
+        if 0 <= basket_num < self._num_normal_baskets:
+            fBasketEntry = self.member("fBasketEntry")
+            return fBasketEntry[basket_num], fBasketEntry[basket_num + 1]
+
+        elif 0 <= basket_num < self.num_baskets:
+            baskets_before = self._num_normal_baskets
+            if self._num_normal_baskets == 0:
+                entries_before = 0
+            else:
+                entries_before = self.member("fBasketEntry")[self._num_normal_baskets]
+
+            for basket in self.embedded_baskets:
+                if basket_num == baskets_before:
+                    return entries_before, entries_before + basket.num_entries
+                baskets_before += 1
+                entries_before += basket.num_entries
+            else:
+                raise AssertionError
+
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get starting entry """
+                """for basket {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
 
     @property
     def tree(self):
