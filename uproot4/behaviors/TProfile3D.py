@@ -18,6 +18,10 @@ class TProfile3D(uproot4.behaviors.TProfile.Profile):
 
     no_inherit = (uproot4.behaviors.TH3.TH3,)
 
+    @property
+    def axes(self):
+        return (self.member("fXaxis"), self.member("fYaxis"), self.member("fZaxis"))
+
     def axis(self, axis):
         if axis == 0 or axis == -3 or axis == "x":
             return self.member("fXaxis")
@@ -29,15 +33,3 @@ class TProfile3D(uproot4.behaviors.TProfile.Profile):
             raise ValueError(
                 "axis must be 0 (-3), 1 (-2), 2 (-1) or 'x', 'y', 'z' for a TProfile3D"
             )
-
-    def values(self, flow=False):
-        raise NotImplementedError(repr(self))
-
-    def values_errors(self, flow=False, error_mode=""):
-        raise NotImplementedError(repr(self))
-
-    def to_boost(self):
-        raise NotImplementedError(repr(self))
-
-    def to_hist(self):
-        return uproot4.extras.hist().Hist(self.to_boost())

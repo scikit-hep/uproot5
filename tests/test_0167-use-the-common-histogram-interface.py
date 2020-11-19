@@ -34,6 +34,18 @@ def test_axis():
         assert axis.centers(True)[:3].tolist() == [-numpy.inf, -3.96, -3.88]
         assert axis.widths()[:3].tolist() == [0.08, 0.08, 0.08]
         assert axis.widths(True)[:2].tolist() == [numpy.inf, 0.08000000000000007]
+        assert (
+            len(axis.edges()) - 1
+            == len(axis.intervals())
+            == len(axis.centers())
+            == len(axis.widths())
+        )
+        assert (
+            len(axis.edges(flow=True)) - 1
+            == len(axis.intervals(flow=True))
+            == len(axis.centers(flow=True))
+            == len(axis.widths(flow=True))
+        )
 
     with uproot4.open(skhep_testdata.data_path("uproot-issue33.root")) as f:
         f["cutflow"].axes[0] == f["cutflow"].axis(0) == f["cutflow"].axis("x")
@@ -58,3 +70,33 @@ def test_axis():
         assert axis.centers(True)[:3].tolist() == [-numpy.inf, 0.5, 1.5]
         assert axis.widths()[:3].tolist() == [1, 1, 1]
         assert axis.widths(True)[:3].tolist() == [numpy.inf, 1, 1]
+        assert (
+            len(axis.edges()) - 1
+            == len(axis.intervals())
+            == len(axis.centers())
+            == len(axis.widths())
+        )
+        assert (
+            len(axis.edges(flow=True)) - 1
+            == len(axis.intervals(flow=True))
+            == len(axis.centers(flow=True))
+            == len(axis.widths(flow=True))
+        )
+
+
+def test_bins():
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        hpx = f["hpx"]
+        hpxpy = f["hpxpy"]
+        assert len(hpx.axis().centers()) == len(hpx.values())
+        assert len(hpx.axis().centers(flow=True)) == len(hpx.values(flow=True))
+        assert (
+            len(hpxpy.axis(0).centers()),
+            len(hpxpy.axis(1).centers()),
+        ) == hpxpy.values().shape
+        assert (
+            len(hpxpy.axis(0).centers(flow=True)),
+            len(hpxpy.axis(1).centers(flow=True)),
+        ) == hpxpy.values(flow=True).shape
+        assert numpy.all(hpxpy.values() == hpxpy.variances())
+        assert numpy.all(hpxpy.values(flow=True) == hpxpy.variances(flow=True))

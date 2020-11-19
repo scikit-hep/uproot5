@@ -126,29 +126,40 @@ class Profile(uproot4.behaviors.TH1.Histogram):
     def effective_entries(self, flow=False):
         """
         Args:
-            flow (bool): If True, include underflow and overflow bins; otherwise,
-                only normal (finite-width) bins are included.
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
 
         The effective number of entries, which is a step in the calculation of
-        :py:meth:`~uproot4.behaviors.TProfile.Profile.values`.
+        :py:meth:`~uproot4.behaviors.TProfile.Profile.values`. The calculation
+        of profile errors exactly follows ROOT's function, but in a vectorized
+        NumPy form.
         """
-        pass
+        raise NotImplementedError(repr(self))
 
-    def values_errors(self, flow=False, error_mode=""):
+    def values(self, flow=False):
         """
         Args:
-            flow (bool): If True, include underflow and overflow bins; otherwise,
-                only normal (finite-width) bins are included.
-            error_mode (str): Choose a method for calculating the errors (see below).
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
 
-        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
-        errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
-        same ``shape``.
+        Mean value of each bin as a 1, 2, or 3 dimensional ``numpy.ndarray`` of
+        ``numpy.float64``.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        raise NotImplementedError(repr(self))
+
+    def errors(self, flow=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+
+        Errors (uncertainties) in the :py:meth:`~uproot4.behaviors.TH1.Histogram.values`
+        as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         The calculation of profile errors exactly follows ROOT's function, but
-        in a vectorized NumPy form.
-
-        The ``error_mode`` may be
+        in a vectorized NumPy form. The ``error_mode`` may be
 
         * ``""`` for standard error on the mean
         * ``"s"`` for spread
@@ -156,8 +167,87 @@ class Profile(uproot4.behaviors.TH1.Histogram):
         * ``"g"`` for Gaussian
 
         following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
         """
-        pass
+        values, errors = self.values_errors(flow=flow, error_mode=error_mode)
+        return errors
+
+    def variances(self, flow=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+
+        Variances (uncertainties squared) in the
+        :py:meth:`~uproot4.behaviors.TH1.Histogram.values` as a 1, 2, or 3
+        dimensional ``numpy.ndarray`` of ``numpy.float64``.
+
+        The calculation of profile variances exactly follows ROOT's function, but
+        in a vectorized NumPy form. The ``error_mode`` may be
+
+        * ``""`` for standard error on the mean (squared)
+        * ``"s"`` for spread (squared)
+        * ``"i"`` for integer data (squared)
+        * ``"g"`` for Gaussian (squared)
+
+        following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        values, errors = self.values_errors(flow=flow, error_mode=error_mode)
+        return numpy.square(errors)
+
+    def values_errors(self, flow=False, error_mode=""):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+            error_mode (str): Choose a method for calculating the errors (see below).
+
+        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
+        errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
+        same ``shape``.
+
+        The calculation of profile errors exactly follows ROOT's function, but
+        in a vectorized NumPy form. The ``error_mode`` may be
+
+        * ``""`` for standard error on the mean
+        * ``"s"`` for spread
+        * ``"i"`` for integer data
+        * ``"g"`` for Gaussian
+
+        following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        raise NotImplementedError(repr(self))
+
+    def values_variances(self, flow=False, error_mode=""):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+            error_mode (str): Choose a method for calculating the errors (see below).
+
+        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
+        variances (uncertainties squared) as a 2-tuple of arrays. The two arrays have
+        the same ``shape``.
+
+        The calculation of profile variances exactly follows ROOT's function, but
+        in a vectorized NumPy form. The ``error_mode`` may be
+
+        * ``""`` for standard error on the mean (squared)
+        * ``"s"`` for spread (squared)
+        * ``"i"`` for integer data (squared)
+        * ``"g"`` for Gaussian (squared)
+
+        following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        values, errors = self.values_errors(flow=flow, error_mode=error_mode)
+        return values, numpy.square(errors)
 
 
 class TProfile(Profile):
@@ -167,7 +257,11 @@ class TProfile(Profile):
 
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
-    def axis(self, axis=0):
+    @property
+    def axes(self):
+        return (self.member("fXaxis"),)
+
+    def axis(self, axis=0):  # default axis for one-dimensional is intentional
         if axis == 0 or axis == -1 or axis == "x":
             return self.member("fXaxis")
         else:
@@ -236,6 +330,3 @@ class TProfile(Profile):
         view.sum_of_weighted_deltas_squared
 
         raise NotImplementedError(repr(self))
-
-    def to_hist(self):
-        return uproot4.extras.hist().Hist(self.to_boost())

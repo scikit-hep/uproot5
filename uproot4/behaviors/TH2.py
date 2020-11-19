@@ -21,6 +21,10 @@ class TH2(uproot4.behaviors.TH1.Histogram):
 
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
+    @property
+    def axes(self):
+        return (self.member("fXaxis"), self.member("fYaxis"))
+
     def axis(self, axis):
         if axis == 0 or axis == -2 or axis == "x":
             return self.member("fXaxis")
@@ -42,7 +46,7 @@ class TH2(uproot4.behaviors.TH1.Histogram):
         else:
             return out[1:-1, 1:-1]
 
-    def values_errors(self, flow=False):
+    def values_variances(self, flow=False):
         values = self.values(flow=True)
         errors = numpy.transpose(numpy.zeros(values.shape[::-1], dtype=numpy.float64))
 
@@ -50,10 +54,10 @@ class TH2(uproot4.behaviors.TH1.Histogram):
         if sumw2 is not None and len(sumw2) == self.member("fNcells"):
             sumw2 = numpy.transpose(numpy.reshape(sumw2, values.shape[::-1]))
             positive = sumw2 > 0
-            errors[positive] = numpy.sqrt(sumw2[positive])
+            errors[positive] = sumw2[positive]
         else:
             positive = values > 0
-            errors[positive] = numpy.sqrt(values[positive])
+            errors[positive] = values[positive]
 
         if flow:
             return values, errors
@@ -126,6 +130,3 @@ class TH2(uproot4.behaviors.TH1.Histogram):
             view[:] = values
 
         return out
-
-    def to_hist(self):
-        return uproot4.extras.hist().Hist(self.to_boost())

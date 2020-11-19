@@ -30,7 +30,7 @@ def _boost_axis(axis):
             [str(x) for x in axis.member("fLabels")], metadata=metadata,
         )
 
-    elif fXbins is None or len(fXbins) == 0:
+    elif fXbins is None or len(fXbins) != fNbins:
         return boost_histogram.axis.Regular(
             fNbins,
             axis.member("fXmin"),
@@ -56,7 +56,7 @@ class Histogram(object):
         """
         A tuple of all :py:class:`~uproot4.behaviors.TAxis.TAxis` objects.
         """
-        pass
+        raise NotImplementedError(repr(self))
 
     def axis(self, axis):
         """
@@ -73,49 +73,106 @@ class Histogram(object):
 
         (assuming that the histogram dimension supports a given ``axis``).
         """
-        pass
+        raise NotImplementedError(repr(self))
 
     def values(self, flow=False):
         """
         Args:
-            flow (bool): If True, include underflow and overflow bins; otherwise,
-                only normal (finite-width) bins are included.
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
 
         Bin contents as a 1, 2, or 3 dimensional ``numpy.ndarray``. The
         ``numpy.dtype`` of this array depends on the histogram type.
 
-        The bins include underflow and overflow, with the bin at index ``0``
-        being underflow and the bin at index ``-1`` being overflow.
+        Setting ``flow=True`` increases the length of each dimension by two.
         """
-        pass
+        raise NotImplementedError(repr(self))
 
-    def values_errors(self, flow=False):
+    def errors(self, flow=False):
         """
         Args:
-            flow (bool): If True, include underflow and overflow bins; otherwise,
-                only normal (finite-width) bins are included.
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
 
-        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
-        errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
-        same ``shape``.
+        Errors (uncertainties) in the :py:meth:`~uproot4.behaviors.TH1.Histogram.values`
+        as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         If ``fSumw2`` (weights) are available, they will be used in the
         calculation of the errors. If not, errors are assumed to be the square
         root of the values.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
         """
-        pass
+        values, variances = self.values_variances(flow=flow)
+        return numpy.sqrt(variances)
+
+    def variances(self, flow=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+
+        Variances (uncertainties squared) in the
+        :py:meth:`~uproot4.behaviors.TH1.Histogram.values` as a 1, 2, or 3
+        dimensional ``numpy.ndarray`` of ``numpy.float64``.
+
+        If ``fSumw2`` (weights) are available, they will be used in the
+        calculation of the variances. If not, variances are assumed to be equal
+        to the values.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        values, variances = self.values_variances(flow=flow)
+        return variances
+
+    def values_errors(self, flow=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+
+        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
+        :py:meth:`~uproot4.behaviors.TH1.Histogram.errors` (uncertainties) as a
+        2-tuple of arrays. The two arrays have the same ``shape``.
+
+        If ``fSumw2`` (weights) are available, they will be used in the
+        calculation of the errors. If not, errors are assumed to be the square
+        root of the values.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        values, variances = self.values_variances(flow=flow)
+        return values, numpy.sqrt(variances)
+
+    def values_variances(self, flow=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+
+        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
+        :py:meth:`~uproot4.behaviors.TH1.Histogram.variances` (uncertainties squared)
+        as a 2-tuple of arrays. The two arrays have the same ``shape``.
+
+        If ``fSumw2`` (weights) are available, they will be used in the
+        calculation of the variances. If not, variances are assumed to be equal
+        to the values.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        raise NotImplementedError(repr(self))
 
     def to_boost(self):
         """
         Converts the histogram into a ``boost-histogram`` object.
         """
-        pass
+        raise NotImplementedError(repr(self))
 
     def to_hist(self):
         """
         Converts the histogram into a ``hist`` object.
         """
-        pass
+        return uproot4.extras.hist().Hist(self.to_boost())
 
 
 class TH1(Histogram):
@@ -126,9 +183,9 @@ class TH1(Histogram):
 
     @property
     def axes(self):
-        return (self.axis(0),)
+        return (self.member("fXaxis"),)
 
-    def axis(self, axis=0):
+    def axis(self, axis=0):  # default axis for one-dimensional is intentional
         if axis == 0 or axis == -1 or axis == "x":
             return self.member("fXaxis")
         else:
@@ -142,7 +199,7 @@ class TH1(Histogram):
         else:
             return out[1:-1]
 
-    def values_errors(self, flow=False):
+    def values_variances(self, flow=False):
         values = self.values(flow=True)
         errors = numpy.zeros(values.shape, dtype=numpy.float64)
 
@@ -150,10 +207,10 @@ class TH1(Histogram):
         if sumw2 is not None and len(sumw2) == self.member("fNcells"):
             sumw2 = numpy.reshape(sumw2, values.shape)
             positive = sumw2 > 0
-            errors[positive] = numpy.sqrt(sumw2[positive])
+            errors[positive] = sumw2[positive]
         else:
             positive = values > 0
-            errors[positive] = numpy.sqrt(values[positive])
+            errors[positive] = values[positive]
 
         if flow:
             return values, errors
@@ -220,6 +277,3 @@ class TH1(Histogram):
             view[:] = values
 
         return out
-
-    def to_hist(self):
-        return uproot4.extras.hist().Hist(self.to_boost())

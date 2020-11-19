@@ -82,6 +82,12 @@ class TAxis(Sequence):
         else:
             return False
 
+    def __ne__(self, other):
+        """
+        Some versions of Python don't automatically negate __eq__.
+        """
+        return not self.__eq__(other)
+
     @property
     def circular(self):
         """

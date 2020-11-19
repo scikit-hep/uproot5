@@ -20,6 +20,10 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
 
     no_inherit = (uproot4.behaviors.TH2.TH2,)
 
+    @property
+    def axes(self):
+        return (self.member("fXaxis"), self.member("fYaxis"))
+
     def axis(self, axis):
         if axis == 0 or axis == -2 or axis == "x":
             return self.member("fXaxis")
@@ -76,6 +80,3 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
 
     def to_boost(self):
         raise NotImplementedError(repr(self))
-
-    def to_hist(self):
-        return uproot4.extras.hist().Hist(self.to_boost())
