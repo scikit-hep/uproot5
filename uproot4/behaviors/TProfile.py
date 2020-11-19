@@ -149,11 +149,12 @@ class Profile(uproot4.behaviors.TH1.Histogram):
         """
         raise NotImplementedError(repr(self))
 
-    def errors(self, flow=False):
+    def errors(self, flow=False, error_mode=""):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
+            error_mode (str): Choose a method for calculating the errors (see below).
 
         Errors (uncertainties) in the :py:meth:`~uproot4.behaviors.TH1.Histogram.values`
         as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
@@ -173,11 +174,12 @@ class Profile(uproot4.behaviors.TH1.Histogram):
         values, errors = self.values_errors(flow=flow, error_mode=error_mode)
         return errors
 
-    def variances(self, flow=False):
+    def variances(self, flow=False, error_mode=""):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
+            error_mode (str): Choose a method for calculating the errors (see below).
 
         Variances (uncertainties squared) in the
         :py:meth:`~uproot4.behaviors.TH1.Histogram.values` as a 1, 2, or 3
@@ -249,6 +251,14 @@ class Profile(uproot4.behaviors.TH1.Histogram):
         values, errors = self.values_errors(flow=flow, error_mode=error_mode)
         return values, numpy.square(errors)
 
+    def counts(self, flow=False):
+        # FIXME: I am uncertain whether the counts is the sum of bin weights or not.
+        sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))
+        if flow:
+            return sum_of_bin_weights
+        else:
+            return sum_of_bin_weights[1:-1]
+
 
 class TProfile(Profile):
     """
@@ -306,27 +316,41 @@ class TProfile(Profile):
         else:
             return out[1:-1]
 
-    def to_boost(self):
+    def to_boost(
+        self,
+        metadata={"name": "fName", "title": "fTitle"},
+        axis_metadata={"name": "fName", "title": "fTitle"},
+    ):
         boost_histogram = uproot4.extras.boost_histogram()
+
+        effective_entries = self.effective_entries(flow=True)
+        values, variances = self.values_variances(
+            flow=True, error_mode=self.member("fErrorMode")
+        )
+        sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))
 
         storage = boost_histogram.storage.WeightedMean()
 
-        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"))
+        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
         out = boost_histogram.Histogram(xaxis, storage=storage)
-
-        values, errors = self.values_errors(
-            flow=True, error_mode=self.member("fErrorMode")
-        )
+        out.metadata = dict((k, self.member(v)) for k, v in metadata.items())
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
+            effective_entries = effective_entries[1:]
             values = values[1:]
-            errors = errors[1:]
+            variances = variances[1:]
+            sum_of_bin_weights = sum_of_bin_weights[1:]
 
         view = out.view(flow=True)
 
-        view.sum_of_weights
-        view.sum_of_weights_squared
-        view.value = values
-        view.sum_of_weighted_deltas_squared
+        # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
+        with numpy.errstate(divide="ignore"):
+            sum_of_bin_weights_squared = sum_of_bin_weights ** 2 / effective_entries
 
-        raise NotImplementedError(repr(self))
+        # FIXME: I am uncertain about how to fill the Boost profile-like Storage.
+        view.sum_of_weights[:] = sum_of_bin_weights
+        view.sum_of_weights_squared[:] = sum_of_bin_weights_squared
+        view.value[:] = values
+        view.variance[:] = variances
+
+        return out

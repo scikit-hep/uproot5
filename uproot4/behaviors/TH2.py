@@ -85,7 +85,11 @@ class TH2(uproot4.behaviors.TH1.Histogram):
         else:
             return values, xedges, yedges
 
-    def to_boost(self):
+    def to_boost(
+        self,
+        metadata={"name": "fName", "title": "fTitle"},
+        axis_metadata={"name": "fName", "title": "fTitle"},
+    ):
         boost_histogram = uproot4.extras.boost_histogram()
 
         values = self.values(flow=True)
@@ -102,20 +106,10 @@ class TH2(uproot4.behaviors.TH1.Histogram):
             else:
                 storage = boost_histogram.storage.Double()
 
-        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"))
-        yaxis = uproot4.behaviors.TH1._boost_axis(self.member("fYaxis"))
+        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
+        yaxis = uproot4.behaviors.TH1._boost_axis(self.member("fYaxis"), axis_metadata)
         out = boost_histogram.Histogram(xaxis, yaxis, storage=storage)
-
-        metadata = self.all_members
-        metadata["name"] = metadata.pop("fName")
-        metadata["title"] = metadata.pop("fTitle")
-        metadata.pop("fXaxis", None)
-        metadata.pop("fYaxis", None)
-        metadata.pop("fZaxis", None)
-        metadata.pop("fContour", None)
-        metadata.pop("fSumw2", None)
-        metadata.pop("fBuffer", None)
-        out.metadata = metadata
+        out.metadata = dict((k, self.member(v)) for k, v in metadata.items())
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             values = values[1:, :]

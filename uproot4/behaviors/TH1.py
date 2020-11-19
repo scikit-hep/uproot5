@@ -13,17 +13,13 @@ import uproot4.models.TArray
 import uproot4.extras
 
 
-def _boost_axis(axis):
+def _boost_axis(axis, metadata):
     boost_histogram = uproot4.extras.boost_histogram()
 
     fNbins = axis.member("fNbins")
     fXbins = axis.member("fXbins", none_if_missing=True)
 
-    metadata = axis.all_members
-    metadata["name"] = metadata.pop("fName")
-    metadata["title"] = metadata.pop("fTitle")
-    metadata.pop("fXbins", None)
-    metadata.pop("fLabels", None)
+    metadata = dict((k, axis.member(v)) for k, v in metadata.items())
 
     if axis.member("fLabels") is not None:
         return boost_histogram.axis.StrCategory(
@@ -50,6 +46,27 @@ class Histogram(object):
     """
     Abstract class for histograms.
     """
+
+    def __eq__(self, other):
+        """
+        Two histograms are equal if their axes are equal, their values are equal,
+        and their variances are equal.
+        """
+        if type(self) != type(other):
+            return False
+        if self.axes != other.axes:
+            return False
+        self_values, self_variances = self.values_variances(flow=True)
+        other_values, other_variances = other.values_variances(flow=True)
+        values_equal = numpy.array_equal(self_values, other_values)
+        variances_equal = numpy.array_equal(self_variances, other_variances)
+        return values_equal and variances_equal
+
+    def __ne__(self, other):
+        """
+        Some versions of Python don't automatically negate __eq__.
+        """
+        return not self.__eq__(other)
 
     @property
     def axes(self):
@@ -162,17 +179,42 @@ class Histogram(object):
         """
         raise NotImplementedError(repr(self))
 
-    def to_boost(self):
+    def counts(self, flow=False):
         """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+
+        Count returns the number of values in a mean accumulator (also known as
+        a Profile histogram), or is None for normal storages.
+        """
+        return None
+
+    def to_boost(
+        self,
+        metadata={"name": "fName", "title": "fTitle"},
+        axis_metadata={"name": "fName", "title": "fTitle"},
+    ):
+        u"""
+        Args:
+            metadata (dict of str \u2192 str): Metadata to collect (keys) and
+                their C++ class member names (values).
+            axis_metadata (dict of str \u2192 str): Metadata to collect from
+                each axis.
+
         Converts the histogram into a ``boost-histogram`` object.
         """
         raise NotImplementedError(repr(self))
 
-    def to_hist(self):
-        """
+    def to_hist(self, metadata={"name": "fName", "title": "fTitle"}):
+        u"""
+        Args:
+            metadata (dict of str \u2192 str): metadata to collect (keys) and
+                their C++ class member names (values).
+
         Converts the histogram into a ``hist`` object.
         """
-        return uproot4.extras.hist().Hist(self.to_boost())
+        return uproot4.extras.hist().Hist(self.to_boost(metadata=metadata))
 
 
 class TH1(Histogram):
@@ -237,7 +279,11 @@ class TH1(Histogram):
         else:
             return values, xedges
 
-    def to_boost(self):
+    def to_boost(
+        self,
+        metadata={"name": "fName", "title": "fTitle"},
+        axis_metadata={"name": "fName", "title": "fTitle"},
+    ):
         boost_histogram = uproot4.extras.boost_histogram()
 
         values = self.values(flow=True)
@@ -252,19 +298,9 @@ class TH1(Histogram):
             else:
                 storage = boost_histogram.storage.Double()
 
-        xaxis = _boost_axis(self.member("fXaxis"))
+        xaxis = _boost_axis(self.member("fXaxis"), axis_metadata)
         out = boost_histogram.Histogram(xaxis, storage=storage)
-
-        metadata = self.all_members
-        metadata["name"] = metadata.pop("fName")
-        metadata["title"] = metadata.pop("fTitle")
-        metadata.pop("fXaxis", None)
-        metadata.pop("fYaxis", None)
-        metadata.pop("fZaxis", None)
-        metadata.pop("fContour", None)
-        metadata.pop("fSumw2", None)
-        metadata.pop("fBuffer", None)
-        out.metadata = metadata
+        out.metadata = dict((k, self.member(v)) for k, v in metadata.items())
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             values = values[1:]

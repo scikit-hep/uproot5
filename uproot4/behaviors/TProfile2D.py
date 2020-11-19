@@ -77,6 +77,3 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
             return out
         else:
             return out[1:-1, 1:-1]
-
-    def to_boost(self):
-        raise NotImplementedError(repr(self))

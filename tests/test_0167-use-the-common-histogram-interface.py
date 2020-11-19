@@ -88,8 +88,11 @@ def test_bins():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         hpx = f["hpx"]
         hpxpy = f["hpxpy"]
+        hprof = f["hprof"]
         assert len(hpx.axis().centers()) == len(hpx.values())
         assert len(hpx.axis().centers(flow=True)) == len(hpx.values(flow=True))
+        assert len(hprof.axis().centers()) == len(hprof.values())
+        assert len(hprof.axis().centers(flow=True)) == len(hprof.values(flow=True))
         assert (
             len(hpxpy.axis(0).centers()),
             len(hpxpy.axis(1).centers()),
@@ -100,3 +103,50 @@ def test_bins():
         ) == hpxpy.values(flow=True).shape
         assert numpy.all(hpxpy.values() == hpxpy.variances())
         assert numpy.all(hpxpy.values(flow=True) == hpxpy.variances(flow=True))
+
+
+def test_boost():
+    boost_histogram = pytest.importorskip("boost_histogram")
+
+    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+        hpx = f["hpx"]
+        hpxpy = f["hpxpy"]
+        hprof = f["hprof"]
+        assert hpx.to_boost().metadata == {
+            "name": "hpx",
+            "title": "This is the px distribution",
+        }
+        assert hpx.to_boost().axes[0].metadata == {
+            "name": "xaxis",
+            "title": "",
+        }
+        assert hpxpy.to_boost().metadata == {
+            "name": "hpxpy",
+            "title": "py vs px",
+        }
+        assert hpxpy.to_boost().axes[0].metadata == {
+            "name": "xaxis",
+            "title": "",
+        }
+        assert hpxpy.to_boost().axes[1].metadata == {
+            "name": "yaxis",
+            "title": "",
+        }
+        assert hprof.to_boost().metadata == {
+            "name": "hprof",
+            "title": "Profile of pz versus px",
+        }
+        assert hprof.to_boost().axes[0].metadata == {
+            "name": "xaxis",
+            "title": "",
+        }
+
+    with uproot4.open(skhep_testdata.data_path("uproot-issue33.root")) as f:
+        assert f["cutflow"].to_boost().metadata == {
+            "name": "cutflow",
+            "title": "dijethad",
+        }
+        assert f["cutflow"].to_boost().axes[0].metadata == {
+            "name": "xaxis",
+            "title": "",
+        }
