@@ -1375,13 +1375,13 @@ class HasBranches(Mapping):
                     self.object_path,
                 )
 
-                expression_context = [
+                minimized_expression_context = [
                     (e, c)
                     for e, c in expression_context
                     if c["is_primary"] and not c["is_cut"]
                 ]
 
-                arrays = library.group(output, expression_context, how)
+                arrays = library.group(output, minimized_expression_context, how)
 
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
