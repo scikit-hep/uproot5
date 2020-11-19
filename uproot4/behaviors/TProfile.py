@@ -123,15 +123,24 @@ class Profile(uproot4.behaviors.TH1.Histogram):
     Abstract class for profile plots.
     """
 
-    def effective_entries(self):
+    def effective_entries(self, flow=False):
         """
+        Args:
+            flow (bool): If True, include underflow and overflow bins; otherwise,
+                only normal (finite-width) bins are included.
+
         The effective number of entries, which is a step in the calculation of
         :py:meth:`~uproot4.behaviors.TProfile.Profile.values`.
         """
         pass
 
-    def values_errors(self, error_mode=""):
+    def values_errors(self, flow=False, error_mode=""):
         """
+        Args:
+            flow (bool): If True, include underflow and overflow bins; otherwise,
+                only normal (finite-width) bins are included.
+            error_mode (str): Choose a method for calculating the errors (see below).
+
         The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
         errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
         same ``shape``.
@@ -158,31 +167,39 @@ class TProfile(Profile):
 
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
-    def edges(self, axis=0):
+    def axis(self, axis=0):
         if axis == 0 or axis == -1 or axis == "x":
-            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+            return self.member("fXaxis")
         else:
-            raise ValueError("axis must be 0 or 'x' for a TH1")
+            raise ValueError("axis must be 0 (-1) or 'x' for a TProfile")
 
-    def effective_entries(self):
-        return _effective_entries_1d(
+    def effective_entries(self, flow=True):
+        out = _effective_entries_1d(
             self.member("fBinEntries"),
             self.member("fBinSumw2"),
             self.member("fNcells"),
         )
+        if flow:
+            return out
+        else:
+            return out[1:-1]
 
-    def values(self):
+    def values(self, flow=False):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
         root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
-        return _values_1d(self.member("fBinEntries"), root_cont,)
+        out = _values_1d(self.member("fBinEntries"), root_cont,)
+        if flow:
+            return out
+        else:
+            return out[1:-1]
 
-    def values_errors(self, error_mode=""):
+    def values_errors(self, flow=False, error_mode=""):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
         root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
         fSumw2 = self.member("fSumw2", none_if_missing=True)
         if fSumw2 is not None:
             fSumw2 = numpy.asarray(fSumw2)
-        return _values_errors_1d(
+        out = _values_errors_1d(
             error_mode,
             numpy.asarray(self.member("fBinEntries")),
             root_cont,
@@ -190,29 +207,10 @@ class TProfile(Profile):
             self.member("fNcells"),
             numpy.asarray(self.member("fBinSumw2")),
         )
-
-    def to_numpy(self, flow=False, dd=False, errors=False, error_mode=0):
-        if errors:
-            values, errs = self.values_errors(error_mode=error_mode)
+        if flow:
+            return out
         else:
-            values, errs = self.values(), None
-
-        xedges = self.edges(0)
-        if not flow:
-            values = values[1:-1]
-            if errors:
-                errs = errs[1:-1]
-            xedges = xedges[1:-1]
-
-        if errors:
-            values_errors = values, errs
-        else:
-            values_errors = values
-
-        if dd:
-            return values_errors, (xedges,)
-        else:
-            return values_errors, xedges
+            return out[1:-1]
 
     def to_boost(self):
         boost_histogram = uproot4.extras.boost_histogram()
@@ -222,7 +220,9 @@ class TProfile(Profile):
         xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"))
         out = boost_histogram.Histogram(xaxis, storage=storage)
 
-        values, errors = self.values_errors(self.member("fErrorMode"))
+        values, errors = self.values_errors(
+            flow=True, error_mode=self.member("fErrorMode")
+        )
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             values = values[1:]

@@ -18,23 +18,22 @@ class TProfile3D(uproot4.behaviors.TProfile.Profile):
 
     no_inherit = (uproot4.behaviors.TH3.TH3,)
 
-    def edges(self, axis):
+    def axis(self, axis):
         if axis == 0 or axis == -3 or axis == "x":
-            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+            return self.member("fXaxis")
         elif axis == 1 or axis == -2 or axis == "y":
-            return uproot4.behaviors.TH1._edges(self.member("fYaxis"))
+            return self.member("fYaxis")
         elif axis == 2 or axis == -1 or axis == "z":
-            return uproot4.behaviors.TH1._edges(self.member("fZaxis"))
+            return self.member("fZaxis")
         else:
-            raise ValueError("axis must be 0, 1, 2 or 'x', 'y', 'z' for a TProfile3D")
+            raise ValueError(
+                "axis must be 0 (-3), 1 (-2), 2 (-1) or 'x', 'y', 'z' for a TProfile3D"
+            )
 
-    def values(self):
+    def values(self, flow=False):
         raise NotImplementedError(repr(self))
 
-    def values_errors(self, error_mode=""):
-        raise NotImplementedError(repr(self))
-
-    def to_numpy(self, flow=False, dd=False, errors=False, error_mode=0):
+    def values_errors(self, flow=False, error_mode=""):
         raise NotImplementedError(repr(self))
 
     def to_boost(self):

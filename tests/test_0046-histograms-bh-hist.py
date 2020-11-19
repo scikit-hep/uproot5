@@ -2183,7 +2183,7 @@ def test_numpy_profile():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         obj = f["hprof"]
 
-        assert obj.to_numpy(flow=True, errors=True)[1].tolist() == [
+        assert obj.axis().edges(flow=True).tolist() == [
             -numpy.inf,
             -4.0,
             -3.92,
@@ -2289,7 +2289,7 @@ def test_numpy_profile():
             numpy.inf,
         ]
 
-        assert obj.to_numpy(flow=True, errors=True)[0][0].tolist() == [
+        assert obj.values_errors(flow=True)[0].tolist() == [
             17.99833583831787,
             17.05295467376709,
             16.96826426188151,
@@ -2394,7 +2394,7 @@ def test_numpy_profile():
             17.8403746287028,
         ]
 
-        assert obj.to_numpy(flow=True, errors=True)[0][1].tolist() == [
+        assert obj.values_errors(flow=True)[1].tolist() == [
             0.2425426377130359,
             0.7421210342302459,
             0.4940066334987832,
@@ -2499,9 +2499,9 @@ def test_numpy_profile():
             0.16817919583370047,
         ]
 
-        assert obj.to_numpy(
-            flow=True, errors=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREAD
-        )[0][1].tolist() == [
+        assert obj.values_errors(
+            flow=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREAD
+        )[1].tolist() == [
             0.34300708770751953,
             1.0495176315307617,
             0.8556445884959498,
@@ -2606,9 +2606,9 @@ def test_numpy_profile():
             0.29129491196004526,
         ]
 
-        assert obj.to_numpy(
-            flow=True, errors=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREADI
-        )[0][1].tolist() == [
+        assert obj.values_errors(
+            flow=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREADI
+        )[1].tolist() == [
             0.2425426377130359,
             0.7421210342302459,
             0.4940066334987832,
@@ -2713,9 +2713,9 @@ def test_numpy_profile():
             0.16817919583370047,
         ]
 
-        assert obj.to_numpy(
-            flow=True, errors=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREADG
-        )[0][1].tolist() == [
+        assert obj.values_errors(
+            flow=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREADG
+        )[1].tolist() == [
             0.7071067811865475,
             0.7071067811865475,
             0.5773502691896258,
@@ -2819,8 +2819,6 @@ def test_numpy_profile():
             1.0,
             0.5773502691896258,
         ]
-
-        f["hprof"].values_errors()
 
 
 def test_boost_1d():

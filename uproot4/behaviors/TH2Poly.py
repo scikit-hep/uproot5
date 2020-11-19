@@ -16,16 +16,13 @@ class TH2Poly(uproot4.behaviors.TH1.Histogram):
 
     no_inherit = (uproot4.behaviors.TH2.TH2,)
 
-    def edges(self, axis):
+    def axis(self, axis):
         raise NotImplementedError(repr(self))
 
-    def values(self):
+    def values(self, flow=False):
         raise NotImplementedError(repr(self))
 
-    def values_errors(self, error_mode=0):
-        raise NotImplementedError(repr(self))
-
-    def to_numpy(self, flow=False, dd=False, errors=False):
+    def values_errors(self, flow=False, error_mode=0):
         raise NotImplementedError(repr(self))
 
     def to_boost(self):

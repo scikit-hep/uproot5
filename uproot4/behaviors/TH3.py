@@ -21,29 +21,35 @@ class TH3(uproot4.behaviors.TH1.Histogram):
 
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
-    def edges(self, axis):
+    def axis(self, axis):
         if axis == 0 or axis == -3 or axis == "x":
-            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+            return self.member("fXaxis")
         elif axis == 1 or axis == -2 or axis == "y":
-            return uproot4.behaviors.TH1._edges(self.member("fYaxis"))
+            return self.member("fYaxis")
         elif axis == 2 or axis == -1 or axis == "z":
-            return uproot4.behaviors.TH1._edges(self.member("fZaxis"))
+            return self.member("fZaxis")
         else:
-            raise ValueError("axis must be 0, 1, 2 or 'x', 'y', 'z' for a TH3")
+            raise ValueError(
+                "axis must be 0 (-3), 1 (-2), 2 (-1) or 'x', 'y', 'z' for a TH3"
+            )
 
-    def values(self):
+    def values(self, flow=False):
         (values,) = self.base(uproot4.models.TArray.Model_TArray)
         values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
 
         xaxis_fNbins = self.member("fXaxis").member("fNbins")
         yaxis_fNbins = self.member("fYaxis").member("fNbins")
         zaxis_fNbins = self.member("fZaxis").member("fNbins")
-        return numpy.transpose(
+        out = numpy.transpose(
             values.reshape(zaxis_fNbins + 2, yaxis_fNbins + 2, xaxis_fNbins + 2)
         )
+        if flow:
+            return out
+        else:
+            return out[1:-1, 1:-1, 1:-1]
 
-    def values_errors(self):
-        values = self.values()
+    def values_errors(self, flow=False):
+        values = self.values(flow=True)
         errors = numpy.transpose(numpy.zeros(values.shape[::-1], dtype=numpy.float64))
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
@@ -55,39 +61,37 @@ class TH3(uproot4.behaviors.TH1.Histogram):
             positive = values > 0
             errors[positive] = numpy.sqrt(values[positive])
 
-        return values, errors
-
-    def to_numpy(self, flow=False, dd=False, errors=False):
-        if errors:
-            values, errs = self.values_errors()
+        if flow:
+            return values, errors
         else:
-            values, errs = self.values(), None
+            return values[1:-1, 1:-1, 1:-1], errors[1:-1, 1:-1, 1:-1]
 
+    def to_numpy(self, flow=False, dd=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins; otherwise,
+                only normal (finite-width) bins are included.
+            dd (bool): If True, the return type follows
+                `numpy.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__;
+                otherwise, it follows `numpy.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__
+                and `numpy.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__.
+
+        Converts the histogram into a form like the ones produced by the NumPy
+        histogram functions.
+        """
+        values = self.values(flow=flow)
         xedges = self.edges(0)
         yedges = self.edges(1)
         zedges = self.edges(2)
-        if not flow:
-            values = values[1:-1, 1:-1, 1:-1]
-            if errors:
-                errs = errs[1:-1, 1:-1, 1:-1]
-            xedges = xedges[1:-1]
-            yedges = yedges[1:-1]
-            zedges = zedges[1:-1]
-
-        if errors:
-            values_errors = values, errs
-        else:
-            values_errors = values
-
         if dd:
-            return values_errors, (xedges, yedges, zedges)
+            return values, (xedges, yedges, zedges)
         else:
-            return values_errors, xedges, yedges, zedges
+            return values, xedges, yedges, zedges
 
     def to_boost(self):
         boost_histogram = uproot4.extras.boost_histogram()
 
-        values = self.values()
+        values = self.values(flow=True)
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 

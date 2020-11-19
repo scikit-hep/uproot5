@@ -20,33 +20,41 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
 
     no_inherit = (uproot4.behaviors.TH2.TH2,)
 
-    def edges(self, axis):
+    def axis(self, axis):
         if axis == 0 or axis == -2 or axis == "x":
-            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+            return self.member("fXaxis")
         elif axis == 1 or axis == -1 or axis == "y":
-            return uproot4.behaviors.TH1._edges(self.member("fYaxis"))
+            return self.member("fYaxis")
         else:
-            raise ValueError("axis must be 0, 1 or 'x', 'y' for a TProfile2D")
+            raise ValueError("axis must be 0 (-2), 1 (-1) or 'x', 'y' for a TProfile2D")
 
-    def effective_entries(self):
+    def effective_entries(self, flow=False):
         fBinEntries = numpy.asarray(self.member("fBinEntries"))
         out = uproot4.behaviors.TProfile._effective_entries_1d(
             fBinEntries.reshape(-1),
             numpy.asarray(self.member("fBinSumw2")).reshape(-1),
             self.member("fNcells"),
         )
-        return out.reshape(fBinEntries.shape)
+        out = out.reshape(fBinEntries.shape)
+        if flow:
+            return out
+        else:
+            return out[1:-1, 1:-1]
 
-    def values(self):
+    def values(self, flow=False):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
         root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
         out = uproot4.behaviors.TProfile._values_1d(
             numpy.asarray(self.member("fBinEntries")).reshape(-1),
             root_cont.reshape(-1),
         )
-        return out.reshape(root_cont.shape)
+        out = out.reshape(root_cont.shape)
+        if flow:
+            return out
+        else:
+            return out[1:-1, 1:-1]
 
-    def values_errors(self, error_mode=""):
+    def values_errors(self, flow=False, error_mode=""):
         (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
         root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
         fSumw2 = self.member("fSumw2", none_if_missing=True)
@@ -60,10 +68,11 @@ class TProfile2D(uproot4.behaviors.TProfile.Profile):
             self.member("fNcells"),
             numpy.asarray(self.member("fBinSumw2")).reshape(-1),
         )
-        return out.reshape(root_cont.shape)
-
-    def to_numpy(self, flow=False, dd=False, errors=False, error_mode=0):
-        raise NotImplementedError(repr(self))
+        out = out.reshape(root_cont.shape)
+        if flow:
+            return out
+        else:
+            return out[1:-1, 1:-1]
 
     def to_boost(self):
         raise NotImplementedError(repr(self))
