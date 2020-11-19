@@ -11,5 +11,7 @@ import uproot4
 
 def test():
     with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
-        for arrays in f["events"].iterate("px1", step_size=1000, cut="px1 > 0", library="np"):
+        for arrays in f["events"].iterate(
+            "px1", step_size=1000, cut="px1 > 0", library="np"
+        ):
             assert numpy.all(arrays["px1"] > 0)
