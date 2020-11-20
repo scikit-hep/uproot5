@@ -101,14 +101,14 @@ def get_num_bytes(file_path, parsed_url, timeout):
             if k.lower() == "location":
                 redirect_url = urlparse(x)
                 connection = make_connection(redirect_url, timeout)
-                redirect.request("HEAD", full_path(redirect_url))
+                connection.request("HEAD", full_path(redirect_url))
                 response = connection.getresponse()
                 break
         else:
             raise OSError(
                 """remote server responded with status {0} (redirect) without a 'location'
 for URL {1}""".format(
-                    response.status, self._file_path
+                    response.status, file_path
                 )
             )
 
