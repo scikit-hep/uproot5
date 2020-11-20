@@ -175,12 +175,31 @@ class HTTPResource(uproot4.source.chunk.Resource):
             connection.close()
             raise uproot4._util._file_not_found(self.file_path, "HTTP(S) returned 404")
 
+        if 300 <= response.status < 400:
+            for k, x in response.getheaders():
+                if k.lower() == "location":
+                    redirect_url = urlparse(x)
+                    redirect = make_connection(redirect_url, self._timeout)
+                    redirect.request(
+                        "GET",
+                        full_path(redirect_url),
+                        headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
+                    )
+                    return self.get(redirect, start, stop)
+
+            raise OSError(
+                """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
+                    response.status, self._file_path
+                )
+            )
+
         if response.status != 206:
             connection.close()
             raise OSError(
-                """remote server does not support HTTP range requests
-for URL {0}""".format(
-                    self._file_path
+                """remote server responded with status {0}, rather than 206 (range requests)
+for URL {1}""".format(
+                    response.status, self._file_path
                 )
             )
         try:
