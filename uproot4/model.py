@@ -759,22 +759,18 @@ class Model(object):
         self.read_numbytes_version(chunk, cursor, context)
 
         if (
-            issubclass(cls, VersionedModel) and
-            self._instance_version != classname_version(cls.__name__) and
-            self._instance_version is not None
+            issubclass(cls, VersionedModel)
+            and self._instance_version != classname_version(cls.__name__)
+            and self._instance_version is not None
         ):
             correct_cls = file.class_named(self.classname, self._instance_version)
-            if classname_version(correct_cls.__name__) != classname_version(cls.__name__):
+            if classname_version(correct_cls.__name__) != classname_version(
+                cls.__name__
+            ):
                 cursor.move_to(self._cursor.index)
                 context["breadcrumbs"] = old_breadcrumbs
                 return correct_cls.read(
-                    chunk,
-                    cursor,
-                    context,
-                    file,
-                    selffile,
-                    parent,
-                    concrete=concrete,
+                    chunk, cursor, context, file, selffile, parent, concrete=concrete,
                 )
 
         if context.get("in_TBranch", False):
