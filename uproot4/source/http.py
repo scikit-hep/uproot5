@@ -95,6 +95,23 @@ def get_num_bytes(file_path, parsed_url, timeout):
     connection.request("HEAD", full_path(parsed_url))
     response = connection.getresponse()
 
+    while 300 <= response.status < 400:
+        connection.close()
+        for k, x in response.getheaders():
+            if k.lower() == "location":
+                redirect_url = urlparse(x)
+                connection = make_connection(redirect_url, timeout)
+                redirect.request("HEAD", full_path(redirect_url))
+                response = connection.getresponse()
+                break
+        else:
+            raise OSError(
+                """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
+                    response.status, self._file_path
+                )
+            )
+
     if response.status == 404:
         connection.close()
         raise uproot4._util._file_not_found(file_path, "HTTP(S) returned 404")
