@@ -313,8 +313,10 @@ for URL {1}""".format(
 
         return uproot4.source.futures.ResourceFuture(task)
 
-    _content_range_size = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)")
-    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
+    _content_range_size = re.compile(
+        b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)", re.I
+    )
+    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
 
     def is_multipart_supported(self, ranges, response):
         """
