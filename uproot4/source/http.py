@@ -284,8 +284,12 @@ for URL {0}""".format(
 
         return uproot4.source.futures.ResourceFuture(task)
 
-    _content_type = re.compile(r"^multipart/byteranges; boundary=([^;=]+)$", re.IGNORECASE)
-    _content_range_size = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)", re.IGNORECASE)
+    _content_type = re.compile(
+        r"^multipart/byteranges; boundary=([^;=]+)$", re.IGNORECASE
+    )
+    _content_range_size = re.compile(
+        b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)", re.IGNORECASE
+    )
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.IGNORECASE)
 
     def is_multipart_supported(self, ranges, response):
@@ -333,7 +337,9 @@ for URL {0}""".format(
             multipart_boundary = None
 
         for i in uproot4._util.range(len(futures)):
-            range_string, size, multipart_boundary = self.next_header(response, multipart_boundary)
+            range_string, size, multipart_boundary = self.next_header(
+                response, multipart_boundary
+            )
             if range_string is None:
                 raise OSError(
                     """found {0} of {1} expected headers in HTTP multipart
@@ -388,12 +394,13 @@ for URL {3}""".format(
                 elif len(line.strip()) == 0:
                     continue
                 elif line.startswith(b"--"):
-                    multipart_boundary = line[len(b"--"):].strip().decode()
+                    multipart_boundary = line[len(b"--") :].strip().decode()
                     break
 
                 raise NotImplementedError(
-                    "Failed to parse Content-Type header {}"
-                    .format(response.getheader("Content-Type"))
+                    "Failed to parse Content-Type header {}".format(
+                        response.getheader("Content-Type")
+                    )
                 )
         else:
             line = response.fp.readline()
