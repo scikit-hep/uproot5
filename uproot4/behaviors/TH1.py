@@ -247,6 +247,7 @@ class TH1(Histogram):
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
         if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+            sumw2 = numpy.array(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
             positive = sumw2 > 0
             errors[positive] = sumw2[positive]
@@ -291,6 +292,8 @@ class TH1(Histogram):
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
         if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+            sumw2 = numpy.array(sumw2, dtype=sumw2.dtype.newbyteorder("="))
+            sumw2 = numpy.reshape(sumw2, values.shape)
             storage = boost_histogram.storage.Weight()
         else:
             if issubclass(values.dtype.type, numpy.integer):
