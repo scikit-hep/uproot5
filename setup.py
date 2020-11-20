@@ -19,7 +19,6 @@ extras["all"] = sum(extras.values(), [])
 
 install_requires = open("requirements.txt").read().strip().split("\n")
 
-
 setup(name = "uproot4",
       packages = find_packages(exclude = ["tests"]),
       scripts = [],
