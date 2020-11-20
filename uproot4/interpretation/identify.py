@@ -523,6 +523,16 @@ def _parse_expect(what, tokens, i, typename, file):
         _parse_error(tokens[i].start() + 1, typename, file)
 
 
+def _parse_ignore_extra_arguments(tokens, i, typename, file, at_most):
+    while tokens[i].group(0) == ",":
+        if at_most == 0:
+            _parse_error(tokens[i].start() + 1, typename, file)
+        i, values = _parse_node(tokens, i + 1, typename, file, True, False, False)
+        at_most -= 1
+
+    return i
+
+
 def _parse_maybe_quote(quoted, quote):
     if quote:
         return quoted
@@ -953,6 +963,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             num_bits = int(tokens[i + 2].group(0))
         except ValueError:
             _parse_error(tokens[i + 2].start() + 1, typename, file)
+        # std::bitset only ever has one argument
         _parse_expect(">", tokens, i + 3, typename, file)
         return (
             i + 4,
@@ -967,6 +978,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         i, values = _parse_node(
             tokens, i + 2, typename, file, quote, inner_header, inner_header
         )
+        i = _parse_ignore_extra_arguments(tokens, i, typename, file, 1)
         _parse_expect(">", tokens, i, typename, file)
         if quote:
             return (
@@ -981,6 +993,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         i, keys = _parse_node(
             tokens, i + 2, typename, file, quote, inner_header, inner_header
         )
+        i = _parse_ignore_extra_arguments(tokens, i, typename, file, 2)
         _parse_expect(">", tokens, i, typename, file)
         if quote:
             return i + 1, "uproot4.containers.AsSet({0}, {1})".format(header, keys)
@@ -996,6 +1009,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         i, values = _parse_node(
             tokens, i + 1, typename, file, quote, header, inner_header
         )
+        i = _parse_ignore_extra_arguments(tokens, i, typename, file, 2)
         _parse_expect(">", tokens, i, typename, file)
         if quote:
             return (

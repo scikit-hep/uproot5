@@ -434,6 +434,10 @@ def lazy(
         full_paths (bool): If True, include the full path to each subbranch
             with slashes (``/``); otherwise, use the descendant's name as
             the field name.
+        step_size (int or str): If an integer, the maximum number of entries to
+            include in each iteration step; if a string, the maximum memory size
+            to include. The string must be a number followed by a memory unit,
+            such as "100 MB".
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
             :py:class:`~uproot4.source.futures.TrivialExecutor` is created.
@@ -526,11 +530,15 @@ def lazy(
     array_cache = _regularize_array_cache(array_cache, None)
     library = uproot4.interpretation.library._regularize_library_lazy(library)
 
-    if type(array_cache) == dict:
-        array_cache = _WrapDict(array_cache)
-
-    if array_cache is not None:
-        layout_array_cache = awkward1.layout.ArrayCache(array_cache)
+    hold_cache = array_cache
+    if array_cache is not None and not isinstance(
+        array_cache, awkward1.layout.ArrayCache
+    ):
+        if type(array_cache) is dict:
+            hold_cache = _WrapDict(array_cache)
+        if not isinstance(hold_cache, MutableMapping):
+            raise TypeError("array_cache must be None or a MutableMapping")
+        array_cache = awkward1.layout.ArrayCache(hold_cache)
 
     real_options = dict(options)
     if "num_workers" not in real_options:
@@ -669,7 +677,7 @@ def lazy(
                 )
                 global_cache_key.append(cache_key)
                 virtualarray = awkward1.layout.VirtualArray(
-                    generator, cache=layout_array_cache, cache_key=cache_key
+                    generator, cache=array_cache, cache_key=cache_key
                 )
                 fields.append(virtualarray)
                 names.append(key)
@@ -679,7 +687,7 @@ def lazy(
             global_offsets.append(global_offsets[-1] + length)
 
     out = awkward1.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
-    return awkward1.Array(out, cache=array_cache)
+    return awkward1.Array(out)
 
 
 class Report(object):
@@ -1367,21 +1375,26 @@ class HasBranches(Mapping):
                     self.object_path,
                 )
 
-                expression_context = [
+                minimized_expression_context = [
                     (e, c)
                     for e, c in expression_context
                     if c["is_primary"] and not c["is_cut"]
                 ]
 
-                arrays = library.group(output, expression_context, how)
+                arrays = library.group(output, minimized_expression_context, how)
+
+                next_baskets = {}
+                for branch, basket_num, basket in ranges_or_baskets:
+                    basket_entry_start, basket_entry_stop = basket.entry_start_stop
+                    if basket_entry_stop > sub_entry_stop:
+                        next_baskets[branch.cache_key, basket_num] = basket
+
+                previous_baskets = next_baskets
 
                 if report:
                     yield arrays, Report(self, sub_entry_start, sub_entry_stop)
                 else:
                     yield arrays
-
-                for branch, basket_num, basket in ranges_or_baskets:
-                    previous_baskets[branch.cache_key, basket_num] = basket
 
     def keys(
         self,
@@ -2248,6 +2261,38 @@ in file {3}""".format(
         else:
             return out
 
+    def basket_entry_start_stop(self, basket_num):
+        """
+        The starting and stopping entry number for ``TBasket`` number ``basket_num``.
+        """
+        if 0 <= basket_num < self._num_normal_baskets:
+            fBasketEntry = self.member("fBasketEntry")
+            return fBasketEntry[basket_num], fBasketEntry[basket_num + 1]
+
+        elif 0 <= basket_num < self.num_baskets:
+            baskets_before = self._num_normal_baskets
+            if self._num_normal_baskets == 0:
+                entries_before = 0
+            else:
+                entries_before = self.member("fBasketEntry")[self._num_normal_baskets]
+
+            for basket in self.embedded_baskets:
+                if basket_num == baskets_before:
+                    return entries_before, entries_before + basket.num_entries
+                baskets_before += 1
+                entries_before += basket.num_entries
+            else:
+                raise AssertionError
+
+        else:
+            raise IndexError(
+                """branch {0} has {1} baskets; cannot get starting entry """
+                """for basket {2}
+in file {3}""".format(
+                    repr(self.name), self.num_baskets, basket_num, self._file.file_path
+                )
+            )
+
     @property
     def tree(self):
         """
@@ -2752,6 +2797,7 @@ def _keys_deep(hasbranches):
 
 
 _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
+_regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
 
 
 def _regularize_files_inner(files, parse_colon, counter):
@@ -2774,25 +2820,29 @@ def _regularize_files_inner(files, parse_colon, counter):
 
         else:
             expanded = os.path.expanduser(file_path)
-            matches = list(_regularize_files_braces.finditer(expanded))
-            if len(matches) == 0:
-                results = [expanded]
-            else:
-                results = []
-                for combination in itertools.product(
-                    *[match.group(0)[1:-1].split(",") for match in matches]
-                ):
-                    tmp = expanded
-                    for c, m in list(zip(combination, matches))[::-1]:
-                        tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
-                    results.append(tmp)
+            if _regularize_files_isglob.search(expanded) is None:
+                yield file_path, object_path
 
-            seen = set()
-            for result in results:
-                for match in glob.glob(result):
-                    if match not in seen:
-                        yield match, object_path
-                        seen.add(match)
+            else:
+                matches = list(_regularize_files_braces.finditer(expanded))
+                if len(matches) == 0:
+                    results = [expanded]
+                else:
+                    results = []
+                    for combination in itertools.product(
+                        *[match.group(0)[1:-1].split(",") for match in matches]
+                    ):
+                        tmp = expanded
+                        for c, m in list(zip(combination, matches))[::-1]:
+                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
+                        results.append(tmp)
+
+                seen = set()
+                for result in results:
+                    for match in glob.glob(result):
+                        if match not in seen:
+                            yield match, object_path
+                            seen.add(match)
 
     elif isinstance(files, HasBranches):
         yield files, None

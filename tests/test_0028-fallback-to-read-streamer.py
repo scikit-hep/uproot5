@@ -15,7 +15,3 @@ def test_fallback_reading():
     ) as f:
         f["tree:evt/P3/P3.Py"]
         assert f.file._streamers is None
-
-    with uproot4.open(skhep_testdata.data_path("uproot-demo-double32.root")) as f:
-        f["T/fD64"]
-        assert f.file._streamers is not None

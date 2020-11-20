@@ -42,9 +42,9 @@ def ensure(objname, filename, content):
         overwrite = open(filename, "r").read() != content
     if overwrite:
         open(filename, "w").write(content)
-        sys.err.write(objname + " (OVERWRITTEN)\n")
+        sys.stderr.write(objname + " (OVERWRITTEN)\n")
     else:
-        sys.err.write(objname + "\n")
+        sys.stderr.write(objname + "\n")
 
 
 def handle_module(modulename, module):

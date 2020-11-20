@@ -75,9 +75,9 @@ def get_response(connection, location):
     """
     Args:
         connection (``http.client.HTTPConnection``): The connection object from ``make_connection``
-        location (str): The location of the current request, used for error messages
+        location (str): The location of the current request, used for error messages.
 
-    Gets the response from ``connection.getresponse()`` and validates its status.
+    Returns the response from ``connection.getresponse()`` and validates its status.
     """
     response = connection.getresponse()
 
@@ -85,14 +85,14 @@ def get_response(connection, location):
         connection.close()
         raise uproot4._util._file_not_found(location, "HTTP(S) returned 404")
 
-    elif str(response.status)[0] == "3":
+    elif 300 <= response.status < 400:
         connection.close()
         raise NotImplementedError(
             "HTTP(S) redirects are not currently supported "
             "(https://github.com/scikit-hep/uproot4/issues/121)"
         )
 
-    elif str(response.status)[0] != "2":
+    elif not (200 <= response.status < 300):
         connection.close()
         raise OSError(
             "HTTP response was {}, rather than 2xx, ".format(response.status)
@@ -101,6 +101,17 @@ def get_response(connection, location):
 
     else:
         return response
+
+
+def full_path(parsed_url):
+    """
+    Returns the ``parsed_url.path`` with ``"?"`` and the ``parsed_url.query``
+    if it exists, just the path otherwise.
+    """
+    if parsed_url.query:
+        return parsed_url.path + "?" + parsed_url.query
+    else:
+        return parsed_url.path
 
 
 def get_num_bytes(file_path, parsed_url, timeout):
@@ -208,7 +219,7 @@ for URL {0}""".format(
         connection = make_connection(source.parsed_url, source.timeout)
         connection.request(
             "GET",
-            source.parsed_url.path,
+            full_path(source.parsed_url),
             headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
         )
 
@@ -249,7 +260,7 @@ for URL {0}""".format(
 
         connection.request(
             "GET",
-            source.parsed_url.path,
+            full_path(source.parsed_url),
             headers={"Range": "bytes=" + ", ".join(range_strings)},
         )
 
