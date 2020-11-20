@@ -337,7 +337,11 @@ def _awkward_p(form):
 
 def _awkward_json_to_array(awkward1, form, array):
     if form["class"] == "NumpyArray":
-        return array
+        if isinstance(array, awkward1.layout.EmptyArray):
+            dtype = awkward1.forms.Form.fromjson(json.dumps(form)).to_numpy()
+            return awkward1.layout.NumpyArray(numpy.empty(0, dtype=dtype))
+        else:
+            return array
 
     elif form["class"] == "RecordArray":
         contents = []
