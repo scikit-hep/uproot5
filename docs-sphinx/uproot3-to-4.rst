@@ -1,6 +1,14 @@
 Uproot 3 → 4 cheat-sheet
 ========================
 
+The Uproot 3 → 4 transition was primarily motivated by Awkward Array 0 → 1. The interface of Awkward Array significantly changed and Awkward Arrays are output by Uproot functions, so this difference would be visible to you as a user of Uproot. 
+
+
+
+
+
+
+
 The Uproot 3 → 4 transition was primarily motivated by Awkward Array 0 → 1. The interface of Awkward Array significantly changed and Awkward Array is used throughout Uproot. But this transition also gave us an opportunity to fix a few long-standing problems in Uproot itself:
 
 * Uproot 3 does not interpret C++ strings according to any encoding, but that means that users have to deal with ``bytes`` in Python 3. Uproot 4 deals exclusively in ``str`` (interpreting all C++ strings as UTF-8 with surrogate-escapes).
