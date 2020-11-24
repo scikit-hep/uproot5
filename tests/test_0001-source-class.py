@@ -169,14 +169,14 @@ def test_http_port():
 @pytest.mark.network
 def test_http_size():
     with uproot4.source.http.HTTPSource(
-        "https://scikit-hep.org/uproot/examples/Zmumu.root",
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=1,
     ) as source:
         size1 = source.num_bytes
 
     with uproot4.source.http.MultithreadedHTTPSource(
-        "https://scikit-hep.org/uproot/examples/Zmumu.root", num_workers=1, timeout=10
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root", num_workers=1, timeout=10
     ) as source:
         size2 = source.num_bytes
 
@@ -186,14 +186,14 @@ def test_http_size():
 @pytest.mark.network
 def test_http_size_port():
     with uproot4.source.http.HTTPSource(
-        "https://scikit-hep.org:443/uproot/examples/Zmumu.root",
+        "https://scikit-hep.org:443/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=1,
     ) as source:
         size1 = source.num_bytes
 
     with uproot4.source.http.MultithreadedHTTPSource(
-        "https://scikit-hep.org:443/uproot/examples/Zmumu.root",
+        "https://scikit-hep.org:443/uproot3/examples/Zmumu.root",
         num_workers=1,
         timeout=10,
     ) as source:
@@ -217,7 +217,7 @@ def test_http_fail():
 def test_no_multipart():
     for num_workers in [1, 2]:
         with uproot4.source.http.MultithreadedHTTPSource(
-            "https://scikit-hep.org/uproot/examples/Zmumu.root",
+            "https://scikit-hep.org/uproot3/examples/Zmumu.root",
             num_workers=num_workers,
             timeout=10,
         ) as source:
@@ -246,7 +246,7 @@ def test_no_multipart_fail():
 def test_fallback():
     for num_workers in [1, 2]:
         with uproot4.source.http.HTTPSource(
-            "https://scikit-hep.org/uproot/examples/Zmumu.root",
+            "https://scikit-hep.org/uproot3/examples/Zmumu.root",
             timeout=10,
             num_fallback_workers=num_workers,
         ) as source:

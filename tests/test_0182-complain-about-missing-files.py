@@ -15,9 +15,12 @@ def test():
     bad = one.replace(".root", "-DOES-NOT-EXIST.root")
     okay = one.replace(".root", "-DOES-NOT-EXIST-*.root")
 
-    assert len(list(uproot4.iterate([one, two], step_size="1 TB"))) == 2
+    assert len(list(uproot4.iterate([one, two], step_size="1 TB", library="np"))) == 2
 
     with pytest.raises(uproot4._util._FileNotFoundError):
-        list(uproot4.iterate([one, two, bad]))
+        list(uproot4.iterate([one, two, bad], library="np"))
 
-    assert len(list(uproot4.iterate([one, two, okay], step_size="1 TB"))) == 2
+    assert (
+        len(list(uproot4.iterate([one, two, okay], step_size="1 TB", library="np")))
+        == 2
+    )

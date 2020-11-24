@@ -151,7 +151,8 @@ def test_awkward_pluralization():
 
 
 def test_lazy_called_on_nonexistent_file():
+    awkward1 = pytest.importorskip("awkward1")
     filename = "nonexistent_file.root"
-    with pytest.raises(FileNotFoundError) as excinfo:
+    with pytest.raises(uproot4._util._FileNotFoundError) as excinfo:
         uproot4.lazy(filename)
     assert filename in str(excinfo.value)
