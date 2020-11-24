@@ -372,8 +372,13 @@ for URL {1}""".format(
         Helper function for :py:meth:`~uproot4.source.http.HTTPResource.multifuture`
         to handle the multipart GET response.
         """
+        if hasattr(response, "readline"):
+            response_buffer = response
+        else:
+            response_buffer = _ResponseBuffer(response)
+
         for i in uproot4._util.range(len(futures)):
-            range_string, size = self.next_header(response)
+            range_string, size = self.next_header(response_buffer)
             if range_string is None:
                 raise OSError(
                     """found {0} of {1} expected headers in HTTP multipart
@@ -397,7 +402,7 @@ for URL {1}""".format(
                 )
 
             length = stop - start
-            results[start, stop] = response.read(length)
+            results[start, stop] = response_buffer.read(length)
 
             if len(results[start, stop]) != length:
                 raise OSError(
@@ -413,12 +418,12 @@ for URL {3}""".format(
 
             future._run(self)
 
-    def next_header(self, response):
+    def next_header(self, response_buffer):
         """
         Helper function for :py:meth:`~uproot4.source.http.HTTPResource.multifuture`
-        to return the next header from the ``response``.
+        to return the next header from the ``response_buffer``.
         """
-        line = response.fp.readline()
+        line = response_buffer.readline()
         range_string, size = None, None
         while range_string is None:
             m = self._content_range_size.match(line)
@@ -430,7 +435,7 @@ for URL {3}""".format(
                 if m is not None:
                     range_string = m.group(1)
                     size = None
-            line = response.fp.readline()
+            line = response_buffer.readline()
             if len(line.strip()) == 0:
                 break
         return range_string, size
@@ -450,6 +455,39 @@ for URL {3}""".format(
             return results[start, stop]
 
         return uproot4.source.futures.ResourceFuture(task)
+
+
+class _ResponseBuffer(object):
+    CHUNK = 1024
+
+    def __init__(self, stream):
+        self.already_read = b""
+        self.stream = stream
+
+    def read(self, length):
+        if length < len(self.already_read):
+            out = self.already_read[:length]
+            self.already_read = self.already_read[length:]
+            return out
+
+        elif len(self.already_read) > 0:
+            out = self.already_read
+            self.already_read = b""
+            return out + self.stream.read(length - len(out))
+
+        else:
+            return self.stream.read(length)
+
+    def readline(self):
+        while True:
+            try:
+                index = self.already_read.index(b"\n")
+            except ValueError:
+                self.already_read = self.already_read + self.stream.read(self.CHUNK)
+            else:
+                out = self.already_read[: index + 1]
+                self.already_read = self.already_read[index + 1 :]
+                return out
 
 
 class HTTPSource(uproot4.source.chunk.Source):
