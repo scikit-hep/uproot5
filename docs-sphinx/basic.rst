@@ -29,7 +29,7 @@ The object returned by `uproot4.open <uproot4.reading.open.html>`__ represents a
 
 .. code-block:: python
 
-    >>> file = uproot4.open("https://scikit-hep.org/uproot/examples/nesteddirs.root")
+    >>> file = uproot4.open("https://scikit-hep.org/uproot3/examples/nesteddirs.root")
     >>> file
     <ReadOnlyDirectory '/' at 0x7c070dc03040>
 
@@ -67,7 +67,7 @@ As a shortcut, you can open a file and jump straight to the object by separating
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
     >>> events
     <TTree 'events' (20 branches) at 0x78e575394b20>
 
@@ -80,7 +80,7 @@ Uproot can read most types of objects, but only a few of them have been overload
 
 .. code-block:: python
 
-    >>> file = uproot4.open("https://scikit-hep.org/uproot/examples/hepdata-example.root")
+    >>> file = uproot4.open("https://scikit-hep.org/uproot3/examples/hepdata-example.root")
     >>> file.classnames()
     {'hpx': 'TH1F', 'hpxpy': 'TH2F', 'hprof': 'TProfile', 'ntuple': 'TNtuple'}
 
@@ -260,7 +260,7 @@ Inspecting a TBranches of a TTree
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
 
     >>> events.keys()
     ['Type', 'Run', 'Event', 'E1', 'px1', 'py1', 'pz1', 'pt1', 'eta1', 'phi1', 'Q1', 'E2', 'px2',
@@ -328,7 +328,7 @@ A TBranch may be turned into an array with the :py:meth:`~uproot4.behaviors.TBra
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
     >>> events["M"].array()
     <Array [82.5, 83.6, 83.3, ... 96, 96.5, 96.7] type='2304 * float64'>
 
@@ -389,7 +389,7 @@ To read more than one TBranch, you could use the :py:meth:`~uproot4.behaviors.TB
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
 
     >>> momentum = events.arrays(["px1", "py1", "pz1"])
     >>> momentum
@@ -465,7 +465,7 @@ The :py:meth:`~uproot4.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot4.b
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
 
     >>> events.keys(filter_name="px*")
     ['px1', 'px2']
@@ -489,7 +489,7 @@ The first argument of :py:meth:`~uproot4.behaviors.TBranch.HasBranches.arrays`, 
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
 
     >>> events.arrays(["px1", "py1", "pz1"])
     <Array [{px1: -41.2, ... pz1: -74.8}] type='2304 * {"px1": float64, "py1": float...'>
@@ -536,7 +536,7 @@ Not all datasets have one value per entry. In particle physics, we often have di
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/HZZ.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/HZZ.root:events")
     >>> events.show()
     name                 | typename                 | interpretation                
     ---------------------+--------------------------+-------------------------------
@@ -684,7 +684,7 @@ The :py:meth:`~uproot4.behaviors.TBranch.HasBranches.iterate` method has an inte
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
 
     >>> for batch in events.iterate(step_size=500):
     ...     print(repr(batch))
@@ -845,7 +845,7 @@ The fact that the data are being loaded on demand is (intentionally) hidden; one
 
 .. code-block:: python
 
-    >>> array = uproot4.lazy("https://scikit-hep.org/uproot/examples/Zmumu.root:events",
+    >>> array = uproot4.lazy("https://scikit-hep.org/uproot3/examples/Zmumu.root:events",
     ...                      step_size=100)
     >>> array.cache
     <LRUArrayCache (0/100000000 bytes full) at 0x7faf787abd00>
@@ -924,7 +924,7 @@ The ``object_cache`` stores a number of objects like TDirectories, histograms, a
 
 .. code-block:: python
 
-    >>> file = uproot4.open("https://scikit-hep.org/uproot/examples/hepdata-example.root")
+    >>> file = uproot4.open("https://scikit-hep.org/uproot3/examples/hepdata-example.root")
     >>> histogram = file["hpx"]
     >>> (histogram, histogram)
     (<TH1F (version 1) at 0x7d9a05a43370>, <TH1F (version 1) at 0x7d9a05a43370>)
@@ -942,7 +942,7 @@ The ``array_cache`` stores array outputs up to a maximum number of bytes. The ar
 
 .. code-block:: python
 
-    >>> events = uproot4.open("https://scikit-hep.org/uproot/examples/Zmumu.root:events")
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
     >>> array = events["px1"].array()
     >>> (array, array)
     (<Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>,
