@@ -18,8 +18,8 @@
    sodipodi:docname="uproot-awkward-timeline.svg"
    inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)"
    inkscape:export-filename="/home/jpivarski/irishep/uproot4/docs-img/diagrams/uproot-awkward-timeline.png"
-   inkscape:export-xdpi="90.709999"
-   inkscape:export-ydpi="90.709999"><metadata
+   inkscape:export-xdpi="153.77"
+   inkscape:export-ydpi="153.77"><metadata
      id="metadata8"><rdf:RDF><cc:Work
          rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title /></cc:Work></rdf:RDF></metadata><defs
@@ -37,8 +37,8 @@
      id="namedview4"
      showgrid="false"
      inkscape:zoom="1.8575406"
-     inkscape:cx="239.1397"
-     inkscape:cy="137.52067"
+     inkscape:cx="141.16068"
+     inkscape:cy="136.44398"
      inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="1"
@@ -284,6 +284,7 @@
      sodipodi:role="line"
      id="tspan194">(from Oct 2016)</tspan></text>
 
+
 <path
    d="m 80.289,117.258 h 58.59 v 10.273 h -58.59 z"
    style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -305,6 +306,7 @@
      sodipodi:role="line"
      id="tspan204">(also unreleased)</tspan></text>
 
+
 <path
    d="m 243.051,126.32 h 102.281 v 13.52 H 243.051 Z"
    style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -318,6 +320,7 @@
      sodipodi:role="line"
      id="tspan210">Awkward Array 0.x</tspan></text>
 
+
 <path
    d="m 312.941,170.715 h 102.277 v 13.258 H 312.941 Z"
    style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -330,6 +333,7 @@
      y="0"
      sodipodi:role="line"
      id="tspan216">Awkward Array 1.x</tspan></text>
+
 
 <path
    d="m 353.633,156.277 h 90 v 12.414 h -90 z"
@@ -386,6 +390,7 @@
      sodipodi:role="line"
      id="tspan246">Uproot 2.x</tspan></text>
 
+
 <path
    d="M 40.281,44.457 H 95.316 V 56.145 H 40.281 Z"
    style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -403,6 +408,7 @@
      sodipodi:role="line"
      id="tspan254">Uproot 1.x</tspan></text>
 
+
 <path
    d="m 281.691,65.602 h 55.305 v 14.426 h -55.305 z"
    style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -416,6 +422,7 @@
      sodipodi:role="line"
      id="tspan260">Uproot 3.x</tspan></text>
 
+
 <path
    d="m 386.051,111.07 h 55.309 v 11.555 h -55.309 z"
    style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
@@ -428,6 +435,7 @@
      y="0"
      sodipodi:role="line"
      id="tspan266">Uproot 4.x</tspan></text>
+
 
 <path
    d="M 173.629,82.945 H 434.133 V 95.359 H 173.629 Z"
@@ -479,6 +487,7 @@
      sodipodi:role="line"
      id="tspan296">Deprecated</tspan></text>
 
+
 <g
    id="g300"><path
      d="m 264.184,14.668 h 10.039 v 10.039 h -10.039 z"
@@ -493,6 +502,7 @@
      sodipodi:role="line"
      id="tspan304">Development</tspan></text>
 
+
 <g
    id="g308"><path
      d="M 333.121,14.668 H 343.16 V 24.707 H 333.121 Z"
@@ -506,6 +516,7 @@
      y="0"
      sodipodi:role="line"
      id="tspan312">Released</tspan></text>
+
 
 <text
    transform="translate(42.961435,213.19481)"
@@ -547,5 +558,6 @@
      y="0"
      sodipodi:role="line"
      id="tspan332">JunDec</tspan></text>
+
 
 </g></g></svg>
