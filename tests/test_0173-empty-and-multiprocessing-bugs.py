@@ -23,7 +23,7 @@ def readone(filename):
         f.decompression_executor = uproot4.ThreadPoolExecutor()
         t = f["events"]
         b = t["px1"]
-        b.array()
+        b.array(library="np")
 
 
 def test_multiprocessing():

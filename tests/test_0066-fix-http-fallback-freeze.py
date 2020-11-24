@@ -13,5 +13,5 @@ def test():
     with uproot4.open(
         {"http://scikit-hep.org/uproot3/examples/HZZ.root": "events"}
     ) as t:
-        t["MET_px"].array()
-        t["MET_py"].array()
+        t["MET_px"].array(library="np")
+        t["MET_py"].array(library="np")
