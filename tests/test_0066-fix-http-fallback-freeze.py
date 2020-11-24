@@ -11,7 +11,7 @@ import uproot4
 @pytest.mark.network
 def test():
     with uproot4.open(
-        {"http://scikit-hep.org/uproot/examples/HZZ.root": "events"}
+        {"http://scikit-hep.org/uproot3/examples/HZZ.root": "events"}
     ) as t:
         t["MET_px"].array()
         t["MET_py"].array()

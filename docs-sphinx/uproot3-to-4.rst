@@ -36,3 +36,7 @@ The Uproot 3 → 4 transition was primarily motivated by Awkward Array 0 → 1. 
   * Depends only on NumPy—the rest is pay-as-you-go (in terms of installation requirements).
 
 Except for the architectural improvements, these changes are visible to users. The architectural improvements motivated a fresh rewrite, much like 
+
+.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/jpivarski/write-cheat-sheet/docs-img/diagrams/uproot-awkward-timeline.png
+  :width: 100%
+
