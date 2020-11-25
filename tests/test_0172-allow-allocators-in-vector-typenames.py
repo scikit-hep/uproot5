@@ -15,4 +15,4 @@ def test():
         assert (
             t["rec_part_px_VecOps"].typename == "std::vector<float>"
         )  # without the allocator
-        t["rec_part_px_VecOps"].array()
+        t["rec_part_px_VecOps"].array(library="np")

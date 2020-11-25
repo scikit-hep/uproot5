@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+    - name: "StackOverflow: [uproot] tag" 
+      about: "How do I…?"
+      url: https://stackoverflow.com/questions/tagged/uproot
+    - name: "Gitter: Scikit-HEP/uproot room"
+      about: "Getting help in real-time…"
+      url: https://gitter.im/Scikit-HEP/uproot

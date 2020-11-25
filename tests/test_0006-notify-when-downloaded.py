@@ -126,7 +126,7 @@ def test_http_workers():
 def test_http_fallback():
     notifications = queue.Queue()
     with uproot4.source.http.HTTPSource(
-        "https://scikit-hep.org/uproot/examples/Zmumu.root",
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=1,
     ) as source:
@@ -143,7 +143,7 @@ def test_http_fallback():
 def test_http_fallback_workers():
     notifications = queue.Queue()
     with uproot4.source.http.HTTPSource(
-        "https://scikit-hep.org/uproot/examples/Zmumu.root",
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=5,
     ) as source:

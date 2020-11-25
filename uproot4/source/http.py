@@ -95,6 +95,23 @@ def get_num_bytes(file_path, parsed_url, timeout):
     connection.request("HEAD", full_path(parsed_url))
     response = connection.getresponse()
 
+    while 300 <= response.status < 400:
+        connection.close()
+        for k, x in response.getheaders():
+            if k.lower() == "location":
+                redirect_url = urlparse(x)
+                connection = make_connection(redirect_url, timeout)
+                connection.request("HEAD", full_path(redirect_url))
+                response = connection.getresponse()
+                break
+        else:
+            raise OSError(
+                """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
+                    response.status, file_path
+                )
+            )
+
     if response.status == 404:
         connection.close()
         raise uproot4._util._file_not_found(file_path, "HTTP(S) returned 404")
@@ -175,12 +192,31 @@ class HTTPResource(uproot4.source.chunk.Resource):
             connection.close()
             raise uproot4._util._file_not_found(self.file_path, "HTTP(S) returned 404")
 
+        if 300 <= response.status < 400:
+            for k, x in response.getheaders():
+                if k.lower() == "location":
+                    redirect_url = urlparse(x)
+                    redirect = make_connection(redirect_url, self._timeout)
+                    redirect.request(
+                        "GET",
+                        full_path(redirect_url),
+                        headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
+                    )
+                    return self.get(redirect, start, stop)
+
+            raise OSError(
+                """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
+                    response.status, self._file_path
+                )
+            )
+
         if response.status != 206:
             connection.close()
             raise OSError(
-                """remote server does not support HTTP range requests
-for URL {0}""".format(
-                    self._file_path
+                """remote server responded with status {0}, rather than 206 (range requests)
+for URL {1}""".format(
+                    response.status, self._file_path
                 )
             )
         try:
@@ -237,13 +273,13 @@ for URL {0}""".format(
         ``results`` and ``futures``. Subsequent attempts would immediately
         use the :py:attr:`~uproot4.source.chunk.HTTPSource.fallback`.
         """
-        connection = make_connection(source.parsed_url, source.timeout)
+        connection = [make_connection(source.parsed_url, source.timeout)]
 
         range_strings = []
         for start, stop in ranges:
             range_strings.append("{0}-{1}".format(start, stop - 1))
 
-        connection.request(
+        connection[0].request(
             "GET",
             full_path(source.parsed_url),
             headers={"Range": "bytes=" + ", ".join(range_strings)},
@@ -251,7 +287,32 @@ for URL {0}""".format(
 
         def task(resource):
             try:
-                response = connection.getresponse()
+                response = connection[0].getresponse()
+
+                if 300 <= response.status < 400:
+                    connection[0].close()
+
+                    for k, x in response.getheaders():
+                        if k.lower() == "location":
+                            redirect_url = urlparse(x)
+                            connection[0] = make_connection(
+                                redirect_url, source.timeout
+                            )
+                            connection[0].request(
+                                "GET",
+                                full_path(redirect_url),
+                                headers={"Range": "bytes=" + ", ".join(range_strings)},
+                            )
+                            task(resource)
+                            return
+
+                    raise OSError(
+                        """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
+                            response.status, source.file_path
+                        )
+                    )
+
                 multipart_supported = resource.is_multipart_supported(ranges, response)
 
                 if not multipart_supported:
@@ -265,12 +326,14 @@ for URL {0}""".format(
                     future._set_excinfo(excinfo)
 
             finally:
-                connection.close()
+                connection[0].close()
 
         return uproot4.source.futures.ResourceFuture(task)
 
-    _content_range_size = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)")
-    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)")
+    _content_range_size = re.compile(
+        b"Content-Range: bytes ([0-9]+-[0-9]+)/([0-9]+)", re.I
+    )
+    _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
 
     def is_multipart_supported(self, ranges, response):
         """
@@ -309,8 +372,13 @@ for URL {0}""".format(
         Helper function for :py:meth:`~uproot4.source.http.HTTPResource.multifuture`
         to handle the multipart GET response.
         """
+        if hasattr(response, "readline"):
+            response_buffer = response
+        else:
+            response_buffer = _ResponseBuffer(response)
+
         for i in uproot4._util.range(len(futures)):
-            range_string, size = self.next_header(response)
+            range_string, size = self.next_header(response_buffer)
             if range_string is None:
                 raise OSError(
                     """found {0} of {1} expected headers in HTTP multipart
@@ -334,7 +402,7 @@ for URL {1}""".format(
                 )
 
             length = stop - start
-            results[start, stop] = response.read(length)
+            results[start, stop] = response_buffer.read(length)
 
             if len(results[start, stop]) != length:
                 raise OSError(
@@ -350,12 +418,12 @@ for URL {3}""".format(
 
             future._run(self)
 
-    def next_header(self, response):
+    def next_header(self, response_buffer):
         """
         Helper function for :py:meth:`~uproot4.source.http.HTTPResource.multifuture`
-        to return the next header from the ``response``.
+        to return the next header from the ``response_buffer``.
         """
-        line = response.fp.readline()
+        line = response_buffer.readline()
         range_string, size = None, None
         while range_string is None:
             m = self._content_range_size.match(line)
@@ -367,7 +435,7 @@ for URL {3}""".format(
                 if m is not None:
                     range_string = m.group(1)
                     size = None
-            line = response.fp.readline()
+            line = response_buffer.readline()
             if len(line.strip()) == 0:
                 break
         return range_string, size
@@ -387,6 +455,39 @@ for URL {3}""".format(
             return results[start, stop]
 
         return uproot4.source.futures.ResourceFuture(task)
+
+
+class _ResponseBuffer(object):
+    CHUNK = 1024
+
+    def __init__(self, stream):
+        self.already_read = b""
+        self.stream = stream
+
+    def read(self, length):
+        if length < len(self.already_read):
+            out = self.already_read[:length]
+            self.already_read = self.already_read[length:]
+            return out
+
+        elif len(self.already_read) > 0:
+            out = self.already_read
+            self.already_read = b""
+            return out + self.stream.read(length - len(out))
+
+        else:
+            return self.stream.read(length)
+
+    def readline(self):
+        while True:
+            try:
+                index = self.already_read.index(b"\n")
+            except ValueError:
+                self.already_read = self.already_read + self.stream.read(self.CHUNK)
+            else:
+                out = self.already_read[: index + 1]
+                self.already_read = self.already_read[index + 1 :]
+                return out
 
 
 class HTTPSource(uproot4.source.chunk.Source):
