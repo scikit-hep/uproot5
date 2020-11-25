@@ -13,33 +13,34 @@ import uproot4.models.TArray
 import uproot4.extras
 
 
+boost_metadata = {"name": "fName", "title": "fTitle"}
+boost_axis_metadata = {"name": "fName", "title": "fTitle"}
+
+
 def _boost_axis(axis, metadata):
     boost_histogram = uproot4.extras.boost_histogram()
 
     fNbins = axis.member("fNbins")
     fXbins = axis.member("fXbins", none_if_missing=True)
 
-    metadata = dict((k, axis.member(v)) for k, v in metadata.items())
-
     if axis.member("fLabels") is not None:
-        return boost_histogram.axis.StrCategory(
-            [str(x) for x in axis.member("fLabels")], metadata=metadata,
-        )
+        out = boost_histogram.axis.StrCategory([str(x) for x in axis.member("fLabels")])
 
     elif fXbins is None or len(fXbins) != fNbins:
-        return boost_histogram.axis.Regular(
+        out = boost_histogram.axis.Regular(
             fNbins,
             axis.member("fXmin"),
             axis.member("fXmax"),
             underflow=True,
             overflow=True,
-            metadata=metadata,
         )
 
     else:
-        return boost_histogram.axis.Variable(
-            fXbins, underflow=True, overflow=True, metadata=metadata,
-        )
+        out = boost_histogram.axis.Variable(fXbins, underflow=True, overflow=True)
+
+    for k, v in metadata.items():
+        setattr(out, k, axis.member(v))
+    return out
 
 
 class Histogram(object):
@@ -56,8 +57,8 @@ class Histogram(object):
             return False
         if self.axes != other.axes:
             return False
-        self_values, self_variances = self.values_variances(flow=True)
-        other_values, other_variances = other.values_variances(flow=True)
+        self_values, self_variances = self._values_variances(True)
+        other_values, other_variances = other._values_variances(True)
         values_equal = numpy.array_equal(self_values, other_values)
         variances_equal = numpy.array_equal(self_variances, other_variances)
         return values_equal and variances_equal
@@ -92,6 +93,21 @@ class Histogram(object):
         """
         raise NotImplementedError(repr(self))
 
+    @property
+    def weighted(self):
+        """
+        True if the histogram has weights (``fSumw2``); False otherwise.
+        """
+        raise NotImplementedError(repr(self))
+
+    @property
+    def interpretation(self):
+        """
+        How to interpret ``values``: ``"count"`` for histograms and ``"mean"``
+        for profiles.
+        """
+        raise NotImplementedError(repr(self))
+
     def values(self, flow=False):
         """
         Args:
@@ -120,7 +136,7 @@ class Histogram(object):
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self.values_variances(flow=flow)
+        values, variances = self._values_variances(flow)
         return numpy.sqrt(variances)
 
     def variances(self, flow=False):
@@ -139,45 +155,8 @@ class Histogram(object):
 
         Setting ``flow=True`` increases the length of each dimension by two.
         """
-        values, variances = self.values_variances(flow=flow)
+        values, variances = self._values_variances(flow)
         return variances
-
-    def values_errors(self, flow=False):
-        """
-        Args:
-            flow (bool): If True, include underflow and overflow bins before and
-                after the normal (finite-width) bins.
-
-        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
-        :py:meth:`~uproot4.behaviors.TH1.Histogram.errors` (uncertainties) as a
-        2-tuple of arrays. The two arrays have the same ``shape``.
-
-        If ``fSumw2`` (weights) are available, they will be used in the
-        calculation of the errors. If not, errors are assumed to be the square
-        root of the values.
-
-        Setting ``flow=True`` increases the length of each dimension by two.
-        """
-        values, variances = self.values_variances(flow=flow)
-        return values, numpy.sqrt(variances)
-
-    def values_variances(self, flow=False):
-        """
-        Args:
-            flow (bool): If True, include underflow and overflow bins before and
-                after the normal (finite-width) bins.
-
-        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
-        :py:meth:`~uproot4.behaviors.TH1.Histogram.variances` (uncertainties squared)
-        as a 2-tuple of arrays. The two arrays have the same ``shape``.
-
-        If ``fSumw2`` (weights) are available, they will be used in the
-        calculation of the variances. If not, variances are assumed to be equal
-        to the values.
-
-        Setting ``flow=True`` increases the length of each dimension by two.
-        """
-        raise NotImplementedError(repr(self))
 
     def counts(self, flow=False):
         """
@@ -185,16 +164,13 @@ class Histogram(object):
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
 
-        Count returns the number of values in a mean accumulator (also known as
-        a Profile histogram), or is None for normal storages.
+        Returns the (possibly weighted) number of entries in each bin. For
+        histograms, this is equal to :py:meth:`~uproot4.behaviors.TH1.Histogram.values`.
+        For profiles, this is equal to :py:meth:`~uproot4.behaviors.TH1.Histogram.effective_entries`.
         """
-        return None
+        return self.values(flow=flow)
 
-    def to_boost(
-        self,
-        metadata={"name": "fName", "title": "fTitle"},
-        axis_metadata={"name": "fName", "title": "fTitle"},
-    ):
+    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
         u"""
         Args:
             metadata (dict of str \u2192 str): Metadata to collect (keys) and
@@ -206,15 +182,19 @@ class Histogram(object):
         """
         raise NotImplementedError(repr(self))
 
-    def to_hist(self, metadata={"name": "fName", "title": "fTitle"}):
+    def to_hist(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
         u"""
         Args:
-            metadata (dict of str \u2192 str): metadata to collect (keys) and
+            metadata (dict of str \u2192 str): Metadata to collect (keys) and
                 their C++ class member names (values).
+            axis_metadata (dict of str \u2192 str): Metadata to collect from
+                each axis.
 
         Converts the histogram into a ``hist`` object.
         """
-        return uproot4.extras.hist().Hist(self.to_boost(metadata=metadata))
+        return uproot4.extras.hist().Hist(
+            self.to_boost(metadata=boost_metadata, axis_metadata=boost_axis_metadata)
+        )
 
 
 class TH1(Histogram):
@@ -233,32 +213,50 @@ class TH1(Histogram):
         else:
             raise ValueError("axis must be 0 (-1) or 'x' for a TH1")
 
-    def values(self, flow=False):
-        (values,) = self.base(uproot4.models.TArray.Model_TArray)
-        out = numpy.array(values, dtype=values.dtype.newbyteorder("="))
-        if flow:
-            return out
-        else:
-            return out[1:-1]
-
-    def values_variances(self, flow=False):
-        values = self.values(flow=True)
-        errors = numpy.zeros(values.shape, dtype=numpy.float64)
-
+    @property
+    def weighted(self):
         sumw2 = self.member("fSumw2", none_if_missing=True)
-        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
-            sumw2 = numpy.array(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-            sumw2 = numpy.reshape(sumw2, values.shape)
-            positive = sumw2 > 0
-            errors[positive] = sumw2[positive]
+        return sumw2 is not None and len(sumw2) == self.member("fNcells")
+
+    @property
+    def interpretation(self):
+        return "count"
+
+    def values(self, flow=False):
+        if hasattr(self, "_values"):
+            values = self._values
         else:
-            positive = values > 0
-            errors[positive] = values[positive]
+            (values,) = self.base(uproot4.models.TArray.Model_TArray)
+            values = numpy.asarray(values, dtype=values.dtype.newbyteorder("="))
+            self._values = values
 
         if flow:
-            return values, errors
+            return values
         else:
-            return values[1:-1], errors[1:-1]
+            return values[1:-1]
+
+    def _values_variances(self, flow):
+        values = self.values(flow=True)
+
+        if hasattr(self, "_variances"):
+            variances = self._variances
+        else:
+            variances = numpy.zeros(values.shape, dtype=numpy.float64)
+            sumw2 = self.member("fSumw2", none_if_missing=True)
+            if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+                sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
+                sumw2 = numpy.reshape(sumw2, values.shape)
+                positive = sumw2 > 0
+                variances[positive] = sumw2[positive]
+            else:
+                positive = values > 0
+                variances[positive] = values[positive]
+            self._variances = variances
+
+        if flow:
+            return values, variances
+        else:
+            return values[1:-1], variances[1:-1]
 
     def to_numpy(self, flow=False, dd=False):
         """
@@ -280,11 +278,11 @@ class TH1(Histogram):
         else:
             return values, xedges
 
-    def to_boost(
-        self,
-        metadata={"name": "fName", "title": "fTitle"},
-        axis_metadata={"name": "fName", "title": "fTitle"},
-    ):
+    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
+        raise NotImplementedError(
+            "FIXME @henryiii: I believe this is correct, but please check"
+        )
+
         boost_histogram = uproot4.extras.boost_histogram()
 
         values = self.values(flow=True)
@@ -292,7 +290,7 @@ class TH1(Histogram):
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
         if sumw2 is not None and len(sumw2) == self.member("fNcells"):
-            sumw2 = numpy.array(sumw2, dtype=sumw2.dtype.newbyteorder("="))
+            sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
             storage = boost_histogram.storage.Weight()
         else:
@@ -303,7 +301,8 @@ class TH1(Histogram):
 
         xaxis = _boost_axis(self.member("fXaxis"), axis_metadata)
         out = boost_histogram.Histogram(xaxis, storage=storage)
-        out.metadata = dict((k, self.member(v)) for k, v in metadata.items())
+        for k, v in metadata.items():
+            setattr(out, k, self.member(v))
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             values = values[1:]

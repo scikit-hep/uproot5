@@ -14,6 +14,37 @@ except ImportError:
 import numpy
 
 
+class AxisOptions(object):
+    """
+    Describes read-only properties of a histogram axis.
+
+    For example, ``axis.options.discrete`` is True if the histogram has
+    labels; False otherwise.
+    """
+
+    def __init__(self, axis):
+        self._axis = axis
+
+    def __repr__(self):
+        return "AxisOptions({0})".format(repr(self._axis))
+
+    @property
+    def circular(self):
+        """
+        True if the axis "wraps around" (always False for ROOT histograms).
+        """
+        return False
+
+    @property
+    def discrete(self):
+        """
+        True if bins are discrete: if they have string-valued labels.
+        """
+        fNbins = self._axis.member("fNbins")
+        fLabels = self._axis.member("fLabels", none_if_missing=True)
+        return fLabels is not None and len(fLabels) == fNbins
+
+
 class TAxis(Sequence):
     def __len__(self):
         """
@@ -89,20 +120,14 @@ class TAxis(Sequence):
         return not self.__eq__(other)
 
     @property
-    def circular(self):
+    def options(self):
         """
-        True if the axis "wraps around" (always False for ROOT histograms).
-        """
-        return False
+        Describes read-only properties of a histogram axis.
 
-    @property
-    def discrete(self):
+        For example, ``axis.options.discrete`` is True if the histogram has
+        labels; False otherwise.
         """
-        True if bins are discrete: if they have string-valued labels.
-        """
-        fNbins = self.member("fNbins")
-        fLabels = self.member("fLabels", none_if_missing=True)
-        return fLabels is not None and len(fLabels) == fNbins
+        return AxisOptions(self)
 
     @property
     def low(self):
@@ -193,7 +218,7 @@ class TAxis(Sequence):
             out[-1] = numpy.inf
             out[1:-1] = fXbins
         else:
-            out = fXbins  # sometimes returns a view, unlike the other methods
+            out = numpy.asarray(fXbins, dtype=fXbins.dtype.newbyteorder("="))
 
         return out
 

@@ -19,8 +19,8 @@ def test_axis():
         assert list(axis)[:3] == [(-4.0, -3.92), (-3.92, -3.84), (-3.84, -3.76)]
         assert axis == axis
         assert f["hpxpy"].axis(0) == f["hpxpy"].axis(1)
-        assert axis.circular is False
-        assert axis.discrete is False
+        assert axis.options.circular is False
+        assert axis.options.discrete is False
         assert axis.low == -4
         assert axis.high == 4
         assert axis.width == 0.08
@@ -35,13 +35,15 @@ def test_axis():
         assert axis.widths()[:3].tolist() == [0.08, 0.08, 0.08]
         assert axis.widths(True)[:2].tolist() == [numpy.inf, 0.08000000000000007]
         assert (
-            len(axis.edges()) - 1
+            len(axis)
+            == len(axis.edges()) - 1
             == len(axis.intervals())
             == len(axis.centers())
             == len(axis.widths())
         )
         assert (
-            len(axis.edges(flow=True)) - 1
+            len(axis) + 2
+            == len(axis.edges(flow=True)) - 1
             == len(axis.intervals(flow=True))
             == len(axis.centers(flow=True))
             == len(axis.widths(flow=True))
@@ -55,8 +57,8 @@ def test_axis():
         assert axis[1] == "MET"
         assert list(axis)[:3] == ["Dijet", "MET", "MuonVeto"]
         assert axis == axis
-        assert axis.circular is False
-        assert axis.discrete is True
+        assert axis.options.circular is False
+        assert axis.options.discrete is True
         assert axis.low == 0.0
         assert axis.high == 7.0
         assert axis.width == 1.0
@@ -86,25 +88,27 @@ def test_axis():
 
 def test_bins():
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-        hpx = f["hpx"]
-        hpxpy = f["hpxpy"]
-        hprof = f["hprof"]
-        assert len(hpx.axis().centers()) == len(hpx.values())
-        assert len(hpx.axis().centers(flow=True)) == len(hpx.values(flow=True))
-        assert len(hprof.axis().centers()) == len(hprof.values())
-        assert len(hprof.axis().centers(flow=True)) == len(hprof.values(flow=True))
-        assert (
-            len(hpxpy.axis(0).centers()),
-            len(hpxpy.axis(1).centers()),
-        ) == hpxpy.values().shape
-        assert (
-            len(hpxpy.axis(0).centers(flow=True)),
-            len(hpxpy.axis(1).centers(flow=True)),
-        ) == hpxpy.values(flow=True).shape
-        assert numpy.all(hpxpy.values() == hpxpy.variances())
-        assert numpy.all(hpxpy.values(flow=True) == hpxpy.variances(flow=True))
+        for i in range(2):
+            hpx = f["hpx"]
+            hpxpy = f["hpxpy"]
+            hprof = f["hprof"]
+            assert len(hpx.axis().centers()) == len(hpx.values())
+            assert len(hpx.axis().centers(flow=True)) == len(hpx.values(flow=True))
+            assert len(hprof.axis().centers()) == len(hprof.values())
+            assert len(hprof.axis().centers(flow=True)) == len(hprof.values(flow=True))
+            assert (
+                len(hpxpy.axis(0).centers()),
+                len(hpxpy.axis(1).centers()),
+            ) == hpxpy.values().shape
+            assert (
+                len(hpxpy.axis(0).centers(flow=True)),
+                len(hpxpy.axis(1).centers(flow=True)),
+            ) == hpxpy.values(flow=True).shape
+            assert numpy.all(hpxpy.values() == hpxpy.variances())
+            assert numpy.all(hpxpy.values(flow=True) == hpxpy.variances(flow=True))
 
 
+@pytest.mark.skip(reason="@henryiii: tests for boost-histogram")
 def test_boost():
     boost_histogram = pytest.importorskip("boost_histogram")
 
@@ -112,41 +116,26 @@ def test_boost():
         hpx = f["hpx"]
         hpxpy = f["hpxpy"]
         hprof = f["hprof"]
-        assert hpx.to_boost().metadata == {
-            "name": "hpx",
-            "title": "This is the px distribution",
-        }
-        assert hpx.to_boost().axes[0].metadata == {
-            "name": "xaxis",
-            "title": "",
-        }
-        assert hpxpy.to_boost().metadata == {
-            "name": "hpxpy",
-            "title": "py vs px",
-        }
-        assert hpxpy.to_boost().axes[0].metadata == {
-            "name": "xaxis",
-            "title": "",
-        }
-        assert hpxpy.to_boost().axes[1].metadata == {
-            "name": "yaxis",
-            "title": "",
-        }
-        assert hprof.to_boost().metadata == {
-            "name": "hprof",
-            "title": "Profile of pz versus px",
-        }
-        assert hprof.to_boost().axes[0].metadata == {
-            "name": "xaxis",
-            "title": "",
-        }
+
+        assert hpx.to_boost().name == "hpx"
+        assert hpx.to_boost().title == "This is the px distribution"
+        assert hpx.to_boost().axes[0].name == "xaxis"
+        assert hpx.to_boost().axes[0].title == ""
+
+        assert hpxpy.to_boost().name == "hpxpy"
+        assert hpxpy.to_boost().title == "py vs px"
+        assert hpxpy.to_boost().axes[0].name == "xaxis"
+        assert hpxpy.to_boost().axes[0].title == ""
+        assert hpxpy.to_boost().axes[1].name == "yaxis"
+        assert hpxpy.to_boost().axes[1].title == ""
+
+        assert hprof.to_boost().name == "hprof"
+        assert hprof.to_boost().title == "Profile of pz versus px"
+        assert hprof.to_boost().axes[0].name == "xaxis"
+        assert hprof.to_boost().axes[0].title == ""
 
     with uproot4.open(skhep_testdata.data_path("uproot-issue33.root")) as f:
-        assert f["cutflow"].to_boost().metadata == {
-            "name": "cutflow",
-            "title": "dijethad",
-        }
-        assert f["cutflow"].to_boost().axes[0].metadata == {
-            "name": "xaxis",
-            "title": "",
-        }
+        assert f["cutflow"].to_boost().name == "cutflow"
+        assert f["cutflow"].to_boost().title == "dijethad"
+        assert f["cutflow"].to_boost().axes[0].name == "xaxis"
+        assert f["cutflow"].to_boost().axes[0].title == ""
