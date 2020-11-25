@@ -11,6 +11,7 @@ import numpy
 
 import uproot4.models.TArray
 import uproot4.behaviors.TH1
+from uproot4.behaviors.TH1 import boost_metadata, boost_axis_metadata
 
 
 class TH2(uproot4.behaviors.TH1.Histogram):
@@ -21,72 +22,101 @@ class TH2(uproot4.behaviors.TH1.Histogram):
 
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
-    def edges(self, axis):
+    @property
+    def axes(self):
+        return (self.member("fXaxis"), self.member("fYaxis"))
+
+    def axis(self, axis):
         if axis == 0 or axis == -2 or axis == "x":
-            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
+            return self.member("fXaxis")
         elif axis == 1 or axis == -1 or axis == "y":
-            return uproot4.behaviors.TH1._edges(self.member("fYaxis"))
+            return self.member("fYaxis")
         else:
-            raise ValueError("axis must be 0, 1 or 'x', 'y' for a TH2")
+            raise ValueError("axis must be 0 (-2), 1 (-1) or 'x', 'y' for a TH2")
 
-    def values(self):
-        (values,) = self.base(uproot4.models.TArray.Model_TArray)
-        values = numpy.array(values, dtype=values.dtype.newbyteorder("="))
-
-        xaxis_fNbins = self.member("fXaxis").member("fNbins")
-        yaxis_fNbins = self.member("fYaxis").member("fNbins")
-        return numpy.transpose(values.reshape(yaxis_fNbins + 2, xaxis_fNbins + 2))
-
-    def values_errors(self):
-        values = self.values()
-        errors = numpy.transpose(numpy.zeros(values.shape[::-1], dtype=numpy.float64))
-
+    @property
+    def weighted(self):
         sumw2 = self.member("fSumw2", none_if_missing=True)
-        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
-            sumw2 = numpy.transpose(numpy.reshape(sumw2, values.shape[::-1]))
-            positive = sumw2 > 0
-            errors[positive] = numpy.sqrt(sumw2[positive])
+        return sumw2 is not None and len(sumw2) == self.member("fNcells")
+
+    @property
+    def interpretation(self):
+        return "count"
+
+    def values(self, flow=False):
+        if hasattr(self, "_values"):
+            values = self._values
         else:
-            positive = values > 0
-            errors[positive] = numpy.sqrt(values[positive])
+            (values,) = self.base(uproot4.models.TArray.Model_TArray)
+            values = numpy.asarray(values, dtype=values.dtype.newbyteorder("="))
+            xaxis_fNbins = self.member("fXaxis").member("fNbins")
+            yaxis_fNbins = self.member("fYaxis").member("fNbins")
+            values = numpy.transpose(values.reshape(yaxis_fNbins + 2, xaxis_fNbins + 2))
+            self._values = values
 
-        return values, errors
-
-    def to_numpy(self, flow=False, dd=False, errors=False):
-        if errors:
-            values, errs = self.values_errors()
+        if flow:
+            return values
         else:
-            values, errs = self.values(), None
+            return values[1:-1, 1:-1]
 
-        xedges = self.edges(0)
-        yedges = self.edges(1)
-        if not flow:
-            values = values[1:-1, 1:-1]
-            if errors:
-                errs = errs[1:-1, 1:-1]
-            xedges = xedges[1:-1]
-            yedges = yedges[1:-1]
+    def _values_variances(self, flow):
+        values = self.values(flow=True)
 
-        if errors:
-            values_errors = values, errs
+        if hasattr(self, "_variances"):
+            variances = self._variances
         else:
-            values_errors = values
+            variances = numpy.zeros(values.shape, dtype=numpy.float64)
+            sumw2 = self.member("fSumw2", none_if_missing=True)
+            if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+                sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
+                sumw2 = numpy.transpose(numpy.reshape(sumw2, values.shape[::-1]))
+                positive = sumw2 > 0
+                variances[positive] = sumw2[positive]
+            else:
+                positive = values > 0
+                variances[positive] = values[positive]
+            self._variances = variances
 
+        if flow:
+            return values, variances
+        else:
+            return values[1:-1, 1:-1], variances[1:-1, 1:-1]
+
+    def to_numpy(self, flow=False, dd=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins; otherwise,
+                only normal (finite-width) bins are included.
+            dd (bool): If True, the return type follows
+                `numpy.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__;
+                otherwise, it follows `numpy.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__
+                and `numpy.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__.
+
+        Converts the histogram into a form like the ones produced by the NumPy
+        histogram functions.
+        """
+        values = self.values(flow=flow)
+        xedges = self.axis(0).edges(flow=flow)
+        yedges = self.axis(1).edges(flow=flow)
         if dd:
-            return values_errors, (xedges, yedges)
+            return values, (xedges, yedges)
         else:
-            return values_errors, xedges, yedges
+            return values, xedges, yedges
 
-    def to_boost(self):
+    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
+        raise NotImplementedError(
+            "FIXME @henryiii: I believe this is correct, but please check"
+        )
+
         boost_histogram = uproot4.extras.boost_histogram()
 
-        values = self.values()
+        values = self.values(flow=True)
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
         if sumw2 is not None and len(sumw2) == self.member("fNcells"):
-            sumw2 = numpy.array(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-            sumw2 = sumw2.reshape(values.shape)
+            sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
+            sumw2 = numpy.transpose(numpy.reshape(sumw2, values.shape[::-1]))
             storage = boost_histogram.storage.Weight()
         else:
             if issubclass(values.dtype.type, numpy.integer):
@@ -94,20 +124,11 @@ class TH2(uproot4.behaviors.TH1.Histogram):
             else:
                 storage = boost_histogram.storage.Double()
 
-        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"))
-        yaxis = uproot4.behaviors.TH1._boost_axis(self.member("fYaxis"))
+        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
+        yaxis = uproot4.behaviors.TH1._boost_axis(self.member("fYaxis"), axis_metadata)
         out = boost_histogram.Histogram(xaxis, yaxis, storage=storage)
-
-        metadata = self.all_members
-        metadata["name"] = metadata.pop("fName")
-        metadata["title"] = metadata.pop("fTitle")
-        metadata.pop("fXaxis", None)
-        metadata.pop("fYaxis", None)
-        metadata.pop("fZaxis", None)
-        metadata.pop("fContour", None)
-        metadata.pop("fSumw2", None)
-        metadata.pop("fBuffer", None)
-        out.metadata = metadata
+        for k, v in metadata.items():
+            setattr(out, k, self.member(v))
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             values = values[1:, :]
@@ -122,6 +143,3 @@ class TH2(uproot4.behaviors.TH1.Histogram):
             view[:] = values
 
         return out
-
-    def to_hist(self):
-        return uproot4.extras.hist().Hist(self.to_boost())

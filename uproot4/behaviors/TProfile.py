@@ -10,6 +10,7 @@ import numpy
 
 import uproot4.models.TArray
 import uproot4.behaviors.TH1
+from uproot4.behaviors.TH1 import boost_metadata, boost_axis_metadata
 
 
 _kERRORMEAN = 0
@@ -22,10 +23,10 @@ _kERRORSPREADG = 3
 # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L141-L163
 def _effective_entries_1d(fBinEntries, fBinSumw2, fNcells):
     root_sumOfWeights = fBinEntries
-    root_sumOfWeights = numpy.array(root_sumOfWeights, dtype=numpy.float64)
+    root_sumOfWeights = numpy.asarray(root_sumOfWeights, dtype=numpy.float64)
 
     root_sumOfWeightSquare = fBinSumw2
-    root_sumOfWeightSquare = numpy.array(root_sumOfWeightSquare, dtype=numpy.float64)
+    root_sumOfWeightSquare = numpy.asarray(root_sumOfWeightSquare, dtype=numpy.float64)
 
     if len(root_sumOfWeightSquare) == 0 or len(root_sumOfWeightSquare) != fNcells:
         return root_sumOfWeights
@@ -40,13 +41,26 @@ def _effective_entries_1d(fBinEntries, fBinSumw2, fNcells):
 # duplicates the first part of '_values_errors_1d'
 def _values_1d(fBinEntries, root_cont):
     root_sum = fBinEntries
-    root_sum = numpy.array(root_sum, dtype=numpy.float64)
+    root_sum = numpy.asarray(root_sum, dtype=numpy.float64)
     nonzero = root_sum != 0
 
     root_contsum = numpy.zeros(len(root_cont), dtype=numpy.float64)
     root_contsum[nonzero] = root_cont[nonzero] / root_sum[nonzero]
 
     return root_contsum
+
+
+def _error_mode_str(error_mode):
+    if error_mode is None or error_mode == _kERRORMEAN or error_mode == "":
+        return ""
+    elif error_mode == _kERRORSPREAD or error_mode == "s":
+        return "S"
+    elif error_mode == _kERRORSPREADI or error_mode == "i":
+        return "I"
+    elif error_mode == _kERRORSPREADG or error_mode == "g":
+        return "G"
+    else:
+        return "_"
 
 
 # closely follows the ROOT function, using the same names (with 'root_' prepended)
@@ -72,7 +86,7 @@ def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinS
         )
 
     root_sum = fBinEntries
-    root_sum = numpy.array(root_sum, dtype=numpy.float64)
+    root_sum = numpy.asarray(root_sum, dtype=numpy.float64)
     nonzero = root_sum != 0
 
     root_contsum = numpy.zeros(len(root_cont), dtype=numpy.float64)
@@ -87,7 +101,7 @@ def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinS
     if root_err2 is None or len(root_err2) != fNcells:
         root_err2 = numpy.zeros(len(root_cont), dtype=numpy.float64)
     else:
-        root_err2 = numpy.array(root_err2, dtype=numpy.float64)
+        root_err2 = numpy.asarray(root_err2, dtype=numpy.float64)
 
     root_neff = _effective_entries_1d(fBinEntries, fBinSumw2, fNcells)
 
@@ -123,23 +137,44 @@ class Profile(uproot4.behaviors.TH1.Histogram):
     Abstract class for profile plots.
     """
 
-    def effective_entries(self):
+    def effective_entries(self, flow=False):
         """
-        The effective number of entries, which is a step in the calculation of
-        :py:meth:`~uproot4.behaviors.TProfile.Profile.values`.
-        """
-        pass
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
 
-    def values_errors(self, error_mode=""):
+        The effective number of entries, which is a step in the calculation of
+        :py:meth:`~uproot4.behaviors.TProfile.Profile.values`. The calculation
+        of profile errors exactly follows ROOT's function, but in a vectorized
+        NumPy form.
         """
-        The :py:meth:`~uproot4.behaviors.TH1.Histogram.values` and their associated
-        errors (uncertainties) as a 2-tuple of arrays. The two arrays have the
-        same ``shape``.
+        raise NotImplementedError(repr(self))
+
+    def values(self, flow=False):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+
+        Mean value of each bin as a 1, 2, or 3 dimensional ``numpy.ndarray`` of
+        ``numpy.float64``.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        raise NotImplementedError(repr(self))
+
+    def errors(self, flow=False, error_mode=""):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+            error_mode (str): Choose a method for calculating the errors (see below).
+
+        Errors (uncertainties) in the :py:meth:`~uproot4.behaviors.TH1.Histogram.values`
+        as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         The calculation of profile errors exactly follows ROOT's function, but
-        in a vectorized NumPy form.
-
-        The ``error_mode`` may be
+        in a vectorized NumPy form. The ``error_mode`` may be
 
         * ``""`` for standard error on the mean
         * ``"s"`` for spread
@@ -147,8 +182,40 @@ class Profile(uproot4.behaviors.TH1.Histogram):
         * ``"g"`` for Gaussian
 
         following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
         """
-        pass
+        values, errors = self._values_errors(flow, error_mode)
+        return errors
+
+    def variances(self, flow=False, error_mode=""):
+        """
+        Args:
+            flow (bool): If True, include underflow and overflow bins before and
+                after the normal (finite-width) bins.
+            error_mode (str): Choose a method for calculating the errors (see below).
+
+        Variances (uncertainties squared) in the
+        :py:meth:`~uproot4.behaviors.TH1.Histogram.values` as a 1, 2, or 3
+        dimensional ``numpy.ndarray`` of ``numpy.float64``.
+
+        The calculation of profile variances exactly follows ROOT's function, but
+        in a vectorized NumPy form. The ``error_mode`` may be
+
+        * ``""`` for standard error on the mean (squared)
+        * ``"s"`` for spread (squared)
+        * ``"i"`` for integer data (squared)
+        * ``"g"`` for Gaussian (squared)
+
+        following `ROOT's profile documentation <https://root.cern.ch/doc/master/classTProfile.html>`__.
+
+        Setting ``flow=True`` increases the length of each dimension by two.
+        """
+        values, errors = self._values_errors(flow, error_mode)
+        return numpy.square(errors)
+
+    def counts(self, flow=False):
+        return self.effective_entries(flow=flow)
 
 
 class TProfile(Profile):
@@ -158,84 +225,112 @@ class TProfile(Profile):
 
     no_inherit = (uproot4.behaviors.TH1.TH1,)
 
-    def edges(self, axis=0):
-        if axis == 0 or axis == -1 or axis == "x":
-            return uproot4.behaviors.TH1._edges(self.member("fXaxis"))
-        else:
-            raise ValueError("axis must be 0 or 'x' for a TH1")
+    @property
+    def axes(self):
+        return (self.member("fXaxis"),)
 
-    def effective_entries(self):
-        return _effective_entries_1d(
+    def axis(self, axis=0):  # default axis for one-dimensional is intentional
+        if axis == 0 or axis == -1 or axis == "x":
+            return self.member("fXaxis")
+        else:
+            raise ValueError("axis must be 0 (-1) or 'x' for a TProfile")
+
+    @property
+    def weighted(self):
+        fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
+        return fBinSumw2 is None or len(fBinSumw2) != len(self.member("fNcells"))
+
+    @property
+    def interpretation(self):
+        return "mean"
+
+    def effective_entries(self, flow=True):
+        out = _effective_entries_1d(
             self.member("fBinEntries"),
             self.member("fBinSumw2"),
             self.member("fNcells"),
         )
+        if flow:
+            return out
+        else:
+            return out[1:-1]
 
-    def values(self):
-        (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
-        root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
-        return _values_1d(self.member("fBinEntries"), root_cont,)
+    def values(self, flow=False):
+        if hasattr(self, "_values"):
+            values = self._values
+        else:
+            (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
+            root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
+            values = _values_1d(self.member("fBinEntries"), root_cont,)
+            self._values = values
 
-    def values_errors(self, error_mode=""):
-        (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
-        root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
-        fSumw2 = self.member("fSumw2", none_if_missing=True)
-        if fSumw2 is not None:
-            fSumw2 = numpy.asarray(fSumw2)
-        return _values_errors_1d(
-            error_mode,
-            numpy.asarray(self.member("fBinEntries")),
-            root_cont,
-            fSumw2,
-            self.member("fNcells"),
-            numpy.asarray(self.member("fBinSumw2")),
+        if flow:
+            return values
+        else:
+            return values[1:-1]
+
+    def _values_errors(self, flow, error_mode):
+        attr = "_errors" + _error_mode_str(error_mode)
+        if hasattr(self, attr):
+            values = self._values
+            errors = getattr(self, attr)
+        else:
+            (root_cont,) = self.base(uproot4.models.TArray.Model_TArray)
+            root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
+            fSumw2 = self.member("fSumw2", none_if_missing=True)
+            if fSumw2 is not None:
+                fSumw2 = numpy.asarray(fSumw2)
+            values, errors = _values_errors_1d(
+                error_mode,
+                numpy.asarray(self.member("fBinEntries")),
+                root_cont,
+                fSumw2,
+                self.member("fNcells"),
+                numpy.asarray(self.member("fBinSumw2")),
+            )
+            self._values = values
+            setattr(self, attr, errors)
+
+        if flow:
+            return values, errors
+        else:
+            return values[1:-1], errors[1:-1]
+
+    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
+        raise NotImplementedError(
+            "FIXME @henryiii: I do not believe this is correct; please fix"
         )
 
-    def to_numpy(self, flow=False, dd=False, errors=False, error_mode=0):
-        if errors:
-            values, errs = self.values_errors(error_mode=error_mode)
-        else:
-            values, errs = self.values(), None
-
-        xedges = self.edges(0)
-        if not flow:
-            values = values[1:-1]
-            if errors:
-                errs = errs[1:-1]
-            xedges = xedges[1:-1]
-
-        if errors:
-            values_errors = values, errs
-        else:
-            values_errors = values
-
-        if dd:
-            return values_errors, (xedges,)
-        else:
-            return values_errors, xedges
-
-    def to_boost(self):
         boost_histogram = uproot4.extras.boost_histogram()
+
+        effective_entries = self.effective_entries(flow=True)
+        values, errors = self._values_errors(True, self.member("fErrorMode"))
+        variances = numpy.square(errors)
+        sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))
 
         storage = boost_histogram.storage.WeightedMean()
 
-        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"))
+        xaxis = uproot4.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
         out = boost_histogram.Histogram(xaxis, storage=storage)
-
-        values, errors = self.values_errors(self.member("fErrorMode"))
+        for k, v in metadata.items():
+            setattr(out, k, self.member(v))
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
+            effective_entries = effective_entries[1:]
             values = values[1:]
-            errors = errors[1:]
+            variances = variances[1:]
+            sum_of_bin_weights = sum_of_bin_weights[1:]
 
         view = out.view(flow=True)
 
-        view.sum_of_weights
-        view.sum_of_weights_squared
-        view.value = values
-        view.sum_of_weighted_deltas_squared
+        # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
+        with numpy.errstate(divide="ignore"):
+            sum_of_bin_weights_squared = sum_of_bin_weights ** 2 / effective_entries
 
-        raise NotImplementedError(repr(self))
+        # FIXME: I am uncertain about how to fill the Boost profile-like Storage.
+        view.sum_of_weights[:] = sum_of_bin_weights
+        view.sum_of_weights_squared[:] = sum_of_bin_weights_squared
+        view.value[:] = values
+        view.variance[:] = variances
 
-    def to_hist(self):
-        return uproot4.extras.hist().Hist(self.to_boost())
+        return out

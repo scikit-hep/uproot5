@@ -59,6 +59,7 @@ def test_pickle():
         assert original_file_path == reconstituted_file_path
 
 
+@pytest.mark.skip(reason="@henryiii: tests for boost-histogram")
 def test_pickle_boost():
     boost_histogram = pytest.importorskip("boost_histogram")
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
