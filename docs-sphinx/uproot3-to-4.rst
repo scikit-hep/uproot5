@@ -342,3 +342,14 @@ In Uproot 3, you could specify whether the output is a dict of arrays, a tuple o
 
 **Note:** Awkward Array is not one of Uproot 4's formal requirements. If you don't have ``awkward1`` installed, :meth:`~uproot4.behaviors.TBranch.TBranch.array` and :meth:`~uproot4.behaviors.TBranch.HasBranches.arrays` will raise errors explaining how to install Awkward Array or switch to ``library="np"``. These errors might be hidden in automated testing, so be careful if you use that!
 
+The ``how`` argument can be used to repackage arrays into dicts or tuples, and has special meanings for some libraries.
+
+* For ``library="ak"``, passing ``how="zip"`` applies `ak.zip <https://awkward-array.readthedocs.io/en/latest/_auto/ak.zip.html>`__ to interleave data from compatible branches.
+* For ``library="np"``, the ``how`` is passed to Pandas DataFrame merging.
+
+Caching and parallel processing
+-------------------------------
+
+Uproot 3 and 4 both let you control caching by supplying any ``MutableMapping`` and parallel processing by supplying any Python 3 ``Executor``. What differs is the granularity of each.
+
+Uproot 4 caching has less granularity. Other than objects, 
