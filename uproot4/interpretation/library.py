@@ -356,8 +356,19 @@ def _awkward_json_to_array(awkward1, form, array):
 
     elif form["class"][:15] == "ListOffsetArray":
         if form["parameters"].get("__array__") == "string":
-            content = _awkward_json_to_array(awkward1, form["content"], array.content)
-            return type(array)(array.offsets, content, parameters=_awkward_p(form))
+            if isinstance(array, awkward1.layout.EmptyArray):
+                content = awkward1.layout.NumpyArray(
+                    numpy.empty(0, dtype=numpy.uint8),
+                    parameters=_awkward_p(form["content"]),
+                )
+                return awkward1.layout.ListOffsetArray64(
+                    awkward1.layout.Index64(numpy.array([0], dtype=numpy.uint8)),
+                    content,
+                    parameters=_awkward_p(form),
+                )
+            else:
+                content = _awkward_json_to_array(awkward1, form["content"], array.content)
+                return type(array)(array.offsets, content, parameters=_awkward_p(form))
 
         elif form["parameters"].get("__array__") == "sorted_map":
             key_form = form["content"]["contents"][0]
