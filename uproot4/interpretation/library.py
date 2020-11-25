@@ -367,7 +367,9 @@ def _awkward_json_to_array(awkward1, form, array):
                     parameters=_awkward_p(form),
                 )
             else:
-                content = _awkward_json_to_array(awkward1, form["content"], array.content)
+                content = _awkward_json_to_array(
+                    awkward1, form["content"], array.content
+                )
                 return type(array)(array.offsets, content, parameters=_awkward_p(form))
 
         elif form["parameters"].get("__array__") == "sorted_map":
