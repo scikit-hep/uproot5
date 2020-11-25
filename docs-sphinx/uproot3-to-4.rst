@@ -168,20 +168,177 @@ Like Uproot 3, :class:`~uproot4.reading.ReadOnlyDirectory` presents (and can acc
     <TTree 'tree' (20 branches) at 0x78a2045fcf40>
     >>> directory["one/two/tree"]
     <TTree 'tree' (20 branches) at 0x78a2045fcf40>
-    >>> directory["one/two/tree/ArrayInt64"]
-    <TBranch 'ArrayInt64' at 0x7f6f27d178e0>
+    >>> directory["three/tree/evt"]
+    <TBranchElement 'evt' (39 subbranches) at 0x7f8cba86d880>
+    >>> directory["three/tree/evt/I32"]
+    <TBranchElement 'I32' at 0x7f8cba871f10>
 
-In Uproot 3, directories could often be duck-typed as a mutable mapping, but in Uproot 4, :class:`~uproot4.reading.ReadOnlyDirectory` formally satisfies the ``MutableMapping`` protocol. As in Uproot 3, the :meth:`~uproot4.reading.ReadOnlyDirectory.keys`, :meth:`~uproot4.reading.ReadOnlyDirectory.values`, and :meth:`~uproot4.reading.ReadOnlyDirectory.items` take options, but some defaults have changed:
+In Uproot 3, directories could often be duck-typed as a mapping, but in Uproot 4, :class:`~uproot4.reading.ReadOnlyDirectory` formally satisfies the ``Mapping`` protocol. As in Uproot 3, the :meth:`~uproot4.reading.ReadOnlyDirectory.keys`, :meth:`~uproot4.reading.ReadOnlyDirectory.values`, and :meth:`~uproot4.reading.ReadOnlyDirectory.items` take options, but some defaults have changed:
 
-* ``recursive=True`` is the new default (directories are recursively searched). There are no ``allkeys``, ``allvalues``, ``allitems`` methods.
+* ``recursive=True`` is the new default (directories are recursively searched). There are no ``allkeys``, ``allvalues``, ``allitems`` methods for recursion.
 * ``filter_name=None`` can be None, a string, a glob string, a regex in ``"/pattern/i"`` syntax, a function of str → bool, or an iterable of the above.
 * ``filter_classname=None`` has the same options.
 
 The ``filter_name`` and ``filter_classname`` mechanism is now uniform for :class:`~uproot4.reading.ReadOnlyDirectory` and TTrees (:class:`~uproot4.behaviors.TBranch.HasBranches`), though the latter is named ``filter_typename`` for TTrees.
 
-Uproot 3's 
+Uproot 3's ``ROOTDirectory.classes`` and ``ROOTDirectory.allclasses``, which returned a list of 2-tuples of name, class object pairs, has become :meth:`~uproot4.reading.ReadOnlyDirectory.classnames` in Uproot 4, which returns a dict mapping names to C++ class names.
 
+.. code-block:: python
 
+    >>> directory = uproot4.open("https://scikit-hep.org/uproot3/examples/nesteddirs.root")
+    >>> directory.classnames()
+    {'one': 'TDirectory',
+     'one/two': 'TDirectory',
+     'one/two/tree': 'TTree',
+     'one/tree': 'TTree',
+     'three': 'TDirectory',
+     'three/tree': 'TTree'}
+
+This :meth:`~uproot4.reading.ReadOnlyDirectory.classnames` method has the same options as :meth:`~uproot4.reading.ReadOnlyDirectory.keys`, :meth:`~uproot4.reading.ReadOnlyDirectory.values`, and :meth:`~uproot4.reading.ReadOnlyDirectory.items`, but like :meth:`~uproot4.reading.ReadOnlyDirectory.keys` (only), it doesn't initiate any data-reading.
+
+To get the class object, use the :class:`~uproot4.reading.ReadOnlyFile` or :meth:`~uproot4.reading.ReadOnlyDirectory.class_of`.
+
+.. code-block:: python
+
+    >>> directory = uproot4.open("https://scikit-hep.org/uproot3/examples/nesteddirs.root")
+    >>> directory.file.class_named("TTree")
+    <class 'uproot4.models.TTree.Model_TTree'>
+    >>> directory.class_of("one/two/tree")
+    <class 'uproot4.models.TTree.Model_TTree'>
+
+In Uproot 4, requesting a class object *might* cause the file to read streamers (``TStreamerInfo``).
+
+Examining TTrees
+----------------
+
+As in Uproot 3, TTrees have a :meth:`~uproot4.behaviors.TBranch.HasBranches.show` method.
+
+.. code-block:: python
+
+    >>> tree = uproot4.open("https://scikit-hep.org/uproot3/examples/nesteddirs.root:three/tree")
+    >>> tree.show()
+    name                 | typename                 | interpretation                
+    ---------------------+--------------------------+-------------------------------
+    evt                  | Event                    | AsGroup(<TBranchElement 'ev...
+    evt/Beg              | TString                  | AsStrings()
+    evt/I16              | int16_t                  | AsDtype('>i2')
+    evt/I32              | int32_t                  | AsDtype('>i4')
+    evt/I64              | int64_t                  | AsDtype('>i8')
+    evt/U16              | uint16_t                 | AsDtype('>u2')
+    evt/U32              | uint32_t                 | AsDtype('>u4')
+    evt/U64              | uint64_t                 | AsDtype('>u8')
+    evt/F32              | float                    | AsDtype('>f4')
+    evt/F64              | double                   | AsDtype('>f8')
+    evt/Str              | TString                  | AsStrings()
+    evt/P3               | P3                       | AsGroup(<TBranchElement 'P3...
+    evt/P3/P3.Px         | int32_t                  | AsDtype('>i4')
+    evt/P3/P3.Py         | double                   | AsDtype('>f8')
+    evt/P3/P3.Pz         | int32_t                  | AsDtype('>i4')
+    evt/ArrayI16[10]     | int16_t[10]              | AsDtype("('>i2', (10,))")
+    evt/ArrayI32[10]     | int32_t[10]              | AsDtype("('>i4', (10,))")
+    evt/ArrayI64[10]     | int64_t[10]              | AsDtype("('>i8', (10,))")
+    evt/ArrayU16[10]     | uint16_t[10]             | AsDtype("('>u2', (10,))")
+    evt/ArrayU32[10]     | uint32_t[10]             | AsDtype("('>u4', (10,))")
+    evt/ArrayU64[10]     | uint64_t[10]             | AsDtype("('>u8', (10,))")
+    evt/ArrayF32[10]     | float[10]                | AsDtype("('>f4', (10,))")
+    evt/ArrayF64[10]     | double[10]               | AsDtype("('>f8', (10,))")
+    evt/N                | uint32_t                 | AsDtype('>u4')
+    evt/SliceI16         | int16_t*                 | AsJagged(AsDtype('>i2'), he...
+    evt/SliceI32         | int32_t*                 | AsJagged(AsDtype('>i4'), he...
+    evt/SliceI64         | int64_t*                 | AsJagged(AsDtype('>i8'), he...
+    evt/SliceU16         | uint16_t*                | AsJagged(AsDtype('>u2'), he...
+    evt/SliceU32         | uint32_t*                | AsJagged(AsDtype('>u4'), he...
+    evt/SliceU64         | uint64_t*                | AsJagged(AsDtype('>u8'), he...
+    evt/SliceF32         | float*                   | AsJagged(AsDtype('>f4'), he...
+    evt/SliceF64         | double*                  | AsJagged(AsDtype('>f8'), he...
+    evt/StdStr           | std::string              | AsStrings(header_bytes=6)
+    evt/StlVecI16        | std::vector<int16_t>     | AsJagged(AsDtype('>i2'), he...
+    evt/StlVecI32        | std::vector<int32_t>     | AsJagged(AsDtype('>i4'), he...
+    evt/StlVecI64        | std::vector<int64_t>     | AsJagged(AsDtype('>i8'), he...
+    evt/StlVecU16        | std::vector<uint16_t>    | AsJagged(AsDtype('>u2'), he...
+    evt/StlVecU32        | std::vector<uint32_t>    | AsJagged(AsDtype('>u4'), he...
+    evt/StlVecU64        | std::vector<uint64_t>    | AsJagged(AsDtype('>u8'), he...
+    evt/StlVecF32        | std::vector<float>       | AsJagged(AsDtype('>f4'), he...
+    evt/StlVecF64        | std::vector<double>      | AsJagged(AsDtype('>f8'), he...
+    evt/StlVecStr        | std::vector<std::string> | AsObjects(AsVector(True, As...
+    evt/End              | TString                  | AsStrings()
+
+However, this and other TTree-like behaviors are defined on a :class:`~uproot4.behaviors.TBranch.HasBranches` class, which encompasses both :class:`~uproot4.behaviors.TTree.TTree` and :class:`~uproot4.behaviors.TBranch.TBranch`. This :meth:`~uproot4.behaviors.TBranch.HasBranches` satisfies the ``Mapping`` protocol, and so do any nested branches:
+
+.. code-block:: python
+
+    >>> tree.keys()
+    ['evt', 'evt/Beg', 'evt/I16', 'evt/I32', 'evt/I64', ..., 'evt/End']
+    >>> tree["evt"].keys()
+    ['Beg', 'I16', 'I32', 'I64', ..., 'End']
+
+In addition to an :class:`~uproot4.interpretation.Interpretation`, each :class:`~uproot4.behaviors.TBranch.TBranch` also has a C++  :meth:`~uproot4.behaviors.TBranch.TBranch.typename`, as shown above. Uproot 4 has a typename parser, and is able to interpret more types, including nested STL containers.
+
+In addition to the standard ``Mapping`` methods, :meth:`~uproot4.behaviors.TBranch.HasBranches.keys`, :meth:`~uproot4.behaviors.TBranch.HasBranches.values`, and :meth:`~uproot4.behaviors.TBranch.HasBranches.items`, :class:`~uproot4.behaviors.TBranch.HasBranches` has a :meth:`~uproot4.behaviors.TBranch.HasBranches.typenames` that returns str → str of branch names to their types. They have the same arguments:
+
+* ``recursive=True`` is the new default (directories are recursively searched). There are no ``allkeys``, ``allvalues``, ``allitems`` methods for recursion.
+* ``filter_name=None`` can be None, a string, a glob string, a regex in ``"/pattern/i"`` syntax, a function of str → bool, or an iterable of the above.
+* ``filter_typename`` with the same options.
+* ``filter_branch``, which can be None, :class:`~uproot4.behaviors.TBranch.TBranch` → bool, :class:`~uproot4.interpretation.Interpretation`, or None, to select by branch data.
 
 Reading arrays
 --------------
+
+TTrees in Uproot 3 have ``array`` and ``arrays`` methods, which differ in how the resulting arrays are returned. In Uproot 4, :meth:`~uproot4.behaviors.TBranch.TBranch.array` and :meth:`~uproot4.behaviors.TBranch.HasBranches.arrays` have more differences:
+
+* :meth:`~uproot4.behaviors.TBranch.TBranch.array` is a :class:`~uproot4.behaviors.TBranch.TBranch` method, but :meth:`~uproot4.behaviors.TBranch.HasBranches.arrays` is a :class:`~uproot4.behaviors.TBranch.HasBranches` method (which, admittedly, can overlap on a branch that has branches).
+* :meth:`~uproot4.behaviors.TBranch.HasBranches.arrays` can take a set of computable ``expressions`` and a ``cut``, but :meth:`~uproot4.behaviors.TBranch.TBranch.array` never involves computation. The ``aliases`` and ``language`` arguments are also related to computation.
+* Only :meth:`~uproot4.behaviors.TBranch.TBranch.array` can override the default :class:`~uproot4.interpretation.Interpretation` (it is the more low-level method).
+* :meth:`~uproot4.behaviors.TBranch.HasBranches.arrays` has the same ``filter_name``, ``filter_typename``, ``filter_branch`` as :meth:`~uproot4.behaviors.TBranch.HasBranches.keys`. Since the ``expressions`` are now computable and glob wildcards (``*``) would be interpreted as multiplication, ``filter_name`` is the best way to select branches to read via a naming convention.
+
+Some examples of simple reading and computing expressions:
+
+.. code-block:: python
+
+    >>> events = uproot4.open("https://scikit-hep.org/uproot3/examples/Zmumu.root:events")
+
+    >>> events["px1"].array()
+    <Array [-41.2, 35.1, 35.1, ... 32.4, 32.5] type='2304 * float64'>
+
+    >>> events.arrays(["px1", "py1", "pz1"])
+    <Array [{px1: -41.2, ... pz1: -74.8}] type='2304 * {"px1": float64, "py1": float...'>
+
+    >>> events.arrays("sqrt(px1**2 + py1**2)")
+    <Array [{'sqrt(px1**2 + py1**2)': 44.7, ... ] type='2304 * {"sqrt(px1**2 + py1**...'>
+
+    >>> events.arrays("pt1", aliases={"pt1": "sqrt(px1**2 + py1**2)"})
+    <Array [{pt1: 44.7}, ... {pt1: 32.4}] type='2304 * {"pt1": float64}'>
+
+    >>> events.arrays(["M"], "pt1 > 50", aliases={"pt1": "sqrt(px1**2 + py1**2)"})
+    <Array [{M: 91.8}, {M: 91.9, ... {M: 96.1}] type='290 * {"M": float64}'>
+
+Some examples of filtering branches:
+
+.. code-block:: python
+
+    >>> events.keys(filter_name="px*")
+    ['px1', 'px2']
+    >>> events.arrays(filter_name="px*")
+    <Array [{px1: -41.2, ... px2: -68.8}] type='2304 * {"px1": float64, "px2": float64}'>
+
+    >>> events.keys(filter_name="/p[xyz][0-9]/i")
+    ['px1', 'py1', 'pz1', 'px2', 'py2', 'pz2']
+    >>> events.arrays(filter_name="/p[xyz][0-9]/i")
+    <Array [{px1: -41.2, py1: 17.4, ... pz2: -154}] type='2304 * {"px1": float64, "p...'>
+
+    >>> events.keys(filter_branch=lambda b: b.compression_ratio > 10)
+    ['Run', 'Q1', 'Q2']
+    >>> events.arrays(filter_branch=lambda b: b.compression_ratio > 10)
+    <Array [{Run: 148031, Q1: 1, ... Q2: -1}] type='2304 * {"Run": int32, "Q1": int3...'>
+
+In Uproot 3, you could specify whether the output is a dict of arrays, a tuple of arrays, or a Pandas DataFrame with the ``outputtype`` argument. In Uproot 4, these capabilities have been split into ``library`` and ``how``. The ``library`` determines which library will be used to represent the data that has been read.
+
+* ``library="np"`` to always return NumPy arrays (even ``dtype="O"`` if the type requires it);
+* ``library="ak"`` (default) to always return Awkward Arrays;
+* ``library="pd"`` to always return a Pandas Series or DataFrame;
+* ``library="cp"`` to always return CuPy arrays (on a GPU).
+
+(Uproot 3 chooses between NumPy and Awkward Array based on the type of the data. Since NumPy arrays and Awkward Arrays have different methods and properties, it's safer to write scripts with a deterministic output type.)
+
+**Note:** Awkward Array is not one of Uproot 4's formal requirements. If you don't have ``awkward1`` installed, :meth:`~uproot4.behaviors.TBranch.TBranch.array` and :meth:`~uproot4.behaviors.TBranch.HasBranches.arrays` will raise errors explaining how to install Awkward Array or switch to ``library="np"``. These errors might be hidden in automated testing, so be careful if you use that!
+
