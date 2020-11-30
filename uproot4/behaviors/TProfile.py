@@ -297,10 +297,6 @@ class TProfile(Profile):
             return values[1:-1], errors[1:-1]
 
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        raise NotImplementedError(
-            "FIXME @henryiii: I do not believe this is correct; please fix"
-        )
-
         boost_histogram = uproot4.extras.boost_histogram()
 
         effective_entries = self.effective_entries(flow=True)
@@ -327,10 +323,13 @@ class TProfile(Profile):
         with numpy.errstate(divide="ignore"):
             sum_of_bin_weights_squared = sum_of_bin_weights ** 2 / effective_entries
 
-        # FIXME: I am uncertain about how to fill the Boost profile-like Storage.
-        view.sum_of_weights[:] = sum_of_bin_weights
-        view.sum_of_weights_squared[:] = sum_of_bin_weights_squared
-        view.value[:] = values
-        view.variance[:] = variances
+        # TODO: Drop this when boost-histogram has a way to set using the constructor.
+        # New version should look something like this:
+        # view[...] = np.stack(sum_of_bin_weights, sum_of_bin_weights_squared, values, variances)
+        # Current / classic version:
+        view["sum_of_weights"] = sum_of_bin_weights
+        view["sum_of_weights_squared"] = sum_of_bin_weights_squared
+        view["value"] = values
+        view["_sum_of_weighted_deltas_squared"] = variances * (sum_of_bin_weights - sum_of_bin_weights_squared / sum_of_bin_weights)
 
         return out
