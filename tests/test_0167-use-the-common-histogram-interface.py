@@ -108,7 +108,6 @@ def test_bins():
             assert numpy.all(hpxpy.values(flow=True) == hpxpy.variances(flow=True))
 
 
-@pytest.mark.skip(reason="@henryiii: tests for boost-histogram")
 def test_boost():
     boost_histogram = pytest.importorskip("boost_histogram")
 

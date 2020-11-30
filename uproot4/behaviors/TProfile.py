@@ -320,8 +320,8 @@ class TProfile(Profile):
         view = out.view(flow=True)
 
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
-        with numpy.errstate(divide="ignore"):
-            sum_of_bin_weights_squared = sum_of_bin_weights ** 2 / effective_entries
+        with numpy.errstate(divide="ignore", invalid="ignore"):
+            sum_of_bin_weights_squared = (sum_of_bin_weights ** 2) / effective_entries
 
         # TODO: Drop this when boost-histogram has a way to set using the constructor.
         # New version should look something like this:
@@ -330,6 +330,8 @@ class TProfile(Profile):
         view["sum_of_weights"] = sum_of_bin_weights
         view["sum_of_weights_squared"] = sum_of_bin_weights_squared
         view["value"] = values
-        view["_sum_of_weighted_deltas_squared"] = variances * (sum_of_bin_weights - sum_of_bin_weights_squared / sum_of_bin_weights)
+        view["_sum_of_weighted_deltas_squared"] = variances * (
+            sum_of_bin_weights - sum_of_bin_weights_squared / sum_of_bin_weights
+        )
 
         return out
