@@ -90,6 +90,12 @@ def handle_class(classname, cls):
     methods = {}
     mro = list(cls.__mro__)
 
+    import uproot4
+    if hasattr(uproot4, cls.__name__):
+        title = "uproot4." + cls.__name__
+    else:
+        title = classname
+
     for index, basecls in enumerate(mro):
         if basecls.__module__.startswith("uproot4."):
 
@@ -139,13 +145,14 @@ def handle_class(classname, cls):
 
 {2}
 
-.. autoclass:: {0}
+.. autoclass:: {3}
 
-{3}
+{4}
 """.format(
-        classname,
-        "=" * len(classname),
+        title,
+        "=" * len(title),
         "\n".join(prettymro(c) for c in cls.__mro__[1:] if c is not object),
+        classname,
         "\n".join([text for index, line, text in sorted(methods.values())]),
     )
 
@@ -154,13 +161,17 @@ def handle_class(classname, cls):
 
 
 def handle_function(functionname, cls):
+    import uproot4
+    if hasattr(uproot4, cls.__name__):
+        title = "uproot4." + cls.__name__
+    else:
+        title = functionname
+
     content = """{0}
 {1}
 
-.. autofunction:: {0}
-""".format(
-        functionname, "=" * len(functionname)
-    )
+.. autofunction:: {2}
+""".format(title, "=" * len(title), functionname)
     ensure(functionname, functionname + ".rst", content)
     toctree.write("    " + functionname + "\n")
 
