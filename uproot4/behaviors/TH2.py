@@ -104,9 +104,6 @@ class TH2(uproot4.behaviors.TH1.Histogram):
             return values, xedges, yedges
 
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        raise NotImplementedError(
-            "FIXME @henryiii: I believe this is correct, but please check"
-        )
 
         boost_histogram = uproot4.extras.boost_histogram()
 
@@ -137,9 +134,9 @@ class TH2(uproot4.behaviors.TH1.Histogram):
 
         view = out.view(flow=True)
         if sumw2 is not None and len(sumw2) == len(values):
-            view.value[:] = values
-            view.variance[:] = sumw2
+            view.value = values
+            view.variance = sumw2
         else:
-            view[:] = values
+            view[...] = values
 
         return out

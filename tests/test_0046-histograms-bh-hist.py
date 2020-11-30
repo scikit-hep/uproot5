@@ -2821,28 +2821,24 @@ def test_numpy_profile():
         ]
 
 
-@pytest.mark.skip(reason="@henryiii: tests for boost-histogram")
 def test_boost_1d():
     boost_histogram = pytest.importorskip("boost_histogram")
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpx"].to_boost()
 
 
-@pytest.mark.skip(reason="@henryiii: tests for boost-histogram")
 def test_boost_2d():
     boost_histogram = pytest.importorskip("boost_histogram")
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpxpy"].to_boost()
 
 
-@pytest.mark.skip(reason="@henryiii: tests for boost-histogram")
 def test_hist_1d():
     hist = pytest.importorskip("hist")
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpx"].to_hist()
 
 
-@pytest.mark.skip(reason="@henryiii: tests for boost-histogram")
 def test_hist_2d():
     hist = pytest.importorskip("hist")
     with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
