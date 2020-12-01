@@ -22,9 +22,7 @@ _tbranch10_dtype2 = numpy.dtype(">i8")
 _tbranch10_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v10(
-    uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
-):
+class Model_TBranch_v10(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
     A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 10.
     """
@@ -152,9 +150,7 @@ _tbranch11_dtype2 = numpy.dtype(">i8")
 _tbranch11_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v11(
-    uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
-):
+class Model_TBranch_v11(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
     A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 11.
     """
@@ -284,9 +280,7 @@ _tbranch12_dtype2 = numpy.dtype(">i8")
 _tbranch12_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v12(
-    uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
-):
+class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
     A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 12.
     """
@@ -417,9 +411,7 @@ _tbranch13_dtype2 = numpy.dtype(">i8")
 _tbranch13_dtype3 = numpy.dtype(">i8")
 
 
-class Model_TBranch_v13(
-    uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
-):
+class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
     A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 13.
     """

@@ -292,9 +292,9 @@ def test_jagged_strided_awkward():
 
 def test_jagged_awkward_1():
     awkward = pytest.importorskip("awkward")
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/evt/SliceU64"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/evt/SliceU64"
+    ] as branch:
         assert branch.interpretation == AsJagged(AsDtype(">u8"), header_bytes=1)
         result = branch.array(library="ak", entry_stop=6)
         assert awkward.to_list(result) == [
@@ -309,9 +309,9 @@ def test_jagged_awkward_1():
 
 def test_jagged_awkward_2():
     awkward = pytest.importorskip("awkward")
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/evt/StlVecF64"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/evt/StlVecF64"
+    ] as branch:
         assert branch.interpretation == AsJagged(AsDtype(">f8"), header_bytes=10)
         result = branch.array(library="ak", entry_stop=6)
         assert awkward.to_list(result) == [
@@ -686,9 +686,9 @@ def test_general_awkward_form():
 
 def test_jagged_awkward_3():
     awkward = pytest.importorskip("awkward")
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/evt/StlVecStr"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/evt/StlVecStr"
+    ] as branch:
         assert awkward.to_list(branch.array(library="ak")[:6, :3]) == [
             [],
             ["vec-001"],
@@ -835,9 +835,7 @@ def test_awkward_map_int32_vector_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
-            tree["map_int32_vector_int16"].array(library="ak")
-        )
+        keys, values = awkward.unzip(tree["map_int32_vector_int16"].array(library="ak"))
         assert awkward.to_list(keys) == [
             [1],
             [1, 2],

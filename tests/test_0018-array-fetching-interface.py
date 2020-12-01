@@ -891,9 +891,9 @@ def test_stl_vector():
         uproot.interpretation.numerical.AsDtype(">i4"), header_bytes=10
     )
 
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/StlVecI32"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/StlVecI32"
+    ] as branch:
         result = branch.array(interpretation, library="np")
         result = [[int(y) for y in x] for x in result]
         assert result == [

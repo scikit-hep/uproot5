@@ -81,9 +81,7 @@ in file {1}""".format(
             contents["@pidf"] = uproot._util.awkward_form(
                 numpy.dtype("u2"), file, index_format, header, tobject_header
             )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TObject"},
-        )
+        return awkward.forms.RecordForm(contents, parameters={"__record__": "TObject"},)
 
     def __repr__(self):
         return "<TObject {0} {1} at 0x{2:012x}>".format(

@@ -130,9 +130,10 @@ def colons_and_ports():
         "https://example.com:443",
         None,
     )
-    assert uproot._util.file_object_path_split(
-        "https://example.com:443/something"
-    ) == ("https://example.com:443/something", None)
+    assert uproot._util.file_object_path_split("https://example.com:443/something") == (
+        "https://example.com:443/something",
+        None,
+    )
     assert uproot._util.file_object_path_split(
         "https://example.com:443/something:else"
     ) == ("https://example.com:443/something", "else")

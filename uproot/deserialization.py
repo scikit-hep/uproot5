@@ -218,9 +218,7 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
     beg = cursor.displacement()
     bcnt = numpy.int64(cursor.field(chunk, _read_object_any_format1, context))
 
-    if (bcnt & uproot.const.kByteCountMask) == 0 or (
-        bcnt == uproot.const.kNewClassTag
-    ):
+    if (bcnt & uproot.const.kByteCountMask) == 0 or (bcnt == uproot.const.kNewClassTag):
         vers = 0
         start = 0
         tag = bcnt

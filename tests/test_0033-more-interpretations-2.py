@@ -153,9 +153,9 @@ def test_fixed_width_pandas():
 
 def test_fixed_width_pandas_2():
     pandas = pytest.importorskip("pandas")
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as tree:
         result = tree["ArrayI32[10]"].array(library="pd")
         assert list(result.columns) == ["[" + str(i) + "]" for i in range(10)]
         for i in range(10):

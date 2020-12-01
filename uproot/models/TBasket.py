@@ -261,10 +261,7 @@ class Model_TBasket(uproot.model.Model):
                     chunk, cursor, {}, self.compressed_bytes, self.uncompressed_bytes,
                 )
                 self._raw_data = uncompressed.get(
-                    0,
-                    self.uncompressed_bytes,
-                    uproot.source.cursor.Cursor(0),
-                    context,
+                    0, self.uncompressed_bytes, uproot.source.cursor.Cursor(0), context,
                 )
             else:
                 self._raw_data = cursor.bytes(chunk, self.uncompressed_bytes, context)

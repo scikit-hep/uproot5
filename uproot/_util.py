@@ -397,21 +397,15 @@ def awkward_form(model, file, index_format="i64", header=False, tobject_header=T
             elif model == numpy.dtype(numpy.int16):
                 _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int16"')
             elif model == numpy.dtype(numpy.uint16):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
-                    '"uint16"'
-                )
+                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint16"')
             elif model == numpy.dtype(numpy.int32):
                 _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int32"')
             elif model == numpy.dtype(numpy.uint32):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
-                    '"uint32"'
-                )
+                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint32"')
             elif model == numpy.dtype(numpy.int64):
                 _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int64"')
             elif model == numpy.dtype(numpy.uint64):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
-                    '"uint64"'
-                )
+                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint64"')
             elif model == numpy.dtype(numpy.float32):
                 _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
                     '"float32"'

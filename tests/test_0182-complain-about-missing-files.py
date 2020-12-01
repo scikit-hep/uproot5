@@ -21,6 +21,5 @@ def test():
         list(uproot.iterate([one, two, bad], library="np"))
 
     assert (
-        len(list(uproot.iterate([one, two, okay], step_size="1 TB", library="np")))
-        == 2
+        len(list(uproot.iterate([one, two, okay], step_size="1 TB", library="np"))) == 2
     )

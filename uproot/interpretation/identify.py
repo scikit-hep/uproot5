@@ -261,9 +261,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
         elif num_bits is None:
             return uproot.interpretation.numerical.AsDouble32(low, high, 32, dims)
         else:
-            return uproot.interpretation.numerical.AsDouble32(
-                low, high, num_bits, dims
-            )
+            return uproot.interpretation.numerical.AsDouble32(low, high, num_bits, dims)
 
     else:
         if num_bits == 0:
@@ -917,9 +915,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
     elif tokens[i].group(0) == "string" or _simplify_token(tokens[i]) == "std::string":
         return (
             i + 1,
-            _parse_maybe_quote(
-                "uproot.containers.AsString({0})".format(header), quote
-            ),
+            _parse_maybe_quote("uproot.containers.AsString({0})".format(header), quote),
         )
     elif tokens[i].group(0) == "TString":
         return (
@@ -961,8 +957,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 4,
             _parse_maybe_quote(
-                'uproot.containers.AsFIXME("std::bitset<{0}>")'.format(num_bits),
-                quote,
+                'uproot.containers.AsFIXME("std::bitset<{0}>")'.format(num_bits), quote,
             ),
         )
 

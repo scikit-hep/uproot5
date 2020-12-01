@@ -88,9 +88,9 @@ def test_parse_typename():
 
 
 def test_strings1():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as tree:
         result = tree["Beg"].array(library="np")
         assert result.tolist() == ["beg-{0:03d}".format(i) for i in range(100)]
 
@@ -180,16 +180,16 @@ def test_strings1():
 
 
 def test_strings2():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/Str"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/Str"
+    ] as branch:
         result = branch.array(library="np")
         assert result.tolist() == ["evt-{0:03d}".format(i) for i in range(100)]
 
 
 def test_strings3():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/StdStr"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/StdStr"
+    ] as branch:
         result = branch.array(library="np")
         assert result.tolist() == ["std-{0:03d}".format(i) for i in range(100)]

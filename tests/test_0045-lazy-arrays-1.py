@@ -10,9 +10,7 @@ import uproot
 
 
 def test_array_cast():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
-        "events"
-    ] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
         assert numpy.array(events["px1"])[:5].tolist() == [
             -41.1952876442,
             35.1180497674,

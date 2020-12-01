@@ -13,27 +13,27 @@ import uproot
 
 
 def test_formula_with_dot():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as tree:
         assert tree.arrays("P3.Py - 50", library="np")["P3.Py - 50"].tolist() == list(
             range(-50, 50)
         )
 
 
 def test_formula_with_slash():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as tree:
         assert tree.arrays("get('evt/P3/P3.Py') - 50", library="np")[
             "get('evt/P3/P3.Py') - 50"
         ].tolist() == list(range(-50, 50))
 
 
 def test_formula_with_missing():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as tree:
         with pytest.raises(KeyError):
             tree.arrays("wonky", library="np")
 
@@ -47,9 +47,9 @@ def test_strings1():
 
 
 def test_strings4():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/StlVecStr"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/StlVecStr"
+    ] as branch:
         result = branch.array(library="np")
         assert [result.tolist() for x in result] == [
             ["vec-{0:03d}".format(i)] * (i % 10) for i in range(100)

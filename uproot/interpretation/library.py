@@ -275,9 +275,7 @@ def _strided_to_awkward(awkward, path, interpretation, data):
     parameters = {
         "__record__": uproot.model.classname_decode(interpretation.model.__name__)[0]
     }
-    return awkward.layout.RecordArray(
-        contents, names, len(data), parameters=parameters
-    )
+    return awkward.layout.RecordArray(contents, names, len(data), parameters=parameters)
 
 
 # FIXME: _object_to_awkward_json and _awkward_json_to_array are slow functions
@@ -439,9 +437,7 @@ class Awkward(Library):
                 _strided_to_awkward(awkward, "", array.interpretation, array.array)
             )
 
-        elif isinstance(
-            array, uproot.interpretation.jagged.JaggedArray
-        ) and isinstance(
+        elif isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
             array.content, uproot.interpretation.objects.StridedObjectArray
         ):
             content = _strided_to_awkward(
@@ -763,9 +759,7 @@ class Pandas(Library):
             out.leaflist = maxlen != 1
             return out
 
-        elif isinstance(
-            array, uproot.interpretation.jagged.JaggedArray
-        ) and isinstance(
+        elif isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
             array.content, uproot.interpretation.objects.StridedObjectArray
         ):
             index = pandas.MultiIndex.from_arrays(

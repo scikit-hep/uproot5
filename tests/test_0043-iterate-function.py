@@ -18,9 +18,7 @@ def test_num_entries_for():
 
 
 def test_num_entries_for_2():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
-        "events"
-    ] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
         assert events.num_entries_for("1 kB") == 13
         assert events.num_entries_for("10 kB") == 133
         assert events.num_entries_for("0.1 MB") == 1333
@@ -28,9 +26,7 @@ def test_num_entries_for_2():
 
 
 def test_iterate_1():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
-        "events"
-    ] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
         for i, arrays in enumerate(events.iterate(step_size="0.1 MB", library="np")):
             if i == 0:
                 assert len(arrays["px1"]) == 1333
@@ -41,9 +37,7 @@ def test_iterate_1():
 
 
 def test_iterate_2():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
-        "events"
-    ] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
         for i, arrays in enumerate(events.iterate("px1", step_size=1000, library="np")):
             if i == 0:
                 assert len(arrays["px1"]) == 1000
@@ -78,9 +72,7 @@ def test_iterate_2():
 
 def test_iterate_pandas_1():
     pandas = pytest.importorskip("pandas")
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
-        "events"
-    ] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
         for i, arrays in enumerate(events.iterate("px1", step_size=1000, library="pd")):
             if i == 0:
                 assert arrays["px1"].index.values[0] == 0
@@ -115,9 +107,7 @@ def test_iterate_pandas_2():
 
 
 def test_iterate_report_1():
-    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
-        "events"
-    ] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))["events"] as events:
         for i, (arrays, report) in enumerate(
             events.iterate("px1", step_size=1000, report=True, library="np")
         ):

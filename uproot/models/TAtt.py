@@ -70,9 +70,7 @@ in file {1}""".format(
         contents["fLineWidth"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, index_format, header, tobject_header
         )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TAttLine"}
-        )
+        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -134,9 +132,7 @@ in file {1}""".format(
         contents["fLineWidth"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, index_format, header, tobject_header
         )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TAttLine"}
-        )
+        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -204,9 +200,7 @@ in file {1}""".format(
         contents["fFillStyle"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, index_format, header, tobject_header
         )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TAttFill"}
-        )
+        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
 
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
@@ -262,9 +256,7 @@ in file {1}""".format(
         contents["fFillStyle"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, index_format, header, tobject_header
         )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TAttFill"}
-        )
+        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
 
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
