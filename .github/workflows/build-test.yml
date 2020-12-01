@@ -50,7 +50,7 @@ jobs:
       - name: "Install Awkward"
         run: |
           conda env list
-          pip install awkward
+          pip install "awkward>=1.0.0rc1"
           conda list
 
       - name: "Install XRootD"
