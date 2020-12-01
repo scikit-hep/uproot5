@@ -20,12 +20,10 @@ cat > build/uproot4-setup.py << EOF
 import setuptools
 from setuptools import setup
 
-
 def get_version():
     g = {}
     exec(open(os.path.join("uproot", "version.py")).read(), g)
     return g["__version__"]
-
 
 setup(name = "uproot4",
       packages = ["uproot4"],
