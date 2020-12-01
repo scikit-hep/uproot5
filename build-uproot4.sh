@@ -17,6 +17,8 @@ EOF
 
 cat > build/uproot4-setup.py << EOF
 
+import os
+
 import setuptools
 from setuptools import setup
 
@@ -68,3 +70,9 @@ setup(name = "uproot4",
           "Topic :: Utilities",
           ])
 EOF
+
+python build/uproot4-setup.py bdist_wheel sdist
+
+if [ "$1" == "--install" ]; then
+    pip install dist/uproot4-*.whl
+fi
