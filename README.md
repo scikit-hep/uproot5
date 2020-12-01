@@ -6,22 +6,22 @@
 [![Python 3.5‒3.9](https://img.shields.io/badge/python-3.5%E2%80%923.9-blue)](https://www.python.org)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-Uproot is a reader and a writer of the [ROOT file format](https://root.cern/) using only Python and Numpy. Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
+Uproot is a reader and a writer of the [ROOT file format](https://root.cern/) using only Python and Numpy. Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, Uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
 
 <p align="center"><img src="docs-img/diagrams/abstraction-layers.png" width="700px"></p>
 
 # Installation
 
-Uproot can be installed [from PyPI](https://pypi.org/project/uproot4) using pip ([awkward1](https://pypi.org/project/awkward1) is optional but highly recommended):
+Uproot can be installed [from PyPI](https://pypi.org/project/uproot) using pip ([Awkward Array](https://pypi.org/project/awkward) is optional but highly recommended):
 
 ```bash
-pip install uproot4 awkward1
+pip install uproot awkward
 ```
 
-Uproot is also available using [conda](https://anaconda.org/conda-forge/uproot4) (so is [awkward1](https://anaconda.org/conda-forge/awkward1), which conda installs automatically):
+Uproot is also available using [conda](https://anaconda.org/conda-forge/uproot) (so is [Awkward Array](https://anaconda.org/conda-forge/awkward), which conda installs automatically):
 
 ```bash
-conda install -c conda-forge uproot4
+conda install -c conda-forge uproot
 ```
 
 If you have already added `conda-forge` as a channel, the `-c conda-forge` is unnecessary. Adding the channel is recommended because it ensures that all of your packages use compatible versions:
@@ -35,7 +35,7 @@ conda update --all
 
 ## Getting help
 
-**Start with the [tutorials and reference documentation](https://uproot4.readthedocs.io/).**
+**Start with the [tutorials and reference documentation](https://uproot.readthedocs.io/).**
 
    * Report bugs, request features, and ask for additional documentation on [GitHub Issues](https://github.com/scikit-hep/uproot4/issues).
    * If you have a "How do I...?" question, ask about it on [StackOverflow with the [uproot] tag](https://stackoverflow.com/questions/tagged/uproot). Be sure to include tags for any other libraries that you use, such as Pandas or PyTorch.
@@ -59,7 +59,7 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 **Awkward Array is highly recommended.** It is not a strict dependency to allow Uproot to be used in restrictive environments. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option to return arrays as NumPy arrays (see documentation).
 
-   * `awkward1`: be sure to use Awkward Array 1.x.
+   * `awkward`: be sure to use Awkward Array 1.x.
 
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
 
@@ -84,7 +84,7 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
 Support for this work was provided by NSF cooperative agreement OAC-1836650 (IRIS-HEP), grant OAC-1450377 (DIANA/HEP) and PHY-1520942 (US-CMS LHC Ops).
 
-Thanks especially to the gracious help of awkward-array contributors (including the [original repository](https://github.com/scikit-hep/uproot)).
+Thanks especially to the gracious help of Uproot contributors (including the [original repository](https://github.com/scikit-hep/uproot)).
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
