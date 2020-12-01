@@ -1,4 +1,4 @@
 pandas
-awkward1
+awkward
 boost_histogram
 hist

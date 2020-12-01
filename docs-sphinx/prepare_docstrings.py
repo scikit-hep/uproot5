@@ -8,25 +8,25 @@ import sys
 
 
 order = [
-    "uproot4",
-    "uproot4.reading",
-    "uproot4.behaviors",
-    "uproot4.model",
-    "uproot4.streamers",
-    "uproot4.cache",
-    "uproot4.compression",
-    "uproot4.deserialization",
-    "uproot4.source",
-    "uproot4.interpretation",
-    "uproot4.containers",
-    "uproot4.language",
-    "uproot4.models",
-    "uproot4.const",
-    "uproot4.extras",
-    "uproot4.version",
+    "uproot",
+    "uproot.reading",
+    "uproot.behaviors",
+    "uproot.model",
+    "uproot.streamers",
+    "uproot.cache",
+    "uproot.compression",
+    "uproot.deserialization",
+    "uproot.source",
+    "uproot.interpretation",
+    "uproot.containers",
+    "uproot.language",
+    "uproot.models",
+    "uproot.const",
+    "uproot.exceptions",
+    "uproot.extras",
 ]
 
-toctree = open("uproot4.toctree", "w")
+toctree = open("uproot.toctree", "w")
 toctree.write(
     """.. toctree::
     :caption: Reference
@@ -58,7 +58,7 @@ def handle_module(modulename, module):
     ensure(modulename, modulename + ".rst", content)
     toctree.write("    " + modulename + "\n")
 
-    if modulename != "uproot4" and all(
+    if modulename != "uproot" and all(
         not x.startswith("_") for x in modulename.split(".")
     ):
 
@@ -90,14 +90,14 @@ def handle_class(classname, cls):
     methods = {}
     mro = list(cls.__mro__)
 
-    import uproot4
-    if hasattr(uproot4, cls.__name__):
-        title = "uproot4." + cls.__name__
+    import uproot
+    if hasattr(uproot, cls.__name__):
+        title = "uproot." + cls.__name__
     else:
         title = classname
 
     for index, basecls in enumerate(mro):
-        if basecls.__module__.startswith("uproot4."):
+        if basecls.__module__.startswith("uproot."):
 
             def good(obj):
                 if inspect.ismethod(obj) or inspect.isfunction(obj):
@@ -106,7 +106,7 @@ def handle_class(classname, cls):
                     module, name = obj.fget.__module__, obj.fget.__name__
                 else:
                     module, name = "", ""
-                if module.startswith("uproot4."):
+                if module.startswith("uproot."):
                     if index + 1 >= len(mro) or obj is not getattr(
                         mro[index + 1], name, None
                     ):
@@ -135,7 +135,7 @@ def handle_class(classname, cls):
 
     def prettymro(c):
         fullname = c.__module__ + "." + c.__name__
-        if c.__module__.startswith("uproot4."):
+        if c.__module__.startswith("uproot."):
             return "#. :doc:`" + fullname + "`"
         else:
             return "#. ``" + fullname + "``"
@@ -161,9 +161,9 @@ def handle_class(classname, cls):
 
 
 def handle_function(functionname, cls):
-    import uproot4
-    if hasattr(uproot4, cls.__name__):
-        title = "uproot4." + cls.__name__
+    import uproot
+    if hasattr(uproot, cls.__name__):
+        title = "uproot." + cls.__name__
     else:
         title = functionname
 
@@ -179,7 +179,7 @@ def handle_function(functionname, cls):
 for modulename in order:
     module = importlib.import_module(modulename)
 
-    if modulename != "uproot4":
+    if modulename != "uproot":
         toctree = open(modulename + ".toctree", "w")
         toctree.write(
             """.. toctree::
@@ -189,7 +189,7 @@ for modulename in order:
         )
 
     handle_module(modulename, module)
-    if module.__file__.endswith("__init__.py") and modulename != "uproot4":
+    if module.__file__.endswith("__init__.py") and modulename != "uproot":
         for submodulename in sorted(
             [
                 modulename + "." + name

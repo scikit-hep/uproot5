@@ -1,2 +1,2 @@
 sphinx>=2.4.4
-uproot4
+uproot

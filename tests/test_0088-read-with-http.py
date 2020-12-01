@@ -4,12 +4,12 @@ from __future__ import absolute_import
 
 import pytest
 
-import uproot4
+import uproot
 
 
 @pytest.mark.network
 def test_issue176():
-    with uproot4.open(
+    with uproot.open(
         "https://starterkit.web.cern.ch/starterkit/data/advanced-python-2019/dalitzdata.root"
     ) as f:
         data = f["tree/Y1"].array(library="np")
@@ -18,7 +18,7 @@ def test_issue176():
 
 @pytest.mark.network
 def test_issue176_again():
-    with uproot4.open(
+    with uproot.open(
         "https://starterkit.web.cern.ch/starterkit/data/advanced-python-2019/dalitzdata.root"
     ) as f:
         data = f["tree"].arrays(["Y1", "Y2"], library="np")
@@ -28,7 +28,7 @@ def test_issue176_again():
 
 @pytest.mark.network
 def test_issue121():
-    with uproot4.open(
+    with uproot.open(
         "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root"
     ) as f:
         data = f["Events/MET_pt"].array(library="np")

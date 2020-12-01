@@ -14,12 +14,12 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test():
     filename = skhep_testdata.data_path("uproot-ntpl001_staff.root")
-    with uproot4.open(filename) as f:
+    with uproot.open(filename) as f:
         obj = f["Staff"]
         assert obj.member("fVersion") == 0
         assert obj.member("fSize") == 48
@@ -36,7 +36,7 @@ def test():
         header_chunk = f.file.source.chunk(header_start, header_stop)
 
         print("HEADER")
-        cursor = uproot4.Cursor(header_start)
+        cursor = uproot.Cursor(header_start)
         cursor.debug(header_chunk, 80)
         print("\n")
 
@@ -48,7 +48,7 @@ def test():
         )
 
         print("FOOTER")
-        cursor = uproot4.Cursor(footer_start)
+        cursor = uproot.Cursor(footer_start)
         cursor.debug(footer_chunk, 80)
         print("\n")
 

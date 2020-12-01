@@ -9,14 +9,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-import uproot4.interpretation.library
-import uproot4.interpretation.jagged
-import uproot4.interpretation.numerical
+import uproot
 
 
 def test_formula_with_dot():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
     )["tree"] as tree:
         assert tree.arrays("P3.Py - 50", library="np")["P3.Py - 50"].tolist() == list(
@@ -25,7 +22,7 @@ def test_formula_with_dot():
 
 
 def test_formula_with_slash():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
     )["tree"] as tree:
         assert tree.arrays("get('evt/P3/P3.Py') - 50", library="np")[
@@ -34,7 +31,7 @@ def test_formula_with_slash():
 
 
 def test_formula_with_missing():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
     )["tree"] as tree:
         with pytest.raises(KeyError):
@@ -42,7 +39,7 @@ def test_formula_with_missing():
 
 
 def test_strings1():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/str"] as branch:
         result = branch.array(library="np")
@@ -50,7 +47,7 @@ def test_strings1():
 
 
 def test_strings4():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
     )["tree/StlVecStr"] as branch:
         result = branch.array(library="np")
@@ -60,7 +57,7 @@ def test_strings4():
 
 
 def test_strings4():
-    with uproot4.open(skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root"))[
         "tree/evt"
     ] as branch:
         result = branch.array(library="np")
@@ -70,7 +67,7 @@ def test_strings4():
 
 
 def test_strings4():
-    with uproot4.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root"))[
         "t/x"
     ] as branch:
         result = branch.array(library="np")
@@ -84,7 +81,7 @@ def test_strings4():
 
 
 def test_double32():
-    with uproot4.open(skhep_testdata.data_path("uproot-demo-double32.root"))["T"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-demo-double32.root"))["T"] as t:
         fD64 = t["fD64"].array(library="np")
         fF32 = t["fF32"].array(library="np")
         fI32 = t["fI32"].array(library="np")
@@ -101,7 +98,7 @@ def test_double32():
 
 
 def test_double32_2():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue187.root"))["fTreeV0"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-issue187.root"))["fTreeV0"] as t:
         assert numpy.all(t["fMultiplicity"].array(library="np") == -1)
         assert t["V0s.fEtaPos"].array(library="np")[-3].tolist() == [
             -0.390625,
@@ -110,7 +107,7 @@ def test_double32_2():
 
 
 def test_double32_3():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue232.root"))["fTreeV0"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-issue232.root"))["fTreeV0"] as t:
         assert t["V0Hyper.fNsigmaHe3Pos"].array(library="np")[-1].tolist() == [
             19.38658905029297,
             999.0,
@@ -122,7 +119,7 @@ def test_double32_3():
 
 
 def test_double32_float16():
-    with uproot4.open(skhep_testdata.data_path("uproot-double32-float16.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-double32-float16.root"))[
         "tree"
     ] as t:
         assert repr(t["double32_32"].interpretation) == "AsDouble32(-2.71, 10.0, 32)"

@@ -7,7 +7,7 @@ from setuptools import find_packages
 
 def get_version():
     g = {}
-    exec(open(os.path.join("uproot4", "version.py")).read(), g)
+    exec(open(os.path.join("uproot", "version.py")).read(), g)
     return g["__version__"]
 
 
@@ -19,7 +19,7 @@ extras["all"] = sum(extras.values(), [])
 
 install_requires = open("requirements.txt").read().strip().split("\n")
 
-setup(name = "uproot4",
+setup(name = "uproot",
       packages = find_packages(exclude = ["tests"]),
       scripts = [],
       version = get_version(),
@@ -30,8 +30,8 @@ setup(name = "uproot4",
       description = "ROOT I/O in pure Python and NumPy.",
       long_description = open("README.md").read(),
       long_description_content_type = "text/markdown",
-      url = "https://github.com/scikit-hep/uproot4",
-      download_url = "https://github.com/scikit-hep/uproot4/releases",
+      url = "https://github.com/scikit-hep/uproot",
+      download_url = "https://github.com/scikit-hep/uproot/releases",
       license = "BSD 3-clause",
       test_suite = "tests",
       python_requires = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",

@@ -6,11 +6,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test():
-    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
         for arrays in f["events"].iterate(
             "px1", step_size=1000, cut="px1 > 0", library="np"
         ):

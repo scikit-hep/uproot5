@@ -6,11 +6,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_fallback_reading():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
     ) as f:
         f["tree:evt/P3/P3.Py"]

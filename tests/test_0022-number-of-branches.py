@@ -9,14 +9,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-import uproot4.interpretation.library
-import uproot4.interpretation.jagged
-import uproot4.interpretation.numerical
+import uproot
 
 
 def test_branchname():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         assert sample.arrays("i4", library="np")["i4"].tolist() == list(range(-15, 15))
@@ -52,7 +49,7 @@ def test_branchname():
 
 
 def test_tuple_branchname():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         arrays = sample.arrays(["i4", "i8"], library="np", how=tuple)
@@ -67,7 +64,7 @@ def test_tuple_branchname():
 
 
 def test_interpretation():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         assert sample["i2"].array(">u2", library="np").tolist() == list(
@@ -99,7 +96,7 @@ def test_interpretation():
 
 
 def test_compute():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         assert sample.arrays("i4 + 100", library="np")["i4 + 100"].tolist() == list(
@@ -127,7 +124,7 @@ def test_compute():
 
 
 def test_cut():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         assert sample.arrays("i4 + 100", cut="i4 > 0", library="np")[
@@ -146,7 +143,7 @@ def test_cut():
 
 
 def test_aliases():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         assert sample.arrays(
@@ -193,7 +190,7 @@ def test_aliases():
 
 
 def test_jagged():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         assert [x.tolist() for x in sample.arrays("Ai4", library="np")["Ai4"]] == [

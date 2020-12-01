@@ -14,11 +14,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_get_key():
-    with uproot4.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
         assert f["Events"].name == "Events"
         assert f["Events/Info"].name == "Info"
         assert f["Events/Info/evtNum"].name == "evtNum"
@@ -33,7 +33,7 @@ def test_get_key():
 
 
 def test_basket_data():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     ) as f:
         assert f["sample/i4"].basket_key(3).fSeekKey == 35042
@@ -49,7 +49,7 @@ def test_basket_data():
 
 
 def test_compressed():
-    with uproot4.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-mc10events.root")) as f:
         basket = f["Events/Muon.q"].basket(0)
         assert basket.data.view(">i4").tolist() == [
             -1,
@@ -72,7 +72,7 @@ def test_compressed():
 
 def test_read_all():
     filename = skhep_testdata.data_path("uproot-issue327.root")
-    with uproot4.open(filename, minimal_ttree_metadata=False) as f:
+    with uproot.open(filename, minimal_ttree_metadata=False) as f:
         f["DstTree/fTracks.fCharge"]
 
 
@@ -80,7 +80,7 @@ def test_read_all():
 def test_recovery(mini):
     # flat array to recover:
     filename = skhep_testdata.data_path("uproot-issue21.root")
-    with uproot4.open(
+    with uproot.open(
         {"file:" + filename: "nllscan/mH"}, minimal_ttree_metadata=mini
     ) as branch:
         basket = branch.basket(0)
@@ -106,7 +106,7 @@ def test_recovery(mini):
     # uproot-issue187.root fTreeV0: V0s.fV0pt MCparticles.nbodies
     # uproot-from-geant4.root Details: numgood, TrackedRays: Event phi
     filename = skhep_testdata.data_path("uproot-issue327.root")
-    with uproot4.open(
+    with uproot.open(
         {"file:" + filename: "DstTree/fTracks.fCharge"}, minimal_ttree_metadata=mini
     ) as branch:
         basket = branch.basket(0)

@@ -6,11 +6,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_num_entries_for():
-    with uproot4.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
         assert events.num_entries_for("1 kB") == 12
         assert events.num_entries_for("10 kB") == 116
         assert events.num_entries_for("0.1 MB") == 1157
@@ -18,7 +18,7 @@ def test_num_entries_for():
 
 
 def test_num_entries_for_2():
-    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
         "events"
     ] as events:
         assert events.num_entries_for("1 kB") == 13
@@ -28,7 +28,7 @@ def test_num_entries_for_2():
 
 
 def test_iterate_1():
-    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
         "events"
     ] as events:
         for i, arrays in enumerate(events.iterate(step_size="0.1 MB", library="np")):
@@ -41,7 +41,7 @@ def test_iterate_1():
 
 
 def test_iterate_2():
-    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
         "events"
     ] as events:
         for i, arrays in enumerate(events.iterate("px1", step_size=1000, library="np")):
@@ -78,7 +78,7 @@ def test_iterate_2():
 
 def test_iterate_pandas_1():
     pandas = pytest.importorskip("pandas")
-    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
         "events"
     ] as events:
         for i, arrays in enumerate(events.iterate("px1", step_size=1000, library="pd")):
@@ -97,7 +97,7 @@ def test_iterate_pandas_1():
 
 def test_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
-    with uproot4.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
         for i, arrays in enumerate(
             events.iterate("Muon_Px", step_size=1000, library="pd")
         ):
@@ -115,7 +115,7 @@ def test_iterate_pandas_2():
 
 
 def test_iterate_report_1():
-    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root"))[
         "events"
     ] as events:
         for i, (arrays, report) in enumerate(
@@ -138,7 +138,7 @@ def test_iterate_report_1():
 
 
 def test_iterate_report_2():
-    with uproot4.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
+    with uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
         for i, (arrays, report) in enumerate(
             events.iterate("Muon_Px", step_size=1000, report=True, library="np")
         ):
@@ -163,7 +163,7 @@ def test_function_iterate():
         "6.20.04", "*"
     )
     expect = 0
-    for arrays, report in uproot4.iterate(
+    for arrays, report in uproot.iterate(
         {files: "sample"}, "i8", report=True, library="np"
     ):
         assert arrays["i8"][:5].tolist() == [-15, -14, -13, -12, -11]
@@ -178,7 +178,7 @@ def test_function_iterate_pandas():
         "6.20.04", "*"
     )
     expect = 0
-    for arrays, report in uproot4.iterate(
+    for arrays, report in uproot.iterate(
         {files: "sample"}, "i8", report=True, library="pd"
     ):
         assert arrays["i8"].values[:5].tolist() == [-15, -14, -13, -12, -11]
@@ -194,7 +194,7 @@ def test_function_iterate_pandas_2():
         "HZZ", "HZZ-{uncompressed,zlib,lz4}"
     )
     expect = 0
-    for arrays, report in uproot4.iterate(
+    for arrays, report in uproot.iterate(
         {files: "events"}, "Muon_Px", report=True, library="pd"
     ):
         assert arrays["Muon_Px"].index.values[0] == (expect, 0)
