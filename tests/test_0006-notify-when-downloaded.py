@@ -17,13 +17,7 @@ except ImportError:
 import numpy
 import pytest
 
-import uproot4
-import uproot4.source.futures
-import uproot4.source.cursor
-import uproot4.source.chunk
-import uproot4.source.file
-import uproot4.source.http
-import uproot4.source.xrootd
+import uproot
 
 
 def test_file(tmpdir):
@@ -32,7 +26,7 @@ def test_file(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     notifications = queue.Queue()
-    with uproot4.source.file.MultithreadedFileSource(filename, num_workers=1) as source:
+    with uproot.source.file.MultithreadedFileSource(filename, num_workers=1) as source:
         chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
@@ -49,7 +43,7 @@ def test_file_workers(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     notifications = queue.Queue()
-    with uproot4.source.file.MultithreadedFileSource(filename, num_workers=5) as source:
+    with uproot.source.file.MultithreadedFileSource(filename, num_workers=5) as source:
         chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
@@ -66,7 +60,7 @@ def test_memmap(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     notifications = queue.Queue()
-    with uproot4.source.file.MemmapSource(filename, num_fallback_workers=1) as source:
+    with uproot.source.file.MemmapSource(filename, num_fallback_workers=1) as source:
         chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
@@ -80,7 +74,7 @@ def test_memmap(tmpdir):
 @pytest.mark.network
 def test_http_multipart():
     notifications = queue.Queue()
-    with uproot4.source.http.HTTPSource(
+    with uproot.source.http.HTTPSource(
         "https://example.com", timeout=10, num_fallback_workers=1
     ) as source:
         chunks = source.chunks(
@@ -95,7 +89,7 @@ def test_http_multipart():
 @pytest.mark.network
 def test_http():
     notifications = queue.Queue()
-    with uproot4.source.http.MultithreadedHTTPSource(
+    with uproot.source.http.MultithreadedHTTPSource(
         "https://example.com", timeout=10, num_workers=1
     ) as source:
         chunks = source.chunks(
@@ -110,7 +104,7 @@ def test_http():
 @pytest.mark.network
 def test_http_workers():
     notifications = queue.Queue()
-    with uproot4.source.http.MultithreadedHTTPSource(
+    with uproot.source.http.MultithreadedHTTPSource(
         "https://example.com", timeout=10, num_workers=2
     ) as source:
         chunks = source.chunks(
@@ -125,7 +119,7 @@ def test_http_workers():
 @pytest.mark.network
 def test_http_fallback():
     notifications = queue.Queue()
-    with uproot4.source.http.HTTPSource(
+    with uproot.source.http.HTTPSource(
         "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=1,
@@ -142,7 +136,7 @@ def test_http_fallback():
 @pytest.mark.network
 def test_http_fallback_workers():
     notifications = queue.Queue()
-    with uproot4.source.http.HTTPSource(
+    with uproot.source.http.HTTPSource(
         "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=5,
@@ -161,7 +155,7 @@ def test_http_fallback_workers():
 def test_xrootd():
     pytest.importorskip("XRootD")
     notifications = queue.Queue()
-    with uproot4.source.xrootd.MultithreadedXRootDSource(
+    with uproot.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=1,
         timeout=10,
@@ -180,7 +174,7 @@ def test_xrootd():
 def test_xrootd_workers():
     pytest.importorskip("XRootD")
     notifications = queue.Queue()
-    with uproot4.source.xrootd.MultithreadedXRootDSource(
+    with uproot.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=5,
         timeout=10,
@@ -199,7 +193,7 @@ def test_xrootd_workers():
 def test_xrootd_vectorread():
     pytest.importorskip("XRootD")
     notifications = queue.Queue()
-    with uproot4.source.xrootd.XRootDSource(
+    with uproot.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,

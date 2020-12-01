@@ -6,11 +6,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_TRefArray():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
         array = t["GenJet.Particles"].array(entry_stop=1, library="np")[0]
         assert len(array) == 7
         assert array[0].refs.tolist() == [
@@ -85,8 +85,8 @@ def test_TRefArray():
 
 
 def test_awkward_TRefArray():
-    awkward1 = pytest.importorskip("awkward1")
-    with uproot4.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
+    awkward = pytest.importorskip("awkward")
+    with uproot.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
         assert t["GenJet.Particles"].array(entry_stop=1)[0].tolist() == [
             {
                 "fName": "",
@@ -335,7 +335,7 @@ def test_awkward_TRefArray():
 
 
 def test_same_names():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
         one, two = t.values(filter_name="Particle_size")
         assert (
             one.cache_key

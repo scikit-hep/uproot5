@@ -6,26 +6,26 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_concatenate_numpy():
     files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
         "6.20.04", "*"
     )
-    arrays = uproot4.concatenate({files: "sample"}, ["i8", "f8"], library="np")
+    arrays = uproot.concatenate({files: "sample"}, ["i8", "f8"], library="np")
     assert len(arrays["i8"]) == 420
     assert len(arrays["f8"]) == 420
 
 
 def test_concatenate_awkward():
-    awkward1 = pytest.importorskip("awkward1")
+    awkward = pytest.importorskip("awkward")
     files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
         "6.20.04", "*"
     )
-    arrays = uproot4.concatenate({files: "sample"}, ["i8", "f8"], library="ak")
-    assert isinstance(arrays, awkward1.Array)
-    assert set(awkward1.fields(arrays)) == set(["i8", "f8"])
+    arrays = uproot.concatenate({files: "sample"}, ["i8", "f8"], library="ak")
+    assert isinstance(arrays, awkward.Array)
+    assert set(awkward.fields(arrays)) == set(["i8", "f8"])
     assert len(arrays) == 420
 
 
@@ -34,7 +34,7 @@ def test_concatenate_pandas():
     files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
         "6.20.04", "*"
     )
-    arrays = uproot4.concatenate({files: "sample"}, ["i8", "f8"], library="pd")
+    arrays = uproot.concatenate({files: "sample"}, ["i8", "f8"], library="pd")
     assert isinstance(arrays, pandas.DataFrame)
     assert set(arrays.columns.tolist()) == set(["i8", "f8"])
     assert len(arrays) == 420

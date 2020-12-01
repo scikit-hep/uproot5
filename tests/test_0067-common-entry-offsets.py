@@ -5,16 +5,16 @@ from __future__ import absolute_import
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_common_offsets():
     # this file has terrible branch alignment
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         assert f["ntuple;1"].common_entry_offsets() == [0, 75000]
 
     # this file has just one branch
-    with uproot4.open(skhep_testdata.data_path("uproot-foriter.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-foriter.root")) as f:
         assert f["foriter;1"].common_entry_offsets() == [
             0,
             6,
@@ -27,7 +27,7 @@ def test_common_offsets():
             46,
         ]
 
-    with uproot4.open(skhep_testdata.data_path("uproot-small-dy-nooffsets.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-small-dy-nooffsets.root")) as f:
         assert f["tree;1"].common_entry_offsets() == [0, 200, 400, 501]
         assert f["tree;1"].common_entry_offsets(["Jet_pt"]) == [0, 200, 397, 400, 501]
         assert f["tree;1"].common_entry_offsets(["Jet_pt", "nJet"]) == [

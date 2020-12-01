@@ -6,7 +6,7 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 truth = {
     "n": [
@@ -1152,7 +1152,7 @@ truth = {
     ],
 )
 def test(version):
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-{0}-uncompressed.root".format(version))
     )["sample"] as sample:
         arrays = sample.arrays(sample.keys(), library="np")
@@ -1160,7 +1160,7 @@ def test(version):
         assert set(arrays.keys()) == set(truth.keys())
         for key in truth.keys():
             if isinstance(
-                sample[key].interpretation, uproot4.interpretation.jagged.AsJagged
+                sample[key].interpretation, uproot.interpretation.jagged.AsJagged
             ):
                 assert [row.tolist() for row in arrays[key]] == truth[key]
             else:

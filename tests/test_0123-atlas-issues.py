@@ -5,13 +5,13 @@ from __future__ import absolute_import
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_version():
-    assert uproot4.classname_decode(
-        uproot4.classname_encode("xAOD::MissingETAuxAssociationMap_v2")
+    assert uproot.classname_decode(
+        uproot.classname_encode("xAOD::MissingETAuxAssociationMap_v2")
     ) == ("xAOD::MissingETAuxAssociationMap_v2", None)
-    assert uproot4.classname_decode(
-        uproot4.classname_encode("xAOD::MissingETAuxAssociationMap_v2", 9)
+    assert uproot.classname_decode(
+        uproot.classname_encode("xAOD::MissingETAuxAssociationMap_v2", 9)
     ) == ("xAOD::MissingETAuxAssociationMap_v2", 9)

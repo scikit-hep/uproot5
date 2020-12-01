@@ -10,15 +10,15 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_awkward_strings():
-    awkward1 = pytest.importorskip("awkward1")
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    awkward = pytest.importorskip("awkward")
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward1.to_list(tree["string"].array(library="ak")) == [
+        assert awkward.to_list(tree["string"].array(library="ak")) == [
             "one",
             "two",
             "three",
@@ -29,7 +29,7 @@ def test_awkward_strings():
 
 def test_pandas_strings():
     pandas = pytest.importorskip("pandas")
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert tree["string"].array(library="pd").values.tolist() == [
@@ -42,7 +42,7 @@ def test_pandas_strings():
 
 
 def test_leaflist_numpy():
-    with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-leaflist.root"))[
         "tree/leaflist"
     ] as branch:
         result = branch.array(library="np")
@@ -58,13 +58,13 @@ def test_leaflist_numpy():
 
 
 def test_leaflist_awkward():
-    awkward1 = pytest.importorskip("awkward1")
-    with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))[
+    awkward = pytest.importorskip("awkward")
+    with uproot.open(skhep_testdata.data_path("uproot-leaflist.root"))[
         "tree/leaflist"
     ] as branch:
         result = branch.array(library="ak")
-        assert str(awkward1.type(result)) == '5 * {"x": float64, "y": int32, "z": int8}'
-        assert awkward1.to_list(result) == [
+        assert str(awkward.type(result)) == '5 * {"x": float64, "y": int32, "z": int8}'
+        assert awkward.to_list(result) == [
             {"x": 1.1, "y": 1, "z": 97},
             {"x": 2.2, "y": 2, "z": 98},
             {"x": 3.3, "y": 3, "z": 99},
@@ -75,7 +75,7 @@ def test_leaflist_awkward():
 
 def test_leaflist_pandas():
     pandas = pytest.importorskip("pandas")
-    with uproot4.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
         result = tree["leaflist"].array(library="pd")
 
         if distutils.version.LooseVersion(
@@ -114,7 +114,7 @@ def test_leaflist_pandas():
 
 
 def test_fixed_width():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:
         assert tree["ai4"].array(library="np").tolist() == [
@@ -124,18 +124,18 @@ def test_fixed_width():
 
 
 def test_fixed_width_awkward():
-    awkward1 = pytest.importorskip("awkward1")
-    with uproot4.open(
+    awkward = pytest.importorskip("awkward")
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:
-        assert awkward1.to_list(tree["ai4"].array(library="ak")) == [
+        assert awkward.to_list(tree["ai4"].array(library="ak")) == [
             [i, i + 1, i + 2] for i in range(-14, 16)
         ]
 
 
 def test_fixed_width_pandas():
     pandas = pytest.importorskip("pandas")
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:
         result = tree["ai4"].array(library="pd")
@@ -153,9 +153,9 @@ def test_fixed_width_pandas():
 
 def test_fixed_width_pandas_2():
     pandas = pytest.importorskip("pandas")
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as tree:
         result = tree["ArrayI32[10]"].array(library="pd")
         assert list(result.columns) == ["[" + str(i) + "]" for i in range(10)]
         for i in range(10):

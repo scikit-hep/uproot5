@@ -9,23 +9,23 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-from uproot4.interpretation.identify import parse_typename
-from uproot4.containers import AsString
-from uproot4.containers import AsVector
-from uproot4.containers import AsSet
-from uproot4.containers import AsMap
+import uproot
+from uproot.interpretation.identify import parse_typename
+from uproot.containers import AsString
+from uproot.containers import AsVector
+from uproot.containers import AsSet
+from uproot.containers import AsMap
 
 
 def test_parse_typename():
-    assert parse_typename("TTree") is uproot4.classes["TTree"]
+    assert parse_typename("TTree") is uproot.classes["TTree"]
     assert parse_typename("string") == AsString(False)
     assert parse_typename("std::string") == AsString(False)
     assert parse_typename("std :: string") == AsString(False)
     assert parse_typename("char*") == AsString(False, length_bytes="4")
     assert parse_typename("char *") == AsString(False, length_bytes="4")
     assert parse_typename("TString") == AsString(False)
-    assert parse_typename("vector<TTree>") == AsVector(True, uproot4.classes["TTree"])
+    assert parse_typename("vector<TTree>") == AsVector(True, uproot.classes["TTree"])
     assert parse_typename("vector<int>") == AsVector(True, ">i4")
     assert parse_typename("vector<bool>") == AsVector(True, "?")
     assert parse_typename("vector<string>") == AsVector(True, AsString(False))
@@ -88,9 +88,9 @@ def test_parse_typename():
 
 
 def test_strings1():
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as tree:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as tree:
         result = tree["Beg"].array(library="np")
         assert result.tolist() == ["beg-{0:03d}".format(i) for i in range(100)]
 
@@ -99,7 +99,7 @@ def test_strings1():
 
 
 def test_map_string_string_in_object():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue431.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-issue431.root")) as f:
         head = f["Head"]
         assert head.member("map<string,string>") == {
             "DAQ": "394",
@@ -140,7 +140,7 @@ def test_map_string_string_in_object():
 
 
 def test_map_long_int_in_object():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue283.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-issue283.root")) as f:
         map_long_int = f["config/detector"].member("ChannelIDMap")
         assert (map_long_int.keys().min(), map_long_int.keys().max()) == (
             46612627560,
@@ -150,7 +150,7 @@ def test_map_long_int_in_object():
 
 
 def test_top_level_vectors():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue38a.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-issue38a.root"))[
         "ntupler/tree"
     ] as tree:
         assert [x.tolist() for x in tree["v_int16"].array(library="np")] == [[1, 2, 3]]
@@ -172,7 +172,7 @@ def test_top_level_vectors():
 
 
 def test_strings1():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue31.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-issue31.root"))[
         "T/name"
     ] as branch:
         result = branch.array(library="np")
@@ -180,16 +180,16 @@ def test_strings1():
 
 
 def test_strings2():
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/Str"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/Str"
+    ] as branch:
         result = branch.array(library="np")
         assert result.tolist() == ["evt-{0:03d}".format(i) for i in range(100)]
 
 
 def test_strings3():
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree/StdStr"] as branch:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree/StdStr"
+    ] as branch:
         result = branch.array(library="np")
         assert result.tolist() == ["std-{0:03d}".format(i) for i in range(100)]

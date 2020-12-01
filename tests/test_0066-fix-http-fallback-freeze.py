@@ -5,12 +5,12 @@ from __future__ import absolute_import
 import numpy
 import pytest
 
-import uproot4
+import uproot
 
 
 @pytest.mark.network
 def test():
-    with uproot4.open(
+    with uproot.open(
         {"http://scikit-hep.org/uproot3/examples/HZZ.root": "events"}
     ) as t:
         t["MET_px"].array(library="np")

@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-On the [tutorials site](https://uproot4.readthedocs.io/)?
+On the [tutorials site](https://uproot.readthedocs.io/)?
 
 In the Python docstrings? (They're presented on the same website.)
 

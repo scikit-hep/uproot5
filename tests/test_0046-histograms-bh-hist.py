@@ -6,12 +6,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-import uproot4.behaviors.TProfile
+import uproot
 
 
 def test_numpy_1d():
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         values, edges = f["hpx"].to_numpy(flow=True)
         assert values.tolist() == [
             2.0,
@@ -228,7 +227,7 @@ def test_numpy_1d():
 
 
 def test_numpy_2d():
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         values, xedges, yedges = f["hpxpy"].to_numpy(flow=True)
 
         assert values.tolist() == [
@@ -2180,7 +2179,7 @@ def test_numpy_2d():
 def test_numpy_profile():
     # python -c 'import ROOT, skhep_testdata; f = ROOT.TFile(skhep_testdata.data_path("uproot-hepdata-example.root")); h = f.Get("hprof"); h.SetErrorOption("g"); print(repr(h.GetErrorOption())); print([h.GetBinError(i) for i in range(102)])'
 
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         obj = f["hprof"]
 
         assert obj.axis().edges(flow=True).tolist() == [
@@ -2500,7 +2499,7 @@ def test_numpy_profile():
         ]
 
         assert obj.errors(
-            flow=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREAD
+            flow=True, error_mode=uproot.behaviors.TProfile._kERRORSPREAD
         ).tolist() == [
             0.34300708770751953,
             1.0495176315307617,
@@ -2607,7 +2606,7 @@ def test_numpy_profile():
         ]
 
         assert obj.errors(
-            flow=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREADI
+            flow=True, error_mode=uproot.behaviors.TProfile._kERRORSPREADI
         ).tolist() == [
             0.2425426377130359,
             0.7421210342302459,
@@ -2714,7 +2713,7 @@ def test_numpy_profile():
         ]
 
         assert obj.errors(
-            flow=True, error_mode=uproot4.behaviors.TProfile._kERRORSPREADG
+            flow=True, error_mode=uproot.behaviors.TProfile._kERRORSPREADG
         ).tolist() == [
             0.7071067811865475,
             0.7071067811865475,
@@ -2823,23 +2822,23 @@ def test_numpy_profile():
 
 def test_boost_1d():
     boost_histogram = pytest.importorskip("boost_histogram")
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpx"].to_boost()
 
 
 def test_boost_2d():
     boost_histogram = pytest.importorskip("boost_histogram")
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpxpy"].to_boost()
 
 
 def test_hist_1d():
     hist = pytest.importorskip("hist")
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpx"].to_hist()
 
 
 def test_hist_2d():
     hist = pytest.importorskip("hist")
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpxpy"].to_hist()

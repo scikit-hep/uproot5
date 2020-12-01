@@ -5,12 +5,12 @@ from __future__ import absolute_import
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test():
     with open(skhep_testdata.data_path("uproot-Zmumu.root"), "rb") as f:
-        assert uproot4.open({f: "events"})["px1"].array(library="np")[:10].tolist() == [
+        assert uproot.open({f: "events"})["px1"].array(library="np")[:10].tolist() == [
             -41.1952876442,
             35.1180497674,
             35.1180497674,

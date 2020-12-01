@@ -9,8 +9,7 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-import uproot4.reading
+import uproot
 
 from_ROOT = {}
 
@@ -1119,7 +1118,7 @@ def drop_fbits(x):
 
 
 def test():
-    with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
         streamers = f.file.streamers
         assert len(streamers) == 14
 

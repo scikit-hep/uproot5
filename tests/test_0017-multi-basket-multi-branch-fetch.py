@@ -14,16 +14,13 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-import uproot4.interpretation.numerical
-import uproot4.interpretation.library
-import uproot4.source.futures
+import uproot
 
 
 def test_any_basket():
-    interpretation = uproot4.interpretation.numerical.AsDtype(">i4")
+    interpretation = uproot.interpretation.numerical.AsDtype(">i4")
 
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/i4"] as branch:
         assert branch.basket(0).array(interpretation, library="np").tolist() == [
@@ -69,12 +66,12 @@ def test_any_basket():
 
 
 def test_stitching_arrays():
-    interpretation = uproot4.interpretation.numerical.AsDtype("i8")
+    interpretation = uproot.interpretation.numerical.AsDtype("i8")
     expectation = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     basket_arrays = [[0, 1, 2, 3, 4], [5, 6], [], [7, 8, 9], [10], [11, 12, 13, 14]]
     basket_arrays = [numpy.array(x) for x in basket_arrays]
     entry_offsets = numpy.array([0, 5, 7, 7, 10, 11, 15])
-    library = uproot4.interpretation.library._libraries["np"]
+    library = uproot.interpretation.library._libraries["np"]
 
     for start in range(16):
         for stop in range(15, -1, -1):
@@ -96,7 +93,7 @@ def _names_entries_to_ranges_or_baskets(self, branch_names, entry_start, entry_s
 
 
 def test_names_entries_to_ranges_or_baskets():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         out = _names_entries_to_ranges_or_baskets(sample, ["i4"], 0, 30)
@@ -111,22 +108,22 @@ def test_names_entries_to_ranges_or_baskets():
 
 
 def test_ranges_or_baskets_to_arrays():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as sample:
         branch = sample["i4"]
 
         ranges_or_baskets = _names_entries_to_ranges_or_baskets(sample, ["i4"], 0, 30)
         branchid_interpretation = {
-            branch.cache_key: uproot4.interpretation.numerical.AsDtype(">i4")
+            branch.cache_key: uproot.interpretation.numerical.AsDtype(">i4")
         }
         entry_start, entry_stop = (0, 30)
-        decompression_executor = uproot4.source.futures.TrivialExecutor()
-        interpretation_executor = uproot4.source.futures.TrivialExecutor()
-        library = uproot4.interpretation.library._libraries["np"]
+        decompression_executor = uproot.source.futures.TrivialExecutor()
+        interpretation_executor = uproot.source.futures.TrivialExecutor()
+        library = uproot.interpretation.library._libraries["np"]
 
         arrays = {}
-        uproot4.behaviors.TBranch._ranges_or_baskets_to_arrays(
+        uproot.behaviors.TBranch._ranges_or_baskets_to_arrays(
             sample,
             ranges_or_baskets,
             branchid_interpretation,
@@ -173,15 +170,15 @@ def test_ranges_or_baskets_to_arrays():
 
 @pytest.mark.parametrize(
     "file_handler",
-    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
+    [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
 def test_branch_array_1(file_handler):
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         file_handler=file_handler,
     )["sample/i4"] as branch:
         assert branch.array(
-            uproot4.interpretation.numerical.AsDtype(">i4"), library="np"
+            uproot.interpretation.numerical.AsDtype(">i4"), library="np"
         ).tolist() == [
             -15,
             -14,
@@ -218,15 +215,15 @@ def test_branch_array_1(file_handler):
 
 @pytest.mark.parametrize(
     "file_handler",
-    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
+    [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
 def test_branch_array_2(file_handler):
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         file_handler=file_handler,
     )["sample/i4"] as branch:
         assert branch.array(
-            uproot4.interpretation.numerical.AsDtype(">i4"),
+            uproot.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
             library="np",
@@ -258,18 +255,18 @@ def test_branch_array_2(file_handler):
 
 @pytest.mark.parametrize(
     "file_handler",
-    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
+    [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
 def test_branch_array_3(file_handler):
-    executor = uproot4.ThreadPoolExecutor()
-    with uproot4.open(
+    executor = uproot.ThreadPoolExecutor()
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         file_handler=file_handler,
         interpretation_executor=executor,
         decompression_executor=executor,
     )["sample/i4"] as branch:
         assert branch.array(
-            uproot4.interpretation.numerical.AsDtype(">i4"),
+            uproot.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
             library="np",
@@ -301,19 +298,19 @@ def test_branch_array_3(file_handler):
 
 @pytest.mark.parametrize(
     "file_handler",
-    [uproot4.source.file.MultithreadedFileSource, uproot4.source.file.MemmapSource],
+    [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
 def test_branch_array_4(file_handler):
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         file_handler=file_handler,
     )["sample/i4"] as branch:
         with pytest.raises(ValueError):
-            branch.array(uproot4.interpretation.numerical.AsDtype(">i8"), library="np")
+            branch.array(uproot.interpretation.numerical.AsDtype(">i8"), library="np")
 
 
 def test_cache():
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         object_cache=100,
         array_cache="100 MB",
@@ -326,27 +323,27 @@ def test_cache():
         )
         i4 = f["sample/i4"]
         assert list(f.file.array_cache) == []
-        i4.array(uproot4.interpretation.numerical.AsDtype(">i4"), library="np")
+        i4.array(uproot.interpretation.numerical.AsDtype(">i4"), library="np")
         assert list(f.file.array_cache) == [
             "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4(16):i4:AsDtype(Bi4(),Li4()):0-30:np"
         ]
 
     with pytest.raises(OSError):
         i4.array(
-            uproot4.interpretation.numerical.AsDtype(">i4"), entry_start=3, library="np"
+            uproot.interpretation.numerical.AsDtype(">i4"), entry_start=3, library="np"
         )
 
 
 def test_pandas():
     pandas = pytest.importorskip("pandas")
-    executor = uproot4.ThreadPoolExecutor()
-    with uproot4.open(
+    executor = uproot.ThreadPoolExecutor()
+    with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
         interpretation_executor=executor,
         decompression_executor=executor,
     )["sample/i4"] as branch:
         series = branch.array(
-            uproot4.interpretation.numerical.AsDtype(">i4"),
+            uproot.interpretation.numerical.AsDtype(">i4"),
             entry_start=3,
             entry_stop=-5,
             library="pd",

@@ -6,14 +6,14 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 pandas = pytest.importorskip("pandas")
 
 
 def test():
-    with uproot4.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-Zmumu.root")) as f:
         df = f["events"].arrays(
             ["px1", "pmag"],
             cut="pmag < 30",

@@ -9,18 +9,18 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-from uproot4.interpretation.numerical import AsDtype
-from uproot4.interpretation.jagged import AsJagged
-from uproot4.interpretation.objects import AsObjects
-from uproot4.containers import AsString
-from uproot4.containers import AsVector
-from uproot4.containers import AsSet
-from uproot4.containers import AsMap
+import uproot
+from uproot.interpretation.numerical import AsDtype
+from uproot.interpretation.jagged import AsJagged
+from uproot.interpretation.objects import AsObjects
+from uproot.containers import AsString
+from uproot.containers import AsVector
+from uproot.containers import AsSet
+from uproot.containers import AsMap
 
 
 def test_typename():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert tree["vector_int32"].interpretation == AsJagged(AsDtype(">i4"), 10)
@@ -95,7 +95,7 @@ def test_typename():
 
 
 def test_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert tree["string"].array(library="np").tolist() == [
@@ -108,7 +108,7 @@ def test_string():
 
 
 def test_tstring():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert tree["tstring"].array(library="np").tolist() == [
@@ -121,7 +121,7 @@ def test_tstring():
 
 
 def test_vector_int32():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["vector_int32"].array(library="np")] == [
@@ -134,7 +134,7 @@ def test_vector_int32():
 
 
 def test_vector_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["vector_string"].array(library="np")] == [
@@ -147,7 +147,7 @@ def test_vector_string():
 
 
 def test_vector_tstring():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["vector_tstring"].array(library="np")] == [
@@ -160,7 +160,7 @@ def test_vector_tstring():
 
 
 def test_vector_vector_int32():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -175,7 +175,7 @@ def test_vector_vector_int32():
 
 
 def test_vector_vector_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -201,7 +201,7 @@ def test_vector_vector_string():
 
 
 def test_vector_set_int32():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["vector_set_int32"].array(library="np")] == [
@@ -220,7 +220,7 @@ def test_vector_set_int32():
 
 
 def test_vector_set_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["vector_set_string"].array(library="np")] == [
@@ -244,7 +244,7 @@ def test_vector_set_string():
 
 
 def test_set_int32():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["set_int32"].array(library="np")] == [
@@ -257,7 +257,7 @@ def test_set_int32():
 
 
 def test_set_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["set_string"].array(library="np")] == [
@@ -270,7 +270,7 @@ def test_set_string():
 
 
 def test_map_int32_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["map_int32_int16"].array(library="np")] == [
@@ -283,7 +283,7 @@ def test_map_int32_int16():
 
 
 def test_map_int32_vector_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -298,7 +298,7 @@ def test_map_int32_vector_int16():
 
 
 def test_map_int32_vector_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -324,7 +324,7 @@ def test_map_int32_vector_string():
 
 
 def test_map_int32_set_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -345,7 +345,7 @@ def test_map_int32_set_int16():
 
 
 def test_map_int32_set_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -371,7 +371,7 @@ def test_map_int32_set_string():
 
 
 def test_map_string_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["map_string_int16"].array(library="np")] == [
@@ -384,7 +384,7 @@ def test_map_string_int16():
 
 
 def test_map_string_vector_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -405,7 +405,7 @@ def test_map_string_vector_int16():
 
 
 def test_map_string_vector_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -431,7 +431,7 @@ def test_map_string_vector_string():
 
 
 def test_map_string_set_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -457,7 +457,7 @@ def test_map_string_set_int16():
 
 
 def test_map_string_set_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -487,7 +487,7 @@ def test_map_string_set_string():
 
 
 def test_map_int32_vector_vector_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -514,7 +514,7 @@ def test_map_int32_vector_vector_int16():
 
 
 def test_map_int32_vector_set_int16():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [
@@ -550,7 +550,7 @@ def test_map_int32_vector_set_int16():
 
 
 def test_map_string_string():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["map_string_string"].array(library="np")] == [
@@ -569,7 +569,7 @@ def test_map_string_string():
 
 
 def test_map_string_tstring():
-    with uproot4.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["map_string_tstring"].array(library="np")] == [
@@ -588,7 +588,7 @@ def test_map_string_tstring():
 
 
 def test_map_int_struct():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue468.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-issue468.root"))[
         "Geant4Data/Geant4Data./Geant4Data.particles"
     ] as branch:
         assert (

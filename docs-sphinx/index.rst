@@ -5,42 +5,40 @@
     basic
     uproot3-to-4
 
-.. include:: uproot4.toctree
+.. include:: uproot.toctree
 
-.. include:: uproot4.reading.toctree
+.. include:: uproot.reading.toctree
 
-.. include:: uproot4.behaviors.toctree
+.. include:: uproot.behaviors.toctree
 
-.. include:: uproot4.model.toctree
+.. include:: uproot.model.toctree
 
-.. include:: uproot4.streamers.toctree
+.. include:: uproot.streamers.toctree
 
-.. include:: uproot4.cache.toctree
+.. include:: uproot.cache.toctree
 
-.. include:: uproot4.compression.toctree
+.. include:: uproot.compression.toctree
 
-.. include:: uproot4.deserialization.toctree
+.. include:: uproot.deserialization.toctree
 
-.. include:: uproot4.source.toctree
+.. include:: uproot.source.toctree
 
-.. include:: uproot4.interpretation.toctree
+.. include:: uproot.interpretation.toctree
 
-.. include:: uproot4.containers.toctree
+.. include:: uproot.containers.toctree
 
-.. include:: uproot4.language.toctree
+.. include:: uproot.language.toctree
 
-.. include:: uproot4.models.toctree
+.. include:: uproot.models.toctree
 
-.. include:: uproot4.const.toctree
+.. include:: uproot.const.toctree
 
-.. include:: uproot4.extras.toctree
+.. include:: uproot.exceptions.toctree
 
-.. include:: uproot4.version.toctree
+.. include:: uproot.extras.toctree
 
 .. toctree::
     :hidden:
-
-    uproot4.dynamic
 
 .. |br| raw:: html
 
@@ -59,13 +57,13 @@ Usually, you'll want to install Uproot with `Awkward Array <https://awkward-arra
 
 .. code-block:: bash
 
-    pip install uproot4 awkward1
+    pip install uproot awkward
 
 But if you are working in a limited environment, Uproot can be installed without Awkward Array.
 
 .. code-block:: bash
 
-    pip install uproot4
+    pip install uproot
 
 Just be sure to pass ``library="np"`` to any function that returns arrays to specify that you want NumPy arrays, rather than Awkward arrays. Other array libraries include `Pandas <https://pandas.pydata.org/>`__ and `CuPy <https://cupy.dev/>`__, which, like Awkward, would need to be explicitly installed.
 

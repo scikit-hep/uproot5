@@ -5,13 +5,13 @@ from __future__ import absolute_import
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_keys():
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as t:
         assert t.keys(filter_name="P3.Px") == ["evt/P3/P3.Px"]
         assert t.keys(filter_name="/P3.Px") == []
         assert t.keys(filter_name="P3/P3.Px") == []
@@ -28,9 +28,9 @@ def test_keys():
 
 
 def test_numpy():
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as t:
         assert list(t.arrays(filter_name="P3.Px", library="np").keys()) == ["P3.Px"]
         assert list(t.arrays(filter_name="/P3.Px", library="np").keys()) == []
         assert list(t.arrays(filter_name="P3/P3.Px", library="np").keys()) == []
@@ -77,10 +77,10 @@ def test_numpy():
 
 
 def test_awkward():
-    awkward1 = pytest.importorskip("awkward1")
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as t:
+    awkward = pytest.importorskip("awkward")
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as t:
         assert t.arrays(filter_name="P3.Px", library="ak").fields == ["P3.Px"]
         assert t.arrays(filter_name="/P3.Px", library="ak").fields == []
         assert t.arrays(filter_name="P3/P3.Px", library="ak").fields == []
@@ -114,9 +114,9 @@ def test_awkward():
 
 def test_pandas():
     pandas = pytest.importorskip("pandas")
-    with uproot4.open(
-        skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root")
-    )["tree"] as t:
+    with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
+        "tree"
+    ] as t:
         assert t.arrays(filter_name="P3.Px", library="pd").columns.tolist() == ["P3.Px"]
         assert t.arrays(filter_name="/P3.Px", library="pd").columns.tolist() == []
         assert t.arrays(filter_name="P3/P3.Px", library="pd").columns.tolist() == []

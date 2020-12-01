@@ -8,12 +8,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-import uproot4.reading
+import uproot
 
 
 def test():
-    with uproot4.open(skhep_testdata.data_path("uproot-nesteddirs.root")) as directory:
+    with uproot.open(skhep_testdata.data_path("uproot-nesteddirs.root")) as directory:
         assert directory.keys() == [
             "one;1",
             "one/two;1",

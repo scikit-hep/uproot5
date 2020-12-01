@@ -10,18 +10,18 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_detachment():
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         assert getattr(f["hpx"].file, "file_path", None) is not None
         assert getattr(f["hpx"].file, "source", None) is None
 
         assert getattr(f["ntuple"].file, "file_path", None) is not None
         assert getattr(f["ntuple"].file, "source", None) is not None
 
-    with uproot4.open(
+    with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root")
     ) as f:
         array = f["tree/evt"].array(library="np", entry_stop=1)
@@ -29,7 +29,7 @@ def test_detachment():
         assert getattr(array[0].file, "source", None) is None
 
         assert isinstance(
-            f.file.streamer_named("Event").file, uproot4.reading.DetachedFile
+            f.file.streamer_named("Event").file, uproot.reading.DetachedFile
         )
         assert (
             str(f.file.streamer_named("Event").file_uuid)
@@ -38,7 +38,7 @@ def test_detachment():
 
 
 def test_copy():
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         original = f["hpx"]
         original_file_path = original.file.file_path
 
@@ -49,7 +49,7 @@ def test_copy():
 
 
 def test_pickle():
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         original = f["hpx"]
         original_file_path = original.file.file_path
 
@@ -61,7 +61,7 @@ def test_pickle():
 
 def test_pickle_boost():
     boost_histogram = pytest.importorskip("boost_histogram")
-    with uproot4.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         original = f["hpx"]
         original_boost = original.to_boost()
 

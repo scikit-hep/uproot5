@@ -6,11 +6,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test():
-    awkward1 = pytest.importorskip("awkward1")
-    with uproot4.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root")) as f:
+    awkward = pytest.importorskip("awkward")
+    with uproot.open(skhep_testdata.data_path("uproot-vectorVectorDouble.root")) as f:
         array = f["t/x"].array(entry_stop=2)
-        assert str(awkward1.type(array)) == "2 * var * var * float64"
+        assert str(awkward.type(array)) == "2 * var * var * float64"

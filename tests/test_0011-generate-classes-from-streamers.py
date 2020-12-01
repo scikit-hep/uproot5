@@ -9,8 +9,7 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
-import uproot4.reading
+import uproot
 
 
 from_ROOT = {}
@@ -160,7 +159,7 @@ def drop_fbits(x):
 
 
 def test():
-    with uproot4.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-histograms.root")) as f:
         assert f.file.class_named("TH1", 7).member_names == [
             "fNcells",
             "fXaxis",

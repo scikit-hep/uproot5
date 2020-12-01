@@ -6,11 +6,11 @@ import numpy
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test_TH2_in_ttree():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue-tbranch-of-th2.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-issue-tbranch-of-th2.root"))[
         "g4SimHits/tree"
     ] as tree:
         assert (
@@ -20,7 +20,7 @@ def test_TH2_in_ttree():
 
 
 def test_iofeatures_offsets():
-    with uproot4.open(skhep_testdata.data_path("uproot-small-dy-withoffsets.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-small-dy-withoffsets.root"))[
         "tree/Muon_pt"
     ] as withoffsets:
         muonpt1 = withoffsets.array(library="np", entry_start=10, entry_stop=20)
@@ -37,7 +37,7 @@ def test_iofeatures_offsets():
             [51.9132194519043, 31.930095672607422],
         ]
 
-    with uproot4.open(skhep_testdata.data_path("uproot-small-dy-nooffsets.root"))[
+    with uproot.open(skhep_testdata.data_path("uproot-small-dy-nooffsets.root"))[
         "tree/Muon_pt"
     ] as nooffsets:
         muonpt2 = nooffsets.array(library="np", entry_start=10, entry_stop=20)

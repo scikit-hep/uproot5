@@ -5,11 +5,11 @@ from __future__ import absolute_import
 import pytest
 import skhep_testdata
 
-import uproot4
+import uproot
 
 
 def test():
-    with uproot4.open(skhep_testdata.data_path("uproot-issue-172.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-issue-172.root")) as f:
         t = f["events"]
         t.show()
         assert (
