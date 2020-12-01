@@ -1,8 +1,24 @@
+#!/usr/bin/env bash
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
-import os.path
+set -e
+
+rm -rf build dist
+mkdir build
+mkdir build/uproot4
+
+cat > build/uproot4/__init__.py << EOF
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+
+from __future__ import absolute_import
+
+from uproot import *
+EOF
+
+cat > build/uproot4-setup.py << EOF
+
+import setuptools
 from setuptools import setup
-from setuptools import find_packages
 
 
 def get_version():
@@ -11,17 +27,9 @@ def get_version():
     return g["__version__"]
 
 
-extras = {
-    "test": open("requirements-test.txt").read().strip().split("\n"),
-    "dev":  open("requirements-dev.txt").read().strip().split("\n"),
-}
-extras["all"] = sum(extras.values(), [])
-
-install_requires = open("requirements.txt").read().strip().split("\n")
-
-setup(name = "uproot",
-      packages = find_packages(exclude = ["tests"]),
-      scripts = [],
+setup(name = "uproot4",
+      packages = ["uproot4"],
+      package_dir = {"": "build"},
       version = get_version(),
       author = "Jim Pivarski",
       author_email = "pivarski@princeton.edu",
@@ -33,12 +41,8 @@ setup(name = "uproot",
       url = "https://github.com/scikit-hep/uproot4",
       download_url = "https://github.com/scikit-hep/uproot4/releases",
       license = "BSD 3-clause",
-      test_suite = "tests",
-      python_requires = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
-      install_requires = ["numpy"],
-      tests_require = extras["test"],
-      extras_require = extras,
-
+      python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+      install_requires = ["uproot>=4.0.0rc1"],
       classifiers = [
 #         "Development Status :: 1 - Planning",
 #         "Development Status :: 2 - Pre-Alpha",
@@ -51,11 +55,8 @@ setup(name = "uproot",
           "Intended Audience :: Information Technology",
           "Intended Audience :: Science/Research",
           "License :: OSI Approved :: BSD License",
-          "Operating System :: MacOS",
-          "Operating System :: POSIX",
-          "Operating System :: Unix",
+          "Operating System :: POSIX :: Linux",
           "Programming Language :: Python",
-          "Programming Language :: Python :: 2.6",
           "Programming Language :: Python :: 2.7",
           "Programming Language :: Python :: 3.5",
           "Programming Language :: Python :: 3.6",
@@ -68,3 +69,4 @@ setup(name = "uproot",
           "Topic :: Software Development",
           "Topic :: Utilities",
           ])
+EOF
