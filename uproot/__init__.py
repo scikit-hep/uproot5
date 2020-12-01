@@ -136,6 +136,7 @@ from uproot.containers import STLSet
 from uproot.containers import STLMap
 
 import uproot.interpretation
+import uproot.interpretation.identify
 import uproot.interpretation.library
 from uproot.interpretation.numerical import AsDtype
 from uproot.interpretation.numerical import AsDtypeInPlace
