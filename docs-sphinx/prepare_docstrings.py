@@ -6,6 +6,8 @@ import pkgutil
 import os.path
 import sys
 
+import uproot
+
 
 order = [
     "uproot",
@@ -92,7 +94,6 @@ def handle_class(classname, cls):
     methods = {}
     mro = list(cls.__mro__)
 
-    import uproot
     if hasattr(uproot, cls.__name__):
         title = "uproot." + cls.__name__
         upfront = True
@@ -149,11 +150,11 @@ def handle_class(classname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/master/{1}>`__".format(
-        cls.__module__, shortfilename
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
+        cls.__module__, uproot.__version__, shortfilename
     )
-    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/master/{1}#L{0}>`__".format(
-        inspect.getsourcelines(cls)[1], shortfilename
+    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
+        inspect.getsourcelines(cls)[1], uproot.__version__, shortfilename
     )
 
     inheritance_header = ""
@@ -204,7 +205,6 @@ Defined in {2} on {3}.
 
 
 def handle_function(functionname, cls):
-    import uproot
     if hasattr(uproot, cls.__name__):
         title = "uproot." + cls.__name__
         upfront = True
@@ -212,11 +212,22 @@ def handle_function(functionname, cls):
         title = functionname
         upfront = False
 
+    fullfilename = importlib.import_module(cls.__module__).__file__
+    shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
+        cls.__module__, uproot.__version__, shortfilename
+    )
+    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
+        inspect.getsourcelines(cls)[1], uproot.__version__, shortfilename
+    )
+
     content = """{0}
 {1}
 
-.. autofunction:: {2}
-""".format(title, "=" * len(title), functionname)
+Defined in {2} on {3}.
+
+.. autofunction:: {4}
+""".format(title, "=" * len(title), link, linelink, functionname)
     ensure(functionname + ".rst", content)
     if upfront or toctree2 is None:
         toctree.write("    " + functionname + "\n")
