@@ -149,8 +149,12 @@ def handle_class(classname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/master/{0}>`__".format(shortfilename)
-    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/master/{1}#L{0}>`__".format(inspect.getsourcelines(cls)[1], shortfilename)
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/master/{1}>`__".format(
+        cls.__module__, shortfilename
+    )
+    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/master/{1}#L{0}>`__".format(
+        inspect.getsourcelines(cls)[1], shortfilename
+    )
 
     inheritance_header = ""
     inheritance_footer = ""
