@@ -152,15 +152,19 @@ def handle_class(classname, cls):
     inheritance_sep = ""
     inheritance = [prettymro(c) for c in cls.__mro__[1:] if c is not object]
     if len(inheritance) > 0:
-        longest_cell = max(len(x) for x in inheritance)
-        inheritance_header = """+------------------------+-{0}-+
-| **Inheritance order:** | """.format("-" * longest_cell)
-        inheritance_footer = """ |
-+------------------------+-{0}-+
+        longest_cell = max(max(len(x) for x in inheritance), 22)
+        inheritance_header = """.. table::
+    :class: note
 
-""".format("-" * longest_cell)
+    +-{0}-+
+    | **Inheritance order:** {1}|
+    +={2}=+
+    | """.format("-" * longest_cell, " " * (longest_cell - 22), "=" * longest_cell)
+        inheritance_footer = """ |
+    +-{0}-+""".format("-" * longest_cell)
         inheritance = [x + " " * (longest_cell - len(x)) for x in inheritance]
-        inheritance_sep = " | \n|                        | "
+        inheritance_sep = """ |
+    | """
 
     content = """{0}
 {1}
