@@ -500,7 +500,7 @@ class Awkward(Library):
 
     {1}
 
-instead, try library="np" instead of library="ak"
+instead, try library="np" instead of library="ak" or globally set uproot.default_library
 
 in file {2}
 in object {3}""".format(

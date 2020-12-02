@@ -57,7 +57,7 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 **Uproot's only strict dependency is NumPy.** This is the only dependency that pip will automatically install.
 
-**Awkward Array is highly recommended.** It is not a strict dependency to allow Uproot to be used in restrictive environments. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option to return arrays as NumPy arrays (see documentation).
+**Awkward Array is highly recommended.** It is not a strict dependency to allow Uproot to be used in restrictive environments. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option or globally set `uproot.default_library` to return arrays as NumPy arrays (see documentation).
 
    * `awkward`: be sure to use Awkward Array 1.x.
 

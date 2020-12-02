@@ -332,7 +332,7 @@ A TBranch may be turned into an array with the :py:meth:`~uproot.behaviors.TBran
     >>> events["M"].array()
     <Array [82.5, 83.6, 83.3, ... 96, 96.5, 96.7] type='2304 * float64'>
 
-By default, the array is an Awkward Array, as shown above. This assumes that Awkward Array is installed (see `How to install <index.html#how-to-install>`__). If you can't install it or want to use NumPy for other reasons, pass ``library="np"`` instead of the default ``library="ak"``.
+By default, the array is an Awkward Array, as shown above. This assumes that Awkward Array is installed (see `How to install <index.html#how-to-install>`__). If you can't install it or want to use NumPy for other reasons, pass ``library="np"`` instead of the default ``library="ak"`` or globally set ``uproot.default_library``.
 
 .. code-block:: python
 

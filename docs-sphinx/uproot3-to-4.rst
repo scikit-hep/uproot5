@@ -331,7 +331,7 @@ Some examples of filtering branches:
     >>> events.arrays(filter_branch=lambda b: b.compression_ratio > 10)
     <Array [{Run: 148031, Q1: 1, ... Q2: -1}] type='2304 * {"Run": int32, "Q1": int3...'>
 
-In Uproot 3, you could specify whether the output is a dict of arrays, a tuple of arrays, or a Pandas DataFrame with the ``outputtype`` argument. In Uproot 4, these capabilities have been split into ``library`` and ``how``. The ``library`` determines which library will be used to represent the data that has been read.
+In Uproot 3, you could specify whether the output is a dict of arrays, a tuple of arrays, or a Pandas DataFrame with the ``outputtype`` argument. In Uproot 4, these capabilities have been split into ``library`` and ``how``. The ``library`` determines which library will be used to represent the data that has been read. (You can also globally set ``uproot.default_library`` to avoid having to pass it to every ``arrays`` call.)
 
 * ``library="np"`` to always return NumPy arrays (even ``dtype="O"`` if the type requires it);
 * ``library="ak"`` (default) to always return Awkward Arrays;

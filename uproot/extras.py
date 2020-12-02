@@ -25,7 +25,8 @@ def awkward():
 
     pip install awkward
 
-or use library="np" to output as NumPy arrays, rather than Awkward arrays.
+Alternatively, you can use ``library="np"`` or globally set ``uproot.default_library``
+to output as NumPy arrays, rather than Awkward arrays.
 """
         )
     else:
