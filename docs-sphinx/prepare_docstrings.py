@@ -147,18 +147,36 @@ def handle_class(classname, cls):
         else:
             return "#. ``" + fullname + "``"
 
+    inheritance_header = ""
+    inheritance_footer = ""
+    inheritance_sep = ""
+    inheritance = [prettymro(c) for c in cls.__mro__[1:] if c is not object]
+    if len(inheritance) > 0:
+        longest_cell = max(len(x) for x in inheritance)
+        inheritance_header = """+------------------------+-{0}-+
+| **Inheritance order:** | """.format("-" * longest_cell)
+        inheritance_footer = """ |
++------------------------+-{0}-+
+
+""".format("-" * longest_cell)
+        inheritance = [x + " " * (longest_cell - len(x)) for x in inheritance]
+        inheritance_sep = " | \n|                        | "
+
     content = """{0}
 {1}
 
-{2}
+Defined in {2}.
 
-.. autoclass:: {3}
+{3}
 
-{4}
+.. autoclass:: {4}
+
+{5}
 """.format(
         title,
         "=" * len(title),
-        "\n".join(prettymro(c) for c in cls.__mro__[1:] if c is not object),
+        "link",
+        inheritance_header + inheritance_sep.join(inheritance) + inheritance_footer,
         classname,
         "\n".join([text for index, line, text in sorted(methods.values())]),
     )
