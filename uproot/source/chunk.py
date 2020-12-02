@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a :py:class:`~uproot.source.chunk.Chunk`, which is a range of bytes
+This module defines a :py:class:`~uproot.source.chunk.Chunk`, which is a range of bytes
 requested from a file. All interaction between the "physical layer" and the
 "interpretation layer" is through a :py:class:`~uproot.source.cursor.Cursor`'s
 interpretation of a :py:class:`~uproot.source.chunk.Chunk`.

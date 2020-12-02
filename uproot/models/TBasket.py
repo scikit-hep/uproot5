@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``TBasket``, including much of the functionality
-of basket-reading.
+This module defines a versionless model for ``TBasket``, including much of the
+functionality of basket-reading.
 
 Includes both "embedded" ``TBaskets`` (as a member of TBranch) and "free"
 ``TBaskets`` (top-level objects, located by ``TKeys``).

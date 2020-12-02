@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the entry-point for opening a file, :py:func:`~uproot.reading.open`, and
-the classes that are too fundamental to be models:
+This module defines the entry-point for opening a file, :py:func:`~uproot.reading.open`,
+and the classes that are too fundamental to be models:
 :py:class:`~uproot.reading.ReadOnlyFile` (``TFile``),
 :py:class:`~uproot.reading.ReadOnlyDirectory` (``TDirectory`` or ``TDirectoryFile``),
 and :py:class:`~uproot.reading.ReadOnlyKey` (``TKey``).

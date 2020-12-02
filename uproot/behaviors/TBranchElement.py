@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behaviors of ``TBranchElement``, which is entirely inherited from
+This module defines the behaviors of ``TBranchElement``, which is entirely inherited from
 functions in :py:class:`~uproot.behaviors.TBranch.TBranch`.
 """
 

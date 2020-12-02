@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a :py:class:`~uproot.language.Language` for expressions passed to
+This module defines a :py:class:`~uproot.language.Language` for expressions passed to
 :py:meth:`~uproot.behavior.TBranch.HasBranches.arrays` (and similar).
 
 The :py:class:`~uproot.language.python.PythonLanguage` evaluates Python code. It is

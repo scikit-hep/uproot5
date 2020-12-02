@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Initially empty submodule into which new classes are dynamically added.
+This module is initially empty, a repository for dynamically adding new classes.
 
 The purpose of this namespace is to allow :py:class:`~uproot.model.VersionedModel`
 classes that were automatically generated from ROOT ``TStreamerInfo`` to be

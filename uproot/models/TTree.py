@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines versioned models for ``TTree``.
+This module defines versioned models for ``TTree``.
 
 See :py:mod:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.

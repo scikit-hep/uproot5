@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behaviors of ``TAxis``, an axis of a histogram or profile plot.
+This module defines the behaviors of ``TAxis``, an axis of a histogram or profile plot.
 """
 
 from __future__ import absolute_import

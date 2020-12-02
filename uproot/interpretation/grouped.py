@@ -1,9 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :py:class:`~uproot.interpretation.Interpretation` and temporary array
-for grouped data; usually applied to a ``TBranch`` that does not contain data
-but has subbranches that do.
+This module defines an :py:class:`~uproot.interpretation.Interpretation` and
+temporary array for grouped data; usually applied to a ``TBranch`` that does
+not contain data but has subbranches that do.
 """
 
 from __future__ import absolute_import

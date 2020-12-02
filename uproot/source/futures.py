@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a Python-like Future and Executor for Uproot in three levels:
+This module defines a Python-like Future and Executor for Uproot in three levels:
 
 1. :py:class:`~uproot.source.futures.TrivialFuture` and
    :py:class:`~uproot.source.futures.TrivialExecutor`: interface only, all activity

@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines models, which are classes of objects read from ROOT files.
+This module defines models, which are classes of objects read from ROOT files.
 
 Models must be subclasses of :py:class:`~uproot.model.Model`, and models for a
 specific version of a ROOT class must be subclasses of

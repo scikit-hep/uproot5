@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :py:class:`~uproot.interpretation.Interpretation` and temporary array for
-object data (Python objects or Awkward Array data structures).
+This module defines an :py:class:`~uproot.interpretation.Interpretation` and
+temporary array for object data (Python objects or Awkward Array data structures).
 
 The :py:class:`~uproot.interpretation.objects.AsObjects` describes fully generic
 objects using a :py:class:`~uproot.interpretation.model.Model` (or a

@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Interpretations and models for standard containers, such as ``std::vector`` and
-simple arrays.
+This module interpretations and models for standard containers, such as
+``std::vector`` and simple arrays.
 
 See :py:mod:`uproot.interpretation` and :py:mod:`uproot.model`.
 """

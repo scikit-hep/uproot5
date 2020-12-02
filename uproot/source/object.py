@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Physical layer for file-like objects.
+This module defines a physical layer for file-like objects.
 
 Defines a :py:class:`~uproot.source.object.ObjectResource` (wrapped Python file-like
 object) and one source :py:class:`~uproot.source.object.ObjectSource` which always

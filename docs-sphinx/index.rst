@@ -35,8 +35,6 @@
 
 .. include:: uproot.models.toctree
 
-.. include:: uproot.const.toctree
-
 .. include:: uproot.exceptions.toctree
 
 .. |br| raw:: html

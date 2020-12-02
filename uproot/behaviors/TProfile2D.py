@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behavior of ``TProfile2D``.
+This module defines the behavior of ``TProfile2D``.
 """
 
 from __future__ import absolute_import

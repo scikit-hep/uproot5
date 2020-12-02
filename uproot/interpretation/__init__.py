@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines procedures for interpreting data in ``TTrees`` as arrays.
+This module defines procedures for interpreting data in ``TTrees`` as arrays.
 
 All interpretations must be subclasses of
 :py:class:`~uproot.interpretation.Interpretation`.

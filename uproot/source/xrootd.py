@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Physical layer for remote files, accessed via the XRootD protocol.
+This module defines a physical layer for remote files, accessed via the XRootD protocol.
 
 Defines a :py:class:`~uproot.source.http.XRootDResource` (``XRootD.File``) and two
 sources: :py:class:`~uproot.source.http.MultithreadedXRootDSource` and

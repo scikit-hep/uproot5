@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines behaviors, which are mix-in classes that provide a high-level interface
+This module defines behaviors, which are mix-in classes that provide a high-level interface
 to objects read from ROOT files.
 
 Behaviors do not have a required base class, and they may be used with

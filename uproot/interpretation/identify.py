@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines utilities for identifying the
+This module defines utilities for identifying the
 :py:class:`~uproot.interpretation.Interpretation` of a
 :py:class:`~uproot.behavior.TBranch.TBranch`.
 

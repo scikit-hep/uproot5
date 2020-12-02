@@ -1,5 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
+"""
+This module defines Uproot-specific exceptions, such as
+:py:class:`~uproot.exceptions.KeyInFileError`.
+"""
+
 from __future__ import absolute_import
 
 import uproot

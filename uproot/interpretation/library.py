@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Represents external libraries that define "array-like" types so that users can
+This module represents external libraries that define "array-like" types so that users can
 choose an output format.
 
 The :py:class:`~uproot.interpretation.library.NumPy` library always works (NumPy is

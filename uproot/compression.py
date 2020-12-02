@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an interface to compression algorithms used by ROOT, as well as functions
-for compressing and decompressing a :py:class:`~uproot.source.chunk.Chunk`.
+This module defines an interface to compression algorithms used by ROOT, as well
+as functions for compressing and decompressing a :py:class:`~uproot.source.chunk.Chunk`.
 """
 
 from __future__ import absolute_import

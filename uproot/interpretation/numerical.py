@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :py:class:`~uproot.interpretation.Interpretation` for several numerical
-types:
+This module defines an :py:class:`~uproot.interpretation.Interpretation` for
+several numerical types:
 
 * :py:class:`~uproot.interpretation.numerical.AsDtype`: numbers, which can simply be
   described as a ``numpy.dtype``.

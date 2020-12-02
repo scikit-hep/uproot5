@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines behaviors for :py:class:`~uproot.behaviors.TBranch.TBranch` and
+This module defines behaviors for :py:class:`~uproot.behaviors.TBranch.TBranch` and
 :py:class:`~uproot.behaviors.TBranch.HasBranches` (both ``TBranch`` and
 ``TTree``).
 

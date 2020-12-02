@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :py:class:`~uproot.interpretation.Interpretation` and temporary array for
-string data.
+This module defines an :py:class:`~uproot.interpretation.Interpretation` and
+temporary array for string data.
 
 Note that :py:class:`~uproot.interpretation.strings.AsStrings` is an interpretation for
 top-level strings, but :py:class:`~uproot.containers.AsString` can be nested within any

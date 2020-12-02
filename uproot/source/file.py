@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Physical layer for local files.
+This module defines a physical layer for local files.
 
 Defines a :py:class:`~uproot.source.file.FileResource` (wrapped Python file handle)
 and two sources: :py:class:`~uproot.source.file.MultithreadedFileSource` and

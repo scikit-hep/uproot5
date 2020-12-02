@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines low-level routines for deserialization, including
+This module defines low-level routines for deserialization, including
 :py:func:`~uproot.deserialization.compile_class`, which creates class objects from
 ``TStreamerInfo``-derived code, and
 :py:func:`~uproot.deserialization.read_object_any`, which manages references to

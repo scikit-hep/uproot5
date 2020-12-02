@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :py:class:`~uproot.interpretation.Interpretation` and temporary array for
-jagged (variable-length list) data.
+This module defines an :py:class:`~uproot.interpretation.Interpretation` and
+temporary array for jagged (variable-length list) data.
 
 The :py:class:`~uproot.interpretation.jagged.JaggedArray` class only holds data while
 an array is being built from ``TBaskets``. Its final form is determined by

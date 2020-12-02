@@ -5,7 +5,6 @@ import inspect
 import pkgutil
 import os.path
 import sys
-import io
 
 
 order = [
@@ -22,7 +21,6 @@ order = [
     "uproot.containers",
     "uproot.language",
     "uproot.models",
-    "uproot.const",
     "uproot.exceptions",
 ]
 

@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines utilities for modeling C++ objects as Python objects and the
+This module defines utilities for modeling C++ objects as Python objects and the
 :py:class:`~uproot.model.Model` class, which is the superclass of all objects that
 are read from ROOT files.
 
