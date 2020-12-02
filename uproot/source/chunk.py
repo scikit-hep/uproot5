@@ -230,14 +230,14 @@ class Chunk(object):
     synchronously or asynchronously filled.
 
     The following methods must wait for the
-    :py:attr:`~uproot.source.chunk.Chunk.future` to complete (to be filled):
+    :ref:`uproot.source.chunk.Chunk.future` to complete (to be filled):
 
-    * :py:meth:`~uproot.source.chunk.Chunk.wait`: Waits and nothing else.
-    * :py:attr:`~uproot.source.chunk.Chunk.raw_data`: The data as a
+    * :ref:`uproot.source.chunk.Chunk.wait`: Waits and nothing else.
+    * :ref:`uproot.source.chunk.Chunk.raw_data`: The data as a
       ``numpy.ndarray`` of ``numpy.uint8``.
-    * :py:meth:`~uproot.source.chunk.Chunk.get`: A subinterval of the data as
+    * :ref:`uproot.source.chunk.Chunk.get`: A subinterval of the data as
       a ``numpy.ndarray`` of ``numpy.uint8``.
-    * :py:meth:`~uproot.source.chunk.Chunk.remainder`: A subinterval from the
+    * :ref:`uproot.source.chunk.Chunk.remainder`: A subinterval from the
       :doc:`uproot.source.cursor.Cursor` to the end of the
       :doc:`uproot.source.chunk.Chunk`.
     """
@@ -308,7 +308,7 @@ class Chunk(object):
     def wait(self):
         """
         Explicitly wait until the chunk is filled (the
-        :py:attr:`~uproot.source.chunk.Chunk.future` completes).
+        :ref:`uproot.source.chunk.Chunk.future` completes).
         """
         if self._raw_data is None:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
@@ -329,7 +329,7 @@ for file path {2}""".format(
         Data from the Source as a ``numpy.ndarray`` of ``numpy.uint8``.
 
         This method will wait until the chunk is filled (the
-        :py:attr:`~uproot.source.chunk.Chunk.future` completes), if it isn't
+        :ref:`uproot.source.chunk.Chunk.future` completes), if it isn't
         already.
         """
         self.wait()
@@ -345,16 +345,16 @@ for file path {2}""".format(
                 current position in this chunk.
             context (dict): Auxiliary data used in deserialization.
 
-        Returns a subinterval of the :py:attr:`~uproot.source.chunk.Chunk.raw_data`
+        Returns a subinterval of the :ref:`uproot.source.chunk.Chunk.raw_data`
         as a ``numpy.ndarray`` of ``numpy.uint8``.
 
         Note that this ``start`` and ``stop`` are in the same coordinate
-        system as the :py:attr:`~uproot.source.chunk.Chunk.start` and
-        :py:attr:`~uproot.source.chunk.Chunk.stop`. That is, to get the whole
+        system as the :ref:`uproot.source.chunk.Chunk.start` and
+        :ref:`uproot.source.chunk.Chunk.stop`. That is, to get the whole
         chunk, use ``start=chunk.start`` and ``stop=chunk.stop``.
 
         This method will wait until the chunk is filled (the
-        :py:attr:`~uproot.source.chunk.Chunk.future` completes), if it isn't
+        :ref:`uproot.source.chunk.Chunk.future` completes), if it isn't
         already.
         """
         self.wait()
@@ -384,16 +384,16 @@ outside expected range {2}:{3} for this Chunk""".format(
                 current position in this chunk.
             context (dict): Auxiliary data used in deserialization.
 
-        Returns a subinterval of the :py:attr:`~uproot.source.chunk.Chunk.raw_data`
+        Returns a subinterval of the :ref:`uproot.source.chunk.Chunk.raw_data`
         as a ``numpy.ndarray`` of ``numpy.uint8`` from ``start`` to the end
         of the chunk.
 
         Note that this ``start`` is in the same coordinate system as the
-        :py:attr:`~uproot.source.chunk.Chunk.start`. That is, to get the whole
+        :ref:`uproot.source.chunk.Chunk.start`. That is, to get the whole
         chunk, use ``start=chunk.start``.
 
         This method will wait until the chunk is filled (the
-        :py:attr:`~uproot.source.chunk.Chunk.future` completes), if it isn't
+        :ref:`uproot.source.chunk.Chunk.future` completes), if it isn't
         already.
         """
         self.wait()

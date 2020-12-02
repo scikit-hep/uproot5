@@ -2,7 +2,7 @@
 
 """
 This module defines languages for expressions passed to
-:py:meth:`~uproot.behavior.TBranch.HasBranches.arrays` (and similar).
+:ref:`uproot.behaviors.TBranch.HasBranches.arrays` (and similar).
 
 The default is :doc:`uproot.language.python.PythonLanguage`.
 
@@ -15,7 +15,7 @@ from __future__ import absolute_import
 class Language(object):
     """
     Abstract class for all languages, which are used to compute the expressions
-    that are passed to :py:meth:`~uproot.behavior.TBranch.HasBranches.arrays` (and
+    that are passed to :ref:`uproot.behaviors.TBranch.HasBranches.arrays` (and
     similar).
 
     The default is :doc:`uproot.language.python.PythonLanguage`.

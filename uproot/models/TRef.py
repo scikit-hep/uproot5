@@ -106,7 +106,7 @@ class Model_TRefArray(uproot.model.Model, Sequence):
     @property
     def nbytes(self):
         """
-        The number of bytes in :py:attr:`~uproot.models.TRef.TRefArray.refs`.
+        The number of bytes in :ref:`uproot.models.TRef.Model_TRefArray.refs`.
         """
         return self._data.nbytes
 

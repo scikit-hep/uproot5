@@ -56,7 +56,7 @@ The submodules of Uproot are:
 * :doc:`uproot.containers`: interpretations and models for standard
   containers, such as ``std::vector`` and arrays.
 * :doc:`uproot.language`: computational backends for expressions in
-  :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`.
+  :ref:`uproot.behaviors.TBranch.HasBranches.arrays`.
 * :doc:`uproot.models`: predefined models for classes that are too basic
   to rely on ``TStreamerInfo`` or too common to justify reading it.
 * ``uproot.const``: integer constants used in ROOT serialization and

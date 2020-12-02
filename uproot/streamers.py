@@ -325,7 +325,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot.model.Model` classes as needed from its
-                :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+                :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
 
         Returns a new subclass of :doc:`uproot.model.VersionedModel` for this

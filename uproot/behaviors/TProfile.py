@@ -143,7 +143,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
                 after the normal (finite-width) bins.
 
         The effective number of entries, which is a step in the calculation of
-        :py:meth:`~uproot.behaviors.TProfile.Profile.values`. The calculation
+        :ref:`uproot.behaviors.TProfile.Profile.values`. The calculation
         of profile errors exactly follows ROOT's function, but in a vectorized
         NumPy form.
         """
@@ -169,7 +169,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
                 after the normal (finite-width) bins.
             error_mode (str): Choose a method for calculating the errors (see below).
 
-        Errors (uncertainties) in the :py:meth:`~uproot.behaviors.TH1.Histogram.values`
+        Errors (uncertainties) in the :ref:`uproot.behaviors.TH1.Histogram.values`
         as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         The calculation of profile errors exactly follows ROOT's function, but
@@ -195,7 +195,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
             error_mode (str): Choose a method for calculating the errors (see below).
 
         Variances (uncertainties squared) in the
-        :py:meth:`~uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
+        :ref:`uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
         dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         The calculation of profile variances exactly follows ROOT's function, but

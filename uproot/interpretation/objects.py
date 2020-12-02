@@ -55,7 +55,7 @@ class AsObjects(uproot.interpretation.Interpretation):
     ROOT ``TTree``. This interpretation prescribes the full (slow)
     deserialization process.
 
-    :py:meth:`~uproot.interpretation.objects.AsObjects.simplify` attempts to
+    :ref:`uproot.interpretation.objects.AsObjects.simplify` attempts to
     replace this interpretation with a faster-to-read equivalent, but not all
     data types can be simplified.
     """
@@ -346,14 +346,14 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
             name and fixed-width interpretation for each member of the objects.
         original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.AsContainer`): If
             this interpretation is derived from
-            :py:meth:`~uproot.interpretation.objects.AsObjects.simplify`, this is a
+            :ref:`uproot.interpretation.objects.AsObjects.simplify`, this is a
             reminder of the original
-            :py:attr:`~uproot.interpretation.objects.AsObjects.model`.
+            :ref:`uproot.interpretation.objects.AsObjects.model`.
 
     Interpretation for an array (possibly
     :doc:`uproot.interpretation.jagged.AsJagged`) of fixed-size objects. Since
     the objects have a fixed number of fields with a fixed number of bytes each,
-    the whole array (or :py:attr:`~uproot.interpretation.jagged.AsJagged.content`)
+    the whole array (or :ref:`uproot.interpretation.jagged.AsJagged.content`)
     can be interpreted in one vectorized array-cast. Therefore, this
     interpretation is faster than :doc:`uproot.interpretation.objects.AsObjects`
     *when it is possible*.
@@ -395,7 +395,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def original(self):
         """
         If not None, this was the original
-        :py:attr:`~uproot.interpretation.objects.AsObjects.model` from an
+        :ref:`uproot.interpretation.objects.AsObjects.model` from an
         :doc:`uproot.interpretation.objects.AsObjects` that was simplified
         into this :doc:`uproot.interpretation.objects.AsStridedObjects`.
         """
@@ -433,8 +433,8 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 class CannotBeStrided(Exception):
     """
     Exception used to stop recursion over
-    :py:meth:`~uproot.model.Model.strided_interpretation` and
-    :py:meth:`~uproot.containers.AsContainer.strided_interpretation` as soon as a
+    :ref:`uproot.model.Model.strided_interpretation` and
+    :ref:`uproot.containers.AsContainer.strided_interpretation` as soon as a
     non-conforming type is found.
     """
 
@@ -444,9 +444,9 @@ class CannotBeStrided(Exception):
 class CannotBeAwkward(Exception):
     """
     Exception used to stop recursion over
-    :py:meth:`~uproot.interpretation.Interpretation.awkward_form`,
-    :py:meth:`~uproot.model.Model.awkward_form` and
-    :py:meth:`~uproot.containers.AsContainer.awkward_form` as soon as a
+    :ref:`uproot.interpretation.Interpretation.awkward_form`,
+    :ref:`uproot.model.Model.awkward_form` and
+    :ref:`uproot.containers.AsContainer.awkward_form` as soon as a
     non-conforming type is found.
     """
 
@@ -466,13 +466,13 @@ class ObjectArray(object):
             ``byte_content`` starts and stops.
         byte_content (array of ``numpy.uint8``): Raw but uncompressed data,
             directly from
-            :py:meth:`~uproot.interpretation.Interpretation.basket_array`.
+            :ref:`uproot.interpretation.Interpretation.basket_array`.
         cursor_offset (int): Correction to the integer keys used in
-            :py:attr:`~uproot.source.cursor.Cursor.refs` for objects deserialized
+            :ref:`uproot.source.cursor.Cursor.refs` for objects deserialized
             by reference (:doc:`uproot.deserialization.read_object_any`).
 
     Temporary array filled by
-    :py:meth:`~uproot.interpretation.objects.AsObjects.basket_array`, which will be
+    :ref:`uproot.interpretation.objects.AsObjects.basket_array`, which will be
     turned into a NumPy, Awkward, or other array, depending on the specified
     :doc:`uproot.interpretation.library.Library`.
     """
@@ -531,7 +531,7 @@ class ObjectArray(object):
     def byte_content(self):
         """
         Raw but uncompressed data, directly from
-        :py:meth:`~uproot.interpretation.Interpretation.basket_array`.
+        :ref:`uproot.interpretation.Interpretation.basket_array`.
         """
         return self._byte_content
 
@@ -539,7 +539,7 @@ class ObjectArray(object):
     def cursor_offset(self):
         """
         Correction to the integer keys used in
-        :py:attr:`~uproot.source.cursor.Cursor.refs` for objects deserialized by
+        :ref:`uproot.source.cursor.Cursor.refs` for objects deserialized by
         reference (:doc:`uproot.deserialization.read_object_any`).
         """
         return self._cursor_offset
@@ -624,7 +624,7 @@ class StridedObjectArray(object):
             temporary array.
 
     Temporary array filled by
-    :py:meth:`~uproot.interpretation.objects.AsStridedObjects.basket_array`, which
+    :ref:`uproot.interpretation.objects.AsStridedObjects.basket_array`, which
     will be turned into a NumPy, Awkward, or other array, depending on the
     specified :doc:`uproot.interpretation.library.Library`.
     """

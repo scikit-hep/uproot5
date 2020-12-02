@@ -69,7 +69,7 @@ class TrivialExecutor(object):
     """
     Formally satisfies the interface for a
     :doc:`uproot.source.futures.ThreadPoolExecutor`, but the
-    :py:meth:`~uproot.source.futures.TrivialExecutor.submit` method computes its
+    :ref:`uproot.source.futures.TrivialExecutor.submit` method computes its
     ``task`` synchronously.
     """
 
@@ -161,7 +161,7 @@ class Worker(threading.Thread):
 
     def run(self):
         """
-        Listens to the :py:attr:`~uproot.source.futures.Worker.work_queue` and
+        Listens to the :ref:`uproot.source.futures.Worker.work_queue` and
         executes each :doc:`uproot.source.futures.Future` it receives until it
         receives None.
         """
@@ -226,7 +226,7 @@ class ThreadPoolExecutor(object):
     def submit(self, task, *args):
         """
         Pass the ``task`` and ``args`` onto the workers'
-        :py:attr:`~uproot.source.futures.Worker.work_queue` as a
+        :ref:`uproot.source.futures.Worker.work_queue` as a
         :doc:`uproot.source.futures.Future` so that it will be executed when
         one is available.
         """
@@ -237,7 +237,7 @@ class ThreadPoolExecutor(object):
     def shutdown(self, wait=True):
         """
         Stop every :doc:`uproot.source.futures.Worker` by putting None
-        on the :py:attr:`~uproot.source.futures.Worker.work_queue` until none of
+        on the :ref:`uproot.source.futures.Worker.work_queue` until none of
         them satisfy ``worker.is_alive()``.
         """
         while True:
@@ -298,7 +298,7 @@ class ResourceWorker(Worker):
 
     A :doc:`uproot.source.futures.Worker` that is bound to a
     :doc:`uproot.source.chunk.Resource`. This
-    :py:attr:`~uproot.source.futures.ResourceWorker.resource` is the first argument
+    :ref:`uproot.source.futures.ResourceWorker.resource` is the first argument
     passed to each :doc:`uproot.source.futures.ResourceFuture` that it
     executes.
     """
@@ -316,9 +316,9 @@ class ResourceWorker(Worker):
 
     def run(self):
         """
-        Listens to the :py:attr:`~uproot.source.futures.ResourceWorker.work_queue`
+        Listens to the :ref:`uproot.source.futures.ResourceWorker.work_queue`
         and executes each :doc:`uproot.source.futures.ResourceFuture` it
-        receives (with :py:attr:`~uproot.source.futures.ResourceWorker.resource` as
+        receives (with :ref:`uproot.source.futures.ResourceWorker.resource` as
         its first argument) until it receives None.
         """
         future = None
@@ -362,9 +362,9 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
     def submit(self, future):
         """
         Pass the ``task`` onto the workers'
-        :py:attr:`~uproot.source.futures.ResourceWorker.work_queue` as a
+        :ref:`uproot.source.futures.ResourceWorker.work_queue` as a
         :doc:`uproot.source.futures.ResourceFuture` so that it will be
-        executed with its :py:attr:`~uproot.source.futures.ResourceFuture.resource`
+        executed with its :ref:`uproot.source.futures.ResourceWorker.resource`
         when that worker is available.
         """
         assert isinstance(future, ResourceFuture)
@@ -380,7 +380,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
     def close(self):
         """
         Stops all :doc:`uproot.source.futures.ResourceWorker` threads and frees
-        their :py:attr:`~uproot.source.futures.ResourceWorker.resource`.
+        their :ref:`uproot.source.futures.ResourceWorker.resource`.
         """
         self.__exit__(None, None, None)
 
@@ -389,7 +389,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         """
         True if the :doc:`uproot.source.futures.ResourceWorker` threads have
         been stopped and their
-        :py:attr:`~uproot.source.futures.ResourceWorker.resource` freed.
+        :ref:`uproot.source.futures.ResourceWorker.resource` freed.
         """
         return self._closed
 

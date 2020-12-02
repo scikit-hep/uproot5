@@ -33,7 +33,7 @@ The object returned by :doc:`uproot.reading.open` represents a TDirectory inside
     >>> file
     <ReadOnlyDirectory '/' at 0x7c070dc03040>
 
-This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__, which means that you can get a list of contents with :py:meth:`~uproot.reading.ReadOnlyDirectory.keys`.
+This object is a Python `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__, which means that you can get a list of contents with :ref:`uproot.reading.ReadOnlyDirectory.keys`.
 
 .. code-block:: python
 
@@ -53,9 +53,9 @@ and extract an item (read it from the file) with square brackets. The cycle numb
     >>> file["one/two/tree"]
     <TTree 'tree' (20 branches) at 0x78a2045fcf40>
 
-Data, including nested TDirectories, are not read from disk until they are explicitly requested with square brackets (or another `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__ function, like :py:meth:`~uproot.reading.ReadOnlyDirectory.values` or :py:meth:`~uproot.reading.ReadOnlyDirectory.items`).
+Data, including nested TDirectories, are not read from disk until they are explicitly requested with square brackets (or another `Mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`__ function, like :ref:`uproot.reading.ReadOnlyDirectory.values` or :ref:`uproot.reading.ReadOnlyDirectory.items`).
 
-You can get the names of classes without reading the objects by using :py:meth:`~uproot.reading.ReadOnlyDirectory.classnames`.
+You can get the names of classes without reading the objects by using :ref:`uproot.reading.ReadOnlyDirectory.classnames`.
 
 .. code-block:: python
 
@@ -106,11 +106,11 @@ Classes unknown to Uproot can be accessed through their members (raw C++ members
 
 But some classes, like :doc:`uproot.behaviors.TH1.TH1`, :doc:`uproot.behaviors.TProfile.TProfile`, and :doc:`uproot.behaviors.TH2.TH2`, have high-level "behaviors" defined in :doc:`uproot.behaviors` to make them easier to use.
 
-Histograms have :py:meth:`~uproot.behaviors.TH1.TH1.edges`, :py:meth:`~uproot.behaviors.TH1.TH1.values`, and :py:meth:`~uproot.behaviors.TH1.TH1.values_errors` methods to extract histogram axes and bin contents directly into NumPy arrays. (Keep in mind that a histogram axis with *N* bins has *N + 1* edges, and that the edges include underflow and overflow as ``-np.inf`` and ``np.inf`` endpoints.)
+Histograms have :ref:`uproot.behaviors.TAxis.TAxis.edges`, :ref:`uproot.behaviors.TH1.TH1.values`, and :ref:`uproot.behaviors.TH1.TH1.errors` methods to extract histogram axes and bin contents directly into NumPy arrays. (Keep in mind that a histogram axis with *N* bins has *N + 1* edges, and that the edges include underflow and overflow as ``-np.inf`` and ``np.inf`` endpoints.)
 
 .. code-block:: python
 
-    >>> file["hpx"].edges()
+    >>> file["hpx"].axis().edges()
     array([ -inf, -4.  , -3.92, -3.84, -3.76, -3.68, -3.6 , -3.52, -3.44,
            -3.36, -3.28, -3.2 , -3.12, -3.04, -2.96, -2.88, -2.8 , -2.72,
            -2.64, -2.56, -2.48, -2.4 , -2.32, -2.24, -2.16, -2.08, -2.  ,
@@ -142,49 +142,28 @@ Histograms have :py:meth:`~uproot.behaviors.TH1.TH1.edges`, :py:meth:`~uproot.be
            1.600e+01, 1.400e+01, 9.000e+00, 1.300e+01, 8.000e+00, 2.000e+00,
            2.000e+00, 6.000e+00, 1.000e+00, 0.000e+00, 1.000e+00, 4.000e+00],
           dtype=float32)
-    >>> file["hprof"].values_errors()
-    (array([17.99833584, 17.05295467, 16.96826426, 15.18948269, 13.73788834,
-           13.37521982, 13.5103693 , 12.64630063, 12.6601193 , 11.82483637,
-           11.62344678, 11.47207673, 10.05298678, 10.03059732,  9.61441732,
-            8.77662256,  8.6208066 ,  8.17996864,  7.41270794,  7.49722647,
-            6.98081953,  6.505285  ,  6.25185173,  5.81357581,  5.58440386,
-            5.01104751,  4.91228925,  4.52465974,  4.24002511,  4.07746299,
-            3.63879339,  3.52214183,  3.25587136,  2.96102029,  2.70619968,
-            2.58419117,  2.36279976,  2.14934465,  2.00779036,  1.83823925,
-            1.71255197,  1.61313089,  1.44907926,  1.34713526,  1.24584489,
-            1.17076595,  1.12473963,  1.11984797,  1.02812853,  1.04176022,
-            1.01975455,  1.00031317,  1.07947053,  1.02964734,  1.06030445,
-            1.15428476,  1.17458553,  1.31746264,  1.29098442,  1.45532587,
-            1.58397301,  1.72741128,  1.8171251 ,  1.99961636,  2.19764745,
-            2.33289525,  2.57368246,  2.74573281,  2.91219718,  3.15770185,
-            3.33105952,  3.6855651 ,  4.01111874,  4.31449181,  4.54825707,
-            4.93563452,  5.19188255,  5.47676609,  5.73479857,  6.18110869,
-            6.40689125,  7.04866284,  7.23857685,  7.55534168,  8.16915879,
-            9.01906589,  8.7895729 ,  9.3652438 ,  9.57024695, 10.27966509,
-           11.08611178, 11.11813177, 12.65668541, 12.17647505, 12.39317608,
-           16.51897812, 13.30313969, 14.63502661, 14.96741772,  0.        ,
-           18.32199478, 17.84037463]),
-     array([0.24254264, 0.74212103, 0.49400663, 0.        , 0.        ,
-           0.24649804, 0.55553737, 0.24357922, 0.22461613, 0.34906168,
-           0.43563347, 0.51286511, 0.20863074, 0.28308077, 0.28915414,
-           0.16769727, 0.17257732, 0.12765099, 0.10176558, 0.15209837,
-           0.11509671, 0.1014912 , 0.1143207 , 0.09759737, 0.09257268,
-           0.06761853, 0.07883833, 0.06391972, 0.07016808, 0.06790635,
-           0.05330255, 0.05630489, 0.05523831, 0.04797496, 0.04255815,
-           0.04422412, 0.04089869, 0.03453675, 0.03943858, 0.03461427,
-           0.03618794, 0.03408547, 0.03170797, 0.03121938, 0.03011256,
-           0.02926609, 0.03012814, 0.02977365, 0.02974839, 0.03081958,
-           0.0313295 , 0.0293942 , 0.02925847, 0.0293043 , 0.02804402,
-           0.03117598, 0.03010833, 0.03149117, 0.02909491, 0.0325676 ,
-           0.03445547, 0.03480207, 0.0327122 , 0.03860859, 0.03885261,
-           0.03856341, 0.04624045, 0.04543318, 0.04864621, 0.05203739,
-           0.04324402, 0.05850656, 0.05970975, 0.0659423 , 0.07220151,
-           0.08170132, 0.08712811, 0.08092333, 0.09191357, 0.10837656,
-           0.10509033, 0.15493381, 0.12013956, 0.11435862, 0.183943  ,
-           0.36368702, 0.13346263, 0.18325723, 0.17988976, 0.19265302,
-           0.35247309, 0.18420323, 0.59593532, 0.21540243, 0.11755951,
-           1.66198443, 0.13528127, 0.45343914, 0.        , 0.        ,
-           0.        , 0.1681792 ]))
+    >>> file["hprof"].errors()
+    array([0.24254264, 0.74212103, 0.49400663, 0.        , 0.        ,
+          0.24649804, 0.55553737, 0.24357922, 0.22461613, 0.34906168,
+          0.43563347, 0.51286511, 0.20863074, 0.28308077, 0.28915414,
+          0.16769727, 0.17257732, 0.12765099, 0.10176558, 0.15209837,
+          0.11509671, 0.1014912 , 0.1143207 , 0.09759737, 0.09257268,
+          0.06761853, 0.07883833, 0.06391972, 0.07016808, 0.06790635,
+          0.05330255, 0.05630489, 0.05523831, 0.04797496, 0.04255815,
+          0.04422412, 0.04089869, 0.03453675, 0.03943858, 0.03461427,
+          0.03618794, 0.03408547, 0.03170797, 0.03121938, 0.03011256,
+          0.02926609, 0.03012814, 0.02977365, 0.02974839, 0.03081958,
+          0.0313295 , 0.0293942 , 0.02925847, 0.0293043 , 0.02804402,
+          0.03117598, 0.03010833, 0.03149117, 0.02909491, 0.0325676 ,
+          0.03445547, 0.03480207, 0.0327122 , 0.03860859, 0.03885261,
+          0.03856341, 0.04624045, 0.04543318, 0.04864621, 0.05203739,
+          0.04324402, 0.05850656, 0.05970975, 0.0659423 , 0.07220151,
+          0.08170132, 0.08712811, 0.08092333, 0.09191357, 0.10837656,
+          0.10509033, 0.15493381, 0.12013956, 0.11435862, 0.183943  ,
+          0.36368702, 0.13346263, 0.18325723, 0.17988976, 0.19265302,
+          0.35247309, 0.18420323, 0.59593532, 0.21540243, 0.11755951,
+          1.66198443, 0.13528127, 0.45343914, 0.        , 0.        ,
+          0.        , 0.1681792 ])
 
 Since Uproot is an I/O library, it intentionally does not have methods for plotting or manipulating histograms. Instead, it has methods for exporting them to other libraries.
 
@@ -209,22 +188,8 @@ Since Uproot is an I/O library, it intentionally does not have methods for plott
 
     >>> file["hpxpy"].to_boost()
     Histogram(
-      Regular(40, -4, 4, metadata={
-          '@fUniqueID': 0, '@fBits': 50331648, 'fNdivisions': 510, 'fAxisColor': 1,
-          'fLabelColor': 1, 'fLabelFont': 42, 'fLabelOffset': 0.004999999888241291,
-          'fLabelSize': 0.03500000014901161, 'fTickLength': 0.029999999329447746,
-          'fTitleOffset': 1.0, 'fTitleSize': 0.03500000014901161, 'fTitleColor': 1,
-          'fTitleFont': 42, 'fNbins': 40, 'fXmin': -4.0, 'fXmax': 4.0, 'fFirst': 0,
-          'fLast': 0, 'fBits2': 0, 'fTimeDisplay': False,
-          'fTimeFormat': <TString '' at 0x784dc592da50>, 'name': 'xaxis', 'title': ''}),
-      Regular(40, -4, 4, metadata={
-          '@fUniqueID': 0, '@fBits': 50331648, 'fNdivisions': 510, 'fAxisColor': 1,
-          'fLabelColor': 1, 'fLabelFont': 42, 'fLabelOffset': 0.004999999888241291,
-          'fLabelSize': 0.03500000014901161, 'fTickLength': 0.029999999329447746,
-          'fTitleOffset': 1.0, 'fTitleSize': 0.03500000014901161, 'fTitleColor': 1,
-          'fTitleFont': 42, 'fNbins': 40, 'fXmin': -4.0, 'fXmax': 4.0, 'fFirst': 0,
-          'fLast': 0, 'fBits2': 0, 'fTimeDisplay': False,
-          'fTimeFormat': <TString '' at 0x784dc592d740>, 'name': 'yaxis', 'title': ''}),
+      Regular(40, -4, 4),
+      Regular(40, -4, 4),
       storage=Double()) # Sum: 74985.0 (75000.0 with flow)
 
     >>> file["hpxpy"].to_hist()
@@ -281,7 +246,7 @@ Inspecting a TBranches of a TTree
     >>> events["M"]
     <TBranch 'M' at 0x78e574c1e970>
 
-Like a TDirectory's :py:meth:`~uproot.reading.ReadOnlyDirectory.classnames`, you can access the TBranch data types without reading data by calling :py:meth:`~uproot.behaviors.TBranch.HasBranches.typenames`.
+Like a TDirectory's :ref:`uproot.reading.ReadOnlyDirectory.classnames`, you can access the TBranch data types without reading data by calling :ref:`uproot.behaviors.TBranch.HasBranches.typenames`.
 
 .. code-block:: python
 
@@ -291,7 +256,7 @@ Like a TDirectory's :py:meth:`~uproot.reading.ReadOnlyDirectory.classnames`, you
      'Q1': 'int32_t', 'E2': 'double', 'px2': 'double', 'py2': 'double', 'pz2': 'double',
      'pt2': 'double', 'eta2': 'double', 'phi2': 'double', 'Q2': 'int32_t', 'M': 'double'}
 
-In an interactive session, it's often more convenient to call :py:meth:`~uproot.behaviors.TBranch.HasBranches.show`.
+In an interactive session, it's often more convenient to call :ref:`uproot.behaviors.TBranch.HasBranches.show`.
 
 .. code-block:: python
 
@@ -324,7 +289,7 @@ The third column, ``interpretation``, indicates how data in the TBranch will be 
 Reading a TBranch as an array
 -----------------------------
 
-A TBranch may be turned into an array with the :py:meth:`~uproot.behaviors.TBranch.TBranch.array` method. The array is not read from disk until this method is called (or other array-fetching methods described below).
+A TBranch may be turned into an array with the :ref:`uproot.behaviors.TBranch.TBranch.array` method. The array is not read from disk until this method is called (or other array-fetching methods described below).
 
 .. code-block:: python
 
@@ -380,12 +345,12 @@ If you don't have the specified library (including the default, Awkward Array), 
 
 (CuPy can only be used on computers with GPUs.)
 
-The :py:meth:`~uproot.behaviors.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). For details, see the reference documentation for :py:meth:`~uproot.behaviors.TBranch.TBranch.array`.
+The :ref:`uproot.behaviors.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). For details, see the reference documentation for :ref:`uproot.behaviors.TBranch.TBranch.array`.
 
 Reading multiple TBranches as a group of arrays
 -----------------------------------------------
 
-To read more than one TBranch, you could use the :py:meth:`~uproot.behaviors.TBranch.TBranch.array` method from the previous section multiple times, but you could also use :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` (plural) on the TTree itself.
+To read more than one TBranch, you could use the :ref:`uproot.behaviors.TBranch.TBranch.array` method from the previous section multiple times, but you could also use :ref:`uproot.behaviors.TBranch.HasBranches.arrays` (plural) on the TTree itself.
 
 .. code-block:: python
 
@@ -459,9 +424,9 @@ Even though you can extract individual arrays from these objects, they're read, 
 Filtering TBranches
 -------------------
 
-If no arguments are passed to :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also use a filter (``filter_name``, ``filter_typename``, or ``filter_branch``) to select TBranches by name, type, or other attributes.
+If no arguments are passed to :ref:`uproot.behaviors.TBranch.HasBranches.arrays`, *all* TBranches will be read. If your file has many TBranches, this might not be desirable or possible. You can select specific TBranches by name, as in the previous section, but you can also use a filter (``filter_name``, ``filter_typename``, or ``filter_branch``) to select TBranches by name, type, or other attributes.
 
-The :py:meth:`~uproot.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot.behaviors.TBranch.HasBranches.values`, :py:meth:`~uproot.behaviors.TBranch.HasBranches.items`, and :py:meth:`~uproot.behaviors.TBranch.HasBranches.typenames` methods take the same arguments, so you can test your filters before reading any data.
+The :ref:`uproot.behaviors.TBranch.HasBranches.keys`, :ref:`uproot.behaviors.TBranch.HasBranches.values`, :ref:`uproot.behaviors.TBranch.HasBranches.items`, and :ref:`uproot.behaviors.TBranch.HasBranches.typenames` methods take the same arguments, so you can test your filters before reading any data.
 
 .. code-block:: python
 
@@ -485,7 +450,7 @@ The :py:meth:`~uproot.behaviors.TBranch.HasBranches.keys`, :py:meth:`~uproot.beh
 Computing expressions and cuts
 ------------------------------
 
-The first argument of :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`, which we used above to pass explicit TBranch names,
+The first argument of :ref:`uproot.behaviors.TBranch.HasBranches.arrays`, which we used above to pass explicit TBranch names,
 
 .. code-block:: python
 
@@ -680,7 +645,7 @@ In general, array-based workflows must iterate over batches with an optimized st
 
 Procedural workflows, which operate on one entry (e.g. one particle physics collision event) at a time can be seen as an extreme of the latter, in which the batch size is one.
 
-The :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` method has an interface like :py:meth:`~uproot.behaviors.TBranch.TBranch.arrays`, except that takes a ``step_size`` parameter and iterates over batches of that size, rather than returning a single array group.
+The :ref:`uproot.behaviors.TBranch.HasBranches.iterate` method has an interface like :ref:`uproot.behaviors.TBranch.TBranch.arrays`, except that takes a ``step_size`` parameter and iterates over batches of that size, rather than returning a single array group.
 
 .. code-block:: python
 
@@ -711,7 +676,7 @@ For this reason, it's better to set the ``step_size`` to a number of bytes, such
     <Array [{Type: 'GT', Run: 148031, ... M: 94.7}] type='667 * {"Type": string, "Ru...'>
     <Array [{Type: 'GT', Run: 148029, ... M: 96.7}] type='303 * {"Type": string, "Ru...'>
 
-(but much larger in a real case). Here, ``"50 kB"`` corresponds to 667 entries (with the last step being the remainder). It's possible to calculate the number of entries for a given memory size outside of iteration using :py:meth:`~uproot.behaviors.TBranch.HasBranches.num_entries_for`.
+(but much larger in a real case). Here, ``"50 kB"`` corresponds to 667 entries (with the last step being the remainder). It's possible to calculate the number of entries for a given memory size outside of iteration using :ref:`uproot.behaviors.TBranch.HasBranches.num_entries_for`.
 
 .. code-block:: python
 
@@ -727,7 +692,7 @@ For this reason, it's better to set the ``step_size`` to a number of bytes, such
 
 The number of entries for ``"50 kB"`` depends strongly on which TBranches are being requested. It's the memory size, not the number of entries, that matters most when tuning a workflow for a computer with limited memory.
 
-See the :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` documentation for more, including a ``report=True`` option to get a :doc:`uproot.behaviors.TBranch.Report` with each batch of data with entry numbers for bookkeeping.
+See the :ref:`uproot.behaviors.TBranch.HasBranches.iterate` documentation for more, including a ``report=True`` option to get a :doc:`uproot.behaviors.TBranch.Report` with each batch of data with entry numbers for bookkeeping.
 
 .. code-block:: python
 
@@ -739,7 +704,7 @@ See the :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` documentation f
     Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 1334, 2001)
     Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 2001, 2304)
 
-Just as ``library="np"`` and ``library="pd"`` can be used to get NumPy and Pandas output in :py:meth:`~uproot.behaviors.TBranch.TBranch.array` and :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`, it can be used to yield NumPy arrays and Pandas DataFrames iteratively:
+Just as ``library="np"`` and ``library="pd"`` can be used to get NumPy and Pandas output in :ref:`uproot.behaviors.TBranch.TBranch.array` and :ref:`uproot.behaviors.TBranch.HasBranches.arrays`, it can be used to yield NumPy arrays and Pandas DataFrames iteratively:
 
 .. code-block:: python
 
@@ -780,9 +745,9 @@ Iterating over many files
 
 Large datasets usually consist of many files, and abstractions like `ROOT's TChain <https://root.cern.ch/doc/master/classTChain.html>`__ simplify multi-file workflows by making a collection of files look like a single file.
 
-Uproot's :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` takes a step in the opposite direction: it breaks single-file access into batches, and designing a workflow around batches is like designing a workflow around files. To apply such an interface to many files, all that is needed is a way to express the list of files.
+Uproot's :ref:`uproot.behaviors.TBranch.HasBranches.iterate` takes a step in the opposite direction: it breaks single-file access into batches, and designing a workflow around batches is like designing a workflow around files. To apply such an interface to many files, all that is needed is a way to express the list of files.
 
-The :doc:`uproot.behaviors.TBranch.iterate` function (as opposed to the :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` method) takes a list of files as its first argument:
+The :doc:`uproot.behaviors.TBranch.iterate` function (as opposed to the :ref:`uproot.behaviors.TBranch.HasBranches.iterate` method) takes a list of files as its first argument:
 
 .. code-block:: python
 
@@ -798,16 +763,16 @@ The specification of file names has to include paths to the ``TTree`` objects (m
     >>> for batch in uproot.iterate([{"dir1/*.root": "events"}, {"dir2/*.root": "events"}]):
     ...     do_something...
 
-If the ``step_size`` (same meaning as in previous section) is smaller than the file size, the last batch of each file will likely be smaller than the rest: batches from one file are not mixed with batches from another file. Thus, the largest meaningful ``step_size`` is the number of entries in the file (:py:attr:`~uproot.behaviors.TBranch.HasBranches.num_entries`). See the next section for concatenating small files.
+If the ``step_size`` (same meaning as in previous section) is smaller than the file size, the last batch of each file will likely be smaller than the rest: batches from one file are not mixed with batches from another file. Thus, the largest meaningful ``step_size`` is the number of entries in the TTree (:ref:`uproot.behaviors.TTree.TTree.num_entries`). See the next section for concatenating small files.
 
-In multi-file iteration, the :doc:`uproot.behaviors.TBranch.Report` returned by ``report=True`` distinguishes between global entry numbers (:py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start` and :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop`), which start once at the beginning of iteration, and TTree entry numbers (:py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_start` and :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_stop`), which restart at the beginning of each TTree. The :py:attr:`~uproot.behaviors.TBranch.Report.tree`, :py:attr:`~uproot.behaviors.TBranch.Report.file`, and :py:attr:`~uproot.behaviors.TBranch.Report.file_path` attributes are also more useful in multi-file iteration.
+In multi-file iteration, the :doc:`uproot.behaviors.TBranch.Report` returned by ``report=True`` distinguishes between global entry numbers (:ref:`uproot.behaviors.TBranch.Report.global_entry_start` and :ref:`uproot.behaviors.TBranch.Report.global_entry_stop`), which start once at the beginning of iteration, and TTree entry numbers (:ref:`uproot.behaviors.TBranch.Report.tree_entry_start` and :ref:`uproot.behaviors.TBranch.Report.tree_entry_stop`), which restart at the beginning of each TTree. The :ref:`uproot.behaviors.TBranch.Report.tree`, :ref:`uproot.behaviors.TBranch.Report.file`, and :ref:`uproot.behaviors.TBranch.Report.file_path` attributes are also more useful in multi-file iteration.
 
 Reading many files into big arrays
 ----------------------------------
 
 Although it iterates over multiple files, the :doc:`uproot.behaviors.TBranch.iterate` function is not a direct analogy of `ROOT's TChain <https://root.cern.ch/doc/master/classTChain.html>`__ because it does not make multi-file workflows look like single-file (non-iterating) workflows.
 
-The simplest way to access many files is to concatenate them into one array. The :doc:`uproot.behaviors.TBranch.concatenate` function is a multi-file analogue of the :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` method, in that it returns a single array group.
+The simplest way to access many files is to concatenate them into one array. The :doc:`uproot.behaviors.TBranch.concatenate` function is a multi-file analogue of the :ref:`uproot.behaviors.TBranch.HasBranches.arrays` method, in that it returns a single array group.
 
 .. code-block:: python
 
@@ -837,7 +802,7 @@ The interface to :doc:`uproot.behaviors.TBranch.lazy` is like :doc:`uproot.behav
     >>> array
     <Array [{Type: 'GT', Run: 148031, ... M: 96.7}] type='23040 * {"Type": string, "R...'>
 
-When :doc:`uproot.behaviors.TBranch.lazy` is called, it opens all of the specified files and TTree metadata, but none of the TBranch data. It uses the TBranch names and types, as well as the TTree :py:attr:`~uproot.behaviors.TTree.TTree.num_entries`, to define the data type and prepare batches for reading. Only when you access items in the array, such as printing them to the screen or performing a calculation on them, are the relevant TBranches read (in batches).
+When :doc:`uproot.behaviors.TBranch.lazy` is called, it opens all of the specified files and TTree metadata, but none of the TBranch data. It uses the TBranch names and types, as well as the TTree :ref:`uproot.behaviors.TTree.TTree.num_entries`, to define the data type and prepare batches for reading. Only when you access items in the array, such as printing them to the screen or performing a calculation on them, are the relevant TBranches read (in batches).
 
 This lazy-loading uses an Awkward Array feature, so ``library="ak"`` is the only library option.
 
@@ -958,7 +923,7 @@ and
 
 have the same performance, assuming that the caches are not overrun.
 
-By default, each file has a separate cache of ``100`` objects and ``"100 MB"`` of arrays. However, these can be overridden by passing an ``object_cache`` or ``array_cache`` argument to :doc:`uproot.reading.open` or setting the :py:attr:`~uproot.reading.ReadOnlyFile.object_cache` and :py:attr:`~uproot.reading.ReadOnlyFile.array_cache` properties.
+By default, each file has a separate cache of ``100`` objects and ``"100 MB"`` of arrays. However, these can be overridden by passing an ``object_cache`` or ``array_cache`` argument to :doc:`uproot.reading.open` or setting the :ref:`uproot.reading.ReadOnlyFile.object_cache` and :ref:`uproot.reading.ReadOnlyFile.array_cache` properties.
 
 Any `MutableMapping <https://docs.python.org/3/library/collections.abc.html#collections-abstract-base-classes>`__ will do (including a plain dict, which would keep objects forever), or you can set them to ``None`` to prevent caching.
 

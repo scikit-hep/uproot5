@@ -181,7 +181,7 @@ class AsContainer(object):
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot.model.Model` classes from its
-                :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+                :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             header (bool): If True, assume the outermost object has a header.
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
@@ -219,13 +219,13 @@ class AsContainer(object):
             context (dict): Auxiliary data used in deserialization.
             file (:doc:`uproot.reading.ReadOnlyFile`): An open file object,
                 capable of generating new :doc:`uproot.model.Model` classes
-                from its :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+                from its :ref:`uproot.reading.ReadOnlyFile.streamers`.
             selffile (:doc:`uproot.reading.CommonFileMethods`): A possibly
                 :doc:`uproot.reading.DetachedFile` associated with this object.
             parent (None or calling object): The previous ``read`` in the
                 recursive descent.
             header (bool): If True, enable the container's
-                :py:attr:`~uproot.containers.AsContainer.header`.
+                :ref:`uproot.containers.AsContainer.header`.
 
         Read one object as part of a recursive descent.
         """
@@ -243,8 +243,8 @@ class AsDynamic(AsContainer):
     Args:
         model (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): Optional
             description of the data, used in
-            :py:meth:`~uproot.containers.AsDynamic.awkward_form` but ignored in
-            :py:meth:`~uproot.containers.AsDynamic.read`.
+            :ref:`uproot.containers.AsDynamic.awkward_form` but ignored in
+            :ref:`uproot.containers.AsDynamic.read`.
 
     A :doc:`uproot.containers.AsContainer` for one object whose class may
     not be known before reading.
@@ -260,8 +260,8 @@ class AsDynamic(AsContainer):
     def model(self):
         """
         Optional description of the data, used in
-        :py:meth:`~uproot.containers.AsDynamic.awkward_form` but ignored in
-        :py:meth:`~uproot.containers.AsDynamic.read`.
+        :ref:`uproot.containers.AsDynamic.awkward_form` but ignored in
+        :ref:`uproot.containers.AsDynamic.read`.
         """
         return self._model
 
@@ -317,7 +317,7 @@ class AsFIXME(AsContainer):
     unimplemented. The name is intended to be conspicuous, so that such cases
     may be more easily fixed.
 
-    :py:meth:`~uproot.containers.AsFIXME.read` raises a
+    :ref:`uproot.containers.AsFIXME.read` raises a
     :doc:`uproot.deserialization.DeserializationError` asking for a bug-report.
     """
 
@@ -356,7 +356,7 @@ class AsFIXME(AsContainer):
 class AsString(AsContainer):
     """
     Args:
-        header (bool): Sets the :py:attr:`~uproot.containers.AsContainer.header`.
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
         length_bytes ("1-5" or "4"): Method used to determine the length of
             a string: "1-5" means one byte if the length is less than 256,
             otherwise the true length is in the next four bytes; "4" means
@@ -373,7 +373,7 @@ class AsString(AsContainer):
     Note that the :doc:`uproot.interpretation.strings.AsStrings` class is
     for a ``TBranch`` that contains only strings.
 
-    (:py:meth:`~uproot.interpretation.objects.AsObjects.simplify` converts an
+    (:ref:`uproot.interpretation.objects.AsObjects.simplify` converts an
     :doc:`uproot.interpretation.objects.AsObjects` of
     :doc:`uproot.containers.AsString` into a
     :doc:`uproot.interpretation.strings.AsStrings`.)
@@ -474,8 +474,8 @@ class AsPointer(AsContainer):
     Args:
         pointee (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): Optional
             description of the data, used in
-            :py:meth:`~uproot.containers.AsPointer.awkward_form` but ignored in
-            :py:meth:`~uproot.containers.AsPointer.read`.
+            :ref:`uproot.containers.AsPointer.awkward_form` but ignored in
+            :ref:`uproot.containers.AsPointer.read`.
 
     A :doc:`uproot.containers.AsContainer` for an object referred to by
     pointer, meaning that it could be None (``nullptr``) or identical to
@@ -492,8 +492,8 @@ class AsPointer(AsContainer):
     def pointee(self):
         """
         Optional description of the data, used in
-        :py:meth:`~uproot.containers.AsPointer.awkward_form` but ignored in
-        :py:meth:`~uproot.containers.AsPointer.read`.
+        :ref:`uproot.containers.AsPointer.awkward_form` but ignored in
+        :ref:`uproot.containers.AsPointer.read`.
         """
         return self._pointee
 
@@ -541,7 +541,7 @@ class AsPointer(AsContainer):
 class AsArray(AsContainer):
     """
     Args:
-        header (bool): Sets the :py:attr:`~uproot.containers.AsContainer.header`.
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
         speedbump (bool): If True, one byte must be skipped before reading the
             data.
         values (:doc:`uproot.model.Model`, :doc:`uproot.containers.Container`, or ``numpy.dtype``): Data
@@ -671,7 +671,7 @@ in file {1}""".format(
 class AsVector(AsContainer):
     """
     Args:
-        header (bool): Sets the :py:attr:`~uproot.containers.AsContainer.header`.
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
         values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
             type for data nested in the container.
 
@@ -787,7 +787,7 @@ in file {1}""".format(
 class AsSet(AsContainer):
     """
     Args:
-        header (bool): Sets the :py:attr:`~uproot.containers.AsContainer.header`.
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
         keys (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
             type for data nested in the container.
 
@@ -909,7 +909,7 @@ def _has_nested_header(obj):
 class AsMap(AsContainer):
     """
     Args:
-        header (bool): Sets the :py:attr:`~uproot.containers.AsContainer.header`.
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
         keys (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
             type for the map's keys.
         values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data

@@ -78,7 +78,7 @@ class FileResource(uproot.source.chunk.Resource):
                 (one greater than the last byte to include).
 
         Returns a :doc:`uproot.source.futures.ResourceFuture` that calls
-        :py:meth:`~uproot.source.file.FileResource.get` with ``start`` and ``stop``.
+        :ref:`uproot.source.file.FileResource.get` with ``start`` and ``stop``.
         """
 
         def task(resource):
@@ -175,7 +175,7 @@ class MemmapSource(uproot.source.chunk.Source):
     @property
     def fallback(self):
         """
-        If None, the :py:attr:`~uproot.source.file.MemmapSource.file` opened
+        If None, the :ref:`uproot.source.file.MemmapSource.file` opened
         successfully and no fallback is needed.
 
         Otherwise, this is a :doc:`uproot.source.file.MultithreadedFileSource`

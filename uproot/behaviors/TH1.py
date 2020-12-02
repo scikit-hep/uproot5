@@ -126,7 +126,7 @@ class Histogram(object):
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
 
-        Errors (uncertainties) in the :py:meth:`~uproot.behaviors.TH1.Histogram.values`
+        Errors (uncertainties) in the :ref:`uproot.behaviors.TH1.Histogram.values`
         as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         If ``fSumw2`` (weights) are available, they will be used in the
@@ -145,7 +145,7 @@ class Histogram(object):
                 after the normal (finite-width) bins.
 
         Variances (uncertainties squared) in the
-        :py:meth:`~uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
+        :ref:`uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
         dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         If ``fSumw2`` (weights) are available, they will be used in the
@@ -164,8 +164,8 @@ class Histogram(object):
                 after the normal (finite-width) bins.
 
         Returns the (possibly weighted) number of entries in each bin. For
-        histograms, this is equal to :py:meth:`~uproot.behaviors.TH1.Histogram.values`.
-        For profiles, this is equal to :py:meth:`~uproot.behaviors.TH1.Histogram.effective_entries`.
+        histograms, this is equal to :ref:`uproot.behaviors.TH1.Histogram.values`.
+        For profiles, this is equal to :ref:`uproot.behaviors.TH1.Histogram.effective_counts`.
         """
         return self.values(flow=flow)
 

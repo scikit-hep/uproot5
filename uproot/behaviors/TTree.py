@@ -71,7 +71,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         The number of entries in the ``TTree``, as reported by ``fEntries``.
 
         In principle, this could disagree with the
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.num_entries`, which is from the
+        :ref:`uproot.behaviors.TBranch.TBranch.num_entries`, which is from the
         ``TBranch``'s ``fEntries``. See that method's documentation for yet more
         ways the number of entries could, in principle, be inconsistent.
         """
@@ -88,8 +88,8 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     def aliases(self):
         u"""
         The ``TTree``'s ``fAliases``, which are used as the ``aliases``
-        argument to :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`,
-        :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate`,
+        argument to :ref:`uproot.behaviors.TBranch.HasBranches.arrays`,
+        :ref:`uproot.behaviors.TBranch.HasBranches.iterate`,
         :doc:`uproot.behaviors.TBranch.iterate`, and
         :doc:`uproot.behaviors.TBranch.concatenate` if one is not given.
 
@@ -111,7 +111,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         read (as a strong, not weak, reference).
 
         The reason the chunk is retained is to read
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets` only if
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets` only if
         necessary (if the file was opened with
         ``options["minimal_ttree_metadata"]=True``, the reading of these
         ``TBaskets`` is deferred until they are accessed).

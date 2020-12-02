@@ -185,7 +185,7 @@ class CommonFileMethods(object):
     """
     Abstract class for :doc:`uproot.reading.ReadOnlyFile` and
     :doc:`uproot.reading.DetachedFile`. The latter is a placeholder for file
-    information, such as the :py:attr:`~uproot.reading.CommonFileMethods.file_path`
+    information, such as the :ref:`uproot.reading.CommonFileMethods.file_path`
     used in many error messages, without holding a reference to the active
     :doc:`uproot.source.chunk.Source`.
 
@@ -219,8 +219,8 @@ class CommonFileMethods(object):
         """
         Version of ROOT used to write the file as a string.
 
-        See :py:attr:`~uproot.reading.CommonFileMethods.root_version_tuple` and
-        :py:attr:`~uproot.reading.CommonFileMethods.fVersion`.
+        See :ref:`uproot.reading.CommonFileMethods.root_version_tuple` and
+        :ref:`uproot.reading.CommonFileMethods.fVersion`.
         """
         return "{0}.{1:02d}/{2:02d}".format(*self.root_version_tuple)
 
@@ -229,8 +229,8 @@ class CommonFileMethods(object):
         """
         Version of ROOT used to write teh file as a tuple.
 
-        See :py:attr:`~uproot.reading.CommonFileMethods.root_version` and
-        :py:attr:`~uproot.reading.CommonFileMethods.fVersion`.
+        See :ref:`uproot.reading.CommonFileMethods.root_version` and
+        :ref:`uproot.reading.CommonFileMethods.fVersion`.
         """
         version = self._fVersion
         if version >= 1000000:
@@ -250,11 +250,11 @@ class CommonFileMethods(object):
 
         A file that is larger than 4 GiB must be 64-bit ready, though any file
         might be. This refers to seek points like
-        :py:attr:`~uproot.reading.ReadOnlyFile.fSeekFree` being 64-bit integers,
+        :ref:`uproot.reading.ReadOnlyFile.fSeekFree` being 64-bit integers,
         rather than 32-bit.
 
         Note that a file being 64-bit is distinct from a ``TDirectory`` being
-        64-bit; see :py:attr:`~uproot.reading.ReadOnlyDirectory.is_64bit`.
+        64-bit; see :ref:`uproot.reading.ReadOnlyDirectory.is_64bit`.
         """
         return self._fVersion >= 1000000
 
@@ -273,7 +273,7 @@ class CommonFileMethods(object):
         :doc:`uproot.compression.ZLIB`, even if the compression is set to a
         different algorithm.
 
-        See :py:attr:`~uproot.reading.CommonFileMethods.fCompress`.
+        See :ref:`uproot.reading.CommonFileMethods.fCompress`.
         """
         return uproot.compression.Compression.from_code(self._fCompress)
 
@@ -283,8 +283,8 @@ class CommonFileMethods(object):
         The unique identifier (UUID) of the ROOT file expressed as a hexadecimal
         string.
 
-        See :py:attr:`~uproot.reading.CommonFileMethods.uuid` and
-        :py:attr:`~uproot.reading.CommonFileMethods.fUUID`.
+        See :ref:`uproot.reading.CommonFileMethods.uuid` and
+        :ref:`uproot.reading.CommonFileMethods.fUUID`.
         """
         if uproot._util.py2:
             out = "".join("{0:02x}".format(ord(x)) for x in self._fUUID)
@@ -298,8 +298,8 @@ class CommonFileMethods(object):
         The unique identifier (UUID) of the ROOT file expressed as a Python
         ``uuid.UUID`` object.
 
-        See :py:attr:`~uproot.reading.CommonFileMethods.hex_uuid` and
-        :py:attr:`~uproot.reading.CommonFileMethods.fUUID`.
+        See :ref:`uproot.reading.CommonFileMethods.hex_uuid` and
+        :ref:`uproot.reading.CommonFileMethods.fUUID`.
         """
         return uuid.UUID(self.hex_uuid.replace("-", ""))
 
@@ -307,9 +307,9 @@ class CommonFileMethods(object):
     def fVersion(self):
         """
         Raw version information for the ROOT file; this number is used to derive
-        :py:attr:`~uproot.reading.CommonFileMethods.root_version`,
-        :py:attr:`~uproot.reading.CommonFileMethods.root_version_tuple`, and
-        :py:attr:`~uproot.reading.CommonFileMethods.is_64bit`.
+        :ref:`uproot.reading.CommonFileMethods.root_version`,
+        :ref:`uproot.reading.CommonFileMethods.root_version_tuple`, and
+        :ref:`uproot.reading.CommonFileMethods.is_64bit`.
         """
         return self._fVersion
 
@@ -384,7 +384,7 @@ class CommonFileMethods(object):
         :doc:`uproot.compression.ZLIB`, even if the compression is set to a
         different algorithm.
 
-        See :py:attr:`~uproot.reading.CommonFileMethods.compression`.
+        See :ref:`uproot.reading.CommonFileMethods.compression`.
         """
         return self._fCompress
 
@@ -392,7 +392,7 @@ class CommonFileMethods(object):
     def fSeekInfo(self):
         """
         The seek point (int) to the ``TStreamerInfo`` data, where
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamers` are located.
+        :ref:`uproot.reading.ReadOnlyFile.streamers` are located.
         """
         return self._fSeekInfo
 
@@ -400,7 +400,7 @@ class CommonFileMethods(object):
     def fNbytesInfo(self):
         """
         The number of bytes in the ``TStreamerInfo`` data, where
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamers` are located.
+        :ref:`uproot.reading.ReadOnlyFile.streamers` are located.
         """
         return self._fNbytesInfo
 
@@ -410,8 +410,8 @@ class CommonFileMethods(object):
         The unique identifier (UUID) of the ROOT file as a raw bytestring
         (Python ``bytes``).
 
-        See :py:attr:`~uproot.reading.CommonFileMethods.hex_uuid` and
-        :py:attr:`~uproot.reading.CommonFileMethods.uuid`.
+        See :ref:`uproot.reading.CommonFileMethods.hex_uuid` and
+        :ref:`uproot.reading.CommonFileMethods.uuid`.
         """
         return self._fUUID
 
@@ -423,7 +423,7 @@ class DetachedFile(CommonFileMethods):
             convert into a detached file.
 
     A placeholder for a :doc:`uproot.reading.ReadOnlyFile` with useful
-    information, such as the :py:attr:`~uproot.reading.CommonFileMethods.file_path`
+    information, such as the :ref:`uproot.reading.CommonFileMethods.file_path`
     used in many error messages, without holding a reference to the active
     :doc:`uproot.source.chunk.Source`.
 
@@ -488,18 +488,18 @@ class ReadOnlyFile(CommonFileMethods):
 
     Handle to an open ROOT file, the way to access data in ``TDirectories``
     (:doc:`uproot.reading.ReadOnlyDirectory`) and create new classes from
-    ``TStreamerInfo`` (:py:attr:`~uproot.reading.ReadOnlyFile.streamers`).
+    ``TStreamerInfo`` (:ref:`uproot.reading.ReadOnlyFile.streamers`).
 
     All objects derived from ROOT files have a pointer back to the file,
     though this is a :doc:`uproot.reading.DetachedFile` (no active connection,
-    cannot read more data) if the object's :py:attr:`~uproot.model.Model.classname`
+    cannot read more data) if the object's :ref:`uproot.model.Model.classname`
     is not in ``uproot.reading.must_be_attached``: objects that can read
     more data and need to have an active connection (like ``TTree``,
     ``TBranch``, and ``TDirectory``).
 
     Note that a :doc:`uproot.reading.ReadOnlyFile` can't be directly used to
     extract objects. To read data, use the :doc:`uproot.reading.ReadOnlyDirectory`
-    returned by :py:attr:`~uproot.reading.ReadOnlyFile.root_directory`. This is why
+    returned by :ref:`uproot.reading.ReadOnlyFile.root_directory`. This is why
     :doc:`uproot.reading.open` returns a :doc:`uproot.reading.ReadOnlyDirectory`
     and not a :doc:`uproot.reading.ReadOnlyFile`.
 
@@ -638,7 +638,7 @@ in file {1}""".format(
         After closing, new objects and classes cannot be extracted from the file,
         but objects with :doc:`uproot.reading.DetachedFile` references instead
         of :doc:`uproot.reading.ReadOnlyFile` that are still in the
-        :py:attr:`~uproot.reading.ReadOnlyFile.object_cache` would still be
+        :ref:`uproot.reading.ReadOnlyFile.object_cache` would still be
         accessible.
         """
         self._source.close()
@@ -653,13 +653,13 @@ in file {1}""".format(
         True if the file has been closed; False otherwise.
 
         The file may have been closed explicitly with
-        :py:meth:`~uproot.reading.ReadOnlyFile.close` or implicitly in the Python
+        :ref:`uproot.reading.ReadOnlyFile.close` or implicitly in the Python
         ``with`` statement, as a context manager.
 
         After closing, new objects and classes cannot be extracted from the file,
         but objects with :doc:`uproot.reading.DetachedFile` references instead
         of :doc:`uproot.reading.ReadOnlyFile` that are still in the
-        :py:attr:`~uproot.reading.ReadOnlyFile.object_cache` would still be
+        :ref:`uproot.reading.ReadOnlyFile.object_cache` would still be
         accessible.
         """
         return self._source.closed
@@ -820,7 +820,7 @@ in file {1}""".format(
         the probability that ``TStreamerInfos`` will need to be read (depending
         on the choice of classes or versions of the classes that are accessed).
 
-        See also :py:attr:`~uproot.reading.ReadOnlyFile.streamer_rules`, which are
+        See also :ref:`uproot.reading.ReadOnlyFile.streamer_rules`, which are
         read in the same pass with ``TStreamerInfos``.
         """
         import uproot.streamers
@@ -912,7 +912,7 @@ in file {1}""".format(
         Uproot does not have access to a C++ compiler.
 
         These rules are read in the same pass that produces
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+        :ref:`uproot.reading.ReadOnlyFile.streamers`.
         """
         if self._streamer_rules is None:
             self.streamers
@@ -928,7 +928,7 @@ in file {1}""".format(
         files can be created by merging data from different ROOT versions with
         hadd?)
 
-        See also :py:attr:`~uproot.reading.ReadOnlyFile.streamer_named` (singular).
+        See also :ref:`uproot.reading.ReadOnlyFile.streamer_named` (singular).
         """
         classname = uproot.model.classname_regularize(classname)
         streamer_versions = self.streamers.get(classname)
@@ -946,7 +946,7 @@ in file {1}""".format(
         minimum and maximum version numbers available in the file. The default
         is ``"max"`` because there's usually only one.
 
-        See also :py:attr:`~uproot.reading.ReadOnlyFile.streamers_named` (plural).
+        See also :ref:`uproot.reading.ReadOnlyFile.streamers_named` (plural).
         """
         classname = uproot.model.classname_regularize(classname)
         streamer_versions = self.streamers.get(classname)
@@ -966,7 +966,7 @@ in file {1}""".format(
         ``version``.
 
         The ``classname`` and ``version`` are interpreted the same way as
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamer_named`.
+        :ref:`uproot.reading.ReadOnlyFile.streamer_named`.
         """
         classname = uproot.model.classname_regularize(classname)
         streamer = self.streamer_named(classname, version=version)
@@ -1035,10 +1035,10 @@ in file {1}""".format(
     def remove_class_definition(self, classname):
         """
         Removes all versions of a class, specified by C++ (decoded)
-        ``classname``, from the :py:attr:`~uproot.reading.ReadOnlyFile.custom_classes`.
+        ``classname``, from the :ref:`uproot.reading.ReadOnlyFile.custom_classes`.
 
         If the file doesn't have a
-        :py:attr:`~uproot.reading.ReadOnlyFile.custom_classes`, this function adds
+        :ref:`uproot.reading.ReadOnlyFile.custom_classes`, this function adds
         one, so it does not remove the class from the common pool.
 
         If you want to remove a class from the common pool, you can do so with
@@ -1066,7 +1066,7 @@ in file {1}""".format(
           defined by the file; most files define only one so ``"max"`` is
           usually safe.
 
-        If this file has :py:attr:`~uproot.reading.ReadOnlyFile.custom_classes`,
+        If this file has :ref:`uproot.reading.ReadOnlyFile.custom_classes`,
         the new class is added to that dict; otherwise, it is added to the
         global ``uproot.classes``.
         """
@@ -1133,7 +1133,7 @@ in file {1}""".format(
         from ``start`` up to ``stop`` seek points in the file.
 
         If the desired range is satisfied by a previously saved chunk, such as
-        :py:attr:`~uproot.reading.ReadOnlyFile.begin_chunk`, then that is returned.
+        :ref:`uproot.reading.ReadOnlyFile.begin_chunk`, then that is returned.
         Hence, the returned chunk may include more data than the range from
         ``start`` up to ``stop``.
         """
@@ -1168,14 +1168,14 @@ in file {1}""".format(
         Called in the :doc:`uproot.reading.ReadOnlyFile` constructor after the
         :doc:`uproot.source.chunk.Source` is created but before attempting to
         get any :doc:`uproot.source.chunk.Chunk`, specifically the
-        :py:attr:`~uproot.reading.ReadOnlyFile.begin_chunk`.
+        :ref:`uproot.reading.ReadOnlyFile.begin_chunk`.
         """
         pass
 
     def hook_before_interpret(self, **kwargs):
         """
         Called in the :doc:`uproot.reading.ReadOnlyFile` constructor after
-        loading the :py:attr:`~uproot.reading.ReadOnlyFile.begin_chunk` and before
+        loading the :ref:`uproot.reading.ReadOnlyFile.begin_chunk` and before
         interpreting its ``TFile`` header.
         """
         pass
@@ -1193,17 +1193,17 @@ in file {1}""".format(
 
     def hook_before_read_streamer_key(self, **kwargs):
         """
-        Called in :py:attr:`~uproot.reading.ReadOnlyFile.streamers` before reading
+        Called in :ref:`uproot.reading.ReadOnlyFile.streamers` before reading
         the ``TKey`` associated with the ``TStreamerInfo``.
 
         This is the first hook called in
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+        :ref:`uproot.reading.ReadOnlyFile.streamers`.
         """
         pass
 
     def hook_before_read_decompress_streamers(self, **kwargs):
         """
-        Called in :py:attr:`~uproot.reading.ReadOnlyFile.streamers` after reading
+        Called in :ref:`uproot.reading.ReadOnlyFile.streamers` after reading
         the ``TKey`` associated with the ``TStreamerInfo`` and before reading
         and decompressing the ``TStreamerInfo`` data.
         """
@@ -1211,7 +1211,7 @@ in file {1}""".format(
 
     def hook_before_interpret_streamers(self, **kwargs):
         """
-        Called in :py:attr:`~uproot.reading.ReadOnlyFile.streamers` after reading
+        Called in :ref:`uproot.reading.ReadOnlyFile.streamers` after reading
         and decompressing the ``TStreamerInfo`` data, but before interpreting
         it.
         """
@@ -1219,11 +1219,11 @@ in file {1}""".format(
 
     def hook_after_interpret_streamers(self, **kwargs):
         """
-        Called in :py:attr:`~uproot.reading.ReadOnlyFile.streamers` after
+        Called in :ref:`uproot.reading.ReadOnlyFile.streamers` after
         interpreting the ``TStreamerInfo`` data.
 
         This is the last hook called in
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+        :ref:`uproot.reading.ReadOnlyFile.streamers`.
         """
         pass
 
@@ -1246,11 +1246,11 @@ class ReadOnlyDirectory(Mapping):
             recursive descent.
 
     Represents a ``TDirectory`` from a ROOT file, most notably, the root
-    directory (:py:attr:`~uproot.reading.ReadOnlyFile.root_directory`).
+    directory (:ref:`uproot.reading.ReadOnlyFile.root_directory`).
 
     Be careful not to confuse :doc:`uproot.reading.ReadOnlyFile` and
     :doc:`uproot.reading.ReadOnlyDirectory`: files are for accessing global
-    information such as :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and
+    information such as :ref:`uproot.reading.ReadOnlyFile.streamers` and
     directories are for data in local hierarchies.
 
     A :doc:`uproot.reading.ReadOnlyDirectory` is a Python ``Mapping``, which
@@ -1285,18 +1285,18 @@ class ReadOnlyDirectory(Mapping):
 
     As a Python ``Mapping``, :doc:`uproot.reading.ReadOnlyDirectory` also has
 
-    * :py:meth:`~uproot.reading.ReadOnlyDirectory.keys`: names of objects in the
+    * :ref:`uproot.reading.ReadOnlyDirectory.keys`: names of objects in the
       ``TDirectory``
-    * :py:meth:`~uproot.reading.ReadOnlyDirectory.values`: objects in the
+    * :ref:`uproot.reading.ReadOnlyDirectory.values`: objects in the
       ``TDirectory``
-    * :py:meth:`~uproot.reading.ReadOnlyDirectory.items`: 2-tuple (name, object)
+    * :ref:`uproot.reading.ReadOnlyDirectory.items`: 2-tuple (name, object)
       pairs.
 
     However, the :doc:`uproot.reading.ReadOnlyDirectory` versions of these
     methods have extra parameters for navigating a complex ROOT file. In addition,
     there is a
 
-    * :py:attr:`~uproot.reading.ReadOnlyDirectory.classnames`: returns a dict of
+    * :ref:`uproot.reading.ReadOnlyDirectory.classnames`: returns a dict of
       (name, classname) pairs.
 
     with the same parameters.
@@ -1411,7 +1411,7 @@ class ReadOnlyDirectory(Mapping):
         Object path of the ``TDirectory`` as a tuple of nested ``TDirectory``
         names. The root directory is an empty tuple, ``()``.
 
-        See :py:attr:`~uproot.reading.ReadOnlyDirectory.object_path` for the path
+        See :ref:`uproot.reading.ReadOnlyDirectory.object_path` for the path
         as a string.
         """
         return self._path
@@ -1422,7 +1422,7 @@ class ReadOnlyDirectory(Mapping):
         Object path of the ``TDirectory`` as a single string, beginning and
         ending with ``/``. The root directory is a single slash, ``"/"``.
 
-        See :py:attr:`~uproot.reading.ReadOnlyDirectory.path` for the path as a
+        See :ref:`uproot.reading.ReadOnlyDirectory.path` for the path as a
         tuple of strings.
         """
         return "/".join(("",) + self._path + ("",)).replace("//", "/")
@@ -1452,7 +1452,7 @@ class ReadOnlyDirectory(Mapping):
     @property
     def closed(self):
         """
-        True if the :py:attr:`~uproot.reading.ReadOnlyDirectory.file` is closed;
+        True if the :ref:`uproot.reading.ReadOnlyDirectory.file` is closed;
         False otherwise.
         """
         return self._file.closed
@@ -1487,11 +1487,11 @@ class ReadOnlyDirectory(Mapping):
         True if the ``TDirectory`` is 64-bit ready; False otherwise.
 
         This refers to seek points like
-        :py:attr:`~uproot.reading.ReadOnlyDirectory.fSeekDir` being 64-bit integers,
+        :ref:`uproot.reading.ReadOnlyDirectory.fSeekDir` being 64-bit integers,
         rather than 32-bit.
 
         Note that a file being 64-bit is distinct from a ``TDirectory`` being
-        64-bit; see :py:attr:`~uproot.reading.ReadOnlyFile.is_64bit`.
+        64-bit; see :ref:`uproot.reading.ReadOnlyFile.is_64bit`.
         """
         return self._fVersion > 1000
 
@@ -2269,7 +2269,7 @@ class ReadOnlyKey(object):
         True if the ``TKey`` is 64-bit ready; False otherwise.
 
         This refers to seek points like
-        :py:attr:`~uproot.reading.ReadOnlyKey.fSeekKey` being 64-bit integers,
+        :ref:`uproot.reading.ReadOnlyKey.fSeekKey` being 64-bit integers,
         rather than 32-bit.
         """
         return self._fVersion > 1000
@@ -2289,7 +2289,7 @@ class ReadOnlyKey(object):
         """
         Number of bytes in the uncompressed object (excluding any keys)
 
-        This is equal to :py:attr:`~uproot.reading.ReadOnlyKey.fObjlen``.
+        This is equal to :ref:`uproot.reading.ReadOnlyKey.fObjlen`.
         """
         return self._fObjlen
 
@@ -2298,8 +2298,8 @@ class ReadOnlyKey(object):
         """
         Number of bytes in the compressed object (excluding any keys)
 
-        This is equal to :py:attr:`~uproot.reading.ReadOnlyKey.fNbytes``
-        minus :py:attr:`~uproot.reading.ReadOnlyKey.fKeylen``.
+        This is equal to :ref:`uproot.reading.ReadOnlyKey.fNbytes`
+        minus :ref:`uproot.reading.ReadOnlyKey.fKeylen`.
         """
         return self._fNbytes - self._fKeylen
 
@@ -2311,9 +2311,9 @@ class ReadOnlyKey(object):
         If the first attempt to deserialize the object fails with
         :doc:`uproot.deserialization.DeserializationError` and any of the
         models used in that attempt were predefined (not from
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamers`), this method will
+        :ref:`uproot.reading.ReadOnlyFile.streamers`), this method will
         try again with the file's own
-        :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+        :ref:`uproot.reading.ReadOnlyFile.streamers`.
 
         (Some ROOT files do have classes that don't match the standard
         ``TStreamerInfo``; they may have been produced from private builds of
@@ -2523,9 +2523,9 @@ class ReadOnlyKey(object):
         """
         Called in the :doc:`uproot.reading.ReadOnlyKey` constructor after
         interpeting the header and before interpreting
-        :py:attr:`~uproot.reading.ReadOnlyKey.fClassName`,
-        :py:attr:`~uproot.reading.ReadOnlyKey.fName`, and
-        :py:attr:`~uproot.reading.ReadOnlyKey.fTitle`.
+        :ref:`uproot.reading.ReadOnlyKey.fClassName`,
+        :ref:`uproot.reading.ReadOnlyKey.fName`, and
+        :ref:`uproot.reading.ReadOnlyKey.fTitle`.
 
         Only called if ``read_strings=True`` is passed to the constructor.
         """

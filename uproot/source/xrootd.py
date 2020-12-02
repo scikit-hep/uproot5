@@ -165,7 +165,7 @@ in file {1}""".format(
                 (one greater than the last byte to include).
 
         Returns a :doc:`uproot.source.futures.ResourceFuture` that calls
-        :py:meth:`~uproot.source.xrootd.XRootDResource.get` with ``start`` and
+        :ref:`uproot.source.xrootd.XRootDResource.get` with ``start`` and
         ``stop``.
         """
 
@@ -180,9 +180,9 @@ in file {1}""".format(
         Returns a :doc:`uproot.source.futures.ResourceFuture` to simply select
         the ``(start, stop)`` item from the ``results`` dict.
 
-        In :py:meth:`~uproot.source.xrootd.XRootDSource.chunks`, each chunk has a
-        :py:meth:`~uproot.source.xrootd.XRootDResource.partfuture` that are collectively
-        filled by callbacks from :py:meth:`~uproot.source.xrootd.XRootDResource.callbacker`.
+        In :ref:`uproot.source.xrootd.XRootDSource.chunks`, each chunk has a
+        :ref:`uproot.source.xrootd.XRootDResource.partfuture` that are collectively
+        filled by callbacks from :ref:`uproot.source.xrootd.XRootDResource.callbacker`.
         """
 
         def task(resource):

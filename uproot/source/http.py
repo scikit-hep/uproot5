@@ -235,7 +235,7 @@ for URL {1}""".format(
                 (one greater than the last byte to include).
 
         Returns a :doc:`uproot.source.futures.ResourceFuture` that calls
-        :py:meth:`~uproot.source.file.HTTPResource.get` with ``start`` and ``stop``.
+        :ref:`uproot.source.http.HTTPResource.get` with ``start`` and ``stop``.
         """
         connection = make_connection(source.parsed_url, source.timeout)
         connection.request(
@@ -267,11 +267,11 @@ for URL {1}""".format(
         its multipart response.
 
         If the server does not support multipart GET, that same future
-        sets :py:attr:`~uproot.source.http.HTTPSource.fallback` and retries the
+        sets :ref:`uproot.source.http.HTTPSource.fallback` and retries the
         request without multipart, using a
         :doc:`uproot.source.http.MultithreadedHTTPSource` to fill the same
         ``results`` and ``futures``. Subsequent attempts would immediately
-        use the :py:attr:`~uproot.source.http.HTTPSource.fallback`.
+        use the :ref:`uproot.source.http.HTTPSource.fallback`.
         """
         connection = [make_connection(source.parsed_url, source.timeout)]
 
@@ -337,7 +337,7 @@ for URL {1}""".format(
 
     def is_multipart_supported(self, ranges, response):
         """
-        Helper function for :py:meth:`~uproot.source.http.HTTPResource.multifuture`
+        Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to check for multipart GET support.
         """
         if response.status != 206:
@@ -354,7 +354,7 @@ for URL {1}""".format(
 
     def handle_no_multipart(self, source, ranges, futures, results):
         """
-        Helper function for :py:meth:`~uproot.source.http.HTTPResource.multifuture`
+        Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to handle a lack of multipart GET support.
         """
         source._set_fallback()
@@ -369,7 +369,7 @@ for URL {1}""".format(
 
     def handle_multipart(self, source, futures, results, response):
         """
-        Helper function for :py:meth:`~uproot.source.http.HTTPResource.multifuture`
+        Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to handle the multipart GET response.
         """
         if hasattr(response, "readline"):
@@ -420,7 +420,7 @@ for URL {3}""".format(
 
     def next_header(self, response_buffer):
         """
-        Helper function for :py:meth:`~uproot.source.http.HTTPResource.multifuture`
+        Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to return the next header from the ``response_buffer``.
         """
         line = response_buffer.readline()
@@ -446,9 +446,9 @@ for URL {3}""".format(
         Returns a :doc:`uproot.source.futures.ResourceFuture` to simply select
         the ``(start, stop)`` item from the ``results`` dict.
 
-        In :py:meth:`~uproot.source.http.HTTPSource.chunks`, each chunk has a
-        :py:meth:`~uproot.source.http.HTTPResource.partfuture` that are collectively
-        filled by a single :py:meth:`~uproot.source.http.HTTPResource.multifuture`.
+        In :ref:`uproot.source.http.HTTPSource.chunks`, each chunk has a
+        :ref:`uproot.source.http.HTTPResource.partfuture` that are collectively
+        filled by a single :ref:`uproot.source.http.HTTPResource.multifuture`.
         """
 
         def task(resource):

@@ -120,6 +120,7 @@ def handle_class(classname, cls):
             for name, obj in inspect.getmembers(basecls, good):
                 if name in basecls.__dict__ and not name.startswith("_"):
                     fill = []
+                    fill.append(".. _" + classname + "." + name + ":" + "\n")
                     fill.append(name)
                     fill.append("-" * len(fill[-1]))
                     fill.append("")

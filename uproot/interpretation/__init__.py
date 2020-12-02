@@ -23,9 +23,9 @@ class Interpretation(object):
     1. Producing temporary arrays from each uncompressed ``TBasket``.
     2. Combining those temporary arrays for the whole range of entries
        requested between ``entry_start`` and ``entry_stop`` in
-       :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` or
-       :py:meth:`~uproot.behaviors.TBranch.TBranch.array`, or by ``entry_step``
-       in :py:meth:`~uproot.behaviors.TBranch.TBranch.iterate`.
+       :ref:`uproot.behaviors.TBranch.HasBranches.arrays` or
+       :ref:`uproot.behaviors.TBranch.TBranch.array`, or by ``entry_step``
+       in :ref:`uproot.behaviors.TBranch.TBranch.iterate`.
     3. Trimming the combined array to the exact entry range requested.
        (``TBasket`` boundaries might not align with the requested entry range.)
     4. Passing the combined, trimmed temporary array to a selected
@@ -63,7 +63,7 @@ class Interpretation(object):
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot.model.Model` classes from its
-                :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+                :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
@@ -93,7 +93,7 @@ class Interpretation(object):
             basket (:doc:`uproot.models.TBasket.Model_TBasket`): The ``TBasket`` object.
             context (dict): Auxiliary data used in deserialization.
             cursor_offset (int): Correction to the integer keys used in
-                :py:attr:`~uproot.source.cursor.Cursor.refs` for objects
+                :ref:`uproot.source.cursor.Cursor.refs` for objects
                 deserialized by reference
                 (:doc:`uproot.deserialization.read_object_any`).
             library (:doc:`uproot.interpretation.library.Library`): The
@@ -111,14 +111,14 @@ class Interpretation(object):
         Args:
             basket_arrays (dict of int \u2192 array): Mapping from ``TBasket``
                 number to the temporary array returned by
-                :py:meth:`~uproot.interpretation.Interpretation.basket_array`.
+                :ref:`uproot.interpretation.Interpretation.basket_array`.
             entry_start (int): First entry to include when trimming any
                 excess entries from the first ``TBasket``.
             entry_stop (int): FIrst entry to exclude (one greater than the last
                 entry to include) when trimming any excess entries from the
                 last ``TBasket``.
             entry_offsets (list of int): The
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.entry_offsets` for this
+                :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets` for this
                 ``TBranch``.
             library (:doc:`uproot.interpretation.library.Library`): The
                 requested library for output.
@@ -139,48 +139,48 @@ class Interpretation(object):
 
     def hook_before_basket_array(self, *args, **kwargs):
         """
-        Called in :py:meth:`~uproot.interpretation.Interpretation.basket_array`,
+        Called in :ref:`uproot.interpretation.Interpretation.basket_array`,
         before any interpretation.
 
         This is the first hook called in
-        :py:meth:`~uproot.interpretation.Interpretation.basket_array`.
+        :ref:`uproot.interpretation.Interpretation.basket_array`.
         """
         pass
 
     def hook_after_basket_array(self, *args, **kwargs):
         """
-        Called in :py:meth:`~uproot.interpretation.Interpretation.basket_array`,
+        Called in :ref:`uproot.interpretation.Interpretation.basket_array`,
         after all interpretation.
 
         This is the last hook called in
-        :py:meth:`~uproot.interpretation.Interpretation.basket_array`.
+        :ref:`uproot.interpretation.Interpretation.basket_array`.
         """
         pass
 
     def hook_before_final_array(self, *args, **kwargs):
         """
-        Called in :py:meth:`~uproot.interpretation.Interpretation.final_array`,
+        Called in :ref:`uproot.interpretation.Interpretation.final_array`,
         before any trimming, finalization, or grouping.
 
         This is the first hook called in
-        :py:meth:`~uproot.interpretation.Interpretation.final_array`.
+        :ref:`uproot.interpretation.Interpretation.final_array`.
         """
         pass
 
     def hook_before_library_finalize(self, *args, **kwargs):
         """
-        Called in :py:meth:`~uproot.interpretation.Interpretation.final_array`,
+        Called in :ref:`uproot.interpretation.Interpretation.final_array`,
         after trimming but before calling the
-        :py:meth:`~uproot.interpretation.library.Library.finalize` routine.
+        :ref:`uproot.interpretation.library.Library.finalize` routine.
         """
         pass
 
     def hook_after_final_array(self, *args, **kwargs):
         """
-        Called in :py:meth:`~uproot.interpretation.Interpretation.final_array`,
+        Called in :ref:`uproot.interpretation.Interpretation.final_array`,
         after all trimming, finalization, and grouping.
 
         This is the last hook called in
-        :py:meth:`~uproot.interpretation.Interpretation.final_array`.
+        :ref:`uproot.interpretation.Interpretation.final_array`.
         """
         pass

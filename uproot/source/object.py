@@ -75,7 +75,7 @@ class ObjectResource(uproot.source.chunk.Resource):
                 (one greater than the last byte to include).
 
         Returns a :doc:`uproot.source.futures.ResourceFuture` that calls
-        :py:meth:`~uproot.source.object.ObjectResource.get` with ``start`` and
+        :ref:`uproot.source.object.ObjectResource.get` with ``start`` and
         ``stop``.
         """
 

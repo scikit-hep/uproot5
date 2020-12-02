@@ -44,7 +44,7 @@ def compile_class(file, classes, class_code, class_name):
     Args:
         file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
             :doc:`uproot.model.Model` classes as needed from its
-            :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+            :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
             for error messages.
         classes (dict): MutableMapping in which to add the finished class.
         class_code (str): Python code string defining the new class.
@@ -189,7 +189,7 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
         context (dict): Auxiliary data used in deserialization.
         file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
             :doc:`uproot.model.Model` classes as needed from its
-            :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+            :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
             for error messages.
         selffile (:doc:`uproot.reading.CommonFileMethods`): A possibly
             :doc:`uproot.reading.DetachedFile` associated with the ``parent``.
@@ -202,11 +202,11 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
     reference previously read objects.
 
     This function is the reason why :doc:`uproot.source.cursor.Cursor` has a
-    :py:attr:`~uproot.source.cursor.Cursor.refs`; that dictionary holds previously
+    :ref:`uproot.source.cursor.Cursor.refs`; that dictionary holds previously
     read objects that might need to be accessed later.
 
     The :doc:`uproot.source.cursor.Cursor` has an
-    :py:attr:`~uproot.source.cursor.Cursor.origin` to account for the fact that
+    :ref:`uproot.source.cursor.Cursor.origin` to account for the fact that
     seek positions for keys in the reference dict are relative to the start of
     the :doc:`uproot.source.chunk.Chunk`, rather than the start of the file
     (as it would have to be for decompressed chunks).
@@ -314,7 +314,7 @@ class DeserializationError(Exception):
     """
     Error raised when a ROOT file cannot be deserialized.
 
-    If the first attempt in :py:meth:`~uproot.reading.ReadOnlyKey.get` failed with
+    If the first attempt in :ref:`uproot.reading.ReadOnlyKey.get` failed with
     predefined :doc:`uproot.model.Model` classes, this exception is caught
     and retried with ``TStreamerInfo``-derived classes, so
     :doc:`uproot.deserialization.DeserializationError` sometimes appears in an
@@ -325,9 +325,9 @@ class DeserializationError(Exception):
     If a :doc:`uproot.deserialization.DeserializationError` is caught, the byte
     stream at the position where it failed can be inspected with
 
-    * :py:meth:`~uproot.deserialization.DeserializationError.debug`
-    * :py:meth:`~uproot.deserialization.DeserializationError.debug_array`
-    * :py:attr:`~uproot.deserialization.DeserializationError.partial_object`
+    * :ref:`uproot.deserialization.DeserializationError.debug`
+    * :ref:`uproot.deserialization.DeserializationError.debug_array`
+    * :ref:`uproot.deserialization.DeserializationError.partial_object`
     """
 
     def __init__(self, message, chunk, cursor, context, file_path):
@@ -484,7 +484,7 @@ in file {2}{3}""".format(
                 which to interpret the data. (The size of the array returned is
                 truncated to this ``dtype.itemsize``.)
 
-        Like :py:meth:`~uproot.deserialization.DeserializationError.debug`, but
+        Like :ref:`uproot.deserialization.DeserializationError.debug`, but
         returns a NumPy array for further inspection.
         """
         dtype = numpy.dtype(dtype)

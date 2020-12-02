@@ -38,9 +38,9 @@ class AsStrings(uproot.interpretation.Interpretation):
             Otherwise, take the suggestion as given.
         original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): If
             this interpretation is derived from
-            :py:meth:`~uproot.interpretation.objects.AsObjects.simplify`, this is a
+            :ref:`uproot.interpretation.objects.AsObjects.simplify`, this is a
             reminder of the original
-            :py:attr:`~uproot.interpretation.objects.AsObjects.model`.
+            :ref:`uproot.interpretation.objects.AsObjects.model`.
 
     An :doc:`uproot.interpretation.Interpretation` for an array of strings.
 
@@ -52,7 +52,7 @@ class AsStrings(uproot.interpretation.Interpretation):
     Note that the :doc:`uproot.containers.AsString` class is for strings nested
     within other objects.
 
-    (:py:meth:`~uproot.interpretation.objects.AsObjects.simplify` converts an
+    (:ref:`uproot.interpretation.objects.AsObjects.simplify` converts an
     :doc:`uproot.interpretation.objects.AsObjects` of
     :doc:`uproot.containers.AsString` into a
     :doc:`uproot.interpretation.strings.AsStrings`.)
@@ -89,7 +89,7 @@ class AsStrings(uproot.interpretation.Interpretation):
     def original(self):
         """
         If not None, this was the original
-        :py:attr:`~uproot.interpretation.objects.AsObjects.model` from an
+        :ref:`uproot.interpretation.objects.AsObjects.model` from an
         :doc:`uproot.interpretation.objects.AsObjects` that was simplified
         into this :doc:`uproot.interpretation.jagged.AsJagged`.
         """
@@ -358,7 +358,7 @@ class StringArray(object):
             the array.
 
     Temporary array filled by
-    :py:meth:`~uproot.interpretation.strings.AsStrings.basket_array`, which will be
+    :ref:`uproot.interpretation.strings.AsStrings.basket_array`, which will be
     turned into a NumPy, Awkward, or other array, depending on the specified
     :doc:`uproot.interpretation.library.Library`.
     """

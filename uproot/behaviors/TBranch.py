@@ -98,13 +98,13 @@ def iterate(
             :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
             returns False or None, the ``TBranch`` is excluded; if the function
             returns True, it is included with its standard
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
             :doc:`uproot.interpretation.Interpretation`, this interpretation
             overrules the standard one.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
+            :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
         language (:doc:`uproot.language.Language`): Language used to interpret
             the ``expressions`` and ``aliases``.
         step_size (int or str): If an integer, the maximum number of entries to
@@ -177,7 +177,7 @@ def iterate(
     * begin_chunk_size (memory_size; 512)
     * minimal_ttree_metadata (bool; True)
 
-    See also :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` to iterate
+    See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate
     within a single file.
 
     Other file entry points:
@@ -266,13 +266,13 @@ def concatenate(
             :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
             returns False or None, the ``TBranch`` is excluded; if the function
             returns True, it is included with its standard
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
             :doc:`uproot.interpretation.Interpretation`, this interpretation
             overrules the standard one.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
+            :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
         language (:doc:`uproot.language.Language`): Language used to interpret
             the ``expressions`` and ``aliases``.
         decompression_executor (None or Executor with a ``submit`` method): The
@@ -414,7 +414,7 @@ def lazy(
             :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
             returns False or None, the ``TBranch`` is excluded; if the function
             returns True, it is included with its standard
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
             :doc:`uproot.interpretation.Interpretation`, this interpretation
             overrules the standard one.
         recursive (bool): If True, include all subbranches of branches as
@@ -690,22 +690,22 @@ class Report(object):
             one), counting zero at the start of the ``TTree`` (current file).
         global_offset (int): Number of entries between the start of iteration
             and the start of this ``TTree``. The
-            :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start` and
-            :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop` are
-            equal to :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_start`
-            and :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_stop` plus
+            :ref:`uproot.behaviors.TBranch.Report.global_entry_start` and
+            :ref:`uproot.behaviors.TBranch.Report.global_entry_stop` are
+            equal to :ref:`uproot.behaviors.TBranch.Report.tree_entry_start`
+            and :ref:`uproot.behaviors.TBranch.Report.tree_entry_stop` plus
             ``global_offset``.
 
     Information about the current iteration of
-    :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` (the method) or
+    :ref:`uproot.behaviors.TBranch.HasBranches.iterate` (the method) or
     :doc:`uproot.behaviors.TBranch.iterate` (the function).
 
-    Since the :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` method
+    Since the :ref:`uproot.behaviors.TBranch.HasBranches.iterate` method
     only iterates over data from one ``TTree``, its ``global_offset`` is always
-    zero; :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start` and
-    :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop` are equal to
-    :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_start` and
-    :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_stop`, respectively.
+    zero; :ref:`uproot.behaviors.TBranch.Report.global_entry_start` and
+    :ref:`uproot.behaviors.TBranch.Report.global_entry_stop` are equal to
+    :ref:`uproot.behaviors.TBranch.Report.tree_entry_start` and
+    :ref:`uproot.behaviors.TBranch.Report.tree_entry_stop`, respectively.
 
     """
 
@@ -791,7 +791,7 @@ class Report(object):
     def start(self):
         """
         A synonym for
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start`.
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_start`.
         """
         return self._tree_entry_start + self._global_offset
 
@@ -799,7 +799,7 @@ class Report(object):
     def stop(self):
         """
         A synonym for
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop`.
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_stop`.
         """
         return self._tree_entry_stop + self._global_offset
 
@@ -808,10 +808,10 @@ class Report(object):
         """
         Number of entries between the start of iteration and the start of this
         ``TTree``. The
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start` and
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop` are
-        equal to :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_start`
-        and :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_stop` plus
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_start` and
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_stop` are
+        equal to :ref:`uproot.behaviors.TBranch.Report.tree_entry_start`
+        and :ref:`uproot.behaviors.TBranch.Report.tree_entry_stop` plus
         ``global_offset``.
         """
         return self._global_offset
@@ -820,7 +820,7 @@ class Report(object):
         """
         Copies the data in this :doc:`uproot.behaviors.TBranch.Report` to
         another with a new
-        :py:attr:`~uproot.branches.TBranch.Report.global_offset`.
+        :ref:`uproot.behaviors.TBranch.Report.global_offset`.
         """
         return Report(
             self._source, self._tree_entry_start, self._tree_entry_stop, global_offset
@@ -986,28 +986,28 @@ class HasBranches(Mapping):
                 :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
                 returns False or None, the ``TBranch`` is excluded; if the function
                 returns True, it is included with its standard
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
+                :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
                 :doc:`uproot.interpretation.Interpretation`, this interpretation
                 overrules the standard one.
             aliases (None or dict of str \u2192 str): Mathematical expressions that
                 can be used in ``expressions`` or other aliases (without cycles).
                 Uses the ``language`` engine to evaluate. If None, only the
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
             language (:doc:`uproot.language.Language`): Language used to interpret
                 the ``expressions`` and ``aliases``.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                file's :py:attr:`~uproot.reading.ReadOnlyFile.decompression_executor`
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
                 is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the file's :py:attr:`~uproot.reading.ReadOnlyFile.interpretation_executor`
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
                 is used.
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
@@ -1033,10 +1033,10 @@ class HasBranches(Mapping):
             >>> my_tree["y"].array()
             <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
 
-        See also :py:meth:`~uproot.behaviors.TBranch.TBranch.array` to read a single
+        See also :ref:`uproot.behaviors.TBranch.TBranch.array` to read a single
         ``TBranch`` as an array.
 
-        See also :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` to iterate over
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
         keys = _keys_deep(self)
@@ -1193,20 +1193,20 @@ class HasBranches(Mapping):
                 :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
                 returns False or None, the ``TBranch`` is excluded; if the function
                 returns True, it is included with its standard
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
+                :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
                 :doc:`uproot.interpretation.Interpretation`, this interpretation
                 overrules the standard one.
             aliases (None or dict of str \u2192 str): Mathematical expressions that
                 can be used in ``expressions`` or other aliases (without cycles).
                 Uses the ``language`` engine to evaluate. If None, only the
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
             language (:doc:`uproot.language.Language`): Language used to interpret
                 the ``expressions`` and ``aliases``.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
             step_size (int or str): If an integer, the maximum number of entries to
                 include in each iteration step; if a string, the maximum memory size
@@ -1214,11 +1214,11 @@ class HasBranches(Mapping):
                 such as "100 MB".
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                file's :py:attr:`~uproot.reading.ReadOnlyFile.decompression_executor`
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
                 is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the file's :py:attr:`~uproot.reading.ReadOnlyFile.interpretation_executor`
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
                 is used.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
@@ -1244,7 +1244,7 @@ class HasBranches(Mapping):
             ...     # each of the following have 100 entries
             ...     array["x"], array["y"]
 
-        See also :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` to read
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to read
         everything in a single step, without iteration.
 
         See also :doc:`uproot.behaviors.TBranch.iterate` to iterate over many
@@ -1445,7 +1445,7 @@ class HasBranches(Mapping):
         :doc:`uproot.behaviors.TBranch.TBranch`.
 
         (Note: with ``recursive=False``, this is the same as
-        :py:attr:`~uproot.behaviors.TBranch.HasBranches.branches`.)
+        :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
         return list(
             self.itervalues(
@@ -1593,7 +1593,7 @@ class HasBranches(Mapping):
         :doc:`uproot.behaviors.TBranch.TBranch`.
 
         (Note: with ``recursive=False``, this is the same as
-        :py:attr:`~uproot.behaviors.TBranch.HasBranches.branches`.)
+        :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
         for k, v in self.iteritems(
             filter_name=filter_name,
@@ -1751,14 +1751,14 @@ class HasBranches(Mapping):
             aliases (None or dict of str \u2192 str): Mathematical expressions that
                 can be used in ``expressions`` or other aliases (without cycles).
                 Uses the ``language`` engine to evaluate. If None, only the
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
             language (:doc:`uproot.language.Language`): Language used to interpret
                 the ``expressions`` and ``aliases``.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
 
         Returns an *approximate* step size as a number of entries to read
@@ -1775,7 +1775,7 @@ class HasBranches(Mapping):
         in memory, without considering ``cuts``).
 
         This is the algorithm that
-        :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
+        :ref:`uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
         ``step_size`` expressed in memory units into a number of entries.
         """
         target_num_bytes = uproot._util.memory_size(memory_size)
@@ -1829,7 +1829,7 @@ class HasBranches(Mapping):
 
         If this :doc:`uproot.behaviors.TBranch.TBranch` has no subbranches,
         the output is identical to
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.entry_offsets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets`.
         """
         common_offsets = None
         for branch in self.itervalues(
@@ -1957,22 +1957,22 @@ class TBranch(HasBranches):
         Args:
             interpretation (None or :doc:`uproot.interpretation.Interpretation`): An
                 interpretation of the ``TBranch`` data as an array. If None, the
-                standard :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`
+                standard :ref:`uproot.behaviors.TBranch.TBranch.interpretation`
                 is used, which is derived from
                 :doc:`uproot.interpretation.identify.interpretation_of`.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behaviors.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                file's :py:attr:`~uproot.reading.ReadOnlyFile.decompression_executor`
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
                 is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the file's :py:attr:`~uproot.reading.ReadOnlyFile.interpretation_executor`
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
                 is used.
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
@@ -1997,7 +1997,7 @@ class TBranch(HasBranches):
             >>> array["y"]
             <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
 
-        See also :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` to read
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to read
         multiple ``TBranches`` into a group of arrays or an array-group.
         """
         if interpretation is None:
@@ -2099,7 +2099,7 @@ class TBranch(HasBranches):
 
         Note that ``TBranch`` names are not guaranteed to be unique; it is
         sometimes necessary to address a branch by its
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.index`.
+        :ref:`uproot.behaviors.TBranch.TBranch.index`.
         """
         return self.member("fName")
 
@@ -2143,7 +2143,7 @@ class TBranch(HasBranches):
         Integer position of this ``TBranch`` in its parent's list of branches.
 
         Useful for cases in which the
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.name` is not unique: the
+        :ref:`uproot.behaviors.TBranch.TBranch.name` is not unique: the
         non-recursive index is always unique.
         """
         for i, branch in enumerate(self.parent.branches):
@@ -2182,7 +2182,7 @@ class TBranch(HasBranches):
     def typename(self):
         """
         The C++ typename of the ``TBranch``, derived from its
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`. If the
+        :ref:`uproot.behaviors.TBranch.TBranch.interpretation`. If the
         interpretation is
         :doc:`uproot.interpretation.identify.UnknownInterpretation`, the
         typename is ``"unknown"``.
@@ -2198,12 +2198,12 @@ class TBranch(HasBranches):
         The number of entries in the ``TBranch``, as reported by ``fEntries``.
 
         In principle, this could disagree with the
-        :py:attr:`~uproot.behaviors.TTree.TTree.num_entries`, which is from the
+        :ref:`uproot.behaviors.TTree.TTree.num_entries`, which is from the
         ``TTree``'s ``fEntries``.
 
         The ``TBranch`` also has a ``fEntryNumber``, which ought to be equal to
         the ``TBranch`` and ``TTree``'s ``fEntries``, and the last value of
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.entry_offsets` ought to be
+        :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets` ought to be
         equal to the number of entries as well.
         """
         return int(self.member("fEntries"))  # or fEntryNumber?
@@ -2217,7 +2217,7 @@ class TBranch(HasBranches):
         The number of ``entry_offsets`` in this list of integers is one more
         than the number of ``TBaskets``. The first is ``0`` and the last is
         the number of entries
-        (:py:attr:`~uproot.behaviors.TBranch.TBranch.num_entries`).
+        (:ref:`uproot.behaviors.TBranch.TBranch.num_entries`).
         """
         if self._num_normal_baskets == 0:
             out = [0]
@@ -2294,7 +2294,7 @@ in file {3}""".format(
     @property
     def top_level(self):
         """
-        True if the immediate :py:attr:`~uproot.behaviors.TBranch.TBranch.parent`
+        True if this branch's immediate :ref:`uproot.model.Model.parent`
         is the ``TTree``; False otherwise.
         """
         return isinstance(self.parent, uproot.behaviors.TTree.TTree)
@@ -2305,7 +2305,7 @@ in file {3}""".format(
         The ``TStreamerInfo`` or ``TStreamerElement`` for this ``TBranch``,
         which may be None.
 
-        If the :py:attr:`~uproot.reading.ReadOnlyFile.streamers` have not yet been
+        If the :ref:`uproot.reading.ReadOnlyFile.streamers` have not yet been
         read, this method *might* cause them to be read. (Only
         ``TBranchElements`` can have streamers.)
         """
@@ -2374,10 +2374,10 @@ in file {3}""".format(
     @property
     def aliases(self):
         """
-        The :py:attr:`~uproot.behaviors.TTree.TTree.aliases`, which are used as the
+        The :ref:`uproot.behaviors.TTree.TTree.aliases`, which are used as the
         ``aliases`` argument to
-        :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`,
-        :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate`,
+        :ref:`uproot.behaviors.TBranch.HasBranches.arrays`,
+        :ref:`uproot.behaviors.TBranch.HasBranches.iterate`,
         :doc:`uproot.behaviors.TBranch.iterate`, and
         :doc:`uproot.behaviors.TBranch.concatenate` if one is not given.
 
@@ -2440,8 +2440,8 @@ in file {3}""".format(
         The number of uncompressed bytes divided by the number of compressed
         bytes for this ``TBranch``.
 
-        See :py:attr:`~uproot.behaviors.TBranch.TBranch.compressed_bytes` and
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.uncompressed_bytes`.
+        See :ref:`uproot.behaviors.TBranch.TBranch.compressed_bytes` and
+        :ref:`uproot.behaviors.TBranch.TBranch.uncompressed_bytes`.
         """
         return float(self.uncompressed_bytes) / float(self.compressed_bytes)
 
@@ -2450,7 +2450,7 @@ in file {3}""".format(
         """
         The number of ``TBaskets`` in this ``TBranch``, including both normal
         (free) ``TBaskets`` and
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets`.
         """
         return self._num_normal_baskets + len(self.embedded_baskets)
 
@@ -2459,7 +2459,7 @@ in file {3}""".format(
         The :doc:`uproot.models.TBasket.Model_TBasket` at index ``basket_num``.
 
         It may be a normal (free) ``TBasket`` or one of the
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets`.
         """
         if 0 <= basket_num < self._num_normal_baskets:
             chunk, cursor = self.basket_chunk_cursor(basket_num)
@@ -2549,7 +2549,7 @@ in file {3}""".format(
         at ``basket_num``.
 
         Only applies to normal (free) ``TBaskets``, not
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets`.
         """
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
@@ -2743,7 +2743,7 @@ in file {3}""".format(
                 which to interpret the data. (The size of the array returned is
                 truncated to this ``dtype.itemsize``.)
 
-        Like :py:meth:`~uproot.behaviors.TBranch.TBranch.debug`, but returns a
+        Like :ref:`uproot.behaviors.TBranch.TBranch.debug`, but returns a
         NumPy array for further inspection.
         """
         dtype = numpy.dtype(dtype)

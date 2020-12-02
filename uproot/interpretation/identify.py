@@ -279,7 +279,7 @@ def interpretation_of(branch, context, simplify=True):
             interpret as an array.
         context (dict): Auxiliary data used in deserialization.
         simplify (bool): If True, call
-            :py:meth:`~uproot.interpretation.objects.AsObjects.simplify` on any
+            :ref:`uproot.interpretation.objects.AsObjects.simplify` on any
             :doc:`uproot.interpretation.objects.AsObjects` to try to get a
             more efficient interpretation.
 
@@ -1109,7 +1109,7 @@ class UnknownInterpretation(Exception):
     Exception raised by :doc:`uproot.interpretation.identify.interpretation_of`
     if an :doc:`uproot.interpretation.Interpretation` cannot be found.
 
-    The :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation` property may have
+    The :ref:`uproot.behaviors.TBranch.TBranch.interpretation` property may have
     :doc:`uproot.interpretation.identify.UnknownInterpretation` as a value.
 
     Any attempts to use this class as a

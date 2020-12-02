@@ -44,9 +44,9 @@ class AsJagged(uproot.interpretation.Interpretation):
             Otherwise, take the suggestion as given.
         original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): If
             this interpretation is derived from
-            :py:meth:`~uproot.interpretation.objects.AsObjects.simplify`, this is a
+            :ref:`uproot.interpretation.objects.AsObjects.simplify`, this is a
             reminder of the original
-            :py:attr:`~uproot.interpretation.objects.AsObjects.model`.
+            :ref:`uproot.interpretation.objects.AsObjects.model`.
 
     Interpretation for any array that can be described as variable-length lists
     of :doc:`uproot.interpretation.numerical.AsDtype`.
@@ -80,7 +80,7 @@ class AsJagged(uproot.interpretation.Interpretation):
     def original(self):
         """
         If not None, this was the original
-        :py:attr:`~uproot.interpretation.objects.AsObjects.model` from an
+        :ref:`uproot.interpretation.objects.AsObjects.model` from an
         :doc:`uproot.interpretation.objects.AsObjects` that was simplified
         into this :doc:`uproot.interpretation.jagged.AsJagged`.
         """
@@ -336,7 +336,7 @@ class JaggedArray(object):
             jagged array.
 
     Temporary array filled by
-    :py:meth:`~uproot.interpretation.jagged.AsJagged.basket_array`, which will be
+    :ref:`uproot.interpretation.jagged.AsJagged.basket_array`, which will be
     turned into a NumPy, Awkward, or other array, depending on the specified
     :doc:`uproot.interpretation.library.Library`.
     """
@@ -387,7 +387,7 @@ class JaggedArray(object):
         Awkward 0 terminology.
 
         The "parents" is an array of integers with the same length as
-        :py:attr:`~uproot.interpretation.jagged.JaggedArray.content` that indicates
+        :ref:`uproot.interpretation.jagged.JaggedArray.content` that indicates
         which list each item belongs to.
 
         The "localindex" is an array of integers with the same length that

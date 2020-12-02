@@ -2,7 +2,7 @@
 
 """
 This module defines a :doc:`uproot.language.Language` for expressions passed to
-:py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` (and similar).
+:ref:`uproot.behaviors.TBranch.HasBranches.arrays` (and similar).
 
 The :doc:`uproot.language.python.PythonLanguage` evaluates Python code. It is
 the default language.
@@ -249,7 +249,7 @@ class PythonLanguage(uproot.language.Language):
 
     PythonLanguage is the default :doc:`uproot.language.Language` for
     interpreting expressions passed to
-    :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` (and similar). This
+    :ref:`uproot.behaviors.TBranch.HasBranches.arrays` (and similar). This
     interpretation assumes that the expressions have Python syntax and
     semantics, with math functions loaded into the namespace.
 

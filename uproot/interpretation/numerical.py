@@ -208,7 +208,7 @@ class AsDtype(Numerical):
     def to_dtype(self):
         """
         Data type to convert the data into. Usually the native-endian
-        equivalent of :py:meth:`~uproot.interpretation.numerical.AsDtype.from_dtype`;
+        equivalent of :ref:`uproot.interpretation.numerical.AsDtype.from_dtype`;
         may include named fields and a shape.
 
         Named fields (``dtype.names``) can be used to construct a NumPy
@@ -225,7 +225,7 @@ class AsDtype(Numerical):
     def itemsize(self):
         """
         Number of bytes per item of
-        :py:meth:`~uproot.interpretation.numerical.AsDtype.from_dtype`.
+        :ref:`uproot.interpretation.numerical.AsDtype.from_dtype`.
 
         This number of bytes includes the fields and shape, like
         ``dtype.itemsize`` in NumPy.
@@ -417,7 +417,7 @@ class TruncatedNumerical(Numerical):
     def itemsize(self):
         """
         Number of bytes in
-        :py:meth:`~uproot.interpretation.numerical.TruncatedNumerical.from_dtype`.
+        :ref:`uproot.interpretation.numerical.TruncatedNumerical.from_dtype`.
         """
         return self.from_dtype.itemsize
 
@@ -431,8 +431,8 @@ class TruncatedNumerical(Numerical):
     @property
     def is_truncated(self):
         """
-        If True (:py:attr:`~uproot.interpretation.numerical.TruncatedNumerical.low`
-        and :py:attr:`~uproot.interpretation.numerical.TruncatedNumerical.high` are
+        If True (:ref:`uproot.interpretation.numerical.TruncatedNumerical.low`
+        and :ref:`uproot.interpretation.numerical.TruncatedNumerical.high` are
         both ``0``), the data are truly truncated.
         """
         return self._low == 0.0 and self._high == 0.0
@@ -536,7 +536,7 @@ class AsDouble32(TruncatedNumerical):
         high (float): Upper bound on the range of expressible values.
         num_bits (int): Number of bits in the representation.
         to_dims (tuple of ints): Shape of
-            :py:meth:`~uproot.interpretation.numerical.AsDouble32.to_dtype`.
+            :ref:`uproot.interpretation.numerical.AsDouble32.to_dtype`.
 
     Interpretation for ROOT's ``Double32_t`` type.
     """
@@ -597,7 +597,7 @@ class AsFloat16(TruncatedNumerical):
         high (float): Upper bound on the range of expressible values.
         num_bits (int): Number of bits in the representation.
         to_dims (tuple of ints): Shape of
-            :py:attr:`~uproot.interpretation.numerical.AsFloat16.to_dtype`.
+            :ref:`uproot.interpretation.numerical.AsFloat16.to_dtype`.
 
     Interpretation for ROOT's ``Float16_t`` type.
     """
