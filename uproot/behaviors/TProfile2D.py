@@ -40,9 +40,9 @@ class TProfile2D(uproot.behaviors.TProfile.Profile):
     def interpretation(self):
         return "mean"
 
-    def effective_entries(self, flow=False):
+    def effective_counts(self, flow=False):
         fBinEntries = numpy.asarray(self.member("fBinEntries"))
-        out = uproot.behaviors.TProfile._effective_entries_1d(
+        out = uproot.behaviors.TProfile._effective_counts_1d(
             fBinEntries.reshape(-1),
             numpy.asarray(self.member("fBinSumw2")).reshape(-1),
             self.member("fNcells"),

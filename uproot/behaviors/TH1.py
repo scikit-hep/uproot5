@@ -157,7 +157,7 @@ class Histogram(object):
         values, variances = self._values_variances(flow)
         return variances
 
-    def counts(self, flow=False):
+    def effective_counts(self, flow=False):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and

@@ -19,8 +19,8 @@ def test_axis():
         assert list(axis)[:3] == [(-4.0, -3.92), (-3.92, -3.84), (-3.84, -3.76)]
         assert axis == axis
         assert f["hpxpy"].axis(0) == f["hpxpy"].axis(1)
-        assert axis.options.circular is False
-        assert axis.options.discrete is False
+        assert axis.traits.circular is False
+        assert axis.traits.discrete is False
         assert axis.low == -4
         assert axis.high == 4
         assert axis.width == 0.08
@@ -57,8 +57,8 @@ def test_axis():
         assert axis[1] == "MET"
         assert list(axis)[:3] == ["Dijet", "MET", "MuonVeto"]
         assert axis == axis
-        assert axis.options.circular is False
-        assert axis.options.discrete is True
+        assert axis.traits.circular is False
+        assert axis.traits.discrete is True
         assert axis.low == 0.0
         assert axis.high == 7.0
         assert axis.width == 1.0

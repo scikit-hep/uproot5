@@ -20,7 +20,7 @@ _kERRORSPREADG = 3
 
 # closely follows the ROOT function, using the same names (with 'root_' prepended)
 # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L141-L163
-def _effective_entries_1d(fBinEntries, fBinSumw2, fNcells):
+def _effective_counts_1d(fBinEntries, fBinSumw2, fNcells):
     root_sumOfWeights = fBinEntries
     root_sumOfWeights = numpy.asarray(root_sumOfWeights, dtype=numpy.float64)
 
@@ -102,7 +102,7 @@ def _values_errors_1d(error_mode, fBinEntries, root_cont, fSumw2, fNcells, fBinS
     else:
         root_err2 = numpy.asarray(root_err2, dtype=numpy.float64)
 
-    root_neff = _effective_entries_1d(fBinEntries, fBinSumw2, fNcells)
+    root_neff = _effective_counts_1d(fBinEntries, fBinSumw2, fNcells)
 
     root_eprim2 = numpy.zeros(len(root_cont), dtype=numpy.float64)
     root_eprim2[nonzero] = abs(
@@ -136,7 +136,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
     Abstract class for profile plots.
     """
 
-    def effective_entries(self, flow=False):
+    def effective_counts(self, flow=False):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
@@ -213,9 +213,6 @@ class Profile(uproot.behaviors.TH1.Histogram):
         values, errors = self._values_errors(flow, error_mode)
         return numpy.square(errors)
 
-    def counts(self, flow=False):
-        return self.effective_entries(flow=flow)
-
 
 class TProfile(Profile):
     """
@@ -243,8 +240,8 @@ class TProfile(Profile):
     def interpretation(self):
         return "mean"
 
-    def effective_entries(self, flow=True):
-        out = _effective_entries_1d(
+    def effective_counts(self, flow=True):
+        out = _effective_counts_1d(
             self.member("fBinEntries"),
             self.member("fBinSumw2"),
             self.member("fNcells"),
@@ -298,7 +295,7 @@ class TProfile(Profile):
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
         boost_histogram = uproot.extras.boost_histogram()
 
-        effective_entries = self.effective_entries(flow=True)
+        effective_counts = self.effective_counts(flow=True)
         values, errors = self._values_errors(True, self.member("fErrorMode"))
         variances = numpy.square(errors)
         sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))
@@ -311,7 +308,7 @@ class TProfile(Profile):
             setattr(out, k, self.member(v))
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
-            effective_entries = effective_entries[1:]
+            effective_counts = effective_counts[1:]
             values = values[1:]
             variances = variances[1:]
             sum_of_bin_weights = sum_of_bin_weights[1:]
@@ -320,7 +317,7 @@ class TProfile(Profile):
 
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
         with numpy.errstate(divide="ignore", invalid="ignore"):
-            sum_of_bin_weights_squared = (sum_of_bin_weights ** 2) / effective_entries
+            sum_of_bin_weights_squared = (sum_of_bin_weights ** 2) / effective_counts
 
         # TODO: Drop this when boost-histogram has a way to set using the constructor.
         # New version should look something like this:

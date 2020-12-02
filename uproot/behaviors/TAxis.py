@@ -14,11 +14,11 @@ except ImportError:
 import numpy
 
 
-class AxisOptions(object):
+class AxisTraits(object):
     """
     Describes read-only properties of a histogram axis.
 
-    For example, ``axis.options.discrete`` is True if the histogram has
+    For example, ``axis.traits.discrete`` is True if the histogram has
     labels; False otherwise.
     """
 
@@ -26,7 +26,7 @@ class AxisOptions(object):
         self._axis = axis
 
     def __repr__(self):
-        return "AxisOptions({0})".format(repr(self._axis))
+        return "AxisTraits({0})".format(repr(self._axis))
 
     @property
     def circular(self):
@@ -120,14 +120,14 @@ class TAxis(Sequence):
         return not self.__eq__(other)
 
     @property
-    def options(self):
+    def traits(self):
         """
         Describes read-only properties of a histogram axis.
 
-        For example, ``axis.options.discrete`` is True if the histogram has
+        For example, ``axis.traits.discrete`` is True if the histogram has
         labels; False otherwise.
         """
-        return AxisOptions(self)
+        return AxisTraits(self)
 
     @property
     def low(self):
