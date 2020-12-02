@@ -157,7 +157,7 @@ class Histogram(object):
         values, variances = self._values_variances(flow)
         return variances
 
-    def effective_counts(self, flow=False):
+    def counts(self, flow=False):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
@@ -165,7 +165,6 @@ class Histogram(object):
 
         Returns the (possibly weighted) number of entries in each bin. For
         histograms, this is equal to :ref:`uproot.behaviors.TH1.Histogram.values`.
-        For profiles, this is equal to :ref:`uproot.behaviors.TH1.Histogram.effective_counts`.
         """
         return self.values(flow=flow)
 

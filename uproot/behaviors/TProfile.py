@@ -136,7 +136,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
     Abstract class for profile plots.
     """
 
-    def effective_counts(self, flow=False):
+    def counts(self, flow=False):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
@@ -144,8 +144,8 @@ class Profile(uproot.behaviors.TH1.Histogram):
 
         The effective number of entries, which is a step in the calculation of
         :ref:`uproot.behaviors.TProfile.Profile.values`. The calculation
-        of profile errors exactly follows ROOT's function, but in a vectorized
-        NumPy form.
+        of profile errors exactly follows ROOT's "effective entries", but in a
+        vectorized NumPy form.
         """
         raise NotImplementedError(repr(self))
 
@@ -240,7 +240,7 @@ class TProfile(Profile):
     def interpretation(self):
         return "mean"
 
-    def effective_counts(self, flow=True):
+    def counts(self, flow=True):
         out = _effective_counts_1d(
             self.member("fBinEntries"),
             self.member("fBinSumw2"),
@@ -295,7 +295,7 @@ class TProfile(Profile):
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
         boost_histogram = uproot.extras.boost_histogram()
 
-        effective_counts = self.effective_counts(flow=True)
+        effective_counts = self.counts(flow=True)
         values, errors = self._values_errors(True, self.member("fErrorMode"))
         variances = numpy.square(errors)
         sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))

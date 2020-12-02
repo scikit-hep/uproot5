@@ -133,8 +133,10 @@ def handle_class(classname, cls):
                         fill.append("")
                     if isinstance(obj, property):
                         fill.append(".. autoattribute:: " + classname + "." + name)
-                    else:
+                    elif callable(obj):
                         fill.append(".. automethod:: " + classname + "." + name)
+                    else:
+                        fill.append(".. autoattribute:: " + classname + "." + name)
                     fill.append("")
                     methods[name] = (index, line_order(obj), "\n".join(fill))
 

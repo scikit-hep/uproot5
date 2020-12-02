@@ -1,14 +1,14 @@
-# # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
-# import math
-# import json
-# import subprocess
-# import re
-# import http.client
-# import datetime
+import math
+import json
+import subprocess
+import re
+import http.client
+import datetime
 
-# tagslist_text = subprocess.run(["git", "show-ref", "--tags"], stdout=subprocess.PIPE).stdout
-# tagslist = dict(re.findall(rb"([0-9a-f]{40}) refs/tags/([0-9\.]+)", tagslist_text))
+tagslist_text = subprocess.run(["git", "show-ref", "--tags"], stdout=subprocess.PIPE).stdout
+tagslist = dict(re.findall(rb"([0-9a-f]{40}) refs/tags/([0-9\.]+)", tagslist_text))
 
 # subjects_text = subprocess.run(["git", "log", "--format='format:%H %s'"], stdout=subprocess.PIPE).stdout
 # subjects = re.findall(rb"([0-9a-f]{40}) (.*)", subjects_text)
