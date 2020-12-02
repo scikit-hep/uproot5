@@ -5,6 +5,7 @@ import inspect
 import pkgutil
 import os.path
 import sys
+import io
 
 
 order = [
@@ -23,7 +24,6 @@ order = [
     "uproot.models",
     "uproot.const",
     "uproot.exceptions",
-    "uproot.extras",
 ]
 
 toctree = open("uproot.toctree", "w")
@@ -34,17 +34,18 @@ toctree.write(
 
 """
 )
+toctree2 = None
 
 
-def ensure(objname, filename, content):
+def ensure(filename, content):
     overwrite = not os.path.exists(filename)
     if not overwrite:
         overwrite = open(filename, "r").read() != content
     if overwrite:
         open(filename, "w").write(content)
-        sys.stderr.write(objname + " (OVERWRITTEN)\n")
+        sys.stderr.write(filename + " (OVERWRITTEN)\n")
     else:
-        sys.stderr.write(objname + "\n")
+        sys.stderr.write(filename + "\n")
 
 
 def handle_module(modulename, module):
@@ -55,8 +56,11 @@ def handle_module(modulename, module):
 """.format(
         modulename, "=" * len(modulename)
     )
-    ensure(modulename, modulename + ".rst", content)
-    toctree.write("    " + modulename + "\n")
+    ensure(modulename + ".rst", content)
+    if toctree2 is None:
+        toctree.write("    " + modulename + "\n")
+    else:
+        toctree2.write("    " + modulename + "\n")
 
     if modulename != "uproot" and all(
         not x.startswith("_") for x in modulename.split(".")
@@ -93,8 +97,10 @@ def handle_class(classname, cls):
     import uproot
     if hasattr(uproot, cls.__name__):
         title = "uproot." + cls.__name__
+        upfront = True
     else:
         title = classname
+        upfront = False
 
     for index, basecls in enumerate(mro):
         if basecls.__module__.startswith("uproot."):
@@ -156,36 +162,47 @@ def handle_class(classname, cls):
         "\n".join([text for index, line, text in sorted(methods.values())]),
     )
 
-    ensure(classname, classname + ".rst", content)
-    toctree.write("    " + classname + "\n")
+    ensure(classname + ".rst", content)
+    if upfront or toctree2 is None:
+        toctree.write("    " + classname + "\n")
+        toctree2.write("    " + classname + " <" + classname + ">\n")
+    else:
+        toctree2.write("    " + classname + "\n")
 
 
 def handle_function(functionname, cls):
     import uproot
     if hasattr(uproot, cls.__name__):
         title = "uproot." + cls.__name__
+        upfront = True
     else:
         title = functionname
+        upfront = False
 
     content = """{0}
 {1}
 
 .. autofunction:: {2}
 """.format(title, "=" * len(title), functionname)
-    ensure(functionname, functionname + ".rst", content)
-    toctree.write("    " + functionname + "\n")
+    ensure(functionname + ".rst", content)
+    if upfront or toctree2 is None:
+        toctree.write("    " + functionname + "\n")
+        toctree2.write("    " + functionname + " <" + functionname + ">\n")
+    else:
+        toctree2.write("    " + functionname + "\n")
 
 
 for modulename in order:
     module = importlib.import_module(modulename)
 
     if modulename != "uproot":
-        toctree = open(modulename + ".toctree", "w")
-        toctree.write(
+        toctree2 = open(modulename + ".toctree", "w")
+        toctree2.write(
             """.. toctree::
+    :caption: {0}
     :hidden:
 
-"""
+""".format(modulename.replace("uproot.", ""))
         )
 
     handle_module(modulename, module)
@@ -198,3 +215,6 @@ for modulename in order:
         ):
             submodule = importlib.import_module(submodulename)
             handle_module(submodulename, submodule)
+
+toctree.close()
+toctree2.close()

@@ -7,6 +7,10 @@
 
 .. include:: uproot.toctree
 
+.. toctree::
+    :caption: Modules
+    :hidden:
+
 .. include:: uproot.reading.toctree
 
 .. include:: uproot.behaviors.toctree
@@ -34,9 +38,6 @@
 .. include:: uproot.const.toctree
 
 .. include:: uproot.exceptions.toctree
-
-.. toctree::
-    :hidden:
 
 .. |br| raw:: html
 
