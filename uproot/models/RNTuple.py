@@ -16,7 +16,7 @@ _rntuple_format1 = struct.Struct(">IIQIIQIIQ")
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
+    A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
 
     def read_members(self, chunk, cursor, context, file):

@@ -3,9 +3,9 @@
 """
 This module defines models, which are classes of objects read from ROOT files.
 
-Models must be subclasses of :py:class:`~uproot.model.Model`, and models for a
+Models must be subclasses of :doc:`uproot.model.Model`, and models for a
 specific version of a ROOT class must be subclasses of
-:py:class:`~uproot.model.VersionedModel`.
+:doc:`uproot.model.VersionedModel`.
 
 If a C++ class has no associated model, a new model class will be generated
 from the ROOT file's ``TStreamerInfo``.
@@ -29,13 +29,13 @@ To add a versioned model for a ROOT class:
    For example version ``2`` of ``"ROOT::RThing"`` becomes
    ``"Model_ROOT_3a3a_RThing_v2"``.
 2. Define a class with that name.
-3. Explicitly add it to a :py:class:`~uproot.model.DispatchByVersion` for that
-   class. You might also need to add a :py:class:`~uproot.model.DispatchByVersion`
+3. Explicitly add it to a :doc:`uproot.model.DispatchByVersion` for that
+   class. You might also need to add a :doc:`uproot.model.DispatchByVersion`
    to the ``uproot.classes``.
 
 A versioned model is only instantiated for a ROOT object with a given class
-name and version. Uproot has common versions of :py:class:`~uproot.models.TBranch`
-and :py:class:`~uproot.models.TTree` predefined so that it can usually avoid reading
+name and version. Uproot has common versions of :doc:`uproot.models.TBranch`
+and :doc:`uproot.models.TTree` predefined so that it can usually avoid reading
 a ROOT file's ``TStreamerInfo``.
 
 High-level methods and properties should not be defined on the model class;

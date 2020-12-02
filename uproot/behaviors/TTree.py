@@ -14,8 +14,8 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     """
     Behaviors for a ``TTree``, which mostly consist of array-reading methods.
 
-    Since a :py:class:`~uproot.behavior.TTree.TTree` is a
-    :py:class:`~uproot.behavior.TBranch.HasBranches`, it is also a Python
+    Since a :doc:`uproot.behaviors.TTree.TTree` is a
+    :doc:`uproot.behaviors.TBranch.HasBranches`, it is also a Python
     ``Mapping``, which uses square bracket syntax to extract subbranches:
 
     .. code-block:: python
@@ -107,7 +107,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     @property
     def chunk(self):
         """
-        The :py:class:`~uproot.source.chunk.Chunk` from which this ``TTree`` was
+        The :doc:`uproot.source.chunk.Chunk` from which this ``TTree`` was
         read (as a strong, not weak, reference).
 
         The reason the chunk is retained is to read
@@ -117,9 +117,9 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         ``TBaskets`` is deferred until they are accessed).
 
         Holding a strong reference to a chunk holds a strong reference to
-        its :py:class:`~uproot.source.chunk.Source`, preventing open file handles
+        its :doc:`uproot.source.chunk.Source`, preventing open file handles
         from going out of scope, but so does the
-        :py:class:`~uproot.reading.ReadOnlyFile` that ``TTree`` needs to read data
+        :doc:`uproot.reading.ReadOnlyFile` that ``TTree`` needs to read data
         on demand.
         """
         return self._chunk

@@ -1,10 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-This module defines a :py:class:`~uproot.language.Language` for expressions passed to
-:py:meth:`~uproot.behavior.TBranch.HasBranches.arrays` (and similar).
+This module defines a :doc:`uproot.language.Language` for expressions passed to
+:py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` (and similar).
 
-The :py:class:`~uproot.language.python.PythonLanguage` evaluates Python code. It is
+The :doc:`uproot.language.python.PythonLanguage` evaluates Python code. It is
 the default language.
 """
 
@@ -247,9 +247,9 @@ class PythonLanguage(uproot.language.Language):
             needed for branches whose names are not valid Python symbols.
             Default is "get".
 
-    PythonLanguage is the default :py:class:`~uproot.language.Language` for
+    PythonLanguage is the default :doc:`uproot.language.Language` for
     interpreting expressions passed to
-    :py:meth:`~uproot.behavior.TBranch.HasBranches.arrays` (and similar). This
+    :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` (and similar). This
     interpretation assumes that the expressions have Python syntax and
     semantics, with math functions loaded into the namespace.
 
@@ -395,7 +395,7 @@ class PythonLanguage(uproot.language.Language):
     ):
         """
         Args:
-            hasbranches (:py:class:`~uproot.behavior.TBranch.HasBranches`): The
+            hasbranches (:doc:`uproot.behaviors.TBranch.HasBranches`): The
                 ``TTree`` or ``TBranch`` that is requesting a computation.
             arrays (dict of arrays): Inputs to the computation.
             expression_context (list of (str, dict) tuples): Expression strings

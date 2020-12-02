@@ -2,7 +2,7 @@
 
 """
 This module defines Uproot-specific exceptions, such as
-:py:class:`~uproot.exceptions.KeyInFileError`.
+:doc:`uproot.exceptions.KeyInFileError`.
 """
 
 from __future__ import absolute_import
@@ -13,7 +13,7 @@ import uproot
 class KeyInFileError(KeyError):
     """
     Exception raised by attempts to find ROOT objects in ``TDirectories``
-    or ``TBranches`` in :py:class:`~uproot.behaviors.TBranch.HasBranches`, which
+    or ``TBranches`` in :doc:`uproot.behaviors.TBranch.HasBranches`, which
     both have a Python ``Mapping`` interface (square bracket syntax to extract
     items).
 

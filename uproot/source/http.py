@@ -3,13 +3,13 @@
 """
 This module defines a physical layer for remote files, accessed via HTTP(S).
 
-Defines a :py:class:`~uproot.source.http.HTTPResource` (stateless) and two sources:
-:py:class:`~uproot.source.http.MultithreadedHTTPSource` and
-:py:class:`~uproot.source.http.HTTPSource`. The multi-threaded source only requires
+Defines a :doc:`uproot.source.http.HTTPResource` (stateless) and two sources:
+:doc:`uproot.source.http.MultithreadedHTTPSource` and
+:doc:`uproot.source.http.HTTPSource`. The multi-threaded source only requires
 the server to support byte range requests (code 206), but the general source
 requires the server to support multi-part byte range requests. If the server
-does not support multi-part GET, :py:class:`~uproot.source.http.HTTPSource`
-automatically falls back to :py:class:`~uproot.source.http.MultithreadedHTTPSource`.
+does not support multi-part GET, :doc:`uproot.source.http.HTTPSource`
+automatically falls back to :doc:`uproot.source.http.MultithreadedHTTPSource`.
 
 Despite the name, both sources support secure HTTPS (selected by URL scheme).
 """
@@ -145,7 +145,7 @@ class HTTPResource(uproot.source.chunk.Resource):
         file_path (str): A URL of the file to open.
         timeout (None or float): An optional timeout in seconds.
 
-    A :py:class:`~uproot.source.chunk.Resource` for HTTP(S) connections.
+    A :doc:`uproot.source.chunk.Resource` for HTTP(S) connections.
 
     For simplicity, this resource does not manage a live
     ``http.client.HTTPConnection`` or ``http.client.HTTPSConnection``, though
@@ -228,13 +228,13 @@ for URL {1}""".format(
     def future(source, start, stop):
         """
         Args:
-            source (:py:class:`~uproot.source.chunk.HTTPSource` or :py:class:`~uproot.source.chunk.MultithreadedHTTPSource`): The
+            source (:doc:`uproot.source.http.HTTPSource` or :doc:`uproot.source.http.MultithreadedHTTPSource`): The
                 data source.
             start (int): Seek position of the first byte to include.
             stop (int): Seek position of the first byte to exclude
                 (one greater than the last byte to include).
 
-        Returns a :py:class:`~uproot.source.futures.ResourceFuture` that calls
+        Returns a :doc:`uproot.source.futures.ResourceFuture` that calls
         :py:meth:`~uproot.source.file.HTTPResource.get` with ``start`` and ``stop``.
         """
         connection = make_connection(source.parsed_url, source.timeout)
@@ -253,25 +253,25 @@ for URL {1}""".format(
     def multifuture(source, ranges, futures, results):
         u"""
         Args:
-            source (:py:class:`~uproot.source.chunk.HTTPSource`): The data source.
+            source (:doc:`uproot.source.http.HTTPSource`): The data source.
             ranges (list of (int, int) 2-tuples): Intervals to fetch
                 as (start, stop) pairs in a single request, if possible.
-            futures (dict of (int, int) \u2192 :py:class:`~uproot.source.futures.ResourceFuture`): Mapping
+            futures (dict of (int, int) \u2192 :doc:`uproot.source.futures.ResourceFuture`): Mapping
                 from (start, stop) to a future that is awaiting its result.
             results (dict of (int, int) \u2192 None or ``numpy.ndarray`` of ``numpy.uint8``): Mapping
                 from (start, stop) to None or results.
 
-        Returns a :py:class:`~uproot.source.futures.ResourceFuture` that attempts
+        Returns a :doc:`uproot.source.futures.ResourceFuture` that attempts
         to perform an HTTP(S) multipart GET, filling ``results`` to satisfy
-        the individual :py:class:`~uproot.source.chunk.Chunk`'s ``futures`` with
+        the individual :doc:`uproot.source.chunk.Chunk`'s ``futures`` with
         its multipart response.
 
         If the server does not support multipart GET, that same future
-        sets :py:attr:`~uproot.source.chunk.HTTPSource.fallback` and retries the
+        sets :py:attr:`~uproot.source.http.HTTPSource.fallback` and retries the
         request without multipart, using a
-        :py:class:`~uproot.source.http.MultithreadedHTTPSource` to fill the same
+        :doc:`uproot.source.http.MultithreadedHTTPSource` to fill the same
         ``results`` and ``futures``. Subsequent attempts would immediately
-        use the :py:attr:`~uproot.source.chunk.HTTPSource.fallback`.
+        use the :py:attr:`~uproot.source.http.HTTPSource.fallback`.
         """
         connection = [make_connection(source.parsed_url, source.timeout)]
 
@@ -443,7 +443,7 @@ for URL {3}""".format(
     @staticmethod
     def partfuture(results, start, stop):
         """
-        Returns a :py:class:`~uproot.source.futures.ResourceFuture` to simply select
+        Returns a :doc:`uproot.source.futures.ResourceFuture` to simply select
         the ``(start, stop)`` item from the ``results`` dict.
 
         In :py:meth:`~uproot.source.http.HTTPSource.chunks`, each chunk has a
@@ -496,15 +496,15 @@ class HTTPSource(uproot.source.chunk.Source):
         file_path (str): A URL of the file to open.
         options: Must include ``"num_fallback_workers"`` and ``"timeout"``.
 
-    A :py:class:`~uproot.source.chunk.Source` that first attempts an HTTP(S)
+    A :doc:`uproot.source.chunk.Source` that first attempts an HTTP(S)
     multipart GET, but if the server doesn't support it, it falls back to many
     HTTP(S) connections in threads
-    (:py:class:`~uproot.source.http.MultithreadedHTTPSource`).
+    (:doc:`uproot.source.http.MultithreadedHTTPSource`).
 
     Since the multipart GET is a single request and response, it needs only one
     thread, but it is a background thread (a single
-    :py:class:`~uproot.source.futures.ResourceWorker` in a
-    :py:class:`~uproot.source.futures.ResourceThreadPoolExecutor`).
+    :doc:`uproot.source.futures.ResourceWorker` in a
+    :doc:`uproot.source.futures.ResourceThreadPoolExecutor`).
     """
 
     ResourceClass = HTTPResource
@@ -578,7 +578,7 @@ class HTTPSource(uproot.source.chunk.Source):
     @property
     def executor(self):
         """
-        The :py:class:`~uproot.source.futures.ResourceThreadPoolExecutor` that
+        The :doc:`uproot.source.futures.ResourceThreadPoolExecutor` that
         manages this source's single background thread.
         """
         return self._executor
@@ -621,7 +621,7 @@ class HTTPSource(uproot.source.chunk.Source):
         If None, the source has not encountered an unsuccessful multipart GET
         and no fallback is needed yet.
 
-        Otherwise, this is a :py:class:`~uproot.source.http.MultithreadedHTTPSource`
+        Otherwise, this is a :doc:`uproot.source.http.MultithreadedHTTPSource`
         to which all requests are forwarded.
         """
         return self._fallback
@@ -639,8 +639,8 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         file_path (str): A URL of the file to open.
         options: Must include ``"num_workers"`` and ``"timeout"``.
 
-    A :py:class:`~uproot.source.chunk.MultithreadedSource` that manages many
-    :py:class:`~uproot.source.http.HTTPResource` objects.
+    A :doc:`uproot.source.chunk.MultithreadedSource` that manages many
+    :doc:`uproot.source.http.HTTPResource` objects.
     """
 
     ResourceClass = HTTPResource

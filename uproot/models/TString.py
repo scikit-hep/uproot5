@@ -11,7 +11,7 @@ import uproot
 
 class Model_TString(uproot.model.Model, str):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TString``.
+    A versionless :doc:`uproot.model.Model` for ``TString``.
 
     This is also a Python ``str`` (string).
     """

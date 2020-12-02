@@ -25,11 +25,11 @@ though they would usually be accessed as ``uproot.iterate``,
 
 The most useful classes are
 
-* :py:class:`~uproot.behaviors.TBranch.HasBranches` (``TTree`` or ``TBranch``)
-* :py:class:`~uproot.behaviors.TBranch.TBranch`
-* :py:class:`~uproot.behaviors.TH1`
-* :py:class:`~uproot.behaviors.TH2`
-* :py:class:`~uproot.behaviors.TProfile`
+* :doc:`uproot.behaviors.TBranch.HasBranches` (``TTree`` or ``TBranch``)
+* :doc:`uproot.behaviors.TBranch.TBranch`
+* :doc:`uproot.behaviors.TH1`
+* :doc:`uproot.behaviors.TH2`
+* :doc:`uproot.behaviors.TProfile`
 
 though they would usually be accessed through instances that have been read
 from files.

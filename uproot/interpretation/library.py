@@ -4,26 +4,26 @@
 This module represents external libraries that define "array-like" types so that users can
 choose an output format.
 
-The :py:class:`~uproot.interpretation.library.NumPy` library always works (NumPy is
+The :doc:`uproot.interpretation.library.NumPy` library always works (NumPy is
 Uproot's only strict dependency) and outputs NumPy arrays for single arrays
 and dict/tuple/list as groups. Objects and jagged arrays are not efficiently
 represented, but it provides a zero-dependency least common denominator.
 
-The :py:class:`~uproot.interpretation.library.Awkward` library is the default and
+The :doc:`uproot.interpretation.library.Awkward` library is the default and
 depends on Awkward Array (``awkward``). It is usually the best option, as it
 was designed for Uproot.
 
-The :py:class:`~uproot.interpretation.library.Pandas` library outputs
+The :doc:`uproot.interpretation.library.Pandas` library outputs
 ``pandas.Series`` for single arrays and ``pandas.DataFrame`` as groups. Objects
 are not efficiently represented, but some jagged arrays are encoded as
 ``pandas.MultiIndex``.
 
-The :py:class:`~uproot.interpretation.library.CuPy` library outputs arrays on a
+The :doc:`uproot.interpretation.library.CuPy` library outputs arrays on a
 GPU, but the types that it supports are limited. Note that Awkward Arrays can
 be GPU-resident as well.
 
-Lazy arrays (:py:func:`~uproot.behavior.TBranch.lazy`) can only use the
-:py:class:`~uproot.interpretation.library.Awkward` library.
+Lazy arrays (:py:func:`~uproot.behaviors.TBranch.lazy`) can only use the
+:doc:`uproot.interpretation.library.Awkward` library.
 """
 
 from __future__ import absolute_import
@@ -50,9 +50,9 @@ class Library(object):
 
     A library is used in the finalization and grouping stages of producing an
     array, converting it from internal representations like
-    :py:class:`~uproot.interpretation.jagged.JaggedArray`,
-    :py:class:`~uproot.interpretation.strings.StringArray`, and
-    :py:class:`~uproot.interpretation.objects.ObjectArray` into the library's
+    :doc:`uproot.interpretation.jagged.JaggedArray`,
+    :doc:`uproot.interpretation.strings.StringArray`, and
+    :doc:`uproot.interpretation.objects.ObjectArray` into the library's
     equivalents. It can also be required for concatenation and other late-stage
     operations on the output arrays.
 
@@ -96,9 +96,9 @@ class Library(object):
         Args:
             array (array): Internal, temporary, trimmed array. If this is a
                 NumPy array, it may be identical to the output array.
-            branch (:py:class:`~uproot.behavior.TBranch.TBranch`): The ``TBranch``
+            branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch``
                 that is represented by this array.
-            interpretation (:py:class:`~uproot.interpretation.Interpretation`): The
+            interpretation (:doc:`uproot.interpretation.Interpretation`): The
                 interpretation that produced the ``array``.
             entry_start (int): First entry that is included in the output.
             entry_stop (int): FIrst entry that is excluded (one greater than
@@ -174,7 +174,7 @@ class Library(object):
 
 class NumPy(Library):
     u"""
-    A :py:class:`~uproot.interpetation.library.Library` that presents ``TBranch``
+    A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
     data as NumPy arrays. The standard name for this library is ``"np"``.
 
     The single-``TBranch`` form for this library is a ``numpy.ndarray``. If
@@ -395,14 +395,14 @@ def _awkward_json_to_array(awkward, form, array):
 
 class Awkward(Library):
     u"""
-    A :py:class:`~uproot.interpetation.library.Library` that presents ``TBranch``
+    A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
     data as Awkward Arrays. The standard name for this library is ``"ak"``.
 
     This is the default for all functions that require a
-    :py:class:`~uproot.interpetation.library.Library`, though Uproot does not
+    :doc:`uproot.interpretation.library.Library`, though Uproot does not
     explicitly depend on Awkward Array. If you are confronted with a message
     that Awkward Array is not installed, either install ``awkward`` or
-    select another library (likely :py:class:`~uproot.interpretation.library.NumPy`).
+    select another library (likely :doc:`uproot.interpretation.library.NumPy`).
 
     Both the single-``TBranch`` and "group" forms for this library are
     ``ak.Array``, though groups are always arrays of records. Awkward Array
@@ -710,7 +710,7 @@ def _pandas_only_series(pandas, original_arrays, expression_context):
 
 class Pandas(Library):
     u"""
-    A :py:class:`~uproot.interpetation.library.Library` that presents ``TBranch``
+    A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
     data as Pandas Series and DataFrames. The standard name for this library is
     ``"pd"``.
 
@@ -1025,7 +1025,7 @@ class Pandas(Library):
 
 class CuPy(Library):
     u"""
-    A :py:class:`~uproot.interpetation.library.Library` that presents ``TBranch``
+    A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
     data as CuPy arrays on a GPU. The standard name for this library is ``"cp"``.
 
     The single-``TBranch`` form for this library is a ``cupy.ndarray``.

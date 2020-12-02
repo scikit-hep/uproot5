@@ -4,11 +4,11 @@
 This module defines procedures for interpreting data in ``TTrees`` as arrays.
 
 All interpretations must be subclasses of
-:py:class:`~uproot.interpretation.Interpretation`.
+:doc:`uproot.interpretation.Interpretation`.
 
 See :py:func:`~uproot.interpretation.identify.interpretation_of` for heuristics
 that determine the default interpretation of a
-:py:class:`~uproot.behavior.TBranch.TBranch`.
+:doc:`uproot.behaviors.TBranch.TBranch`.
 """
 
 from __future__ import absolute_import
@@ -29,7 +29,7 @@ class Interpretation(object):
     3. Trimming the combined array to the exact entry range requested.
        (``TBasket`` boundaries might not align with the requested entry range.)
     4. Passing the combined, trimmed temporary array to a selected
-       :py:class:`~uproot.interpretation.library.Library` for finalization
+       :doc:`uproot.interpretation.library.Library` for finalization
        and possibly grouping.
     """
 
@@ -61,8 +61,8 @@ class Interpretation(object):
     def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
         """
         Args:
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): File to use to generate
-                :py:class:`~uproot.model.Model` classes from its
+            file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot.model.Model` classes from its
                 :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             index_format (str): Format to use for indexes of the
@@ -90,13 +90,13 @@ class Interpretation(object):
                 the ``TBasket`` starts and stops. The header is not included
                 (i.e. the first offset is ``0``), and the length of this array
                 is one greater than the number of entries in the ``TBasket``.
-            basket (:py:class:`~uproot.models.TBasket.Model_TBasket`): The ``TBasket`` object.
+            basket (:doc:`uproot.models.TBasket.Model_TBasket`): The ``TBasket`` object.
             context (dict): Auxiliary data used in deserialization.
             cursor_offset (int): Correction to the integer keys used in
                 :py:attr:`~uproot.source.cursor.Cursor.refs` for objects
                 deserialized by reference
                 (:py:func:`~uproot.deserialization.read_object_any`).
-            library (:py:class:`~uproot.interpretation.library.Library`): The
+            library (:doc:`uproot.interpretation.library.Library`): The
                 requested library for output.
 
         Performs the first step of interpretation, from uncompressed ``TBasket``
@@ -120,9 +120,9 @@ class Interpretation(object):
             entry_offsets (list of int): The
                 :py:attr:`~uproot.behaviors.TBranch.TBranch.entry_offsets` for this
                 ``TBranch``.
-            library (:py:class:`~uproot.interpretation.library.Library`): The
+            library (:doc:`uproot.interpretation.library.Library`): The
                 requested library for output.
-            branch (:py:class:`~uproot.behaviors.TBranch.TBranch`): The ``TBranch``
+            branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch``
                 that is being interpreted.
 
         Performs the last steps of interpretation, from a collection of

@@ -1,23 +1,22 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-This module defines an :py:class:`~uproot.interpretation.Interpretation` and
+This module defines an :doc:`uproot.interpretation.Interpretation` and
 temporary array for object data (Python objects or Awkward Array data structures).
 
-The :py:class:`~uproot.interpretation.objects.AsObjects` describes fully generic
-objects using a :py:class:`~uproot.interpretation.model.Model` (or a
-:py:class:`~uproot.interpretation.containers.AsContainer`). These objects require a
-non-vectorized loop to deserialize.
+The :doc:`uproot.interpretation.objects.AsObjects` describes fully generic
+objects using a :doc:`uproot.model.Model` (or a :doc:`uproot.containers.AsContainer`).
+These objects require a non-vectorized loop to deserialize.
 
-The :py:class:`~uproot.interpretation.objects.AsStridedObjects` describes fixed-width
+The :doc:`uproot.interpretation.objects.AsStridedObjects` describes fixed-width
 objects that can be described as a ``numpy.dtype``. These objects can be
 interpreted as a single, vectorized cast, and are therefore much faster to
 deserialize.
 
-The :py:class:`~uproot.interpretation.object.ObjectArray` and
-:py:class:`~uproot.interpretation.object.StridedObjectArray` classes only hold data
+The :doc:`uproot.interpretation.objects.ObjectArray` and
+:doc:`uproot.interpretation.objects.StridedObjectArray` classes only hold data
 while an array is being built from ``TBaskets``. Its final form is determined
-by the :py:class:`~uproot.interpretation.library.Library`.
+by the :doc:`uproot.interpretation.library.Library`.
 """
 
 from __future__ import absolute_import
@@ -30,7 +29,7 @@ import uproot
 def awkward_can_optimize(interpretation, form):
     """
     If True, the Awkward Array library can convert data of a given
-    :py:class:`~uproot.interpretation.Interpretation` and ``ak.forms.Form`` into
+    :doc:`uproot.interpretation.Interpretation` and ``ak.forms.Form`` into
     arrays without resorting to ``ak.from_iter`` (i.e. rapidly).
 
     If ``awkward._connect._uproot`` cannot be imported, this function always
@@ -47,9 +46,9 @@ def awkward_can_optimize(interpretation, form):
 class AsObjects(uproot.interpretation.Interpretation):
     """
     Args:
-        model (:py:class:`~uproot.model.Model` or :py:class:`~uproot.containers.AsContainer`): The
+        model (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`): The
             full Uproot deserialization model for the data.
-        branch (None or :py:class:`~uproot.behavior.TBranch.TBranch`): The ``TBranch``
+        branch (None or :doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch``
             from which the data are drawn.
 
     Integerpretation for arrays of any kind of data that might reside in a
@@ -69,7 +68,7 @@ class AsObjects(uproot.interpretation.Interpretation):
     def model(self):
         """
         The full Uproot deserialization model for the data
-        (:py:class:`~uproot.model.Model` or :py:class:`~uproot.containers.AsContainer`).
+        (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`).
         """
         return self._model
 
@@ -235,7 +234,7 @@ class AsObjects(uproot.interpretation.Interpretation):
 
     def simplify(self):
         """
-        Attempts to replace this :py:class:`~uproot.interpretation.objects.AsObjects`
+        Attempts to replace this :doc:`uproot.interpretation.objects.AsObjects`
         with an interpretation that can be executed more quickly.
 
         If there isn't a simpler interpretation, then this method returns
@@ -341,30 +340,30 @@ def _strided_awkward_form(
 class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     """
     Args:
-        model (:py:class:`~uproot.model.Model` or :py:class:`~uproot.containers.AsContainer`): The
+        model (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`): The
             full Uproot deserialization model for the data.
-        members (list of (str, :py:class:`~uproot.interpretation.Interpretation`) tuples): The
+        members (list of (str, :doc:`uproot.interpretation.Interpretation`) tuples): The
             name and fixed-width interpretation for each member of the objects.
-        original (None, :py:class:`~uproot.model.Model`, or :py:class:`~uproot.containers.AsContainer`): If
+        original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.AsContainer`): If
             this interpretation is derived from
             :py:meth:`~uproot.interpretation.objects.AsObjects.simplify`, this is a
             reminder of the original
             :py:attr:`~uproot.interpretation.objects.AsObjects.model`.
 
     Interpretation for an array (possibly
-    :py:class:`~uproot.interpretation.jagged.AsJagged`) of fixed-size objects. Since
+    :doc:`uproot.interpretation.jagged.AsJagged`) of fixed-size objects. Since
     the objects have a fixed number of fields with a fixed number of bytes each,
     the whole array (or :py:attr:`~uproot.interpretation.jagged.AsJagged.content`)
     can be interpreted in one vectorized array-cast. Therefore, this
-    interpretation is faster than :py:class:`~uproot.interpretation.objects.AsObjects`
+    interpretation is faster than :doc:`uproot.interpretation.objects.AsObjects`
     *when it is possible*.
 
-    Unlike :py:class:`~uproot.interpretation.numerical.AsDtype` with a
+    Unlike :doc:`uproot.interpretation.numerical.AsDtype` with a
     `structured array <https://numpy.org/doc/stable/user/basics.rec.html>`__,
     the objects in the final array have the methods required by its ``model``.
-    If the ``library`` is :py:class:`~uproot.interpretation.library.NumPy`, these
+    If the ``library`` is :doc:`uproot.interpretation.library.NumPy`, these
     are instantiated as Python objects (slow); if
-    :py:class:`~uproot.interpretation.library.Awkward`, they are behaviors passed to
+    :doc:`uproot.interpretation.library.Awkward`, they are behaviors passed to
     the Awkward Array's local
     `behavior <https://awkward-array.readthedocs.io/en/latest/ak.behavior.html>`__.
     """
@@ -379,7 +378,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def model(self):
         """
         The full Uproot deserialization model for the data
-        (:py:class:`~uproot.model.Model` or :py:class:`~uproot.containers.AsContainer`).
+        (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`).
         """
         return self._model
 
@@ -387,7 +386,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def members(self):
         """
         The name (str) and fixed-width
-        :py:class:`~uproot.interpretation.Interpretation` for each member of the
+        :doc:`uproot.interpretation.Interpretation` for each member of the
         objects as a list of 2-tuple pairs.
         """
         return self._members
@@ -397,8 +396,8 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         """
         If not None, this was the original
         :py:attr:`~uproot.interpretation.objects.AsObjects.model` from an
-        :py:class:`~uproot.interpretation.objects.AsObjects` that was simplified
-        into this :py:class:`~uproot.interpretation.objects.AsStridedObjects`.
+        :doc:`uproot.interpretation.objects.AsObjects` that was simplified
+        into this :doc:`uproot.interpretation.objects.AsStridedObjects`.
         """
         return self._original
 
@@ -458,9 +457,9 @@ class CannotBeAwkward(Exception):
 class ObjectArray(object):
     """
     Args:
-        model (:py:class:`~uproot.model.Model` or :py:class:`~uproot.containers.AsContainer`): The
+        model (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`): The
             full Uproot deserialization model for the data.
-        branch (:py:class:`~uproot.behavior.TBranch.TBranch`): The ``TBranch`` from
+        branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch`` from
             which the data are drawn.
         context (dict): Auxiliary data used in deserialization.
         byte_offsets (array of ``numpy.int32``): Index where each entry of the
@@ -475,7 +474,7 @@ class ObjectArray(object):
     Temporary array filled by
     :py:meth:`~uproot.interpretation.objects.AsObjects.basket_array`, which will be
     turned into a NumPy, Awkward, or other array, depending on the specified
-    :py:class:`~uproot.interpretation.library.Library`.
+    :doc:`uproot.interpretation.library.Library`.
     """
 
     def __init__(
@@ -503,7 +502,7 @@ class ObjectArray(object):
     def model(self):
         """
         The full Uproot deserialization model for the data
-        (:py:class:`~uproot.model.Model` or :py:class:`~uproot.containers.AsContainer`).
+        (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`).
         """
         return self._model
 
@@ -619,7 +618,7 @@ def _strided_object(path, interpretation, data):
 class StridedObjectArray(object):
     """
     Args:
-        interpretation (:py:class:`~uproot.interpretation.objects.AsStridedObjects`): The
+        interpretation (:doc:`uproot.interpretation.objects.AsStridedObjects`): The
             interpretation that produced this array.
         array (array): Underlying array object, which may be NumPy or another
             temporary array.
@@ -627,7 +626,7 @@ class StridedObjectArray(object):
     Temporary array filled by
     :py:meth:`~uproot.interpretation.objects.AsStridedObjects.basket_array`, which
     will be turned into a NumPy, Awkward, or other array, depending on the
-    specified :py:class:`~uproot.interpretation.library.Library`.
+    specified :doc:`uproot.interpretation.library.Library`.
     """
 
     def __init__(self, interpretation, array):

@@ -3,8 +3,8 @@
 """
 This module defines a physical layer for file-like objects.
 
-Defines a :py:class:`~uproot.source.object.ObjectResource` (wrapped Python file-like
-object) and one source :py:class:`~uproot.source.object.ObjectSource` which always
+Defines a :doc:`uproot.source.object.ObjectResource` (wrapped Python file-like
+object) and one source :doc:`uproot.source.object.ObjectSource` which always
 has exactly one worker (we can't assume that the object is thread-safe).
 """
 
@@ -20,7 +20,7 @@ class ObjectResource(uproot.source.chunk.Resource):
     Args:
         obj: The file-like object to use.
 
-    A :py:class:`~uproot.source.chunk.Resource` for a file-like object.
+    A :doc:`uproot.source.chunk.Resource` for a file-like object.
 
     This object must have the following methods:
 
@@ -69,12 +69,12 @@ class ObjectResource(uproot.source.chunk.Resource):
     def future(source, start, stop):
         """
         Args:
-            source (:py:class:`~uproot.source.chunk.ObjectSource`): The data source.
+            source (:doc:`uproot.source.object.ObjectSource`): The data source.
             start (int): Seek position of the first byte to include.
             stop (int): Seek position of the first byte to exclude
                 (one greater than the last byte to include).
 
-        Returns a :py:class:`~uproot.source.futures.ResourceFuture` that calls
+        Returns a :doc:`uproot.source.futures.ResourceFuture` that calls
         :py:meth:`~uproot.source.object.ObjectResource.get` with ``start`` and
         ``stop``.
         """
@@ -90,8 +90,8 @@ class ObjectSource(uproot.source.chunk.MultithreadedSource):
     Args:
         obj: The file-like object to use.
 
-    A :py:class:`~uproot.source.chunk.Source` for a file-like object. (Although this
-    is a :py:class:`~uproot.source.chunk.MultithreadedSource`, it never has more or
+    A :doc:`uproot.source.chunk.Source` for a file-like object. (Although this
+    is a :doc:`uproot.source.chunk.MultithreadedSource`, it never has more or
     less than one thread.)
 
     This object must have the following methods:

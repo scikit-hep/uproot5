@@ -3,7 +3,7 @@
 """
 This module defines versioned models for ``TBranch`` and its subclasses.
 
-See :py:class:`~uproot.behaviors.TBranch` for definitions of ``TTree``-reading
+See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
 
@@ -24,7 +24,7 @@ _tbranch10_dtype3 = numpy.dtype(">i8")
 
 class Model_TBranch_v10(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 10.
+    A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 10.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -152,7 +152,7 @@ _tbranch11_dtype3 = numpy.dtype(">i8")
 
 class Model_TBranch_v11(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 11.
+    A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 11.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -282,7 +282,7 @@ _tbranch12_dtype3 = numpy.dtype(">i8")
 
 class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 12.
+    A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 12.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -413,7 +413,7 @@ _tbranch13_dtype3 = numpy.dtype(">i8")
 
 class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranch`` version 13.
+    A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 13.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -543,7 +543,7 @@ in file {1}""".format(
 
 class Model_TBranch(uproot.model.DispatchByVersion):
     """
-    A :py:class:`~uproot.model.DispatchByVersion` for ``TBranch``.
+    A :doc:`uproot.model.DispatchByVersion` for ``TBranch``.
     """
 
     known_versions = {
@@ -561,7 +561,7 @@ class Model_TBranchElement_v8(
     uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
 ):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranchElement`` version 8.
+    A :doc:`uproot.model.VersionedModel` for ``TBranchElement`` version 8.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -633,7 +633,7 @@ class Model_TBranchElement_v9(
     uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
 ):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranchElement`` version 9.
+    A :doc:`uproot.model.VersionedModel` for ``TBranchElement`` version 9.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -705,7 +705,7 @@ class Model_TBranchElement_v10(
     uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
 ):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranchElement`` version 10.
+    A :doc:`uproot.model.VersionedModel` for ``TBranchElement`` version 10.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -772,7 +772,7 @@ in file {1}""".format(
 
 class Model_TBranchElement(uproot.model.DispatchByVersion):
     """
-    A :py:class:`~uproot.model.DispatchByVersion` for ``TBranchElement``.
+    A :doc:`uproot.model.DispatchByVersion` for ``TBranchElement``.
     """
 
     known_versions = {
@@ -786,7 +786,7 @@ class Model_TBranchObject_v1(
     uproot.behaviors.TBranch.TBranch, uproot.model.VersionedModel
 ):
     """
-    A :py:class:`~uproot.model.VersionedModel` for ``TBranchObject`` version 1.
+    A :doc:`uproot.model.VersionedModel` for ``TBranchObject`` version 1.
     """
 
     def read_members(self, chunk, cursor, context, file):
@@ -819,7 +819,7 @@ in file {1}""".format(
 
 class Model_TBranchObject(uproot.model.DispatchByVersion):
     """
-    A :py:class:`~uproot.model.DispatchByVersion` for ``TBranchObject``.
+    A :doc:`uproot.model.DispatchByVersion` for ``TBranchObject``.
     """
 
     known_versions = {

@@ -71,13 +71,13 @@ class Histogram(object):
     @property
     def axes(self):
         """
-        A tuple of all :py:class:`~uproot.behaviors.TAxis.TAxis` objects.
+        A tuple of all :doc:`uproot.behaviors.TAxis.TAxis` objects.
         """
         raise NotImplementedError(repr(self))
 
     def axis(self, axis):
         """
-        Returns a specified :py:class:`~uproot.behaviors.TAxis.TAxis` object.
+        Returns a specified :doc:`uproot.behaviors.TAxis.TAxis` object.
 
         The ``axis`` can be specified as
 

@@ -13,7 +13,7 @@ import uproot
 
 class Model_TNamed(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TNamed``.
+    A versionless :doc:`uproot.model.Model` for ``TNamed``.
     """
 
     def read_members(self, chunk, cursor, context, file):

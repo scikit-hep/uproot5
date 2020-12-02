@@ -24,7 +24,7 @@ _tbasket_offsets_dtype = numpy.dtype(">i4")
 
 class Model_TBasket(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TBasket``.
+    A versionless :doc:`uproot.model.Model` for ``TBasket``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -74,8 +74,8 @@ class Model_TBasket(uproot.model.Model):
     def array(self, interpretation=None, library="ak"):
         """
         The ``TBasket`` data and entry offsets as an array, given an
-        :py:class:`~uproot.interpretation.Interpretation` (or the ``TBranch`` parent's
-        :py:class:`~uproot.behaviors.TBranch.TBranch.interpretation`) and a
+        :doc:`uproot.interpretation.Interpretation` (or the ``TBranch`` parent's
+        :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`) and a
         ``library``.
         """
         if interpretation is None:
@@ -106,7 +106,7 @@ class Model_TBasket(uproot.model.Model):
         """
         The number of items in each entry as a NumPy array, derived from the
         parent ``TBranch``'s
-        :py:attr:`~uproot.behavior.TBranch.TBranch.count_branch`. If there is
+        :py:attr:`~uproot.behaviors.TBranch.TBranch.count_branch`. If there is
         no such branch (e.g. the data are ``std::vector``), then this method
         returns None.
         """
