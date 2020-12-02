@@ -1,7 +1,7 @@
 # Sphinx documentation
 docs-sphinx/_build
-docs-sphinx/uproot.rst
-docs-sphinx/uproot.*.rst
+docs-sphinx/changelog.rst
+docs-sphinx/uproot.*rst
 docs-sphinx/*.toctree
 
 # Byte-compiled / optimized / DLL files

@@ -1,4 +1,9 @@
 .. toctree::
+    :hidden:
+
+    changelog
+
+.. toctree::
     :caption: Tutorials
     :hidden:
 
