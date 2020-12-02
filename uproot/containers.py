@@ -4,7 +4,7 @@
 This module interpretations and models for standard containers, such as
 ``std::vector`` and simple arrays.
 
-See :py:mod:`uproot.interpretation` and :py:mod:`uproot.model`.
+See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
 from __future__ import absolute_import
@@ -318,7 +318,7 @@ class AsFIXME(AsContainer):
     may be more easily fixed.
 
     :py:meth:`~uproot.containers.AsFIXME.read` raises a
-    :py:exc:`~uproot.deserialization.DeserializationError` asking for a bug-report.
+    :doc:`uproot.deserialization.DeserializationError` asking for a bug-report.
     """
 
     def __init__(self, message):
@@ -482,7 +482,7 @@ class AsPointer(AsContainer):
     an already-read object.
 
     The deserialization procedure calls
-    :py:func:`~uproot.deserialization.read_object_any`.
+    :doc:`uproot.deserialization.read_object_any`.
     """
 
     def __init__(self, pointee=None):

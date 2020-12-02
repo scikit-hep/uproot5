@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-This module defines the :py:class:`~uproot.source.cursor.Cursor`, which maintains
-a thread-local pointer into a :py:class:`~uproot.source.chunk.Chunk` and performs
+This module defines the :doc:`uproot.source.cursor.Cursor`, which maintains
+a thread-local pointer into a :doc:`uproot.source.chunk.Chunk` and performs
 the lowest level of interpretation (numbers, strings, raw arrays, etc.).
 """
 
@@ -31,14 +31,14 @@ class Cursor(object):
             in an uncompressed :doc:`uproot.source.chunk.Chunk`.
         origin (int): Zero-point for numerical keys in ``refs``.
         refs (None or dict): References to data already read in
-            :py:func:`~uproot.deserialization.read_object_any`.
+            :doc:`uproot.deserialization.read_object_any`.
 
     Represents a seek point in a ROOT file, which may be held for later
     reference or advanced while interpreting data from a
     :doc:`uproot.source.chunk.Chunk`.
 
     A cursor also holds references to previously read data that might be
-    requested by :py:func:`~uproot.deserialization.read_object_any`.
+    requested by :doc:`uproot.deserialization.read_object_any`.
     """
 
     def __init__(self, index, origin=0, refs=None):
@@ -85,7 +85,7 @@ class Cursor(object):
     def refs(self):
         """
         References to data already read in
-        :py:func:`~uproot.deserialization.read_object_any`.
+        :doc:`uproot.deserialization.read_object_any`.
         """
         if self._refs is None:
             self._refs = {}
@@ -157,7 +157,7 @@ class Cursor(object):
 
         Move the :py:attr:`~uproot.source.cursor.Cursor.index` to a seek position
         beyond the serialized data for an object that can be interpreted with
-        :py:func:`~uproot.deserialization.numbytes_version`.
+        :doc:`uproot.deserialization.numbytes_version`.
 
         Returns True if successful (cursor has moved), False otherwise (cursor
         has NOT moved).

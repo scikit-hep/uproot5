@@ -174,7 +174,7 @@ class Model_TStreamerInfo(uproot.model.Model):
     def name(self):
         """
         The name (``fName``) of this ``TStreamerInfo``, passed through
-        :py:func:`~uproot.model.classname_regularize`
+        :doc:`uproot.model.classname_regularize`
         """
         return uproot.model.classname_regularize(self.member("fName"))
 
@@ -609,7 +609,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
     def name(self):
         """
         The name (``fName``) of this ``TStreamerBase``, passed through
-        :py:func:`~uproot.model.classname_regularize`.
+        :doc:`uproot.model.classname_regularize`.
         """
         return uproot.model.classname_regularize(self.member("fName"))
 

@@ -469,7 +469,7 @@ class ObjectArray(object):
             :py:meth:`~uproot.interpretation.Interpretation.basket_array`.
         cursor_offset (int): Correction to the integer keys used in
             :py:attr:`~uproot.source.cursor.Cursor.refs` for objects deserialized
-            by reference (:py:func:`~uproot.deserialization.read_object_any`).
+            by reference (:doc:`uproot.deserialization.read_object_any`).
 
     Temporary array filled by
     :py:meth:`~uproot.interpretation.objects.AsObjects.basket_array`, which will be
@@ -540,7 +540,7 @@ class ObjectArray(object):
         """
         Correction to the integer keys used in
         :py:attr:`~uproot.source.cursor.Cursor.refs` for objects deserialized by
-        reference (:py:func:`~uproot.deserialization.read_object_any`).
+        reference (:doc:`uproot.deserialization.read_object_any`).
         """
         return self._cursor_offset
 

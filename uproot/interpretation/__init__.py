@@ -6,7 +6,7 @@ This module defines procedures for interpreting data in ``TTrees`` as arrays.
 All interpretations must be subclasses of
 :doc:`uproot.interpretation.Interpretation`.
 
-See :py:func:`~uproot.interpretation.identify.interpretation_of` for heuristics
+See :doc:`uproot.interpretation.identify.interpretation_of` for heuristics
 that determine the default interpretation of a
 :doc:`uproot.behaviors.TBranch.TBranch`.
 """
@@ -95,7 +95,7 @@ class Interpretation(object):
             cursor_offset (int): Correction to the integer keys used in
                 :py:attr:`~uproot.source.cursor.Cursor.refs` for objects
                 deserialized by reference
-                (:py:func:`~uproot.deserialization.read_object_any`).
+                (:doc:`uproot.deserialization.read_object_any`).
             library (:doc:`uproot.interpretation.library.Library`): The
                 requested library for output.
 

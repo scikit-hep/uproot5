@@ -3,7 +3,7 @@
 """
 This module defines versioned models for ``TTree``.
 
-See :py:mod:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
+See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
 

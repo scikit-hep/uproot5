@@ -13,7 +13,7 @@ Any threads used for parallel reading are launched and shut down with the file
 handle or handles themselves. Context management (Python's ``with`` statement)
 controls both I/O resources and threads.
 
-This module includes a :py:mod:`uproot.source.futures` implementation that
+This module includes a :doc:`uproot.source.futures` implementation that
 connects file handles with threads.
 """
 

@@ -13,7 +13,7 @@ from the ROOT file's ``TStreamerInfo``.
 To add a versionless model for a ROOT class:
 
 1. Translate the ROOT class name from C++ to Python with
-   :py:func:`~uproot.model.classname_encode`. For example,
+   :doc:`uproot.model.classname_encode`. For example,
    ``"ROOT::RThing"`` becomes ``"Model_ROOT_3a3a_RThing"``.
 2. Define a class with that name.
 3. Explicitly add it to ``uproot.classes``.
@@ -25,7 +25,7 @@ include version-dependent code.
 To add a versioned model for a ROOT class:
 
 1. Translate the ROOT class name from C++ to Python with
-   :py:func:`~uproot.model.classname_encode` with a specific ``version``.
+   :doc:`uproot.model.classname_encode` with a specific ``version``.
    For example version ``2`` of ``"ROOT::RThing"`` becomes
    ``"Model_ROOT_3a3a_RThing_v2"``.
 2. Define a class with that name.
@@ -41,7 +41,7 @@ a ROOT file's ``TStreamerInfo``.
 High-level methods and properties should not be defined on the model class;
 add them as behavior classes.
 
-See also :py:mod:`uproot.behaviors`.
+See also :doc:`uproot.behaviors`.
 """
 
 from __future__ import absolute_import

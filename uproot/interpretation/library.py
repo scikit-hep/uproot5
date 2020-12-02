@@ -22,7 +22,7 @@ The :doc:`uproot.interpretation.library.CuPy` library outputs arrays on a
 GPU, but the types that it supports are limited. Note that Awkward Arrays can
 be GPU-resident as well.
 
-Lazy arrays (:py:func:`~uproot.behaviors.TBranch.lazy`) can only use the
+Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
 
@@ -57,7 +57,7 @@ class Library(object):
     operations on the output arrays.
 
     Libraries are usually selected by a string name. These names are held in a
-    private registry in the :py:mod:`uproot.interpretation.library` module.
+    private registry in the :doc:`uproot.interpretation.library` module.
     """
 
     @property

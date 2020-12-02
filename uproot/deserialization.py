@@ -2,9 +2,9 @@
 
 """
 This module defines low-level routines for deserialization, including
-:py:func:`~uproot.deserialization.compile_class`, which creates class objects from
+:doc:`uproot.deserialization.compile_class`, which creates class objects from
 ``TStreamerInfo``-derived code, and
-:py:func:`~uproot.deserialization.read_object_any`, which manages references to
+:doc:`uproot.deserialization.read_object_any`, which manages references to
 previously read objects.
 """
 
@@ -49,8 +49,8 @@ def compile_class(file, classes, class_code, class_name):
         classes (dict): MutableMapping in which to add the finished class.
         class_code (str): Python code string defining the new class.
         class_name (str): Python (encoded) name of the new class. See
-            :py:func:`~uproot.model.classname_decode` and
-            :py:func:`~uproot.model.classname_encode`.
+            :doc:`uproot.model.classname_decode` and
+            :doc:`uproot.model.classname_encode`.
 
     Compile a new class from Python code and insert it in the dict of classes.
     """
@@ -160,7 +160,7 @@ def numbytes_check(
     Verifies that the number of bytes matches the change in position of the
     cursor (if ``num_bytes`` is not None).
 
-    Raises a :py:exc:`~uproot.deserialization.DeserializationError` on failure.
+    Raises a :doc:`uproot.deserialization.DeserializationError` on failure.
     """
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
@@ -317,12 +317,12 @@ class DeserializationError(Exception):
     If the first attempt in :py:meth:`~uproot.reading.ReadOnlyKey.get` failed with
     predefined :doc:`uproot.model.Model` classes, this exception is caught
     and retried with ``TStreamerInfo``-derived classes, so
-    :py:exc:`~uproot.deserialization.DeserializationError` sometimes appears in an
+    :doc:`uproot.deserialization.DeserializationError` sometimes appears in an
     exception chain two levels deep. (Some ROOT files do have classes that don't
     match the standard ``TStreamerInfo``; they may have been produced from
     private builds of ROOT between official releases.)
 
-    If a :py:exc:`~uproot.deserialization.DeserializationError` is caught, the byte
+    If a :doc:`uproot.deserialization.DeserializationError` is caught, the byte
     stream at the position where it failed can be inspected with
 
     * :py:meth:`~uproot.deserialization.DeserializationError.debug`

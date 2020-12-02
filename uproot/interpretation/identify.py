@@ -6,7 +6,7 @@ This module defines utilities for identifying the
 :doc:`uproot.behaviors.TBranch.TBranch`.
 
 This includes a tokenizer/parser for C++ types and heuristics encoded in
-:py:func:`~uproot.interpretation.identify.interpretation_of`. The latter will
+:doc:`uproot.interpretation.identify.interpretation_of`. The latter will
 need to be tweaked by new types, type combinations, and serialization methods
 observed in ROOT files (perhaps forever), unless a systematic study can be
 performed to exhaustively discover all cases.
@@ -287,7 +287,7 @@ def interpretation_of(branch, context, simplify=True):
     ``branch`` (within some ``context``).
 
     If no interpretation can be found, it raises
-    :py:exc:`~uproot.interpretation.identify.UnknownInterpretation`.
+    :doc:`uproot.interpretation.identify.UnknownInterpretation`.
     """
     if len(branch.branches) != 0:
         if branch.top_level and branch.has_member("fClassName"):
@@ -1097,7 +1097,7 @@ def parse_typename(
 class NotNumerical(Exception):
     """
     Exception used to stop searches for a numerical interpretation in
-    :py:func:`~uproot.interpretation.identify.interpretation_of` as soon as a
+    :doc:`uproot.interpretation.identify.interpretation_of` as soon as a
     non-conforming type is found.
     """
 
@@ -1106,11 +1106,11 @@ class NotNumerical(Exception):
 
 class UnknownInterpretation(Exception):
     """
-    Exception raised by :py:func:`~uproot.interpretation.identify.interpretation_of`
+    Exception raised by :doc:`uproot.interpretation.identify.interpretation_of`
     if an :doc:`uproot.interpretation.Interpretation` cannot be found.
 
     The :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation` property may have
-    :py:exc:`~uproot.interpretation.identify.UnknownInterpretation` as a value.
+    :doc:`uproot.interpretation.identify.UnknownInterpretation` as a value.
 
     Any attempts to use this class as a
     :doc:`uproot.interpretation.Interpretation` causes it to raise itself.

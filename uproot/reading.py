@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-This module defines the entry-point for opening a file, :py:func:`~uproot.reading.open`,
+This module defines the entry-point for opening a file, :doc:`uproot.reading.open`,
 and the classes that are too fundamental to be models:
 :doc:`uproot.reading.ReadOnlyFile` (``TFile``),
 :doc:`uproot.reading.ReadOnlyDirectory` (``TDirectory`` or ``TDirectoryFile``),
@@ -93,7 +93,7 @@ def open(
 
     Any object derived from a ROOT file is a context manager (works in Python's
     ``with`` statement) that closes the file when exiting the ``with`` block.
-    Therefore, the :py:func:`~uproot.reading.open` function can and usually should
+    Therefore, the :doc:`uproot.reading.open` function can and usually should
     be used in a ``with`` statement to clean up file handles and threads
     associated with open files:
 
@@ -106,13 +106,13 @@ def open(
 
     Other file entry points:
 
-    * :py:func:`~uproot.reading.open` (this function): opens one file to read any
+    * :doc:`uproot.reading.open` (this function): opens one file to read any
       of its objects.
-    * :py:func:`~uproot.behaviors.TBranch.iterate`: iterates through chunks of
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
       contiguous entries in ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.concatenate`: returns a single concatenated
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single concatenated
       array from ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.lazy`: returns a lazily read array from
+    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
     if isinstance(path, dict) and len(path) == 1:
@@ -462,7 +462,7 @@ class ReadOnlyFile(CommonFileMethods):
     """
     Args:
         file_path (str or ``pathlib.Path``): The filesystem path or remote URL
-            of the file to open. Unlike :py:func:`~uproot.reading.open`, it cannot
+            of the file to open. Unlike :doc:`uproot.reading.open`, it cannot
             be followed by a colon (``:``) and an object path within the ROOT
             file.
         object_cache (None, MutableMapping, or int): Cache of objects drawn
@@ -500,7 +500,7 @@ class ReadOnlyFile(CommonFileMethods):
     Note that a :doc:`uproot.reading.ReadOnlyFile` can't be directly used to
     extract objects. To read data, use the :doc:`uproot.reading.ReadOnlyDirectory`
     returned by :py:attr:`~uproot.reading.ReadOnlyFile.root_directory`. This is why
-    :py:func:`~uproot.reading.open` returns a :doc:`uproot.reading.ReadOnlyDirectory`
+    :doc:`uproot.reading.open` returns a :doc:`uproot.reading.ReadOnlyDirectory`
     and not a :doc:`uproot.reading.ReadOnlyFile`.
 
     Options (type; default):
@@ -2309,7 +2309,7 @@ class ReadOnlyKey(object):
         necessary.
 
         If the first attempt to deserialize the object fails with
-        :py:exc:`~uproot.deserialization.DeserializationError` and any of the
+        :doc:`uproot.deserialization.DeserializationError` and any of the
         models used in that attempt were predefined (not from
         :py:attr:`~uproot.reading.ReadOnlyFile.streamers`), this method will
         try again with the file's own

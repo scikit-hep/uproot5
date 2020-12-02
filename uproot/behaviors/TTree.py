@@ -2,7 +2,7 @@
 
 """
 This module defines the behaviors of ``TTree``, which is almost entirely inherited from
-functions in :py:mod:`uproot.behaviors.TBranch`.
+functions in :doc:`uproot.behaviors.TBranch`.
 """
 
 from __future__ import absolute_import
@@ -90,8 +90,8 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         The ``TTree``'s ``fAliases``, which are used as the ``aliases``
         argument to :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`,
         :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate`,
-        :py:func:`~uproot.behaviors.TBranch.iterate`, and
-        :py:func:`~uproot.behaviors.TBranch.concatenate` if one is not given.
+        :doc:`uproot.behaviors.TBranch.iterate`, and
+        :doc:`uproot.behaviors.TBranch.concatenate` if one is not given.
 
         The return type is always a dict of str \u2192 str, even if there
         are no aliases (an empty dict).

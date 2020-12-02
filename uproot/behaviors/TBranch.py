@@ -182,12 +182,12 @@ def iterate(
 
     Other file entry points:
 
-    * :py:func:`~uproot.reading.open`: opens one file to read any of its objects.
-    * :py:func:`~uproot.behaviors.TBranch.iterate` (this function): iterates through
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate` (this function): iterates through
       chunks of contiguous entries in ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.concatenate`: returns a single concatenated
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single concatenated
       array from ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.lazy`: returns a lazily read array from
+    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
     files = _regularize_files(files)
@@ -341,12 +341,12 @@ def concatenate(
 
     Other file entry points:
 
-    * :py:func:`~uproot.reading.open`: opens one file to read any of its objects.
-    * :py:func:`~uproot.behaviors.TBranch.iterate`: iterates through chunks of
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
       contiguous entries in ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.concatenate` (this function): returns a
+    * :doc:`uproot.behaviors.TBranch.concatenate` (this function): returns a
       single concatenated array from ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.lazy`: returns a lazily read array from
+    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
     files = _regularize_files(files)
@@ -467,7 +467,7 @@ def lazy(
     If the size of the fields used in a calculation do not fit into ``array_cache``,
     lazy arrays may be inefficient, repeatedly rereading data that could be read
     once by iterating through the calculation with
-    :py:func:`~uproot.behaviors.TBranch.iterate`.
+    :doc:`uproot.behaviors.TBranch.iterate`.
 
     Allowed types for the ``files`` parameter:
 
@@ -501,12 +501,12 @@ def lazy(
 
     Other file entry points:
 
-    * :py:func:`~uproot.reading.open`: opens one file to read any of its objects.
-    * :py:func:`~uproot.behaviors.TBranch.iterate`: iterates through chunks of
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
       contiguous entries in ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.concatenate`: returns a single
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
       concatenated array from ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.lazy` (this function): returns a lazily
+    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
       read array from ``TTrees``.
     """
     awkward = uproot.extras.awkward()
@@ -698,7 +698,7 @@ class Report(object):
 
     Information about the current iteration of
     :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` (the method) or
-    :py:func:`~uproot.behaviors.TBranch.iterate` (the function).
+    :doc:`uproot.behaviors.TBranch.iterate` (the function).
 
     Since the :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` method
     only iterates over data from one ``TTree``, its ``global_offset`` is always
@@ -1247,7 +1247,7 @@ class HasBranches(Mapping):
         See also :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays` to read
         everything in a single step, without iteration.
 
-        See also :py:func:`~uproot.behaviors.TBranch.iterate` to iterate over many
+        See also :doc:`uproot.behaviors.TBranch.iterate` to iterate over many
         files.
         """
         keys = _keys_deep(self)
@@ -1959,7 +1959,7 @@ class TBranch(HasBranches):
                 interpretation of the ``TBranch`` data as an array. If None, the
                 standard :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`
                 is used, which is derived from
-                :py:func:`~uproot.interpretation.identify.interpretation_of`.
+                :doc:`uproot.interpretation.identify.interpretation_of`.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
@@ -2157,10 +2157,10 @@ class TBranch(HasBranches):
         """
         The standard :doc:`uproot.interpretation.Interpretation` of this
         ``TBranch`` as an array, derived from
-        :py:func:`~uproot.interpretation.identify.interpretation_of`.
+        :doc:`uproot.interpretation.identify.interpretation_of`.
 
         If no interpretation could be found, the value of this property
-        would be a :py:exc:`~uproot.interpretation.identify.UnknownInterpretation`,
+        would be a :doc:`uproot.interpretation.identify.UnknownInterpretation`,
         which is a Python ``Exception``. Since the exception is *returned*,
         rather than *raised*, a branch lacking an interpretation is not a fatal
         error.
@@ -2184,7 +2184,7 @@ class TBranch(HasBranches):
         The C++ typename of the ``TBranch``, derived from its
         :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`. If the
         interpretation is
-        :py:exc:`~uproot.interpretation.identify.UnknownInterpretation`, the
+        :doc:`uproot.interpretation.identify.UnknownInterpretation`, the
         typename is ``"unknown"``.
         """
         if self.interpretation is None:
@@ -2378,8 +2378,8 @@ in file {3}""".format(
         ``aliases`` argument to
         :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`,
         :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate`,
-        :py:func:`~uproot.behaviors.TBranch.iterate`, and
-        :py:func:`~uproot.behaviors.TBranch.concatenate` if one is not given.
+        :doc:`uproot.behaviors.TBranch.iterate`, and
+        :doc:`uproot.behaviors.TBranch.concatenate` if one is not given.
 
         The return type is always a dict of str \u2192 str, even if there
         are no aliases (an empty dict).

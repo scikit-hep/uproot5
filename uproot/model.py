@@ -11,8 +11,8 @@ whose deserialization routines are specialized by ROOT class version.
 A :doc:`uproot.model.DispatchByVersion` subclass selects a versioned model
 after reading its version bytes.
 
-The :py:exc:`~uproot.model.UnknownClass` and
-:py:exc:`~uproot.model.UnknownClassVersion` are placeholders for data that could
+The :doc:`uproot.model.UnknownClass` and
+:doc:`uproot.model.UnknownClassVersion` are placeholders for data that could
 not be modeled, either because the class has no streamer or no streamer for its
 version.
 """
@@ -277,7 +277,7 @@ def class_named(classname, version=None, custom_classes=None):
 
 def has_class_named(classname, version=None, custom_classes=None):
     """
-    Returns True if :py:func:`~uproot.model.class_named` would find a class,
+    Returns True if :doc:`uproot.model.class_named` would find a class,
     False if it would raise an exception.
     """
     cls = maybe_custom_classes(custom_classes).get(classname)
@@ -317,7 +317,7 @@ class Model(object):
     with information about the file, while not holding the file open.
 
     Uproot recognizes *some* of ROOT's thousands of classes, by way of methods
-    and properties defined in :py:mod:`uproot.behaviors`. Examples include
+    and properties defined in :doc:`uproot.behaviors`. Examples include
 
     * :doc:`uproot.behaviors.TTree.TTree`
     * :doc:`uproot.behaviors.TH1.TH1`
@@ -376,9 +376,9 @@ class Model(object):
         """
         The C++ (decoded) classname of the modeled class.
 
-        See :py:func:`~uproot.model.classname_decode`,
-        :py:func:`~uproot.model.classname_encode`, and
-        :py:func:`~uproot.model.classname_version`.
+        See :doc:`uproot.model.classname_decode`,
+        :doc:`uproot.model.classname_encode`, and
+        :doc:`uproot.model.classname_version`.
         """
         return classname_decode(self.encoded_classname)[0]
 
@@ -388,9 +388,9 @@ class Model(object):
         The Python (encoded) classname of the modeled class. May or may not
         include version.
 
-        See :py:func:`~uproot.model.classname_decode`,
-        :py:func:`~uproot.model.classname_encode`, and
-        :py:func:`~uproot.model.classname_version`.
+        See :doc:`uproot.model.classname_decode`,
+        :doc:`uproot.model.classname_encode`, and
+        :doc:`uproot.model.classname_version`.
         """
         return type(self).__name__
 
@@ -399,9 +399,9 @@ class Model(object):
         """
         The version number of the modeled class (int) if any; None otherwise.
 
-        See :py:func:`~uproot.model.classname_decode`,
-        :py:func:`~uproot.model.classname_encode`, and
-        :py:func:`~uproot.model.classname_version`.
+        See :doc:`uproot.model.classname_decode`,
+        :doc:`uproot.model.classname_encode`, and
+        :doc:`uproot.model.classname_version`.
         """
         return classname_decode(self.encoded_classname)[1]
 
@@ -611,7 +611,7 @@ class Model(object):
 
         If this model is versioned (:doc:`uproot.model.VersionedModel`), the
         ``instance_version`` ought to be equal to the
-        :py:func:`~uproot.model.class_version`.
+        :py:attr:`~uproot.model.Model.class_version`.
 
         If this model is versionless, the ``instance_version`` contains new
         information about the actual version deserialized.
@@ -854,7 +854,7 @@ class Model(object):
 
         Reads nothing; checks the expected number of bytes against the actual
         movement of the ``cursor`` at the end of the object, possibly raising
-        a :py:exc:`~uproot.deserialization.DeserializationError` exception.
+        a :doc:`uproot.deserialization.DeserializationError` exception.
 
         If :py:attr:`~uproot.model.Model.num_bytes` is None, this method does
         nothing.
@@ -981,7 +981,7 @@ class DispatchByVersion(object):
 
     If a :doc:`uproot.model.VersionedModel` does not exist for the specified
     version, the ``file``'s ``TStreamerInfo`` is queried to attempt to create
-    one, and failing that, an :py:exc:`~uproot.model.UnknownClassVersion` is
+    one, and failing that, an :doc:`uproot.model.UnknownClassVersion` is
     created instead.
 
     Note that :doc:`uproot.model.DispatchByVersion` is not a subclass of
@@ -1060,11 +1060,11 @@ class DispatchByVersion(object):
         Uses ``file`` to create a new class for a specified ``version``.
 
         As a side-effect, this new class is added to ``cls.known_versions``
-        (for :py:func:`~uproot.model.class_of_version` and
-        :py:func:`~uproot.model.has_version`).
+        (for :py:meth:`~uproot.model.DispatchByVersion.class_of_version` and
+        :py:meth:`~uproot.model.DispatchByVersion.has_version`).
 
         If the ``file`` lacks a ``TStreamerInfo`` for the class, this function
-        returns a :py:exc:`~uproot.model.UnknownClassVersion` (adding it to
+        returns a :doc:`uproot.model.UnknownClassVersion` (adding it to
         ``uproo4.unknown_classes`` if it's not already there).
         """
         classname, _ = classname_decode(cls.__name__)
@@ -1204,7 +1204,7 @@ class UnknownClass(Model):
         """
         The ``chunk`` of data associated with the unknown class, referred to by
         a weak reference (to avoid memory leaks in
-        :py:exc:`~uproot.model.UnknownClass` objects). If the original ``chunk``
+        :doc:`uproot.model.UnknownClass` objects). If the original ``chunk``
         has been garbage-collected, this raises ``RuntimeError``.
 
         Primarily useful in the :py:meth:`~uproot.model.UnknownClass.debug` method.

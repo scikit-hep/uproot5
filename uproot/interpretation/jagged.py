@@ -6,7 +6,7 @@ temporary array for jagged (variable-length list) data.
 
 The :doc:`uproot.interpretation.jagged.JaggedArray` class only holds data while
 an array is being built from ``TBaskets``. Its final form is determined by
-:py:mod:`uproot.interpretation.library`.
+:doc:`uproot.interpretation.library`.
 """
 
 from __future__ import absolute_import
