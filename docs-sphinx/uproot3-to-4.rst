@@ -7,7 +7,7 @@ Thus, it was also a good time to introduce interface changes to Uproot itself—
 
 Fundamental changes were also required to streamline remote reading (HTTP and XRootD), so Uproot 4 was distributed as a separate project in parallel with Uproot 3 (like Awkward 1 and 0). For the latter half of 2020, adventurous users and downstream developers could install `uproot <https://pypi.org/project/uproot/>`__ as a separate project.
 
-.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/jpivarski/write-cheat-sheet/docs-img/diagrams/uproot-awkward-timeline.png
+.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/master/docs-img/diagrams/uproot-awkward-timeline.png
   :width: 100%
 
 On December 1, 2020, however, Awkward 0 and Uproot 3 were deprecated, moved to PyPI packages `awkward0 <https://pypi.org/project/awkward0/>`__ and `uproot3 <https://pypi.org/project/uproot3/>`__, while Awkward 1 and Uproot 4 became unqualified as `awkward <https://pypi.org/project/awkward/>`__ and `uproot <https://pypi.org/project/uproot/>`__.
@@ -331,7 +331,7 @@ Some examples of filtering branches:
     >>> events.arrays(filter_branch=lambda b: b.compression_ratio > 10)
     <Array [{Run: 148031, Q1: 1, ... Q2: -1}] type='2304 * {"Run": int32, "Q1": int3...'>
 
-In Uproot 3, you could specify whether the output is a dict of arrays, a tuple of arrays, or a Pandas DataFrame with the ``outputtype`` argument. In Uproot 4, these capabilities have been split into ``library`` and ``how``. The ``library`` determines which library will be used to represent the data that has been read.
+In Uproot 3, you could specify whether the output is a dict of arrays, a tuple of arrays, or a Pandas DataFrame with the ``outputtype`` argument. In Uproot 4, these capabilities have been split into ``library`` and ``how``. The ``library`` determines which library will be used to represent the data that has been read. (You can also globally set ``uproot.default_library`` to avoid having to pass it to every ``arrays`` call.)
 
 * ``library="np"`` to always return NumPy arrays (even ``dtype="O"`` if the type requires it);
 * ``library="ak"`` (default) to always return Awkward Arrays;

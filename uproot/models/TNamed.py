@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``TNamed``.
+This module defines a versionless model for ``TNamed``.
 """
 
 from __future__ import absolute_import
@@ -13,7 +13,7 @@ import uproot
 
 class Model_TNamed(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TNamed``.
+    A versionless :doc:`uproot.model.Model` for ``TNamed``.
     """
 
     def read_members(self, chunk, cursor, context, file):

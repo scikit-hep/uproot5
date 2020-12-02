@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behavior of ``TProfile3D``.
+This module defines the behavior of ``TProfile3D``.
 """
 
 from __future__ import absolute_import
@@ -44,7 +44,7 @@ class TProfile3D(uproot.behaviors.TProfile.Profile):
     def interpretation(self):
         return "mean"
 
-    def effective_counts(self, flow=False):
+    def counts(self, flow=False):
         fBinEntries = numpy.asarray(self.member("fBinEntries"))
         out = uproot.behaviors.TProfile._effective_counts_1d(
             fBinEntries.reshape(-1),

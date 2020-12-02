@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines versionless models of ``TRef`` and ``TRefArray``.
+This module defines versionless models of ``TRef`` and ``TRefArray``.
 """
 
 from __future__ import absolute_import
@@ -23,7 +23,7 @@ _tref_format1 = struct.Struct(">xxIxxxxxx")
 
 class Model_TRef(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TRef``.
+    A versionless :doc:`uproot.model.Model` for ``TRef``.
 
     This model does not deserialize all fields, only the reference number.
     """
@@ -91,7 +91,7 @@ _trefarray_dtype = numpy.dtype(">i4")
 
 class Model_TRefArray(uproot.model.Model, Sequence):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TRefArray``.
+    A versionless :doc:`uproot.model.Model` for ``TRefArray``.
 
     This also satisfies Python's abstract ``Sequence`` protocol.
     """
@@ -106,7 +106,7 @@ class Model_TRefArray(uproot.model.Model, Sequence):
     @property
     def nbytes(self):
         """
-        The number of bytes in :py:attr:`~uproot.models.TRef.TRefArray.refs`.
+        The number of bytes in :ref:`uproot.models.TRef.Model_TRefArray.refs`.
         """
         return self._data.nbytes
 

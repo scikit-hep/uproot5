@@ -1,9 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :py:class:`~uproot.interpretation.Interpretation` and temporary array
-for grouped data; usually applied to a ``TBranch`` that does not contain data
-but has subbranches that do.
+This module defines an :doc:`uproot.interpretation.Interpretation` and
+temporary array for grouped data; usually applied to a ``TBranch`` that does
+not contain data but has subbranches that do.
 """
 
 from __future__ import absolute_import
@@ -14,20 +14,20 @@ import uproot
 class AsGrouped(uproot.interpretation.Interpretation):
     u"""
     Args:
-        branch (:py:class:`~uproot.behavior.TBranch.TBranch`): The ``TBranch`` that
+        branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch`` that
             represents the group.
-        subbranches (dict of str \u2192 :py:class:`~uproot.behavior.TBranch.TBranch`): Names
+        subbranches (dict of str \u2192 :doc:`uproot.behaviors.TBranch.TBranch`): Names
             and interpretations of the ``TBranches`` that actually contain data.
         typename (None or str): If None, construct a plausible C++ typename.
             Otherwise, take the suggestion as given.
 
     Interpretation for a group of arrays, usually because they are all
-    subbranches of the same :py:class:`~uproot.behavior.TBranch.TBranch`.
+    subbranches of the same :doc:`uproot.behaviors.TBranch.TBranch`.
 
-    Each :py:class:`~uproot.interpretation.library.Library` presents a group
-    differently: :py:class:`~uproot.interpretation.library.NumPy` puts arrays
-    in a dict, :py:class:`~uproot.interpretation.library.Awkward` makes an
-    array of records, :py:class:`~uproot.interpretation.library.Pandas` makes
+    Each :doc:`uproot.interpretation.library.Library` presents a group
+    differently: :doc:`uproot.interpretation.library.NumPy` puts arrays
+    in a dict, :doc:`uproot.interpretation.library.Awkward` makes an
+    array of records, :doc:`uproot.interpretation.library.Pandas` makes
     a ``pandas.DataFrame``, etc.
     """
 

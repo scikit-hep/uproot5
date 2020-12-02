@@ -1,18 +1,18 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines utilities for modeling C++ objects as Python objects and the
-:py:class:`~uproot.model.Model` class, which is the superclass of all objects that
+This module defines utilities for modeling C++ objects as Python objects and the
+:doc:`uproot.model.Model` class, which is the superclass of all objects that
 are read from ROOT files.
 
-The :py:class:`~uproot.model.VersionedModel` class is the superclass of all models
+The :doc:`uproot.model.VersionedModel` class is the superclass of all models
 whose deserialization routines are specialized by ROOT class version.
 
-A :py:class:`~uproot.model.DispatchByVersion` subclass selects a versioned model
+A :doc:`uproot.model.DispatchByVersion` subclass selects a versioned model
 after reading its version bytes.
 
-The :py:exc:`~uproot.model.UnknownClass` and
-:py:exc:`~uproot.model.UnknownClassVersion` are placeholders for data that could
+The :doc:`uproot.model.UnknownClass` and
+:doc:`uproot.model.UnknownClassVersion` are placeholders for data that could
 not be modeled, either because the class has no streamer or no streamer for its
 version.
 """
@@ -233,14 +233,14 @@ def class_named(classname, version=None, custom_classes=None):
 
     If ``version`` is None, no attempt is made to find a specific version.
 
-    * If the class is a :py:class:`~uproot.model.DispatchByVersion`, then this is
+    * If the class is a :doc:`uproot.model.DispatchByVersion`, then this is
       object returned.
     * If the class is a versionless model, then this is the object returned.
 
     If ``version`` is an integer, an attempt is made to find the specific
     version.
 
-    * If the class is a :py:class:`~uproot.model.DispatchByVersion`, then it is
+    * If the class is a :doc:`uproot.model.DispatchByVersion`, then it is
       queried for a versioned model.
     * If the class is a versionless model, then this is the object returned.
 
@@ -277,7 +277,7 @@ def class_named(classname, version=None, custom_classes=None):
 
 def has_class_named(classname, version=None, custom_classes=None):
     """
-    Returns True if :py:func:`~uproot.model.class_named` would find a class,
+    Returns True if :doc:`uproot.model.class_named` would find a class,
     False if it would raise an exception.
     """
     cls = maybe_custom_classes(custom_classes).get(classname)
@@ -304,23 +304,23 @@ def maybe_custom_classes(custom_classes):
 class Model(object):
     """
     Abstract class for all objects extracted from ROOT files (except for
-    :py:class:`~uproot.reading.ReadOnlyFile`, :py:class:`~uproot.reading.ReadOnlyDirectory`,
-    and :py:class:`~uproot.reading.ReadOnlyKey`).
+    :doc:`uproot.reading.ReadOnlyFile`, :doc:`uproot.reading.ReadOnlyDirectory`,
+    and :doc:`uproot.reading.ReadOnlyKey`).
 
-    A model is instantiated from a file using the :py:meth:`~uproot.model.Model.read`
-    classmethod or synthetically using the :py:meth:`~uproot.model.Model.empty`
+    A model is instantiated from a file using the :ref:`uproot.model.Model.read`
+    classmethod or synthetically using the :ref:`uproot.model.Model.empty`
     classmethod, not through a normal constructor.
 
     Models point back to the file from which they were created, though only a
     few classes (named in ``uproot.reading.must_be_attached``) have an open,
-    readable file attached; the rest have a :py:class:`~uproot.reading.DetachedFile`
+    readable file attached; the rest have a :doc:`uproot.reading.DetachedFile`
     with information about the file, while not holding the file open.
 
     Uproot recognizes *some* of ROOT's thousands of classes, by way of methods
-    and properties defined in :py:mod:`uproot.behaviors`. Examples include
+    and properties defined in :doc:`uproot.behaviors`. Examples include
 
-    * :py:class:`~uproot.behaviors.TTree.TTree`
-    * :py:class:`~uproot.behaviors.TH1.TH1`
+    * :doc:`uproot.behaviors.TTree.TTree`
+    * :doc:`uproot.behaviors.TH1.TH1`
 
     These classes are the most convenient to work with and have specialized
     documentation.
@@ -328,13 +328,13 @@ class Model(object):
     Classes that don't have any predefined behaviors are still usable through
     their member data.
 
-    * :py:attr:`~uproot.model.Model.members`: a dict of C++ member names and values
+    * :ref:`uproot.model.Model.members`: a dict of C++ member names and values
       directly in this class.
-    * :py:attr:`~uproot.model.Model.all_members`: a dict of C++ member names and
+    * :ref:`uproot.model.Model.all_members`: a dict of C++ member names and
       values in this class or any superclasses.
-    * :py:meth:`~uproot.model.Model.member`: method that takes a C++ member name
+    * :ref:`uproot.model.Model.member`: method that takes a C++ member name
       and returns its value (from this or any superclass).
-    * :py:meth:`~uproot.model.Model.has_member`: method that takes a C++ member
+    * :ref:`uproot.model.Model.has_member`: method that takes a C++ member
       name and returns True if it exists (in this or any superclass), False
       otherwise.
 
@@ -345,11 +345,11 @@ class Model(object):
 
     Pythonic models don't follow the same class inheritance tree as their C++
     counterparts: most of them are direct subclasses of
-    :py:class:`~uproot.model.Model`, :py:class:`~uproot.model.DispatchByVersion`, or
-    :py:class:`~uproot.model.VersionedModel`. To separate an object's members
+    :doc:`uproot.model.Model`, :doc:`uproot.model.DispatchByVersion`, or
+    :doc:`uproot.model.VersionedModel`. To separate an object's members
     from its superclass members, a model instance is created for each and
     the superclass parts are included in a list called
-    :py:attr:`~uproot.model.Model.bases`.
+    :ref:`uproot.model.Model.bases`.
     """
 
     class_streamer = None
@@ -376,9 +376,9 @@ class Model(object):
         """
         The C++ (decoded) classname of the modeled class.
 
-        See :py:func:`~uproot.model.classname_decode`,
-        :py:func:`~uproot.model.classname_encode`, and
-        :py:func:`~uproot.model.classname_version`.
+        See :doc:`uproot.model.classname_decode`,
+        :doc:`uproot.model.classname_encode`, and
+        :doc:`uproot.model.classname_version`.
         """
         return classname_decode(self.encoded_classname)[0]
 
@@ -388,9 +388,9 @@ class Model(object):
         The Python (encoded) classname of the modeled class. May or may not
         include version.
 
-        See :py:func:`~uproot.model.classname_decode`,
-        :py:func:`~uproot.model.classname_encode`, and
-        :py:func:`~uproot.model.classname_version`.
+        See :doc:`uproot.model.classname_decode`,
+        :doc:`uproot.model.classname_encode`, and
+        :doc:`uproot.model.classname_version`.
         """
         return type(self).__name__
 
@@ -399,9 +399,9 @@ class Model(object):
         """
         The version number of the modeled class (int) if any; None otherwise.
 
-        See :py:func:`~uproot.model.classname_decode`,
-        :py:func:`~uproot.model.classname_encode`, and
-        :py:func:`~uproot.model.classname_version`.
+        See :doc:`uproot.model.classname_decode`,
+        :doc:`uproot.model.classname_encode`, and
+        :doc:`uproot.model.classname_version`.
         """
         return classname_decode(self.encoded_classname)[1]
 
@@ -409,15 +409,15 @@ class Model(object):
     def cursor(self):
         """
         A cursor pointing to the start of this instance in the byte stream
-        (before :py:meth:`~uproot.model.Model.read_numbytes_version`).
+        (before :ref:`uproot.model.Model.read_numbytes_version`).
         """
         return self._cursor
 
     @property
     def file(self):
         """
-        A :py:class:`~uproot.reading.ReadOnlyFile`, which may be open and readable,
-        or a :py:class:`~uproot.reading.DetachedFile`, which only contains
+        A :doc:`uproot.reading.ReadOnlyFile`, which may be open and readable,
+        or a :doc:`uproot.reading.DetachedFile`, which only contains
         information about the original file (not an open file handle).
         """
         return self._file
@@ -425,7 +425,7 @@ class Model(object):
     def close(self):
         """
         Closes the file from which this object is derived, if such a file is
-        still attached (i.e. not :py:class:`~uproot.reading.DetachedFile`).
+        still attached (i.e. not :doc:`uproot.reading.DetachedFile`).
         """
         if isinstance(self._file, uproot.reading.ReadOnlyFile):
             self._file.close()
@@ -435,7 +435,7 @@ class Model(object):
         """
         True if the associated file is known to be closed; False if it is known
         to be open. If the associated file is detached
-        (:py:class:`~uproot.reading.DetachedFile`), then the value is None.
+        (:doc:`uproot.reading.DetachedFile`), then the value is None.
         """
         if isinstance(self._file, uproot.reading.ReadOnlyFile):
             return self._file.closed
@@ -457,7 +457,7 @@ class Model(object):
         in C++, which is ``self`` if this is the concrete class or another
         object if this is actually a holder of superclass members for that other
         object (i.e. if this object is in the other's
-        :py:attr:`~uproot.model.Model.bases`).
+        :ref:`uproot.model.Model.bases`).
         """
         return self._concrete
 
@@ -466,7 +466,7 @@ class Model(object):
         """
         A dict of C++ member data directly associated with this class (i.e. not
         its superclasses). For all members, see
-        :py:attr:`~uproot.model.Model.all_members`.
+        :ref:`uproot.model.Model.all_members`.
         """
         return self._members
 
@@ -474,7 +474,7 @@ class Model(object):
     def all_members(self):
         """
         A dict of C++ member data for this class and its superclasses. For only
-        direct members, see :py:attr:`~uproot.model.Model.members`.
+        direct members, see :ref:`uproot.model.Model.members`.
         """
         out = {}
         for base in self._bases:
@@ -484,7 +484,7 @@ class Model(object):
 
     def has_member(self, name, all=True):
         """
-        Returns True if calling :py:meth:`~uproot.model.Model.member` with the same
+        Returns True if calling :ref:`uproot.model.Model.member` with the same
         arguments would return a value; False if the member is missing.
         """
         if name in self._members:
@@ -500,7 +500,7 @@ class Model(object):
         Args:
             name (str): The name of the member datum to retrieve.
             all (bool): If True, recursively search all superclasses in
-                :py:attr:`~uproot.model.Model.bases`. Otherwise, search the
+                :ref:`uproot.model.Model.bases`. Otherwise, search the
                 direct class only.
             none_if_missing (bool): If a member datum doesn't exist in the
                 search path, ``none_if_missing=True`` has this function return
@@ -536,7 +536,7 @@ class Model(object):
     @property
     def bases(self):
         """
-        List of :py:class:`~uproot.model.Model` objects representing superclass data
+        List of :doc:`uproot.model.Model` objects representing superclass data
         for this object in the order given in C++ (opposite method resolution
         order).
 
@@ -555,7 +555,7 @@ class Model(object):
 
     def base(self, *cls):
         """
-        Extracts instances from :py:attr:`~uproot.model.Model.bases` by Python class
+        Extracts instances from :ref:`uproot.model.Model.bases` by Python class
         type.
 
         The ``cls`` arguments may be Python classes or C++ classname strings to match.
@@ -596,7 +596,7 @@ class Model(object):
         This value may be None (unknown before reading) or an integer.
 
         If the value is an integer and the object exists (no exceptions in
-        :py:meth:`~uproot.model.Model.read`), then the expected number of bytes
+        :ref:`uproot.model.Model.read`), then the expected number of bytes
         agreed with the actual number of bytes, and this numer is reliable.
 
         If this object is re-serialized, it won't necessarily occupy the same
@@ -609,9 +609,9 @@ class Model(object):
         """
         Version of this instance as read from the byte stream.
 
-        If this model is versioned (:py:class:`~uproot.model.VersionedModel`), the
+        If this model is versioned (:doc:`uproot.model.VersionedModel`), the
         ``instance_version`` ought to be equal to the
-        :py:func:`~uproot.model.class_version`.
+        :ref:`uproot.model.Model.class_version`.
 
         If this model is versionless, the ``instance_version`` contains new
         information about the actual version deserialized.
@@ -630,10 +630,10 @@ class Model(object):
     def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         """
         Args:
-            cls (subclass of :py:class:`~uproot.model.Model`): This class.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): File to use to generate
-                :py:class:`~uproot.model.Model` classes from its
-                :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+            cls (subclass of :doc:`uproot.model.Model`): This class.
+            file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot.model.Model` classes from its
+                :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
@@ -656,18 +656,18 @@ class Model(object):
     ):
         """
         Args:
-            cls (subclass of :py:class:`~uproot.model.Model`): This class.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): File to use to generate
-                :py:class:`~uproot.model.Model` classes from its
-                :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+            cls (subclass of :doc:`uproot.model.Model`): This class.
+            file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot.model.Model` classes from its
+                :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             header (bool): If True, assume the outermost object has a header.
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
-            original (None, :py:class:`~uproot.model.Model`, or :py:class:`~uproot.containers.Container`): The
+            original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
 
         Returns a list of (str, ``numpy.dtype``) pairs to build a
-        :py:class:`~uproot.interpretation.objects.AsStridedObjects` interpretation.
+        :doc:`uproot.interpretation.objects.AsStridedObjects` interpretation.
         """
         raise uproot.interpretation.objects.CannotBeStrided(
             classname_decode(cls.__name__)[0]
@@ -714,20 +714,20 @@ class Model(object):
     def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
         """
         Args:
-            cls (subclass of :py:class:`~uproot.model.Model`): Class to instantiate.
-            chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :py:class:`~uproot.source.chunk.Source`.
-            cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+            cls (subclass of :doc:`uproot.model.Model`): Class to instantiate.
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): An open file object,
-                capable of generating new :py:class:`~uproot.model.Model` classes
-                from its :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
-            selffile (:py:class:`~uproot.reading.CommonFileMethods`): A possibly
-                :py:class:`~uproot.reading.DetachedFile` associated with this object.
+            file (:doc:`uproot.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :doc:`uproot.model.Model` classes
+                from its :ref:`uproot.reading.ReadOnlyFile.streamers`.
+            selffile (:doc:`uproot.reading.CommonFileMethods`): A possibly
+                :doc:`uproot.reading.DetachedFile` associated with this object.
             parent (None or calling object): The previous ``read`` in the
                 recursive descent.
-            concrete (None or :py:class:`~uproot.model.Model` instance): If None,
+            concrete (None or :doc:`uproot.model.Model` instance): If None,
                 this model corresponds to the concrete (instantiated) class in
                 C++. Otherwise, this model represents a superclass part of the
                 object, and ``concrete`` points to the concrete instance.
@@ -804,9 +804,9 @@ class Model(object):
     def read_numbytes_version(self, chunk, cursor, context):
         """
         Args:
-            chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :py:class:`~uproot.source.chunk.Source`.
-            cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
 
@@ -828,17 +828,17 @@ class Model(object):
     def read_members(self, chunk, cursor, context, file):
         """
         Args:
-            chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :py:class:`~uproot.source.chunk.Source`.
-            cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): An open file object,
-                capable of generating new :py:class:`~uproot.model.Model` classes
-                from its :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+            file (:doc:`uproot.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :doc:`uproot.model.Model` classes
+                from its :ref:`uproot.reading.ReadOnlyFile.streamers`.
 
         Reads the member data for this class. The abstract class
-        :py:class:`~uproot.model.Model` has an empty ``read_members`` method; this
+        :doc:`uproot.model.Model` has an empty ``read_members`` method; this
         *must* be overridden by subclasses.
         """
         pass
@@ -846,17 +846,17 @@ class Model(object):
     def check_numbytes(self, chunk, cursor, context):
         """
         Args:
-            chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :py:class:`~uproot.source.chunk.Source`.
-            cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
 
         Reads nothing; checks the expected number of bytes against the actual
         movement of the ``cursor`` at the end of the object, possibly raising
-        a :py:exc:`~uproot.deserialization.DeserializationError` exception.
+        a :doc:`uproot.deserialization.DeserializationError` exception.
 
-        If :py:attr:`~uproot.model.Model.num_bytes` is None, this method does
+        If :ref:`uproot.model.Model.num_bytes` is None, this method does
         nothing.
 
         It is *possible* that a subclass would override this method, but not
@@ -877,59 +877,59 @@ class Model(object):
     def postprocess(self, chunk, cursor, context, file):
         """
         Args:
-            chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :py:class:`~uproot.source.chunk.Source`.
-            cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): An open file object,
-                capable of generating new :py:class:`~uproot.model.Model` classes
-                from its :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+            file (:doc:`uproot.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :doc:`uproot.model.Model` classes
+                from its :ref:`uproot.reading.ReadOnlyFile.streamers`.
 
         Called for any additional processing after the object has been fully
         read.
 
         The return value from this method is the object that actually represents
         the ROOT data, which might be a different instance or even a different
-        type from this class. The default in :py:class:`~uproot.model.Model` is to
+        type from this class. The default in :doc:`uproot.model.Model` is to
         return ``self``.
 
         Note that for versioned models,
-        :py:meth:`~uproot.model.VersionedModel.postprocess` is called first, then
-        :py:meth:`~uproot.model.DispatchByVersion.postprocess` is called on its
-        output, allowing a :py:class:`~uproot.model.DispatchByVersion` to refine all
+        :ref:`uproot.model.VersionedModel.postprocess` is called first, then
+        :ref:`uproot.model.DispatchByVersion.postprocess` is called on its
+        output, allowing a :doc:`uproot.model.DispatchByVersion` to refine all
         data of its type, regardless of version.
         """
         return self
 
     def hook_before_read(self, **kwargs):
         """
-        Called in :py:meth:`~uproot.model.Model.read`, before any data have been
+        Called in :ref:`uproot.model.Model.read`, before any data have been
         read.
         """
         pass
 
     def hook_before_read_members(self, **kwargs):
         """
-        Called in :py:meth:`~uproot.model.Model.read`, after
-        :py:meth:`~uproot.model.Model.read_numbytes_version` and before
-        :py:meth:`~uproot.model.Model.read_members`.
+        Called in :ref:`uproot.model.Model.read`, after
+        :ref:`uproot.model.Model.read_numbytes_version` and before
+        :ref:`uproot.model.Model.read_members`.
         """
         pass
 
     def hook_after_read_members(self, **kwargs):
         """
-        Called in :py:meth:`~uproot.model.Model.read`, after
-        :py:meth:`~uproot.model.Model.read_members` and before
-        :py:meth:`~uproot.model.Model.check_numbytes`.
+        Called in :ref:`uproot.model.Model.read`, after
+        :ref:`uproot.model.Model.read_members` and before
+        :ref:`uproot.model.Model.check_numbytes`.
         """
         pass
 
     def hook_before_postprocess(self, **kwargs):
         """
-        Called in :py:meth:`~uproot.model.Model.read`, after
-        :py:meth:`~uproot.model.Model.check_numbytes` and before
-        :py:meth:`~uproot.model.Model.postprocess`.
+        Called in :ref:`uproot.model.Model.read`, after
+        :ref:`uproot.model.Model.check_numbytes` and before
+        :ref:`uproot.model.Model.postprocess`.
         """
         pass
 
@@ -938,16 +938,16 @@ class VersionedModel(Model):
     """
     A Python class that models a specific version of a ROOT C++ class.
 
-    Classes that inherit directly from :py:class:`~uproot.model.Model` are versionless,
-    classes that inherit from :py:class:`~uproot.model.VersionedModel` depend on
+    Classes that inherit directly from :doc:`uproot.model.Model` are versionless,
+    classes that inherit from :doc:`uproot.model.VersionedModel` depend on
     version.
 
-    Note that automatically generated :py:class:`~uproot.model.VersionedModel` classes
+    Note that automatically generated :doc:`uproot.model.VersionedModel` classes
     are placed in the ``uproot.dynamic`` namespace. This namespace can generate
-    :py:class:`~uproot.model.DynamicModel` classes on demand in Python 3.7 and above,
-    which automatically generated :py:class:`~uproot.model.VersionedModel` classes
+    :doc:`uproot.model.DynamicModel` classes on demand in Python 3.7 and above,
+    which automatically generated :doc:`uproot.model.VersionedModel` classes
     rely upon to be pickleable. Therefore, ROOT object types without predefined
-    :py:class:`~uproot.model.Model` classes cannot be pickled in Python versions
+    :doc:`uproot.model.Model` classes cannot be pickled in Python versions
     before 3.7.
     """
 
@@ -972,20 +972,20 @@ class VersionedModel(Model):
 class DispatchByVersion(object):
     """
     A Python class that models all versions of a ROOT C++ class by maintaining
-    a dict of :py:class:`~uproot.model.VersionedModel` classes.
+    a dict of :doc:`uproot.model.VersionedModel` classes.
 
-    The :py:meth:`~uproot.model.DispatchByVersion.read` classmethod reads the
+    The :ref:`uproot.model.DispatchByVersion.read` classmethod reads the
     instance version number from the byte stream, backs up the
-    :py:class:`~uproot.source.cursor.Cursor` to the starting position, and invokes
-    the appropriate :py:class:`~uproot.model.VersionedModel`'s ``read`` classmethod.
+    :doc:`uproot.source.cursor.Cursor` to the starting position, and invokes
+    the appropriate :doc:`uproot.model.VersionedModel`'s ``read`` classmethod.
 
-    If a :py:class:`~uproot.model.VersionedModel` does not exist for the specified
+    If a :doc:`uproot.model.VersionedModel` does not exist for the specified
     version, the ``file``'s ``TStreamerInfo`` is queried to attempt to create
-    one, and failing that, an :py:exc:`~uproot.model.UnknownClassVersion` is
+    one, and failing that, an :doc:`uproot.model.UnknownClassVersion` is
     created instead.
 
-    Note that :py:class:`~uproot.model.DispatchByVersion` is not a subclass of
-    :py:class:`~uproot.model.Model`. Instances of this class are not usable as
+    Note that :doc:`uproot.model.DispatchByVersion` is not a subclass of
+    :doc:`uproot.model.Model`. Instances of this class are not usable as
     stand-ins for ROOT data.
     """
 
@@ -993,10 +993,10 @@ class DispatchByVersion(object):
     def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
         """
         Args:
-            cls (subclass of :py:class:`~uproot.model.DispatchByVersion`): This class.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): File to use to generate
-                :py:class:`~uproot.model.Model` classes from its
-                :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+            cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
+            file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot.model.Model` classes from its
+                :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
@@ -1018,18 +1018,18 @@ class DispatchByVersion(object):
     ):
         """
         Args:
-            cls (subclass of :py:class:`~uproot.model.DispatchByVersion`): This class.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): File to use to generate
-                :py:class:`~uproot.model.Model` classes from its
-                :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+            cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
+            file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
+                :doc:`uproot.model.Model` classes from its
+                :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             header (bool): If True, assume the outermost object has a header.
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
-            original (None, :py:class:`~uproot.model.Model`, or :py:class:`~uproot.containers.Container`): The
+            original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
 
         Returns a list of (str, ``numpy.dtype``) pairs to build a
-        :py:class:`~uproot.interpretation.objects.AsStridedObjects` interpretation.
+        :doc:`uproot.interpretation.objects.AsStridedObjects` interpretation.
         """
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.strided_interpretation(
@@ -1060,11 +1060,11 @@ class DispatchByVersion(object):
         Uses ``file`` to create a new class for a specified ``version``.
 
         As a side-effect, this new class is added to ``cls.known_versions``
-        (for :py:func:`~uproot.model.class_of_version` and
-        :py:func:`~uproot.model.has_version`).
+        (for :ref:`uproot.model.DispatchByVersion.class_of_version` and
+        :ref:`uproot.model.DispatchByVersion.has_version`).
 
         If the ``file`` lacks a ``TStreamerInfo`` for the class, this function
-        returns a :py:exc:`~uproot.model.UnknownClassVersion` (adding it to
+        returns a :doc:`uproot.model.UnknownClassVersion` (adding it to
         ``uproo4.unknown_classes`` if it's not already there).
         """
         classname, _ = classname_decode(cls.__name__)
@@ -1095,33 +1095,33 @@ class DispatchByVersion(object):
     def read(cls, chunk, cursor, context, file, selffile, parent, concrete=None):
         """
         Args:
-            cls (subclass of :py:class:`~uproot.model.DispatchByVersion`): This class.
-            chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :py:class:`~uproot.source.chunk.Source`.
-            cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+            cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): An open file object,
-                capable of generating new :py:class:`~uproot.model.Model` classes
-                from its :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
-            selffile (:py:class:`~uproot.reading.CommonFileMethods`): A possibly
-                :py:class:`~uproot.reading.DetachedFile` associated with this object.
+            file (:doc:`uproot.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :doc:`uproot.model.Model` classes
+                from its :ref:`uproot.reading.ReadOnlyFile.streamers`.
+            selffile (:doc:`uproot.reading.CommonFileMethods`): A possibly
+                :doc:`uproot.reading.DetachedFile` associated with this object.
             parent (None or calling object): The previous ``read`` in the
                 recursive descent.
-            concrete (None or :py:class:`~uproot.model.Model` instance): If None,
+            concrete (None or :doc:`uproot.model.Model` instance): If None,
                 this model corresponds to the concrete (instantiated) class in
                 C++. Otherwise, this model represents a superclass part of the
                 object, and ``concrete`` points to the concrete instance.
 
         Reads the instance version number from the byte stream, backs up the
-        :py:class:`~uproot.source.cursor.Cursor` to the starting position, and
-        invokes the appropriate :py:class:`~uproot.model.VersionedModel`'s ``read``
+        :doc:`uproot.source.cursor.Cursor` to the starting position, and
+        invokes the appropriate :doc:`uproot.model.VersionedModel`'s ``read``
         classmethod.
 
-        If a :py:class:`~uproot.model.VersionedModel` does not exist for the
+        If a :doc:`uproot.model.VersionedModel` does not exist for the
         specified version, the ``file``'s ``TStreamerInfo`` is queried to
         attempt to create one, and failing that, an
-        :py:class:`~uproot.model.UnknownClassVersion` is created instead.
+        :doc:`uproot.model.UnknownClassVersion` is created instead.
         """
         import uproot.deserialization
 
@@ -1165,28 +1165,28 @@ class DispatchByVersion(object):
     def postprocess(cls, self, chunk, cursor, context, file):
         """
         Args:
-            cls (subclass of :py:class:`~uproot.model.DispatchByVersion`): This class.
-            chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-                from the file :py:class:`~uproot.source.chunk.Source`.
-            cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+            cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
                 that ``chunk``.
             context (dict): Auxiliary data used in deserialization.
-            file (:py:class:`~uproot.reading.ReadOnlyFile`): An open file object,
-                capable of generating new :py:class:`~uproot.model.Model` classes
-                from its :py:attr:`~uproot.reading.ReadOnlyFile.streamers`.
+            file (:doc:`uproot.reading.ReadOnlyFile`): An open file object,
+                capable of generating new :doc:`uproot.model.Model` classes
+                from its :ref:`uproot.reading.ReadOnlyFile.streamers`.
 
         Called for any additional processing after the object has been fully
         read.
 
         The return value from this method is the object that actually represents
         the ROOT data, which might be a different instance or even a different
-        type from this class. The default in :py:class:`~uproot.model.Model` is to
+        type from this class. The default in :doc:`uproot.model.Model` is to
         return ``self``.
 
         Note that for versioned models,
-        :py:meth:`~uproot.model.VersionedModel.postprocess` is called first, then
-        :py:meth:`~uproot.model.DispatchByVersion.postprocess` is called on its
-        output, allowing a :py:class:`~uproot.model.DispatchByVersion` to refine all
+        :ref:`uproot.model.VersionedModel.postprocess` is called first, then
+        :ref:`uproot.model.DispatchByVersion.postprocess` is called on its
+        output, allowing a :doc:`uproot.model.DispatchByVersion` to refine all
         data of its type, regardless of version.
         """
         return self
@@ -1195,8 +1195,8 @@ class DispatchByVersion(object):
 class UnknownClass(Model):
     """
     Placeholder for a C++ class instance that has no
-    :py:class:`~uproot.model.DispatchByVersion` and no ``TStreamerInfo`` in the
-    current :py:class:`~uproot.reading.ReadOnlyFile` to produce one.
+    :doc:`uproot.model.DispatchByVersion` and no ``TStreamerInfo`` in the
+    current :doc:`uproot.reading.ReadOnlyFile` to produce one.
     """
 
     @property
@@ -1204,10 +1204,10 @@ class UnknownClass(Model):
         """
         The ``chunk`` of data associated with the unknown class, referred to by
         a weak reference (to avoid memory leaks in
-        :py:exc:`~uproot.model.UnknownClass` objects). If the original ``chunk``
+        :doc:`uproot.model.UnknownClass` objects). If the original ``chunk``
         has been garbage-collected, this raises ``RuntimeError``.
 
-        Primarily useful in the :py:meth:`~uproot.model.UnknownClass.debug` method.
+        Primarily useful in the :ref:`uproot.model.UnknownClass.debug` method.
         """
         chunk = self._chunk()
         if chunk is None:
@@ -1222,7 +1222,7 @@ class UnknownClass(Model):
         """
         The auxiliary data used in deserialization.
 
-        Primarily useful in the :py:meth:`~uproot.model.UnknownClass.debug` method.
+        Primarily useful in the :ref:`uproot.model.UnknownClass.debug` method.
         """
         return self._context
 
@@ -1235,15 +1235,15 @@ class UnknownClass(Model):
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the :py:class:`~uproot.source.chunk.Chunk`. May be
+                remainder of the :doc:`uproot.source.chunk.Chunk`. May be
                 negative, to examine the byte stream leading up to the attempted
                 instantiation. The default, ``0``, starts where the number
                 of bytes and version number would be (just before
-                :py:meth:`~uproot.model.Model.read_numbytes_version`).
+                :ref:`uproot.model.Model.read_numbytes_version`).
             limit_bytes (None or int): Number of bytes to limit the output to.
                 A line of debugging output (without any ``offset``) is 20 bytes,
                 so multiples of 20 show full lines. If None, everything is
-                shown to the end of the :py:class:`~uproot.source.chunk.Chunk`,
+                shown to the end of the :doc:`uproot.source.chunk.Chunk`,
                 which might be large.
             dtype (None, ``numpy.dtype``, or its constructor argument): If None,
                 present only the bytes as decimal values (0-255). Otherwise,
@@ -1292,16 +1292,16 @@ class UnknownClass(Model):
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the :py:class:`~uproot.source.chunk.Chunk`. May be
+                remainder of the :doc:`uproot.source.chunk.Chunk`. May be
                 negative, to examine the byte stream leading up to the attempted
                 instantiation. The default, ``0``, starts where the number
                 of bytes and version number would be (just before
-                :py:meth:`~uproot.model.Model.read_numbytes_version`).
+                :ref:`uproot.model.Model.read_numbytes_version`).
             dtype (``numpy.dtype`` or its constructor argument): Data type in
                 which to interpret the data. (The size of the array returned is
                 truncated to this ``dtype.itemsize``.)
 
-        Like :py:meth:`~uproot.model.UnknownClass.debug`, but returns a NumPy array
+        Like :ref:`uproot.model.UnknownClass.debug`, but returns a NumPy array
         for further inspection.
         """
         dtype = numpy.dtype(dtype)
@@ -1330,7 +1330,7 @@ in file {1}""".format(
 class UnknownClassVersion(VersionedModel):
     """
     Placeholder for a C++ class instance that has no ``TStreamerInfo`` in the
-    current :py:class:`~uproot.reading.ReadOnlyFile` to produce one.
+    current :doc:`uproot.reading.ReadOnlyFile` to produce one.
     """
 
     @property
@@ -1338,10 +1338,10 @@ class UnknownClassVersion(VersionedModel):
         """
         The ``chunk`` of data associated with the class of unknown version,
         referred to by a weak reference (to avoid memory leaks in
-        :py:class:`~uproot.model.UnknownClassVersion` objects). If the original
+        :doc:`uproot.model.UnknownClassVersion` objects). If the original
         ``chunk`` has been garbage-collected, this raises ``RuntimeError``.
 
-        Primarily useful in the :py:meth:`~uproot.model.UnknownClassVersion.debug`
+        Primarily useful in the :ref:`uproot.model.UnknownClassVersion.debug`
         method.
         """
         chunk = self._chunk()
@@ -1358,7 +1358,7 @@ class UnknownClassVersion(VersionedModel):
         """
         The auxiliary data used in deserialization.
 
-        Primarily useful in the :py:meth:`~uproot.model.UnknownClass.debug` method.
+        Primarily useful in the :ref:`uproot.model.UnknownClass.debug` method.
         """
         return self._context
 
@@ -1368,15 +1368,15 @@ class UnknownClassVersion(VersionedModel):
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the :py:class:`~uproot.source.chunk.Chunk`. May be
+                remainder of the :doc:`uproot.source.chunk.Chunk`. May be
                 negative, to examine the byte stream leading up to the attempted
                 instantiation. The default, ``0``, starts where the number
                 of bytes and version number would be (just before
-                :py:meth:`~uproot.model.Model.read_numbytes_version`).
+                :ref:`uproot.model.Model.read_numbytes_version`).
             limit_bytes (None or int): Number of bytes to limit the output to.
                 A line of debugging output (without any ``offset``) is 20 bytes,
                 so multiples of 20 show full lines. If None, everything is
-                shown to the end of the :py:class:`~uproot.source.chunk.Chunk`,
+                shown to the end of the :doc:`uproot.source.chunk.Chunk`,
                 which might be large.
             dtype (None, ``numpy.dtype``, or its constructor argument): If None,
                 present only the bytes as decimal values (0-255). Otherwise,
@@ -1425,16 +1425,16 @@ class UnknownClassVersion(VersionedModel):
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the :py:class:`~uproot.source.chunk.Chunk`. May be
+                remainder of the :doc:`uproot.source.chunk.Chunk`. May be
                 negative, to examine the byte stream leading up to the attempted
                 instantiation. The default, ``0``, starts where the number
                 of bytes and version number would be (just before
-                :py:meth:`~uproot.model.Model.read_numbytes_version`).
+                :ref:`uproot.model.Model.read_numbytes_version`).
             dtype (``numpy.dtype`` or its constructor argument): Data type in
                 which to interpret the data. (The size of the array returned is
                 truncated to this ``dtype.itemsize``.)
 
-        Like :py:meth:`~uproot.model.UnknownClassVersion.debug`, but returns a
+        Like :ref:`uproot.model.UnknownClassVersion.debug`, but returns a
         NumPy array for further inspection.
         """
         dtype = numpy.dtype(dtype)
@@ -1467,11 +1467,11 @@ in file {2}""".format(
 
 class DynamicModel(VersionedModel):
     """
-    A :py:class:`~uproot.model.VersionedModel` subclass generated by any attempt to
+    A :doc:`uproot.model.VersionedModel` subclass generated by any attempt to
     extract it from the ``uproot.dynamic`` namespace in Python 3.7 and later.
 
     This dynamically generated model allows ROOT object types without predefined
-    :py:class:`~uproot.model.Model` classes to be pickled in Python 3.7 and later.
+    :doc:`uproot.model.Model` classes to be pickled in Python 3.7 and later.
     """
 
     def __setstate__(self, state):

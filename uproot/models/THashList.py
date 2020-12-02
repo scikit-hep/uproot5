@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``THashList``.
+This module defines a versionless model for ``THashList``.
 """
 
 from __future__ import absolute_import
@@ -11,7 +11,7 @@ import uproot
 
 class Model_THashList(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``THashList``.
+    A versionless :doc:`uproot.model.Model` for ``THashList``.
     """
 
     def read_numbytes_version(self, chunk, cursor, context):

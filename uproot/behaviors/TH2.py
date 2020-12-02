@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behaviors of ``TH2`` and its subclasses (not including
+This module defines the behaviors of ``TH2`` and its subclasses (not including
 ``TProfile2D`` and ``TH2Poly``).
 """
 

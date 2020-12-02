@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``TObjArray``.
+This module defines a versionless model for ``TObjArray``.
 """
 
 from __future__ import absolute_import
@@ -21,7 +21,7 @@ _tobjarray_format1 = struct.Struct(">ii")
 
 class Model_TObjArray(uproot.model.Model, Sequence):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TObjArray``.
+    A versionless :doc:`uproot.model.Model` for ``TObjArray``.
 
     This also satisfies Python's abstract ``Sequence`` protocol.
     """
@@ -85,7 +85,7 @@ uproot.classes["TObjArray"] = Model_TObjArray
 
 class Model_TObjArrayOfTBaskets(Model_TObjArray):
     """
-    A specialized :py:class:`~uproot.model.Model` for a ``TObjArray`` of ``TBaskets``.
+    A specialized :doc:`uproot.model.Model` for a ``TObjArray`` of ``TBaskets``.
     """
 
     def read_members(self, chunk, cursor, context, file):

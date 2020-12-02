@@ -1,13 +1,13 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines behaviors for :py:class:`~uproot.behaviors.TBranch.TBranch` and
-:py:class:`~uproot.behaviors.TBranch.HasBranches` (both ``TBranch`` and
+This module defines behaviors for :doc:`uproot.behaviors.TBranch.TBranch` and
+:doc:`uproot.behaviors.TBranch.HasBranches` (both ``TBranch`` and
 ``TTree``).
 
 Most of the functionality of TTree-reading is implemented here.
 
-See :py:class:`~uproot.models.TBranch` for deserialization of the ``TBranch``
+See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
 
@@ -93,19 +93,19 @@ def iterate(
             filter to select ``TBranches`` by name.
         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
             filter to select ``TBranches`` by type.
-        filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
             filter to select ``TBranches`` using the full
-            :py:class:`~uproot.behaviors.TBranch.TBranch` object. If the function
+            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
             returns False or None, the ``TBranch`` is excluded; if the function
             returns True, it is included with its standard
-            :py:class:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
-            :py:class:`~uproot.interpretation.Interpretation`, this interpretation
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :doc:`uproot.interpretation.Interpretation`, this interpretation
             overrules the standard one.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
-        language (:py:class:`~uproot.language.Language`): Language used to interpret
+            :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
+        language (:doc:`uproot.language.Language`): Language used to interpret
             the ``expressions`` and ``aliases``.
         step_size (int or str): If an integer, the maximum number of entries to
             include in each iteration step; if a string, the maximum memory size
@@ -113,12 +113,12 @@ def iterate(
             such as "100 MB".
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
-            :py:class:`~uproot.source.futures.TrivialExecutor` is created.
+            :doc:`uproot.source.futures.TrivialExecutor` is created.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, a :py:class:`~uproot.source.futures.TrivialExecutor`
+            arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
             is created.
-        library (str or :py:class:`~uproot.interpretation.library.Library`): The library
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
             CuPy.
@@ -128,11 +128,11 @@ def iterate(
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
         report (bool): If True, this generator yields
-            (arrays, :py:class:`~uproot.behaviors.TBranch.Report`) pairs; if False,
+            (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
             it only yields arrays. The report has data about the ``TFile``,
             ``TTree``, and global and local entry ranges.
         custom_classes (None or dict): If a dict, override the classes from
-            the :py:class:`~uproot.reading.ReadOnlyFile` or ``uproot.classes``.
+            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
             the specified ``TTree``.
         options: See below.
@@ -166,10 +166,10 @@ def iterate(
 
     Options (type; default):
 
-    * file_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.file.MemmapSource`)
-    * xrootd_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.xrootd.XRootDSource`)
-    * http_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.http.HTTPSource`)
-    * object_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.object.ObjectSource`)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -177,17 +177,17 @@ def iterate(
     * begin_chunk_size (memory_size; 512)
     * minimal_ttree_metadata (bool; True)
 
-    See also :py:meth:`~uproot.behavior.TBranch.HasBranches.iterate` to iterate
+    See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate
     within a single file.
 
     Other file entry points:
 
-    * :py:func:`~uproot.reading.open`: opens one file to read any of its objects.
-    * :py:func:`~uproot.behaviors.TBranch.iterate` (this function): iterates through
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate` (this function): iterates through
       chunks of contiguous entries in ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.concatenate`: returns a single concatenated
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single concatenated
       array from ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.lazy`: returns a lazily read array from
+    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
     files = _regularize_files(files)
@@ -261,28 +261,28 @@ def concatenate(
             filter to select ``TBranches`` by name.
         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
             filter to select ``TBranches`` by type.
-        filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
             filter to select ``TBranches`` using the full
-            :py:class:`~uproot.behaviors.TBranch.TBranch` object. If the function
+            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
             returns False or None, the ``TBranch`` is excluded; if the function
             returns True, it is included with its standard
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
-            :py:class:`~uproot.interpretation.Interpretation`, this interpretation
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :doc:`uproot.interpretation.Interpretation`, this interpretation
             overrules the standard one.
         aliases (None or dict of str \u2192 str): Mathematical expressions that
             can be used in ``expressions`` or other aliases (without cycles).
             Uses the ``language`` engine to evaluate. If None, only the
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
-        language (:py:class:`~uproot.language.Language`): Language used to interpret
+            :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
+        language (:doc:`uproot.language.Language`): Language used to interpret
             the ``expressions`` and ``aliases``.
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
-            :py:class:`~uproot.source.futures.TrivialExecutor` is created.
+            :doc:`uproot.source.futures.TrivialExecutor` is created.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, a :py:class:`~uproot.source.futures.TrivialExecutor`
+            arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
             is created.
-        library (str or :py:class:`~uproot.interpretation.library.Library`): The library
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
             CuPy.
@@ -292,7 +292,7 @@ def concatenate(
             must be passed as ``how``, not an instance of that type (i.e.
             ``how=tuple``, not ``how=()``).
         custom_classes (None or dict): If a dict, override the classes from
-            the :py:class:`~uproot.reading.ReadOnlyFile` or ``uproot.classes``.
+            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
             the specified ``TTree``.
         options: See below.
@@ -328,10 +328,10 @@ def concatenate(
 
     Options (type; default):
 
-    * file_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.file.MemmapSource`)
-    * xrootd_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.xrootd.XRootDSource`)
-    * http_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.http.HTTPSource`)
-    * object_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.object.ObjectSource`)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -341,12 +341,12 @@ def concatenate(
 
     Other file entry points:
 
-    * :py:func:`~uproot.reading.open`: opens one file to read any of its objects.
-    * :py:func:`~uproot.behaviors.TBranch.iterate`: iterates through chunks of
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
       contiguous entries in ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.concatenate` (this function): returns a
+    * :doc:`uproot.behaviors.TBranch.concatenate` (this function): returns a
       single concatenated array from ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.lazy`: returns a lazily read array from
+    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
     files = _regularize_files(files)
@@ -409,13 +409,13 @@ def lazy(
             filter to select ``TBranches`` by name.
         filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
             filter to select ``TBranches`` by type.
-        filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
             filter to select ``TBranches`` using the full
-            :py:class:`~uproot.behaviors.TBranch.TBranch` object. If the function
+            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
             returns False or None, the ``TBranch`` is excluded; if the function
             returns True, it is included with its standard
-            :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
-            :py:class:`~uproot.interpretation.Interpretation`, this interpretation
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :doc:`uproot.interpretation.Interpretation`, this interpretation
             overrules the standard one.
         recursive (bool): If True, include all subbranches of branches as
             separate fields; otherwise, only search one level deep.
@@ -428,19 +428,19 @@ def lazy(
             such as "100 MB".
         decompression_executor (None or Executor with a ``submit`` method): The
             executor that is used to decompress ``TBaskets``; if None, a
-            :py:class:`~uproot.source.futures.TrivialExecutor` is created.
+            :doc:`uproot.source.futures.TrivialExecutor` is created.
         interpretation_executor (None or Executor with a ``submit`` method): The
             executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, a :py:class:`~uproot.source.futures.TrivialExecutor`
+            arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
             is created.
         array_cache (None, MutableMapping, or memory size): Cache of arrays;
             if None, do not use a cache; if a memory size, create a new cache
             of this size.
-        library (str or :py:class:`~uproot.interpretation.library.Library`): The library
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. For lazy arrays, only ``"ak"``
             for Awkward Array is allowed.
         custom_classes (None or dict): If a dict, override the classes from
-            the :py:class:`~uproot.reading.ReadOnlyFile` or ``uproot.classes``.
+            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
             the specified ``TTree``.
         options: See below.
@@ -467,7 +467,7 @@ def lazy(
     If the size of the fields used in a calculation do not fit into ``array_cache``,
     lazy arrays may be inefficient, repeatedly rereading data that could be read
     once by iterating through the calculation with
-    :py:func:`~uproot.behavior.TBranch.iterate`.
+    :doc:`uproot.behaviors.TBranch.iterate`.
 
     Allowed types for the ``files`` parameter:
 
@@ -488,10 +488,10 @@ def lazy(
 
     Options (type; default):
 
-    * file_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.file.MemmapSource`)
-    * xrootd_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.xrootd.XRootDSource`)
-    * http_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.http.HTTPSource`)
-    * object_handler (:py:class:`~uproot.source.chunk.Source` class; :py:class:`~uproot.source.object.ObjectSource`)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -501,12 +501,12 @@ def lazy(
 
     Other file entry points:
 
-    * :py:func:`~uproot.reading.open`: opens one file to read any of its objects.
-    * :py:func:`~uproot.behaviors.TBranch.iterate`: iterates through chunks of
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
       contiguous entries in ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.concatenate`: returns a single
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
       concatenated array from ``TTrees``.
-    * :py:func:`~uproot.behaviors.TBranch.lazy` (this function): returns a lazily
+    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
       read array from ``TTrees``.
     """
     awkward = uproot.extras.awkward()
@@ -680,9 +680,9 @@ def lazy(
 class Report(object):
     """
     Args:
-        source (:py:class:`~uproot.behaviors.TBranch.HasBranches`): The
-            object (:py:class:`~uproot.behaviors.TBranch.TBranch` or
-            :py:class:`~uproot.behaviors.TTree.TTree`) that this batch of data
+        source (:doc:`uproot.behaviors.TBranch.HasBranches`): The
+            object (:doc:`uproot.behaviors.TBranch.TBranch` or
+            :doc:`uproot.behaviors.TTree.TTree`) that this batch of data
             came from.
         tree_entry_start (int): First entry in the batch, counting zero at
             the start of the current ``TTree`` (current file).
@@ -690,22 +690,22 @@ class Report(object):
             one), counting zero at the start of the ``TTree`` (current file).
         global_offset (int): Number of entries between the start of iteration
             and the start of this ``TTree``. The
-            :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start` and
-            :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop` are
-            equal to :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_start`
-            and :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_stop` plus
+            :ref:`uproot.behaviors.TBranch.Report.global_entry_start` and
+            :ref:`uproot.behaviors.TBranch.Report.global_entry_stop` are
+            equal to :ref:`uproot.behaviors.TBranch.Report.tree_entry_start`
+            and :ref:`uproot.behaviors.TBranch.Report.tree_entry_stop` plus
             ``global_offset``.
 
     Information about the current iteration of
-    :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` (the method) or
-    :py:func:`~uproot.behaviors.TBranch.iterate` (the function).
+    :ref:`uproot.behaviors.TBranch.HasBranches.iterate` (the method) or
+    :doc:`uproot.behaviors.TBranch.iterate` (the function).
 
-    Since the :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate` method
+    Since the :ref:`uproot.behaviors.TBranch.HasBranches.iterate` method
     only iterates over data from one ``TTree``, its ``global_offset`` is always
-    zero; :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start` and
-    :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop` are equal to
-    :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_start` and
-    :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_stop`, respectively.
+    zero; :ref:`uproot.behaviors.TBranch.Report.global_entry_start` and
+    :ref:`uproot.behaviors.TBranch.Report.global_entry_stop` are equal to
+    :ref:`uproot.behaviors.TBranch.Report.tree_entry_start` and
+    :ref:`uproot.behaviors.TBranch.Report.tree_entry_stop`, respectively.
 
     """
 
@@ -725,8 +725,8 @@ class Report(object):
     @property
     def source(self):
         """
-        The object (:py:class:`~uproot.behaviors.TBranch.TBranch` or
-        :py:class:`~uproot.behaviors.TTree.TTree`) that this batch of data
+        The object (:doc:`uproot.behaviors.TBranch.TBranch` or
+        :doc:`uproot.behaviors.TTree.TTree`) that this batch of data
         came from.
         """
         return self._source
@@ -734,7 +734,7 @@ class Report(object):
     @property
     def tree(self):
         """
-        The :py:class:`~uproot.behaviors.TTree.TTree` that this batch of data
+        The :doc:`uproot.behaviors.TTree.TTree` that this batch of data
         came from.
         """
         return self._source.tree
@@ -742,7 +742,7 @@ class Report(object):
     @property
     def file(self):
         """
-        The :py:class:`~uproot.reading.ReadOnlyFile` that this batch of data
+        The :doc:`uproot.reading.ReadOnlyFile` that this batch of data
         came from.
         """
         return self._source.file
@@ -750,7 +750,7 @@ class Report(object):
     @property
     def file_path(self):
         """
-        The path/name of the :py:class:`~uproot.reading.ReadOnlyFile` that
+        The path/name of the :doc:`uproot.reading.ReadOnlyFile` that
         this batch of data came from.
         """
         return self._source.file.file_path
@@ -791,7 +791,7 @@ class Report(object):
     def start(self):
         """
         A synonym for
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start`.
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_start`.
         """
         return self._tree_entry_start + self._global_offset
 
@@ -799,7 +799,7 @@ class Report(object):
     def stop(self):
         """
         A synonym for
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop`.
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_stop`.
         """
         return self._tree_entry_stop + self._global_offset
 
@@ -808,19 +808,19 @@ class Report(object):
         """
         Number of entries between the start of iteration and the start of this
         ``TTree``. The
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_start` and
-        :py:attr:`~uproot.behaviors.TBranch.Report.global_entry_stop` are
-        equal to :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_start`
-        and :py:attr:`~uproot.behaviors.TBranch.Report.tree_entry_stop` plus
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_start` and
+        :ref:`uproot.behaviors.TBranch.Report.global_entry_stop` are
+        equal to :ref:`uproot.behaviors.TBranch.Report.tree_entry_start`
+        and :ref:`uproot.behaviors.TBranch.Report.tree_entry_stop` plus
         ``global_offset``.
         """
         return self._global_offset
 
     def to_global(self, global_offset):
         """
-        Copies the data in this :py:class:`~uproot.branches.TBranch.Report` to
+        Copies the data in this :doc:`uproot.behaviors.TBranch.Report` to
         another with a new
-        :py:attr:`~uproot.branches.TBranch.Report.global_offset`.
+        :ref:`uproot.behaviors.TBranch.Report.global_offset`.
         """
         return Report(
             self._source, self._tree_entry_start, self._tree_entry_stop, global_offset
@@ -830,11 +830,11 @@ class Report(object):
 class HasBranches(Mapping):
     """
     Abstract class of behaviors for anything that "has branches," namely
-    :py:class:`~uproot.behavior.TTree.TTree` and
-    :py:class:`~uproot.behavior.TBranch.TBranch`, which mostly consist of array-reading
+    :doc:`uproot.behaviors.TTree.TTree` and
+    :doc:`uproot.behaviors.TBranch.TBranch`, which mostly consist of array-reading
     methods.
 
-    A :py:class:`~uproot.behavior.TBranch.HasBranches` is a Python ``Mapping``, which
+    A :doc:`uproot.behaviors.TBranch.HasBranches` is a Python ``Mapping``, which
     uses square bracket syntax to extract subbranches:
 
     .. code-block:: python
@@ -848,9 +848,9 @@ class HasBranches(Mapping):
     @property
     def branches(self):
         """
-        The list of :py:class:`~uproot.behavior.TBranch.TBranch` directly under
-        this :py:class:`~uproot.behavior.TTree.TTree` or
-        :py:class:`~uproot.behavior.TBranch.TBranch` (i.e. not recursive).
+        The list of :doc:`uproot.behaviors.TBranch.TBranch` directly under
+        this :doc:`uproot.behaviors.TTree.TTree` or
+        :doc:`uproot.behaviors.TBranch.TBranch` (i.e. not recursive).
         """
         return self.member("fBranches")
 
@@ -872,9 +872,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, recursively descend into the branches'
                 branches.
@@ -886,7 +886,7 @@ class HasBranches(Mapping):
             typename_width (int): Number of characters to reserve for the C++
                 typenames.
             interpretation_width (int): Number of characters to reserve for the
-                :py:class:`~uproot.interpretation.Interpretation` displays.
+                :doc:`uproot.interpretation.Interpretation` displays.
             stream (object with a ``write(str)`` method): Stream to write the
                 output to.
 
@@ -981,38 +981,38 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. If the function
+                :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
                 returns False or None, the ``TBranch`` is excluded; if the function
                 returns True, it is included with its standard
-                :py:class:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
-                :py:class:`~uproot.interpretation.Interpretation`, this interpretation
+                :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+                :doc:`uproot.interpretation.Interpretation`, this interpretation
                 overrules the standard one.
             aliases (None or dict of str \u2192 str): Mathematical expressions that
                 can be used in ``expressions`` or other aliases (without cycles).
                 Uses the ``language`` engine to evaluate. If None, only the
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
-            language (:py:class:`~uproot.language.Language`): Language used to interpret
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
+            language (:doc:`uproot.language.Language`): Language used to interpret
                 the ``expressions`` and ``aliases``.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behavior.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                file's :py:attr:`~uproot.reading.ReadOnlyFile.decompression_executor`
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
                 is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the file's :py:attr:`~uproot.reading.ReadOnlyFile.interpretation_executor`
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
                 is used.
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
                 if a memory size, create a new cache of this size.
-            library (str or :py:class:`~uproot.interpretation.library.Library`): The library
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
                 CuPy.
@@ -1033,10 +1033,10 @@ class HasBranches(Mapping):
             >>> my_tree["y"].array()
             <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
 
-        See also :py:meth:`~uproot.behavior.TBranch.TBranch.array` to read a single
+        See also :ref:`uproot.behaviors.TBranch.TBranch.array` to read a single
         ``TBranch`` as an array.
 
-        See also :py:meth:`~uproot.behavior.TBranch.HasBranches.iterate` to iterate over
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.iterate` to iterate over
         the array in contiguous ranges of entries.
         """
         keys = _keys_deep(self)
@@ -1188,25 +1188,25 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. If the function
+                :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
                 returns False or None, the ``TBranch`` is excluded; if the function
                 returns True, it is included with its standard
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.interpretation`; if an
-                :py:class:`~uproot.interpretation.Interpretation`, this interpretation
+                :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+                :doc:`uproot.interpretation.Interpretation`, this interpretation
                 overrules the standard one.
             aliases (None or dict of str \u2192 str): Mathematical expressions that
                 can be used in ``expressions`` or other aliases (without cycles).
                 Uses the ``language`` engine to evaluate. If None, only the
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
-            language (:py:class:`~uproot.language.Language`): Language used to interpret
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
+            language (:doc:`uproot.language.Language`): Language used to interpret
                 the ``expressions`` and ``aliases``.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behavior.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
             step_size (int or str): If an integer, the maximum number of entries to
                 include in each iteration step; if a string, the maximum memory size
@@ -1214,13 +1214,13 @@ class HasBranches(Mapping):
                 such as "100 MB".
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                file's :py:attr:`~uproot.reading.ReadOnlyFile.decompression_executor`
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
                 is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the file's :py:attr:`~uproot.reading.ReadOnlyFile.interpretation_executor`
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
                 is used.
-            library (str or :py:class:`~uproot.interpretation.library.Library`): The library
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
                 CuPy.
@@ -1230,7 +1230,7 @@ class HasBranches(Mapping):
                 must be passed as ``how``, not an instance of that type (i.e.
                 ``how=tuple``, not ``how=()``).
             report (bool): If True, this generator yields
-                (arrays, :py:class:`~uproot.behaviors.TBranch.Report`) pairs; if False,
+                (arrays, :doc:`uproot.behaviors.TBranch.Report`) pairs; if False,
                 it only yields arrays. The report has data about the ``TFile``,
                 ``TTree``, and global and local entry ranges.
 
@@ -1244,10 +1244,10 @@ class HasBranches(Mapping):
             ...     # each of the following have 100 entries
             ...     array["x"], array["y"]
 
-        See also :py:meth:`~uproot.behavior.TBranch.HasBranches.arrays` to read
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to read
         everything in a single step, without iteration.
 
-        See also :py:func:`~uproot.behavior.TBranch.iterate` to iterate over many
+        See also :doc:`uproot.behaviors.TBranch.iterate` to iterate over many
         files.
         """
         keys = _keys_deep(self)
@@ -1397,9 +1397,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return the names of branches directly accessible
@@ -1433,19 +1433,19 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return branches that are directly accessible
                 under this object.
 
         Returns the subbranches as a list of
-        :py:class:`~uproot.behavior.TBranch.TBranch`.
+        :doc:`uproot.behaviors.TBranch.TBranch`.
 
         (Note: with ``recursive=False``, this is the same as
-        :py:attr:`~uproot.behavior.TBranch.HasBranches.branches`.)
+        :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
         return list(
             self.itervalues(
@@ -1470,9 +1470,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return (name, branch) pairs for branches
@@ -1482,7 +1482,7 @@ class HasBranches(Mapping):
                 name as the name without modification.
 
         Returns (name, branch) pairs of the subbranches as a list of 2-tuples
-        of (str, :py:class:`~uproot.behavior.TBranch.TBranch`).
+        of (str, :doc:`uproot.behaviors.TBranch.TBranch`).
         """
         return list(
             self.iteritems(
@@ -1508,9 +1508,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return (name, typename) pairs for branches
@@ -1546,9 +1546,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return the names of branches directly accessible
@@ -1581,19 +1581,19 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return branches that are directly accessible
                 under this object.
 
         Returns the subbranches as an iterator over
-        :py:class:`~uproot.behavior.TBranch.TBranch`.
+        :doc:`uproot.behaviors.TBranch.TBranch`.
 
         (Note: with ``recursive=False``, this is the same as
-        :py:attr:`~uproot.behavior.TBranch.HasBranches.branches`.)
+        :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
         for k, v in self.iteritems(
             filter_name=filter_name,
@@ -1618,9 +1618,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return (name, branch) pairs for branches
@@ -1630,7 +1630,7 @@ class HasBranches(Mapping):
                 name as the name without modification.
 
         Returns (name, branch) pairs of the subbranches as an iterator over
-        2-tuples of (str, :py:class:`~uproot.behavior.TBranch.TBranch`).
+        2-tuples of (str, :doc:`uproot.behaviors.TBranch.TBranch`).
         """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_typename = uproot._util.regularize_filter(filter_typename)
@@ -1687,9 +1687,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only return (name, typename) pairs for branches
@@ -1744,21 +1744,21 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             aliases (None or dict of str \u2192 str): Mathematical expressions that
                 can be used in ``expressions`` or other aliases (without cycles).
                 Uses the ``language`` engine to evaluate. If None, only the
-                :py:attr:`~uproot.behaviors.TBranch.TBranch.aliases` are available.
-            language (:py:class:`~uproot.language.Language`): Language used to interpret
+                :ref:`uproot.behaviors.TBranch.TBranch.aliases` are available.
+            language (:doc:`uproot.language.Language`): Language used to interpret
                 the ``expressions`` and ``aliases``.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behavior.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
 
         Returns an *approximate* step size as a number of entries to read
@@ -1775,7 +1775,7 @@ class HasBranches(Mapping):
         in memory, without considering ``cuts``).
 
         This is the algorithm that
-        :py:meth:`~uproot.behavior.TBranch.HasBranches.iterate` uses to convert a
+        :ref:`uproot.behaviors.TBranch.HasBranches.iterate` uses to convert a
         ``step_size`` expressed in memory units into a number of entries.
         """
         target_num_bytes = uproot._util.memory_size(memory_size)
@@ -1816,9 +1816,9 @@ class HasBranches(Mapping):
                 filter to select ``TBranches`` by name.
             filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by type.
-            filter_branch (None or function of :py:class:`~uproot.behaviors.TBranch.TBranch` \u2192 bool, :py:class:`~uproot.interpretation.Interpretation`, or None): A
+            filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
                 filter to select ``TBranches`` using the full
-                :py:class:`~uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
+                :doc:`uproot.behaviors.TBranch.TBranch` object. The ``TBranch`` is
                 included if the function returns True, excluded if it returns False.
             recursive (bool): If True, descend into any nested subbranches.
                 If False, only consider branches directly accessible under this
@@ -1827,9 +1827,9 @@ class HasBranches(Mapping):
         Returns entry offsets in which ``TBasket`` boundaries align in the
         specified set of branches.
 
-        If this :py:class:`~uproot.behaviors.TBranch.TBranch` has no subbranches,
+        If this :doc:`uproot.behaviors.TBranch.TBranch` has no subbranches,
         the output is identical to
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.entry_offsets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets`.
         """
         common_offsets = None
         for branch in self.itervalues(
@@ -1922,8 +1922,8 @@ class TBranch(HasBranches):
     """
     Behaviors for a ``TBranch``, which mostly consist of array-reading methods.
 
-    Since a :py:class:`~uproot.behavior.TBranch.TBranch` is a
-    :py:class:`~uproot.behavior.TBranch.HasBranches`, it is also a Python
+    Since a :doc:`uproot.behaviors.TBranch.TBranch` is a
+    :doc:`uproot.behaviors.TBranch.HasBranches`, it is also a Python
     ``Mapping``, which uses square bracket syntax to extract subbranches:
 
     .. code-block:: python
@@ -1955,29 +1955,29 @@ class TBranch(HasBranches):
     ):
         u"""
         Args:
-            interpretation (None or :py:class:`~uproot.interpretation.Interpretation`): An
+            interpretation (None or :doc:`uproot.interpretation.Interpretation`): An
                 interpretation of the ``TBranch`` data as an array. If None, the
-                standard :py:attr:`~uproot.behavior.TBranch.TBranch.interpretation`
+                standard :ref:`uproot.behaviors.TBranch.TBranch.interpretation`
                 is used, which is derived from
-                :py:func:`~uproot.interpretation.identify.interpretation_of`.
+                :doc:`uproot.interpretation.identify.interpretation_of`.
             entry_start (None or int): The first entry to include. If None, start
                 at zero. If negative, count from the end, like a Python slice.
             entry_stop (None or int): The first entry to exclude (i.e. one greater
                 than the last entry to include). If None, stop at
-                :py:attr:`~uproot.behavior.TTree.TTree.num_entries`. If negative,
+                :ref:`uproot.behaviors.TTree.TTree.num_entries`. If negative,
                 count from the end, like a Python slice.
             decompression_executor (None or Executor with a ``submit`` method): The
                 executor that is used to decompress ``TBaskets``; if None, the
-                file's :py:attr:`~uproot.reading.ReadOnlyFile.decompression_executor`
+                file's :ref:`uproot.reading.ReadOnlyFile.decompression_executor`
                 is used.
             interpretation_executor (None or Executor with a ``submit`` method): The
                 executor that is used to interpret uncompressed ``TBasket`` data as
-                arrays; if None, the file's :py:attr:`~uproot.reading.ReadOnlyFile.interpretation_executor`
+                arrays; if None, the file's :ref:`uproot.reading.ReadOnlyFile.interpretation_executor`
                 is used.
             array_cache ("inherit", None, MutableMapping, or memory size): Cache of arrays;
                 if "inherit", use the file's cache; if None, do not use a cache;
                 if a memory size, create a new cache of this size.
-            library (str or :py:class:`~uproot.interpretation.library.Library`): The library
+            library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
                 CuPy.
@@ -1997,7 +1997,7 @@ class TBranch(HasBranches):
             >>> array["y"]
             <Array [17.4, -16.6, -16.6, ... 1.2, 1.2, 1.2] type='2304 * float64'>
 
-        See also :py:meth:`~uproot.behavior.TBranch.HasBranches.arrays` to read
+        See also :ref:`uproot.behaviors.TBranch.HasBranches.arrays` to read
         multiple ``TBranches`` into a group of arrays or an array-group.
         """
         if interpretation is None:
@@ -2099,7 +2099,7 @@ class TBranch(HasBranches):
 
         Note that ``TBranch`` names are not guaranteed to be unique; it is
         sometimes necessary to address a branch by its
-        :py:attr:`~uproot.behavior.TBranch.TBranch.index`.
+        :ref:`uproot.behaviors.TBranch.TBranch.index`.
         """
         return self.member("fName")
 
@@ -2143,7 +2143,7 @@ class TBranch(HasBranches):
         Integer position of this ``TBranch`` in its parent's list of branches.
 
         Useful for cases in which the
-        :py:attr:`~uproot.behavior.TBranch.TBranch.name` is not unique: the
+        :ref:`uproot.behaviors.TBranch.TBranch.name` is not unique: the
         non-recursive index is always unique.
         """
         for i, branch in enumerate(self.parent.branches):
@@ -2155,18 +2155,18 @@ class TBranch(HasBranches):
     @property
     def interpretation(self):
         """
-        The standard :py:class:`~uproot.interpretation.Interpretation` of this
+        The standard :doc:`uproot.interpretation.Interpretation` of this
         ``TBranch`` as an array, derived from
-        :py:func:`~uproot.interpretation.identify.interpretation_of`.
+        :doc:`uproot.interpretation.identify.interpretation_of`.
 
         If no interpretation could be found, the value of this property
-        would be a :py:exc:`~uproot.interpretation.identify.UnknownInterpretation`,
+        would be a :doc:`uproot.interpretation.identify.UnknownInterpretation`,
         which is a Python ``Exception``. Since the exception is *returned*,
         rather than *raised*, a branch lacking an interpretation is not a fatal
         error.
 
         However, any attempt to use this exception object as an
-        :py:class:`~uproot.interpretation.Interpretation` causes it to raise itself:
+        :doc:`uproot.interpretation.Interpretation` causes it to raise itself:
         attempting to read a branch lacking an interpretation is a fatal error.
         """
         if self._interpretation is None:
@@ -2182,9 +2182,9 @@ class TBranch(HasBranches):
     def typename(self):
         """
         The C++ typename of the ``TBranch``, derived from its
-        :py:attr:`~uproot.behavior.TBranch.TBranch.interpretation`. If the
+        :ref:`uproot.behaviors.TBranch.TBranch.interpretation`. If the
         interpretation is
-        :py:exc:`~uproot.interpretation.identify.UnknownInterpretation`, the
+        :doc:`uproot.interpretation.identify.UnknownInterpretation`, the
         typename is ``"unknown"``.
         """
         if self.interpretation is None:
@@ -2198,12 +2198,12 @@ class TBranch(HasBranches):
         The number of entries in the ``TBranch``, as reported by ``fEntries``.
 
         In principle, this could disagree with the
-        :py:attr:`~uproot.behaviors.TTree.TTree.num_entries`, which is from the
+        :ref:`uproot.behaviors.TTree.TTree.num_entries`, which is from the
         ``TTree``'s ``fEntries``.
 
         The ``TBranch`` also has a ``fEntryNumber``, which ought to be equal to
         the ``TBranch`` and ``TTree``'s ``fEntries``, and the last value of
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.entry_offsets` ought to be
+        :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets` ought to be
         equal to the number of entries as well.
         """
         return int(self.member("fEntries"))  # or fEntryNumber?
@@ -2217,7 +2217,7 @@ class TBranch(HasBranches):
         The number of ``entry_offsets`` in this list of integers is one more
         than the number of ``TBaskets``. The first is ``0`` and the last is
         the number of entries
-        (:py:attr:`~uproot.behaviors.TBranch.TBranch.num_entries`).
+        (:ref:`uproot.behaviors.TBranch.TBranch.num_entries`).
         """
         if self._num_normal_baskets == 0:
             out = [0]
@@ -2294,7 +2294,7 @@ in file {3}""".format(
     @property
     def top_level(self):
         """
-        True if the immediate :py:attr:`~uproot.behaviors.TBranch.TBranch.parent`
+        True if this branch's immediate :ref:`uproot.model.Model.parent`
         is the ``TTree``; False otherwise.
         """
         return isinstance(self.parent, uproot.behaviors.TTree.TTree)
@@ -2305,7 +2305,7 @@ in file {3}""".format(
         The ``TStreamerInfo`` or ``TStreamerElement`` for this ``TBranch``,
         which may be None.
 
-        If the :py:attr:`~uproot.reading.ReadOnlyFile.streamers` have not yet been
+        If the :ref:`uproot.reading.ReadOnlyFile.streamers` have not yet been
         read, this method *might* cause them to be read. (Only
         ``TBranchElements`` can have streamers.)
         """
@@ -2374,12 +2374,12 @@ in file {3}""".format(
     @property
     def aliases(self):
         """
-        The :py:attr:`~uproot.behaviors.TTree.TTree.aliases`, which are used as the
+        The :ref:`uproot.behaviors.TTree.TTree.aliases`, which are used as the
         ``aliases`` argument to
-        :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`,
-        :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate`,
-        :py:func:`~uproot.behaviors.TBranch.iterate`, and
-        :py:func:`~uproot.behaviors.TBranch.concatenate` if one is not given.
+        :ref:`uproot.behaviors.TBranch.HasBranches.arrays`,
+        :ref:`uproot.behaviors.TBranch.HasBranches.iterate`,
+        :doc:`uproot.behaviors.TBranch.iterate`, and
+        :doc:`uproot.behaviors.TBranch.concatenate` if one is not given.
 
         The return type is always a dict of str \u2192 str, even if there
         are no aliases (an empty dict).
@@ -2440,8 +2440,8 @@ in file {3}""".format(
         The number of uncompressed bytes divided by the number of compressed
         bytes for this ``TBranch``.
 
-        See :py:attr:`~uproot.behaviors.TBranch.TBranch.compressed_bytes` and
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.uncompressed_bytes`.
+        See :ref:`uproot.behaviors.TBranch.TBranch.compressed_bytes` and
+        :ref:`uproot.behaviors.TBranch.TBranch.uncompressed_bytes`.
         """
         return float(self.uncompressed_bytes) / float(self.compressed_bytes)
 
@@ -2450,16 +2450,16 @@ in file {3}""".format(
         """
         The number of ``TBaskets`` in this ``TBranch``, including both normal
         (free) ``TBaskets`` and
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets`.
         """
         return self._num_normal_baskets + len(self.embedded_baskets)
 
     def basket(self, basket_num):
         """
-        The :py:class:`~uproot.models.TBasket.Model_TBasket` at index ``basket_num``.
+        The :doc:`uproot.models.TBasket.Model_TBasket` at index ``basket_num``.
 
         It may be a normal (free) ``TBasket`` or one of the
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets`.
         """
         if 0 <= basket_num < self._num_normal_baskets:
             chunk, cursor = self.basket_chunk_cursor(basket_num)
@@ -2478,8 +2478,8 @@ in file {3}""".format(
 
     def basket_chunk_cursor(self, basket_num):
         """
-        Returns a :py:class:`~uproot.source.chunk.Chunk` and
-        :py:class:`~uproot.source.cursor.Cursor` as a 2-tuple for a given
+        Returns a :doc:`uproot.source.chunk.Chunk` and
+        :doc:`uproot.source.cursor.Cursor` as a 2-tuple for a given
         ``basket_num``.
         """
         if 0 <= basket_num < self._num_normal_baskets:
@@ -2545,11 +2545,11 @@ in file {3}""".format(
 
     def basket_key(self, basket_num):
         """
-        The ``TKey`` (:py:class:`~uproot.reading.ReadOnlyKey`) for the ``TBasket``
+        The ``TKey`` (:doc:`uproot.reading.ReadOnlyKey`) for the ``TBasket``
         at ``basket_num``.
 
         Only applies to normal (free) ``TBaskets``, not
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets`.
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets`.
         """
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
@@ -2599,12 +2599,12 @@ in file {3}""".format(
     def entries_to_ranges_or_baskets(self, entry_start, entry_stop):
         """
         Returns a list of (start, stop) integer pairs for free (normal)
-        ``TBaskets`` and :py:class:`~uproot.models.TBasket.Model_TBasket` objects
+        ``TBaskets`` and :doc:`uproot.models.TBasket.Model_TBasket` objects
         for embedded ``TBaskets``.
 
         The intention is for this list to be updated in place, replacing
         (start, stop) integer pairs with
-        :py:class:`~uproot.models.TBasket.Model_TBasket` objects as they get
+        :doc:`uproot.models.TBasket.Model_TBasket` objects as they get
         read and interpreted.
         """
         entry_offsets = self.entry_offsets
@@ -2743,7 +2743,7 @@ in file {3}""".format(
                 which to interpret the data. (The size of the array returned is
                 truncated to this ``dtype.itemsize``.)
 
-        Like :py:meth:`~uproot.behaviors.TBranch.TBranch.debug`, but returns a
+        Like :ref:`uproot.behaviors.TBranch.TBranch.debug`, but returns a
         NumPy array for further inspection.
         """
         dtype = numpy.dtype(dtype)

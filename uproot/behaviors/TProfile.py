@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behavior of ``TProfile``.
+This module defines the behavior of ``TProfile``.
 """
 
 from __future__ import absolute_import
@@ -136,16 +136,16 @@ class Profile(uproot.behaviors.TH1.Histogram):
     Abstract class for profile plots.
     """
 
-    def effective_counts(self, flow=False):
+    def counts(self, flow=False):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
 
         The effective number of entries, which is a step in the calculation of
-        :py:meth:`~uproot.behaviors.TProfile.Profile.values`. The calculation
-        of profile errors exactly follows ROOT's function, but in a vectorized
-        NumPy form.
+        :ref:`uproot.behaviors.TProfile.Profile.values`. The calculation
+        of profile errors exactly follows ROOT's "effective entries", but in a
+        vectorized NumPy form.
         """
         raise NotImplementedError(repr(self))
 
@@ -169,7 +169,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
                 after the normal (finite-width) bins.
             error_mode (str): Choose a method for calculating the errors (see below).
 
-        Errors (uncertainties) in the :py:meth:`~uproot.behaviors.TH1.Histogram.values`
+        Errors (uncertainties) in the :ref:`uproot.behaviors.TH1.Histogram.values`
         as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         The calculation of profile errors exactly follows ROOT's function, but
@@ -195,7 +195,7 @@ class Profile(uproot.behaviors.TH1.Histogram):
             error_mode (str): Choose a method for calculating the errors (see below).
 
         Variances (uncertainties squared) in the
-        :py:meth:`~uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
+        :ref:`uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
         dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         The calculation of profile variances exactly follows ROOT's function, but
@@ -240,7 +240,7 @@ class TProfile(Profile):
     def interpretation(self):
         return "mean"
 
-    def effective_counts(self, flow=True):
+    def counts(self, flow=True):
         out = _effective_counts_1d(
             self.member("fBinEntries"),
             self.member("fBinSumw2"),
@@ -295,7 +295,7 @@ class TProfile(Profile):
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
         boost_histogram = uproot.extras.boost_histogram()
 
-        effective_counts = self.effective_counts(flow=True)
+        effective_counts = self.counts(flow=True)
         values, errors = self._values_errors(True, self.member("fErrorMode"))
         variances = numpy.square(errors)
         sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))

@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``TBasket``, including much of the functionality
-of basket-reading.
+This module defines a versionless model for ``TBasket``, including much of the
+functionality of basket-reading.
 
 Includes both "embedded" ``TBaskets`` (as a member of TBranch) and "free"
 ``TBaskets`` (top-level objects, located by ``TKeys``).
@@ -24,7 +24,7 @@ _tbasket_offsets_dtype = numpy.dtype(">i4")
 
 class Model_TBasket(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TBasket``.
+    A versionless :doc:`uproot.model.Model` for ``TBasket``.
 
     Since this model is versionless and most of its functionality is internal
     (not to be directly accessed by most users), it is defined on the model
@@ -44,7 +44,7 @@ class Model_TBasket(uproot.model.Model):
         content with entry offsets, if the latter exists.
 
         If there are no entry offsets, this is identical to
-        :py:attr:`~uproot.models.TBasket.TBasket.data`.
+        :ref:`uproot.models.TBasket.Model_TBasket.data`.
         """
         return self._raw_data
 
@@ -55,7 +55,7 @@ class Model_TBasket(uproot.model.Model):
         entry offsets, if they exist.
 
         If there are no entry offsets, this is identical to
-        :py:attr:`~uproot.models.TBasket.TBasket.raw_data`.
+        :ref:`uproot.models.TBasket.Model_TBasket.raw_data`.
         """
         return self._data
 
@@ -63,19 +63,19 @@ class Model_TBasket(uproot.model.Model):
     def byte_offsets(self):
         """
         The index where each entry starts and stops in the
-        :py:attr:`~uproot.models.TBasket.TBasket.data`, not including header.
+        :ref:`uproot.models.TBasket.Model_TBasket.data`, not including header.
 
         The first offset is ``0`` and the number of offsets is one greater than
         the number of entries, such that the last offset is the length of
-        :py:attr:`~uproot.models.TBasket.TBasket.data`.
+        :ref:`uproot.models.TBasket.Model_TBasket.data`.
         """
         return self._byte_offsets
 
     def array(self, interpretation=None, library="ak"):
         """
         The ``TBasket`` data and entry offsets as an array, given an
-        :py:class:`~uproot.interpretation.Interpretation` (or the ``TBranch`` parent's
-        :py:class:`~uproot.behaviors.TBranch.TBranch.interpretation`) and a
+        :doc:`uproot.interpretation.Interpretation` (or the ``TBranch`` parent's
+        :ref:`uproot.behaviors.TBranch.TBranch.interpretation`) and a
         ``library``.
         """
         if interpretation is None:
@@ -106,7 +106,7 @@ class Model_TBasket(uproot.model.Model):
         """
         The number of items in each entry as a NumPy array, derived from the
         parent ``TBranch``'s
-        :py:attr:`~uproot.behavior.TBranch.TBranch.count_branch`. If there is
+        :ref:`uproot.behaviors.TBranch.TBranch.count_branch`. If there is
         no such branch (e.g. the data are ``std::vector``), then this method
         returns None.
         """
@@ -167,7 +167,7 @@ class Model_TBasket(uproot.model.Model):
         The number of bytes for the uncompressed data, not including the header.
 
         If the ``TBasket`` is uncompressed, this is equal to
-        :py:attr:`~uproot.models.TBasket.TBasket.compressed_bytes`.
+        :ref:`uproot.models.TBasket.Model_TBasket.compressed_bytes`.
         """
         if self.is_embedded:
             if self._byte_offsets is None:
@@ -184,7 +184,7 @@ class Model_TBasket(uproot.model.Model):
         (which is always uncompressed).
 
         If the ``TBasket`` is uncompressed, this is equal to
-        :py:attr:`~uproot.models.TBasket.TBasket.uncompressed_bytes`.
+        :ref:`uproot.models.TBasket.Model_TBasket.uncompressed_bytes`.
         """
         if self.is_embedded:
             if self._byte_offsets is None:

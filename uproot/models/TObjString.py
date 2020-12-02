@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``TObjString``.
+This module defines a versionless model for ``TObjString``.
 """
 
 from __future__ import absolute_import
@@ -11,7 +11,7 @@ import uproot
 
 class Model_TObjString(uproot.model.Model, str):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TObjString``.
+    A versionless :doc:`uproot.model.Model` for ``TObjString``.
 
     This is also a Python ``str`` (string).
     """

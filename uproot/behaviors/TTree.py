@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behaviors of ``TTree``, which is almost entirely inherited from
-functions in :py:mod:`uproot.behaviors.TBranch`.
+This module defines the behaviors of ``TTree``, which is almost entirely inherited from
+functions in :doc:`uproot.behaviors.TBranch`.
 """
 
 from __future__ import absolute_import
@@ -14,8 +14,8 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     """
     Behaviors for a ``TTree``, which mostly consist of array-reading methods.
 
-    Since a :py:class:`~uproot.behavior.TTree.TTree` is a
-    :py:class:`~uproot.behavior.TBranch.HasBranches`, it is also a Python
+    Since a :doc:`uproot.behaviors.TTree.TTree` is a
+    :doc:`uproot.behaviors.TBranch.HasBranches`, it is also a Python
     ``Mapping``, which uses square bracket syntax to extract subbranches:
 
     .. code-block:: python
@@ -71,7 +71,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         The number of entries in the ``TTree``, as reported by ``fEntries``.
 
         In principle, this could disagree with the
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.num_entries`, which is from the
+        :ref:`uproot.behaviors.TBranch.TBranch.num_entries`, which is from the
         ``TBranch``'s ``fEntries``. See that method's documentation for yet more
         ways the number of entries could, in principle, be inconsistent.
         """
@@ -88,10 +88,10 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     def aliases(self):
         u"""
         The ``TTree``'s ``fAliases``, which are used as the ``aliases``
-        argument to :py:meth:`~uproot.behaviors.TBranch.HasBranches.arrays`,
-        :py:meth:`~uproot.behaviors.TBranch.HasBranches.iterate`,
-        :py:func:`~uproot.behaviors.TBranch.iterate`, and
-        :py:func:`~uproot.behaviors.TBranch.concatenate` if one is not given.
+        argument to :ref:`uproot.behaviors.TBranch.HasBranches.arrays`,
+        :ref:`uproot.behaviors.TBranch.HasBranches.iterate`,
+        :doc:`uproot.behaviors.TBranch.iterate`, and
+        :doc:`uproot.behaviors.TBranch.concatenate` if one is not given.
 
         The return type is always a dict of str \u2192 str, even if there
         are no aliases (an empty dict).
@@ -107,19 +107,19 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     @property
     def chunk(self):
         """
-        The :py:class:`~uproot.source.chunk.Chunk` from which this ``TTree`` was
+        The :doc:`uproot.source.chunk.Chunk` from which this ``TTree`` was
         read (as a strong, not weak, reference).
 
         The reason the chunk is retained is to read
-        :py:attr:`~uproot.behaviors.TBranch.TBranch.embedded_baskets` only if
+        :ref:`uproot.behaviors.TBranch.TBranch.embedded_baskets` only if
         necessary (if the file was opened with
         ``options["minimal_ttree_metadata"]=True``, the reading of these
         ``TBaskets`` is deferred until they are accessed).
 
         Holding a strong reference to a chunk holds a strong reference to
-        its :py:class:`~uproot.source.chunk.Source`, preventing open file handles
+        its :doc:`uproot.source.chunk.Source`, preventing open file handles
         from going out of scope, but so does the
-        :py:class:`~uproot.reading.ReadOnlyFile` that ``TTree`` needs to read data
+        :doc:`uproot.reading.ReadOnlyFile` that ``TTree`` needs to read data
         on demand.
         """
         return self._chunk

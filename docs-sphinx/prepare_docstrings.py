@@ -21,9 +21,7 @@ order = [
     "uproot.containers",
     "uproot.language",
     "uproot.models",
-    "uproot.const",
     "uproot.exceptions",
-    "uproot.extras",
 ]
 
 toctree = open("uproot.toctree", "w")
@@ -34,17 +32,18 @@ toctree.write(
 
 """
 )
+toctree2 = None
 
 
-def ensure(objname, filename, content):
+def ensure(filename, content):
     overwrite = not os.path.exists(filename)
     if not overwrite:
         overwrite = open(filename, "r").read() != content
     if overwrite:
         open(filename, "w").write(content)
-        sys.stderr.write(objname + " (OVERWRITTEN)\n")
+        sys.stderr.write(filename + " (OVERWRITTEN)\n")
     else:
-        sys.stderr.write(objname + "\n")
+        sys.stderr.write(filename + "\n")
 
 
 def handle_module(modulename, module):
@@ -55,8 +54,11 @@ def handle_module(modulename, module):
 """.format(
         modulename, "=" * len(modulename)
     )
-    ensure(modulename, modulename + ".rst", content)
-    toctree.write("    " + modulename + "\n")
+    ensure(modulename + ".rst", content)
+    if toctree2 is None:
+        toctree.write("    " + modulename + "\n")
+    else:
+        toctree2.write("    " + modulename + "\n")
 
     if modulename != "uproot" and all(
         not x.startswith("_") for x in modulename.split(".")
@@ -93,8 +95,10 @@ def handle_class(classname, cls):
     import uproot
     if hasattr(uproot, cls.__name__):
         title = "uproot." + cls.__name__
+        upfront = True
     else:
         title = classname
+        upfront = False
 
     for index, basecls in enumerate(mro):
         if basecls.__module__.startswith("uproot."):
@@ -116,6 +120,7 @@ def handle_class(classname, cls):
             for name, obj in inspect.getmembers(basecls, good):
                 if name in basecls.__dict__ and not name.startswith("_"):
                     fill = []
+                    fill.append(".. _" + classname + "." + name + ":" + "\n")
                     fill.append(name)
                     fill.append("-" * len(fill[-1]))
                     fill.append("")
@@ -128,8 +133,10 @@ def handle_class(classname, cls):
                         fill.append("")
                     if isinstance(obj, property):
                         fill.append(".. autoattribute:: " + classname + "." + name)
-                    else:
+                    elif callable(obj):
                         fill.append(".. automethod:: " + classname + "." + name)
+                    else:
+                        fill.append(".. autoattribute:: " + classname + "." + name)
                     fill.append("")
                     methods[name] = (index, line_order(obj), "\n".join(fill))
 
@@ -140,52 +147,95 @@ def handle_class(classname, cls):
         else:
             return "#. ``" + fullname + "``"
 
+    fullfilename = importlib.import_module(cls.__module__).__file__
+    shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/master/{1}>`__".format(
+        cls.__module__, shortfilename
+    )
+    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/master/{1}#L{0}>`__".format(
+        inspect.getsourcelines(cls)[1], shortfilename
+    )
+
+    inheritance_header = ""
+    inheritance_footer = ""
+    inheritance_sep = ""
+    inheritance = [prettymro(c) for c in cls.__mro__[1:] if c is not object]
+    if len(inheritance) > 0:
+        longest_cell = max(max(len(x) for x in inheritance), 22)
+        inheritance_header = """.. table::
+    :class: note
+
+    +-{0}-+
+    | **Inheritance order:** {1}|
+    +={2}=+
+    | """.format("-" * longest_cell, " " * (longest_cell - 22), "=" * longest_cell)
+        inheritance_footer = """ |
+    +-{0}-+""".format("-" * longest_cell)
+        inheritance = [x + " " * (longest_cell - len(x)) for x in inheritance]
+        inheritance_sep = """ |
+    | """
+
     content = """{0}
 {1}
 
-{2}
-
-.. autoclass:: {3}
+Defined in {2} on {3}.
 
 {4}
+
+.. autoclass:: {5}
+
+{6}
 """.format(
         title,
         "=" * len(title),
-        "\n".join(prettymro(c) for c in cls.__mro__[1:] if c is not object),
+        link,
+        linelink,
+        inheritance_header + inheritance_sep.join(inheritance) + inheritance_footer,
         classname,
         "\n".join([text for index, line, text in sorted(methods.values())]),
     )
 
-    ensure(classname, classname + ".rst", content)
-    toctree.write("    " + classname + "\n")
+    ensure(classname + ".rst", content)
+    if upfront or toctree2 is None:
+        toctree.write("    " + classname + "\n")
+        toctree2.write("    " + classname + " <" + classname + ">\n")
+    else:
+        toctree2.write("    " + classname + "\n")
 
 
 def handle_function(functionname, cls):
     import uproot
     if hasattr(uproot, cls.__name__):
         title = "uproot." + cls.__name__
+        upfront = True
     else:
         title = functionname
+        upfront = False
 
     content = """{0}
 {1}
 
 .. autofunction:: {2}
 """.format(title, "=" * len(title), functionname)
-    ensure(functionname, functionname + ".rst", content)
-    toctree.write("    " + functionname + "\n")
+    ensure(functionname + ".rst", content)
+    if upfront or toctree2 is None:
+        toctree.write("    " + functionname + "\n")
+        toctree2.write("    " + functionname + " <" + functionname + ">\n")
+    else:
+        toctree2.write("    " + functionname + "\n")
 
 
 for modulename in order:
     module = importlib.import_module(modulename)
 
     if modulename != "uproot":
-        toctree = open(modulename + ".toctree", "w")
-        toctree.write(
+        toctree2 = open(modulename + ".toctree", "w")
+        toctree2.write(
             """.. toctree::
+    :caption: {0}
     :hidden:
 
-"""
+""".format(modulename.replace("uproot.", ""))
         )
 
     handle_module(modulename, module)
@@ -198,3 +248,6 @@ for modulename in order:
         ):
             submodule = importlib.import_module(submodulename)
             handle_module(submodulename, submodule)
+
+toctree.close()
+toctree2.close()

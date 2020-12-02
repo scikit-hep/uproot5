@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines functions that import external libraries used by Uproot, but not
+This module defines functions that import external libraries used by Uproot, but not
 required by an Uproot installation. (Uproot only requires NumPy).
 
 If a library cannot be imported, these functions raise ``ImportError`` with
@@ -25,7 +25,8 @@ def awkward():
 
     pip install awkward
 
-or use library="np" to output as NumPy arrays, rather than Awkward arrays.
+Alternatively, you can use ``library="np"`` or globally set ``uproot.default_library``
+to output as NumPy arrays, rather than Awkward arrays.
 """
         )
     else:

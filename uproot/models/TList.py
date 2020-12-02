@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``TList``.
+This module defines a versionless model for ``TList``.
 """
 
 from __future__ import absolute_import
@@ -22,7 +22,7 @@ _tlist_format2 = struct.Struct(">B")
 
 class Model_TList(uproot.model.Model, Sequence):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TList``.
+    A versionless :doc:`uproot.model.Model` for ``TList``.
     """
 
     def read_members(self, chunk, cursor, context, file):

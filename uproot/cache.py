@@ -1,13 +1,14 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Simple, thread-safe cache classes satisfying the ``MutableMapping`` protocol.
+This module defines simple, thread-safe cache classes satisfying the
+``MutableMapping`` protocol.
 
-The :py:class:`~uproot.cache.LRUCache` implements a least-recently used eviction
+The :doc:`uproot.cache.LRUCache` implements a least-recently used eviction
 policy that limits the number of items in the cache (used as an
 ``object_cache``).
 
-The :py:class:`~uproot.cache.LRUArrayCache` implements the same policy, limiting the
+The :doc:`uproot.cache.LRUArrayCache` implements the same policy, limiting the
 total number of bytes, as reported by ``nbytes``.
 """
 

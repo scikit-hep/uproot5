@@ -1,10 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines low-level routines for deserialization, including
-:py:func:`~uproot.deserialization.compile_class`, which creates class objects from
+This module defines low-level routines for deserialization, including
+:doc:`uproot.deserialization.compile_class`, which creates class objects from
 ``TStreamerInfo``-derived code, and
-:py:func:`~uproot.deserialization.read_object_any`, which manages references to
+:doc:`uproot.deserialization.read_object_any`, which manages references to
 previously read objects.
 """
 
@@ -42,15 +42,15 @@ def _yield_all_behaviors(cls, c):
 def compile_class(file, classes, class_code, class_name):
     """
     Args:
-        file (:py:class:`~uproot.reading.ReadOnlyFile`): File to use to generate
-            :py:class:`~uproot.model.Model` classes as needed from its
-            :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+        file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
+            :doc:`uproot.model.Model` classes as needed from its
+            :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
             for error messages.
         classes (dict): MutableMapping in which to add the finished class.
         class_code (str): Python code string defining the new class.
         class_name (str): Python (encoded) name of the new class. See
-            :py:func:`~uproot.model.classname_decode` and
-            :py:func:`~uproot.model.classname_encode`.
+            :doc:`uproot.model.classname_decode` and
+            :doc:`uproot.model.classname_encode`.
 
     Compile a new class from Python code and insert it in the dict of classes.
     """
@@ -96,9 +96,9 @@ _numbytes_version_2 = struct.Struct(">H")
 def numbytes_version(chunk, cursor, context, move=True):
     """
     Args:
-        chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-            from the file :py:class:`~uproot.source.chunk.Source`.
-        cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+        chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+            from the file :doc:`uproot.source.chunk.Source`.
+        cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
             that ``chunk``.
         context (dict): Auxiliary data used in deserialization.
         move (bool): If True, move the ``cursor`` to a position just past the
@@ -144,11 +144,11 @@ def numbytes_check(
 ):
     """
     Args:
-        chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-            from the file :py:class:`~uproot.source.chunk.Source`.
-        start_cursor (:py:class:`~uproot.source.cursor.Cursor`): Initial position in
+        chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+            from the file :doc:`uproot.source.chunk.Source`.
+        start_cursor (:doc:`uproot.source.cursor.Cursor`): Initial position in
             that ``chunk``.
-        stop_cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+        stop_cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
             that ``chunk``.
         num_bytes (int or None): If an integer, the number of bytes to compare
             with the difference between ``start_cursor`` and ``stop_cursor``;
@@ -160,7 +160,7 @@ def numbytes_check(
     Verifies that the number of bytes matches the change in position of the
     cursor (if ``num_bytes`` is not None).
 
-    Raises a :py:exc:`~uproot.deserialization.DeserializationError` on failure.
+    Raises a :doc:`uproot.deserialization.DeserializationError` on failure.
     """
     if num_bytes is not None:
         observed = stop_cursor.displacement(start_cursor)
@@ -182,33 +182,33 @@ _read_object_any_format1 = struct.Struct(">I")
 def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=None):
     """
     Args:
-        chunk (:py:class:`~uproot.source.chunk.Chunk`): Buffer of contiguous data
-            from the file :py:class:`~uproot.source.chunk.Source`.
-        cursor (:py:class:`~uproot.source.cursor.Cursor`): Current position in
+        chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+            from the file :doc:`uproot.source.chunk.Source`.
+        cursor (:doc:`uproot.source.cursor.Cursor`): Current position in
             that ``chunk``.
         context (dict): Auxiliary data used in deserialization.
-        file (:py:class:`~uproot.reading.ReadOnlyFile`): File to use to generate
-            :py:class:`~uproot.model.Model` classes as needed from its
-            :py:attr:`~uproot.reading.ReadOnlyFile.streamers` and ``file_path``
+        file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
+            :doc:`uproot.model.Model` classes as needed from its
+            :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
             for error messages.
-        selffile (:py:class:`~uproot.reading.CommonFileMethods`): A possibly
-            :py:class:`~uproot.reading.DetachedFile` associated with the ``parent``.
+        selffile (:doc:`uproot.reading.CommonFileMethods`): A possibly
+            :doc:`uproot.reading.DetachedFile` associated with the ``parent``.
         parent (None or calling object): The previous ``read`` in the
             recursive descent.
-        as_class (None or :py:class:`~uproot.model.Model`): If None, use the class
+        as_class (None or :doc:`uproot.model.Model`): If None, use the class
             indicated in the byte stream; otherwise, use this class.
 
     Generic read function, which may deliver an instance of any class and may
     reference previously read objects.
 
-    This function is the reason why :py:class:`~uproot.source.cursor.Cursor` has a
-    :py:attr:`~uproot.source.cursor.Cursor.refs`; that dictionary holds previously
+    This function is the reason why :doc:`uproot.source.cursor.Cursor` has a
+    :ref:`uproot.source.cursor.Cursor.refs`; that dictionary holds previously
     read objects that might need to be accessed later.
 
-    The :py:class:`~uproot.source.cursor.Cursor` has an
-    :py:attr:`~uproot.source.cursor.Cursor.origin` to account for the fact that
+    The :doc:`uproot.source.cursor.Cursor` has an
+    :ref:`uproot.source.cursor.Cursor.origin` to account for the fact that
     seek positions for keys in the reference dict are relative to the start of
-    the :py:class:`~uproot.source.chunk.Chunk`, rather than the start of the file
+    the :doc:`uproot.source.chunk.Chunk`, rather than the start of the file
     (as it would have to be for decompressed chunks).
     """
     # TBufferFile::ReadObjectAny()
@@ -314,20 +314,20 @@ class DeserializationError(Exception):
     """
     Error raised when a ROOT file cannot be deserialized.
 
-    If the first attempt in :py:meth:`~uproot.reading.ReadOnlyKey.get` failed with
-    predefined :py:class:`~uproot.model.Model` classes, this exception is caught
+    If the first attempt in :ref:`uproot.reading.ReadOnlyKey.get` failed with
+    predefined :doc:`uproot.model.Model` classes, this exception is caught
     and retried with ``TStreamerInfo``-derived classes, so
-    :py:exc:`~uproot.deserialization.DeserializationError` sometimes appears in an
+    :doc:`uproot.deserialization.DeserializationError` sometimes appears in an
     exception chain two levels deep. (Some ROOT files do have classes that don't
     match the standard ``TStreamerInfo``; they may have been produced from
     private builds of ROOT between official releases.)
 
-    If a :py:exc:`~uproot.deserialization.DeserializationError` is caught, the byte
+    If a :doc:`uproot.deserialization.DeserializationError` is caught, the byte
     stream at the position where it failed can be inspected with
 
-    * :py:meth:`~uproot.deserialization.DeserializationError.debug`
-    * :py:meth:`~uproot.deserialization.DeserializationError.debug_array`
-    * :py:attr:`~uproot.deserialization.DeserializationError.partial_object`
+    * :ref:`uproot.deserialization.DeserializationError.debug`
+    * :ref:`uproot.deserialization.DeserializationError.debug_array`
+    * :ref:`uproot.deserialization.DeserializationError.partial_object`
     """
 
     def __init__(self, message, chunk, cursor, context, file_path):
@@ -423,13 +423,13 @@ in file {2}{3}""".format(
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the :py:class:`~uproot.source.chunk.Chunk`. May be
+                remainder of the :doc:`uproot.source.chunk.Chunk`. May be
                 negative, to examine the byte stream leading up to the attempted
                 deserialization.
             limit_bytes (None or int): Number of bytes to limit the output to.
                 A line of debugging output (without any ``offset``) is 20 bytes,
                 so multiples of 20 show full lines. If None, everything is
-                shown to the end of the :py:class:`~uproot.source.chunk.Chunk`,
+                shown to the end of the :doc:`uproot.source.chunk.Chunk`,
                 which might be large.
             dtype (None, ``numpy.dtype``, or its constructor argument): If None,
                 present only the bytes as decimal values (0-255). Otherwise,
@@ -477,14 +477,14 @@ in file {2}{3}""".format(
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the
-                remainder of the :py:class:`~uproot.source.chunk.Chunk`. May be
+                remainder of the :doc:`uproot.source.chunk.Chunk`. May be
                 negative, to examine the byte stream leading up to the attempted
                 deserialization.
             dtype (``numpy.dtype`` or its constructor argument): Data type in
                 which to interpret the data. (The size of the array returned is
                 truncated to this ``dtype.itemsize``.)
 
-        Like :py:meth:`~uproot.deserialization.DeserializationError.debug`, but
+        Like :ref:`uproot.deserialization.DeserializationError.debug`, but
         returns a NumPy array for further inspection.
         """
         dtype = numpy.dtype(dtype)

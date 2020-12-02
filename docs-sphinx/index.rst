@@ -1,4 +1,9 @@
 .. toctree::
+    :hidden:
+
+    changelog
+
+.. toctree::
     :caption: Tutorials
     :hidden:
 
@@ -6,6 +11,10 @@
     uproot3-to-4
 
 .. include:: uproot.toctree
+
+.. toctree::
+    :caption: Modules
+    :hidden:
 
 .. include:: uproot.reading.toctree
 
@@ -31,14 +40,7 @@
 
 .. include:: uproot.models.toctree
 
-.. include:: uproot.const.toctree
-
 .. include:: uproot.exceptions.toctree
-
-.. include:: uproot.extras.toctree
-
-.. toctree::
-    :hidden:
 
 .. |br| raw:: html
 
@@ -65,7 +67,7 @@ But if you are working in a limited environment, Uproot can be installed without
 
     pip install uproot
 
-Just be sure to pass ``library="np"`` to any function that returns arrays to specify that you want NumPy arrays, rather than Awkward Arrays. Other array libraries include `Pandas <https://pandas.pydata.org/>`__ and `CuPy <https://cupy.dev/>`__, which, like Awkward Array, would need to be explicitly installed.
+Just be sure to pass ``library="np"`` to any function that returns arrays or globally set ``uproot.default_library`` to specify that you want NumPy arrays, rather than Awkward Arrays. Other array libraries include `Pandas <https://pandas.pydata.org/>`__ and `CuPy <https://cupy.dev/>`__, which, like Awkward Array, would need to be explicitly installed.
 
 Documentation
 =============

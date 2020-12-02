@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model of ``TString``.
+This module defines a versionless model of ``TString``.
 """
 
 from __future__ import absolute_import
@@ -11,7 +11,7 @@ import uproot
 
 class Model_TString(uproot.model.Model, str):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``TString``.
+    A versionless :doc:`uproot.model.Model` for ``TString``.
 
     This is also a Python ``str`` (string).
     """

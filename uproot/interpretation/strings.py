@@ -1,16 +1,16 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines an :py:class:`~uproot.interpretation.Interpretation` and temporary array for
-string data.
+This module defines an :doc:`uproot.interpretation.Interpretation` and
+temporary array for string data.
 
-Note that :py:class:`~uproot.interpretation.strings.AsStrings` is an interpretation for
-top-level strings, but :py:class:`~uproot.containers.AsString` can be nested within any
-other :py:class:`~uproot.containers.AsContainer`.
+Note that :doc:`uproot.interpretation.strings.AsStrings` is an interpretation for
+top-level strings, but :doc:`uproot.containers.AsString` can be nested within any
+other :doc:`uproot.containers.AsContainer`.
 
-The :py:class:`~uproot.interpretation.strings.StringArray` class only holds data while
+The :doc:`uproot.interpretation.strings.StringArray` class only holds data while
 an array is being built from ``TBaskets``. Its final form is determined by the
-:py:class:`~uproot.interpretation.library.Library`.
+:doc:`uproot.interpretation.library.Library`.
 """
 
 from __future__ import absolute_import
@@ -36,26 +36,26 @@ class AsStrings(uproot.interpretation.Interpretation):
             always four bytes.
         typename (None or str): If None, construct a plausible C++ typename.
             Otherwise, take the suggestion as given.
-        original (None, :py:class:`~uproot.model.Model`, or :py:class:`~uproot.containers.Container`): If
+        original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): If
             this interpretation is derived from
-            :py:meth:`~uproot.interpretation.objects.AsObjects.simplify`, this is a
+            :ref:`uproot.interpretation.objects.AsObjects.simplify`, this is a
             reminder of the original
-            :py:attr:`~uproot.interpretation.objects.AsObjects.model`.
+            :ref:`uproot.interpretation.objects.AsObjects.model`.
 
-    An :py:class:`~uproot.interpretation.Interpretation` for an array of strings.
+    An :doc:`uproot.interpretation.Interpretation` for an array of strings.
 
     This cannot be nested within other
-    :py:class:`~uproot.interpretation.Interpretation` objects; it can only represent
+    :doc:`uproot.interpretation.Interpretation` objects; it can only represent
     a ``TBranch`` that only contains strings (not strings within ``std::vector``,
     for instance).
 
-    Note that the :py:class:`~uproot.containers.AsString` class is for strings nested
+    Note that the :doc:`uproot.containers.AsString` class is for strings nested
     within other objects.
 
-    (:py:meth:`~uproot.interpretation.objects.AsObjects.simplify` converts an
-    :py:class:`~uproot.interpretation.objects.AsObjects` of
-    :py:class:`~uproot.containers.AsString` into a
-    :py:class:`~uproot.interpretation.strings.AsStrings`.)
+    (:ref:`uproot.interpretation.objects.AsObjects.simplify` converts an
+    :doc:`uproot.interpretation.objects.AsObjects` of
+    :doc:`uproot.containers.AsString` into a
+    :doc:`uproot.interpretation.strings.AsStrings`.)
     """
 
     def __init__(
@@ -89,9 +89,9 @@ class AsStrings(uproot.interpretation.Interpretation):
     def original(self):
         """
         If not None, this was the original
-        :py:attr:`~uproot.interpretation.objects.AsObjects.model` from an
-        :py:class:`~uproot.interpretation.objects.AsObjects` that was simplified
-        into this :py:class:`~uproot.interpretation.jagged.AsJagged`.
+        :ref:`uproot.interpretation.objects.AsObjects.model` from an
+        :doc:`uproot.interpretation.objects.AsObjects` that was simplified
+        into this :doc:`uproot.interpretation.jagged.AsJagged`.
         """
         return self._original
 
@@ -358,9 +358,9 @@ class StringArray(object):
             the array.
 
     Temporary array filled by
-    :py:meth:`~uproot.interpretation.strings.AsStrings.basket_array`, which will be
+    :ref:`uproot.interpretation.strings.AsStrings.basket_array`, which will be
     turned into a NumPy, Awkward, or other array, depending on the specified
-    :py:class:`~uproot.interpretation.library.Library`.
+    :doc:`uproot.interpretation.library.Library`.
     """
 
     def __init__(self, offsets, content):

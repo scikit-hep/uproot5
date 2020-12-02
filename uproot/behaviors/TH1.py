@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behaviors of ``TH1`` and its subclasses (not including ``TH2``,
+This module defines the behaviors of ``TH1`` and its subclasses (not including ``TH2``,
 ``TH3``, or ``TProfile``).
 """
 
@@ -71,13 +71,13 @@ class Histogram(object):
     @property
     def axes(self):
         """
-        A tuple of all :py:class:`~uproot.behaviors.TAxis.TAxis` objects.
+        A tuple of all :doc:`uproot.behaviors.TAxis.TAxis` objects.
         """
         raise NotImplementedError(repr(self))
 
     def axis(self, axis):
         """
-        Returns a specified :py:class:`~uproot.behaviors.TAxis.TAxis` object.
+        Returns a specified :doc:`uproot.behaviors.TAxis.TAxis` object.
 
         The ``axis`` can be specified as
 
@@ -126,7 +126,7 @@ class Histogram(object):
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
 
-        Errors (uncertainties) in the :py:meth:`~uproot.behaviors.TH1.Histogram.values`
+        Errors (uncertainties) in the :ref:`uproot.behaviors.TH1.Histogram.values`
         as a 1, 2, or 3 dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         If ``fSumw2`` (weights) are available, they will be used in the
@@ -145,7 +145,7 @@ class Histogram(object):
                 after the normal (finite-width) bins.
 
         Variances (uncertainties squared) in the
-        :py:meth:`~uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
+        :ref:`uproot.behaviors.TH1.Histogram.values` as a 1, 2, or 3
         dimensional ``numpy.ndarray`` of ``numpy.float64``.
 
         If ``fSumw2`` (weights) are available, they will be used in the
@@ -157,15 +157,14 @@ class Histogram(object):
         values, variances = self._values_variances(flow)
         return variances
 
-    def effective_counts(self, flow=False):
+    def counts(self, flow=False):
         """
         Args:
             flow (bool): If True, include underflow and overflow bins before and
                 after the normal (finite-width) bins.
 
         Returns the (possibly weighted) number of entries in each bin. For
-        histograms, this is equal to :py:meth:`~uproot.behaviors.TH1.Histogram.values`.
-        For profiles, this is equal to :py:meth:`~uproot.behaviors.TH1.Histogram.effective_entries`.
+        histograms, this is equal to :ref:`uproot.behaviors.TH1.Histogram.values`.
         """
         return self.values(flow=flow)
 

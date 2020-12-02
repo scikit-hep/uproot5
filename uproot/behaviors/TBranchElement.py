@@ -1,8 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines the behaviors of ``TBranchElement``, which is entirely inherited from
-functions in :py:class:`~uproot.behaviors.TBranch.TBranch`.
+This module defines the behaviors of ``TBranchElement``, which is entirely inherited from
+functions in :doc:`uproot.behaviors.TBranch.TBranch`.
 """
 
 from __future__ import absolute_import
@@ -15,8 +15,8 @@ class TBranchElement(uproot.behaviors.TBranch.TBranch):
     Behaviors for a ``TBranchElement``, which mostly consist of array-reading
     methods.
 
-    Since a :py:class:`~uproot.behavior.TBranchElement.TBranchElement` is a
-    :py:class:`~uproot.behavior.TBranch.HasBranches`, it is also a Python
+    Since a :doc:`uproot.behaviors.TBranchElement.TBranchElement` is a
+    :doc:`uproot.behaviors.TBranch.HasBranches`, it is also a Python
     ``Mapping``, which uses square bracket syntax to extract subbranches:
 
     .. code-block:: python

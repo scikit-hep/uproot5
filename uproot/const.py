@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Integer constants used by serialization and deserialization routines.
+This module defines integer constants used by serialization and deserialization routines.
 """
 
 from __future__ import absolute_import

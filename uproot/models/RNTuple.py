@@ -1,7 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
 
 """
-Defines a versionless model for ``ROOT::Experimental::RNTuple``.
+This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 """
 
 from __future__ import absolute_import
@@ -16,7 +16,7 @@ _rntuple_format1 = struct.Struct(">IIQIIQIIQ")
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
-    A versionless :py:class:`~uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
+    A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
 
     def read_members(self, chunk, cursor, context, file):
