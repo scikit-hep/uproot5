@@ -13,7 +13,7 @@ from __future__ import absolute_import
 
 import re
 
-__version__ = "4.0.0rc2"
+__version__ = "4.0.0rc3"
 version = __version__
 version_info = tuple(re.split(r"[-\.]", __version__))
 
