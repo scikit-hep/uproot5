@@ -1,2 +1,1 @@
 sphinx>=2.4.4
-uproot>=4.0.0rc1

@@ -5,6 +5,7 @@ import inspect
 import pkgutil
 import os.path
 import sys
+import subprocess
 
 import uproot
 
@@ -25,6 +26,13 @@ order = [
     "uproot.models",
     "uproot.exceptions",
 ]
+
+latest_commit = (
+    subprocess.run(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE)
+              .stdout
+              .decode("utf-8")
+              .strip()
+)
 
 toctree = open("uproot.toctree", "w")
 toctree.write(
@@ -151,10 +159,10 @@ def handle_class(classname, cls):
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
     link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
-        cls.__module__, uproot.__version__, shortfilename
+        cls.__module__, latest_commit, shortfilename
     )
     linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
-        inspect.getsourcelines(cls)[1], uproot.__version__, shortfilename
+        inspect.getsourcelines(cls)[1], latest_commit, shortfilename
     )
 
     inheritance_header = ""
@@ -215,10 +223,10 @@ def handle_function(functionname, cls):
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
     link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
-        cls.__module__, uproot.__version__, shortfilename
+        cls.__module__, latest_commit, shortfilename
     )
     linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
-        inspect.getsourcelines(cls)[1], uproot.__version__, shortfilename
+        inspect.getsourcelines(cls)[1], latest_commit, shortfilename
     )
 
     content = """{0}
