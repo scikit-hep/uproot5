@@ -7,3 +7,5 @@ python:
   version: 3.7
   install:
     - requirements: docs-sphinx/requirements.txt
+    - method: pip
+      path: .
