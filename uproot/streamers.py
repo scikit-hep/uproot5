@@ -217,6 +217,11 @@ class Model_TStreamerInfo(uproot.model.Model):
             "    @classmethod",
             "    def strided_interpretation(cls, file, header=False, "
             "tobject_header=True, breadcrumbs=(), original=None):",
+            "        if cls in breadcrumbs:",
+            "            raise uproot.interpretation.objects.CannotBeStrided("
+            "'classes that can contain members of the same type cannot be strided "
+            "because the depth of instances is unbounded')",
+            "        breadcrumbs = breadcrumbs + (cls,)",
             "        members = []",
             "        if header:",
             "            members.append(('@num_bytes', numpy.dtype('>u4')))",

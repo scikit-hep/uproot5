@@ -665,7 +665,7 @@ class Model(object):
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
             original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
-            breadcrumbs (tuple of method objects): Used to check for recursion.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
                 Types that contain themselves cannot be strided because the
                 depth of instances is unknown.
 
@@ -1030,7 +1030,7 @@ class DispatchByVersion(object):
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
             original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
-            breadcrumbs (tuple of method objects): Used to check for recursion.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
                 Types that contain themselves cannot be strided because the
                 depth of instances is unknown.
 

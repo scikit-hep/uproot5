@@ -185,7 +185,7 @@ class AsContainer(object):
                 for error messages.
             header (bool): If True, assume the outermost object has a header.
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
-            breadcrumbs (tuple of method objects): Used to check for recursion.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
                 Types that contain themselves cannot be strided because the
                 depth of instances is unknown.
             original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
