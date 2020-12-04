@@ -1012,7 +1012,12 @@ class DispatchByVersion(object):
         """
         stack = traceback.extract_stack()
         init, last = stack[:-1], stack[0]
-        if any(x.lineno == last.lineno and x.name == last.name and x.filename == last.filename for x in init):
+        if any(
+            x.lineno == last.lineno
+            and x.name == last.name
+            and x.filename == last.filename
+            for x in init
+        ):
             raise uproot.interpretation.objects.CannotBeAwkward("recursively defined")
 
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
@@ -1039,7 +1044,12 @@ class DispatchByVersion(object):
         """
         stack = traceback.extract_stack()
         init, last = stack[:-1], stack[0]
-        if any(x.lineno == last.lineno and x.name == last.name and x.filename == last.filename for x in init):
+        if any(
+            x.lineno == last.lineno
+            and x.name == last.name
+            and x.filename == last.filename
+            for x in init
+        ):
             raise uproot.interpretation.objects.CannotBeStrided("recursively defined")
 
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
