@@ -329,6 +329,33 @@ def _awkward_p(form):
     return out
 
 
+def _awkward_offsets(awkward, form, array):
+    if isinstance(array, awkward.layout.EmptyArray):
+        if form["offsets"] == "i32":
+            return awkward.layout.Index32(numpy.zeros(1, dtype=numpy.int32))
+        elif form["offsets"] == "u32":
+            return awkward.layout.IndexU32(numpy.zeros(1, dtype=numpy.uint32))
+        elif form["offsets"] == "i64":
+            return awkward.layout.Index64(numpy.zeros(1, dtype=numpy.int64))
+        else:
+            raise AssertionError(form["offsets"])
+    else:
+        if form["offsets"] == "i32":
+            return awkward.layout.Index32(
+                numpy.asarray(array.offsets, dtype=numpy.int32)
+            )
+        elif form["offsets"] == "u32":
+            return awkward.layout.IndexU32(
+                numpy.asarray(array.offsets, dtype=numpy.uint32)
+            )
+        elif form["offsets"] == "i64":
+            return awkward.layout.Index64(
+                numpy.asarray(array.offsets, dtype=numpy.int64)
+            )
+        else:
+            raise AssertionError(form["offsets"])
+
+
 def _awkward_json_to_array(awkward, form, array):
     if form["class"] == "NumpyArray":
         if isinstance(array, awkward.layout.EmptyArray):
@@ -342,7 +369,12 @@ def _awkward_json_to_array(awkward, form, array):
         names = []
         for name, subform in form["contents"].items():
             if not name.startswith("@"):
-                contents.append(_awkward_json_to_array(awkward, subform, array[name]))
+                if isinstance(array, awkward.layout.EmptyArray):
+                    contents.append(_awkward_json_to_array(awkward, subform, array))
+                else:
+                    contents.append(
+                        _awkward_json_to_array(awkward, subform, array[name])
+                    )
                 names.append(name)
         return awkward.layout.RecordArray(
             contents, names, len(array), parameters=_awkward_p(form)
@@ -367,24 +399,43 @@ def _awkward_json_to_array(awkward, form, array):
                 return type(array)(array.offsets, content, parameters=_awkward_p(form))
 
         elif form["parameters"].get("__array__") == "sorted_map":
+            offsets = _awkward_offsets(awkward, form, array)
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
-            keys = _awkward_json_to_array(awkward, key_form, array.content["0"])
-            values = _awkward_json_to_array(awkward, value_form, array.content["1"])
-            content = awkward.layout.RecordArray(
-                (keys, values),
-                None,
-                len(array.content),
-                parameters=_awkward_p(form["content"]),
-            )
-            return type(array)(array.offsets, content, parameters=_awkward_p(form))
+            if isinstance(array, awkward.layout.EmptyArray):
+                keys = _awkward_json_to_array(awkward, key_form, array)
+                values = _awkward_json_to_array(awkward, value_form, array)
+                content = awkward.layout.RecordArray(
+                    (keys, values), None, 0, parameters=_awkward_p(form["content"]),
+                )
+            else:
+                keys = _awkward_json_to_array(awkward, key_form, array.content["0"])
+                values = _awkward_json_to_array(awkward, value_form, array.content["1"])
+                content = awkward.layout.RecordArray(
+                    (keys, values),
+                    None,
+                    len(array.content),
+                    parameters=_awkward_p(form["content"]),
+                )
+            cls = getattr(awkward.layout, form["class"])
+            return cls(offsets, content, parameters=_awkward_p(form))
 
         else:
-            content = _awkward_json_to_array(awkward, form["content"], array.content)
-            return type(array)(array.offsets, content, parameters=_awkward_p(form))
+            offsets = _awkward_offsets(awkward, form, array)
+            if isinstance(array, awkward.layout.EmptyArray):
+                content = _awkward_json_to_array(awkward, form["content"], array)
+            else:
+                content = _awkward_json_to_array(
+                    awkward, form["content"], array.content
+                )
+            cls = getattr(awkward.layout, form["class"])
+            return cls(offsets, content, parameters=_awkward_p(form))
 
     elif form["class"] == "RegularArray":
-        content = _awkward_json_to_array(awkward, form["content"], array.content)
+        if isinstance(array, awkward.layout.EmptyArray):
+            content = _awkward_json_to_array(awkward, form["content"], array)
+        else:
+            content = _awkward_json_to_array(awkward, form["content"], array.content)
         return awkward.layout.RegularArray(
             content, form["size"], parameters=_awkward_p(form)
         )
