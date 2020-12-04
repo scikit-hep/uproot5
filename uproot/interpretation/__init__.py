@@ -58,7 +58,14 @@ class Interpretation(object):
         """
         raise AssertionError
 
-    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(
+        self,
+        file,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
         """
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
@@ -72,6 +79,9 @@ class Interpretation(object):
                 parameters.
             tobject_header (bool): If True, include headers for ``TObject``
                 classes in the Form's ``"uproot"`` parameters.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
+                Types that contain themselves cannot be Awkward Arrays because the
+                depth of instances is unknown.
 
         The ``awkward.forms.Form`` to use to put objects of type type in an
         Awkward Array.

@@ -121,7 +121,14 @@ class AsStrings(uproot.interpretation.Interpretation):
     def numpy_dtype(self):
         return numpy.dtype(numpy.object)
 
-    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(
+        self,
+        file,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             index_format,

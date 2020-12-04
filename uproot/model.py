@@ -627,7 +627,9 @@ class Model(object):
         return self._is_memberwise
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
         """
         Args:
             cls (subclass of :doc:`uproot.model.Model`): This class.
@@ -642,6 +644,9 @@ class Model(object):
                 parameters.
             tobject_header (bool): If True, include headers for ``TObject``
                 classes in the Form's ``"uproot"`` parameters.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
+                Types that contain themselves cannot be Awkward Arrays because the
+                depth of instances is unknown.
 
         The ``awkward.forms.Form`` to use to put objects of type type in an
         Awkward Array.
@@ -652,7 +657,7 @@ class Model(object):
 
     @classmethod
     def strided_interpretation(
-        cls, file, header=False, tobject_header=True, original=None
+        cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):
         """
         Args:
@@ -665,6 +670,9 @@ class Model(object):
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
             original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
+                Types that contain themselves cannot be strided because the
+                depth of instances is unknown.
 
         Returns a list of (str, ``numpy.dtype``) pairs to build a
         :doc:`uproot.interpretation.objects.AsStridedObjects` interpretation.
@@ -990,7 +998,9 @@ class DispatchByVersion(object):
     """
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
         """
         Args:
             cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
@@ -1005,16 +1015,21 @@ class DispatchByVersion(object):
                 parameters.
             tobject_header (bool): If True, include headers for ``TObject``
                 classes in the Form's ``"uproot"`` parameters.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
+                Types that contain themselves cannot be Awkward Arrays because the
+                depth of instances is unknown.
 
         The ``awkward.forms.Form`` to use to put objects of type type in an
         Awkward Array.
         """
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
-        return versioned_cls.awkward_form(file, index_format, header, tobject_header)
+        return versioned_cls.awkward_form(
+            file, index_format, header, tobject_header, breadcrumbs
+        )
 
     @classmethod
     def strided_interpretation(
-        cls, file, header=False, tobject_header=True, original=None
+        cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):
         """
         Args:
@@ -1027,13 +1042,16 @@ class DispatchByVersion(object):
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
             original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
+            breadcrumbs (tuple of class objects): Used to check for recursion.
+                Types that contain themselves cannot be strided because the
+                depth of instances is unknown.
 
         Returns a list of (str, ``numpy.dtype``) pairs to build a
         :doc:`uproot.interpretation.objects.AsStridedObjects` interpretation.
         """
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.strided_interpretation(
-            file, header=header, tobject_header=tobject_header
+            file, header=header, tobject_header=tobject_header, breadcrumbs=breadcrumbs
         )
 
     @classmethod

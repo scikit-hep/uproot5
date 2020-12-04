@@ -80,12 +80,14 @@ in file {1}""".format(
         return self._data.tolist()
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
             index_format,
             uproot._util.awkward_form(
-                cls.dtype, file, index_format, header, tobject_header
+                cls.dtype, file, index_format, header, tobject_header, breadcrumbs
             ),
             parameters={"uproot": {"as": "TArray"}},
         )
