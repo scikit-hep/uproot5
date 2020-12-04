@@ -246,6 +246,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                     self._branch.file,
                     header=False,
                     tobject_header=True,
+                    breadcrumbs=(),
                     original=self._model,
                 )
             except CannotBeStrided:
@@ -289,6 +290,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                         self._branch.file,
                         header=False,
                         tobject_header=True,
+                        breadcrumbs=(),
                         original=self._model.values,
                     )
                     return uproot.interpretation.jagged.AsJagged(

@@ -216,7 +216,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         strided_interpretation = [
             "    @classmethod",
             "    def strided_interpretation(cls, file, header=False, "
-            "tobject_header=True, original=None):",
+            "tobject_header=True, breadcrumbs=(), original=None):",
             "        members = []",
             "        if header:",
             "            members.append(('@num_bytes', numpy.dtype('>u4')))",
@@ -650,7 +650,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         )
         strided_interpretation.append(
             "        members.extend(file.class_named({0}, {1})."
-            "strided_interpretation(file, header, tobject_header).members)".format(
+            "strided_interpretation(file, header, tobject_header, breadcrumbs).members)".format(
                 repr(self.name), repr(self.base_version)
             )
         )
@@ -1150,7 +1150,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
         strided_interpretation.append(
             "        members.append(({0}, cls._stl_container{1}."
-            "strided_interpretation(file, header, tobject_header)))".format(
+            "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                 repr(self.name), len(containers)
             )
         )
@@ -1251,7 +1251,7 @@ class TStreamerPointerTypes(object):
             )
             strided_interpretation.append(
                 "        members.append(({0}, file.class_named({1}, 'max')."
-                "strided_interpretation(file, header, tobject_header)))".format(
+                "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -1374,7 +1374,7 @@ class TStreamerObjectTypes(object):
 
         strided_interpretation.append(
             "        members.append(({0}, file.class_named({1}, 'max')."
-            "strided_interpretation(file, header, tobject_header)))".format(
+            "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )

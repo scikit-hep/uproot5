@@ -22,7 +22,6 @@ from __future__ import absolute_import
 import re
 import sys
 import weakref
-import traceback
 
 import numpy
 
@@ -653,7 +652,7 @@ class Model(object):
 
     @classmethod
     def strided_interpretation(
-        cls, file, header=False, tobject_header=True, original=None
+        cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):
         """
         Args:
@@ -666,6 +665,9 @@ class Model(object):
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
             original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
+            breadcrumbs (tuple of method objects): Used to check for recursion.
+                Types that contain themselves cannot be strided because the
+                depth of instances is unknown.
 
         Returns a list of (str, ``numpy.dtype``) pairs to build a
         :doc:`uproot.interpretation.objects.AsStridedObjects` interpretation.
@@ -1010,22 +1012,12 @@ class DispatchByVersion(object):
         The ``awkward.forms.Form`` to use to put objects of type type in an
         Awkward Array.
         """
-        stack = traceback.extract_stack()
-        init, last = stack[:-1], stack[0]
-        if any(
-            x.lineno == last.lineno
-            and x.name == last.name
-            and x.filename == last.filename
-            for x in init
-        ):
-            raise uproot.interpretation.objects.CannotBeAwkward("recursively defined")
-
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.awkward_form(file, index_format, header, tobject_header)
 
     @classmethod
     def strided_interpretation(
-        cls, file, header=False, tobject_header=True, original=None
+        cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):
         """
         Args:
@@ -1038,23 +1030,16 @@ class DispatchByVersion(object):
             tobject_header (bool): If True, assume that ``TObjects`` have headers.
             original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.Container`): The
                 original, non-strided model or container.
+            breadcrumbs (tuple of method objects): Used to check for recursion.
+                Types that contain themselves cannot be strided because the
+                depth of instances is unknown.
 
         Returns a list of (str, ``numpy.dtype``) pairs to build a
         :doc:`uproot.interpretation.objects.AsStridedObjects` interpretation.
         """
-        stack = traceback.extract_stack()
-        init, last = stack[:-1], stack[0]
-        if any(
-            x.lineno == last.lineno
-            and x.name == last.name
-            and x.filename == last.filename
-            for x in init
-        ):
-            raise uproot.interpretation.objects.CannotBeStrided("recursively defined")
-
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.strided_interpretation(
-            file, header=header, tobject_header=tobject_header
+            file, header=header, tobject_header=tobject_header, breadcrumbs=breadcrumbs
         )
 
     @classmethod

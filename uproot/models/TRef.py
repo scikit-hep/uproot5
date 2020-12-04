@@ -53,7 +53,7 @@ in file {1}""".format(
 
     @classmethod
     def strided_interpretation(
-        cls, file, header=False, tobject_header=True, original=None
+        cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):
         members = []
         members.append(("@pidf", numpy.dtype(">u2")))
