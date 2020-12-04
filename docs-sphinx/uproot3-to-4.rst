@@ -7,7 +7,7 @@ Thus, it was also a good time to introduce interface changes to Uproot itself—
 
 Fundamental changes were also required to streamline remote reading (HTTP and XRootD), so Uproot 4 was distributed as a separate project in parallel with Uproot 3 (like Awkward 1 and 0). For the latter half of 2020, adventurous users and downstream developers could install `uproot <https://pypi.org/project/uproot/>`__ as a separate project.
 
-.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/master/docs-img/diagrams/uproot-awkward-timeline.png
+.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/uproot-awkward-timeline.png
   :width: 100%
 
 On December 1, 2020, however, Awkward 0 and Uproot 3 were deprecated, moved to PyPI packages `awkward0 <https://pypi.org/project/awkward0/>`__ and `uproot3 <https://pypi.org/project/uproot3/>`__, while Awkward 1 and Uproot 4 became unqualified as `awkward <https://pypi.org/project/awkward/>`__ and `uproot <https://pypi.org/project/uproot/>`__.

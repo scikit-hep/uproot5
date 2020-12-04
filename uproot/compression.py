@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
 This module defines an interface to compression algorithms used by ROOT, as well

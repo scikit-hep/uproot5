@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
 This module defines a :doc:`uproot.source.chunk.Chunk`, which is a range of bytes
