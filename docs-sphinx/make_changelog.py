@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import math
 import json
@@ -97,7 +97,7 @@ with open("changelog.rst", "w") as outfile:
             numprs += 1
 
             if first:
-                header_text = "\nUnreleased (`master branch <https://github.com/scikit-hep/uproot4>`__ on GitHub)\n"
+                header_text = "\nUnreleased (`main branch <https://github.com/scikit-hep/uproot4>`__ on GitHub)\n"
                 outfile.write(header_text)
                 outfile.write("="*len(header_text) + "\n\n")
 
@@ -146,6 +146,6 @@ Uproot versions 1 through 3 were in a different GitHub repository: `scikit-hep/u
 
 This was to allow users to transition from Awkward Array 0.x and Uproot 3.x, which had different interfaces (especially Awkward Array). The transition completed on December 1, 2020.
 
-.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/master/docs-img/diagrams/uproot-awkward-timeline.png
+.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/uproot-awkward-timeline.png
   :width: 100%
 """)

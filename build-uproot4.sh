@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 set -e
 
@@ -8,7 +8,7 @@ mkdir build
 mkdir build/uproot4
 
 cat > build/uproot4/__init__.py << EOF
-# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/master/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 from __future__ import absolute_import
 
