@@ -22,6 +22,7 @@ from __future__ import absolute_import
 import re
 import sys
 import weakref
+import traceback
 
 import numpy
 
@@ -1009,6 +1010,11 @@ class DispatchByVersion(object):
         The ``awkward.forms.Form`` to use to put objects of type type in an
         Awkward Array.
         """
+        stack = traceback.extract_stack()
+        init, last = stack[:-1], stack[0]
+        if any(x.lineno == last.lineno and x.name == last.name and x.filename == last.filename for x in init):
+            raise uproot.interpretation.objects.CannotBeAwkward("recursively defined")
+
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.awkward_form(file, index_format, header, tobject_header)
 
@@ -1031,6 +1037,11 @@ class DispatchByVersion(object):
         Returns a list of (str, ``numpy.dtype``) pairs to build a
         :doc:`uproot.interpretation.objects.AsStridedObjects` interpretation.
         """
+        stack = traceback.extract_stack()
+        init, last = stack[:-1], stack[0]
+        if any(x.lineno == last.lineno and x.name == last.name and x.filename == last.filename for x in init):
+            raise uproot.interpretation.objects.CannotBeStrided("recursively defined")
+
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
         return versioned_cls.strided_interpretation(
             file, header=header, tobject_header=tobject_header
