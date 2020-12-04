@@ -379,7 +379,7 @@ def new_class(name, bases, members):
 _primitive_awkward_form = {}
 
 
-def awkward_form(model, file, index_format="i64", header=False, tobject_header=True):
+def awkward_form(model, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
     import uproot
 
     awkward = uproot.extras.awkward()
@@ -420,7 +420,7 @@ def awkward_form(model, file, index_format="i64", header=False, tobject_header=T
         return _primitive_awkward_form[model]
 
     else:
-        return model.awkward_form(file, index_format, header, tobject_header)
+        return model.awkward_form(file, index_format, header, tobject_header, breadcrumbs)
 
 
 def awkward_form_remove_uproot(awkward, form):

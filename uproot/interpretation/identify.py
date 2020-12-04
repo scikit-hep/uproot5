@@ -1145,7 +1145,7 @@ in object {2}""".format(
     def numpy_dtype(self):
         raise self
 
-    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
         raise self
 
     @property

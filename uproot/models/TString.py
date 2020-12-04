@@ -53,9 +53,9 @@ in file {1}""".format(
         return str(self)
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
         return uproot.containers.AsString(False, typename="TString").awkward_form(
-            file, index_format, header, tobject_header
+            file, index_format, header, tobject_header, breadcrumbs
         )
 
 

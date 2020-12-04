@@ -66,21 +66,21 @@ in file {1}""".format(
         )
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
         awkward = uproot.extras.awkward()
         contents = {}
         if tobject_header:
             contents["@pidf"] = uproot._util.awkward_form(
-                numpy.dtype("u2"), file, index_format, header, tobject_header
+                numpy.dtype("u2"), file, index_format, header, tobject_header, breadcrumbs
             )
             contents["ref"] = uproot._util.awkward_form(
-                numpy.dtype("u4"), file, index_format, header, tobject_header
+                numpy.dtype("u4"), file, index_format, header, tobject_header, breadcrumbs
             )
             contents["@other1"] = uproot._util.awkward_form(
-                numpy.dtype("u2"), file, index_format, header, tobject_header
+                numpy.dtype("u2"), file, index_format, header, tobject_header, breadcrumbs
             )
             contents["@other2"] = uproot._util.awkward_form(
-                numpy.dtype("u4"), file, index_format, header, tobject_header
+                numpy.dtype("u4"), file, index_format, header, tobject_header, breadcrumbs
             )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TRef"})
 
@@ -158,17 +158,17 @@ in file {1}""".format(
         )
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True):
+    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
         awkward = uproot.extras.awkward()
         contents = {}
         contents["fName"] = uproot.containers.AsString(
             False, typename="TString"
-        ).awkward_form(file, index_format, header, tobject_header)
+        ).awkward_form(file, index_format, header, tobject_header, breadcrumbs)
         contents["fSize"] = uproot._util.awkward_form(
-            numpy.dtype("i4"), file, index_format, header, tobject_header
+            numpy.dtype("i4"), file, index_format, header, tobject_header, breadcrumbs
         )
         contents["refs"] = uproot._util.awkward_form(
-            numpy.dtype("i4"), file, index_format, header, tobject_header
+            numpy.dtype("i4"), file, index_format, header, tobject_header, breadcrumbs
         )
         return awkward.forms.RecordForm(
             contents, parameters={"__record__": "TRefArray"}
