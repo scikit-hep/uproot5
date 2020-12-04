@@ -85,7 +85,14 @@ class AsGrouped(uproot.interpretation.Interpretation):
                 )
             )
 
-    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
+    def awkward_form(
+        self,
+        file,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
         awkward = uproot.extras.awkward()
         names = []
         fields = []
@@ -93,7 +100,9 @@ class AsGrouped(uproot.interpretation.Interpretation):
             if y is not None:
                 names.append(x)
                 fields.append(
-                    y.awkward_form(file, index_format, header, tobject_header, breadcrumbs)
+                    y.awkward_form(
+                        file, index_format, header, tobject_header, breadcrumbs
+                    )
                 )
         return awkward.forms.RecordForm(fields, names)
 

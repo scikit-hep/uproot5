@@ -62,24 +62,51 @@ in file {1}""".format(
         )
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
         awkward = uproot.extras.awkward()
         contents = {}
         if tobject_header:
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"), file, index_format, header, tobject_header, breadcrumbs
+                numpy.dtype("u2"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
             )
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"), file, index_format, header, tobject_header, breadcrumbs
+                numpy.dtype("u4"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
             )
             contents["@fUniqueID"] = uproot._util.awkward_form(
-                numpy.dtype("u4"), file, index_format, header, tobject_header, breadcrumbs
+                numpy.dtype("u4"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
             )
             contents["@fBits"] = uproot._util.awkward_form(
-                numpy.dtype("u4"), file, index_format, header, tobject_header, breadcrumbs
+                numpy.dtype("u4"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
             )
             contents["@pidf"] = uproot._util.awkward_form(
-                numpy.dtype("u2"), file, index_format, header, tobject_header, breadcrumbs
+                numpy.dtype("u2"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
             )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TObject"},)
 

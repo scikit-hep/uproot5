@@ -58,7 +58,14 @@ class Interpretation(object):
         """
         raise AssertionError
 
-    def awkward_form(self, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
+    def awkward_form(
+        self,
+        file,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
         """
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate

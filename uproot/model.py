@@ -627,7 +627,9 @@ class Model(object):
         return self._is_memberwise
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
         """
         Args:
             cls (subclass of :doc:`uproot.model.Model`): This class.
@@ -996,7 +998,9 @@ class DispatchByVersion(object):
     """
 
     @classmethod
-    def awkward_form(cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()):
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
         """
         Args:
             cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
@@ -1019,7 +1023,9 @@ class DispatchByVersion(object):
         Awkward Array.
         """
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
-        return versioned_cls.awkward_form(file, index_format, header, tobject_header, breadcrumbs)
+        return versioned_cls.awkward_form(
+            file, index_format, header, tobject_header, breadcrumbs
+        )
 
     @classmethod
     def strided_interpretation(

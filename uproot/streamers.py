@@ -233,6 +233,11 @@ class Model_TStreamerInfo(uproot.model.Model):
             "tobject_header=True, breadcrumbs=()):",
             "        from awkward.forms import NumpyForm, ListOffsetForm, "
             "RegularForm, RecordForm",
+            "        if cls in breadcrumbs:",
+            "            raise uproot.interpretation.objects.CannotBeAwkward("
+            "'classes that can contain members of the same type cannot be Awkward "
+            "Arrays because the depth of instances is unbounded')",
+            "        breadcrumbs = breadcrumbs + (cls,)",
             "        contents = {}",
             "        if header:",
             "            contents['@num_bytes'] = "
