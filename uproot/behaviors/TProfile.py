@@ -136,6 +136,10 @@ class Profile(uproot.behaviors.TH1.Histogram):
     Abstract class for profile plots.
     """
 
+    @property
+    def kind(self):
+        return "MEAN"
+
     def counts(self, flow=False):
         """
         Args:
@@ -235,10 +239,6 @@ class TProfile(Profile):
     def weighted(self):
         fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
         return fBinSumw2 is None or len(fBinSumw2) != len(self.member("fNcells"))
-
-    @property
-    def interpretation(self):
-        return "mean"
 
     def counts(self, flow=True):
         out = _effective_counts_1d(

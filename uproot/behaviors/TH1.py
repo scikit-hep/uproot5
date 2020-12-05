@@ -100,12 +100,12 @@ class Histogram(object):
         raise NotImplementedError(repr(self))
 
     @property
-    def interpretation(self):
+    def kind(self):
         """
-        How to interpret ``values``: ``"count"`` for histograms and ``"mean"``
-        for profiles.
+        The meaning of this object: ``"COUNT"`` for true histograms (TH*) and
+        ``"MEAN"`` for profile plots (TProfile*).
         """
-        raise NotImplementedError(repr(self))
+        raise "COUNT"
 
     def values(self, flow=False):
         """
@@ -215,10 +215,6 @@ class TH1(Histogram):
     def weighted(self):
         sumw2 = self.member("fSumw2", none_if_missing=True)
         return sumw2 is not None and len(sumw2) == self.member("fNcells")
-
-    @property
-    def interpretation(self):
-        return "count"
 
     def values(self, flow=False):
         if hasattr(self, "_values"):

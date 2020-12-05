@@ -40,10 +40,6 @@ class TProfile3D(uproot.behaviors.TProfile.Profile):
         fBinSumw2 = self.member("fBinSumw2", none_if_missing=True)
         return fBinSumw2 is None or len(fBinSumw2) != len(self.member("fNcells"))
 
-    @property
-    def interpretation(self):
-        return "mean"
-
     def counts(self, flow=False):
         fBinEntries = numpy.asarray(self.member("fBinEntries"))
         out = uproot.behaviors.TProfile._effective_counts_1d(
