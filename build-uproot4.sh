@@ -42,7 +42,7 @@ setup(name = "uproot4",
       download_url = "https://github.com/scikit-hep/uproot4/releases",
       license = "BSD 3-clause",
       python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
-      install_requires = ["uproot>=4.0.0rc1"],
+      install_requires = ["uproot>=4.0.0"],
       classifiers = [
 #         "Development Status :: 1 - Planning",
 #         "Development Status :: 2 - Pre-Alpha",
