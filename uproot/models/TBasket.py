@@ -235,7 +235,12 @@ class Model_TBasket(uproot.model.Model):
         cursor.skip(1)
 
         if self.is_embedded:
-            if self._members["fNevBufSize"] > 8:
+            # https://github.com/root-project/root/blob/0e6282a641b65bdf5ad832882e547ca990e8f1a5/tree/tree/inc/TBasket.h#L62-L65
+            maybe_entry_size = self._members["fNevBufSize"]
+            num_entries = self._members["fNevBuf"]
+            key_length = self._members["fKeylen"]
+
+            if maybe_entry_size * num_entries + key_length != self._members["fLast"]:
                 raw_byte_offsets = cursor.bytes(
                     chunk, 8 + self.num_entries * 4, context
                 ).view(_tbasket_offsets_dtype)
