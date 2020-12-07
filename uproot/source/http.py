@@ -377,46 +377,67 @@ for URL {1}""".format(
         else:
             response_buffer = _ResponseBuffer(response)
 
-        for i in uproot._util.range(len(futures)):
+        num_found = 0
+        while len(futures) > 0:
             range_string, size = self.next_header(response_buffer)
             if range_string is None:
                 raise OSError(
                     """found {0} of {1} expected headers in HTTP multipart
 for URL {2}""".format(
-                        i, len(futures), self._file_path
+                        num_found, len(futures), self._file_path
                     )
                 )
+            num_found += 1
 
             start, last = range_string.split(b"-")
             start, last = int(start), int(last)
             stop = last + 1
 
-            future = futures.get((start, stop))
-
-            if future is None:
-                raise OSError(
-                    """unrecognized byte range in headers of HTTP multipart: {0}
-for URL {1}""".format(
-                        repr(range_string.decode()), self._file_path
-                    )
-                )
-
             length = stop - start
-            results[start, stop] = response_buffer.read(length)
+            data = response_buffer.read(length)
 
-            if len(results[start, stop]) != length:
+            if len(data) != length:
                 raise OSError(
                     """wrong chunk length {0} (expected {1}) for byte range {2} "
                     "in HTTP multipart
 for URL {3}""".format(
-                        len(results[start, stop]),
-                        length,
-                        repr(range_string.decode()),
-                        self._file_path,
+                        len(data), length, repr(range_string.decode()), self._file_path
                     )
                 )
 
-            future._run(self)
+            found = futures.pop((start, stop), None)
+
+            if found is not None:
+                results[start, stop] = data
+                found._run(self)
+
+            else:
+                now = start
+                while now < stop:
+                    for future_start, future_stop in futures:
+                        if now == future_start:
+                            break
+                    else:
+                        range_string = range_string.decode("utf-8", "surrogateescape")
+                        expecting = ", ".join(
+                            "{0}-{1}".format(a, b - 1) for a, b in futures
+                        )
+                        raise OSError(
+                            """unrecognized byte range in headers of HTTP multipart: {0}
+
+    expecting: {1}
+
+for URL {2}""".format(
+                                repr(range_string), expecting, self._file_path
+                            )
+                        )
+                    subdata = data[
+                        now - start : now + future_stop - future_start - start
+                    ]
+                    found = futures.pop((future_start, future_stop))
+                    results[future_start, future_stop] = subdata
+                    found._run(self)
+                    now = future_stop
 
     def next_header(self, response_buffer):
         """
