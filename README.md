@@ -38,7 +38,7 @@ conda update --all
 **Start with the [tutorials and reference documentation](https://uproot.readthedocs.io/).**
 
    * Report bugs, request features, and ask for additional documentation on [GitHub Issues](https://github.com/scikit-hep/uproot4/issues).
-   * If you have a "How do I...?" question, start a [GitHub Discussion](https://github.com/scikit-hep/uproot4/discussions/new) with category "Q&A".
+   * If you have a "How do I...?" question, start a [GitHub Discussion](https://github.com/scikit-hep/uproot4/discussions) with category "Q&A".
    * Alternatively, ask about it on [StackOverflow with the [uproot] tag](https://stackoverflow.com/questions/tagged/uproot). Be sure to include tags for any other libraries that you use, such as Pandas or PyTorch.
    * To ask questions in real time, try the Gitter [Scikit-HEP/uproot](https://gitter.im/Scikit-HEP/uproot) chat room.
 
