@@ -25,7 +25,7 @@ def _boost_axis(axis, metadata):
     if axis.member("fLabels") is not None:
         out = boost_histogram.axis.StrCategory([str(x) for x in axis.member("fLabels")])
 
-    elif fXbins is None or len(fXbins) != fNbins:
+    elif fXbins is None or len(fXbins) != fNbins + 1:
         out = boost_histogram.axis.Regular(
             fNbins,
             axis.member("fXmin"),
