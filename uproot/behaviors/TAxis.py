@@ -65,7 +65,7 @@ class TAxis(Sequence):
         if fLabels is not None and len(fLabels) == fNbins:
             return str(fLabels[where])
 
-        elif fXbins is None or len(fXbins) != fNbins:
+        elif fXbins is None or len(fXbins) != fNbins + 1:
             fXmin, fXmax = self.member("fXmin"), self.member("fXmax")
             low = (fXmax - fXmin) * (where) / float(fNbins) + fXmin
             high = (fXmax - fXmin) * (where + 1) / float(fNbins) + fXmin
@@ -157,7 +157,7 @@ class TAxis(Sequence):
         fNbins = self.member("fNbins")
         fXbins = self.member("fXbins", none_if_missing=True)
 
-        if fXbins is None or len(fXbins) != fNbins:
+        if fXbins is None or len(fXbins) != fNbins + 1:
             return (self.member("fXmax") - self.member("fXmin")) / fNbins
         else:
             return self.widths().mean()
@@ -207,7 +207,7 @@ class TAxis(Sequence):
         fNbins = self.member("fNbins")
         fXbins = self.member("fXbins", none_if_missing=True)
 
-        if fXbins is None or len(fXbins) != fNbins:
+        if fXbins is None or len(fXbins) != fNbins + 1:
             fXbins = numpy.linspace(
                 self.member("fXmin"), self.member("fXmax"), fNbins + 1
             )
@@ -242,7 +242,7 @@ class TAxis(Sequence):
         fNbins = self.member("fNbins")
         fXbins = self.member("fXbins", none_if_missing=True)
 
-        if fXbins is None or len(fXbins) != fNbins:
+        if fXbins is None or len(fXbins) != fNbins + 1:
             fXbins = numpy.linspace(
                 self.member("fXmin"), self.member("fXmax"), fNbins + 1
             )
@@ -300,7 +300,7 @@ class TAxis(Sequence):
         fNbins = self.member("fNbins")
         fXbins = self.member("fXbins", none_if_missing=True)
 
-        if not flow and (fXbins is None or len(fXbins) != fNbins):
+        if not flow and (fXbins is None or len(fXbins) != fNbins + 1):
             width = (self.member("fXmax") - self.member("fXmin")) / fNbins
             return numpy.broadcast_to(width, (fNbins,))
         else:
