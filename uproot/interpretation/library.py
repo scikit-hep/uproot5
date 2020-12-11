@@ -205,9 +205,9 @@ class NumPy(Library):
         if isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
             array.content, uproot.interpretation.objects.StridedObjectArray,
         ):
-            out = numpy.zeros(len(array), dtype=numpy.object)
+            out = numpy.zeros(len(array), dtype=object)
             for i, x in enumerate(array):
-                out[i] = numpy.zeros(len(x), dtype=numpy.object)
+                out[i] = numpy.zeros(len(x), dtype=object)
                 for j, y in enumerate(x):
                     out[i][j] = y
             return out
@@ -221,7 +221,7 @@ class NumPy(Library):
                 uproot.interpretation.objects.StridedObjectArray,
             ),
         ):
-            out = numpy.zeros(len(array), dtype=numpy.object)
+            out = numpy.zeros(len(array), dtype=object)
             for i, x in enumerate(array):
                 out[i] = x
             return out
@@ -849,7 +849,7 @@ class Pandas(Library):
                 uproot.interpretation.objects.ObjectArray,
             ),
         ):
-            out = numpy.zeros(len(array), dtype=numpy.object)
+            out = numpy.zeros(len(array), dtype=object)
             for i, x in enumerate(array):
                 out[i] = x
             index = _pandas_basic_index(pandas, entry_start, entry_stop)

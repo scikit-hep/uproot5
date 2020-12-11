@@ -32,7 +32,7 @@ import uproot
 
 
 _stl_container_size = struct.Struct(">I")
-_stl_object_type = numpy.dtype(numpy.object)
+_stl_object_type = numpy.dtype(object)
 
 
 def _content_typename(content):
@@ -695,7 +695,7 @@ in file {1}""".format(
                         context,
                         file.file_path,
                     )
-                return numpy.array(out, dtype=numpy.dtype(numpy.object))
+                return numpy.array(out, dtype=numpy.dtype(object))
 
         else:
             if self._speedbump:
@@ -713,7 +713,7 @@ in file {1}""".format(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
-                return numpy.array(out, dtype=numpy.dtype(numpy.object))
+                return numpy.array(out, dtype=numpy.dtype(object))
 
 
 class AsVector(AsContainer):

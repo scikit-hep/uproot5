@@ -91,7 +91,7 @@ class AsObjects(uproot.interpretation.Interpretation):
 
     @property
     def numpy_dtype(self):
-        return numpy.dtype(numpy.object)
+        return numpy.dtype(object)
 
     @property
     def cache_key(self):
@@ -419,7 +419,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     @property
     def numpy_dtype(self):
-        return numpy.dtype(numpy.object)
+        return numpy.dtype(object)
 
     def awkward_form(
         self,
@@ -572,7 +572,7 @@ class ObjectArray(object):
         """
         Convert this ObjectArray into a NumPy ``dtype="O"`` (object) array.
         """
-        output = numpy.empty(len(self), dtype=numpy.dtype(numpy.object))
+        output = numpy.empty(len(self), dtype=numpy.dtype(object))
         for i in range(len(self)):
             output[i] = self[i]
         return output
