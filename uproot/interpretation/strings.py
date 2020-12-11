@@ -119,7 +119,7 @@ class AsStrings(uproot.interpretation.Interpretation):
 
     @property
     def numpy_dtype(self):
-        return numpy.dtype(numpy.object)
+        return numpy.dtype(object)
 
     def awkward_form(
         self,
