@@ -10,6 +10,8 @@ import numpy
 
 import uproot
 from uproot.behaviors.TH1 import boost_metadata, boost_axis_metadata
+import uproot.behaviors.TProfile
+import uproot.behaviors.TH3
 
 
 class TProfile3D(uproot.behaviors.TProfile.Profile):
