@@ -5,8 +5,6 @@
 [![Python 3.5‒3.9](https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-<br>
-
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
 [![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
 [![DOI 10.5281/zenodo.3952728](https://zenodo.org/badge/DOI/10.5281/zenodo.3952728.svg)](https://doi.org/10.5281/zenodo.3952728)
