@@ -69,7 +69,7 @@
    :alt: BSD-3 Clause License
    :target: https://opensource.org/licenses/BSD-3-Clause
 
-.. image:: https://img.shields.io/github/v/release/scikit-hep/uproot4?color=blue&label=uproot
+.. image:: https://img.shields.io/github/v/release/scikit-hep/uproot4?color=blue&label=Uproot
    :alt: Latest version
    :target: https://github.com/scikit-hep/uproot4/releases/latest
 

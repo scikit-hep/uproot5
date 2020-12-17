@@ -5,7 +5,7 @@
 [![DOI 10.5281/zenodo.3952728](https://zenodo.org/badge/DOI/10.5281/zenodo.3952728.svg)](https://doi.org/10.5281/zenodo.3952728)
 [![Python 3.5‒3.9](https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Latest version](https://img.shields.io/github/v/release/scikit-hep/uproot4?color=blue&label=uproot)](https://github.com/scikit-hep/uproot4/releases/latest)
+[![Latest version](https://img.shields.io/github/v/release/scikit-hep/uproot4?color=blue&label=Uproot)](https://github.com/scikit-hep/uproot4/releases/latest)
 
 Uproot is a reader and a writer of the [ROOT file format](https://root.cern/) using only Python and Numpy. Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, Uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
 
