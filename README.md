@@ -1,7 +1,7 @@
 <img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/logo/logo-300px.png">
 
-[![PyPI version][https://badge.fury.io/py/uproot.svg]][https://pypi.org/project/uproot]
-[![Conda-Forge][https://img.shields.io/conda/vn/conda-forge/uproot]][https://github.com/conda-forge/uproot-feedstock]
+[![PyPI version][https://badge.fury.io/py/uproot.svg]](https://pypi.org/project/uproot)
+[![Conda-Forge][https://img.shields.io/conda/vn/conda-forge/uproot]](https://github.com/conda-forge/uproot-feedstock)
 [![Python 3.5‒3.9](https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
