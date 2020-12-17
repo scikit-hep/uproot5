@@ -51,11 +51,42 @@
     :alt: Uproot
     :target: https://github.com/scikit-hep/uproot4
 
+.. role:: raw-html(raw)
+    :format: html
+
 |br|
+
+:raw-html:`<p>`
+
+.. image:: https://badge.fury.io/py/uproot.svg
+   :alt: PyPI version
+   :target: https://pypi.org/project/uproot
+
+.. image:: https://img.shields.io/conda/vn/conda-forge/uproot
+   :alt: Conda-Forge
+   :target: https://github.com/conda-forge/uproot-feedstock
+
+.. image:: https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue
+   :alt: Python 3.5‒3.9
+   :target: https://www.python.org
+
+.. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
+   :alt: BSD-3 Clause License
+   :target: https://opensource.org/licenses/BSD-3-Clause
+
+.. image:: https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build?label=CI
+   :alt: Test build
+   :target: https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Test+build%22
+
+.. image:: https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Deploy%20to%20PyPI?label=CD
+   :alt: Deploy to PyPI
+   :target: https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Deploy+to+PyPI%22
+
+:raw-html:`</p><p>`
 
 .. image:: https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg
    :alt: Scikit-HEP
-   :target: https://scikit-hep.org
+   :target: https://scikit-hep.org/
 
 .. image:: https://img.shields.io/badge/NSF-1836650-blue.svg
    :alt: NSF-1836650
@@ -65,13 +96,15 @@
    :alt: DOI 10.5281/zenodo.3952728
    :target: https://doi.org/10.5281/zenodo.3952728
 
-.. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
-   :alt: BSD-3 Clause License
-   :target: https://opensource.org/licenses/BSD-3-Clause
+.. image:: https://img.shields.io/badge/docs-online-success
+   :alt: Documentation
+   :target: https://uproot.readthedocs.io/
 
-.. image:: https://img.shields.io/github/v/release/scikit-hep/uproot4?color=blue&label=Uproot
-   :alt: Latest version
-   :target: https://github.com/scikit-hep/uproot4/releases/latest
+.. image:: https://img.shields.io/badge/chat-online-success
+   :alt: Gitter
+   :target: https://gitter.im/Scikit-HEP/uproot
+
+:raw-html:`</p>`
 
 |br| Uproot is a library for reading (and soon, writing) ROOT files in pure Python and NumPy.
 
