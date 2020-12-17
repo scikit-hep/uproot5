@@ -49,6 +49,29 @@
 .. image:: https://github.com/scikit-hep/uproot4/raw/main/docs-img/logo/logo-300px.png
     :width: 300px
     :alt: Uproot
+    :target: https://github.com/scikit-hep/uproot4
+
+|br|
+
+.. image:: https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg
+   :alt: Scikit-HEP
+   :target: https://scikit-hep.org
+
+.. image:: https://img.shields.io/badge/NSF-1836650-blue.svg
+   :alt: NSF-1836650
+   :target: https://nsf.gov/awardsearch/showAward?AWD_ID=1836650
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3952728.svg
+   :alt: DOI 10.5281/zenodo.3952728
+   :target: https://doi.org/10.5281/zenodo.3952728
+
+.. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
+   :alt: BSD-3 Clause License
+   :target: https://opensource.org/licenses/BSD-3-Clause
+
+.. image:: https://img.shields.io/github/v/release/scikit-hep/uproot4?color=blue&label=uproot
+   :alt: Latest version
+   :target: https://github.com/scikit-hep/uproot4/releases/latest
 
 |br| Uproot is a library for reading (and soon, writing) ROOT files in pure Python and NumPy.
 
@@ -84,8 +107,7 @@ Documentation
 Getting help
 ============
 
-Report bugs, request features, and ask for additional documentation on `GitHub Issues <https://github.com/scikit-hep/uproot4/issues>`__.
-
-If you have a problem that's too specific to be new documentation or it isn't exclusively related to Uproot, it might be more appropriate to ask on `StackOverflow with the [uproot] tag <https://stackoverflow.com/questions/tagged/uproot>`__. Be sure to include tags for any other libraries that you use, such as boost-histogram or Pandas.
-
-The `Gitter Scikit-HEP/community <https://gitter.im/Scikit-HEP/community>`__ is a way to get in touch with all Scikit-HEP developers and users.
+- Report bugs, request features, and ask for additional documentation on `GitHub Issues <https://github.com/scikit-hep/uproot4/issues>`__.
+- If you have a "How do I...?" question, start a `GitHub Discussion <https://github.com/scikit-hep/uproot4/discussions>`__ with category "Q&A".
+- Alternatively, ask about it on `StackOverflow with the [uproot] tag <https://stackoverflow.com/questions/tagged/uproot>`__. Be sure to include tags for any other libraries that you use, such as Pandas or PyTorch.
+- To ask questions in real time, try the Gitter `Scikit-HEP/uproot <https://gitter.im/Scikit-HEP/uproot>`__ chat room.
