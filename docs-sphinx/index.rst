@@ -92,9 +92,9 @@
    :alt: NSF-1836650
    :target: https://nsf.gov/awardsearch/showAward?AWD_ID=1836650
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3952728.svg
-   :alt: DOI 10.5281/zenodo.3952728
-   :target: https://doi.org/10.5281/zenodo.3952728
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4340632.svg
+   :alt: DOI 10.5281/zenodo.4340632
+   :target: https://doi.org/10.5281/zenodo.4340632
 
 .. image:: https://img.shields.io/badge/docs-online-success
    :alt: Documentation
