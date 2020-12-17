@@ -4,7 +4,7 @@
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
 [![Python 3.5‒3.9](https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Test build](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build?label=CI)](https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Test+build%22)
+[![Test build](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=CI)](https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Test+build%22)
 [![Deploy to PyPI](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Deploy%20to%20PyPI?label=CD)](https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Deploy+to+PyPI%22)
 
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
