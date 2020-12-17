@@ -4,7 +4,7 @@
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
 [![Python 3.5‒3.9](https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Continuous integration tests](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=Tests)](https://github.com/scikit-hep/uproot4/actions)
+[![Continuous integration tests](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=tests)](https://github.com/scikit-hep/uproot4/actions)
 
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
 [![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
