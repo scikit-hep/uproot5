@@ -47,7 +47,7 @@ def isint(x):
     including bool).
     """
     return isinstance(x, (int, numbers.Integral, numpy.integer)) and not isinstance(
-        x, (numpy.bool, numpy.bool_)
+        x, (bool, numpy.bool_)
     )
 
 
@@ -57,7 +57,7 @@ def isnum(x):
     including bool).
     """
     return isinstance(x, (int, float, numbers.Real, numpy.number)) and not isinstance(
-        x, (numpy.bool, numpy.bool_)
+        x, (bool, numpy.bool_)
     )
 
 
@@ -390,7 +390,7 @@ def awkward_form(
         model = model.newbyteorder("=")
 
         if model not in _primitive_awkward_form:
-            if model == numpy.dtype(numpy.bool_) or model == numpy.dtype(numpy.bool):
+            if model == numpy.dtype(numpy.bool_) or model == numpy.dtype(bool):
                 _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"bool"')
             elif model == numpy.dtype(numpy.int8):
                 _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int8"')
