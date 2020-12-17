@@ -1,11 +1,17 @@
 <img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/logo/logo-300px.png">
 
+[![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
+[![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
+[![Python 3.5‒3.9](https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue)](https://www.python.org)
+[![BSD-3 Clause License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![Test build](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build?label=CI)](https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Test+build%22)
+[![Deploy to PyPI](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Deploy%20to%20PyPI?label=CD)](https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Deploy+to+PyPI%22)
+
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
 [![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
 [![DOI 10.5281/zenodo.3952728](https://zenodo.org/badge/DOI/10.5281/zenodo.3952728.svg)](https://doi.org/10.5281/zenodo.3952728)
-[![Python 3.5‒3.9](https://img.shields.io/badge/Python-3.5%E2%80%923.9-blue)](https://www.python.org)
-[![BSD-3 Clause License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Latest version](https://img.shields.io/github/v/release/scikit-hep/uproot4?color=blue&label=Uproot)](https://github.com/scikit-hep/uproot4/releases/latest)
+[![Documentation](https://img.shields.io/badge/docs-online-success)](https://uproot.readthedocs.io/)
+[![Gitter](https://img.shields.io/badge/chat-online-success)](https://gitter.im/Scikit-HEP/uproot)
 
 Uproot is a reader and a writer of the [ROOT file format](https://root.cern/) using only Python and Numpy. Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, Uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
 
