@@ -74,13 +74,9 @@
    :alt: BSD-3 Clause License
    :target: https://opensource.org/licenses/BSD-3-Clause
 
-.. image:: https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=CI
-   :alt: Test build
-   :target: https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Test+build%22
-
-.. image:: https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Deploy%20to%20PyPI?label=CD
-   :alt: Deploy to PyPI
-   :target: https://github.com/scikit-hep/uproot4/actions?query=workflow%3A%22Deploy+to+PyPI%22
+.. image:: https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=Tests
+   :alt: Continuous integration tests
+   :target: https://github.com/scikit-hep/uproot4/actions
 
 :raw-html:`</p><p>`
 
