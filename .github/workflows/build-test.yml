@@ -59,6 +59,9 @@ jobs:
           conda env list
           conda install xrootd
           conda list
+          
+      - name: "Pip install the package"
+        run: pip install .
 
       - name: "Run flake8"
         run: python -m flake8
