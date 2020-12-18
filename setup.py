@@ -6,7 +6,8 @@ from setuptools import setup
 
 def get_version():
     g = {}
-    exec(open(os.path.join("uproot", "version.py")).read(), g)
+    with open(os.path.join("uproot", "version.py")) as f:
+        exec(f.read(), g)
     return g["__version__"]
 
 
