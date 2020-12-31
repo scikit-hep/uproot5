@@ -42,6 +42,10 @@ class TH3(uproot.behaviors.TH1.Histogram):
         sumw2 = self.member("fSumw2", none_if_missing=True)
         return sumw2 is not None and len(sumw2) == self.member("fNcells")
 
+    @property
+    def kind(self):
+        return "COUNT"
+
     def values(self, flow=False):
         if hasattr(self, "_values"):
             values = self._values
