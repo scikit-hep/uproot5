@@ -110,8 +110,13 @@ def XRootD_client():
         import gc
 
         for obj in gc.get_objects():
-            if isinstance(obj, XRootD.client.file.File) and obj.is_open():
-                obj.close()
+            try:
+                isopen = isinstance(obj, XRootD.client.file.File) and obj.is_open()
+            except ReferenceError:
+                pass
+            else:
+                if isopen:
+                    obj.close()
 
     return XRootD.client
 
