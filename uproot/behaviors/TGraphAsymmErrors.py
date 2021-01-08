@@ -20,48 +20,43 @@ class TGraphAsymmErrors(object):
         values = self.member(key)
         return numpy.asarray(values, dtype=values.dtype.newbyteorder("="))
 
+    def _reduce_errors(self, which, lowkey, highkey):
+        if which == "low":
+            return self._normalize_array(lowkey)
+        elif which == "high":
+            return self._normalize_array(highkey)
+        elif which == "mean":
+            return (
+                self._normalize_array(highkey) + self._normalize_array(lowkey)
+            ) / 2.0
+        elif which == "diff":
+            return self._normalize_array(highkey) - self._normalize_array(lowkey)
+
     def values(self, axis="both"):
         if axis in [0, -2, "x"]:
             return self._normalize_array("fX")
         elif axis in [1, -1, "y"]:
             return self._normalize_array("fY")
         elif axis == "both":
-            return (self._normalize_array("fX"), self._normalize_array("fY"))
+            return (self.values("x"), self.values("y"))
         else:
             raise ValueError(
                 "axis must be 0 (-2), 1 (-1) or 'x', 'y' or 'both' for a TGraphAsymmErrors"
             )
 
-    def errors(self, axis="both", which="both"):
-        """
-        ( array[XLow, YLow], array[XHigh, YHigh] )
-        """
-        axes = []
+    def errors(self, which, axis="both"):
+        if which not in ["low", "high", "mean", "diff"]:
+            raise ValueError(
+                "which must be 'low', 'high', 'mean', or 'diff' for a TGraphAsymmErrors"
+            )
+
         if axis in [0, -2, "x"]:
-            axes = ["X"]
+            return self._reduce_errors(which, "fEXlow", "fEXhigh")
         elif axis in [1, -1, "y"]:
-            axes = ["Y"]
+            return self._reduce_errors(which, "fEYlow", "fEYhigh")
         elif axis == "both":
-            axes = ["X", "Y"]
+            return (self.errors(which, "x"), self.errors(which, "y"))
         else:
             raise ValueError(
                 "axis must be 0 (-2), 1 (-1) or 'x', 'y' or 'both' for a TGraphAsymmErrors"
             )
-
-        dirs = []
-        if which == "low":
-            dirs = ["low"]
-        elif which == "high":
-            dirs = ["high"]
-        elif which == "both":
-            dirs = ["low", "high"]
-        else:
-            raise ValueError(
-                "which must be 'low', 'high', or 'both' for a TGraphAsymmErrors"
-            )
-
-        return tuple(
-            self._normalize_array(f"fE{axis_str}{dir_str}")
-            for axis_str in axes
-            for dir_str in dirs
-        )
