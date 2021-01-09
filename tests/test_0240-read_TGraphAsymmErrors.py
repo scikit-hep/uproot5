@@ -55,6 +55,7 @@ def test_errors_single(graph, axis, which):
 @pytest.mark.parametrize("axis", ["both"])
 def test_values_double(graph, axis):
     values = graph.values(axis=axis)
+    assert len(values) == 2
     assert all(isinstance(arr, np.ndarray) for arr in values)
     assert all(arr.shape == (162,) for arr in values)
 
@@ -63,5 +64,6 @@ def test_values_double(graph, axis):
 @pytest.mark.parametrize("which", ["low", "high", "mean", "diff"])
 def test_errors_double(graph, axis, which):
     errors = graph.errors(axis=axis, which=which)
+    assert len(errors) == 2
     assert all(isinstance(arr, np.ndarray) for arr in errors)
     assert all(arr.shape == (162,) for arr in errors)
