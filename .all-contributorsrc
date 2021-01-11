@@ -275,6 +275,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "kratsg",
+      "name": "Giordon Stark",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/761483?v=4",
+      "profile": "https://giordonstark.com/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
