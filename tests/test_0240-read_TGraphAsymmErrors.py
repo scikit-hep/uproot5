@@ -6,26 +6,26 @@ import numpy as np
 
 @pytest.mark.network
 @pytest.fixture(scope="module")
-def data(tmp_path_factory):
+def datafile(tmpdir_factory):
     response = requests.get(
         "https://www.hepdata.net/download/table/ins1755298/Expected%20limit%201lbb/3/root"
     )
     response.raise_for_status()
-    tmp_file = (
-        tmp_path_factory.mktemp("data")
-        / "HEPData-ins1755298-v3-Expected_limit_1lbb.root"
+    tmp_file = tmpdir_factory.mktemp("data").join(
+        "HEPData-ins1755298-v3-Expected_limit_1lbb.root"
     )
-    tmp_file.write_bytes(response.content)
-    yield tmp_file
+    with open(str(tmp_file), "w+") as f:
+        f.write(response.content)
+    yield str(tmp_file)
 
 
 @pytest.fixture
-def graph(data):
-    with uproot.open(data) as f:
+def graph(datafile):
+    with uproot.open(datafile) as f:
         yield f["Expected limit 1lbb/Graph1D_y1"]
 
 
-def test_interpretation(data, graph):
+def test_interpretation(graph):
     assert graph.classname == "TGraphAsymmErrors"
     assert graph.behaviors[0] == uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors
 
