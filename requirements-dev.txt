@@ -2,3 +2,4 @@ pandas
 awkward>=1.0.0
 boost_histogram
 hist
+requests
