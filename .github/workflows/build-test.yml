@@ -23,7 +23,7 @@ jobs:
             python-version: "3.7"
 
     runs-on: "${{ matrix.platform }}"
-    
+
     # Required for miniconda to activate conda
     defaults:
       run:
@@ -43,7 +43,7 @@ jobs:
         run: |
           conda env list
           conda info
-          conda install numpy pandas pytest flake8 lz4 python-xxhash
+          conda install numpy pandas pytest flake8 lz4 python-xxhash requests
           pip install scikit-hep-testdata
           conda list
 
@@ -59,7 +59,7 @@ jobs:
           conda env list
           conda install xrootd
           conda list
-          
+
       - name: "Pip install the package"
         run: pip install .
 

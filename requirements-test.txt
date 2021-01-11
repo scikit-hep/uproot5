@@ -4,3 +4,4 @@ flake8-print
 scikit-hep-testdata
 lz4
 xxhash
+requests
