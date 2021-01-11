@@ -1,7 +1,13 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
+
+from __future__ import absolute_import
+
+import numpy
 import pytest
-import requests
+
 import uproot
-import numpy as np
+
+requests = pytest.importorskip("requests")
 
 
 @pytest.mark.network
@@ -40,7 +46,7 @@ def test_interpretation(graph):
 @pytest.mark.parametrize("axis", [-2, -1, 0, 1, "x", "y"])
 def test_values_single(graph, axis):
     values = graph.values(axis=axis)
-    assert isinstance(values, np.ndarray)
+    assert isinstance(values, numpy.ndarray)
     assert values.shape == (162,)
 
 
@@ -48,7 +54,7 @@ def test_values_single(graph, axis):
 @pytest.mark.parametrize("which", ["low", "high", "mean", "diff"])
 def test_errors_single(graph, axis, which):
     errors = graph.errors(axis=axis, which=which)
-    assert isinstance(errors, np.ndarray)
+    assert isinstance(errors, numpy.ndarray)
     assert errors.shape == (162,)
 
 
@@ -56,7 +62,7 @@ def test_errors_single(graph, axis, which):
 def test_values_double(graph, axis):
     values = graph.values(axis=axis)
     assert len(values) == 2
-    assert all(isinstance(arr, np.ndarray) for arr in values)
+    assert all(isinstance(arr, numpy.ndarray) for arr in values)
     assert all(arr.shape == (162,) for arr in values)
 
 
@@ -65,5 +71,5 @@ def test_values_double(graph, axis):
 def test_errors_double(graph, axis, which):
     errors = graph.errors(axis=axis, which=which)
     assert len(errors) == 2
-    assert all(isinstance(arr, np.ndarray) for arr in errors)
+    assert all(isinstance(arr, numpy.ndarray) for arr in errors)
     assert all(arr.shape == (162,) for arr in errors)

@@ -8,12 +8,15 @@ from __future__ import absolute_import
 
 import numpy
 
-# dict_keys(['@fUniqueID', '@fBits', 'fName', 'fTitle', 'fLineColor', 'fLineStyle', 'fLineWidth', 'fFillColor', 'fFillStyle', 'fMarkerColor', 'fMarkerStyle', 'fMarkerSize', 'fNpoints', 'fX', 'fY', 'fFunctions', 'fHistogram', 'fMinimum', 'fMaximum', 'fEXlow', 'fEXhigh', 'fEYlow', 'fEYhigh'])
+# ['@fUniqueID', '@fBits', 'fName', 'fTitle', 'fLineColor', 'fLineStyle',
+#  'fLineWidth', 'fFillColor', 'fFillStyle', 'fMarkerColor', 'fMarkerStyle',
+#  'fMarkerSize', 'fNpoints', 'fX', 'fY', 'fFunctions', 'fHistogram',
+#  'fMinimum', 'fMaximum', 'fEXlow', 'fEXhigh', 'fEYlow', 'fEYhigh']
 
 
 class TGraphAsymmErrors(object):
     """
-    Behaviors for TGraphAsymmErrors, not including ``TGraph``
+    Behaviors for TGraphAsymmErrors: get values and errors as NumPy arrays.
     """
 
     def _normalize_array(self, key):
