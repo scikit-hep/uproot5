@@ -14,7 +14,7 @@ def datafile(tmpdir_factory):
     tmp_file = tmpdir_factory.mktemp("data").join(
         "HEPData-ins1755298-v3-Expected_limit_1lbb.root"
     )
-    with open(str(tmp_file), "w+") as f:
+    with open(str(tmp_file), "wb") as f:
         f.write(response.content)
     yield str(tmp_file)
 
