@@ -103,11 +103,11 @@ class TH3(uproot.behaviors.TH1.Histogram):
         histogram functions.
         """
         values = self.values(flow=flow)
-        xedges = self.edges(0)
-        yedges = self.edges(1)
-        zedges = self.edges(2)
+        xedges = self.axis(0).edges(flow=flow)
+        yedges = self.axis(1).edges(flow=flow)
+        zedges = self.axis(2).edges(flow=flow)
         if dd:
-            return values, (xedges, yedges, zedges)
+            return values, (xedges, yedges, xedges)
         else:
             return values, xedges, yedges, zedges
 
