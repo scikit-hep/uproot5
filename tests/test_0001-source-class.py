@@ -313,6 +313,21 @@ def test_xrootd_vectorread():
 
 @pytest.mark.network
 @pytest.mark.xrootd
+def test_xrootd_vectorread_max_element_split():
+    pytest.importorskip("XRootD")
+    with uproot.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        max_num_elements=None,
+    ) as source:
+        notifications = queue.Queue()
+        max_element_size = 2097136
+        chunks = source.chunks([(0, max_element_size + 1)], notifications)
+        assert len(tobytes(chunks[0].raw_data)) == max_element_size + 1
+
+
+@pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_vectorread_fail():
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
