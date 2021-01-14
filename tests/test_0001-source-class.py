@@ -323,7 +323,8 @@ def test_xrootd_vectorread_max_element_split():
         notifications = queue.Queue()
         max_element_size = 2097136
         chunks = source.chunks([(0, max_element_size + 1)], notifications)
-        assert len(tobytes(chunks[0].raw_data)) == max_element_size + 1
+        one, = [tobytes(chunk.raw_data) for chunk in chunks]
+        assert len(one) == max_element_size + 1
 
 
 @pytest.mark.network
