@@ -258,14 +258,25 @@ class XRootDSource(uproot.source.chunk.Source):
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
         all_request_ranges = [[]]
-        for start, stop in ranges:
-            if stop - start > self._max_element_size:
-                raise NotImplementedError(
-                    "TODO: Probably need to fall back to a non-vector read"
-                )
+
+        def add_request_range(start, length):
             if len(all_request_ranges[-1]) > self._max_num_elements:
                 all_request_ranges.append([])
-            all_request_ranges[-1].append((start, stop - start))
+            all_request_ranges[-1].append((start, length))
+
+        for start, stop in ranges:
+            length = stop - start
+
+            if length > self._max_element_size:
+                nsplit = length // self._max_element_size
+                rem = length % self._max_element_size
+                for i in range(nsplit):
+                    add_request_range(start + i * self._max_element_size, self._max_element_size)
+                if rem > 0:
+                    add_request_range(start + nsplit * self._max_element_size, rem)
+                continue
+
+            add_request_range(start, length)
 
         chunks = []
         for i, request_ranges in enumerate(all_request_ranges):
