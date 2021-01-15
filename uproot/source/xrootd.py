@@ -204,7 +204,6 @@ in file {1}""".format(
 
         return uproot.source.futures.ResourceFuture(task)
 
-
     @staticmethod
     def callbacker(futures, results):
         """
