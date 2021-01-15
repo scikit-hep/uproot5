@@ -313,6 +313,7 @@ class XRootDSource(uproot.source.chunk.Source):
                 add_request_range(start, length, sub_ranges[start, stop])
 
         # submit the xrootd vector reads
+        global_futures = {}
         for i, request_ranges in enumerate(all_request_ranges):
             futures = {}
             results = {}
@@ -320,6 +321,7 @@ class XRootDSource(uproot.source.chunk.Source):
                 stop = start + size
                 partfuture = self.ResourceClass.partfuture(results, start, stop)
                 futures[start, stop] = partfuture
+                global_futures[start, stop] = partfuture
 
             callback = self.ResourceClass.callbacker(futures, results)
 
@@ -333,11 +335,11 @@ class XRootDSource(uproot.source.chunk.Source):
         chunks = []
         for start, stop in ranges:
             if len(sub_ranges[start, stop]) == 1:
-                future = futures[start, stop]
+                future = global_futures[start, stop]
             else:
                 partfutures = []
                 for sub_start, sub_stop in sub_ranges[start, stop]:
-                    partfutures.append(futures[sub_start, sub_stop])
+                    partfutures.append(global_futures[sub_start, sub_stop])
                 future = self.ResourceClass.mergefuture(partfutures)
                 self._executor.submit(future)
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
