@@ -191,6 +191,21 @@ in file {1}""".format(
         return uproot.source.futures.ResourceFuture(task)
 
     @staticmethod
+    def mergefuture(partfutures):
+        """
+        Wait for partfutures and merge them.
+        """
+
+        def task(resource):
+            chunk_buffers = []
+            for future in partfutures:
+                chunk_buffers.append(future.result())
+            return b''.join(chunk_buffers)
+
+        return uproot.source.futures.ResourceFuture(task)
+
+
+    @staticmethod
     def callbacker(futures, results):
         """
         Returns an XRootD callback function to fill the ``futures`` and
@@ -231,6 +246,8 @@ class XRootDSource(uproot.source.chunk.Source):
 
         self._resource = XRootDResource(file_path, timeout)
 
+        self._executor = uproot.source.futures.ResourceThreadPoolExecutor([self._resource])
+
         self._max_num_elements, self._max_element_size = get_server_config(
             self._resource.file
         )
@@ -257,28 +274,46 @@ class XRootDSource(uproot.source.chunk.Source):
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
+        # ranges for xrootd vector reads
         all_request_ranges = [[]]
 
-        def add_request_range(start, length):
+        # dictionary telling us which xrootd request ranges correspond to the
+        # actually requested ranges (given as (start, stop))
+        # this is to track which requests were split into smaller ranges and have to be merged
+        sub_ranges = {}
+
+        def add_request_range(start, length, sub_ranges_list):
             if len(all_request_ranges[-1]) > self._max_num_elements:
                 all_request_ranges.append([])
             all_request_ranges[-1].append((start, length))
+            sub_ranges_list.append((start, start + length))
 
+        # figure out the vector read ranges
         for start, stop in ranges:
             length = stop - start
+            sub_ranges[start, stop] = []
 
+            # if range larger than maximum, split into smaller ranges
             if length > self._max_element_size:
                 nsplit = length // self._max_element_size
                 rem = length % self._max_element_size
                 for i in range(nsplit):
-                    add_request_range(start + i * self._max_element_size, self._max_element_size)
+                    add_request_range(
+                        start + i * self._max_element_size,
+                        self._max_element_size,
+                        sub_ranges[start, stop]
+                    )
                 if rem > 0:
-                    add_request_range(start + nsplit * self._max_element_size, rem)
-                continue
+                    nsplit += 1
+                    add_request_range(
+                        start + nsplit * self._max_element_size,
+                        rem,
+                        sub_ranges[start, stop]
+                    )
+            else:
+                add_request_range(start, length, sub_ranges[start, stop])
 
-            add_request_range(start, length)
-
-        chunks = []
+        # submit the xrootd vector reads
         for i, request_ranges in enumerate(all_request_ranges):
             futures = {}
             results = {}
@@ -286,11 +321,6 @@ class XRootDSource(uproot.source.chunk.Source):
                 stop = start + size
                 partfuture = self.ResourceClass.partfuture(results, start, stop)
                 futures[start, stop] = partfuture
-                chunk = uproot.source.chunk.Chunk(self, start, stop, partfuture)
-                partfuture._set_notify(
-                    uproot.source.chunk.notifier(chunk, notifications)
-                )
-                chunks.append(chunk)
 
             callback = self.ResourceClass.callbacker(futures, results)
 
@@ -299,6 +329,23 @@ class XRootDSource(uproot.source.chunk.Source):
             )
             if status.error:
                 self._resource._xrd_error(status)
+
+        # create chunks (possibly merging xrootd chunks)
+        chunks = []
+        for start, stop in ranges:
+            if len(sub_ranges[start, stop]) == 1:
+                future = futures[start, stop]
+            else:
+                partfutures = []
+                for sub_start, sub_stop in sub_ranges[start, stop]:
+                    partfutures.append(futures[sub_start, sub_stop])
+                future = self.ResourceClass.mergefuture(partfutures)
+                self._executor.submit(future)
+            chunk = uproot.source.chunk.Chunk(self, start, stop, future)
+            future._set_notify(
+                uproot.source.chunk.notifier(chunk, notifications)
+            )
+            chunks.append(chunk)
 
         return chunks
 
