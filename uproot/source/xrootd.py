@@ -304,7 +304,6 @@ class XRootDSource(uproot.source.chunk.Source):
                         sub_ranges[start, stop]
                     )
                 if rem > 0:
-                    nsplit += 1
                     add_request_range(
                         start + nsplit * self._max_element_size,
                         rem,
