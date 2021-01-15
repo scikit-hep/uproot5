@@ -193,7 +193,9 @@ in file {1}""".format(
     @staticmethod
     def mergefuture(partfutures):
         """
-        Wait for partfutures and merge them.
+        Returns a :doc:`uproot.source.futures.ResourceFuture` that merges the
+        chunks previously submitted via
+        :ref:`uproot.source.xrootd.XRootDResource.partfuture` which had to be split
         """
 
         def task(resource):
