@@ -154,6 +154,7 @@ def test_xrootd_vectorread():
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,
+        num_workers=1,
     ) as source:
         one = tobytes(source.chunk(0, 100).raw_data)
         assert len(one) == 100
