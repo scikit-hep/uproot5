@@ -191,6 +191,25 @@ in file {1}""".format(
         return uproot.source.futures.ResourceFuture(task)
 
     @staticmethod
+    def mergefuture(partfutures):
+        """
+        Returns a :doc:`uproot.source.futures.ResourceFuture` that merges the
+        chunks previously submitted via
+        :ref:`uproot.source.xrootd.XRootDResource.partfuture` which had to be split
+        """
+
+        def task(resource):
+            if len(partfutures) == 1:
+                return partfutures[0].result()
+
+            chunk_buffers = []
+            for future in partfutures:
+                chunk_buffers.append(future.result())
+            return b''.join(chunk_buffers)
+
+        return uproot.source.futures.ResourceFuture(task)
+
+    @staticmethod
     def callbacker(futures, results):
         """
         Returns an XRootD callback function to fill the ``futures`` and
@@ -210,7 +229,7 @@ class XRootDSource(uproot.source.chunk.Source):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"timeout"`` and ``"max_num_elements"``.
+        options: Must include ``"timeout"``, ``"max_num_elements"`` and ``"num_workers"``
 
     A :doc:`uproot.source.chunk.Source` that uses XRootD's vector-read
     to get many chunks in one request.
@@ -221,6 +240,7 @@ class XRootDSource(uproot.source.chunk.Source):
     def __init__(self, file_path, **options):
         timeout = options["timeout"]
         max_num_elements = options["max_num_elements"]
+        num_workers = options["num_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
@@ -230,6 +250,12 @@ class XRootDSource(uproot.source.chunk.Source):
         self._num_bytes = None
 
         self._resource = XRootDResource(file_path, timeout)
+
+        # this ThreadPool does not need a resource, it's only used to submit
+        # futures that wait for chunks that have been split to merge them.
+        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+            [None for i in range(num_workers)]
+        )
 
         self._max_num_elements, self._max_element_size = get_server_config(
             self._resource.file
@@ -257,17 +283,46 @@ class XRootDSource(uproot.source.chunk.Source):
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
+        # ranges for xrootd vector reads
         all_request_ranges = [[]]
-        for start, stop in ranges:
-            if stop - start > self._max_element_size:
-                raise NotImplementedError(
-                    "TODO: Probably need to fall back to a non-vector read"
-                )
+
+        # dictionary telling us which xrootd request ranges correspond to the
+        # actually requested ranges (given as (start, stop))
+        # this is to track which requests were split into smaller ranges and have to be merged
+        sub_ranges = {}
+
+        def add_request_range(start, length, sub_ranges_list):
             if len(all_request_ranges[-1]) > self._max_num_elements:
                 all_request_ranges.append([])
-            all_request_ranges[-1].append((start, stop - start))
+            all_request_ranges[-1].append((start, length))
+            sub_ranges_list.append((start, start + length))
 
-        chunks = []
+        # figure out the vector read ranges
+        for start, stop in ranges:
+            length = stop - start
+            sub_ranges[start, stop] = []
+
+            # if range larger than maximum, split into smaller ranges
+            if length > self._max_element_size:
+                nsplit = length // self._max_element_size
+                rem = length % self._max_element_size
+                for i in range(nsplit):
+                    add_request_range(
+                        start + i * self._max_element_size,
+                        self._max_element_size,
+                        sub_ranges[start, stop]
+                    )
+                if rem > 0:
+                    add_request_range(
+                        start + nsplit * self._max_element_size,
+                        rem,
+                        sub_ranges[start, stop]
+                    )
+            else:
+                add_request_range(start, length, sub_ranges[start, stop])
+
+        # submit the xrootd vector reads
+        global_futures = {}
         for i, request_ranges in enumerate(all_request_ranges):
             futures = {}
             results = {}
@@ -275,11 +330,7 @@ class XRootDSource(uproot.source.chunk.Source):
                 stop = start + size
                 partfuture = self.ResourceClass.partfuture(results, start, stop)
                 futures[start, stop] = partfuture
-                chunk = uproot.source.chunk.Chunk(self, start, stop, partfuture)
-                partfuture._set_notify(
-                    uproot.source.chunk.notifier(chunk, notifications)
-                )
-                chunks.append(chunk)
+                global_futures[start, stop] = partfuture
 
             callback = self.ResourceClass.callbacker(futures, results)
 
@@ -288,6 +339,20 @@ class XRootDSource(uproot.source.chunk.Source):
             )
             if status.error:
                 self._resource._xrd_error(status)
+
+        # create chunks (possibly merging xrootd chunks)
+        chunks = []
+        for start, stop in ranges:
+            partfutures = []
+            for sub_start, sub_stop in sub_ranges[start, stop]:
+                partfutures.append(global_futures[sub_start, sub_stop])
+            future = self.ResourceClass.mergefuture(partfutures)
+            chunk = uproot.source.chunk.Chunk(self, start, stop, future)
+            future._set_notify(
+                uproot.source.chunk.notifier(chunk, notifications)
+            )
+            self._executor.submit(future)
+            chunks.append(chunk)
 
         return chunks
 

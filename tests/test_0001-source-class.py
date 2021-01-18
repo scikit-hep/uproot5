@@ -301,6 +301,7 @@ def test_xrootd_vectorread():
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,
+        num_workers=1
     ) as source:
         notifications = queue.Queue()
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
@@ -313,11 +314,57 @@ def test_xrootd_vectorread():
 
 @pytest.mark.network
 @pytest.mark.xrootd
+def test_xrootd_vectorread_max_element_split():
+    pytest.importorskip("XRootD")
+    with uproot.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        max_num_elements=None,
+        num_workers=1
+    ) as source:
+        notifications = queue.Queue()
+        max_element_size = 2097136
+        chunks = source.chunks([(0, max_element_size + 1)], notifications)
+        one, = [tobytes(chunk.raw_data) for chunk in chunks]
+        assert len(one) == max_element_size + 1
+
+
+@pytest.mark.network
+@pytest.mark.xrootd
+def test_xrootd_vectorread_max_element_split_consistency():
+    pytest.importorskip("XRootD")
+    filename = "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
+    def get_chunk(Source, **kwargs):
+        with Source(
+            filename, **kwargs
+        ) as source:
+            notifications = queue.Queue()
+            max_element_size = 2097136
+            chunks = source.chunks([(0, max_element_size + 1)], notifications)
+            one, = [tobytes(chunk.raw_data) for chunk in chunks]
+            return one
+    chunk1 = get_chunk(
+        uproot.source.xrootd.XRootDSource,
+        timeout=10,
+        max_num_elements=None,
+        num_workers=1
+    )
+    chunk2 = get_chunk(
+        uproot.source.xrootd.MultithreadedXRootDSource,
+        timeout=10,
+        num_workers=1
+    )
+    assert chunk1 == chunk2
+
+
+
+@pytest.mark.network
+@pytest.mark.xrootd
 def test_xrootd_vectorread_fail():
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
         source = uproot.source.xrootd.XRootDSource(
-            "root://wonky.cern/does-not-exist", timeout=1, max_num_elements=None
+            "root://wonky.cern/does-not-exist", timeout=1, max_num_elements=None, num_workers=1
         )
 
 
@@ -329,6 +376,7 @@ def test_xrootd_size():
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,
+        num_workers=1
     ) as source:
         size1 = source.num_bytes
 
