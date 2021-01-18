@@ -776,7 +776,13 @@ class Model(object):
                 cursor.move_to(self._cursor.index)
                 context["breadcrumbs"] = old_breadcrumbs
                 return correct_cls.read(
-                    chunk, cursor, context, file, selffile, parent, concrete=concrete,
+                    chunk,
+                    cursor,
+                    context,
+                    file,
+                    selffile,
+                    parent,
+                    concrete=concrete,
                 )
 
         if context.get("in_TBranch", False):
@@ -1144,9 +1150,11 @@ class DispatchByVersion(object):
         import uproot.deserialization
 
         start_cursor = cursor.copy()
-        (num_bytes, version, is_memberwise,) = uproot.deserialization.numbytes_version(
-            chunk, cursor, context, move=False
-        )
+        (
+            num_bytes,
+            version,
+            is_memberwise,
+        ) = uproot.deserialization.numbytes_version(chunk, cursor, context, move=False)
 
         versioned_cls = cls.known_versions.get(version)
 
@@ -1165,7 +1173,8 @@ class DispatchByVersion(object):
                 """Unknown version {0} for class {1} that cannot be skipped """
                 """because its number of bytes is unknown.
 """.format(
-                    version, classname_decode(cls.__name__)[0],
+                    version,
+                    classname_decode(cls.__name__)[0],
                 )
             )
 

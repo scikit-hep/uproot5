@@ -466,7 +466,9 @@ def interpretation_of(branch, context, simplify=True):
                 return out
 
     raise UnknownInterpretation(
-        "none of the rules matched", branch.file.file_path, branch.object_path,
+        "none of the rules matched",
+        branch.file.file_path,
+        branch.object_path,
     )
 
 
@@ -957,7 +959,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 4,
             _parse_maybe_quote(
-                'uproot.containers.AsFIXME("std::bitset<{0}>")'.format(num_bits), quote,
+                'uproot.containers.AsFIXME("std::bitset<{0}>")'.format(num_bits),
+                quote,
             ),
         )
 

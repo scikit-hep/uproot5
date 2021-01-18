@@ -914,7 +914,9 @@ class HasBranches(Mapping):
             raise ValueError("'interpretation_width' must be at least 3")
 
         formatter = "{{0:{0}.{0}}} | {{1:{1}.{1}}} | {{2:{2}.{2}}}".format(
-            name_width, typename_width, interpretation_width,
+            name_width,
+            typename_width,
+            interpretation_width,
         )
 
         stream.write(formatter.format("name", "typename", "interpretation"))

@@ -257,7 +257,10 @@ class TProfile(Profile):
         else:
             (root_cont,) = self.base(uproot.models.TArray.Model_TArray)
             root_cont = numpy.asarray(root_cont, dtype=numpy.float64)
-            values = _values_1d(self.member("fBinEntries"), root_cont,)
+            values = _values_1d(
+                self.member("fBinEntries"),
+                root_cont,
+            )
             self._values = values
 
         if flow:

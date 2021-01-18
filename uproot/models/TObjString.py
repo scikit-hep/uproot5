@@ -54,7 +54,10 @@ in file {1}""".format(
         else:
             version = " (version {0})".format(self.class_version)
         return "<{0}{1} {2} at 0x{3:012x}>".format(
-            self.classname, version, str.__repr__(self), id(self),
+            self.classname,
+            version,
+            str.__repr__(self),
+            id(self),
         )
 
     @classmethod

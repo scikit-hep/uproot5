@@ -559,7 +559,8 @@ class ReadOnlyFile(CommonFileMethods):
         if self._options["begin_chunk_size"] < _file_header_fields_big.size:
             raise ValueError(
                 "begin_chunk_size={0} is not enough to read the TFile header ({1})".format(
-                    self._options["begin_chunk_size"], _file_header_fields_big.size,
+                    self._options["begin_chunk_size"],
+                    _file_header_fields_big.size,
                 )
             )
 
@@ -839,7 +840,8 @@ in file {1}""".format(
                 key_chunk = self.chunk(key_start, key_stop)
 
                 self.hook_before_read_streamer_key(
-                    key_chunk=key_chunk, key_cursor=key_cursor,
+                    key_chunk=key_chunk,
+                    key_cursor=key_cursor,
                 )
 
                 streamer_key = ReadOnlyKey(key_chunk, key_cursor, {}, self, self)
@@ -1536,7 +1538,10 @@ class ReadOnlyDirectory(Mapping):
         )
 
     def values(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         u"""
         Args:
@@ -1671,7 +1676,10 @@ class ReadOnlyDirectory(Mapping):
                         yield k2
 
     def itervalues(
-        self, recursive=True, filter_name=no_filter, filter_classname=no_filter,
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
     ):
         u"""
         Args:

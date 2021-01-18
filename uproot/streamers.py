@@ -1291,7 +1291,8 @@ class TStreamerPointerTypes(object):
                 "        raise uproot.deserialization.DeserializationError("
                 "'not implemented: class members defined by {0} with fType {1}', "
                 "chunk, cursor, context, file.file_path)".format(
-                    type(self).__name__, self.fType,
+                    type(self).__name__,
+                    self.fType,
                 )
             )
 

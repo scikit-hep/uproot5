@@ -14,8 +14,8 @@ def test_read_TProfile2D():
         T = h["hprof2d"]
 
     assert T.kind == "MEAN"
-    assert_array_equal(T.axis("x").edges(), np.array([1., 2., 3.]))
-    assert_array_equal(T.axis("y").edges(), np.array([1., 2., 3., 4.]))
+    assert_array_equal(T.axis("x").edges(), np.array([1.0, 2.0, 3.0]))
+    assert_array_equal(T.axis("y").edges(), np.array([1.0, 2.0, 3.0, 4.0]))
     assert np.sum(T.counts(flow=True)) == 12
     assert_array_equal(T.values().tolist(), [[1.0, 2.0, 0.0], [2.0, 4.0, 6.0]])
 
@@ -28,21 +28,14 @@ def test_read_TProfile3D():
         T = h["hprof3d"]
 
     assert T.kind == "MEAN"
-    assert_array_equal(T.axis("x").edges(), np.array([1., 2., 3.]))
-    assert_array_equal(T.axis("y").edges(), np.array([1., 2., 3., 4.]))
-    assert_array_equal(T.axis("z").edges(), np.array([1., 2., 3., 4., 5.]))
+    assert_array_equal(T.axis("x").edges(), np.array([1.0, 2.0, 3.0]))
+    assert_array_equal(T.axis("y").edges(), np.array([1.0, 2.0, 3.0, 4.0]))
+    assert_array_equal(T.axis("z").edges(), np.array([1.0, 2.0, 3.0, 4.0, 5.0]))
     assert np.sum(T.counts(flow=True)) == 12
     assert_array_equal(
         T.values().tolist(),
         [
-            [
-                [2.0, 0.0, 0.0, 0.0],
-                [0.0, 4.0, 0.0, 0.0],
-                [0.0, 0.0, 6.0, 0.0]
-            ],
-            [
-                [0.0, 4.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 8.0],
-                [0.0, 0.0, 0.0, 0.0]
-            ]
-        ])
+            [[2.0, 0.0, 0.0, 0.0], [0.0, 4.0, 0.0, 0.0], [0.0, 0.0, 6.0, 0.0]],
+            [[0.0, 4.0, 0.0, 0.0], [0.0, 0.0, 0.0, 8.0], [0.0, 0.0, 0.0, 0.0]],
+        ],
+    )
