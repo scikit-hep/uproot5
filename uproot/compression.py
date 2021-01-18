@@ -175,7 +175,9 @@ _decompress_header_format = struct.Struct("2sBBBBBBB")
 _decompress_checksum_format = struct.Struct(">Q")
 
 
-def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
+def decompress(
+    chunk, cursor, context, compressed_bytes, uncompressed_bytes, block_info=None
+):
     """
     Args:
         chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -186,6 +188,9 @@ def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
         compressed_bytes (int): Number of compressed bytes to decompress.
         uncompressed_bytes (int): Number of uncompressed bytes to expect after
             decompression.
+        block_info (None or empty list): List to fill with
+            ``(compression type class, num compressed bytes, num uncompressed bytes)``
+            observed in each compressed block.
 
     Decompresses ``compressed_bytes`` of a :doc:`uproot.source.chunk.Chunk`
     of data, starting at the ``cursor``.
@@ -202,6 +207,17 @@ def decompress(chunk, cursor, context, compressed_bytes, uncompressed_bytes):
     num_blocks = 0
 
     while cursor.displacement(start) < compressed_bytes:
+        decompress.hook_before_block(
+            chunk=chunk,
+            cursor=cursor,
+            context=context,
+            compressed_bytes=compressed_bytes,
+            uncompressed_bytes=uncompressed_bytes,
+            start=start,
+            filled=filled,
+            num_blocks=num_blocks,
+        )
+
         # https://github.com/root-project/root/blob/master/core/zip/src/RZip.cxx#L217
         # https://github.com/root-project/root/blob/master/core/lzma/src/ZipLZMA.c#L81
         # https://github.com/root-project/root/blob/master/core/lz4/src/ZipLZ4.cxx#L38
@@ -258,6 +274,9 @@ in file {1}""".format(
                 )
             )
 
+        if block_info is not None:
+            block_info.append((cls, block_compressed_bytes, block_uncompressed_bytes))
+
         uncompressed_bytestring = cls.decompress(data, block_uncompressed_bytes)
 
         if len(uncompressed_bytestring) != block_uncompressed_bytes:
@@ -293,4 +312,28 @@ in file {4}""".format(
         filled += block_uncompressed_bytes
         num_blocks += 1
 
+        decompress.hook_after_block(
+            chunk=chunk,
+            cursor=cursor,
+            context=context,
+            compressed_bytes=compressed_bytes,
+            uncompressed_bytes=uncompressed_bytes,
+            start=start,
+            filled=filled,
+            num_blocks=num_blocks,
+            output=output,
+        )
+
     return uproot.source.chunk.Chunk.wrap(chunk.source, output)
+
+
+def hook_before_block(**kwargs):
+    pass
+
+
+def hook_after_block(**kwargs):
+    pass
+
+
+decompress.hook_before_block = hook_before_block
+decompress.hook_after_block = hook_after_block
