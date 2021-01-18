@@ -199,6 +199,9 @@ in file {1}""".format(
         """
 
         def task(resource):
+            if len(partfutures) == 1:
+                return partfutures[0].result()
+
             chunk_buffers = []
             for future in partfutures:
                 chunk_buffers.append(future.result())
@@ -340,18 +343,15 @@ class XRootDSource(uproot.source.chunk.Source):
         # create chunks (possibly merging xrootd chunks)
         chunks = []
         for start, stop in ranges:
-            if len(sub_ranges[start, stop]) == 1:
-                future = global_futures[start, stop]
-            else:
-                partfutures = []
-                for sub_start, sub_stop in sub_ranges[start, stop]:
-                    partfutures.append(global_futures[sub_start, sub_stop])
-                future = self.ResourceClass.mergefuture(partfutures)
-                self._executor.submit(future)
+            partfutures = []
+            for sub_start, sub_stop in sub_ranges[start, stop]:
+                partfutures.append(global_futures[sub_start, sub_stop])
+            future = self.ResourceClass.mergefuture(partfutures)
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             future._set_notify(
                 uproot.source.chunk.notifier(chunk, notifications)
             )
+            self._executor.submit(future)
             chunks.append(chunk)
 
         return chunks
