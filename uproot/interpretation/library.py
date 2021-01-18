@@ -600,12 +600,11 @@ in object {3}""".format(
             if len(expression_context) == 0:
                 return awkward.Array(awkward.layout.RecordArray([], keys=[]))
             else:
-                return awkward.zip(
+                return awkward.Array(
                     dict(
                         (_rename(name, c), arrays[name])
                         for name, c in expression_context
-                    ),
-                    depth_limit=1,
+                    )
                 )
         elif how == "zip":
             nonjagged = []
@@ -634,9 +633,8 @@ in object {3}""".format(
                 if len(nonjagged) == 0:
                     out = awkward.Array(awkward.layout.RecordArray([], keys=[]))
                 else:
-                    out = awkward.zip(
+                    out = awkward.Array(
                         dict((name, renamed_arrays[name]) for name in nonjagged),
-                        depth_limit=1,
                     )
             for number, jagged in enumerate(jaggeds):
                 cut = len(jagged[0])
@@ -673,7 +671,7 @@ in object {3}""".format(
                             )
                         )
                 if out is None:
-                    out = awkward.zip({common: subarray}, depth_limit=1)
+                    out = awkward.Array({common: subarray})
                 else:
                     for name in jagged:
                         out = awkward.with_field(out, subarray, common)
