@@ -195,6 +195,20 @@ class Model_TBasket(uproot.model.Model):
             return self._members["fNbytes"] - self._members["fKeylen"]
 
     @property
+    def block_compression_info(self):
+        """
+        For compressed ``TBaskets``, a tuple of 3-tuples containing
+
+        ``(compression type class, num compressed bytes, num uncompressed bytes)``
+
+        to describe the actual compression algorithms and sizes encountered in
+        each block of data.
+
+        For uncompressed ``TBaskets``, this is None.
+        """
+        return self._block_compression_info
+
+    @property
     def border(self):
         """
         The byte position of the boundary between data content and entry offsets.
@@ -234,6 +248,8 @@ class Model_TBasket(uproot.model.Model):
 
         cursor.skip(1)
 
+        self._block_compression_info = None
+
         if self.is_embedded:
             # https://github.com/root-project/root/blob/0e6282a641b65bdf5ad832882e547ca990e8f1a5/tree/tree/inc/TBasket.h#L62-L65
             maybe_entry_size = self._members["fNevBufSize"]
@@ -262,13 +278,16 @@ class Model_TBasket(uproot.model.Model):
 
         else:
             if self.compressed_bytes != self.uncompressed_bytes:
+                self._block_compression_info = []
                 uncompressed = uproot.compression.decompress(
                     chunk,
                     cursor,
                     {},
                     self.compressed_bytes,
                     self.uncompressed_bytes,
+                    self._block_compression_info,
                 )
+                self._block_compression_info = tuple(self._block_compression_info)
                 self._raw_data = uncompressed.get(
                     0,
                     self.uncompressed_bytes,

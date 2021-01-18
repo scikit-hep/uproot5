@@ -2414,6 +2414,23 @@ in file {3}""".format(
         return leaves[0].member("fLeafCount")
 
     @property
+    def compression(self):
+        """
+        A :doc:`uproot.compression.Compression` object describing the
+        compression setting for the ``TBranch``.
+
+        Note that different ``TBranches`` in a ``TTree`` can be compressed
+        differently from each other, and they can be compressed differently
+        from the file's global compression setting.
+
+        It is also *in principle possible* for the blocks in each ``TBasket``
+        to be compresssed differently: see
+        :ref:`uproot.models.TBasket.Model_TBasket.block_compression_info` if
+        you're paranoid.
+        """
+        return uproot.compression.Compression.from_code(self.member("fCompress"))
+
+    @property
     def compressed_bytes(self):
         """
         The number of compressed bytes in all ``TBaskets`` of this ``TBranch``.
