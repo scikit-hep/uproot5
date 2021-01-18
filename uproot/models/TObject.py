@@ -108,7 +108,10 @@ in file {1}""".format(
                 tobject_header,
                 breadcrumbs,
             )
-        return awkward.forms.RecordForm(contents, parameters={"__record__": "TObject"},)
+        return awkward.forms.RecordForm(
+            contents,
+            parameters={"__record__": "TObject"},
+        )
 
     def __repr__(self):
         return "<TObject {0} {1} at 0x{2:012x}>".format(

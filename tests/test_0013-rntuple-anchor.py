@@ -44,7 +44,8 @@ def test():
         footer_start = obj.member("fSeekFooter")
         footer_stop = footer_start + obj.member("fNBytesFooter")
         header_chunk, footer_chunk = f.file.source.chunks(
-            [(header_start, header_stop), (footer_start, footer_stop)], notifications,
+            [(header_start, header_stop), (footer_start, footer_stop)],
+            notifications,
         )
 
         print("FOOTER")

@@ -448,7 +448,10 @@ def awkward_form_remove_uproot(awkward, form):
             parameters,
         )
     elif isinstance(form, awkward.forms.EmptyForm):
-        return awkward.forms.EmptyForm(form.has_identities, parameters,)
+        return awkward.forms.EmptyForm(
+            form.has_identities,
+            parameters,
+        )
     elif isinstance(form, awkward.forms.IndexedForm):
         return awkward.forms.IndexedForm(
             form.index,
@@ -549,7 +552,10 @@ def awkward_form_of_iter(awkward, form):
             form.parameters,
         )
     elif isinstance(form, awkward.forms.EmptyForm):
-        return awkward.forms.EmptyForm(form.has_identities, form.parameters,)
+        return awkward.forms.EmptyForm(
+            form.has_identities,
+            form.parameters,
+        )
     elif isinstance(form, awkward.forms.IndexedForm):
         return awkward.forms.IndexedForm(
             form.index,

@@ -203,7 +203,8 @@ class NumPy(Library):
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         if isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
-            array.content, uproot.interpretation.objects.StridedObjectArray,
+            array.content,
+            uproot.interpretation.objects.StridedObjectArray,
         ):
             out = numpy.zeros(len(array), dtype=object)
             for i, x in enumerate(array):
@@ -406,7 +407,10 @@ def _awkward_json_to_array(awkward, form, array):
                 keys = _awkward_json_to_array(awkward, key_form, array)
                 values = _awkward_json_to_array(awkward, value_form, array)
                 content = awkward.layout.RecordArray(
-                    (keys, values), None, 0, parameters=_awkward_p(form["content"]),
+                    (keys, values),
+                    None,
+                    0,
+                    parameters=_awkward_p(form["content"]),
                 )
             else:
                 keys = _awkward_json_to_array(awkward, key_form, array.content["0"])

@@ -271,7 +271,8 @@ class AsObjects(uproot.interpretation.Interpretation):
             )
 
         if isinstance(
-            self._model, (uproot.containers.AsArray, uproot.containers.AsVector),
+            self._model,
+            (uproot.containers.AsArray, uproot.containers.AsVector),
         ):
             header_bytes = 0
             if (
