@@ -205,7 +205,7 @@ in file {1}""".format(
             chunk_buffers = []
             for future in partfutures:
                 chunk_buffers.append(future.result())
-            return b''.join(chunk_buffers)
+            return b"".join(chunk_buffers)
 
         return uproot.source.futures.ResourceFuture(task)
 
@@ -310,13 +310,13 @@ class XRootDSource(uproot.source.chunk.Source):
                     add_request_range(
                         start + i * self._max_element_size,
                         self._max_element_size,
-                        sub_ranges[start, stop]
+                        sub_ranges[start, stop],
                     )
                 if rem > 0:
                     add_request_range(
                         start + nsplit * self._max_element_size,
                         rem,
-                        sub_ranges[start, stop]
+                        sub_ranges[start, stop],
                     )
             else:
                 add_request_range(start, length, sub_ranges[start, stop])
@@ -348,9 +348,7 @@ class XRootDSource(uproot.source.chunk.Source):
                 partfutures.append(global_futures[sub_start, sub_stop])
             future = self.ResourceClass.mergefuture(partfutures)
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
-            future._set_notify(
-                uproot.source.chunk.notifier(chunk, notifications)
-            )
+            future._set_notify(uproot.source.chunk.notifier(chunk, notifications))
             self._executor.submit(future)
             chunks.append(chunk)
 
