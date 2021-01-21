@@ -1149,7 +1149,6 @@ class DispatchByVersion(object):
         """
         import uproot.deserialization
 
-        start_cursor = cursor.copy()
         (
             num_bytes,
             version,
@@ -1161,12 +1160,11 @@ class DispatchByVersion(object):
         if versioned_cls is not None:
             pass
 
-        elif num_bytes is not None:
+        elif version is not None:
             versioned_cls = cls.new_class(file, version)
 
         elif context.get("in_TBranch", False):
             versioned_cls = cls.new_class(file, "max")
-            cursor = start_cursor
 
         else:
             raise ValueError(
@@ -1178,6 +1176,7 @@ class DispatchByVersion(object):
                 )
             )
 
+        # versioned_cls.read starts with numbytes_version again because move=False (above)
         return cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete

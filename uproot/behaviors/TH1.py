@@ -47,6 +47,20 @@ class Histogram(object):
     Abstract class for histograms.
     """
 
+    @property
+    def name(self):
+        """
+        The name of the histogram.
+        """
+        return self.member("fName")
+
+    @property
+    def title(self):
+        """
+        The title of the histogram.
+        """
+        return self.member("fTitle")
+
     def __eq__(self, other):
         """
         Two histograms are equal if their axes are equal, their values are equal,
