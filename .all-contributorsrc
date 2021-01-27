@@ -284,6 +284,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "ryuwd",
+      "name": "Ryunosuke O'Neil",
+      "avatar_url": "https://avatars.githubusercontent.com/u/56410978?v=4",
+      "profile": "https://roneil.xyz",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
