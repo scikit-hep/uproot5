@@ -292,7 +292,7 @@ class XRootDSource(uproot.source.chunk.Source):
         sub_ranges = {}
 
         def add_request_range(start, length, sub_ranges_list):
-            if len(all_request_ranges[-1]) > self._max_num_elements:
+            if len(all_request_ranges[-1]) >= self._max_num_elements:
                 all_request_ranges.append([])
             all_request_ranges[-1].append((start, length))
             sub_ranges_list.append((start, start + length))
