@@ -136,6 +136,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
   <tr>
     <td align="center"><a href="https://github.com/alexander-held"><img src="https://avatars1.githubusercontent.com/u/45009355?v=4?s=100" width="100px;" alt=""/><br /><sub><b>alexander-held</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=alexander-held" title="Code">💻</a></td>
     <td align="center"><a href="https://giordonstark.com/"><img src="https://avatars0.githubusercontent.com/u/761483?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Giordon Stark</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=kratsg" title="Code">💻</a></td>
+    <td align="center"><a href="https://roneil.xyz"><img src="https://avatars.githubusercontent.com/u/56410978?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Ryunosuke O'Neil</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=ryuwd" title="Code">💻</a></td>
   </tr>
 </table>
 
