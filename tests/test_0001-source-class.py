@@ -392,6 +392,20 @@ def test_xrootd_size():
     assert size1 == 3469136394
 
 
+@pytest.mark.network
+@pytest.mark.xrootd
+def test_xrootd_numpy_int():
+    pytest.importorskip("XRootD")
+    with uproot.source.xrootd.XRootDSource(
+        "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
+        timeout=10,
+        max_num_elements=None,
+        num_workers=1,
+    ) as source:
+        chunk = source.chunk(numpy.int64(0), numpy.int64(100))
+        assert len(chunk.raw_data) == 100
+
+
 def test_cursor_debug():
     data = numpy.concatenate(
         [
