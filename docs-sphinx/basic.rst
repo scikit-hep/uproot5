@@ -480,6 +480,14 @@ The second argument is a ``cut``, or filter on entries. Whereas the uncut array 
     >>> events.arrays(["M"], "pt1 > 50", aliases={"pt1": "sqrt(px1**2 + py1**2)"})
     <Array [{M: 91.8}, {M: 91.9, ... {M: 96.1}] type='290 * {"M": float64}'>
 
+or with additional cut conditions expressed using parentheses, the cut array (below) has 269 entries.
+
+.. code-block:: python
+
+    >>> events.arrays(["M"], "(pt1 > 50) & ((E1>100) | (E1<90))", aliases={"pt1": "sqrt(px1**2 + py1**2)"})
+    <Array [{M: 91.8}, {M: 91.9, ... {M: 96.1}] type='269 * {"M": float64}'>
+
+
 Note that expressions are *not*, in general, computed more quickly if expressed in these strings. The above is equivalent to the following:
 
 .. code-block:: python
