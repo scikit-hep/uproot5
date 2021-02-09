@@ -150,9 +150,7 @@ in file {1}""".format(
         Returns a Python buffer of data between ``start`` and ``stop``.
         """
         status, data = self._file.read(
-            int(start),
-            int(stop - start),
-            timeout=self._xrd_timeout()
+            int(start), int(stop - start), timeout=self._xrd_timeout()
         )
         if status.error:
             self._xrd_error(status)
