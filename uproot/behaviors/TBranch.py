@@ -204,29 +204,35 @@ def iterate(
 
         if hasbranches is not None:
             with hasbranches:
-                for item in hasbranches.iterate(
-                    expressions=expressions,
-                    cut=cut,
-                    filter_name=filter_name,
-                    filter_typename=filter_typename,
-                    filter_branch=filter_branch,
-                    aliases=aliases,
-                    language=language,
-                    step_size=step_size,
-                    decompression_executor=decompression_executor,
-                    interpretation_executor=interpretation_executor,
-                    library=library,
-                    how=how,
-                    report=report,
-                ):
-                    if report:
-                        arrays, report = item
-                        arrays = library.global_index(arrays, global_offset)
-                        report = report.to_global(global_offset)
-                        yield arrays, report
+                try:
+                    for item in hasbranches.iterate(
+                        expressions=expressions,
+                        cut=cut,
+                        filter_name=filter_name,
+                        filter_typename=filter_typename,
+                        filter_branch=filter_branch,
+                        aliases=aliases,
+                        language=language,
+                        step_size=step_size,
+                        decompression_executor=decompression_executor,
+                        interpretation_executor=interpretation_executor,
+                        library=library,
+                        how=how,
+                        report=report,
+                    ):
+                        if report:
+                            arrays, report = item
+                            arrays = library.global_index(arrays, global_offset)
+                            report = report.to_global(global_offset)
+                            yield arrays, report
+                        else:
+                            arrays = library.global_index(item, global_offset)
+                            yield arrays
+                except uproot.exceptions.KeyInFileError:
+                    if allow_missing:
+                        continue
                     else:
-                        arrays = library.global_index(item, global_offset)
-                        yield arrays
+                        raise
 
                 global_offset += hasbranches.num_entries
 
@@ -361,26 +367,31 @@ def concatenate(
         hasbranches = _regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
-
         if hasbranches is not None:
             with hasbranches:
-                arrays = hasbranches.arrays(
-                    expressions=expressions,
-                    cut=cut,
-                    filter_name=filter_name,
-                    filter_typename=filter_typename,
-                    filter_branch=filter_branch,
-                    aliases=aliases,
-                    language=language,
-                    decompression_executor=decompression_executor,
-                    interpretation_executor=interpretation_executor,
-                    array_cache=None,
-                    library=library,
-                    how=how,
-                )
-                arrays = library.global_index(arrays, global_start)
-                all_arrays.append(arrays)
+                try:
+                    arrays = hasbranches.arrays(
+                        expressions=expressions,
+                        cut=cut,
+                        filter_name=filter_name,
+                        filter_typename=filter_typename,
+                        filter_branch=filter_branch,
+                        aliases=aliases,
+                        language=language,
+                        decompression_executor=decompression_executor,
+                        interpretation_executor=interpretation_executor,
+                        array_cache=None,
+                        library=library,
+                        how=how,
+                    )
+                    arrays = library.global_index(arrays, global_start)
+                except uproot.exceptions.KeyInFileError:
+                    if allow_missing:
+                        continue
+                    else:
+                        raise
 
+                all_arrays.append(arrays)
                 global_start += hasbranches.num_entries
 
     return library.concatenate(all_arrays)
