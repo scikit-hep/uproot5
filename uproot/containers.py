@@ -985,6 +985,10 @@ class AsMap(AsContainer):
 
         if isinstance(keys, AsContainer):
             self._keys = keys
+        elif isinstance(keys, type) and issubclass(
+            keys, (uproot.model.Model, uproot.model.DispatchByVersion)
+        ):
+            self._keys = keys
         else:
             self._keys = numpy.dtype(keys)
 

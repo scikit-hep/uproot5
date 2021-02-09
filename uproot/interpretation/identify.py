@@ -206,8 +206,10 @@ def _float16_double32_walk_ast(node, branch, source):
 def _float16_or_double32(branch, context, leaf, is_float16, dims):
     if leaf.classname in ("TLeafF16", "TLeafD32"):
         title = leaf.member("fTitle")
-    else:
+    elif branch.streamer is not None:
         title = branch.streamer.title
+    else:
+        title = ""
 
     try:
         left = title.index("[")
