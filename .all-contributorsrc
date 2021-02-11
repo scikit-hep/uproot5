@@ -293,6 +293,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "ChristopheRappold",
+      "name": "ChristopheRappold",
+      "avatar_url": "https://avatars.githubusercontent.com/u/28101201?v=4",
+      "profile": "https://christopherappold.netlify.app/index.html",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
