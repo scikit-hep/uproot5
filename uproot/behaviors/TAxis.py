@@ -72,7 +72,7 @@ class TAxis(Sequence):
             return low, high
 
         else:
-            return fXbins[where + 1], fXbins[where + 2]
+            return fXbins[where], fXbins[where + 1]
 
     def __iter__(self):
         """
