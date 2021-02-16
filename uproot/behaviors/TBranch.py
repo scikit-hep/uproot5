@@ -2335,7 +2335,13 @@ in file {3}""".format(
                     streamerinfo = matches[max(matches)]
 
                     for element in streamerinfo.walk_members(self._file.streamers):
-                        if element.name == clean_name:
+                        if element.name == clean_name and (
+                            fClassName is None
+                            or fClassName == ""
+                            or element.parent is None
+                            or element.parent.name == ""
+                            or element.parent.name == fClassName
+                        ):
                             self._streamer = element
                             break
 
