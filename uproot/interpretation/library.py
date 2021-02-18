@@ -18,10 +18,6 @@ The :doc:`uproot.interpretation.library.Pandas` library outputs
 are not efficiently represented, but some jagged arrays are encoded as
 ``pandas.MultiIndex``.
 
-The :doc:`uproot.interpretation.library.CuPy` library outputs arrays on a
-GPU, but the types that it supports are limited. Note that Awkward Arrays can
-be GPU-resident as well.
-
 Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
@@ -46,7 +42,7 @@ def _rename(name, context):
 class Library(object):
     """
     Abstract superclass of array-library handlers, for libraries such as NumPy,
-    Awkward Array, Pandas, and CuPy.
+    Awkward Array, and Pandas.
 
     A library is used in the finalization and grouping stages of producing an
     array, converting it from internal representations like
@@ -1076,90 +1072,10 @@ class Pandas(Library):
             return concatenated
 
 
-class CuPy(Library):
-    u"""
-    A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
-    data as CuPy arrays on a GPU. The standard name for this library is ``"cp"``.
-
-    The single-``TBranch`` form for this library is a ``cupy.ndarray``.
-    Non-numerical data are not allowed. Note that Awkward Arrays can be moved
-    to GPUs with full data structures.
-
-    The "group" behavior for this library is:
-
-    * ``how=dict`` or ``how=None``: a dict of str \u2192 array, mapping the
-      names to arrays.
-    * ``how=tuple``: a tuple of arrays, in the order requested. (Names are
-      lost.)
-    * ``how=list``: a list of arrays, in the order requested. (Names are lost.)
-
-    Since CuPy arrays are not indexed, ``global_index`` has no effect.
-    """
-
-    name = "cp"
-
-    @property
-    def imported(self):
-        return uproot.extras.cupy()
-
-    def empty(self, shape, dtype):
-        cupy = self.imported
-        return cupy.empty(shape, dtype)
-
-    def zeros(self, shape, dtype):
-        cupy = self.imported
-        return cupy.zeros(shape, dtype)
-
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
-        cupy = self.imported
-
-        if isinstance(
-            array,
-            (
-                uproot.interpretation.jagged.JaggedArray,
-                uproot.interpretation.strings.StringArray,
-                uproot.interpretation.objects.ObjectArray,
-            ),
-        ):
-            raise TypeError("jagged arrays and objects are not supported by CuPy")
-
-        else:
-            assert isinstance(array, cupy.ndarray)
-            return array
-
-    def concatenate(self, all_arrays):
-        cupy = self.imported
-
-        if len(all_arrays) == 0:
-            return all_arrays
-
-        if isinstance(all_arrays[0], (tuple, list)):
-            keys = uproot._util.range(len(all_arrays[0]))
-        elif isinstance(all_arrays[0], dict):
-            keys = list(all_arrays[0])
-        else:
-            raise AssertionError(repr(all_arrays[0]))
-
-        to_concatenate = dict((k, []) for k in keys)
-        for arrays in all_arrays:
-            for k in keys:
-                to_concatenate[k].append(arrays[k])
-
-        concatenated = dict((k, cupy.concatenate(to_concatenate[k])) for k in keys)
-
-        if isinstance(all_arrays[0], tuple):
-            return tuple(concatenated[k] for k in keys)
-        elif isinstance(all_arrays[0], list):
-            return [concatenated[k] for k in keys]
-        elif isinstance(all_arrays[0], dict):
-            return concatenated
-
-
 _libraries = {
     NumPy.name: NumPy(),
     Awkward.name: Awkward(),
     Pandas.name: Pandas(),
-    CuPy.name: CuPy(),
 }
 
 _libraries["numpy"] = _libraries[NumPy.name]
@@ -1177,11 +1093,6 @@ _libraries["AWKWARD"] = _libraries[Awkward.name]
 _libraries["pandas"] = _libraries[Pandas.name]
 _libraries["Pandas"] = _libraries[Pandas.name]
 _libraries["PANDAS"] = _libraries[Pandas.name]
-
-_libraries["cupy"] = _libraries[CuPy.name]
-_libraries["Cupy"] = _libraries[CuPy.name]
-_libraries["CuPy"] = _libraries[CuPy.name]
-_libraries["CUPY"] = _libraries[CuPy.name]
 
 
 def _regularize_library(library):
@@ -1211,7 +1122,7 @@ def _regularize_library(library):
         except KeyError:
             raise ValueError(
                 """library {0} not recognized (for this function); """
-                """try "np" (NumPy), "ak" (Awkward Array), "pd" (Pandas), or "cp" (CuPy) """
+                """try "np" (NumPy), "ak" (Awkward Array), or "pd" (Pandas) """
                 """instead""".format(repr(library))
             )
 

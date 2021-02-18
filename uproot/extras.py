@@ -53,26 +53,6 @@ or
         return pandas
 
 
-def cupy():
-    """
-    Imports and returns ``cupy``.
-    """
-    try:
-        import cupy
-    except ImportError:
-        raise ImportError(
-            """install the 'cupy' package with:
-
-    pip install cupy
-
-or
-
-    conda install cupy"""
-        )
-    else:
-        return cupy
-
-
 def XRootD_client():
     """
     Imports and returns ``XRootD.client`` (after setting the
