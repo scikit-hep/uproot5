@@ -26,6 +26,7 @@ from __future__ import absolute_import
 
 import itertools
 import json
+import gc
 
 import numpy
 
@@ -762,6 +763,22 @@ def _pandas_only_series(pandas, original_arrays, expression_context):
     return arrays, names
 
 
+def _pandas_memory_efficient(pandas, series, names):
+    # Pandas copies the data, so at least feed columns one by one
+    gc.collect()
+    out = None
+    for name in names:
+        if out is None:
+            out = series[name].to_frame(name=name)
+        else:
+            out[name] = series[name]
+        del series[name]
+    if out is None:
+        return pandas.DataFrame(data=series, columns=names)
+    else:
+        return out
+
+
 class Pandas(Library):
     u"""
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
@@ -930,7 +947,7 @@ class Pandas(Library):
                 names = pandas.MultiIndex.from_tuples(newnames)
 
             if all(isinstance(x.index, _pandas_rangeindex()) for x in arrays.values()):
-                return pandas.DataFrame(data=arrays, columns=names)
+                return _pandas_memory_efficient(pandas, arrays, names)
 
             indexes = []
             groups = []
