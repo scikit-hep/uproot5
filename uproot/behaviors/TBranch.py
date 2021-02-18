@@ -1133,6 +1133,9 @@ class HasBranches(Mapping):
             arrays,
         )
 
+        # no longer needed; save memory
+        del ranges_or_baskets
+
         _fix_asgrouped(
             arrays, expression_context, branchid_interpretation, library, how
         )
@@ -1164,6 +1167,9 @@ class HasBranches(Mapping):
             self.file.file_path,
             self.object_path,
         )
+
+        # no longer needed; save memory
+        del arrays
 
         expression_context = [
             (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
@@ -1375,13 +1381,16 @@ class HasBranches(Mapping):
                     self.object_path,
                 )
 
+                # no longer needed; save memory
+                del arrays
+
                 minimized_expression_context = [
                     (e, c)
                     for e, c in expression_context
                     if c["is_primary"] and not c["is_cut"]
                 ]
 
-                arrays = library.group(output, minimized_expression_context, how)
+                out = library.group(output, minimized_expression_context, how)
 
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
@@ -1392,9 +1401,9 @@ class HasBranches(Mapping):
                 previous_baskets = next_baskets
 
                 if report:
-                    yield arrays, Report(self, sub_entry_start, sub_entry_stop)
+                    yield out, Report(self, sub_entry_start, sub_entry_stop)
                 else:
-                    yield arrays
+                    yield out
 
     def keys(
         self,
@@ -3442,6 +3451,9 @@ def _ranges_or_baskets_to_arrays(
                     library,
                     branch,
                 )
+                # no longer needed, save memory
+                basket_arrays.clear()
+
         except Exception:
             notifications.put(sys.exc_info())
         else:
