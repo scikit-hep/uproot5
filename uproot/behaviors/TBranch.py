@@ -120,8 +120,7 @@ def iterate(
             is created.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
-            ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
-            CuPy.
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -290,8 +289,7 @@ def concatenate(
             is created.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
-            ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
-            CuPy.
+            ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -1027,8 +1025,7 @@ class HasBranches(Mapping):
                 if a memory size, create a new cache of this size.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
-                CuPy.
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1235,8 +1232,7 @@ class HasBranches(Mapping):
                 is used.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
-                CuPy.
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1992,8 +1988,7 @@ class TBranch(HasBranches):
                 if a memory size, create a new cache of this size.
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
-                ``"ak"`` for Awkward Array, ``"pd"`` for Pandas, and ``"cp"`` for
-                CuPy.
+                ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
 
         Returns the ``TBranch`` data as an array.
 

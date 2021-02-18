@@ -327,23 +327,21 @@ If you don't have the specified library (including the default, Awkward Array), 
 
 .. code-block:: python
 
-    >>> events["M"].array(library="cp")
+    >>> events["M"].array(library="pd")
     Traceback (most recent call last):
-      File "/home/jpivarski/irishep/uproot/uproot/extras.py", line 60, in cupy
-        import cupy
-    ModuleNotFoundError: No module named 'cupy'
+      File "/home/jpivarski/irishep/uproot/uproot/extras.py", line 43, in pandas
+        import pandas
+    ModuleNotFoundError: No module named 'pandas'
 
     ...
 
-    ImportError: install the 'cupy' package with:
+    ImportError: install the 'pandas' package with:
 
-        pip install cupy
+        pip install pandas
 
     or
 
-        conda install cupy
-
-(CuPy can only be used on computers with GPUs.)
+        conda install pandas
 
 The :ref:`uproot.behaviors.TBranch.TBranch.array` method has many options, including limitations on reading (``entry_start`` and ``entry_stop``), parallelization (``decompression_executor`` and ``interpretation_executor``), and caching (``array_cache``). For details, see the reference documentation for :ref:`uproot.behaviors.TBranch.TBranch.array`.
 
@@ -911,7 +909,7 @@ and
 
 have identical performance. Not having to declare names for things that are already referenced by name simplifies bookkeeping.
 
-The ``array_cache`` stores array outputs up to a maximum number of bytes. The arrays must have an ``nbytes`` or ``memory_usage`` attribute/property to track usage, which NumPy, Awkward Array, Pandas, and CuPy all have. As with the ``object_cache``, the ``array_cache`` ensures that
+The ``array_cache`` stores array outputs up to a maximum number of bytes. The arrays must have an ``nbytes`` or ``memory_usage`` attribute/property to track usage, which NumPy, Awkward Array, and Pandas all have. As with the ``object_cache``, the ``array_cache`` ensures that
 
 .. code-block:: python
 

@@ -335,8 +335,7 @@ In Uproot 3, you could specify whether the output is a dict of arrays, a tuple o
 
 * ``library="np"`` to always return NumPy arrays (even ``dtype="O"`` if the type requires it);
 * ``library="ak"`` (default) to always return Awkward Arrays;
-* ``library="pd"`` to always return a Pandas Series or DataFrame;
-* ``library="cp"`` to always return CuPy arrays (on a GPU).
+* ``library="pd"`` to always return a Pandas Series or DataFrame.
 
 (Uproot 3 chooses between NumPy and Awkward Array based on the type of the data. Since NumPy arrays and Awkward Arrays have different methods and properties, it's safer to write scripts with a deterministic output type.)
 
