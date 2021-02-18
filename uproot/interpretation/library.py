@@ -276,7 +276,8 @@ def _strided_to_awkward(awkward, path, interpretation, data):
     parameters = {
         "__record__": uproot.model.classname_decode(interpretation.model.__name__)[0]
     }
-    return awkward.layout.RecordArray(contents, names, len(data), parameters=parameters)
+    length = len(data) if len(contents) == 0 else None
+    return awkward.layout.RecordArray(contents, names, length, parameters=parameters)
 
 
 # FIXME: _object_to_awkward_json and _awkward_json_to_array are slow functions
@@ -377,8 +378,9 @@ def _awkward_json_to_array(awkward, form, array):
                         _awkward_json_to_array(awkward, subform, array[name])
                     )
                 names.append(name)
+        length = len(array) if len(contents) == 0 else None
         return awkward.layout.RecordArray(
-            contents, names, len(array), parameters=_awkward_p(form)
+            contents, names, length, parameters=_awkward_p(form)
         )
 
     elif form["class"][:15] == "ListOffsetArray":
@@ -415,10 +417,11 @@ def _awkward_json_to_array(awkward, form, array):
             else:
                 keys = _awkward_json_to_array(awkward, key_form, array.content["0"])
                 values = _awkward_json_to_array(awkward, value_form, array.content["1"])
+                length = len(array.content) if len(keys) == 0 else None
                 content = awkward.layout.RecordArray(
                     (keys, values),
                     None,
-                    len(array.content),
+                    length,
                     parameters=_awkward_p(form["content"]),
                 )
             cls = getattr(awkward.layout, form["class"])
@@ -581,6 +584,8 @@ in object {3}""".format(
                         numpy.array(array[name]), regulararray=True, highlevel=False
                     )
                 )
+            if len(contents) != 0:
+                length = None
             out = awkward.layout.RecordArray(contents, array.dtype.names, length)
             for size in shape[::-1]:
                 out = awkward.layout.RegularArray(out, size)

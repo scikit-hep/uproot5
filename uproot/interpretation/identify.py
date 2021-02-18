@@ -101,35 +101,53 @@ _vector_pointer = re.compile(r"vector\<([^<>]*)\*\>")
 _pair_second = re.compile(r"pair\<[^<>]*,(.*) \>")
 
 
-def _from_leaves(branch, context):
+def _from_leaves_one(leaf, title):
     dims, is_jagged = (), False
-    if len(branch.member("fLeaves")) == 1:
-        leaf = branch.member("fLeaves")[0]
-        title = leaf.member("fTitle")
 
-        m = _title_has_dims.match(title)
-        if m is not None:
-            dims = tuple(int(x) for x in re.findall(_item_dim_pattern, title))
-            if dims == ():
-                if leaf.member("fLen") > 1:
-                    dims = (leaf.member("fLen"),)
+    m = _title_has_dims.match(title)
+    if m is not None:
+        dims = tuple(int(x) for x in re.findall(_item_dim_pattern, title))
+        if dims == ():
+            if leaf.member("fLen") > 1:
+                dims = (leaf.member("fLen"),)
 
-            if any(
-                _item_dim_pattern.match(x) is None
-                for x in re.findall(_item_any_pattern, title)
-            ):
-                is_jagged = True
-
-    else:
-        for leaf in branch.member("fLeaves"):
-            if _title_has_dims.match(leaf.member("fTitle")):
-                raise UnknownInterpretation(
-                    "leaf-list with square brackets in the title",
-                    branch.file.file_path,
-                    branch.object_path,
-                )
+        if any(
+            _item_dim_pattern.match(x) is None
+            for x in re.findall(_item_any_pattern, title)
+        ):
+            is_jagged = True
 
     return dims, is_jagged
+
+
+def _from_leaves(branch, context):
+    if len(branch.member("fLeaves")) == 0:
+        raise UnknownInterpretation(
+            "leaf-list with zero leaves",
+            branch.file.file_path,
+            branch.object_path,
+        )
+
+    elif len(branch.member("fLeaves")) == 1:
+        leaf = branch.member("fLeaves")[0]
+        title = leaf.member("fTitle")
+        return _from_leaves_one(leaf, title)
+
+    else:
+        first = True
+        for leaf in branch.member("fLeaves"):
+            title = leaf.member("fTitle")
+            if first:
+                dims, is_jagged = _from_leaves_one(leaf, title)
+            else:
+                trial_dims, trial_is_jagged = _from_leaves_one(leaf, title)
+                if dims != trial_dims or is_jagged != trial_is_jagged:
+                    raise UnknownInterpretation(
+                        "leaf-list with different dimensions among the leaves",
+                        branch.file.file_path,
+                        branch.object_path,
+                    )
+        return dims, is_jagged
 
 
 def _float16_double32_walk_ast(node, branch, source):
