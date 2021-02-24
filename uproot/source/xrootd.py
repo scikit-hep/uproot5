@@ -211,14 +211,16 @@ in file {1}""".format(
 
         return uproot.source.futures.ResourceFuture(task)
 
-    @staticmethod
-    def callbacker(futures, results):
+    def callbacker(self, futures, results):
         """
         Returns an XRootD callback function to fill the ``futures`` and
         ``results``.
         """
 
         def callback(status, response, hosts):
+            if status.error:
+                self._xrd_error(status)
+
             for chunk in response.chunks:
                 start, stop = chunk.offset, chunk.offset + chunk.length
                 results[start, stop] = chunk.buffer
@@ -334,7 +336,7 @@ class XRootDSource(uproot.source.chunk.Source):
                 futures[start, stop] = partfuture
                 global_futures[start, stop] = partfuture
 
-            callback = self.ResourceClass.callbacker(futures, results)
+            callback = self._resource.callbacker(futures, results)
 
             status = self._resource.file.vector_read(
                 chunks=request_ranges, callback=callback
