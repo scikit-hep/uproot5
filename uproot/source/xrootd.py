@@ -221,7 +221,7 @@ in file {1}""".format(
         def callback(status, response, hosts):
             if status.error:
                 raise OSError(status.message)
-            
+
             for chunk in response.chunks:
                 start, stop = chunk.offset, chunk.offset + chunk.length
                 results[start, stop] = chunk.buffer
