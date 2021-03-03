@@ -116,6 +116,8 @@ def test_boost():
         hpxpy = f["hpxpy"]
         hprof = f["hprof"]
 
+        assert hpx.to_boost() == boost_histogram.Histogram(hpx)
+
         assert hpx.to_boost().name == "hpx"
         assert hpx.to_boost().title == "This is the px distribution"
         assert hpx.to_boost().axes[0].name == "xaxis"

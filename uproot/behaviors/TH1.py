@@ -208,6 +208,10 @@ class Histogram(object):
             self.to_boost(metadata=boost_metadata, axis_metadata=boost_axis_metadata)
         )
 
+    # Support direct conversion to histograms, such as bh.Histogram(self) or hist.Hist(self)
+    def _to_boost_histogram_(self):
+        return self.to_boost()
+
 
 class TH1(Histogram):
     """
