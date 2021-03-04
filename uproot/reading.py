@@ -154,7 +154,7 @@ def open(
 
 open.defaults = {
     "file_handler": uproot.source.file.MemmapSource,
-    "xrootd_handler": uproot.source.xrootd.XRootDSource,
+    "xrootd_handler": uproot.source.xrootd.MultithreadedXRootDSource,
     "http_handler": uproot.source.http.HTTPSource,
     "object_handler": uproot.source.object.ObjectSource,
     "timeout": 30,
