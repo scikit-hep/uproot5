@@ -131,6 +131,7 @@ class Future(object):
         except Exception:
             self._excinfo = sys.exc_info()
         self._finished.set()
+        del self._task, self._args
 
 
 class Worker(threading.Thread):
@@ -286,6 +287,7 @@ class ResourceFuture(Future):
         self._finished.set()
         if self._notify is not None:
             self._notify()
+            del self._notify
 
 
 class ResourceWorker(Worker):
