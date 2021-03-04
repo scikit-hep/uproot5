@@ -339,7 +339,9 @@ class XRootDSource(uproot.source.chunk.Source):
             callback = self._resource.callbacker(futures, results)
 
             status = self._resource.file.vector_read(
-                chunks=request_ranges, callback=callback
+                chunks=request_ranges,
+                timeout=self._resource._xrd_timeout(),
+                callback=callback,
             )
             if status.error:
                 self._resource._xrd_error(status)
