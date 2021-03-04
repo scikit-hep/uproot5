@@ -127,11 +127,15 @@ class Future(object):
 
     def _run(self):
         try:
+            if self._task is None:
+                raise RuntimeError("cannot run Future twice")
             self._result = self._task(*self._args)
         except Exception:
             self._excinfo = sys.exc_info()
         self._finished.set()
         del self._task, self._args
+        self._task = None
+        self._args = ()
 
 
 class Worker(threading.Thread):
@@ -288,6 +292,7 @@ class ResourceFuture(Future):
         if self._notify is not None:
             self._notify()
             del self._notify
+            self._notify = None
 
 
 class ResourceWorker(Worker):
