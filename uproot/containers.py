@@ -466,9 +466,6 @@ class AsString(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-
-        cursor.debug(chunk, limit_bytes=120)
-        print(f'self._header={self._header}, header={header}')
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -795,15 +792,6 @@ class AsVector(AsContainer):
         else:
             is_memberwise = False
 
-        print(f'AsVector::num_bytes=        {num_bytes}')
-        print(f'AsVector::instance_version= {instance_version}')
-        print(f'AsVector::is_memberwise=    0b{is_memberwise:_b} ({is_memberwise})')
-        import os
-        #print(cursor.debug(chunk, offset=int(os.getenv('OFFSET', 132)), dtype=">f4"))#, limit_bytes=320))
-        #print(cursor.debug(chunk, limit_bytes=653, dtype=">u2", offset=int(os.getenv('OFFSET', 130))))
-        #print(cursor.debug(chunk, limit_bytes=218, offset=10, dtype=">f8"))
-        print(cursor.debug(chunk, limit_bytes=80))
-
         # note: self._values can also be a NumPy dtype, and not necessarily a class (e.g. type(self._values)==type)
         _value_typename = _content_typename(self._values)
         if is_memberwise:
@@ -819,40 +807,30 @@ class AsVector(AsContainer):
             # there's extra stuff, maybe?
             _num_memberwise_bytes = cursor.field(chunk, _stl_container_size, context)
             _something_else = cursor.field(chunk, struct.Struct(">H"), context)
-            print(f'_num_memberwise_bytes={_num_memberwise_bytes}')
-            print(f'_something_else={_something_else}')
-            print(cursor.debug(chunk, limit_bytes=20))
 
+            # length is number of elements in vector
             length = cursor.field(chunk, _stl_container_size, context)
 
             model = self._values.new_class(file, "max")
-
-            print(f'length={length}')
 
             # make a shell
             values = numpy.empty(length, dtype=_stl_object_type)
             for i in uproot._util.range(length):
                 values[i] = model.read(chunk, cursor, {**context, "reading": False}, file, selffile, parent)
 
+            # memberwise reading!
             for member_index in uproot._util.range(len(values[0].member_names)):
                 for i in uproot._util.range(length):
                     values[i].read_member_n(chunk, cursor, context, file, member_index)
                     print(values[i].members)
         else:
-
             length = cursor.field(chunk, _stl_container_size, context)
 
-        values = _read_nested(
-            self._values, length, chunk, cursor, context, file, selffile, parent
-        )
+            values = _read_nested(
+                self._values, length, chunk, cursor, context, file, selffile, parent
+            )
 
-        print(f'start_cursor={start_cursor}')
-        print(f'num_bytes={num_bytes}')
-        # need to hard-code, no idea how to know when we get to the end...
-        cursor.move_to(start_cursor.index+num_bytes)
-        print(f'cursor={cursor}')
         out = STLVector(values)
-        print(f'out={out}')
 
         if self._header and header:
             uproot.deserialization.numbytes_check(
