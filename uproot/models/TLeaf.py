@@ -35,7 +35,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         (
@@ -46,7 +46,7 @@ in file {1}""".format(
             self._members["fIsUnsigned"],
         ) = cursor.fields(chunk, _tleaf2_format0, context)
         self._members["fLeafCount"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
 
     base_names_versions = [("TNamed", 1)]
@@ -95,7 +95,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -141,7 +141,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -187,7 +187,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -233,7 +233,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -279,7 +279,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -325,7 +325,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -371,7 +371,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -417,7 +417,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
@@ -461,7 +461,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"] = cursor.float16(chunk, 12, context)
@@ -503,7 +503,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fMinimum"] = cursor.double32(chunk, context)
@@ -548,7 +548,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fID"], self._members["fType"] = cursor.fields(

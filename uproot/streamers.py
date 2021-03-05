@@ -392,7 +392,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._bases[0]._members["fName"] = _canonical_typename(
@@ -404,7 +404,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         )
 
         self._members["fElements"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
 
     def _dependencies(self, streamers, out):
@@ -498,7 +498,7 @@ class Model_TStreamerElement(uproot.model.Model):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -558,7 +558,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -654,7 +654,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
     ):
         read_members.append(
             "        self._bases.append(c({0}, {1}).read(chunk, cursor, "
-            "context, file, self._file, self._parent, concrete=self._concrete))".format(
+            "context, file, self._file, self._parent, concrete=self.concrete))".format(
                 repr(self.name), repr(self.base_version)
             )
         )
@@ -682,7 +682,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         if self._instance_version >= 2:
@@ -789,7 +789,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fCountVersion"] = cursor.field(
@@ -937,7 +937,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         if (
@@ -1046,7 +1046,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                     repr(self.count_name)
                 ),
                 "            self._members[{0}] = c({1}).read(chunk, cursor, "
-                "context, file, self._file, self._concrete)".format(
+                "context, file, self._file, self.concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 ),
             ]
@@ -1086,7 +1086,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fCountVersion"] = cursor.field(
@@ -1154,7 +1154,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
         read_members.append(
             "        self._members[{0}] = self._stl_container{1}.read("
-            "chunk, cursor, context, file, self._file, self._concrete)"
+            "chunk, cursor, context, file, self._file, self.concrete)"
             "".format(repr(self.name), len(containers))
         )
 
@@ -1184,7 +1184,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fSTLtype"], self._members["fCtype"] = cursor.fields(
@@ -1224,7 +1224,7 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -1255,7 +1255,7 @@ class TStreamerPointerTypes(object):
         if self.fType == uproot.const.kObjectp or self.fType == uproot.const.kAnyp:
             read_members.append(
                 "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
-                "file, self._file, self._concrete)".format(
+                "file, self._file, self.concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -1324,7 +1324,7 @@ class Model_TStreamerObjectAnyPointer(TStreamerPointerTypes, Model_TStreamerElem
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -1347,7 +1347,7 @@ class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -1378,7 +1378,7 @@ class TStreamerObjectTypes(object):
     ):
         read_members.append(
             "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
-            "file, self._file, self._concrete)".format(
+            "file, self._file, self.concrete)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )
@@ -1424,7 +1424,7 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -1447,7 +1447,7 @@ class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -1470,7 +1470,7 @@ class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 

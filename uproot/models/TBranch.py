@@ -43,7 +43,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._bases.append(
@@ -54,7 +54,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         (
@@ -71,20 +71,20 @@ in file {1}""".format(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch10_format1, context)
         self._members["fBranches"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fLeaves"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
                 file.class_named("TObjArray").read(
-                    chunk, cursor, context, file, self._file, self._concrete
+                    chunk, cursor, context, file, self._file, self.concrete
                 )
         else:
             self._members["fBaskets"] = file.class_named("TObjArray").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
         tmp = _tbranch10_dtype1
         if context.get("speedbump", True):
@@ -109,7 +109,7 @@ in file {1}""".format(
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = file.class_named("TString").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
 
     @property
@@ -171,7 +171,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._bases.append(
@@ -182,7 +182,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         (
@@ -200,20 +200,20 @@ in file {1}""".format(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch11_format1, context)
         self._members["fBranches"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fLeaves"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
                 file.class_named("TObjArray").read(
-                    chunk, cursor, context, file, self._file, self._concrete
+                    chunk, cursor, context, file, self._file, self.concrete
                 )
         else:
             self._members["fBaskets"] = file.class_named("TObjArray").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
         tmp = _tbranch11_dtype1
         if context.get("speedbump", True):
@@ -238,7 +238,7 @@ in file {1}""".format(
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = file.class_named("TString").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
 
     @property
@@ -301,7 +301,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._bases.append(
@@ -312,7 +312,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         (
@@ -330,20 +330,20 @@ in file {1}""".format(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch12_format1, context)
         self._members["fBranches"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fLeaves"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
                 file.class_named("TObjArray").read(
-                    chunk, cursor, context, file, self._file, self._concrete
+                    chunk, cursor, context, file, self._file, self.concrete
                 )
         else:
             self._members["fBaskets"] = file.class_named("TObjArray").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
         tmp = _tbranch12_dtype1
         if context.get("speedbump", True):
@@ -368,7 +368,7 @@ in file {1}""".format(
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = file.class_named("TString").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
 
     @property
@@ -432,7 +432,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._bases.append(
@@ -443,7 +443,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         (
@@ -454,7 +454,7 @@ in file {1}""".format(
             self._members["fEntryNumber"],
         ) = cursor.fields(chunk, _tbranch13_format1, context)
         self._members["fIOFeatures"] = file.class_named("ROOT::TIOFeatures").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         (
             self._members["fOffset"],
@@ -466,20 +466,20 @@ in file {1}""".format(
             self._members["fZipBytes"],
         ) = cursor.fields(chunk, _tbranch13_format2, context)
         self._members["fBranches"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fLeaves"] = file.class_named("TObjArray").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._cursor_baskets = cursor.copy()
         if file.options["minimal_ttree_metadata"]:
             if not cursor.skip_over(chunk, context):
                 file.class_named("TObjArray").read(
-                    chunk, cursor, context, file, self._file, self._concrete
+                    chunk, cursor, context, file, self._file, self.concrete
                 )
         else:
             self._members["fBaskets"] = file.class_named("TObjArray").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
         tmp = _tbranch13_dtype1
         if context.get("speedbump", True):
@@ -504,7 +504,7 @@ in file {1}""".format(
             cursor.skip_after(self)
         else:
             self._members["fFileName"] = file.class_named("TString").read(
-                chunk, cursor, context, file, self._file, self._concrete
+                chunk, cursor, context, file, self._file, self.concrete
             )
 
     @property
@@ -580,18 +580,18 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fParentName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fClonesName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         (
             self._members["fCheckSum"],
@@ -602,10 +602,10 @@ in file {1}""".format(
             self._members["fMaximum"],
         ) = cursor.fields(chunk, _tbranchelement8_format1, context)
         self._members["fBranchCount"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fBranchCount2"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
 
     base_names_versions = [("TBranch", 10)]
@@ -652,18 +652,18 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fParentName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fClonesName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         (
             self._members["fCheckSum"],
@@ -674,10 +674,10 @@ in file {1}""".format(
             self._members["fMaximum"],
         ) = cursor.fields(chunk, _tbranchelement9_format1, context)
         self._members["fBranchCount"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fBranchCount2"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
 
     base_names_versions = [("TBranch", 12)]
@@ -724,18 +724,18 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._cursor_baskets = self._bases[0]._cursor_baskets
         self._members["fClassName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fParentName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fClonesName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         (
             self._members["fCheckSum"],
@@ -746,10 +746,10 @@ in file {1}""".format(
             self._members["fMaximum"],
         ) = cursor.fields(chunk, _tbranchelement10_format1, context)
         self._members["fBranchCount"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
         self._members["fBranchCount2"] = uproot.deserialization.read_object_any(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
 
     base_names_versions = [("TBranch", 12)]
@@ -805,11 +805,11 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._members["fClassName"] = file.class_named("TString").read(
-            chunk, cursor, context, file, self._file, self._concrete
+            chunk, cursor, context, file, self._file, self.concrete
         )
 
     base_names_versions = [("TBranch", 13)]

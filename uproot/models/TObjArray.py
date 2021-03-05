@@ -42,7 +42,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
@@ -107,7 +107,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
 
