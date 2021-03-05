@@ -459,6 +459,8 @@ class Model(object):
         object (i.e. if this object is in the other's
         :ref:`uproot.model.Model.bases`).
         """
+        if self._concrete is None:
+            return self
         return self._concrete
 
     @property
@@ -746,10 +748,7 @@ class Model(object):
         self._cursor = cursor.copy()
         self._file = selffile
         self._parent = parent
-        if concrete is None:
-            self._concrete = self
-        else:
-            self._concrete = concrete
+        self._concrete = concrete
 
         self._members = {}
         self._bases = []

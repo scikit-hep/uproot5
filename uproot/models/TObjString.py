@@ -32,7 +32,7 @@ in file {1}""".format(
                 file,
                 self._file,
                 self._parent,
-                concrete=self._concrete,
+                concrete=self.concrete,
             )
         )
         self._data = cursor.string(chunk, context)
