@@ -761,7 +761,9 @@ class Model(object):
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
         if context.get("reading", True):
-            self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
+            self.hook_before_read(
+                chunk=chunk, cursor=cursor, context=context, file=file
+            )
 
             self.read_numbytes_version(chunk, cursor, context)
 

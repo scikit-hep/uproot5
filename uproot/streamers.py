@@ -306,7 +306,9 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         for i, format in enumerate(formats_memberwise):
             class_data.append(
-                "    _format_memberwise{0} = struct.Struct('>{1}')".format(i, "".join(format))
+                "    _format_memberwise{0} = struct.Struct('>{1}')".format(
+                    i, "".join(format)
+                )
             )
 
         for i, dt in enumerate(dtypes):
@@ -784,7 +786,6 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
 
             read_members.append("            cursor.skip(1)")
             read_member_n.append(read_members[-1])
-
 
         read_members.append(
             "        self._members[{0}] = cursor.array(chunk, self.member({1}), "
