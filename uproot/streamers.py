@@ -276,6 +276,24 @@ class Model_TStreamerInfo(uproot.model.Model):
             read_members.append("        pass")
         read_members.append("")
 
+        read_member_n = []
+        _member_index = 0
+        for line in read_members:
+            if line.startswith("    def read_members"):
+                read_member_n.append("    def read_member_n(self, chunk, cursor, context, file, member_index):")
+                continue
+
+            if line.startswith("        self._members"):
+                # indexing by member
+                read_member_n.append(f"        if member_index == {_member_index}:")
+                # indent the self._members call one more
+                read_member_n.append(f"    {line}")
+                # increment
+                _member_index += 1
+                continue
+
+            read_member_n.append(line)
+
         strided_interpretation.append(
             "        return uproot.interpretation.objects.AsStridedObjects"
             "(cls, members, original=original)"
@@ -325,6 +343,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         return "\n".join(
             ["class {0}(uproot.model.VersionedModel):".format(class_name)]
             + read_members
+            + read_member_n
             + strided_interpretation
             + awkward_form
             + class_data
