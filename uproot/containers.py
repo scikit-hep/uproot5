@@ -59,7 +59,7 @@ def _content_cache_key(content):
 
 
 def _read_nested(
-    model, length, chunk, cursor, context, file, selffile, parent, header=True, rollback_nbytes=0
+    model, length, chunk, cursor, context, file, selffile, parent, header=True
 ):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
@@ -68,15 +68,12 @@ def _read_nested(
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             for i in uproot._util.range(length):
-                cursor._index = cursor._index - rollback_nbytes
                 values[i] = model.read(
                     chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
             for i in uproot._util.range(length):
-                cursor._index = cursor._index - rollback_nbytes
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
-                print(cursor, values[i])
         return values
 
 
@@ -490,12 +487,6 @@ class AsString(AsContainer):
         else:
             raise AssertionError(repr(self._length_bytes))
 
-        print('in string')
-        print(self._length_bytes)
-        print(f'out={out}')
-        print(cursor.debug(chunk, limit_bytes=30))
-        breakpoint()
-
         if self._header and header:
             uproot.deserialization.numbytes_check(
                 chunk,
@@ -832,17 +823,30 @@ class AsVector(AsContainer):
             _something_else = cursor.field(chunk, struct.Struct(">H"), context)
             print(f'_num_memberwise_bytes={_num_memberwise_bytes}')
             print(f'_something_else={_something_else}')
-            print(cursor.debug(chunk, limit_bytes=800))
-            breakpoint()
+            print(cursor.debug(chunk, limit_bytes=20))
 
+            length = cursor.field(chunk, _stl_container_size, context)
 
-        length = cursor.field(chunk, _stl_container_size, context)
+            model = self._values.new_class(file, "max")
 
-        print(f'length={length}')
-        mycursor = uproot.source.cursor.CursorMemberWise(2, length, cursor.index, origin=cursor.origin, refs=cursor.refs)
-        print(mycursor)
+            print(f'length={length}')
+            #self._values, length, chunk, mycursor, context, file, selffile, parent, is_memberwise=is_memberwise
+
+            # make a shell
+            values = numpy.empty(length, dtype=_stl_object_type)
+            for i in uproot._util.range(length):
+                values[i] = model.read(chunk, cursor, {**context, "reading": False}, file, selffile, parent)
+
+            for member_index in uproot._util.range(len(values[0].member_names)):
+                for i in uproot._util.range(length):
+                    values[i].read_member_n(chunk, cursor, context, file, member_index)
+                    print(values[i].members)
+        else:
+
+            length = cursor.field(chunk, _stl_container_size, context)
+
         values = _read_nested(
-            self._values, length, chunk, mycursor, context, file, selffile, parent, rollback_nbytes=2 if is_memberwise else 0
+            self._values, length, chunk, mycursor, context, file, selffile, parent, is_memberwise=is_memberwise
         )
 
         print(f'mycursor={mycursor}')
