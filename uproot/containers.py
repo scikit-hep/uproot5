@@ -124,8 +124,6 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
         return lbracket + "".join(left) + "..., " + "".join(right) + rbracket
 
 
-
-
 class AsContainer(object):
     """
     Abstract class for all descriptions of data as containers, such as
@@ -830,7 +828,6 @@ class AsVector(AsContainer):
             model = self._values.new_class(file, "max")
 
             print(f'length={length}')
-            #self._values, length, chunk, mycursor, context, file, selffile, parent, is_memberwise=is_memberwise
 
             # make a shell
             values = numpy.empty(length, dtype=_stl_object_type)
@@ -846,10 +843,9 @@ class AsVector(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
 
         values = _read_nested(
-            self._values, length, chunk, mycursor, context, file, selffile, parent, is_memberwise=is_memberwise
+            self._values, length, chunk, cursor, context, file, selffile, parent
         )
 
-        print(f'mycursor={mycursor}')
         print(f'start_cursor={start_cursor}')
         print(f'num_bytes={num_bytes}')
         # need to hard-code, no idea how to know when we get to the end...
