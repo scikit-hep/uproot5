@@ -76,6 +76,7 @@ def _read_nested(
             for i in uproot._util.range(length):
                 cursor._index = cursor._index - rollback_nbytes
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
+                print(cursor, values[i])
         return values
 
 
@@ -124,6 +125,8 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
         return lbracket + "".join(left) + "..." + rbracket
     else:
         return lbracket + "".join(left) + "..., " + "".join(right) + rbracket
+
+
 
 
 class AsContainer(object):
@@ -468,6 +471,9 @@ class AsString(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+
+        cursor.debug(chunk, limit_bytes=120)
+        print(f'self._header={self._header}, header={header}')
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -483,6 +489,12 @@ class AsString(AsContainer):
             out = cursor.string_with_length(chunk, context, length)
         else:
             raise AssertionError(repr(self._length_bytes))
+
+        print('in string')
+        print(self._length_bytes)
+        print(f'out={out}')
+        print(cursor.debug(chunk, limit_bytes=30))
+        breakpoint()
 
         if self._header and header:
             uproot.deserialization.numbytes_check(
@@ -794,34 +806,53 @@ class AsVector(AsContainer):
         else:
             is_memberwise = False
 
+        print(f'AsVector::num_bytes=        {num_bytes}')
+        print(f'AsVector::instance_version= {instance_version}')
+        print(f'AsVector::is_memberwise=    0b{is_memberwise:_b} ({is_memberwise})')
+        import os
+        #print(cursor.debug(chunk, offset=int(os.getenv('OFFSET', 132)), dtype=">f4"))#, limit_bytes=320))
+        #print(cursor.debug(chunk, limit_bytes=653, dtype=">u2", offset=int(os.getenv('OFFSET', 130))))
+        #print(cursor.debug(chunk, limit_bytes=218, offset=10, dtype=">f8"))
+        print(cursor.debug(chunk, limit_bytes=80))
+
         # note: self._values can also be a NumPy dtype, and not necessarily a class (e.g. type(self._values)==type)
         _value_typename = _content_typename(self._values)
         if is_memberwise:
             # let's hard-code in logic for std::pair<T1,T2> for now
-            if not _value_typename.startswith('pair'):
+            if not _value_typename.startswith('pair') and not True:
                 raise NotImplementedError(
-                    """memberwise serialization of {0}
-    in file {1}""".format(
-                        type(self).__name__, selffile.file_path
+                    """memberwise serialization of {0}({1})
+    in file {2}""".format(
+                        type(self).__name__, _value_typename, selffile.file_path
                     )
                 )
 
             # there's extra stuff, maybe?
             _num_memberwise_bytes = cursor.field(chunk, _stl_container_size, context)
             _something_else = cursor.field(chunk, struct.Struct(">H"), context)
+            print(f'_num_memberwise_bytes={_num_memberwise_bytes}')
+            print(f'_something_else={_something_else}')
+            print(cursor.debug(chunk, limit_bytes=800))
+            breakpoint()
 
 
         length = cursor.field(chunk, _stl_container_size, context)
 
+        print(f'length={length}')
         mycursor = uproot.source.cursor.CursorMemberWise(2, length, cursor.index, origin=cursor.origin, refs=cursor.refs)
-
+        print(mycursor)
         values = _read_nested(
             self._values, length, chunk, mycursor, context, file, selffile, parent, rollback_nbytes=2 if is_memberwise else 0
         )
 
+        print(f'mycursor={mycursor}')
+        print(f'start_cursor={start_cursor}')
+        print(f'num_bytes={num_bytes}')
         # need to hard-code, no idea how to know when we get to the end...
         cursor.move_to(start_cursor.index+num_bytes)
+        print(f'cursor={cursor}')
         out = STLVector(values)
+        print(f'out={out}')
 
         if self._header and header:
             uproot.deserialization.numbytes_check(
