@@ -1128,6 +1128,7 @@ class HasBranches(Mapping):
             interpretation_executor,
             library,
             arrays,
+            False,
         )
 
         # no longer needed; save memory
@@ -1361,6 +1362,7 @@ class HasBranches(Mapping):
                     interpretation_executor,
                     library,
                     arrays,
+                    True,
                 )
 
                 _fix_asgrouped(
@@ -2083,6 +2085,7 @@ class TBranch(HasBranches):
             interpretation_executor,
             library,
             arrays,
+            False,
         )
 
         _fix_asgrouped(
@@ -3347,6 +3350,7 @@ def _ranges_or_baskets_to_arrays(
     interpretation_executor,
     library,
     arrays,
+    update_ranges_or_baskets,
 ):
     notifications = queue.Queue()
 
@@ -3401,7 +3405,8 @@ def _ranges_or_baskets_to_arrays(
                 branch,
             )
             original_index = range_original_index[(chunk.start, chunk.stop)]
-            replace(ranges_or_baskets, original_index, basket)
+            if update_ranges_or_baskets:
+                replace(ranges_or_baskets, original_index, basket)
         except Exception:
             notifications.put(sys.exc_info())
         else:
@@ -3436,6 +3441,8 @@ def _ranges_or_baskets_to_arrays(
                         branch.file.file_path,
                     )
                 )
+
+            basket = None
 
             if len(basket_arrays) == branchid_num_baskets[branch.cache_key]:
                 arrays[branch.cache_key] = interpretation.final_array(

@@ -133,6 +133,7 @@ def test_ranges_or_baskets_to_arrays():
             interpretation_executor,
             library,
             arrays,
+            False,
         )
         assert arrays[branch.cache_key].tolist() == [
             -15,
