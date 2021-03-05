@@ -805,8 +805,8 @@ class AsVector(AsContainer):
                 )
 
             # there's extra stuff, maybe?
-            _num_memberwise_bytes = cursor.field(chunk, _stl_container_size, context)
-            _something_else = cursor.field(chunk, struct.Struct(">H"), context)
+            cursor.field(chunk, _stl_container_size, context)
+            cursor.field(chunk, struct.Struct(">H"), context)
 
             # length is number of elements in vector
             length = cursor.field(chunk, _stl_container_size, context)
