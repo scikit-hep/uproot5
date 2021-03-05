@@ -3458,13 +3458,11 @@ def _ranges_or_baskets_to_arrays(
         obj = notifications.get()
 
         if isinstance(obj, uproot.source.chunk.Chunk):
-            chunk = obj
-            args = range_args[(chunk.start, chunk.stop)]
-            decompression_executor.submit(chunk_to_basket, chunk, *args)
+            args = range_args[(obj.start, obj.stop)]
+            decompression_executor.submit(chunk_to_basket, obj, *args)
 
         elif isinstance(obj, uproot.models.TBasket.Model_TBasket):
-            basket = obj
-            interpretation_executor.submit(basket_to_array, basket)
+            interpretation_executor.submit(basket_to_array, obj)
 
         elif obj is None:
             pass
@@ -3474,6 +3472,8 @@ def _ranges_or_baskets_to_arrays(
 
         else:
             raise AssertionError(obj)
+
+        obj = None  # release before blocking
 
 
 def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library, how):
