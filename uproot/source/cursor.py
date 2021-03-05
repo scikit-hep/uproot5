@@ -570,3 +570,30 @@ of file path {2}""".format(
                     )
                     + u"\n"
                 )
+
+class CursorMemberWise(Cursor):
+    # same signature as Cursor, but it jumps around a lot
+    def __init__(self, nmembers, ntotal, *args, **kwargs):
+        self._nmembers = nmembers
+        self._ntotal = ntotal
+        super().__init__(*args, **kwargs)
+
+    def fields(self, chunk, format, context, move=True):
+        starts = []
+        stops = []
+        step = int(format.size / self._nmembers)
+        for i in uproot._util.range(self._nmembers):
+            _start = self._index + (i * step * self._ntotal)
+            starts.append(_start)
+            stops.append(_start + step)
+
+        if move:
+            self._index = starts[0]
+
+        return format.unpack(numpy.concatenate([chunk.get(start, stop, self, context) for start,stop in zip(starts,stops)]))
+
+    def copy(self, link_refs=True):
+        if link_refs or self._refs is None:
+            return CursorMemberWise(self._nmembers, self._ntotal, self._index, origin=self._origin, refs=self._refs)
+        else:
+            return CursorMemberWise(self._nmembers, self._ntotal, self._index, origin=self._origin, refs=dict(self._refs))

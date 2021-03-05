@@ -59,7 +59,7 @@ def _content_cache_key(content):
 
 
 def _read_nested(
-    model, length, chunk, cursor, context, file, selffile, parent, header=True
+    model, length, chunk, cursor, context, file, selffile, parent, header=True, rollback_nbytes=0
 ):
     if isinstance(model, numpy.dtype):
         return cursor.array(chunk, length, model, context)
@@ -68,11 +68,13 @@ def _read_nested(
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             for i in uproot._util.range(length):
+                cursor._index = cursor._index - rollback_nbytes
                 values[i] = model.read(
                     chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
             for i in uproot._util.range(length):
+                cursor._index = cursor._index - rollback_nbytes
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         return values
 
@@ -792,19 +794,33 @@ class AsVector(AsContainer):
         else:
             is_memberwise = False
 
+        # note: self._values can also be a NumPy dtype, and not necessarily a class (e.g. type(self._values)==type)
+        _value_typename = _content_typename(self._values)
         if is_memberwise:
-            raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
-                    type(self).__name__, selffile.file_path
+            # let's hard-code in logic for std::pair<T1,T2> for now
+            if not _value_typename.startswith('pair'):
+                raise NotImplementedError(
+                    """memberwise serialization of {0}
+    in file {1}""".format(
+                        type(self).__name__, selffile.file_path
+                    )
                 )
-            )
+
+            # there's extra stuff, maybe?
+            _num_memberwise_bytes = cursor.field(chunk, _stl_container_size, context)
+            _something_else = cursor.field(chunk, struct.Struct(">H"), context)
+
 
         length = cursor.field(chunk, _stl_container_size, context)
 
+        mycursor = uproot.source.cursor.CursorMemberWise(2, length, cursor.index, origin=cursor.origin, refs=cursor.refs)
+
         values = _read_nested(
-            self._values, length, chunk, cursor, context, file, selffile, parent
+            self._values, length, chunk, mycursor, context, file, selffile, parent, rollback_nbytes=2 if is_memberwise else 0
         )
+
+        # need to hard-code, no idea how to know when we get to the end...
+        cursor.move_to(331)
         out = STLVector(values)
 
         if self._header and header:
