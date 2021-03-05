@@ -796,7 +796,7 @@ class AsVector(AsContainer):
         _value_typename = _content_typename(self._values)
         if is_memberwise:
             # let's hard-code in logic for std::pair<T1,T2> for now
-            if not _value_typename.startswith("pair") and not True:
+            if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
                     """memberwise serialization of {0}({1})
     in file {2}""".format(
