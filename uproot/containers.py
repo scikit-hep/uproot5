@@ -820,7 +820,7 @@ class AsVector(AsContainer):
         )
 
         # need to hard-code, no idea how to know when we get to the end...
-        cursor.move_to(331)
+        cursor.move_to(start_cursor.index+num_bytes)
         out = STLVector(values)
 
         if self._header and header:
