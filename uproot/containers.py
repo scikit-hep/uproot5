@@ -822,7 +822,6 @@ class AsVector(AsContainer):
             for member_index in uproot._util.range(len(values[0].member_names)):
                 for i in uproot._util.range(length):
                     values[i].read_member_n(chunk, cursor, context, file, member_index)
-                    print(values[i].members)
         else:
             length = cursor.field(chunk, _stl_container_size, context)
 
