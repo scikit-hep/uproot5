@@ -588,7 +588,7 @@ class CursorMemberWise(Cursor):
             stops.append(_start + step)
 
         if move:
-            self._index = starts[0]
+            self._index = stops[0]
 
         return format.unpack(numpy.concatenate([chunk.get(start, stop, self, context) for start,stop in zip(starts,stops)]))
 
