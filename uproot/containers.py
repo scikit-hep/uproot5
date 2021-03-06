@@ -804,6 +804,14 @@ class AsVector(AsContainer):
                     )
                 )
 
+            if not issubclass(self._values, uproot.model.DispatchByVersion):
+                raise NotImplementedError(
+                    """streamerless memberwise serialization of class {0}({1})
+    in file {2}""".format(
+                        type(self).__name__, _value_typename, selffile.file_path
+                    )
+                )
+
             # there's extra stuff, maybe?
             cursor.field(chunk, _stl_container_size, context)
             cursor.field(chunk, struct.Struct(">H"), context)
@@ -815,15 +823,25 @@ class AsVector(AsContainer):
 
             # make a shell
             values = numpy.empty(length, dtype=_stl_object_type)
-            for i in uproot._util.range(length):
-                values[i] = model.read(
-                    chunk, cursor, {**context, "reading": False}, file, selffile, parent
-                )
 
-            # memberwise reading!
-            for member_index in uproot._util.range(len(values[0].member_names)):
+            # only do anything if we have anything to read...
+            if length > 0:
                 for i in uproot._util.range(length):
-                    values[i].read_member_n(chunk, cursor, context, file, member_index)
+                    values[i] = model.read(
+                        chunk,
+                        cursor,
+                        {**context, "reading": False},
+                        file,
+                        selffile,
+                        parent,
+                    )
+
+                # memberwise reading!
+                for member_index in uproot._util.range(len(values[0].member_names)):
+                    for i in uproot._util.range(length):
+                        values[i].read_member_n(
+                            chunk, cursor, context, file, member_index
+                        )
         else:
             length = cursor.field(chunk, _stl_container_size, context)
 
