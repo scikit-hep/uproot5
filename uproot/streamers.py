@@ -280,7 +280,10 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         if len(read_members) == 1:
             read_members.append("        pass")
-            read_member_n.append(read_members[-1])
+
+        if len(read_member_n) == 1:
+            read_member_n.append("        pass")
+
         read_members.append("")
         read_member_n.append(read_members[-1])
 
