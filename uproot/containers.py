@@ -792,7 +792,8 @@ class AsVector(AsContainer):
         else:
             is_memberwise = False
 
-        # note: self._values can also be a NumPy dtype, and not necessarily a class (e.g. type(self._values)==type)
+        # Note: self._values can also be a NumPy dtype, and not necessarily a class
+        # (e.g. type(self._values) == type)
         _value_typename = _content_typename(self._values)
         if is_memberwise:
             # let's hard-code in logic for std::pair<T1,T2> for now
@@ -812,16 +813,14 @@ class AsVector(AsContainer):
                     )
                 )
 
-            # there's extra stuff, maybe?
-            cursor.field(chunk, _stl_container_size, context)
-            cursor.field(chunk, struct.Struct(">H"), context)
+            # uninterpreted header
+            cursor.skip(6)
 
-            # length is number of elements in vector
             length = cursor.field(chunk, _stl_container_size, context)
 
+            # no known class version number (maybe in that header? unclear...)
             model = self._values.new_class(file, "max")
 
-            # make a shell
             values = numpy.empty(length, dtype=_stl_object_type)
 
             # only do anything if we have anything to read...

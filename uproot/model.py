@@ -760,11 +760,9 @@ class Model(object):
         old_breadcrumbs = context.get("breadcrumbs", ())
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
-        if context.get("reading", True):
-            self.hook_before_read(
-                chunk=chunk, cursor=cursor, context=context, file=file
-            )
+        self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
 
+        if context.get("reading", True):
             self.read_numbytes_version(chunk, cursor, context)
 
             if (
@@ -1152,6 +1150,8 @@ class DispatchByVersion(object):
         :doc:`uproot.model.UnknownClassVersion` is created instead.
         """
         import uproot.deserialization
+
+        # Ignores context["reading"], because otherwise, there would be nothing to do.
 
         (
             num_bytes,
