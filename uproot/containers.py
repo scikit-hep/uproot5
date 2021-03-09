@@ -792,19 +792,62 @@ class AsVector(AsContainer):
         else:
             is_memberwise = False
 
+        # Note: self._values can also be a NumPy dtype, and not necessarily a class
+        # (e.g. type(self._values) == type)
+        _value_typename = _content_typename(self._values)
         if is_memberwise:
-            raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
-                    type(self).__name__, selffile.file_path
+            # let's hard-code in logic for std::pair<T1,T2> for now
+            if not _value_typename.startswith("pair"):
+                raise NotImplementedError(
+                    """memberwise serialization of {0}({1})
+    in file {2}""".format(
+                        type(self).__name__, _value_typename, selffile.file_path
+                    )
                 )
+
+            if not issubclass(self._values, uproot.model.DispatchByVersion):
+                raise NotImplementedError(
+                    """streamerless memberwise serialization of class {0}({1})
+    in file {2}""".format(
+                        type(self).__name__, _value_typename, selffile.file_path
+                    )
+                )
+
+            # uninterpreted header
+            cursor.skip(6)
+
+            length = cursor.field(chunk, _stl_container_size, context)
+
+            # no known class version number (maybe in that header? unclear...)
+            model = self._values.new_class(file, "max")
+
+            values = numpy.empty(length, dtype=_stl_object_type)
+
+            # only do anything if we have anything to read...
+            if length > 0:
+                for i in uproot._util.range(length):
+                    values[i] = model.read(
+                        chunk,
+                        cursor,
+                        {**context, "reading": False},
+                        file,
+                        selffile,
+                        parent,
+                    )
+
+                # memberwise reading!
+                for member_index in uproot._util.range(len(values[0].member_names)):
+                    for i in uproot._util.range(length):
+                        values[i].read_member_n(
+                            chunk, cursor, context, file, member_index
+                        )
+        else:
+            length = cursor.field(chunk, _stl_container_size, context)
+
+            values = _read_nested(
+                self._values, length, chunk, cursor, context, file, selffile, parent
             )
 
-        length = cursor.field(chunk, _stl_container_size, context)
-
-        values = _read_nested(
-            self._values, length, chunk, cursor, context, file, selffile, parent
-        )
         out = STLVector(values)
 
         if self._header and header:

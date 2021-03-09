@@ -761,28 +761,29 @@ class Model(object):
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
 
-        self.read_numbytes_version(chunk, cursor, context)
+        if context.get("reading", True):
+            self.read_numbytes_version(chunk, cursor, context)
 
-        if (
-            issubclass(cls, VersionedModel)
-            and self._instance_version != classname_version(cls.__name__)
-            and self._instance_version is not None
-        ):
-            correct_cls = file.class_named(self.classname, self._instance_version)
-            if classname_version(correct_cls.__name__) != classname_version(
-                cls.__name__
+            if (
+                issubclass(cls, VersionedModel)
+                and self._instance_version != classname_version(cls.__name__)
+                and self._instance_version is not None
             ):
-                cursor.move_to(self._cursor.index)
-                context["breadcrumbs"] = old_breadcrumbs
-                return correct_cls.read(
-                    chunk,
-                    cursor,
-                    context,
-                    file,
-                    selffile,
-                    parent,
-                    concrete=concrete,
-                )
+                correct_cls = file.class_named(self.classname, self._instance_version)
+                if classname_version(correct_cls.__name__) != classname_version(
+                    cls.__name__
+                ):
+                    cursor.move_to(self._cursor.index)
+                    context["breadcrumbs"] = old_breadcrumbs
+                    return correct_cls.read(
+                        chunk,
+                        cursor,
+                        context,
+                        file,
+                        selffile,
+                        parent,
+                        concrete=concrete,
+                    )
 
         if context.get("in_TBranch", False):
             if self._num_bytes is None and self._instance_version != self.class_version:
@@ -792,15 +793,16 @@ class Model(object):
             elif self._instance_version == 0:
                 cursor.skip(4)
 
-        self.hook_before_read_members(
-            chunk=chunk, cursor=cursor, context=context, file=file
-        )
+        if context.get("reading", True):
+            self.hook_before_read_members(
+                chunk=chunk, cursor=cursor, context=context, file=file
+            )
 
-        self.read_members(chunk, cursor, context, file)
+            self.read_members(chunk, cursor, context, file)
 
-        self.hook_after_read_members(
-            chunk=chunk, cursor=cursor, context=context, file=file
-        )
+            self.hook_after_read_members(
+                chunk=chunk, cursor=cursor, context=context, file=file
+            )
 
         self.check_numbytes(chunk, cursor, context)
 
@@ -1147,6 +1149,8 @@ class DispatchByVersion(object):
         :doc:`uproot.model.UnknownClassVersion` is created instead.
         """
         import uproot.deserialization
+
+        # Ignores context["reading"], because otherwise, there would be nothing to do.
 
         (
             num_bytes,
