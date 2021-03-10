@@ -239,6 +239,16 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
             return parent  # return parent
 
         elif tag not in cursor.refs:
+            # copied from numbytes_version
+            if bcnt & uproot.const.kByteCountMask:
+                # Note this extra 4 bytes: the num_bytes field doesn't count itself,
+                # but we count the Model.start_cursor position from the point just
+                # before these two fields (since num_bytes might not exist, it's a more
+                # stable point than after num_bytes).
+                #                                                 |
+                #                                                 V
+                bcnt = int(bcnt & ~uproot.const.kByteCountMask) + 4
+
             # jump past this object
             cursor.move_to(cursor.origin + beg + bcnt + 4)
             return None  # return null
