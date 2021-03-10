@@ -797,7 +797,7 @@ class AsVector(AsContainer):
         _value_typename = _content_typename(self._values)
         if is_memberwise:
             # let's hard-code in logic for std::pair<T1,T2> for now
-            if not _value_typename.startswith("pair"):
+            if not _value_typename.startswith("pair") and False:
                 raise NotImplementedError(
                     """memberwise serialization of {0}({1})
     in file {2}""".format(
@@ -835,12 +835,22 @@ class AsVector(AsContainer):
                         parent,
                     )
 
+                _member_names = getattr(values[0], 'member_names', [])
+                _has_memberwise_header = getattr(values[0], 'has_memberwise_header', [False]*len(_member_names))
+
                 # memberwise reading!
-                for member_index in uproot._util.range(len(values[0].member_names)):
+                for member_index, has_header in zip(uproot._util.range(len(_member_names)), _has_memberwise_header):
+                    cursor.debug(chunk, limit_bytes=80)
+                    print(member_index, has_header)
+                    breakpoint()
+                    if has_header:
+                        # uninterpreted header
+                        cursor.skip(6)
                     for i in uproot._util.range(length):
                         values[i].read_member_n(
                             chunk, cursor, context, file, member_index
                         )
+
         else:
             length = cursor.field(chunk, _stl_container_size, context)
 

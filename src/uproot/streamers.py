@@ -254,6 +254,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         formats = []
         dtypes = []
         formats_memberwise = []
+        has_memberwise_header = []
         containers = []
         base_names_versions = []
         member_names = []
@@ -272,6 +273,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 formats,
                 dtypes,
                 formats_memberwise,
+                has_memberwise_header,
                 containers,
                 base_names_versions,
                 member_names,
@@ -312,6 +314,8 @@ class Model_TStreamerInfo(uproot.model.Model):
                     i, "".join(format)
                 )
             )
+
+        class_data.append("    has_memberwise_header = {0}".format(str(has_memberwise_header)))
 
         for i, dt in enumerate(dtypes):
             class_data.append("    _dtype{0} = {1}".format(i, dt))
@@ -593,11 +597,13 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(True)
         read_member_n.append("        if member_index == {0}:".format(i))
 
         read_members.append(
@@ -672,11 +678,13 @@ class Model_TStreamerBase(Model_TStreamerElement):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(True)
         read_member_n.append("        if member_index == {0}:".format(i))
 
         read_members.append(
@@ -766,11 +774,13 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(True)
         read_member_n.append("        if member_index == {0}:".format(i))
 
         read_members.append("        tmp = self._dtype{0}".format(len(dtypes)))
@@ -860,11 +870,13 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(False)
         read_member_n.append("        if member_index == {0}:".format(i))
 
         if self.typename == "Double32_t":
@@ -1092,11 +1104,13 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(True)
         read_members.extend(
             [
                 "        cursor.skip(6)",
@@ -1200,11 +1214,13 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(True)
         read_member_n.append("        if member_index == {0}:".format(i))
 
         stl_container = uproot.interpretation.identify.parse_typename(
@@ -1219,7 +1235,11 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             "chunk, cursor, context, file, self._file, self.concrete)"
             "".format(repr(self.name), len(containers))
         )
-        read_member_n.append("    " + read_members[-1])
+        read_member_n.append(
+            "            self._members[{0}] = self._stl_container{1}.read("
+            "chunk, cursor, context, file, self._file, self.concrete, header=False)"
+            "".format(repr(self.name), len(containers))
+        )
 
         strided_interpretation.append(
             "        members.append(({0}, cls._stl_container{1}."
@@ -1312,11 +1332,13 @@ class TStreamerPointerTypes(object):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(True)
         read_member_n.append("        if member_index == {0}:".format(i))
 
         if self.fType == uproot.const.kObjectp or self.fType == uproot.const.kAnyp:
@@ -1443,11 +1465,13 @@ class TStreamerObjectTypes(object):
         formats,
         dtypes,
         formats_memberwise,
+        has_memberwise_header,
         containers,
         base_names_versions,
         member_names,
         class_flags,
     ):
+        has_memberwise_header.append(True)
         read_member_n.append("        if member_index == {0}:".format(i))
 
         read_members.append(
@@ -1456,7 +1480,27 @@ class TStreamerObjectTypes(object):
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )
-        read_member_n.append("    " + read_members[-1])
+
+        read_member_n.append("            model = c({0})".format(repr(self.typename.rstrip("*"))))
+        read_member_n.append("            value = model.read(chunk, cursor, {**context, 'reading': False}, "
+                             "file, self._file, self.concrete)")
+
+        read_member_n.append("""            _member_names = getattr(value, 'member_names', [])
+            _has_memberwise_header = getattr(value, 'has_memberwise_header', [False]*len(_member_names))
+
+            print(value.class_code)
+            # memberwise reading!
+            for _member_index, has_header in zip(uproot._util.range(len(_member_names)), _has_memberwise_header):
+                cursor.debug(chunk, limit_bytes=80)
+                print(member_index, _member_index, has_header)
+                #if has_header:
+                #    # uninterpreted header
+                #    cursor.skip(6)
+                value.read_member_n(
+                    chunk, cursor, context, file, _member_index
+                )""")
+
+        read_member_n.append("            self._members[{0}] = value".format(repr(self.name)))
 
         strided_interpretation.append(
             "        members.append(({0}, file.class_named({1}, 'max')."
