@@ -137,7 +137,7 @@ def test_boost():
 
 
 @pytest.mark.skip(reason="Something's wrong with uproot-issue33.root and boost-histogram")
-def test_boost():
+def test_boost_2():
     boost_histogram = pytest.importorskip("boost_histogram")
 
     with uproot.open(skhep_testdata.data_path("uproot-issue33.root")) as f:
