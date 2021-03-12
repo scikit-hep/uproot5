@@ -531,22 +531,33 @@ class HTTPSource(uproot.source.chunk.Source):
     ResourceClass = HTTPResource
 
     def __init__(self, file_path, **options):
-        num_fallback_workers = options["num_fallback_workers"]
-        timeout = options["timeout"]
+        self._num_fallback_workers = options["num_fallback_workers"]
+        self._timeout = options["timeout"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
         self._file_path = file_path
-        self._timeout = timeout
         self._num_bytes = None
 
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(file_path, timeout)]
-        )
         self._fallback = None
         self._fallback_options = dict(options)
-        self._fallback_options["num_workers"] = num_fallback_workers
+        self._fallback_options["num_workers"] = self._num_fallback_workers
+        self._open()
+
+    def _open(self):
+        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+            [HTTPResource(self._file_path, self._timeout)]
+        )
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
 
     def __repr__(self):
         path = repr(self._file_path)

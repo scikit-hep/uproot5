@@ -57,6 +57,18 @@ class LRUCache(MutableMapping):
         self._data = {}
         self._lock = threading.Lock()
 
+    def __getstate__(self):
+        return {
+            "_limit": self._limit,
+        }
+
+    def __setstate__(self, state):
+        self._limit = state["_limit"]
+        self._current = 0
+        self._order = []
+        self._data = {}
+        self._lock = threading.Lock()
+
     def __repr__(self):
         if self._limit is None:
             limit = "(no limit)"

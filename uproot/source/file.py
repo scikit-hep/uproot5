@@ -99,23 +99,35 @@ class MemmapSource(uproot.source.chunk.Source):
     _dtype = uproot.source.chunk.Chunk._dtype
 
     def __init__(self, file_path, **options):
-        num_fallback_workers = options["num_fallback_workers"]
+        self._num_fallback_workers = options["num_fallback_workers"]
+        self._fallback_opts = options
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
         self._file_path = file_path
+        self._open()
 
+    def _open(self):
         try:
             self._file = numpy.memmap(self._file_path, dtype=self._dtype, mode="r")
             self._fallback = None
         except (OSError, IOError):
             self._file = None
-            opts = dict(options)
-            opts["num_workers"] = num_fallback_workers
+            opts = dict(self._fallback_opts)
+            opts["num_workers"] = self._num_fallback_workers
             self._fallback = uproot.source.file.MultithreadedFileSource(
-                file_path, **opts  # NOTE: a comma after **opts breaks Python 2
+                self._file_path, **opts  # NOTE: a comma after **opts breaks Python 2
             )
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_file")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
 
     def __repr__(self):
         path = repr(self._file_path)
@@ -236,13 +248,28 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = FileResource
 
     def __init__(self, file_path, **options):
-        num_workers = options["num_workers"]
+        self._num_workers = options["num_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
         self._file_path = file_path
+        self._open()
+
+    def _open(self):
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [FileResource(file_path) for x in uproot._util.range(num_workers)]
+            [
+                FileResource(self._file_path)
+                for x in uproot._util.range(self._num_workers)
+            ]
         )
         self._num_bytes = os.path.getsize(self._file_path)
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
