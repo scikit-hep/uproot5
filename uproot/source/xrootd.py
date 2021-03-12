@@ -242,30 +242,42 @@ class XRootDSource(uproot.source.chunk.Source):
     ResourceClass = XRootDResource
 
     def __init__(self, file_path, **options):
-        timeout = options["timeout"]
-        max_num_elements = options["max_num_elements"]
-        num_workers = options["num_workers"]
+        self._timeout = options["timeout"]
+        self._desired_max_num_elements = options["max_num_elements"]
+        self._num_workers = options["num_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
         self._file_path = file_path
-        self._timeout = timeout
         self._num_bytes = None
+        self._open()
 
-        self._resource = XRootDResource(file_path, timeout)
+    def _open(self):
+        self._resource = XRootDResource(self._file_path, self._timeout)
 
         # this ThreadPool does not need a resource, it's only used to submit
         # futures that wait for chunks that have been split to merge them.
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [None for i in range(num_workers)]
+            [None for i in range(self._num_workers)]
         )
 
         self._max_num_elements, self._max_element_size = get_server_config(
             self._resource.file
         )
-        if max_num_elements is not None:
-            self._max_num_elements = min(self._max_num_elements, max_num_elements)
+        if self._desired_max_num_elements is not None:
+            self._max_num_elements = min(
+                self._max_num_elements, self._desired_max_num_elements
+            )
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
 
     def __repr__(self):
         path = repr(self._file_path)
@@ -411,22 +423,32 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = XRootDResource
 
     def __init__(self, file_path, **options):
-        num_workers = options["num_workers"]
-        timeout = options["timeout"]
+        self._num_workers = options["num_workers"]
+        self._timeout = options["timeout"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
         self._file_path = file_path
         self._num_bytes = None
-        self._timeout = timeout
+        self._open()
 
+    def _open(self):
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
             [
-                XRootDResource(file_path, timeout)
-                for x in uproot._util.range(num_workers)
+                XRootDResource(self._file_path, self._timeout)
+                for x in uproot._util.range(self._num_workers)
             ]
         )
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
 
     @property
     def timeout(self):

@@ -322,6 +322,7 @@ for file path {2}""".format(
                         self._source.file_path,
                     )
                 )
+            self._future = None
 
     @property
     def raw_data(self):
