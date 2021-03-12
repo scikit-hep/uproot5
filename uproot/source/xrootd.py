@@ -431,6 +431,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
 
         self._file_path = file_path
         self._num_bytes = None
+        self._open()
 
     def _open(self):
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
