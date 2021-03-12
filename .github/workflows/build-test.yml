@@ -44,7 +44,7 @@ jobs:
           conda env list
           conda info
           conda install numpy pandas pytest flake8 lz4 python-xxhash requests
-          pip install scikit-hep-testdata
+          pip install scikit-hep-testdata boost-histogram hist
           conda list
 
       - name: "Install Awkward"
