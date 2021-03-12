@@ -233,10 +233,8 @@ class AsJagged(uproot.interpretation.Interpretation):
 
         if entry_start >= entry_stop:
             offsets = library.zeros((1,), numpy.int64)
-            content = self._content.final_array(
-                basket_content, entry_start, entry_stop, entry_offsets, library, branch
-            )
-            return JaggedArray(offsets, content)
+            content = numpy.empty(0, self.content.to_dtype)
+            output = JaggedArray(offsets, content)
 
         else:
             length = 0
