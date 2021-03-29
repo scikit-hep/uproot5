@@ -829,7 +829,7 @@ class AsVector(AsContainer):
                 length = maybe_length
                 # FIXME no idea what the other 2 bytes is
                 assert 2 + values_num_bytes + _stl_vector_header.size == num_bytes
-                stuff = cursor.field(  # ignore: F841
+                stuff = cursor.field(  # noqa: F841
                     chunk, struct.Struct(">h"), context
                 )
                 # print("mystery bytes:", stuff)
