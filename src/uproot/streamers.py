@@ -1481,6 +1481,22 @@ class TStreamerObjectTypes(object):
             )
         )
 
+        read_member_n.append("""            # uninterpreted header
+            #cursor.skip(4)
+            breakpoint()
+            # no known class version number (maybe in that header? unclear...)
+            model = c({0}).new_class(file, "max")""".format(repr(self.typename.rstrip("*"))))
+
+        read_member_n.append(
+            "            self._members[{0}] = model.read(chunk, cursor, {{**context, 'numbytes_version': True}}, "
+            "file, self._file, self.concrete)".format(
+                repr(self.name)
+            )
+        )
+
+        #read_member_n.append("    " + read_members[-1])
+
+        '''
         read_member_n.append("            model = c({0})".format(repr(self.typename.rstrip("*"))))
         read_member_n.append("            value = model.read(chunk, cursor, {**context, 'reading': False}, "
                              "file, self._file, self.concrete)")
@@ -1488,10 +1504,13 @@ class TStreamerObjectTypes(object):
         read_member_n.append("""            _member_names = getattr(value, 'member_names', [])
             _has_memberwise_header = getattr(value, 'has_memberwise_header', [False]*len(_member_names))
 
+            breakpoint()
+            print(value)
             print(value.class_code)
+            print(member_index)
             # memberwise reading!
             for _member_index, has_header in zip(uproot._util.range(len(_member_names)), _has_memberwise_header):
-                cursor.debug(chunk, limit_bytes=80)
+                cursor.debug(chunk, limit_bytes=160)
                 print(member_index, _member_index, has_header)
                 #if has_header:
                 #    # uninterpreted header
@@ -1501,6 +1520,7 @@ class TStreamerObjectTypes(object):
                 )""")
 
         read_member_n.append("            self._members[{0}] = value".format(repr(self.name)))
+        '''
 
         strided_interpretation.append(
             "        members.append(({0}, file.class_named({1}, 'max')."
