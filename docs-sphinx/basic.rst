@@ -782,7 +782,7 @@ The simplest way to access many files is to concatenate them into one array. The
 
 .. code-block:: python
 
-    >>> events.concatenate(["dir1/*.root:events", "dir2/*.root:events"], filter_name="p*1")
+    >>> uproot.concatenate(["dir1/*.root:events", "dir2/*.root:events"], filter_name="p*1")
     <Array [{px1: -41.2, ... pz1: -74.8}] type='23040 * {"px1": float64, "py1": float...'>
 
 The arrays of all files have been entirely read into memory. In general, this is only possible if
