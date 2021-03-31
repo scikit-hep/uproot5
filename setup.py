@@ -12,8 +12,21 @@ def get_version():
 
 
 extras = {
-    "test": open("requirements-test.txt").read().strip().split("\n"),
-    "dev":  open("requirements-dev.txt").read().strip().split("\n"),
+    "dev": [
+        "awkward>=1.0.0",
+        "pandas",
+        "boost_histogram>=0.13",
+        "hist>=1.2",
+    ],
+    "test": [
+        "pytest>=4.6",
+        "flake8",
+        "flake8-print",
+        "scikit-hep-testdata",
+        "lz4",
+        "xxhash",
+        "requests",
+    ],
 }
 extras["all"] = sum(extras.values(), [])
 
