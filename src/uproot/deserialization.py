@@ -8,6 +8,7 @@ This module defines low-level routines for deserialization, including
 previously read objects.
 """
 
+from __future__ import absolute_import
 
 import struct
 import sys
@@ -35,7 +36,8 @@ def _yield_all_behaviors(cls, c):
         yield behavior_cls
     if hasattr(cls, "base_names_versions"):
         for base_name, base_version in cls.base_names_versions:
-            yield from _yield_all_behaviors(c(base_name, base_version), c)
+            for x in _yield_all_behaviors(c(base_name, base_version), c):
+                yield x
 
 
 def compile_class(file, classes, class_code, class_name):
@@ -165,7 +167,7 @@ def numbytes_check(
         observed = stop_cursor.displacement(start_cursor)
         if observed != num_bytes:
             raise DeserializationError(
-                """expected {} bytes but cursor moved by {} bytes (through {})""".format(
+                """expected {0} bytes but cursor moved by {1} bytes (through {2})""".format(
                     num_bytes, observed, classname
                 ),
                 chunk,
@@ -289,11 +291,11 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
                 if getattr(file, "file_path", None) is None:
                     in_file = ""
                 else:
-                    in_file = f"\n\nin file {file.file_path}"
+                    in_file = "\n\nin file {0}".format(file.file_path)
                 raise DeserializationError(
-                    """invalid class-tag reference: {}
+                    """invalid class-tag reference: {0}
 
-    Known references: {}{}""".format(
+    Known references: {1}{2}""".format(
                         ref, ", ".join(str(x) for x in cursor.refs), in_file
                     ),
                     chunk,
@@ -352,7 +354,7 @@ class DeserializationError(Exception):
         last = None
         for obj in self.context.get("breadcrumbs", ()):
             lines.append(
-                "{}{} version {} as {}.{} ({} bytes)".format(
+                "{0}{1} version {2} as {3}.{4} ({5} bytes)".format(
                     indent,
                     obj.classname,
                     obj.instance_version,
@@ -363,9 +365,9 @@ class DeserializationError(Exception):
             )
             indent = indent + "    "
             for v in getattr(obj, "_bases", []):
-                lines.append("{}(base): {}".format(indent, repr(v)))
+                lines.append("{0}(base): {1}".format(indent, repr(v)))
             for k, v in getattr(obj, "_members", {}).items():
-                lines.append("{}{}: {}".format(indent, k, repr(v)))
+                lines.append("{0}{1}: {2}".format(indent, k, repr(v)))
             last = obj
 
         if last is not None:
@@ -384,7 +386,7 @@ class DeserializationError(Exception):
                             base_names.append(classname + "?")
                 if len(base_names) != 0:
                     lines.append(
-                        "Base classes for {}: {}".format(
+                        "Base classes for {0}: {1}".format(
                             last.classname, ", ".join(base_names)
                         )
                     )
@@ -400,29 +402,29 @@ class DeserializationError(Exception):
                         member_names.append(n + "?")
                 if len(member_names) != 0:
                     lines.append(
-                        "Members for {}: {}".format(
+                        "Members for {0}: {1}".format(
                             last.classname, ", ".join(member_names)
                         )
                     )
 
         in_parent = ""
         if "TBranch" in self.context:
-            in_parent = "\nin TBranch {}".format(self.context["TBranch"].object_path)
+            in_parent = "\nin TBranch {0}".format(self.context["TBranch"].object_path)
         elif "TKey" in self.context:
-            in_parent = "\nin object {}".format(self.context["TKey"].object_path)
+            in_parent = "\nin object {0}".format(self.context["TKey"].object_path)
 
         if len(lines) == 0:
-            return """{}
-in file {}{}""".format(
+            return """{0}
+in file {1}{2}""".format(
                 self.message, self.file_path, in_parent
             )
         else:
             return """while reading
 
-{}
+{0}
 
-{}
-in file {}{}""".format(
+{1}
+in file {2}{3}""".format(
                 "\n".join(lines), self.message, self.file_path, in_parent
             )
 

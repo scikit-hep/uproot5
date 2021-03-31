@@ -5,6 +5,7 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
+from __future__ import absolute_import
 
 import glob
 import numbers
@@ -80,7 +81,7 @@ def ensure_str(x):
     elif isinstance(x, str):
         return x
     else:
-        raise TypeError("expected a string, not {}".format(type(x)))
+        raise TypeError("expected a string, not {0}".format(type(x)))
 
 
 _regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
@@ -138,7 +139,7 @@ def regularize_filter(filter):
     else:
         raise TypeError(
             "filter must be callable, a regex string between slashes, or a "
-            "glob pattern, not {}".format(repr(filter))
+            "glob pattern, not {0}".format(repr(filter))
         )
 
 
@@ -279,7 +280,7 @@ def file_path_to_source_class(file_path, options):
         return out, file_path
 
     else:
-        raise ValueError(f"URI scheme not recognized: {file_path}")
+        raise ValueError("URI scheme not recognized: {0}".format(file_path))
 
 
 if isinstance(__builtins__, dict):
@@ -381,7 +382,7 @@ def memory_size(data, error_message=None):
     if error_message is None:
         raise TypeError(
             "number of bytes or memory size string with units "
-            "(such as '100 MB') required, not {}".format(repr(data))
+            "(such as '100 MB') required, not {0}".format(repr(data))
         )
     else:
         raise TypeError(error_message)
@@ -444,7 +445,7 @@ def awkward_form(
                     '"float64"'
                 )
             else:
-                raise AssertionError("{}: {}".format(repr(model), type(model)))
+                raise AssertionError("{0}: {1}".format(repr(model), type(model)))
 
         return _primitive_awkward_form[model]
 
@@ -521,10 +522,10 @@ def awkward_form_remove_uproot(awkward, form):
         )
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            {
-                k: awkward_form_remove_uproot(awkward, v)
+            dict(
+                (k, awkward_form_remove_uproot(awkward, v))
                 for k, v in form.contents.items()
-            },
+            ),
             form.has_identities,
             parameters,
         )
@@ -557,7 +558,7 @@ def awkward_form_remove_uproot(awkward, form):
             parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {}".format(type(form)))
+        raise RuntimeError("unrecognized form: {0}".format(type(form)))
 
 
 # FIXME: Until we get Awkward reading these bytes directly, rather than
@@ -640,7 +641,9 @@ def awkward_form_of_iter(awkward, form):
         return out
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            {k: awkward_form_of_iter(awkward, v) for k, v in form.contents.items()},
+            dict(
+                (k, awkward_form_of_iter(awkward, v)) for k, v in form.contents.items()
+            ),
             form.has_identities,
             form.parameters,
         )
@@ -673,7 +676,7 @@ def awkward_form_of_iter(awkward, form):
             form.parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {}".format(type(form)))
+        raise RuntimeError("unrecognized form: {0}".format(type(form)))
 
 
 def damerau_levenshtein(a, b, ratio=False):

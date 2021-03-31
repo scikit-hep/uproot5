@@ -72,6 +72,7 @@ The submodules of Uproot are:
 isort:skip_file
 """
 
+from __future__ import absolute_import
 
 from uproot.version import __version__
 import uproot.const
@@ -202,10 +203,12 @@ def behavior_of(classname):
     if name not in globals():
         if name in behavior_of._module_names:
             exec(
-                compile(f"import uproot.behaviors.{name}", "<dynamic>", "exec"),
+                compile(
+                    "import uproot.behaviors.{0}".format(name), "<dynamic>", "exec"
+                ),
                 globals(),
             )
-            module = eval(f"uproot.behaviors.{name}")
+            module = eval("uproot.behaviors.{0}".format(name))
             behavior_cls = getattr(module, name, None)
             if behavior_cls is not None:
                 globals()[name] = behavior_cls

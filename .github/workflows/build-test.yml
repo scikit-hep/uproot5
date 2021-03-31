@@ -11,8 +11,10 @@ jobs:
     strategy:
       matrix:
         platform: ["windows-latest", "macos-latest", "ubuntu-latest"]
-        python-version: ["3.6", "3.7", "3.8", "3.9"]
+        python-version: ["3.5", "3.6", "3.7", "3.8", "3.9"]
         exclude:
+          - platform: "macos-latest"
+            python-version: "3.5"
           - platform: "macos-latest"
             python-version: "3.6"
           - platform: "windows-latest"
@@ -52,7 +54,7 @@ jobs:
           conda list
 
       - name: "Install XRootD"
-        if: "runner.os != 'macOS'  &&  runner.os != 'Windows'"
+        if: "matrix.python-version != 3.5 && runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
           conda install xrootd

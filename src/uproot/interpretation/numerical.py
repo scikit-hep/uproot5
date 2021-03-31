@@ -16,6 +16,7 @@ several numerical types:
   for some ``N``.
 """
 
+from __future__ import absolute_import
 
 import numpy
 
@@ -173,9 +174,9 @@ class AsDtype(Numerical):
 
     def __repr__(self):
         if self._to_dtype == self._from_dtype.newbyteorder("="):
-            return "AsDtype({})".format(repr(str(self._from_dtype)))
+            return "AsDtype({0})".format(repr(str(self._from_dtype)))
         else:
-            return "AsDtype({}, {})".format(
+            return "AsDtype({0}, {1})".format(
                 repr(str(self._from_dtype)), repr(str(self._to_dtype))
             )
 
@@ -256,7 +257,7 @@ class AsDtype(Numerical):
     def cache_key(self):
         def form(dtype, name):
             d, s = _dtype_shape(dtype)
-            return "{}{}{}({}{})".format(
+            return "{0}{1}{2}({3}{4})".format(
                 _numpy_byteorder_to_cache_key[d.byteorder],
                 d.kind,
                 d.itemsize,
@@ -287,7 +288,7 @@ class AsDtype(Numerical):
                 + "]"
             )
 
-        return "{}({},{})".format(type(self).__name__, from_dtype, to_dtype)
+        return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
 
     @property
     def typename(self):
@@ -303,7 +304,7 @@ class AsDtype(Numerical):
             return (
                 "struct {"
                 + " ".join(
-                    "{} {};".format(form(self.from_dtype[n]), n)
+                    "{0} {1};".format(form(self.from_dtype[n]), n)
                     for n in self.from_dtype.names
                 )
                 + "}"
@@ -327,9 +328,9 @@ class AsDtype(Numerical):
             output = data.view(dtype).reshape((-1,) + shape)
         except ValueError:
             raise ValueError(
-                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
-                """for interpretation {}
-in file {}""".format(
+                """basket {0} in tree/branch {1} has the wrong number of bytes ({2}) """
+                """for interpretation {3}
+in file {4}""".format(
                     basket.basket_num,
                     branch.object_path,
                     len(data),
@@ -448,8 +449,8 @@ class TruncatedNumerical(Numerical):
     def __repr__(self):
         args = [repr(self._low), repr(self._high), repr(self._num_bits)]
         if self._to_dims != ():
-            args.append("to_dims={}".format(repr(self._to_dims)))
-        return "{}({})".format(type(self).__name__, ", ".join(args))
+            args.append("to_dims={0}".format(repr(self._to_dims)))
+        return "{0}({1})".format(type(self).__name__, ", ".join(args))
 
     def __eq__(self, other):
         return (
@@ -466,7 +467,7 @@ class TruncatedNumerical(Numerical):
 
     @property
     def cache_key(self):
-        return "{}({},{},{},{})".format(
+        return "{0}({1},{2},{3},{4})".format(
             type(self).__name__, self._low, self._high, self._num_bits, self._to_dims
         )
 
@@ -487,9 +488,9 @@ class TruncatedNumerical(Numerical):
             raw = data.view(self.from_dtype)
         except ValueError:
             raise ValueError(
-                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
-                """for interpretation {} (expecting raw array of {})
-in file {}""".format(
+                """basket {0} in tree/branch {1} has the wrong number of bytes ({2}) """
+                """for interpretation {3} (expecting raw array of {4})
+in file {5}""".format(
                     basket.basket_num,
                     branch.object_path,
                     len(data),
@@ -558,7 +559,9 @@ class AsDouble32(TruncatedNumerical):
         if not uproot._util.isint(num_bits) or not 2 <= num_bits <= 32:
             raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
         if high <= low and not self.is_truncated:
-            raise ValueError(f"high ({high}) must be strictly greater than low ({low})")
+            raise ValueError(
+                "high ({0}) must be strictly greater than low ({1})".format(high, low)
+            )
 
     @property
     def to_dtype(self):
@@ -624,7 +627,9 @@ class AsFloat16(TruncatedNumerical):
         if not uproot._util.isint(num_bits) or not 2 <= num_bits <= 16:
             raise TypeError("num_bits must be an integer between 2 and 16 (inclusive)")
         if high <= low and not self.is_truncated:
-            raise ValueError(f"high ({high}) must be strictly greater than low ({low})")
+            raise ValueError(
+                "high ({0}) must be strictly greater than low ({1})".format(high, low)
+            )
 
     @property
     def to_dtype(self):

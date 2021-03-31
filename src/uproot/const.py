@@ -4,6 +4,7 @@
 This module defines integer constants used by serialization and deserialization routines.
 """
 
+from __future__ import absolute_import
 
 import numpy
 

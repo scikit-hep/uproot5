@@ -10,13 +10,14 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 :doc:`uproot.source.chunk.Source`, the primary types of the "physical layer."
 """
 
+from __future__ import absolute_import
 
 import numpy
 
 import uproot
 
 
-class Resource:
+class Resource(object):
     """
     Abstract class for a file handle whose lifetime may be linked to threads
     in a thread pool executor.
@@ -33,7 +34,7 @@ class Resource:
         return self._file_path
 
 
-class Source:
+class Source(object):
     """
     Abstract class for physically reading and writing data from a file, which
     might be remote.
@@ -147,7 +148,7 @@ class MultithreadedSource(Source):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
-        return "<{} {} ({} workers) at 0x{:012x}>".format(
+        return "<{0} {1} ({2} workers) at 0x{3:012x}>".format(
             type(self).__name__, path, self.num_workers, id(self)
         )
 
@@ -213,7 +214,7 @@ def notifier(chunk, notifications):  # noqa: D103
     return notify
 
 
-class Chunk:
+class Chunk(object):
     """
     Args:
         source (:doc:`uproot.source.chunk.Source`): Source from which the
@@ -264,7 +265,7 @@ class Chunk:
         self._raw_data = None
 
     def __repr__(self):
-        return f"<Chunk {self._start}-{self._stop}>"
+        return "<Chunk {0}-{1}>".format(self._start, self._stop)
 
     @property
     def source(self):
@@ -313,9 +314,9 @@ class Chunk:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
             if len(self._raw_data) != self._stop - self._start:
                 raise OSError(
-                    """expected Chunk of length {},
-received Chunk of length {}
-for file path {}""".format(
+                    """expected Chunk of length {0},
+received Chunk of length {1}
+for file path {2}""".format(
                         len(self._raw_data),
                         self._stop - self._start,
                         self._source.file_path,
@@ -366,8 +367,8 @@ for file path {}""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes {}:{}
-outside expected range {}:{} for this Chunk""".format(
+                """attempting to get bytes {0}:{1}
+outside expected range {2}:{3} for this Chunk""".format(
                     start, stop, self._start, self._stop
                 ),
                 self,
@@ -404,8 +405,8 @@ outside expected range {}:{} for this Chunk""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes after {}
-outside expected range {}:{} for this Chunk""".format(
+                """attempting to get bytes after {0}
+outside expected range {1}:{2} for this Chunk""".format(
                     start, self._start, self._stop
                 ),
                 self,

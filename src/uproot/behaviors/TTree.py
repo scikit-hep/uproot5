@@ -5,6 +5,7 @@ This module defines the behaviors of ``TTree``, which is almost entirely inherit
 functions in :doc:`uproot.behaviors.TBranch`.
 """
 
+from __future__ import absolute_import
 
 import uproot
 
@@ -27,9 +28,9 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
 
     def __repr__(self):
         if len(self) == 0:
-            return "<TTree {} at 0x{:012x}>".format(repr(self.name), id(self))
+            return "<TTree {0} at 0x{1:012x}>".format(repr(self.name), id(self))
         else:
-            return "<TTree {} ({} branches) at 0x{:012x}>".format(
+            return "<TTree {0} ({1} branches) at 0x{2:012x}>".format(
                 repr(self.name), len(self), id(self)
             )
 
@@ -60,7 +61,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         String that uniquely specifies this ``TTree`` in its path, to use as
         part of object and array cache keys.
         """
-        return "{}{};{}".format(
+        return "{0}{1};{2}".format(
             self.parent.parent.cache_key, self.name, self.parent.fCycle
         )
 
@@ -85,7 +86,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
 
     @property
     def aliases(self):
-        """
+        u"""
         The ``TTree``'s ``fAliases``, which are used as the ``aliases``
         argument to :ref:`uproot.behaviors.TBranch.HasBranches.arrays`,
         :ref:`uproot.behaviors.TBranch.HasBranches.iterate`,
@@ -99,7 +100,9 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         if aliases is None:
             return {}
         else:
-            return {alias.member("fName"): alias.member("fTitle") for alias in aliases}
+            return dict(
+                (alias.member("fName"), alias.member("fTitle")) for alias in aliases
+            )
 
     @property
     def chunk(self):

@@ -9,8 +9,10 @@ The default is :doc:`uproot.language.python.PythonLanguage`.
 All languages must be subclasses of :doc:`uproot.language.Language`.
 """
 
+from __future__ import absolute_import
 
-class Language:
+
+class Language(object):
     """
     Abstract class for all languages, which are used to compute the expressions
     that are passed to :ref:`uproot.behaviors.TBranch.HasBranches.arrays` (and

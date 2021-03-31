@@ -16,3 +16,5 @@ controls both I/O resources and threads.
 This module includes a :doc:`uproot.source.futures` implementation that
 connects file handles with threads.
 """
+
+from __future__ import absolute_import

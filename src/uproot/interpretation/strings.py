@@ -13,6 +13,7 @@ an array is being built from ``TBaskets``. Its final form is determined by the
 :doc:`uproot.interpretation.library.Library`.
 """
 
+from __future__ import absolute_import
 
 import struct
 
@@ -96,10 +97,10 @@ class AsStrings(uproot.interpretation.Interpretation):
     def __repr__(self):
         args = []
         if self._header_bytes != 0:
-            args.append(f"header_bytes={self._header_bytes}")
+            args.append("header_bytes={0}".format(self._header_bytes))
         if self._length_bytes != "1-5":
-            args.append("length_bytes={}".format(repr(self._length_bytes)))
-        return "AsStrings({})".format(", ".join(args))
+            args.append("length_bytes={0}".format(repr(self._length_bytes)))
+        return "AsStrings({0})".format(", ".join(args))
 
     def __eq__(self, other):
         return (
@@ -143,7 +144,7 @@ class AsStrings(uproot.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        return "{}({},{})".format(
+        return "{0}({1},{2})".format(
             type(self).__name__, self._header_bytes, repr(self._length_bytes)
         )
 
@@ -353,7 +354,7 @@ class AsStrings(uproot.interpretation.Interpretation):
         return output
 
 
-class StringArray:
+class StringArray(object):
     """
     Args:
         offsets (array of ``numpy.int32``): Starting and stopping indexes for
@@ -378,7 +379,7 @@ class StringArray:
             content = repr(left) + " ... " + repr(right)
         else:
             content = repr(self._content)
-        return f"StringArray({self._offsets}, {content})"
+        return "StringArray({0}, {1})".format(self._offsets, content)
 
     @property
     def offsets(self):

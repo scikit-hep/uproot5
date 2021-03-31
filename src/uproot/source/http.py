@@ -14,6 +14,7 @@ automatically falls back to :doc:`uproot.source.http.MultithreadedHTTPSource`.
 Despite the name, both sources support secure HTTPS (selected by URL scheme).
 """
 
+from __future__ import absolute_import
 
 import re
 import sys
@@ -62,7 +63,7 @@ def make_connection(parsed_url, timeout):
 
     else:
         raise ValueError(
-            "unrecognized URL scheme for HTTP MultipartSource: {}".format(
+            "unrecognized URL scheme for HTTP MultipartSource: {0}".format(
                 parsed_url.scheme
             )
         )
@@ -103,8 +104,8 @@ def get_num_bytes(file_path, parsed_url, timeout):
                 break
         else:
             raise OSError(
-                """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
+                """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
                     response.status, file_path
                 )
             )
@@ -116,8 +117,8 @@ for URL {}""".format(
     if response.status != 200:
         connection.close()
         raise OSError(
-            """HTTP response was {}, rather than 200, in attempt to get file size
-in file {}""".format(
+            """HTTP response was {0}, rather than 200, in attempt to get file size
+in file {1}""".format(
                 response.status, file_path
             )
         )
@@ -129,8 +130,8 @@ in file {}""".format(
     else:
         connection.close()
         raise OSError(
-            """response headers did not include content-length: {}
-in file {}""".format(
+            """response headers did not include content-length: {0}
+in file {1}""".format(
                 dict(response.getheaders()), file_path
             )
         )
@@ -198,13 +199,13 @@ class HTTPResource(uproot.source.chunk.Resource):
                     redirect.request(
                         "GET",
                         full_path(redirect_url),
-                        headers={"Range": "bytes={}-{}".format(start, stop - 1)},
+                        headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
                     )
                     return self.get(redirect, start, stop)
 
             raise OSError(
-                """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
+                """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
                     response.status, self._file_path
                 )
             )
@@ -212,8 +213,8 @@ for URL {}""".format(
         if response.status != 206:
             connection.close()
             raise OSError(
-                """remote server responded with status {}, rather than 206 (range requests)
-for URL {}""".format(
+                """remote server responded with status {0}, rather than 206 (range requests)
+for URL {1}""".format(
                     response.status, self._file_path
                 )
             )
@@ -239,7 +240,7 @@ for URL {}""".format(
         connection.request(
             "GET",
             full_path(source.parsed_url),
-            headers={"Range": "bytes={}-{}".format(start, stop - 1)},
+            headers={"Range": "bytes={0}-{1}".format(start, stop - 1)},
         )
 
         def task(resource):
@@ -249,7 +250,7 @@ for URL {}""".format(
 
     @staticmethod
     def multifuture(source, ranges, futures, results):
-        """
+        u"""
         Args:
             source (:doc:`uproot.source.http.HTTPSource`): The data source.
             ranges (list of (int, int) 2-tuples): Intervals to fetch
@@ -275,7 +276,7 @@ for URL {}""".format(
 
         range_strings = []
         for start, stop in ranges:
-            range_strings.append("{}-{}".format(start, stop - 1))
+            range_strings.append("{0}-{1}".format(start, stop - 1))
 
         connection[0].request(
             "GET",
@@ -305,8 +306,8 @@ for URL {}""".format(
                             return
 
                     raise OSError(
-                        """remote server responded with status {} (redirect) without a 'location'
-for URL {}""".format(
+                        """remote server responded with status {0} (redirect) without a 'location'
+for URL {1}""".format(
                             response.status, source.file_path
                         )
                     )
@@ -380,8 +381,8 @@ for URL {}""".format(
             range_string, size = self.next_header(response_buffer)
             if range_string is None:
                 raise OSError(
-                    """found {} of {} expected headers in HTTP multipart
-for URL {}""".format(
+                    """found {0} of {1} expected headers in HTTP multipart
+for URL {2}""".format(
                         num_found, len(futures), self._file_path
                     )
                 )
@@ -396,9 +397,9 @@ for URL {}""".format(
 
             if len(data) != length:
                 raise OSError(
-                    """wrong chunk length {} (expected {}) for byte range {} "
+                    """wrong chunk length {0} (expected {1}) for byte range {2} "
                     "in HTTP multipart
-for URL {}""".format(
+for URL {3}""".format(
                         len(data), length, repr(range_string.decode()), self._file_path
                     )
                 )
@@ -421,14 +422,14 @@ for URL {}""".format(
                     else:
                         range_string = range_string.decode("utf-8", "surrogateescape")
                         expecting = ", ".join(
-                            "{}-{}".format(a, b - 1) for a, b in futures
+                            "{0}-{1}".format(a, b - 1) for a, b in futures
                         )
                         raise OSError(
-                            """unrecognized byte range in headers of HTTP multipart: {}
+                            """unrecognized byte range in headers of HTTP multipart: {0}
 
-    expecting: {}
+    expecting: {1}
 
-for URL {}""".format(
+for URL {2}""".format(
                                 repr(range_string), expecting, self._file_path
                             )
                         )
@@ -479,7 +480,7 @@ for URL {}""".format(
         return uproot.source.futures.ResourceFuture(task)
 
 
-class _ResponseBuffer:
+class _ResponseBuffer(object):
     CHUNK = 1024
 
     def __init__(self, stream):
@@ -567,7 +568,7 @@ class HTTPSource(uproot.source.chunk.Source):
         fallback = ""
         if self._fallback is not None:
             fallback = " with fallback"
-        return "<{} {}{} at 0x{:012x}>".format(
+        return "<{0} {1}{2} at 0x{3:012x}>".format(
             type(self).__name__, path, fallback, id(self)
         )
 

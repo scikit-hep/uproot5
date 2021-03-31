@@ -8,6 +8,7 @@ The :doc:`uproot.language.python.PythonLanguage` evaluates Python code. It is
 the default language.
 """
 
+from __future__ import absolute_import
 
 import ast
 
@@ -21,13 +22,13 @@ def _expression_to_node(expression, file_path, object_path):
         node = ast.parse(expression)
     except SyntaxError as err:
         raise SyntaxError(
-            err.args[0] + f"\nin file {file_path}\nin object {object_path}",
+            err.args[0] + "\nin file {0}\nin object {1}".format(file_path, object_path),
             err.args[1],
         )
 
     if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
         raise SyntaxError(
-            "expected a single expression\nin file {}\nin object {}".format(
+            "expected a single expression\nin file {0}\nin object {1}".format(
                 file_path, object_path
             )
         )
@@ -60,8 +61,8 @@ def _walk_ast_yield_symbols(node, keys, aliases, functions, getter):
             yield node.args[0].s
         else:
             raise TypeError(
-                "expected a constant string as the only argument of {}; "
-                "found {}".format(repr(getter), ast.dump(node.args))
+                "expected a constant string as the only argument of {0}; "
+                "found {1}".format(repr(getter), ast.dump(node.args))
             )
 
     elif isinstance(node, ast.Name):
@@ -75,9 +76,10 @@ def _walk_ast_yield_symbols(node, keys, aliases, functions, getter):
     elif isinstance(node, ast.Attribute):
         name = _attribute_to_dotted_name(node)
         if name is None:
-            yield from _walk_ast_yield_symbols(
+            for y in _walk_ast_yield_symbols(
                 node.value, keys, aliases, functions, getter
-            )
+            ):
+                yield y
         elif name in keys or name in aliases:
             yield name
         else:
@@ -87,11 +89,13 @@ def _walk_ast_yield_symbols(node, keys, aliases, functions, getter):
     elif isinstance(node, ast.AST):
         for field_name in node._fields:
             x = getattr(node, field_name)
-            yield from _walk_ast_yield_symbols(x, keys, aliases, functions, getter)
+            for y in _walk_ast_yield_symbols(x, keys, aliases, functions, getter):
+                yield y
 
     elif isinstance(node, list):
         for x in node:
-            yield from _walk_ast_yield_symbols(x, keys, aliases, functions, getter)
+            for y in _walk_ast_yield_symbols(x, keys, aliases, functions, getter):
+                yield y
 
     else:
         pass
@@ -109,9 +113,9 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
 
     elif isinstance(node, ast.Name):
         if node.id in keys or node.id in aliases:
-            return ast.parse("get({})".format(repr(node.id))).body[0].value
+            return ast.parse("get({0})".format(repr(node.id))).body[0].value
         elif node.id in functions:
-            return ast.parse("function[{}]".format(repr(node.id))).body[0].value
+            return ast.parse("function[{0}]".format(repr(node.id))).body[0].value
         else:
             raise KeyError(node.id)
 
@@ -126,7 +130,7 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
             new_node.col_offset = getattr(node, "col_offset", 0)
             return new_node
         elif name in keys or name in aliases:
-            return ast.parse("get({})".format(repr(name))).body[0].value
+            return ast.parse("get({0})".format(repr(name))).body[0].value
         else:
             # implicitly means functions and getter can't have dots in their names
             raise KeyError(name)
@@ -352,7 +356,7 @@ class PythonLanguage(uproot.language.Language):
 
         For example, ``"get('something')"``.
         """
-        return "{}({})".format(self._getter, repr(name))
+        return "{0}({1})".format(self._getter, repr(name))
 
     def free_symbols(self, expression, keys, aliases, file_path, object_path):
         """

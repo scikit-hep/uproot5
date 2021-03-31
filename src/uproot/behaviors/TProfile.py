@@ -4,6 +4,7 @@
 This module defines the behavior of ``TProfile``.
 """
 
+from __future__ import absolute_import
 
 import numpy
 

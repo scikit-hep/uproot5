@@ -4,8 +4,10 @@
 This module defines the behavior of ``TParameter<T>``.
 """
 
+from __future__ import absolute_import
 
-class TParameter_3c_boolean_3e_:
+
+class TParameter_3c_boolean_3e_(object):
     """
     Behaviors for ``TParameter<boolean>``.
     """
@@ -24,7 +26,7 @@ class TParameter_3c_boolean_3e_:
         return float(self.member("fVal"))
 
 
-class TParameter_3c_integer_3e_:
+class TParameter_3c_integer_3e_(object):
     """
     Behaviors for ``TParameter<integer>``.
     """
@@ -46,7 +48,7 @@ class TParameter_3c_integer_3e_:
         return float(self.member("fVal"))
 
 
-class TParameter_3c_floating_3e_:
+class TParameter_3c_floating_3e_(object):
     """
     Behaviors for ``TParameter<floating>``.
     """

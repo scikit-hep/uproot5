@@ -5,6 +5,7 @@ This module defines the behaviors of ``TH2`` and its subclasses (not including
 ``TProfile2D`` and ``TH2Poly``).
 """
 
+from __future__ import absolute_import
 
 import numpy
 

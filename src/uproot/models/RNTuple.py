@@ -4,6 +4,7 @@
 This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 """
 
+from __future__ import absolute_import
 
 import struct
 
@@ -20,8 +21,8 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
