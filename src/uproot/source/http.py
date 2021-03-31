@@ -29,8 +29,6 @@ try:
 except ImportError:
     import Queue as queue
 
-import socket
-
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
