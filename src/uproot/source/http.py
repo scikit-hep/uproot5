@@ -33,6 +33,8 @@ import uproot
 import uproot.source.chunk
 import uproot.source.futures
 
+import socket
+
 
 def make_connection(parsed_url, timeout):
     """
@@ -190,6 +192,7 @@ class HTTPResource(uproot.source.chunk.Resource):
             raise uproot._util._file_not_found(self.file_path, "HTTP(S) returned 404")
 
         if 300 <= response.status < 400:
+            connection.close()
             for k, x in response.getheaders():
                 if k.lower() == "location":
                     redirect_url = urlparse(x)

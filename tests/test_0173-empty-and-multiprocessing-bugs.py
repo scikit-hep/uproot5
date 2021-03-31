@@ -26,12 +26,12 @@ def readone(filename):
 
 
 def test_multiprocessing():
-    pool = multiprocessing.Pool(1)
-    out = pool.map(
-        readone,
-        [
-            skhep_testdata.data_path("uproot-Zmumu.root"),
-            skhep_testdata.data_path("uproot-Zmumu-zlib.root"),
-        ],
-    )
-    list(out)
+    with multiprocessing.Pool(1) as pool:
+        out = pool.map(
+            readone,
+            [
+                skhep_testdata.data_path("uproot-Zmumu.root"),
+                skhep_testdata.data_path("uproot-Zmumu-zlib.root"),
+            ],
+        )
+        list(out)
