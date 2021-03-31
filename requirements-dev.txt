@@ -1,4 +1,0 @@
-pandas
-awkward>=1.0.0
-boost_histogram>=0.13
-hist>=1.2

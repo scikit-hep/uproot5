@@ -63,8 +63,5 @@ jobs:
       - name: "Pip install the package"
         run: pip install .
 
-      - name: "Run flake8"
-        run: python -m flake8
-
       - name: "Run pytest"
         run: python -m pytest -vv tests
