@@ -22,6 +22,8 @@ scope = {
     "uproot": uproot,
 }
 
+np_uint8 = numpy.dtype("u1")
+
 
 def _actually_compile(class_code, new_scope):
     exec(compile(class_code, "<dynamic>", "exec"), new_scope)
@@ -284,7 +286,7 @@ def read_object_any(chunk, cursor, context, file, selffile, parent, as_class=Non
 
         if as_class is None:
             if ref not in cursor.refs:
-                if getattr(file, "file_path") is None:
+                if getattr(file, "file_path", None) is None:
                     in_file = ""
                 else:
                     in_file = f"\n\nin file {file.file_path}"
@@ -480,7 +482,7 @@ in file {}{}""".format(
             stream=stream,
         )
 
-    def debug_array(self, skip_bytes=0, dtype=numpy.dtype("u1")):
+    def debug_array(self, skip_bytes=0, dtype=np_uint8):
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the

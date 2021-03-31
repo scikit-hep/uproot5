@@ -38,6 +38,8 @@ import uproot
 import uproot.language.python
 from uproot._util import no_filter
 
+np_uint8 = numpy.dtype("u1")
+
 
 class _NoClose:
     def __init__(self, hasbranches):
@@ -64,7 +66,7 @@ def iterate(
     filter_typename=no_filter,
     filter_branch=no_filter,
     aliases=None,
-    language=uproot.language.python.PythonLanguage(),
+    language=uproot.language.python.python_language,
     step_size="100 MB",
     decompression_executor=None,
     interpretation_executor=None,
@@ -239,7 +241,7 @@ def concatenate(
     filter_typename=no_filter,
     filter_branch=no_filter,
     aliases=None,
-    language=uproot.language.python.PythonLanguage(),
+    language=uproot.language.python.python_language,
     decompression_executor=None,
     interpretation_executor=None,
     library="ak",
@@ -896,7 +898,7 @@ class HasBranches(Mapping):
 
         Interactively display the ``TBranches``.
 
-        Example:
+        For example,
 
         .. code-block::
 
@@ -939,7 +941,7 @@ class HasBranches(Mapping):
                 formatter.format(self.name, self.typename, repr(self.interpretation))
             )
 
-        for name, branch in self.iteritems(
+        for name, branch in self.iteritems(  # noqa: B301 (not a dict)
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -966,7 +968,7 @@ class HasBranches(Mapping):
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
-        language=uproot.language.python.PythonLanguage(),
+        language=uproot.language.python.python_language,
         entry_start=None,
         entry_stop=None,
         decompression_executor=None,
@@ -1103,7 +1105,7 @@ class HasBranches(Mapping):
 
         ranges_or_baskets = []
         checked = set()
-        for expression, context in expression_context:
+        for _, context in expression_context:
             for branch in context["branches"]:
                 if branch.cache_key not in checked:
                     checked.add(branch.cache_key)
@@ -1178,7 +1180,7 @@ class HasBranches(Mapping):
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
-        language=uproot.language.python.PythonLanguage(),
+        language=uproot.language.python.python_language,
         entry_start=None,
         entry_stop=None,
         step_size="100 MB",
@@ -1323,7 +1325,7 @@ class HasBranches(Mapping):
 
                 ranges_or_baskets = []
                 checked = set()
-                for expression, context in expression_context:
+                for _, context in expression_context:
                     for branch in context["branches"]:
                         if branch.cache_key not in checked:
                             checked.add(branch.cache_key)
@@ -1425,7 +1427,7 @@ class HasBranches(Mapping):
         Returns the names of the subbranches as a list of strings.
         """
         return list(
-            self.iterkeys(
+            self.iterkeys(  # noqa: B301 (not a dict)
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
@@ -1462,7 +1464,7 @@ class HasBranches(Mapping):
         :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
         return list(
-            self.itervalues(
+            self.itervalues(  # noqa: B301 (not a dict)
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
@@ -1499,7 +1501,7 @@ class HasBranches(Mapping):
         of (str, :doc:`uproot.behaviors.TBranch.TBranch`).
         """
         return list(
-            self.iteritems(
+            self.iteritems(  # noqa: B301 (not a dict)
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
@@ -1573,7 +1575,7 @@ class HasBranches(Mapping):
 
         Returns the names of the subbranches as an iterator over strings.
         """
-        for k, v in self.iteritems(
+        for k, _ in self.iteritems(  # noqa: B301 (not a dict)
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1609,7 +1611,7 @@ class HasBranches(Mapping):
         (Note: with ``recursive=False``, this is the same as
         :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
-        for k, v in self.iteritems(
+        for _, v in self.iteritems(  # noqa: B301 (not a dict)
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1671,7 +1673,7 @@ class HasBranches(Mapping):
                 yield branch.name, branch
 
             if recursive:
-                for k1, v in branch.iteritems(
+                for k1, v in branch.iteritems(  # noqa: B301 (not a dict)
                     recursive=recursive,
                     filter_name=no_filter,
                     filter_typename=filter_typename,
@@ -1715,7 +1717,7 @@ class HasBranches(Mapping):
         Returns (name, typename) pairs of the subbranches as an iterator over
         2-tuples of (str, str).
         """
-        for k, v in self.iteritems(
+        for k, v in self.iteritems(  # noqa: B301 (not a dict)
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1728,7 +1730,7 @@ class HasBranches(Mapping):
         """
         Supports key-completion in an IPython or Jupyter kernel.
         """
-        return self.iterkeys()
+        return self.iterkeys()  # noqa: B301 (not a dict)
 
     def num_entries_for(
         self,
@@ -1739,7 +1741,7 @@ class HasBranches(Mapping):
         filter_typename=no_filter,
         filter_branch=no_filter,
         aliases=None,
-        language=uproot.language.python.PythonLanguage(),
+        language=uproot.language.python.python_language,
         entry_start=None,
         entry_stop=None,
     ):
@@ -1846,7 +1848,7 @@ class HasBranches(Mapping):
         :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets`.
         """
         common_offsets = None
-        for branch in self.itervalues(
+        for branch in self.itervalues(  # noqa: B301 (not a dict)
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1882,7 +1884,9 @@ class HasBranches(Mapping):
 
         if "/" in where:
             where = "/".join([x for x in where.split("/") if x != ""])
-            for k, v in self.iteritems(recursive=True, full_paths=True):
+            for k, v in self.iteritems(  # noqa: B301 (not a dict)
+                recursive=True, full_paths=True
+            ):
                 if where == k:
                     self._lookup[original_where] = v
                     return v
@@ -2058,7 +2062,7 @@ class TBranch(HasBranches):
 
         ranges_or_baskets = []
         checked = set()
-        for expression, context in expression_context:
+        for _, context in expression_context:
             for branch in context["branches"]:
                 if branch.cache_key not in checked:
                     checked.add(branch.cache_key)
@@ -2766,7 +2770,7 @@ in file {}""".format(
             chunk, limit_bytes=limit_bytes, dtype=dtype, offset=offset, stream=stream
         )
 
-    def debug_array(self, entry, skip_bytes=0, dtype=numpy.dtype("u1")):
+    def debug_array(self, entry, skip_bytes=0, dtype=np_uint8):
         """
         Args:
             entry (int): Entry number to inspect. Note: this debugging routine
@@ -2807,7 +2811,7 @@ def _filter_name_deep(filter_name, hasbranches, branch):
 
 def _keys_deep(hasbranches):
     out = set()
-    for branch in hasbranches.itervalues(recursive=True):
+    for branch in hasbranches.itervalues(recursive=True):  # noqa: B301 (not a dict)
         name = branch.name
         out.add(name)
         while branch is not hasbranches:
@@ -3208,7 +3212,7 @@ def _regularize_expressions(
     branchid_interpretation = {}
 
     if expressions is None:
-        for branchname, branch in hasbranches.iteritems(
+        for branchname, branch in hasbranches.iteritems(  # noqa: B301 (not a dict)
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -3476,7 +3480,7 @@ def _ranges_or_baskets_to_arrays(
 
 def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library, how):
     index_start = 0
-    for index_stop, (expression, context) in enumerate(expression_context):
+    for index_stop, (_, context) in enumerate(expression_context):
         if context["is_branch"]:
             branch = context["branches"][-1]
             interpretation = branchid_interpretation[branch.cache_key]
@@ -3501,7 +3505,7 @@ def _hasbranches_num_entries_for(
     hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
 ):
     total_bytes = 0.0
-    for branch in hasbranches.itervalues(recursive=True):
+    for branch in hasbranches.itervalues(recursive=True):  # noqa: B301 (not a dict)
         if branch.cache_key in branchid_interpretation:
             entry_offsets = branch.entry_offsets
             start = entry_offsets[0]

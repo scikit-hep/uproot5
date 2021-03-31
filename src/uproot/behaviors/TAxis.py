@@ -45,6 +45,10 @@ class AxisTraits:
 
 
 class TAxis(Sequence):
+    """
+    Describes a histogram axis.
+    """
+
     def __len__(self):
         """
         The number of bins in the axis.
@@ -88,8 +92,7 @@ class TAxis(Sequence):
 
     def __eq__(self, other):
         """
-        Two axes are equal if they have the same type and
-        ``list(self) == list(other)``.
+        Two axes are equal if they have the same type and ``list(self) == list(other)``.
         """
         if type(self) is not type(other):
             return False

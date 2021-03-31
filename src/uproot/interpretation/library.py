@@ -671,7 +671,7 @@ in object {}""".format(
                 if out is None:
                     out = awkward.Array({common: subarray})
                 else:
-                    for name in jagged:
+                    for _ in jagged:
                         out = awkward.with_field(out, subarray, common)
             return out
         else:

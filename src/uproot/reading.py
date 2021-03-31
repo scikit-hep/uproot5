@@ -640,9 +640,9 @@ in file {}""".format(
         """
         self._source.close()
         if hasattr(self._decompression_executor, "shutdown"):
-            getattr(self._decompression_executor, "shutdown")()
+            getattr(self._decompression_executor, "shutdown", None)()
         if hasattr(self._interpretation_executor, "shutdown"):
-            getattr(self._interpretation_executor, "shutdown")()
+            getattr(self._interpretation_executor, "shutdown", None)()
 
     @property
     def closed(self):
@@ -668,9 +668,9 @@ in file {}""".format(
     def __exit__(self, exception_type, exception_value, traceback):
         self._source.__exit__(exception_type, exception_value, traceback)
         if hasattr(self._decompression_executor, "shutdown"):
-            getattr(self._decompression_executor, "shutdown")()
+            getattr(self._decompression_executor, "shutdown", None)()
         if hasattr(self._interpretation_executor, "shutdown"):
-            getattr(self._interpretation_executor, "shutdown")()
+            getattr(self._interpretation_executor, "shutdown", None)()
 
     @property
     def source(self):
@@ -1384,7 +1384,7 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._keys = []
-            for i in uproot._util.range(num_keys):
+            for _ in uproot._util.range(num_keys):
                 key = ReadOnlyKey(
                     keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )
@@ -1525,7 +1525,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this does not read any data from the file.
         """
         return list(
-            self.iterkeys(
+            self.iterkeys(  # noqa: B301 (not a dict)
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -1556,7 +1556,7 @@ class ReadOnlyDirectory(Mapping):
         and ``filter_classname``.
         """
         return list(
-            self.itervalues(
+            self.itervalues(  # noqa: B301 (not a dict)
                 recursive=recursive,
                 filter_name=filter_name,
                 filter_classname=filter_classname,
@@ -1588,7 +1588,7 @@ class ReadOnlyDirectory(Mapping):
         and ``filter_classname``.
         """
         return list(
-            self.iteritems(
+            self.iteritems(  # noqa: B301 (not a dict)
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -1660,7 +1660,7 @@ class ReadOnlyDirectory(Mapping):
                 yield key.name(cycle=cycle)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1 in key.get().iterkeys(
+                for k1 in key.get().iterkeys(  # noqa: B301 (not a dict)
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=no_filter,
@@ -1693,7 +1693,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
         """
-        for k, v in self.iteritems(
+        for _, v in self.iteritems(  # noqa: B301 (not a dict)
             recursive=recursive,
             cycle=False,
             filter_name=filter_name,
@@ -1734,7 +1734,7 @@ class ReadOnlyDirectory(Mapping):
                 yield key.name(cycle=cycle), key.get()
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iteritems(
+                for k1, v in key.get().iteritems(  # noqa: B301 (not a dict)
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=no_filter,
@@ -1792,7 +1792,7 @@ class ReadOnlyDirectory(Mapping):
         """
         Supports key-completion in an IPython or Jupyter kernel.
         """
-        return self.iterkeys()
+        return self.iterkeys()  # noqa: B301 (not a dict)
 
     def __len__(self):
         return len(self._keys) + sum(
@@ -1810,7 +1810,7 @@ class ReadOnlyDirectory(Mapping):
             return True
 
     def __iter__(self):
-        return self.iterkeys()
+        return self.iterkeys()  # noqa: B301 (not a dict)
 
     def classname_of(self, where, encoded=False, version=None):
         """

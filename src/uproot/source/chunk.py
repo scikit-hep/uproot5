@@ -206,7 +206,7 @@ class MultithreadedSource(Source):
         self._executor.__exit__(exception_type, exception_value, traceback)
 
 
-def notifier(chunk, notifications):
+def notifier(chunk, notifications):  # noqa: D103
     def notify():
         notifications.put(chunk)
 

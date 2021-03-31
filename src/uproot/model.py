@@ -46,6 +46,8 @@ bootstrap_classnames = [
     "TObjString",
 ]
 
+np_uint8 = numpy.dtype("u1")
+
 
 def bootstrap_classes():
     """
@@ -531,7 +533,7 @@ class Model:
                     type(self).__name__,
                     ", ".join(repr(x) for x in self.all_members),
                 ),
-                file_path=getattr(self._file, "file_path"),
+                file_path=getattr(self._file, "file_path", None),
             )
 
     @property
@@ -885,7 +887,7 @@ class Model:
             self._num_bytes,
             self.classname,
             context,
-            getattr(self._file, "file_path"),
+            getattr(self._file, "file_path", None),
         )
 
     def postprocess(self, chunk, cursor, context, file):
@@ -1316,7 +1318,7 @@ class UnknownClass(Model):
             stream=stream,
         )
 
-    def debug_array(self, skip_bytes=0, dtype=numpy.dtype("u1")):
+    def debug_array(self, skip_bytes=0, dtype=np_uint8):
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the
@@ -1449,7 +1451,7 @@ class UnknownClassVersion(VersionedModel):
             stream=stream,
         )
 
-    def debug_array(self, skip_bytes=0, dtype=numpy.dtype("u1")):
+    def debug_array(self, skip_bytes=0, dtype=np_uint8):
         """
         Args:
             skip_bytes (int): Number of bytes to skip before presenting the

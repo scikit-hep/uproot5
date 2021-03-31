@@ -1049,15 +1049,15 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
 
         if quote:
             cls = "c({})".format(repr(classname))
-            for x in uproot._util.range(pointers):
+            for _ in uproot._util.range(pointers):
                 cls = f"uproot.containers.AsPointer({cls})"
         elif file is None:
             cls = uproot.classes[classname]
-            for x in uproot._util.range(pointers):
+            for _ in uproot._util.range(pointers):
                 cls = uproot.containers.AsPointer(cls)
         else:
             cls = file.class_named(classname)
-            for x in uproot._util.range(pointers):
+            for _ in uproot._util.range(pointers):
                 cls = uproot.containers.AsPointer(cls)
 
         return i + 1, cls

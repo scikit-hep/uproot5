@@ -359,7 +359,7 @@ for URL {}""".format(
         notifications = queue.Queue()
         source.fallback.chunks(ranges, notifications)
 
-        for x in uproot._util.range(len(ranges)):
+        for _ in uproot._util.range(len(ranges)):
             chunk = notifications.get()
             results[chunk.start, chunk.stop] = chunk.raw_data
             futures[chunk.start, chunk.stop]._run(self)
@@ -411,7 +411,10 @@ for URL {}""".format(
             else:
                 now = start
                 while now < stop:
-                    for future_start, future_stop in futures:
+                    for (
+                        future_start,
+                        future_stop,  # noqa: B007 (future_stop is used after the loop)
+                    ) in futures:
                         if now == future_start:
                             break
                     else:

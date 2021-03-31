@@ -238,7 +238,7 @@ class AsJagged(uproot.interpretation.Interpretation):
         else:
             length = 0
             start = entry_offsets[0]
-            for basket_num, stop in enumerate(entry_offsets[1:]):
+            for _, stop in enumerate(entry_offsets[1:]):
                 if start <= entry_start and entry_stop <= stop:
                     length += entry_stop - entry_start
                 elif start <= entry_start < stop:

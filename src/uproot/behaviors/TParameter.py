@@ -66,6 +66,9 @@ class TParameter_3c_floating_3e_:
 
 
 def TParameter(specialization):
+    """
+    Returns a Parameter class object for a given ``specialization``.
+    """
     if specialization in ("_3c_bool_3e_", "_3c_Bool_5f_t_3e_"):
         return TParameter_3c_boolean_3e_
     elif specialization in (

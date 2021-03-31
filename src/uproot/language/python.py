@@ -324,6 +324,12 @@ class PythonLanguage(uproot.language.Language):
             self._functions = dict(functions)
         self._getter = getter
 
+    def __repr__(self):
+        return "uproot.language.python.PythonLanguage()"
+
+    def __eq__(self, other):
+        return isinstance(other, PythonLanguage)
+
     @property
     def functions(self):
         """
@@ -421,7 +427,7 @@ class PythonLanguage(uproot.language.Language):
             return values[name]
 
         scope = {self._getter: getter, "function": self._functions}
-        for expression, context in expression_context:
+        for _, context in expression_context:
             for branch in context["branches"]:
                 array = arrays[branch.cache_key]
                 name = branch.name
@@ -470,3 +476,6 @@ class PythonLanguage(uproot.language.Language):
                 output[name] = output[name][cut]
 
         return output
+
+
+python_language = PythonLanguage()

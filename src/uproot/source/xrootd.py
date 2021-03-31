@@ -338,7 +338,7 @@ class XRootDSource(uproot.source.chunk.Source):
 
         # submit the xrootd vector reads
         global_futures = {}
-        for i, request_ranges in enumerate(all_request_ranges):
+        for _, request_ranges in enumerate(all_request_ranges):
             futures = {}
             results = {}
             for start, size in request_ranges:

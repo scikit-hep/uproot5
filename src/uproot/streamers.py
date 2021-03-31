@@ -148,7 +148,7 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         Interactively display a ``TStreamerInfo``.
 
-        Example:
+        For example,
 
         .. code-block::
 

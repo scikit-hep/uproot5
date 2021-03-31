@@ -456,7 +456,7 @@ of file path {}""".format(
     def debug(
         self,
         chunk,
-        context={},
+        context={},  # noqa: B006 (it's not actually mutated in the function)
         limit_bytes=None,
         dtype=None,
         offset=0,
