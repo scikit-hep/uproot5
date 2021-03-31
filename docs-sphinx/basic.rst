@@ -197,9 +197,9 @@ Since Uproot is an I/O library, it intentionally does not have methods for plott
     #   File "/home/jpivarski/irishep/uproot/uproot/extras.py", line 237, in hist
     #     import hist
     # ModuleNotFoundError: No module named 'hist'
-    # 
+    #
     # During handling of the above exception, another exception occurred:
-    # 
+    #
     # Traceback (most recent call last):
     #   File "<stdin>", line 1, in <module>
     #   File "/home/jpivarski/irishep/uproot/uproot/behaviors/TH2.py", line 127, in to_hist
@@ -207,7 +207,7 @@ Since Uproot is an I/O library, it intentionally does not have methods for plott
     #   File "/home/jpivarski/irishep/uproot/uproot/extras.py", line 239, in hist
     #     raise ImportError(
     # ImportError: install the 'hist' package with:
-    # 
+    #
     #     pip install hist
 
 If one of those libraries is not currently installed, a hint is provided for how to get it.
@@ -315,7 +315,7 @@ Another library option is ``library="pd"`` for Pandas, and a single TBranch is (
     2       83.308465
     3       82.149373
     4       90.469123
-              ...    
+              ...
     2299    60.047138
     2300    96.125376
     2301    95.965480
@@ -409,7 +409,7 @@ For Pandas, a group is a `pandas.DataFrame <https://pandas.pydata.org/pandas-doc
     2       35.118050
     3       34.144437
     4       22.783582
-              ...    
+              ...
     2299    19.054651
     2300   -68.041915
     2301    32.377492
@@ -509,7 +509,7 @@ Not all datasets have one value per entry. In particle physics, we often have di
 
     >>> events = uproot.open("https://scikit-hep.org/uproot3/examples/HZZ.root:events")
     >>> events.show()
-    name                 | typename                 | interpretation                
+    name                 | typename                 | interpretation
     ---------------------+--------------------------+-------------------------------
     NJet                 | int32_t                  | AsDtype('>i4')
     Jet_Px               | float[]                  | AsJagged(AsDtype('>f4'))
@@ -605,7 +605,7 @@ The Pandas form for this type of data is a `DataFrame with MultiIndex rows <http
     >>> events.arrays(filter_name="/(Jet|Muon)_P[xyz]/", library="pd")
     (
                            Jet_Px     Jet_Py      Jet_Pz
-        entry subentry                                  
+        entry subentry
         1     0        -38.874714  19.863453   -0.894942
         3     0        -71.695213  93.571579  196.296432
               1         36.606369  21.838793   91.666283
@@ -621,7 +621,7 @@ The Pandas form for this type of data is a `DataFrame with MultiIndex rows <http
         [2773 rows x 3 columns],
 
                            Muon_Px    Muon_Py     Muon_Pz
-        entry subentry                                  
+        entry subentry
         0     0        -52.899456 -11.654672   -8.160793
               1         37.737782   0.693474  -11.307582
         1     0         -0.816459 -24.404259   20.199968
@@ -659,7 +659,7 @@ The :ref:`uproot.behaviors.TBranch.HasBranches.iterate` method has an interface 
 
     >>> for batch in events.iterate(step_size=500):
     ...     print(repr(batch))
-    ... 
+    ...
     <Array [{Type: 'GT', Run: 148031, ... M: 87.7}] type='500 * {"Type": string, "Ru...'>
     <Array [{Type: 'GT', Run: 148031, ... M: 72.5}] type='500 * {"Type": string, "Ru...'>
     <Array [{Type: 'TT', Run: 148031, ... M: 92.9}] type='500 * {"Type": string, "Ru...'>
@@ -676,7 +676,7 @@ For this reason, it's better to set the ``step_size`` to a number of bytes, such
 
     >>> for batch in events.iterate(step_size="50 kB"):
     ...     print(repr(batch))
-    ... 
+    ...
     <Array [{Type: 'GT', Run: 148031, ... M: 89.6}] type='667 * {"Type": string, "Ru...'>
     <Array [{Type: 'TT', Run: 148031, ... M: 18.1}] type='667 * {"Type": string, "Ru...'>
     <Array [{Type: 'GT', Run: 148031, ... M: 94.7}] type='667 * {"Type": string, "Ru...'>
@@ -704,7 +704,7 @@ See the :ref:`uproot.behaviors.TBranch.HasBranches.iterate` documentation for mo
 
     >>> for batch, report in events.iterate(step_size="50 kB", report=True):
     ...     print(report)
-    ... 
+    ...
     Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 0, 667)
     Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 667, 1334)
     Report(<TTree 'events' (20 branches) at 0x7e8391770310>, 1334, 2001)
@@ -716,7 +716,7 @@ Just as ``library="np"`` and ``library="pd"`` can be used to get NumPy and Panda
 
     >>> for batch in events.iterate(step_size="100 kB", library="pd"):
     ...     print(batch)
-    ... 
+    ...
          Type     Run      Event         E1  ...     eta2      phi2  Q2          M
     0      GT  148031   10507008  82.201866  ... -1.05139 -0.440873  -1  82.462692
     1      TT  148031   10507008  62.344929  ... -1.21769  2.741260   1  83.626204

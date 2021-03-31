@@ -4,13 +4,11 @@
 This module defines the behavior of ``TProfile``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_metadata, boost_axis_metadata
-
+from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
 
 _kERRORMEAN = 0
 _kERRORSPREAD = 1

@@ -12,7 +12,6 @@ The :doc:`uproot.cache.LRUArrayCache` implements the same policy, limiting the
 total number of bytes, as reported by ``nbytes``.
 """
 
-from __future__ import absolute_import
 
 import threading
 
@@ -73,8 +72,8 @@ class LRUCache(MutableMapping):
         if self._limit is None:
             limit = "(no limit)"
         else:
-            limit = "({0}/{1} full)".format(self._current, self._limit)
-        return "<LRUCache {0} at 0x{1:012x}>".format(limit, id(self))
+            limit = f"({self._current}/{self._limit} full)"
+        return "<LRUCache {} at 0x{:012x}>".format(limit, id(self))
 
     @property
     def limit(self):
@@ -163,8 +162,7 @@ class LRUCache(MutableMapping):
     def __iter__(self):
         with self._lock:
             order = list(self._order)
-        for x in order:
-            yield x
+        yield from order
 
     def __len__(self):
         with self._lock:
@@ -220,14 +218,14 @@ class LRUArrayCache(LRUCache):
             limit = None
         else:
             limit = uproot._util.memory_size(limit_bytes)
-        super(LRUArrayCache, self).__init__(limit)
+        super().__init__(limit)
 
     def __repr__(self):
         if self._limit is None:
             limit = "(no limit)"
         else:
-            limit = "({0}/{1} bytes full)".format(self._current, self._limit)
-        return "<LRUArrayCache {0} at 0x{1:012x}>".format(limit, id(self))
+            limit = f"({self._current}/{self._limit} bytes full)"
+        return "<LRUArrayCache {} at 0x{:012x}>".format(limit, id(self))
 
     @property
     def limit(self):

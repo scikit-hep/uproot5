@@ -1,22 +1,18 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
-import sys
 import json
+import sys
 
 import numpy
 import pytest
 import skhep_testdata
 
 import uproot
-from uproot.interpretation.numerical import AsDtype
+from uproot.containers import AsMap, AsSet, AsString, AsVector
 from uproot.interpretation.jagged import AsJagged
+from uproot.interpretation.numerical import AsDtype
 from uproot.interpretation.objects import AsObjects
-from uproot.containers import AsString
-from uproot.containers import AsVector
-from uproot.containers import AsSet
-from uproot.containers import AsMap
 
 
 def test_typename():
@@ -205,16 +201,16 @@ def test_vector_set_int32():
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["vector_set_int32"].array(library="np")] == [
-            [set([1])],
-            [set([1]), set([1, 2])],
-            [set([1]), set([1, 2]), set([1, 2, 3])],
-            [set([1]), set([1, 2]), set([1, 2, 3]), set([1, 2, 3, 4])],
+            [{1}],
+            [{1}, {1, 2}],
+            [{1}, {1, 2}, {1, 2, 3}],
+            [{1}, {1, 2}, {1, 2, 3}, {1, 2, 3, 4}],
             [
-                set([1]),
-                set([1, 2]),
-                set([1, 2, 3]),
-                set([1, 2, 3, 4]),
-                set([1, 2, 3, 4, 5]),
+                {1},
+                {1, 2},
+                {1, 2, 3},
+                {1, 2, 3, 4},
+                {1, 2, 3, 4, 5},
             ],
         ]
 
@@ -224,21 +220,21 @@ def test_vector_set_string():
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["vector_set_string"].array(library="np")] == [
-            [set(["one"])],
-            [set(["one"]), set(["one", "two"])],
-            [set(["one"]), set(["one", "two"]), set(["one", "two", "three"])],
+            [{"one"}],
+            [{"one"}, {"one", "two"}],
+            [{"one"}, {"one", "two"}, {"one", "two", "three"}],
             [
-                set(["one"]),
-                set(["one", "two"]),
-                set(["one", "two", "three"]),
-                set(["one", "two", "three", "four"]),
+                {"one"},
+                {"one", "two"},
+                {"one", "two", "three"},
+                {"one", "two", "three", "four"},
             ],
             [
-                set(["one"]),
-                set(["one", "two"]),
-                set(["one", "two", "three"]),
-                set(["one", "two", "three", "four"]),
-                set(["one", "two", "three", "four", "five"]),
+                {"one"},
+                {"one", "two"},
+                {"one", "two", "three"},
+                {"one", "two", "three", "four"},
+                {"one", "two", "three", "four", "five"},
             ],
         ]
 
@@ -248,11 +244,11 @@ def test_set_int32():
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["set_int32"].array(library="np")] == [
-            set([1]),
-            set([1, 2]),
-            set([1, 2, 3]),
-            set([1, 2, 3, 4]),
-            set([1, 2, 3, 4, 5]),
+            {1},
+            {1, 2},
+            {1, 2, 3},
+            {1, 2, 3, 4},
+            {1, 2, 3, 4, 5},
         ]
 
 
@@ -261,11 +257,11 @@ def test_set_string():
         "tree"
     ] as tree:
         assert [x.tolist() for x in tree["set_string"].array(library="np")] == [
-            set(["one"]),
-            set(["one", "two"]),
-            set(["one", "two", "three"]),
-            set(["one", "two", "three", "four"]),
-            set(["one", "two", "three", "four", "five"]),
+            {"one"},
+            {"one", "two"},
+            {"one", "two", "three"},
+            {"one", "two", "three", "four"},
+            {"one", "two", "three", "four", "five"},
         ]
 
 
@@ -330,16 +326,16 @@ def test_map_int32_set_int16():
         assert [
             x.tolist() for x in tree["map_int32_set_int16"].array(library="np")
         ] == [
-            {1: set([1])},
-            {1: set([1]), 2: set([1, 2])},
-            {1: set([1]), 2: set([1, 2]), 3: set([1, 2, 3])},
-            {1: set([1]), 2: set([1, 2]), 3: set([1, 2, 3]), 4: set([1, 2, 3, 4])},
+            {1: {1}},
+            {1: {1}, 2: {1, 2}},
+            {1: {1}, 2: {1, 2}, 3: {1, 2, 3}},
+            {1: {1}, 2: {1, 2}, 3: {1, 2, 3}, 4: {1, 2, 3, 4}},
             {
-                1: set([1]),
-                2: set([1, 2]),
-                3: set([1, 2, 3]),
-                4: set([1, 2, 3, 4]),
-                5: set([1, 2, 3, 4, 5]),
+                1: {1},
+                2: {1, 2},
+                3: {1, 2, 3},
+                4: {1, 2, 3, 4},
+                5: {1, 2, 3, 4, 5},
             },
         ]
 
@@ -351,21 +347,21 @@ def test_map_int32_set_string():
         assert [
             x.tolist() for x in tree["map_int32_set_string"].array(library="np")
         ] == [
-            {1: set(["one"])},
-            {1: set(["one"]), 2: set(["one", "two"])},
-            {1: set(["one"]), 2: set(["one", "two"]), 3: set(["one", "two", "three"])},
+            {1: {"one"}},
+            {1: {"one"}, 2: {"one", "two"}},
+            {1: {"one"}, 2: {"one", "two"}, 3: {"one", "two", "three"}},
             {
-                1: set(["one"]),
-                2: set(["one", "two"]),
-                3: set(["one", "two", "three"]),
-                4: set(["one", "two", "three", "four"]),
+                1: {"one"},
+                2: {"one", "two"},
+                3: {"one", "two", "three"},
+                4: {"one", "two", "three", "four"},
             },
             {
-                1: set(["one"]),
-                2: set(["one", "two"]),
-                3: set(["one", "two", "three"]),
-                4: set(["one", "two", "three", "four"]),
-                5: set(["one", "two", "three", "four", "five"]),
+                1: {"one"},
+                2: {"one", "two"},
+                3: {"one", "two", "three"},
+                4: {"one", "two", "three", "four"},
+                5: {"one", "two", "three", "four", "five"},
             },
         ]
 
@@ -437,21 +433,21 @@ def test_map_string_set_int16():
         assert [
             x.tolist() for x in tree["map_string_set_int16"].array(library="np")
         ] == [
-            {"one": set([1])},
-            {"one": set([1]), "two": set([1, 2])},
-            {"one": set([1]), "two": set([1, 2]), "three": set([1, 2, 3])},
+            {"one": {1}},
+            {"one": {1}, "two": {1, 2}},
+            {"one": {1}, "two": {1, 2}, "three": {1, 2, 3}},
             {
-                "one": set([1]),
-                "two": set([1, 2]),
-                "three": set([1, 2, 3]),
-                "four": set([1, 2, 3, 4]),
+                "one": {1},
+                "two": {1, 2},
+                "three": {1, 2, 3},
+                "four": {1, 2, 3, 4},
             },
             {
-                "one": set([1]),
-                "two": set([1, 2]),
-                "three": set([1, 2, 3]),
-                "four": set([1, 2, 3, 4]),
-                "five": set([1, 2, 3, 4, 5]),
+                "one": {1},
+                "two": {1, 2},
+                "three": {1, 2, 3},
+                "four": {1, 2, 3, 4},
+                "five": {1, 2, 3, 4, 5},
             },
         ]
 
@@ -463,25 +459,25 @@ def test_map_string_set_string():
         assert [
             x.tolist() for x in tree["map_string_set_string"].array(library="np")
         ] == [
-            {"one": set(["one"])},
-            {"one": set(["one"]), "two": set(["one", "two"])},
+            {"one": {"one"}},
+            {"one": {"one"}, "two": {"one", "two"}},
             {
-                "one": set(["one"]),
-                "two": set(["one", "two"]),
-                "three": set(["one", "two", "three"]),
+                "one": {"one"},
+                "two": {"one", "two"},
+                "three": {"one", "two", "three"},
             },
             {
-                "one": set(["one"]),
-                "two": set(["one", "two"]),
-                "three": set(["one", "two", "three"]),
-                "four": set(["one", "two", "three", "four"]),
+                "one": {"one"},
+                "two": {"one", "two"},
+                "three": {"one", "two", "three"},
+                "four": {"one", "two", "three", "four"},
             },
             {
-                "one": set(["one"]),
-                "two": set(["one", "two"]),
-                "three": set(["one", "two", "three"]),
-                "four": set(["one", "two", "three", "four"]),
-                "five": set(["one", "two", "three", "four", "five"]),
+                "one": {"one"},
+                "two": {"one", "two"},
+                "three": {"one", "two", "three"},
+                "four": {"one", "two", "three", "four"},
+                "five": {"one", "two", "three", "four", "five"},
             },
         ]
 
@@ -520,30 +516,30 @@ def test_map_int32_vector_set_int16():
         assert [
             x.tolist() for x in tree["map_int32_vector_set_int16"].array(library="np")
         ] == [
-            {1: [set([1])]},
-            {1: [set([1])], 2: [set([1]), set([1, 2])]},
+            {1: [{1}]},
+            {1: [{1}], 2: [{1}, {1, 2}]},
             {
-                1: [set([1])],
-                2: [set([1]), set([1, 2])],
-                3: [set([1]), set([1, 2]), set([1, 2, 3])],
+                1: [{1}],
+                2: [{1}, {1, 2}],
+                3: [{1}, {1, 2}, {1, 2, 3}],
             },
             {
-                1: [set([1])],
-                2: [set([1]), set([1, 2])],
-                3: [set([1]), set([1, 2]), set([1, 2, 3])],
-                4: [set([1]), set([1, 2]), set([1, 2, 3]), set([1, 2, 3, 4])],
+                1: [{1}],
+                2: [{1}, {1, 2}],
+                3: [{1}, {1, 2}, {1, 2, 3}],
+                4: [{1}, {1, 2}, {1, 2, 3}, {1, 2, 3, 4}],
             },
             {
-                1: [set([1])],
-                2: [set([1]), set([1, 2])],
-                3: [set([1]), set([1, 2]), set([1, 2, 3])],
-                4: [set([1]), set([1, 2]), set([1, 2, 3]), set([1, 2, 3, 4])],
+                1: [{1}],
+                2: [{1}, {1, 2}],
+                3: [{1}, {1, 2}, {1, 2, 3}],
+                4: [{1}, {1, 2}, {1, 2, 3}, {1, 2, 3, 4}],
                 5: [
-                    set([1]),
-                    set([1, 2]),
-                    set([1, 2, 3]),
-                    set([1, 2, 3, 4]),
-                    set([1, 2, 3, 4, 5]),
+                    {1},
+                    {1, 2},
+                    {1, 2, 3},
+                    {1, 2, 3, 4},
+                    {1, 2, 3, 4, 5},
                 ],
             },
         ]

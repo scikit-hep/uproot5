@@ -4,7 +4,6 @@
 This module defines a versionless model of ``TString``.
 """
 
-from __future__ import absolute_import
 
 import uproot
 
@@ -22,8 +21,8 @@ class Model_TString(uproot.model.Model, str):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -44,8 +43,8 @@ in file {1}""".format(
         if self.class_version is None:
             version = ""
         else:
-            version = " (version {0})".format(self.class_version)
-        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            version = f" (version {self.class_version})"
+        return "<{}{} {} at 0x{:012x}>".format(
             self.classname, version, str.__repr__(self), id(self)
         )
 

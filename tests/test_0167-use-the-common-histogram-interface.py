@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import numpy
 import pytest
@@ -136,7 +135,9 @@ def test_boost():
         assert hprof.to_boost().axes[0].title == ""
 
 
-@pytest.mark.skip(reason="Something's wrong with uproot-issue33.root and boost-histogram")
+@pytest.mark.skip(
+    reason="Something's wrong with uproot-issue33.root and boost-histogram"
+)
 def test_boost_2():
     boost_histogram = pytest.importorskip("boost_histogram")
 

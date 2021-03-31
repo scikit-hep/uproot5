@@ -22,11 +22,10 @@ Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 :doc:`uproot.interpretation.library.Awkward` library.
 """
 
-from __future__ import absolute_import
 
+import gc
 import itertools
 import json
-import gc
 
 import numpy
 
@@ -40,7 +39,7 @@ def _rename(name, context):
         return context["rename"]
 
 
-class Library(object):
+class Library:
     """
     Abstract superclass of array-library handlers, for libraries such as NumPy,
     Awkward Array, and Pandas.
@@ -108,7 +107,7 @@ class Library(object):
         raise AssertionError
 
     def group(self, arrays, expression_context, how):
-        u"""
+        """
         Args:
             arrays (dict of str \u2192 array): Mapping from names to finalized
                 array objets to combine into a group.
@@ -127,12 +126,10 @@ class Library(object):
         elif how is list:
             return [arrays[name] for name, _ in expression_context]
         elif how is dict or how is None:
-            return dict(
-                (_rename(name, c), arrays[name]) for name, c in expression_context
-            )
+            return {_rename(name, c): arrays[name] for name, c in expression_context}
         else:
             raise TypeError(
-                "for library {0}, how must be tuple, list, dict, or None (for "
+                "for library {}, how must be tuple, list, dict, or None (for "
                 "dict)".format(self.name)
             )
 
@@ -170,7 +167,7 @@ class Library(object):
 
 
 class NumPy(Library):
-    u"""
+    """
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
     data as NumPy arrays. The standard name for this library is ``"np"``.
 
@@ -238,12 +235,12 @@ class NumPy(Library):
         else:
             raise AssertionError(repr(all_arrays[0]))
 
-        to_concatenate = dict((k, []) for k in keys)
+        to_concatenate = {k: [] for k in keys}
         for arrays in all_arrays:
             for k in keys:
                 to_concatenate[k].append(arrays[k])
 
-        concatenated = dict((k, numpy.concatenate(to_concatenate[k])) for k in keys)
+        concatenated = {k: numpy.concatenate(to_concatenate[k]) for k in keys}
 
         if isinstance(all_arrays[0], tuple):
             return tuple(concatenated[k] for k in keys)
@@ -449,7 +446,7 @@ def _awkward_json_to_array(awkward, form, array):
 
 
 class Awkward(Library):
-    u"""
+    """
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
     data as Awkward Arrays. The standard name for this library is ``"ak"``.
 
@@ -551,14 +548,14 @@ class Awkward(Library):
                 )
             except uproot.interpretation.objects.CannotBeAwkward as err:
                 raise ValueError(
-                    """cannot produce Awkward Arrays for interpretation {0} because
+                    """cannot produce Awkward Arrays for interpretation {} because
 
-    {1}
+    {}
 
 instead, try library="np" instead of library="ak" or globally set uproot.default_library
 
-in file {2}
-in object {3}""".format(
+in file {}
+in object {}""".format(
                         repr(interpretation),
                         err.because,
                         interpretation.branch.file.file_path,
@@ -599,18 +596,13 @@ in object {3}""".format(
         elif how is list:
             return [arrays[name] for name, _ in expression_context]
         elif how is dict:
-            return dict(
-                (_rename(name, c), arrays[name]) for name, c in expression_context
-            )
+            return {_rename(name, c): arrays[name] for name, c in expression_context}
         elif how is None:
             if len(expression_context) == 0:
                 return awkward.Array(awkward.layout.RecordArray([], keys=[]))
             else:
                 return awkward.Array(
-                    dict(
-                        (_rename(name, c), arrays[name])
-                        for name, c in expression_context
-                    )
+                    {_rename(name, c): arrays[name] for name, c in expression_context}
                 )
         elif how == "zip":
             nonjagged = []
@@ -640,7 +632,7 @@ in object {3}""".format(
                     out = awkward.Array(awkward.layout.RecordArray([], keys=[]))
                 else:
                     out = awkward.Array(
-                        dict((name, renamed_arrays[name]) for name in nonjagged),
+                        {name: renamed_arrays[name] for name in nonjagged},
                     )
             for number, jagged in enumerate(jaggeds):
                 cut = len(jagged[0])
@@ -654,14 +646,14 @@ in object {3}""".format(
                     if cut == 0:
                         break
                 if cut == 0:
-                    common = "jagged{0}".format(number)
+                    common = f"jagged{number}"
                     if len(jagged) == 0:
                         subarray = awkward.Array(
                             awkward.layout.RecordArray([], keys=[])
                         )
                     else:
                         subarray = awkward.zip(
-                            dict((name, renamed_arrays[name]) for name in jagged)
+                            {name: renamed_arrays[name] for name in jagged}
                         )
                 else:
                     common = jagged[0][:cut].strip("_./")
@@ -671,10 +663,10 @@ in object {3}""".format(
                         )
                     else:
                         subarray = awkward.zip(
-                            dict(
-                                (name[cut:].strip("_./"), renamed_arrays[name])
+                            {
+                                name[cut:].strip("_./"): renamed_arrays[name]
                                 for name in jagged
-                            )
+                            }
                         )
                 if out is None:
                     out = awkward.Array({common: subarray})
@@ -684,7 +676,7 @@ in object {3}""".format(
             return out
         else:
             raise TypeError(
-                'for library {0}, how must be tuple, list, dict, "zip" for '
+                'for library {}, how must be tuple, list, dict, "zip" for '
                 "a record array with jagged arrays zipped, if possible, or "
                 "None, for an unzipped record array".format(self.name)
             )
@@ -702,12 +694,12 @@ in object {3}""".format(
         else:
             return awkward.concatenate(all_arrays)
 
-        to_concatenate = dict((k, []) for k in keys)
+        to_concatenate = {k: [] for k in keys}
         for arrays in all_arrays:
             for k in keys:
                 to_concatenate[k].append(arrays[k])
 
-        concatenated = dict((k, awkward.concatenate(to_concatenate[k])) for k in keys)
+        concatenated = {k: awkward.concatenate(to_concatenate[k]) for k in keys}
 
         if isinstance(all_arrays[0], tuple):
             return tuple(concatenated[k] for k in keys)
@@ -780,7 +772,7 @@ def _pandas_memory_efficient(pandas, series, names):
 
 
 class Pandas(Library):
-    u"""
+    """
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
     data as Pandas Series and DataFrames. The standard name for this library is
     ``"pd"``.
@@ -892,7 +884,7 @@ class Pandas(Library):
 
         elif array.dtype.names is not None:
             columns = pandas.MultiIndex.from_tuples([(x,) for x in array.dtype.names])
-            arrays = dict((y, array[x]) for x, y in zip(array.dtype.names, columns))
+            arrays = {y: array[x] for x, y in zip(array.dtype.names, columns)}
             index = _pandas_basic_index(pandas, entry_start, entry_stop)
             out = pandas.DataFrame(arrays, columns=columns, index=index)
             out.leaflist = True
@@ -926,9 +918,7 @@ class Pandas(Library):
             return [arrays[name] for name, _ in expression_context]
 
         elif how is dict:
-            return dict(
-                (_rename(name, c), arrays[name]) for name, c in expression_context
-            )
+            return {_rename(name, c): arrays[name] for name, c in expression_context}
 
         elif uproot._util.isstr(how) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
@@ -998,7 +988,7 @@ class Pandas(Library):
             else:
                 out = None
                 for index, group in zip(indexes, groups):
-                    only = dict((name, arrays[name]) for name in group)
+                    only = {name: arrays[name] for name in group}
                     df = pandas.DataFrame(data=only, index=index, columns=group)
                     if out is None:
                         out = df
@@ -1015,10 +1005,10 @@ class Pandas(Library):
                     flat_index = pandas.MultiIndex.from_arrays(
                         [arrays[flat_names[0]].index]
                     )
-                    only = dict(
-                        (name, pandas.Series(arrays[name].values, index=flat_index))
+                    only = {
+                        name: pandas.Series(arrays[name].values, index=flat_index)
                         for name in flat_names
-                    )
+                    }
                     df = pandas.DataFrame(
                         data=only, index=flat_index, columns=flat_names
                     )
@@ -1033,7 +1023,7 @@ class Pandas(Library):
 
         else:
             raise TypeError(
-                "for library {0}, how must be tuple, list, dict, str (for "
+                "for library {}, how must be tuple, list, dict, str (for "
                 "pandas.merge's 'how' parameter, or None (for one or more"
                 "DataFrames without merging)".format(self.name)
             )
@@ -1079,12 +1069,12 @@ class Pandas(Library):
         else:
             return pandas.concat(all_arrays)
 
-        to_concatenate = dict((k, []) for k in keys)
+        to_concatenate = {k: [] for k in keys}
         for arrays in all_arrays:
             for k in keys:
                 to_concatenate[k].append(arrays[k])
 
-        concatenated = dict((k, pandas.concat(to_concatenate[k])) for k in keys)
+        concatenated = {k: pandas.concat(to_concatenate[k]) for k in keys}
 
         if isinstance(all_arrays[0], tuple):
             return tuple(concatenated[k] for k in keys)
@@ -1123,7 +1113,7 @@ def _regularize_library(library):
             return _libraries[library.name]
         else:
             raise ValueError(
-                "library {0} ({1}) cannot be used in this function".format(
+                "library {} ({}) cannot be used in this function".format(
                     type(library).__name__, repr(library.name)
                 )
             )
@@ -1133,7 +1123,7 @@ def _regularize_library(library):
             return _libraries[library().name]
         else:
             raise ValueError(
-                "library {0} ({1}) cannot be used in this function".format(
+                "library {} ({}) cannot be used in this function".format(
                     library.__name__, repr(library().name)
                 )
             )
@@ -1143,7 +1133,7 @@ def _regularize_library(library):
             return _libraries[library]
         except KeyError:
             raise ValueError(
-                """library {0} not recognized (for this function); """
+                """library {} not recognized (for this function); """
                 """try "np" (NumPy), "ak" (Awkward Array), or "pd" (Pandas) """
                 """instead""".format(repr(library))
             )
@@ -1165,7 +1155,7 @@ def _regularize_library_lazy(library):
             return _libraries_lazy[library.name]
         else:
             raise ValueError(
-                "library {0} ({1}) cannot be used in this function".format(
+                "library {} ({}) cannot be used in this function".format(
                     type(library).__name__, repr(library.name)
                 )
             )
@@ -1175,7 +1165,7 @@ def _regularize_library_lazy(library):
             return _libraries_lazy[library().name]
         else:
             raise ValueError(
-                "library {0} ({1}) cannot be used in this function".format(
+                "library {} ({}) cannot be used in this function".format(
                     library.__name__, repr(library().name)
                 )
             )
@@ -1185,7 +1175,7 @@ def _regularize_library_lazy(library):
             return _libraries_lazy[library]
         except KeyError:
             raise ValueError(
-                """library {0} not recognized (for this function); """
+                """library {} not recognized (for this function); """
                 """try "ak" (Awkward Array) """
                 """instead""".format(repr(library))
             )

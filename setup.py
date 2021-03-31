@@ -1,6 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import os.path
+
 from setuptools import setup
 
 
@@ -31,6 +32,6 @@ extras = {
 extras["all"] = sum(extras.values(), [])
 
 setup(
-    version = get_version(),
-    extras_require = extras,
+    version=get_version(),
+    extras_require=extras,
 )

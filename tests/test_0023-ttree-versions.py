@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import numpy
 import pytest
@@ -1153,7 +1152,7 @@ truth = {
 )
 def test(version):
     with uproot.open(
-        skhep_testdata.data_path("uproot-sample-{0}-uncompressed.root".format(version))
+        skhep_testdata.data_path(f"uproot-sample-{version}-uncompressed.root")
     )["sample"] as sample:
         arrays = sample.arrays(sample.keys(), library="np")
 

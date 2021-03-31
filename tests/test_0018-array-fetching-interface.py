@@ -1,9 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
-import sys
 import json
+import sys
 
 import numpy
 import pytest
@@ -129,12 +128,10 @@ def test_compute():
             {"stuff": [24, 26, 28, 30], "i4": 14},
         ]
 
-        assert set(sample.file.array_cache) == set(
-            [
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4:AsDtype(Bi4(),Li4()):0-30:ak",
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:Ai8:AsJagged(AsDtype(Bi8(),Li8()),0):0-30:ak",
-            ]
-        )
+        assert set(sample.file.array_cache) == {
+            "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4:AsDtype(Bi4(),Li4()):0-30:ak",
+            "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:Ai8:AsJagged(AsDtype(Bi8(),Li8()),0):0-30:ak",
+        }
 
 
 def test_arrays():
@@ -188,12 +185,10 @@ def test_arrays():
             {"I4": 14, "F4": 14.100000381469727},
         ]
 
-        assert set(sample.file.array_cache) == set(
-            [
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4:AsDtype(Bi4(),Li4()):0-30:ak",
-                "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:f4:AsDtype(Bf4(),Lf4()):0-30:ak",
-            ]
-        )
+        assert set(sample.file.array_cache) == {
+            "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:i4:AsDtype(Bi4(),Li4()):0-30:ak",
+            "db4be408-93ad-11ea-9027-d201a8c0beef:/sample;1:f4:AsDtype(Bf4(),Lf4()):0-30:ak",
+        }
 
         result = sample.arrays({"i4": interp_i4, "f4": interp_f4})
         assert result.tolist() == [

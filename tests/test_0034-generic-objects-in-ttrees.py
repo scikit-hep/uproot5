@@ -1,17 +1,16 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
-import sys
 import json
+import sys
 
 import numpy
 import pytest
 import skhep_testdata
 
 import uproot
-from uproot.interpretation.numerical import AsDtype
 from uproot.interpretation.jagged import AsJagged
+from uproot.interpretation.numerical import AsDtype
 
 
 def test_histograms_outside_of_ttrees():

@@ -8,14 +8,12 @@ Includes both "embedded" ``TBaskets`` (as a member of TBranch) and "free"
 ``TBaskets`` (top-level objects, located by ``TKeys``).
 """
 
-from __future__ import absolute_import
 
 import struct
 
 import numpy
 
 import uproot
-
 
 _tbasket_format1 = struct.Struct(">ihiIhh")
 _tbasket_format2 = struct.Struct(">Hiiii")
@@ -33,7 +31,7 @@ class Model_TBasket(uproot.model.Model):
 
     def __repr__(self):
         basket_num = self._basket_num if self._basket_num is not None else "(unknown)"
-        return "<TBasket {0} of {1} at 0x{2:012x}>".format(
+        return "<TBasket {} of {} at 0x{:012x}>".format(
             basket_num, repr(self._parent.name), id(self)
         )
 

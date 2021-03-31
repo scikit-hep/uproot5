@@ -5,7 +5,6 @@ This module defines Uproot-specific exceptions, such as
 :doc:`uproot.exceptions.KeyInFileError`.
 """
 
-from __future__ import absolute_import
 
 import uproot
 
@@ -33,7 +32,7 @@ class KeyInFileError(KeyError):
     def __init__(
         self, key, because="", cycle=None, keys=None, file_path=None, object_path=None
     ):
-        super(KeyInFileError, self).__init__(key)
+        super().__init__(key)
         self.key = key
         self.because = because
         self.cycle = cycle
@@ -63,25 +62,25 @@ class KeyInFileError(KeyError):
                     break
             if to_show is None:
                 to_show = "(none!)"
-            with_keys = "\n\n    Available keys: {0}\n".format(to_show)
+            with_keys = f"\n\n    Available keys: {to_show}\n"
 
         in_file = ""
         if self.file_path is not None:
-            in_file = "\nin file {0}".format(self.file_path)
+            in_file = f"\nin file {self.file_path}"
 
         in_object = ""
         if self.object_path is not None:
-            in_object = "\nin object {0}".format(self.object_path)
+            in_object = f"\nin object {self.object_path}"
 
         if self.cycle == "any":
-            return """not found: {0} (with any cycle number){1}{2}{3}{4}""".format(
+            return """not found: {} (with any cycle number){}{}{}{}""".format(
                 repr(self.key), because, with_keys, in_file, in_object
             )
         elif self.cycle is None:
-            return """not found: {0}{1}{2}{3}{4}""".format(
+            return """not found: {}{}{}{}{}""".format(
                 repr(self.key), because, with_keys, in_file, in_object
             )
         else:
-            return """not found: {0} with cycle {1}{2}{3}{4}{5}""".format(
+            return """not found: {} with cycle {}{}{}{}{}""".format(
                 repr(self.key), self.cycle, because, with_keys, in_file, in_object
             )

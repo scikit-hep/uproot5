@@ -8,7 +8,6 @@ If a library cannot be imported, these functions raise ``ImportError`` with
 error messages containing instructions on how to install the library.
 """
 
-from __future__ import absolute_import
 
 import os
 
@@ -159,8 +158,8 @@ def xxhash():
     Attempts to import ``lz4`` as well.
     """
     try:
-        import xxhash
         import lz4.block  # noqa: F401
+        import xxhash
     except ImportError:
         raise ImportError(
             """install the 'lz4' and `xxhash` packages with:

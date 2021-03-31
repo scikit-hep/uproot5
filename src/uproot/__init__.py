@@ -70,101 +70,83 @@ The submodules of Uproot are:
 * ``uproot._util``: non-public utilities used by the above.
 """
 
-from __future__ import absolute_import
 
-from uproot.version import __version__
 import uproot.const
-import uproot.extras
 import uproot.dynamic
+import uproot.extras
+from uproot.version import __version__
 
 classes = {}
 unknown_classes = {}
 
-from uproot.cache import LRUCache
-from uproot.cache import LRUArrayCache
-
-from uproot.source.file import MemmapSource
-from uproot.source.file import MultithreadedFileSource
-from uproot.source.http import HTTPSource
-from uproot.source.http import MultithreadedHTTPSource
-from uproot.source.xrootd import XRootDSource
-from uproot.source.xrootd import MultithreadedXRootDSource
-from uproot.source.object import ObjectSource
-from uproot.source.cursor import Cursor
-from uproot.source.futures import TrivialExecutor
-from uproot.source.futures import ThreadPoolExecutor
-from uproot.deserialization import DeserializationError
-
-from uproot.compression import ZLIB
-from uproot.compression import LZMA
-from uproot.compression import LZ4
-from uproot.compression import ZSTD
-
-from uproot.reading import open
-from uproot.reading import ReadOnlyFile
-from uproot.reading import ReadOnlyDirectory
-
-from uproot.exceptions import KeyInFileError
-
-from uproot.model import Model
-from uproot.model import classname_decode
-from uproot.model import classname_encode
-from uproot.model import has_class_named
-from uproot.model import class_named
-from uproot.model import reset_classes
-
-import uproot.models.TObject
-import uproot.models.TString
-import uproot.models.TArray
-import uproot.models.TNamed
-import uproot.models.TList
-import uproot.models.THashList
-import uproot.models.TObjArray
-import uproot.models.TObjString
-import uproot.models.TAtt
-import uproot.models.TRef
-
-import uproot.models.TTree
-import uproot.models.TBranch
-import uproot.models.TLeaf
-import uproot.models.TBasket
-import uproot.models.RNTuple
-
-from uproot.containers import STLVector
-from uproot.containers import STLSet
-from uproot.containers import STLMap
-
 import uproot.interpretation
 import uproot.interpretation.identify
 import uproot.interpretation.library
-from uproot.interpretation.numerical import AsDtype
-from uproot.interpretation.numerical import AsDtypeInPlace
-from uproot.interpretation.numerical import AsDouble32
-from uproot.interpretation.numerical import AsFloat16
-from uproot.interpretation.numerical import AsSTLBits
-from uproot.interpretation.jagged import AsJagged
-from uproot.interpretation.strings import AsStrings
-from uproot.interpretation.objects import AsObjects
-from uproot.interpretation.objects import AsStridedObjects
+import uproot.models.RNTuple
+import uproot.models.TArray
+import uproot.models.TAtt
+import uproot.models.TBasket
+import uproot.models.TBranch
+import uproot.models.THashList
+import uproot.models.TLeaf
+import uproot.models.TList
+import uproot.models.TNamed
+import uproot.models.TObjArray
+import uproot.models.TObject
+import uproot.models.TObjString
+import uproot.models.TRef
+import uproot.models.TString
+import uproot.models.TTree
+from uproot.cache import LRUArrayCache, LRUCache
+from uproot.compression import LZ4, LZMA, ZLIB, ZSTD
+from uproot.containers import (
+    AsArray,
+    AsDynamic,
+    AsMap,
+    AsPointer,
+    AsSet,
+    AsString,
+    AsVector,
+    STLMap,
+    STLSet,
+    STLVector,
+)
+from uproot.deserialization import DeserializationError
+from uproot.exceptions import KeyInFileError
 from uproot.interpretation.grouped import AsGrouped
-from uproot.containers import AsString
-from uproot.containers import AsPointer
-from uproot.containers import AsArray
-from uproot.containers import AsDynamic
-from uproot.containers import AsVector
-from uproot.containers import AsSet
-from uproot.containers import AsMap
+from uproot.interpretation.jagged import AsJagged
+from uproot.interpretation.numerical import (
+    AsDouble32,
+    AsDtype,
+    AsDtypeInPlace,
+    AsFloat16,
+    AsSTLBits,
+)
+from uproot.interpretation.objects import AsObjects, AsStridedObjects
+from uproot.interpretation.strings import AsStrings
+from uproot.model import (
+    Model,
+    class_named,
+    classname_decode,
+    classname_encode,
+    has_class_named,
+    reset_classes,
+)
+from uproot.reading import ReadOnlyDirectory, ReadOnlyFile, open
+from uproot.source.cursor import Cursor
+from uproot.source.file import MemmapSource, MultithreadedFileSource
+from uproot.source.futures import ThreadPoolExecutor, TrivialExecutor
+from uproot.source.http import HTTPSource, MultithreadedHTTPSource
+from uproot.source.object import ObjectSource
+from uproot.source.xrootd import MultithreadedXRootDSource, XRootDSource
 
 default_library = "ak"
 
-from uproot.behaviors.TTree import TTree
-from uproot.behaviors.TBranch import TBranch
-from uproot.behaviors.TBranch import iterate
-from uproot.behaviors.TBranch import concatenate
-from uproot.behaviors.TBranch import lazy
-
 import pkgutil
+
 import uproot.behaviors
+from uproot.behaviors.TBranch import TBranch, concatenate, iterate, lazy
+from uproot.behaviors.TTree import TTree
 
 
 def behavior_of(classname):
@@ -201,12 +183,10 @@ def behavior_of(classname):
     if name not in globals():
         if name in behavior_of._module_names:
             exec(
-                compile(
-                    "import uproot.behaviors.{0}".format(name), "<dynamic>", "exec"
-                ),
+                compile(f"import uproot.behaviors.{name}", "<dynamic>", "exec"),
                 globals(),
             )
-            module = eval("uproot.behaviors.{0}".format(name))
+            module = eval(f"uproot.behaviors.{name}")
             behavior_cls = getattr(module, name, None)
             if behavior_cls is not None:
                 globals()[name] = behavior_cls

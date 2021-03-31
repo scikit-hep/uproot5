@@ -2,13 +2,12 @@
 
 import importlib
 import inspect
-import pkgutil
 import os.path
-import sys
+import pkgutil
 import subprocess
+import sys
 
 import uproot
-
 
 order = [
     "uproot",
@@ -29,9 +28,8 @@ order = [
 
 latest_commit = (
     subprocess.run(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE)
-              .stdout
-              .decode("utf-8")
-              .strip()
+    .stdout.decode("utf-8")
+    .strip()
 )
 
 toctree = open("uproot.toctree", "w")
@@ -48,7 +46,7 @@ toctree2 = None
 def ensure(filename, content):
     overwrite = not os.path.exists(filename)
     if not overwrite:
-        overwrite = open(filename, "r").read() != content
+        overwrite = open(filename).read() != content
     if overwrite:
         open(filename, "w").write(content)
         sys.stderr.write(filename + " (OVERWRITTEN)\n")
@@ -135,7 +133,7 @@ def handle_class(classname, cls):
                     fill.append("")
                     if basecls is not cls:
                         fill.append(
-                            "Inherited from :doc:`{0}`.".format(
+                            "Inherited from :doc:`{}`.".format(
                                 basecls.__module__ + "." + basecls.__name__
                             )
                         )
@@ -157,12 +155,14 @@ def handle_class(classname, cls):
             return "#. ``" + fullname + "``"
 
     fullfilename = importlib.import_module(cls.__module__).__file__
-    shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
+    shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
+    link = "`{} <https://github.com/scikit-hep/uproot4/blob/{}/{}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
-    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
-        inspect.getsourcelines(cls)[1], latest_commit, shortfilename
+    linelink = (
+        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
+            inspect.getsourcelines(cls)[1], latest_commit, shortfilename
+        )
     )
 
     inheritance_header = ""
@@ -174,26 +174,30 @@ def handle_class(classname, cls):
         inheritance_header = """.. table::
     :class: note
 
-    +-{0}-+
-    | **Inheritance order:** {1}|
-    +={2}=+
-    | """.format("-" * longest_cell, " " * (longest_cell - 22), "=" * longest_cell)
+    +-{}-+
+    | **Inheritance order:** {}|
+    +={}=+
+    | """.format(
+            "-" * longest_cell, " " * (longest_cell - 22), "=" * longest_cell
+        )
         inheritance_footer = """ |
-    +-{0}-+""".format("-" * longest_cell)
+    +-{}-+""".format(
+            "-" * longest_cell
+        )
         inheritance = [x + " " * (longest_cell - len(x)) for x in inheritance]
         inheritance_sep = """ |
     | """
 
-    content = """{0}
-{1}
+    content = """{}
+{}
 
-Defined in {2} on {3}.
+Defined in {} on {}.
 
-{4}
+{}
 
-.. autoclass:: {5}
+.. autoclass:: {}
 
-{6}
+{}
 """.format(
         title,
         "=" * len(title),
@@ -221,21 +225,25 @@ def handle_function(functionname, cls):
         upfront = False
 
     fullfilename = importlib.import_module(cls.__module__).__file__
-    shortfilename = fullfilename[fullfilename.rindex("uproot/"):]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
+    shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
+    link = "`{} <https://github.com/scikit-hep/uproot4/blob/{}/{}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
-    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
-        inspect.getsourcelines(cls)[1], latest_commit, shortfilename
+    linelink = (
+        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
+            inspect.getsourcelines(cls)[1], latest_commit, shortfilename
+        )
     )
 
-    content = """{0}
-{1}
+    content = """{}
+{}
 
-Defined in {2} on {3}.
+Defined in {} on {}.
 
-.. autofunction:: {4}
-""".format(title, "=" * len(title), link, linelink, functionname)
+.. autofunction:: {}
+""".format(
+        title, "=" * len(title), link, linelink, functionname
+    )
     ensure(functionname + ".rst", content)
     if upfront or toctree2 is None:
         toctree.write("    " + functionname + "\n")
@@ -251,10 +259,12 @@ for modulename in order:
         toctree2 = open(modulename + ".toctree", "w")
         toctree2.write(
             """.. toctree::
-    :caption: {0}
+    :caption: {}
     :hidden:
 
-""".format(modulename.replace("uproot.", ""))
+""".format(
+                modulename.replace("uproot.", "")
+            )
         )
 
     handle_module(modulename, module)

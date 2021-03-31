@@ -4,14 +4,12 @@
 This module defines a versionless model for ``TObject``.
 """
 
-from __future__ import absolute_import
 
 import struct
 
 import numpy
 
 import uproot
-
 
 _tobject_format1 = struct.Struct(">h")
 _tobject_format2 = struct.Struct(">II")
@@ -28,8 +26,8 @@ class Model_TObject(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -114,7 +112,7 @@ in file {1}""".format(
         )
 
     def __repr__(self):
-        return "<TObject {0} {1} at 0x{2:012x}>".format(
+        return "<TObject {} {} at 0x{:012x}>".format(
             self._members.get("fUniqueID"), self._members.get("fBits"), id(self)
         )
 
