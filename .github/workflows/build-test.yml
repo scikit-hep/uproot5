@@ -11,12 +11,16 @@ jobs:
     strategy:
       matrix:
         platform: ["windows-latest", "macos-latest", "ubuntu-latest"]
-        python-version: ["3.5", "3.6", "3.7", "3.8", "3.9"]
+        python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
         exclude:
+          - platform: "macos-latest"
+            python-version: "2.7"
           - platform: "macos-latest"
             python-version: "3.5"
           - platform: "macos-latest"
             python-version: "3.6"
+          - platform: "windows-latest"
+            python-version: "2.7"
           - platform: "windows-latest"
             python-version: "3.6"
           - platform: "windows-latest"
@@ -43,7 +47,7 @@ jobs:
         run: |
           conda env list
           conda info
-          conda install numpy pandas pytest flake8 lz4 python-xxhash requests
+          conda install numpy pandas pytest lz4 python-xxhash requests
           pip install scikit-hep-testdata boost-histogram hist
           conda list
 
@@ -54,14 +58,14 @@ jobs:
           conda list
 
       - name: "Install XRootD"
-        if: "matrix.python-version != 3.5 && runner.os != 'macOS'  &&  runner.os != 'Windows'"
+        if: "matrix.python-version != 2.7  &&  matrix.python-version != 3.5  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
           conda install xrootd
           conda list
 
       - name: "Pip install the package"
-        run: pip install .
+        run: python -m pip install .
 
       - name: "Run pytest"
         run: python -m pytest -vv tests
