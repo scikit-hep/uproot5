@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import
 
+import sys
 import multiprocessing
 
 import pytest
@@ -26,6 +27,9 @@ def readone(filename):
         b.array(library="np")
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 0), reason="multiprocessing is only a context manager in Python 3"
+)
 def test_multiprocessing():
     with multiprocessing.Pool(1) as pool:
         out = pool.map(

@@ -11,6 +11,8 @@ import skhep_testdata
 
 import uproot
 
+pytest.importorskip("awkward")
+
 
 def test_pickle_roundtrip_mmap():
     with uproot.open(skhep_testdata.data_path("uproot-small-dy-withoffsets.root")) as f:

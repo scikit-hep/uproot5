@@ -822,7 +822,7 @@ class AsVector(AsContainer):
                     values[i] = model.read(
                         chunk,
                         cursor,
-                        {**context, "reading": False},
+                        dict(context, reading=False),
                         file,
                         selffile,
                         parent,
