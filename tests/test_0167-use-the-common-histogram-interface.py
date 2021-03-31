@@ -15,7 +15,11 @@ def test_axis():
         assert len(axis) == 100
         assert axis[0] == (-4.0, -3.92)
         assert axis[1] == (-3.92, -3.84)
-        assert [tuple(x) for x in axis][:3] == [(-4.0, -3.92), (-3.92, -3.84), (-3.84, -3.76)]
+        assert [tuple(x) for x in axis][:3] == [
+            (-4.0, -3.92),
+            (-3.92, -3.84),
+            (-3.84, -3.76),
+        ]
         assert axis == axis
         assert f["hpxpy"].axis(0) == f["hpxpy"].axis(1)
         assert axis.traits.circular is False
