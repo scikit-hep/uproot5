@@ -8,11 +8,10 @@ object) and one source :doc:`uproot.source.object.ObjectSource` which always
 has exactly one worker (we can't assume that the object is thread-safe).
 """
 
-from __future__ import absolute_import
 
 import uproot
-import uproot.source.futures
 import uproot.source.chunk
+import uproot.source.futures
 
 
 class ObjectResource(uproot.source.chunk.Resource):

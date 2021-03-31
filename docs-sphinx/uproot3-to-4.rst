@@ -84,7 +84,7 @@ If you want to use this with a context manager (``with`` statement), closing the
 
     >>> with uproot.open("file.root:events") as tree:
     ...     do_something(tree)
-    ... 
+    ...
     >>> with uproot.open("file.root")["events"] as tree:
     ...     do_something(tree)
 
@@ -217,7 +217,7 @@ As in Uproot 3, TTrees have a :meth:`~uproot.behaviors.TBranch.HasBranches.show`
 
     >>> tree = uproot.open("https://scikit-hep.org/uproot3/examples/nesteddirs.root:three/tree")
     >>> tree.show()
-    name                 | typename                 | interpretation                
+    name                 | typename                 | interpretation
     ---------------------+--------------------------+-------------------------------
     evt                  | Event                    | AsGroup(<TBranchElement 'ev...
     evt/Beg              | TString                  | AsStrings()
@@ -351,4 +351,4 @@ Caching and parallel processing
 
 Uproot 3 and 4 both let you control caching by supplying any ``MutableMapping`` and parallel processing by supplying any Python 3 ``Executor``. What differs is the granularity of each.
 
-Uproot 4 caching has less granularity. Other than objects, 
+Uproot 4 caching has less granularity. Other than objects,

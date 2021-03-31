@@ -68,9 +68,10 @@ The submodules of Uproot are:
 * ``uproot.dynamic``: initially empty module, in which dynamically
   generated classes are defined.
 * ``uproot._util``: non-public utilities used by the above.
+
+isort:skip_file
 """
 
-from __future__ import absolute_import
 
 from uproot.version import __version__
 import uproot.const
@@ -201,12 +202,10 @@ def behavior_of(classname):
     if name not in globals():
         if name in behavior_of._module_names:
             exec(
-                compile(
-                    "import uproot.behaviors.{0}".format(name), "<dynamic>", "exec"
-                ),
+                compile(f"import uproot.behaviors.{name}", "<dynamic>", "exec"),
                 globals(),
             )
-            module = eval("uproot.behaviors.{0}".format(name))
+            module = eval(f"uproot.behaviors.{name}")
             behavior_cls = getattr(module, name, None)
             if behavior_cls is not None:
                 globals()[name] = behavior_cls

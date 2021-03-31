@@ -5,12 +5,11 @@ This module defines the behaviors of ``TH2`` and its subclasses (not including
 ``TProfile2D`` and ``TH2Poly``).
 """
 
-from __future__ import absolute_import
 
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_metadata, boost_axis_metadata
+from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
 
 
 class TH2(uproot.behaviors.TH1.Histogram):

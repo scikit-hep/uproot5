@@ -5,13 +5,12 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
-from __future__ import absolute_import
 
-import os
-import sys
-import numbers
-import re
 import glob
+import numbers
+import os
+import re
+import sys
 
 try:
     from collections.abc import Iterable
@@ -23,7 +22,6 @@ except ImportError:
     from urlparse import urlparse
 
 import numpy
-
 
 py2 = sys.version_info[0] <= 2
 py26 = py2 and sys.version_info[1] <= 6
@@ -43,7 +41,7 @@ else:
 
 def isint(x):
     """
-    Returns True if and only if `x` is an integer (including NumPy, not
+    Returns True if and only if ``x`` is an integer (including NumPy, not
     including bool).
     """
     return isinstance(x, (int, numbers.Integral, numpy.integer)) and not isinstance(
@@ -53,7 +51,7 @@ def isint(x):
 
 def isnum(x):
     """
-    Returns True if and only if `x` is a number (including NumPy, not
+    Returns True if and only if ``x`` is a number (including NumPy, not
     including bool).
     """
     return isinstance(x, (int, float, numbers.Real, numpy.number)) and not isinstance(
@@ -62,6 +60,9 @@ def isnum(x):
 
 
 def isstr(x):
+    """
+    Returns True if and only if ``x`` is a string (including Python 2 unicode).
+    """
     if py2:
         return isinstance(x, (bytes, unicode))
     else:
@@ -69,6 +70,9 @@ def isstr(x):
 
 
 def ensure_str(x):
+    """
+    Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
+    """
     if not py2 and isinstance(x, bytes):
         return x.decode(errors="surrogateescape")
     elif py2 and isinstance(x, unicode):
@@ -76,7 +80,7 @@ def ensure_str(x):
     elif isinstance(x, str):
         return x
     else:
-        raise TypeError("expected a string, not {0}".format(type(x)))
+        raise TypeError("expected a string, not {}".format(type(x)))
 
 
 _regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
@@ -101,10 +105,17 @@ def _regularize_filter_regex_flags(flags):
 
 
 def no_filter(x):
+    """
+    A filter that accepts anything (always returns True).
+    """
     return True
 
 
 def regularize_filter(filter):
+    """
+    Convert None, str, iterable of str, wildcards, and regular expressions into
+    the standard form for a filter: a callable returning True or False.
+    """
     if filter is None:
         return no_filter
     elif callable(filter):
@@ -127,11 +138,14 @@ def regularize_filter(filter):
     else:
         raise TypeError(
             "filter must be callable, a regex string between slashes, or a "
-            "glob pattern, not {0}".format(repr(filter))
+            "glob pattern, not {}".format(repr(filter))
         )
 
 
 def regularize_path(path):
+    """
+    Converts pathlib Paths into plain string paths (for all versions of Python).
+    """
     if isinstance(path, getattr(os, "PathLike", ())):
         path = os.fspath(path)
 
@@ -154,6 +168,9 @@ _might_be_port = re.compile(r"^[0-9].*")
 
 
 def file_object_path_split(path):
+    """
+    Split a path with a colon into a file path and an object-in-file path.
+    """
     path = regularize_path(path)
 
     try:
@@ -188,6 +205,9 @@ _schemes = ["FILE"] + _remote_schemes
 
 
 def file_path_to_source_class(file_path, options):
+    """
+    Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
+    """
     import uproot.source.chunk
 
     file_path = regularize_path(file_path)
@@ -259,7 +279,7 @@ def file_path_to_source_class(file_path, options):
         return out, file_path
 
     else:
-        raise ValueError("URI scheme not recognized: {0}".format(file_path))
+        raise ValueError(f"URI scheme not recognized: {file_path}")
 
 
 if isinstance(__builtins__, dict):
@@ -361,13 +381,17 @@ def memory_size(data, error_message=None):
     if error_message is None:
         raise TypeError(
             "number of bytes or memory size string with units "
-            "(such as '100 MB') required, not {0}".format(repr(data))
+            "(such as '100 MB') required, not {}".format(repr(data))
         )
     else:
         raise TypeError(error_message)
 
 
 def new_class(name, bases, members):
+    """
+    Create a new class object with ``type(name, bases, members)`` and put it in
+    the ``uproot.dynamic`` library.
+    """
     import uproot.dynamic
 
     out = type(ensure_str(name), bases, members)
@@ -382,6 +406,9 @@ _primitive_awkward_form = {}
 def awkward_form(
     model, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
 ):
+    """
+    Utility function to get an ``ak.forms.Form`` for a :doc:`uproot.model.Model`.
+    """
     import uproot
 
     awkward = uproot.extras.awkward()
@@ -417,7 +444,7 @@ def awkward_form(
                     '"float64"'
                 )
             else:
-                raise AssertionError("{0}: {1}".format(repr(model), type(model)))
+                raise AssertionError("{}: {}".format(repr(model), type(model)))
 
         return _primitive_awkward_form[model]
 
@@ -428,6 +455,9 @@ def awkward_form(
 
 
 def awkward_form_remove_uproot(awkward, form):
+    """
+    Remove the "uproot" parameters from an ``ak.forms.Form``.
+    """
     parameters = dict(form.parameters)
     parameters.pop("uproot", None)
     if isinstance(form, awkward.forms.BitMaskedForm):
@@ -491,10 +521,10 @@ def awkward_form_remove_uproot(awkward, form):
         )
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            dict(
-                (k, awkward_form_remove_uproot(awkward, v))
+            {
+                k: awkward_form_remove_uproot(awkward, v)
                 for k, v in form.contents.items()
-            ),
+            },
             form.has_identities,
             parameters,
         )
@@ -527,13 +557,18 @@ def awkward_form_remove_uproot(awkward, form):
             parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {0}".format(type(form)))
+        raise RuntimeError("unrecognized form: {}".format(type(form)))
 
 
 # FIXME: Until we get Awkward reading these bytes directly, rather than
 # going through ak.from_iter, the integer dtypes will be int64 and the
 # floating dtypes will be float64 because that's what ak.from_iter makes.
 def awkward_form_of_iter(awkward, form):
+    """
+    Fix an ``ak.forms.Form`` object for a given iterable.
+
+    (It might have been read with a different numeric type.)
+    """
     if isinstance(form, awkward.forms.BitMaskedForm):
         return awkward.forms.BitMaskedForm(
             form.mask,
@@ -605,9 +640,7 @@ def awkward_form_of_iter(awkward, form):
         return out
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            dict(
-                (k, awkward_form_of_iter(awkward, v)) for k, v in form.contents.items()
-            ),
+            {k: awkward_form_of_iter(awkward, v) for k, v in form.contents.items()},
             form.has_identities,
             form.parameters,
         )
@@ -640,10 +673,16 @@ def awkward_form_of_iter(awkward, form):
             form.parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {0}".format(type(form)))
+        raise RuntimeError("unrecognized form: {}".format(type(form)))
 
 
 def damerau_levenshtein(a, b, ratio=False):
+    """
+    Calculates the Damerau-Levenshtein distance of two strings.
+
+    Used by :doc:`uproot.exceptions.KeyInFileError` to return the most likely
+    misspellings of a failed attempt to get a key.
+    """
     # Modified Damerau-Levenshtein distance. Adds a middling penalty
     # for capitalization.
     # https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance

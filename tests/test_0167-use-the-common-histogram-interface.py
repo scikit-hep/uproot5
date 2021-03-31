@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import numpy
 import pytest
@@ -16,7 +15,11 @@ def test_axis():
         assert len(axis) == 100
         assert axis[0] == (-4.0, -3.92)
         assert axis[1] == (-3.92, -3.84)
-        assert list(axis)[:3] == [(-4.0, -3.92), (-3.92, -3.84), (-3.84, -3.76)]
+        assert [tuple(x) for x in axis][:3] == [
+            (-4.0, -3.92),
+            (-3.92, -3.84),
+            (-3.84, -3.76),
+        ]
         assert axis == axis
         assert f["hpxpy"].axis(0) == f["hpxpy"].axis(1)
         assert axis.traits.circular is False
@@ -136,7 +139,9 @@ def test_boost():
         assert hprof.to_boost().axes[0].title == ""
 
 
-@pytest.mark.skip(reason="Something's wrong with uproot-issue33.root and boost-histogram")
+@pytest.mark.skip(
+    reason="Something's wrong with uproot-issue33.root and boost-histogram"
+)
 def test_boost_2():
     boost_histogram = pytest.importorskip("boost_histogram")
 

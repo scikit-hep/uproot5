@@ -5,7 +5,6 @@ This module defines an interface to compression algorithms used by ROOT, as well
 as functions for compressing and decompressing a :doc:`uproot.source.chunk.Chunk`.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -15,7 +14,7 @@ import uproot
 import uproot.const
 
 
-class Compression(object):
+class Compression:
     """
     Abstract class for objects that describe compression algorithms and levels.
     """
@@ -24,7 +23,7 @@ class Compression(object):
         self.level = level
 
     def __repr__(self):
-        return "{0}({1})".format(type(self).__name__, self._level)
+        return "{}({})".format(type(self).__name__, self._level)
 
     @classmethod
     def from_code(cls, code):
@@ -45,9 +44,7 @@ class Compression(object):
         elif algorithm in algorithm_codes:
             return algorithm_codes[algorithm](level)
         else:
-            raise ValueError(
-                "unrecognized compression algorithm code: {0}".format(algorithm)
-            )
+            raise ValueError(f"unrecognized compression algorithm code: {algorithm}")
 
     @property
     def code(self):
@@ -68,7 +65,7 @@ class Compression(object):
             if type(self) is cls:
                 return const, self._level
         else:
-            raise ValueError("unrecognized compression type: {0}".format(type(self)))
+            raise ValueError("unrecognized compression type: {}".format(type(self)))
 
     @property
     def level(self):
@@ -247,8 +244,8 @@ def decompress(
             computed_checksum = xxhash.xxh64(data).intdigest()
             if computed_checksum != expected_checksum:
                 raise ValueError(
-                    """computed checksum {0} didn't match expected checksum {1}
-in file {2}""".format(
+                    """computed checksum {} didn't match expected checksum {}
+in file {}""".format(
                         computed_checksum, expected_checksum, chunk.source.file_path
                     )
                 )
@@ -259,17 +256,17 @@ in file {2}""".format(
 
         elif algo == b"CS":
             raise ValueError(
-                """unsupported compression algorithm: {0} (according to """
+                """unsupported compression algorithm: {} (according to """
                 """ROOT comments, it hasn't been used in 20 years!
-in file {1}""".format(
+in file {}""".format(
                     algo, chunk.source.file_path
                 )
             )
 
         else:
             raise ValueError(
-                """unrecognized compression algorithm: {0}
-in file {1}""".format(
+                """unrecognized compression algorithm: {}
+in file {}""".format(
                     algo, chunk.source.file_path
                 )
             )
@@ -281,10 +278,10 @@ in file {1}""".format(
 
         if len(uncompressed_bytestring) != block_uncompressed_bytes:
             raise ValueError(
-                """after successfully decompressing {0} blocks, a block of """
-                """compressed size {1} decompressed to {2} bytes, but the """
-                """block header expects {3} bytes.
-in file {4}""".format(
+                """after successfully decompressing {} blocks, a block of """
+                """compressed size {} decompressed to {} bytes, but the """
+                """block header expects {} bytes.
+in file {}""".format(
                     num_blocks,
                     block_compressed_bytes,
                     len(uncompressed_bytestring),
@@ -327,11 +324,11 @@ in file {4}""".format(
     return uproot.source.chunk.Chunk.wrap(chunk.source, output)
 
 
-def hook_before_block(**kwargs):
+def hook_before_block(**kwargs):  # noqa: D103
     pass
 
 
-def hook_after_block(**kwargs):
+def hook_after_block(**kwargs):  # noqa: D103
     pass
 
 

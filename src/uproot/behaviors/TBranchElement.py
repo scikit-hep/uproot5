@@ -5,7 +5,6 @@ This module defines the behaviors of ``TBranchElement``, which is entirely inher
 functions in :doc:`uproot.behaviors.TBranch.TBranch`.
 """
 
-from __future__ import absolute_import
 
 import uproot
 

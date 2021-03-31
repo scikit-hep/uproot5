@@ -4,14 +4,13 @@
 This module defines the behavior of ``TProfile3D``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_metadata, boost_axis_metadata
-import uproot.behaviors.TProfile
 import uproot.behaviors.TH3
+import uproot.behaviors.TProfile
+from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
 
 
 class TProfile3D(uproot.behaviors.TProfile.Profile):

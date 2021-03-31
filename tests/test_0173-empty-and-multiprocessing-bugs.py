@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import multiprocessing
 
@@ -27,12 +26,12 @@ def readone(filename):
 
 
 def test_multiprocessing():
-    pool = multiprocessing.Pool(1)
-    out = pool.map(
-        readone,
-        [
-            skhep_testdata.data_path("uproot-Zmumu.root"),
-            skhep_testdata.data_path("uproot-Zmumu-zlib.root"),
-        ],
-    )
-    list(out)
+    with multiprocessing.Pool(1) as pool:
+        out = pool.map(
+            readone,
+            [
+                skhep_testdata.data_path("uproot-Zmumu.root"),
+                skhep_testdata.data_path("uproot-Zmumu-zlib.root"),
+            ],
+        )
+        list(out)

@@ -1,8 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import numpy as np
-from numpy.testing import assert_array_equal
 import skhep_testdata
+from numpy.testing import assert_array_equal
+
 import uproot
 
 

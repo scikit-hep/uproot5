@@ -5,16 +5,14 @@ This module defines models for ``TStreamerInfo`` and its elements, as well as
 routines for generating Python code for new classes from streamer data.
 """
 
-from __future__ import absolute_import
 
-import sys
-import struct
 import re
+import struct
+import sys
 
 import numpy
 
 import uproot
-
 
 _canonical_typename_patterns = [
     (re.compile(r"\bChar_t\b"), "char"),
@@ -138,7 +136,7 @@ class Model_TStreamerInfo(uproot.model.Model):
     """
 
     def __repr__(self):
-        return "<TStreamerInfo for {0} version {1} at 0x{2:012x}>".format(
+        return "<TStreamerInfo for {} version {} at 0x{:012x}>".format(
             self.name, self.class_version, id(self)
         )
 
@@ -150,7 +148,7 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         Interactively display a ``TStreamerInfo``.
 
-        Example:
+        For example,
 
         .. code-block::
 
@@ -161,12 +159,12 @@ class Model_TStreamerInfo(uproot.model.Model):
         bases = []
         for element in self.elements:
             if isinstance(element, Model_TStreamerBase):
-                bases.append(u"{0} (v{1})".format(element.name, element.base_version))
+                bases.append(f"{element.name} (v{element.base_version})")
         if len(bases) == 0:
-            bases = u""
+            bases = ""
         else:
-            bases = u": " + u", ".join(bases)
-        stream.write(u"{0} (v{1}){2}\n".format(self.name, self.class_version, bases))
+            bases = ": " + ", ".join(bases)
+        stream.write(f"{self.name} (v{self.class_version}){bases}\n")
         for element in self.elements:
             element.show(stream=stream)
 
@@ -303,33 +301,33 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         for i, format in enumerate(formats):
             class_data.append(
-                "    _format{0} = struct.Struct('>{1}')".format(i, "".join(format))
+                "    _format{} = struct.Struct('>{}')".format(i, "".join(format))
             )
 
         for i, format in enumerate(formats_memberwise):
             class_data.append(
-                "    _format_memberwise{0} = struct.Struct('>{1}')".format(
+                "    _format_memberwise{} = struct.Struct('>{}')".format(
                     i, "".join(format)
                 )
             )
 
         for i, dt in enumerate(dtypes):
-            class_data.append("    _dtype{0} = {1}".format(i, dt))
+            class_data.append(f"    _dtype{i} = {dt}")
 
         for i, stl in enumerate(containers):
-            class_data.append("    _stl_container{0} = {1}".format(i, stl))
+            class_data.append(f"    _stl_container{i} = {stl}")
 
         class_data.append(
-            "    base_names_versions = [{0}]".format(
+            "    base_names_versions = [{}]".format(
                 ", ".join(
-                    "({0}, {1})".format(repr(name), version)
+                    "({}, {})".format(repr(name), version)
                     for name, version in base_names_versions
                 )
             )
         )
 
         class_data.append(
-            "    member_names = [{0}]".format(", ".join(repr(x) for x in member_names))
+            "    member_names = [{}]".format(", ".join(repr(x) for x in member_names))
         )
 
         class_data.append(
@@ -340,7 +338,7 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         class_name = uproot.model.classname_encode(self.name, self.class_version)
         return "\n".join(
-            ["class {0}(uproot.model.VersionedModel):".format(class_name)]
+            [f"class {class_name}(uproot.model.VersionedModel):"]
             + read_members
             + read_member_n
             + strided_interpretation
@@ -396,8 +394,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                     base = streamers_with_name[max(streamers_with_name)]
                 else:
                     base = streamers_with_name[base_version]
-                for x in base.walk_members(streamers):
-                    yield x
+                yield from base.walk_members(streamers)
             else:
                 yield element
 
@@ -455,7 +452,7 @@ class Model_TStreamerElement(uproot.model.Model):
         Interactively display a ``TStreamerElement``.
         """
         stream.write(
-            u"    {0}: {1} ({2})\n".format(
+            "    {}: {} ({})\n".format(
                 self.name,
                 self.typename,
                 uproot.model.classname_decode(type(self).__name__)[0],
@@ -598,12 +595,12 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        read_member_n.append("        if member_index == {0}:".format(i))
+        read_member_n.append(f"        if member_index == {i}:")
 
         read_members.append(
             "        raise uproot.deserialization.DeserializationError("
-            "'not implemented: class members defined by {0} of type {1} in member "
-            "{2} of class {3}', chunk, cursor, context, file.file_path)".format(
+            "'not implemented: class members defined by {} of type {} in member "
+            "{} of class {}', chunk, cursor, context, file.file_path)".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
@@ -611,16 +608,16 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
 
         strided_interpretation.append(
             "        raise uproot.interpretation.objects.CannotBeStrided("
-            "'not implemented: class members defined by {0} of type {1} in member "
-            "{2} of class {3}')".format(
+            "'not implemented: class members defined by {} of type {} in member "
+            "{} of class {}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
 
         awkward_form.append(
             "        raise uproot.interpretation.objects.CannotBeAwkward("
-            "'not implemented: class members defined by {0} of type {1} in member "
-            "{2} of class {3}')".format(
+            "'not implemented: class members defined by {} of type {} in member "
+            "{} of class {}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
@@ -677,10 +674,10 @@ class Model_TStreamerBase(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        read_member_n.append("        if member_index == {0}:".format(i))
+        read_member_n.append(f"        if member_index == {i}:")
 
         read_members.append(
-            "        self._bases.append(c({0}, {1}).read(chunk, cursor, "
+            "        self._bases.append(c({}, {}).read(chunk, cursor, "
             "context, file, self._file, self._parent, concrete=self.concrete))".format(
                 repr(self.name), repr(self.base_version)
             )
@@ -688,13 +685,13 @@ class Model_TStreamerBase(Model_TStreamerElement):
         read_member_n.append("    " + read_members[-1])
 
         strided_interpretation.append(
-            "        members.extend(file.class_named({0}, {1})."
+            "        members.extend(file.class_named({}, {})."
             "strided_interpretation(file, header, tobject_header, breadcrumbs).members)".format(
                 repr(self.name), repr(self.base_version)
             )
         )
         awkward_form.append(
-            "        contents.update(file.class_named({0}, {1}).awkward_form(file, "
+            "        contents.update(file.class_named({}, {}).awkward_form(file, "
             "index_format, header, tobject_header, breadcrumbs).contents)".format(
                 repr(self.name), repr(self.base_version)
             )
@@ -771,9 +768,9 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        read_member_n.append("        if member_index == {0}:".format(i))
+        read_member_n.append(f"        if member_index == {i}:")
 
-        read_members.append("        tmp = self._dtype{0}".format(len(dtypes)))
+        read_members.append("        tmp = self._dtype{}".format(len(dtypes)))
         read_member_n.append("    " + read_members[-1])
 
         if streamerinfo.name == "TBranch" and self.name == "fBasketSeek":
@@ -792,23 +789,23 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             read_member_n.append("    " + read_members[-1].replace("\n", "\n    "))
 
         read_members.append(
-            "        self._members[{0}] = cursor.array(chunk, self.member({1}), "
+            "        self._members[{}] = cursor.array(chunk, self.member({}), "
             "tmp, context)".format(repr(self.name), repr(self.count_name))
         )
         read_member_n.append("    " + read_members[-1])
 
         strided_interpretation.append(
             "        raise uproot.interpretation.objects.CannotBeStrided("
-            "'class members defined by {0} of type {1} in member "
-            "{2} of class {3}')".format(
+            "'class members defined by {} of type {} in member "
+            "{} of class {}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
 
         awkward_form.extend(
             [
-                "        contents[{0}] = ListOffsetForm(index_format, "
-                "uproot._util.awkward_form(cls._dtype{1}, file, index_format, header, "
+                "        contents[{}] = ListOffsetForm(index_format, "
+                "uproot._util.awkward_form(cls._dtype{}, file, index_format, header, "
                 "tobject_header, breadcrumbs),".format(repr(self.name), len(dtypes)),
                 "            parameters={'uproot': {'as': 'TStreamerBasicPointer', "
                 "'count_name': " + repr(self.count_name) + "}}",
@@ -865,18 +862,18 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        read_member_n.append("        if member_index == {0}:".format(i))
+        read_member_n.append(f"        if member_index == {i}:")
 
         if self.typename == "Double32_t":
             read_members.append(
-                "        self._members[{0}] = cursor.double32(chunk, "
+                "        self._members[{}] = cursor.double32(chunk, "
                 "context)".format(repr(self.name))
             )
             read_member_n.append("    " + read_members[-1])
 
         elif self.typename == "Float16_t":
             read_members.append(
-                "        self._members[{0}] = cursor.float16(chunk, 12, "
+                "        self._members[{}] = cursor.float16(chunk, 12, "
                 "context)".format(repr(self.name))
             )
             read_member_n.append("    " + read_members[-1])
@@ -903,32 +900,32 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             ):
                 if len(fields[-1]) == 1:
                     read_members.append(
-                        "        self._members[{0}] = cursor.field(chunk, "
-                        "self._format{1}, context)".format(
+                        "        self._members[{}] = cursor.field(chunk, "
+                        "self._format{}, context)".format(
                             repr(fields[-1][0]), len(formats) - 1
                         )
                     )
                 else:
                     read_members.append(
-                        "        {0} = cursor.fields(chunk, self._format{1}, context)".format(
+                        "        {} = cursor.fields(chunk, self._format{}, context)".format(
                             ", ".join(
-                                "self._members[{0}]".format(repr(x)) for x in fields[-1]
+                                "self._members[{}]".format(repr(x)) for x in fields[-1]
                             ),
                             len(formats) - 1,
                         )
                     )
 
             read_member_n.append(
-                "            self._members[{0}] = cursor.field(chunk, "
-                "self._format_memberwise{1}, context)".format(
+                "            self._members[{}] = cursor.field(chunk, "
+                "self._format_memberwise{}, context)".format(
                     repr(self.name), len(formats_memberwise) - 1
                 )
             )
 
         else:
             read_members.append(
-                "        self._members[{0}] = cursor.array(chunk, {1}, "
-                "self._dtype{2}, context)".format(
+                "        self._members[{}] = cursor.array(chunk, {}, "
+                "self._dtype{}, context)".format(
                     repr(self.name), self.array_length, len(dtypes)
                 )
             )
@@ -938,15 +935,15 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         if self.array_length == 0 and self.typename not in ("Double32_t", "Float16_t"):
             strided_interpretation.append(
-                "        members.append(({0}, {1}))".format(
+                "        members.append(({}, {}))".format(
                     repr(self.name), _ftype_to_dtype(self.fType)
                 )
             )
         else:
             strided_interpretation.append(
                 "        raise uproot.interpretation.objects.CannotBeStrided("
-                "'class members defined by {0} of type {1} in member "
-                "{2} of class {3}')".format(
+                "'class members defined by {} of type {} in member "
+                "{} of class {}')".format(
                     type(self).__name__, self.typename, self.name, streamerinfo.name
                 )
             )
@@ -968,7 +965,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
             else:
                 awkward_form.append(
-                    "        contents[{0}] = uproot._util.awkward_form({1}, "
+                    "        contents[{}] = uproot._util.awkward_form({}, "
                     "file, index_format, header, tobject_header, breadcrumbs)".format(
                         repr(self.name), _ftype_to_dtype(self.fType)
                     )
@@ -976,8 +973,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         else:
             awkward_form.append(
-                "        contents[{0}] = RegularForm(uproot._util.awkward_form({1}, "
-                "file, index_format, header, tobject_header, breadcrumbs), {2})".format(
+                "        contents[{}] = RegularForm(uproot._util.awkward_form({}, "
+                "file, index_format, header, tobject_header, breadcrumbs), {})".format(
                     repr(self.name), _ftype_to_dtype(self.fType), self.array_length
                 )
             )
@@ -1100,10 +1097,10 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         read_members.extend(
             [
                 "        cursor.skip(6)",
-                "        for tmp in uproot._util.range(self.member({0})):".format(
+                "        for tmp in uproot._util.range(self.member({})):".format(
                     repr(self.count_name)
                 ),
-                "            self._members[{0}] = c({1}).read(chunk, cursor, "
+                "            self._members[{}] = c({}).read(chunk, cursor, "
                 "context, file, self._file, self.concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 ),
@@ -1112,15 +1109,15 @@ class Model_TStreamerLoop(Model_TStreamerElement):
 
         strided_interpretation.append(
             "        raise uproot.interpretation.objects.CannotBeStrided("
-            "'class members defined by {0} of type {1} in member "
-            "{2} of class {3}')".format(
+            "'class members defined by {} of type {} in member "
+            "{} of class {}')".format(
                 type(self).__name__, self.typename, self.name, streamerinfo.name
             )
         )
 
         awkward_form.extend(
             [
-                "        tmp = file.class_named({0}, 'max').awkward_form(file, "
+                "        tmp = file.class_named({}, 'max').awkward_form(file, "
                 "index_format, header, tobject_header, breadcrumbs)".format(
                     repr(self.typename.rstrip("*"))
                 ),
@@ -1205,7 +1202,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        read_member_n.append("        if member_index == {0}:".format(i))
+        read_member_n.append(f"        if member_index == {i}:")
 
         stl_container = uproot.interpretation.identify.parse_typename(
             self.typename,
@@ -1215,21 +1212,21 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             string_header=True,
         )
         read_members.append(
-            "        self._members[{0}] = self._stl_container{1}.read("
+            "        self._members[{}] = self._stl_container{}.read("
             "chunk, cursor, context, file, self._file, self.concrete)"
             "".format(repr(self.name), len(containers))
         )
         read_member_n.append("    " + read_members[-1])
 
         strided_interpretation.append(
-            "        members.append(({0}, cls._stl_container{1}."
+            "        members.append(({}, cls._stl_container{}."
             "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                 repr(self.name), len(containers)
             )
         )
 
         awkward_form.append(
-            "        contents[{0}] = cls._stl_container{1}.awkward_form(file, "
+            "        contents[{}] = cls._stl_container{}.awkward_form(file, "
             "index_format, header, tobject_header, breadcrumbs)".format(
                 repr(self.name), len(containers)
             )
@@ -1292,7 +1289,7 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
         )
 
 
-class TStreamerPointerTypes(object):
+class TStreamerPointerTypes:
     """
     A class to share code between
     :doc:`uproot.streamers.Model_TStreamerObjectAnyPointer` and
@@ -1317,24 +1314,24 @@ class TStreamerPointerTypes(object):
         member_names,
         class_flags,
     ):
-        read_member_n.append("        if member_index == {0}:".format(i))
+        read_member_n.append(f"        if member_index == {i}:")
 
         if self.fType == uproot.const.kObjectp or self.fType == uproot.const.kAnyp:
             read_members.append(
-                "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
+                "        self._members[{}] = c({}).read(chunk, cursor, context, "
                 "file, self._file, self.concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
             read_member_n.append("    " + read_members[-1])
             strided_interpretation.append(
-                "        members.append(({0}, file.class_named({1}, 'max')."
+                "        members.append(({}, file.class_named({}, 'max')."
                 "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
             awkward_form.append(
-                "        contents[{0}] = file.class_named({1}, 'max').awkward_form(file, "
+                "        contents[{}] = file.class_named({}, 'max').awkward_form(file, "
                 "index_format, header, tobject_header, breadcrumbs)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
@@ -1342,14 +1339,14 @@ class TStreamerPointerTypes(object):
 
         elif self.fType == uproot.const.kObjectP or self.fType == uproot.const.kAnyP:
             read_members.append(
-                "        self._members[{0}] = read_object_any(chunk, cursor, "
+                "        self._members[{}] = read_object_any(chunk, cursor, "
                 "context, file, self._file, self)".format(repr(self.name))
             )
             read_member_n.append("    " + read_members[-1])
             strided_interpretation.append(
                 "        raise uproot.interpretation.objects.CannotBeStrided("
-                "'class members defined by {0} of type {1} in member "
-                "{2} of class {3}')".format(
+                "'class members defined by {} of type {} in member "
+                "{} of class {}')".format(
                     type(self).__name__, self.typename, self.name, streamerinfo.name
                 )
             )
@@ -1358,7 +1355,7 @@ class TStreamerPointerTypes(object):
         else:
             read_members.append(
                 "        raise uproot.deserialization.DeserializationError("
-                "'not implemented: class members defined by {0} with fType {1}', "
+                "'not implemented: class members defined by {} with fType {}', "
                 "chunk, cursor, context, file.file_path)".format(
                     type(self).__name__,
                     self.fType,
@@ -1422,7 +1419,7 @@ class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement
         )
 
 
-class TStreamerObjectTypes(object):
+class TStreamerObjectTypes:
     """
     A class to share code between
     :doc:`uproot.streamers.Model_TStreamerObject`,
@@ -1448,10 +1445,10 @@ class TStreamerObjectTypes(object):
         member_names,
         class_flags,
     ):
-        read_member_n.append("        if member_index == {0}:".format(i))
+        read_member_n.append(f"        if member_index == {i}:")
 
         read_members.append(
-            "        self._members[{0}] = c({1}).read(chunk, cursor, context, "
+            "        self._members[{}] = c({}).read(chunk, cursor, context, "
             "file, self._file, self.concrete)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
@@ -1459,13 +1456,13 @@ class TStreamerObjectTypes(object):
         read_member_n.append("    " + read_members[-1])
 
         strided_interpretation.append(
-            "        members.append(({0}, file.class_named({1}, 'max')."
+            "        members.append(({}, file.class_named({}, 'max')."
             "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )
         awkward_form.append(
-            "        contents[{0}] = file.class_named({1}, 'max').awkward_form(file, "
+            "        contents[{}] = file.class_named({}, 'max').awkward_form(file, "
             "index_format, header, tobject_header, breadcrumbs)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )

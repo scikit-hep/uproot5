@@ -5,12 +5,11 @@ This module defines the behaviors of ``TH3`` and its subclasses (not including
 ``TProfile3D``).
 """
 
-from __future__ import absolute_import
 
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_metadata, boost_axis_metadata
+from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
 
 
 class TH3(uproot.behaviors.TH1.Histogram):

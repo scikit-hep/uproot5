@@ -11,10 +11,8 @@ that determine the default interpretation of a
 :doc:`uproot.behaviors.TBranch.TBranch`.
 """
 
-from __future__ import absolute_import
 
-
-class Interpretation(object):
+class Interpretation:
     """
     Abstract class for all interpretations of ``TBranch`` data as arrays.
 
@@ -117,7 +115,7 @@ class Interpretation(object):
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
-        u"""
+        """
         Args:
             basket_arrays (dict of int \u2192 array): Mapping from ``TBasket``
                 number to the temporary array returned by
