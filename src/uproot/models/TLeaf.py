@@ -4,6 +4,7 @@
 This module defines versioned models for ``TLeaf`` and its subclasses.
 """
 
+from __future__ import absolute_import
 
 import struct
 
@@ -20,8 +21,8 @@ class Model_TLeaf_v2(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -80,8 +81,8 @@ class Model_TLeafO_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -126,8 +127,8 @@ class Model_TLeafB_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -172,8 +173,8 @@ class Model_TLeafS_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -218,8 +219,8 @@ class Model_TLeafI_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -264,8 +265,8 @@ class Model_TLeafL_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -310,8 +311,8 @@ class Model_TLeafF_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -356,8 +357,8 @@ class Model_TLeafD_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -402,8 +403,8 @@ class Model_TLeafC_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -446,8 +447,8 @@ class Model_TLeafF16_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -488,8 +489,8 @@ class Model_TLeafD32_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -533,8 +534,8 @@ class Model_TLeafElement_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )

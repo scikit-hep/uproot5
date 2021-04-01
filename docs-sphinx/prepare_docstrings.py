@@ -46,7 +46,7 @@ toctree2 = None
 def ensure(filename, content):
     overwrite = not os.path.exists(filename)
     if not overwrite:
-        overwrite = open(filename).read() != content
+        overwrite = open(filename, "r").read() != content
     if overwrite:
         open(filename, "w").write(content)
         sys.stderr.write(filename + " (OVERWRITTEN)\n")
@@ -133,7 +133,7 @@ def handle_class(classname, cls):
                     fill.append("")
                     if basecls is not cls:
                         fill.append(
-                            "Inherited from :doc:`{}`.".format(
+                            "Inherited from :doc:`{0}`.".format(
                                 basecls.__module__ + "." + basecls.__name__
                             )
                         )
@@ -156,7 +156,7 @@ def handle_class(classname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
-    link = "`{} <https://github.com/scikit-hep/uproot4/blob/{}/{}>`__".format(
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
     linelink = (
@@ -174,30 +174,30 @@ def handle_class(classname, cls):
         inheritance_header = """.. table::
     :class: note
 
-    +-{}-+
-    | **Inheritance order:** {}|
-    +={}=+
+    +-{0}-+
+    | **Inheritance order:** {1}|
+    +={2}=+
     | """.format(
             "-" * longest_cell, " " * (longest_cell - 22), "=" * longest_cell
         )
         inheritance_footer = """ |
-    +-{}-+""".format(
+    +-{0}-+""".format(
             "-" * longest_cell
         )
         inheritance = [x + " " * (longest_cell - len(x)) for x in inheritance]
         inheritance_sep = """ |
     | """
 
-    content = """{}
-{}
+    content = """{0}
+{1}
 
-Defined in {} on {}.
+Defined in {2} on {3}.
 
-{}
+{4}
 
-.. autoclass:: {}
+.. autoclass:: {5}
 
-{}
+{6}
 """.format(
         title,
         "=" * len(title),
@@ -226,7 +226,7 @@ def handle_function(functionname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
-    link = "`{} <https://github.com/scikit-hep/uproot4/blob/{}/{}>`__".format(
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
     linelink = (
@@ -235,12 +235,12 @@ def handle_function(functionname, cls):
         )
     )
 
-    content = """{}
-{}
+    content = """{0}
+{1}
 
-Defined in {} on {}.
+Defined in {2} on {3}.
 
-.. autofunction:: {}
+.. autofunction:: {4}
 """.format(
         title, "=" * len(title), link, linelink, functionname
     )
@@ -259,7 +259,7 @@ for modulename in order:
         toctree2 = open(modulename + ".toctree", "w")
         toctree2.write(
             """.. toctree::
-    :caption: {}
+    :caption: {0}
     :hidden:
 
 """.format(

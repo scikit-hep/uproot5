@@ -4,6 +4,7 @@
 This module defines a versionless model for ``TNamed``.
 """
 
+from __future__ import absolute_import
 
 import numpy
 
@@ -18,8 +19,8 @@ class Model_TNamed(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -42,7 +43,7 @@ in file {}""".format(
         title = ""
         if self._members["fTitle"] != "":
             title = " title=" + repr(self._members["fTitle"])
-        return "<TNamed {}{} at 0x{:012x}>".format(
+        return "<TNamed {0}{1} at 0x{2:012x}>".format(
             repr(self._members["fName"]), title, id(self)
         )
 

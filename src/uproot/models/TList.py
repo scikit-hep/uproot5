@@ -4,6 +4,7 @@
 This module defines a versionless model for ``TList``.
 """
 
+from __future__ import absolute_import
 
 import struct
 
@@ -26,8 +27,8 @@ class Model_TList(uproot.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -61,8 +62,8 @@ in file {}""".format(
         if self.class_version is None:
             version = ""
         else:
-            version = f" (version {self.class_version})"
-        return "<{}{} of {} items at 0x{:012x}>".format(
+            version = " (version {0})".format(self.class_version)
+        return "<{0}{1} of {2} items at 0x{3:012x}>".format(
             self.classname,
             version,
             len(self),

@@ -12,6 +12,7 @@ If the filesystem or operating system does not support memory-mapped files, the
 :doc:`uproot.source.file.MultithreadedFileSource` is an automatic fallback.
 """
 
+from __future__ import absolute_import
 
 import os.path
 
@@ -111,7 +112,7 @@ class MemmapSource(uproot.source.chunk.Source):
         try:
             self._file = numpy.memmap(self._file_path, dtype=self._dtype, mode="r")
             self._fallback = None
-        except OSError:
+        except IOError:
             self._file = None
             opts = dict(self._fallback_opts)
             opts["num_workers"] = self._num_fallback_workers
@@ -135,14 +136,14 @@ class MemmapSource(uproot.source.chunk.Source):
         fallback = ""
         if self._fallback is not None:
             fallback = " with fallback"
-        return "<{} {}{} at 0x{:012x}>".format(
+        return "<{0} {1}{2} at 0x{3:012x}>".format(
             type(self).__name__, path, fallback, id(self)
         )
 
     def chunk(self, start, stop):
         if self._fallback is None:
             if self.closed:
-                raise OSError(f"memmap is closed for file {self._file_path}")
+                raise OSError("memmap is closed for file {0}".format(self._file_path))
 
             self._num_requests += 1
             self._num_requested_chunks += 1
@@ -158,7 +159,7 @@ class MemmapSource(uproot.source.chunk.Source):
     def chunks(self, ranges, notifications):
         if self._fallback is None:
             if self.closed:
-                raise OSError(f"memmap is closed for file {self._file_path}")
+                raise OSError("memmap is closed for file {0}".format(self._file_path))
 
             self._num_requests += 1
             self._num_requested_chunks += len(ranges)

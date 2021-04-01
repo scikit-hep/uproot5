@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
-[![Python 3.6‒3.9](https://img.shields.io/badge/python-3.6%E2%80%923.9-blue)](https://www.python.org)
+[![Python 2.7,3.5‒3.9](https://img.shields.io/badge/python-2.7%2C3.5%E2%80%923.9-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Continuous integration tests](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=tests)](https://github.com/scikit-hep/uproot4/actions)
 

@@ -4,6 +4,7 @@
 This module defines the behaviors of ``TGraphAsymmErrors``.
 """
 
+from __future__ import absolute_import
 
 import numpy
 
@@ -13,7 +14,7 @@ import numpy
 #  'fMinimum', 'fMaximum', 'fEXlow', 'fEXhigh', 'fEYlow', 'fEYhigh']
 
 
-class TGraphAsymmErrors:
+class TGraphAsymmErrors(object):
     """
     Behaviors for TGraphAsymmErrors: get values and errors as NumPy arrays.
     """

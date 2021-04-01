@@ -8,6 +8,7 @@ If a library cannot be imported, these functions raise ``ImportError`` with
 error messages containing instructions on how to install the library.
 """
 
+from __future__ import absolute_import
 
 import os
 

@@ -5,6 +5,7 @@ This module defines the behaviors of ``TH3`` and its subclasses (not including
 ``TProfile3D``).
 """
 
+from __future__ import absolute_import
 
 import numpy
 

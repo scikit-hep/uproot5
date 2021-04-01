@@ -9,6 +9,7 @@ an array is being built from ``TBaskets``. Its final form is determined by
 :doc:`uproot.interpretation.library`.
 """
 
+from __future__ import absolute_import
 
 import numpy
 
@@ -87,9 +88,9 @@ class AsJagged(uproot.interpretation.Interpretation):
 
     def __repr__(self):
         if self._header_bytes == 0:
-            return "AsJagged({})".format(repr(self._content))
+            return "AsJagged({0})".format(repr(self._content))
         else:
-            return "AsJagged({}, header_bytes={})".format(
+            return "AsJagged({0}, header_bytes={1})".format(
                 repr(self._content), self._header_bytes
             )
 
@@ -123,7 +124,7 @@ class AsJagged(uproot.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        return "{}({},{})".format(
+        return "{0}({1},{2})".format(
             type(self).__name__, self._content.cache_key, self._header_bytes
         )
 
@@ -330,7 +331,7 @@ class AsJagged(uproot.interpretation.Interpretation):
         return output
 
 
-class JaggedArray:
+class JaggedArray(object):
     """
     Args:
         offsets (array of ``numpy.int32``): Starting and stopping entries for
@@ -350,7 +351,7 @@ class JaggedArray:
         self._content = content
 
     def __repr__(self):
-        return f"JaggedArray({self._offsets}, {self._content})"
+        return "JaggedArray({0}, {1})".format(self._offsets, self._content)
 
     @property
     def offsets(self):

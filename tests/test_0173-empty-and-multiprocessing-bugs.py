@@ -1,7 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
+from __future__ import absolute_import
 
 import multiprocessing
+import sys
 
 import pytest
 import skhep_testdata
@@ -25,6 +27,10 @@ def readone(filename):
         b.array(library="np")
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 0),
+    reason="multiprocessing is only a context manager in Python 3",
+)
 def test_multiprocessing():
     with multiprocessing.Pool(1) as pool:
         out = pool.map(

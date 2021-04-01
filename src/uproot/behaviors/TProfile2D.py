@@ -4,6 +4,7 @@
 This module defines the behavior of ``TProfile2D``.
 """
 
+from __future__ import absolute_import
 
 import numpy
 

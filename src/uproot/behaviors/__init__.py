@@ -24,3 +24,5 @@ the newly created object specialized methods and properties.
 
 See also :doc:`uproot.models`.
 """
+
+from __future__ import absolute_import
