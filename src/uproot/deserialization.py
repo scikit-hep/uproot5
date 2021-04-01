@@ -123,8 +123,8 @@ def numbytes_version(chunk, cursor, context, move=True):
         # but we count the Model.start_cursor position from the point just
         # before these two fields (since num_bytes might not exist, it's a more
         # stable point than after num_bytes).
-        #                                                            |
-        #                                                            V
+        #                                                           |
+        #                                                           V
         num_bytes = int(num_bytes & ~uproot.const.kByteCountMask) + 4
         if move:
             cursor.skip(_numbytes_version_1.size)

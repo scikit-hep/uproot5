@@ -53,6 +53,13 @@ jobs:
           pip install --pre "awkward>=1.0.0"
           conda list
 
+      - name: "Install ROOT"
+        if: "matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
+        run: |
+          conda env list
+          conda install root
+          conda list
+
       - name: "Install XRootD"
         if: "matrix.python-version != 2.7  &&  matrix.python-version != 3.5  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
