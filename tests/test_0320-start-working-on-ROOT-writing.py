@@ -10,6 +10,9 @@ import skhep_testdata
 
 import uproot
 
+ROOT = pytest.importorskip("ROOT")
+
+
 _file_header_fields_small = struct.Struct(">4siiiiiiiBiiiH16s")
 _file_header_fields_big = struct.Struct(">4siiqqiiiBiqiH16s")
 
@@ -31,16 +34,17 @@ _free_format_big = struct.Struct(">HQQ")
 
 
 @pytest.mark.parametrize(
-    "source",
-    ["uproot-Zmumu.root"],  # , "uproot-issue243-new.root", "uproot-issue64.root"]
+    "source", ["uproot-Zmumu.root", "uproot-issue243-new.root", "uproot-issue64.root"]
 )
 def test(tmp_path, source):
-    print(source)
-
-    # tmp_path = "/home/jpivarski/irishep/uproot4"
+    # print(source)
 
     filename = os.path.join(tmp_path, "update-me.root")
     shutil.copyfile(skhep_testdata.data_path(source), filename)
+
+    # print("BEFORE")
+    # for version, fFirst, fLast in get_frees(filename):
+    #     print(version, fFirst, fLast)
 
     with open(filename, "r+b") as rawfile:
         rawfile.seek(0)
@@ -152,8 +156,16 @@ def test(tmp_path, source):
             + nfree * _free_format_small.size  # assuming small
         )
         frees = frees[:-1] + [
-            (1, beginning_of_scribble_1, end_of_scribble_1),
-            (1, beginning_of_scribble_2, end_of_scribble_2),
+            (
+                1,
+                beginning_of_scribble_1,
+                end_of_scribble_1 - 1,
+            ),  # fLast is really *last*
+            (
+                1,
+                beginning_of_scribble_2,
+                end_of_scribble_2 - 1,
+            ),  # *not* the first unfree
             (1, end_of_new_directory + fNbytesFree, 2000000000),
         ]
 
@@ -217,6 +229,41 @@ def test(tmp_path, source):
                     fUUID,
                 )
             )
+
+    # print("AFTER MY UPDATE")
+    # for version, fFirst, fLast in get_frees(filename):
+    #     print(version, fFirst, fLast)
+
+    # read it back in ROOT and add another object
+
+    f1 = ROOT.TFile(filename, "UPDATE")
+
+    if source == "uproot-Zmumu.root":
+        t = f1.Get("events")
+        assert str(t.GetBranch("px1").GetTitle()) == "px1/D"
+    elif source == "uproot-issue243-new.root":
+        t = f1.Get("sig")
+        assert str(t.GetBranch("m_hh").GetTitle()) == "m_hh/D"
+    elif source == "uproot-issue64.root":
+        t = f1.Get("events/events")
+        assert str(t.GetBranch("eventid").GetTitle()) == "eventid/I"
+
+    x = ROOT.TObjString("hello")
+    x.Write()
+    f1.Close()
+
+    # print("AFTER ROOT'S UPDATE")
+    # for version, fFirst, fLast in get_frees(filename):
+    #     print(version, fFirst, fLast)
+
+    f2 = ROOT.TFile(filename)
+    assert str(f2.Get("hello")) == "hello"
+    f2.Close()
+
+    with uproot.open(filename) as f3:
+        assert str(f3["hello"]) == "hello"
+        key = f3.key("hello")
+        # print(key.fSeekKey, key.fKeylen, key.fNbytes)
 
 
 def read_string(rawfile):
@@ -387,3 +434,66 @@ def write_key(rawfile, key):
     write_string(rawfile, key["fClassName"])
     write_string(rawfile, key["fName"])
     write_string(rawfile, key["fTitle"])
+
+
+def get_frees(filename):
+    with open(filename, "rb") as rawfile:
+        rawfile.seek(0)
+        (
+            magic,
+            fVersion,
+            fBEGIN,
+            fEND,
+            fSeekFree,
+            fNbytesFree,
+            nfree,
+            fNbytesName,
+            fUnits,
+            fCompress,
+            fSeekInfo,
+            fNbytesInfo,
+            fUUID_version,
+            fUUID,
+        ) = _file_header_fields_small.unpack(
+            rawfile.read(_file_header_fields_small.size)
+        )
+
+        if fVersion > 1000000:
+            rawfile.seek(0)
+            (
+                magic,
+                fVersion,
+                fBEGIN,
+                fEND,
+                fSeekFree,
+                fNbytesFree,
+                nfree,
+                fNbytesName,
+                fUnits,
+                fCompress,
+                fSeekInfo,
+                fNbytesInfo,
+                fUUID_version,
+                fUUID,
+            ) = _file_header_fields_big.unpack(
+                rawfile.read(_file_header_fields_big.size)
+            )
+
+        rawfile.seek(fSeekFree)
+        freesegments = read_key(rawfile)
+
+        rawfile.seek(freesegments["fSeekKey"] + freesegments["fKeylen"])
+
+        frees = []
+        for _ in range(nfree):
+            version, fFirst, fLast = _free_format_small.unpack(
+                rawfile.read(_free_format_small.size)
+            )
+            if version > 1000:
+                rawfile.seek(rawfile.tell() - _free_format_small.size)
+                version, fFirst, fLast = _free_format_big.unpack(
+                    rawfile.read(_free_format_big.size)
+                )
+            frees.append((version, fFirst, fLast))
+
+        return frees
