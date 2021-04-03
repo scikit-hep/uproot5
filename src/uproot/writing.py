@@ -7,12 +7,12 @@ FIXME: docstring
 from __future__ import absolute_import
 
 import os.path
-
-# import struct
+import struct
 import uuid
 
 import uproot._util
 import uproot.compression
+import uproot.const
 import uproot.reading
 import uproot.sink.file
 
@@ -144,6 +144,224 @@ def _create_empty_root(file, compression, initial_bytes, uuid_version, uuid_func
     #     fUUID = uuid.UUID(str(uuid_function)).bytes
 
     # uproot.reading._file_header_fields_big
+
+
+class Writable(object):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, location, allocation):
+        self._location = location
+        self._allocation = allocation
+        self._serialization = None
+        self._file_dirty = True
+
+    @property
+    def location(self):
+        return self._location
+
+    @location.setter
+    def location(self, value):
+        self._location = value
+        self._file_dirty = True
+
+    @property
+    def serialization(self):
+        if self._serialization is None:
+            self._serialization = self.serialize()
+        return self._serialization
+
+    @property
+    def num_bytes(self):
+        if self._serialization is None:
+            self._serialization = self.serialize()
+        return len(self._serialization)
+
+    def write(self, sink):
+        if self._file_dirty:
+            if self._location is None:
+                raise RuntimeError(
+                    "can't write object because location is unknown:\n\n    "
+                    + repr(self)
+                )
+            if self._serialization is None:
+                self._serialization = self.serialize()
+        sink.write(self._location, self._serialization)
+
+    def serialize(self):
+        raise AssertionError("Writable is abstract; 'serialize' must be overloaded")
+
+
+class WritableString(Writable):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, location, string):
+        super(self, WritableString).__init__(location, None)
+        self._string = string
+
+    @property
+    def string(self):
+        return self._string
+
+    def serialize(self):
+        bytestring = self._string.encode(errors="surrogateescape")
+        num_bytes = len(bytestring)
+        if num_bytes < 255:
+            self._serialization = struct.pack(
+                ">B%ds" % num_bytes, num_bytes, bytestring
+            )
+        else:
+            self._serialization = struct.pack(
+                ">BI%ds" % num_bytes, 255, num_bytes, bytestring
+            )
+
+
+class WritableKey(Writable):
+    """
+    FIXME: docstring
+    """
+
+    fVersion = 5
+
+    def __init__(
+        self,
+        location,
+        uncompressed_bytes,
+        compressed_bytes,
+        classname,
+        name,
+        title,
+        cycle,
+        parent_location,
+    ):
+        super(self, WritableKey).__init__(location, None)
+        self._uncompressed_bytes = uncompressed_bytes
+        self._compressed_bytes = compressed_bytes
+        self._classname = classname
+        self._name = name
+        self._title = title
+        self._cycle = cycle
+        self._parent_location = parent_location
+
+    @property
+    def location(self):
+        return self._location
+
+    @location.setter
+    def location(self, value):
+        self._location = value
+        self._serialization = None
+        self._file_dirty = True
+
+    @property
+    def uncompressed_bytes(self):
+        return self._uncompressed_bytes
+
+    @uncompressed_bytes.setter
+    def uncompressed_bytes(self, value):
+        self._uncompressed_bytes = value
+        self._serialization = None
+        self._file_dirty = True
+
+    @property
+    def compressed_bytes(self):
+        return self._compressed_bytes
+
+    @compressed_bytes.setter
+    def compressed_bytes(self, value):
+        self._compressed_bytes = value
+        self._serialization = None
+        self._file_dirty = True
+
+    @property
+    def classname(self):
+        return self._classname
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def title(self):
+        return self._title
+
+    @property
+    def cycle(self):
+        return self._cycle
+
+    @property
+    def parent_location(self):
+        return self._parent_location
+
+    @property
+    def big(self):
+        return (
+            self._location is None
+            or self._location > uproot.const.kStartBigFile
+            or self._parent_location > uproot.const.kStartBigFile
+        )
+
+    @property
+    def num_bytes(self):
+        if self.big:
+            return (
+                uproot.reading._key_format_big.size
+                + self._classname.num_bytes
+                + self._name.num_bytes
+                + self._title.num_bytes
+            )
+        else:
+            return (
+                uproot.reading._key_format_small.size
+                + self._classname.num_bytes
+                + self._name.num_bytes
+                + self._title.num_bytes
+            )
+
+    def serialize(self):
+        if self._location is None:
+            raise RuntimeError(
+                "can't serialize key because location is unknown:\n\n    " + repr(self)
+            )
+
+        fKeylen = self.num_bytes
+        fNbytes = self._compressed_bytes + fKeylen
+
+        if self.big:
+            return (
+                uproot.reading._key_format_big.pack(
+                    fNbytes,
+                    self.fVersion + 1000,
+                    self._uncompressed_bytes,
+                    1761927327,  # FIXME: compute fDatime
+                    fKeylen,
+                    self._cycle,
+                    self._location,
+                    self._parent_location,
+                )
+                + self._classname.num_bytes.serialization()
+                + self._name.num_bytes.serialization()
+                + self._title.num_bytes.serialization()
+            )
+        else:
+            return (
+                uproot.reading._key_format_small.pack(
+                    fNbytes,
+                    self.fVersion,
+                    self._uncompressed_bytes,
+                    1761927327,  # FIXME: compute fDatime
+                    fKeylen,
+                    self._cycle,
+                    self._location,
+                    self._parent_location,
+                )
+                + self._classname.num_bytes.serialization()
+                + self._name.num_bytes.serialization()
+                + self._title.num_bytes.serialization()
+            )
 
 
 class WritableFile(object):
