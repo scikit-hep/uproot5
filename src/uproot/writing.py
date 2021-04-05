@@ -154,7 +154,6 @@ class Writable(object):
     def __init__(self, location, allocation):
         self._location = location
         self._allocation = allocation
-        self._serialization = None
         self._file_dirty = True
 
     @property
@@ -163,20 +162,20 @@ class Writable(object):
 
     @location.setter
     def location(self, value):
-        self._location = value
-        self._file_dirty = True
+        if self._location != value:
+            self._file_dirty = True
+            self._location = value
 
     @property
-    def serialization(self):
-        if self._serialization is None:
-            self._serialization = self.serialize()
-        return self._serialization
+    def allocation(self):
+        if self._allocation is None:
+            return len(self.serialize())
+        else:
+            return self._allocation
 
     @property
     def num_bytes(self):
-        if self._serialization is None:
-            self._serialization = self.serialize()
-        return len(self._serialization)
+        return len(self.serialize())
 
     def write(self, sink):
         if self._file_dirty:
@@ -185,9 +184,8 @@ class Writable(object):
                     "can't write object because location is unknown:\n\n    "
                     + repr(self)
                 )
-            if self._serialization is None:
-                self._serialization = self.serialize()
-        sink.write(self._location, self._serialization)
+            sink.write(self._location, self.serialize())
+            self._file_dirty = False
 
     def serialize(self):
         raise AssertionError("Writable is abstract; 'serialize' must be overloaded")
@@ -202,21 +200,21 @@ class WritableString(Writable):
         super(self, WritableString).__init__(location, None)
         self._string = string
 
+        bytestring = self._string.encode(errors="surrogateescape")
+        length = len(bytestring)
+        if length < 255:
+            self._serialization = struct.pack(">B%ds" % length, length, bytestring)
+        else:
+            self._serialization = struct.pack(
+                ">BI%ds" % length, 255, length, bytestring
+            )
+
     @property
     def string(self):
         return self._string
 
     def serialize(self):
-        bytestring = self._string.encode(errors="surrogateescape")
-        num_bytes = len(bytestring)
-        if num_bytes < 255:
-            self._serialization = struct.pack(
-                ">B%ds" % num_bytes, num_bytes, bytestring
-            )
-        else:
-            self._serialization = struct.pack(
-                ">BI%ds" % num_bytes, 255, num_bytes, bytestring
-            )
+        return self._serialization
 
 
 class WritableKey(Writable):
@@ -224,7 +222,7 @@ class WritableKey(Writable):
     FIXME: docstring
     """
 
-    fVersion = 5
+    class_version = 5
 
     def __init__(
         self,
@@ -247,24 +245,14 @@ class WritableKey(Writable):
         self._parent_location = parent_location
 
     @property
-    def location(self):
-        return self._location
-
-    @location.setter
-    def location(self, value):
-        self._location = value
-        self._serialization = None
-        self._file_dirty = True
-
-    @property
     def uncompressed_bytes(self):
         return self._uncompressed_bytes
 
     @uncompressed_bytes.setter
     def uncompressed_bytes(self, value):
-        self._uncompressed_bytes = value
-        self._serialization = None
-        self._file_dirty = True
+        if self._uncompressed_bytes != value:
+            self._file_dirty = True
+            self._uncompressed_bytes = value
 
     @property
     def compressed_bytes(self):
@@ -272,9 +260,9 @@ class WritableKey(Writable):
 
     @compressed_bytes.setter
     def compressed_bytes(self, value):
-        self._compressed_bytes = value
-        self._serialization = None
-        self._file_dirty = True
+        if self._compressed_bytes != value:
+            self._file_dirty = True
+            self._compressed_bytes = value
 
     @property
     def classname(self):
@@ -300,8 +288,8 @@ class WritableKey(Writable):
     def big(self):
         return (
             self._location is None
-            or self._location > uproot.const.kStartBigFile
-            or self._parent_location > uproot.const.kStartBigFile
+            or self._location >= uproot.const.kStartBigFile
+            or self._parent_location >= uproot.const.kStartBigFile
         )
 
     @property
@@ -327,41 +315,157 @@ class WritableKey(Writable):
                 "can't serialize key because location is unknown:\n\n    " + repr(self)
             )
 
+        fNbytes = self._compressed_bytes + self.num_bytes
+        fVersion = self.class_version + 1000 if self.big else self.class_version
+        fObjlen = self._uncompressed_bytes
+        fDatime = 1761927327  # FIXME: compute fDatime
         fKeylen = self.num_bytes
-        fNbytes = self._compressed_bytes + fKeylen
+        fCycle = self._cycle
+        fSeekKey = self._location
+        fSeekPdir = self._parent_location
 
         if self.big:
-            return (
-                uproot.reading._key_format_big.pack(
-                    fNbytes,
-                    self.fVersion + 1000,
-                    self._uncompressed_bytes,
-                    1761927327,  # FIXME: compute fDatime
-                    fKeylen,
-                    self._cycle,
-                    self._location,
-                    self._parent_location,
+            format = uproot.reading._key_format_big
+        else:
+            format = uproot.reading._key_format_small
+
+        return (
+            format.pack(
+                fNbytes,
+                fVersion,
+                fObjlen,
+                fDatime,
+                fKeylen,
+                fCycle,
+                fSeekKey,
+                fSeekPdir,
+            )
+            + self._classname.num_bytes.serialize()
+            + self._name.num_bytes.serialize()
+            + self._title.num_bytes.serialize()
+        )
+
+
+_free_format_small = struct.Struct(">HII")
+_free_format_big = struct.Struct(">HQQ")
+
+
+class WritableFrees(Writable):
+    """
+    FIXME: docstring
+    """
+
+    class_version = 1
+
+    def __init__(self, location, slices, end):
+        super(self, WritableFrees).__init__(location, None)
+        self._slices = slices
+        self._end = end
+
+    @property
+    def slices(self):
+        return self._slices
+
+    @slices.setter
+    def slices(self, value):
+        if self._slices != value:
+            self._file_dirty = True
+            self._slices = value
+
+    @property
+    def end(self):
+        return self._end
+
+    @end.setter
+    def end(self, value):
+        if self._end != value:
+            self._file_dirty = True
+            self._end = value
+
+    @property
+    def num_bytes(self):
+        total = 0
+        for _, stop in self._slices:
+            if stop - 1 < uproot.const.kStartBigFile:
+                total += _free_format_small.size()
+            else:
+                total += _free_format_big.size()
+
+        if self._end < uproot.const.kStartBigFile:
+            total += _free_format_small.size()
+        else:
+            total += _free_format_big.size()
+
+        return total
+
+    def serialize(self):
+        pairs = []
+        for start, stop in self._slices:
+            if stop - 1 < uproot.const.kStartBigFile:
+                pairs.append(
+                    _free_format_small.pack(self.class_version, start, stop - 1)
                 )
-                + self._classname.num_bytes.serialization()
-                + self._name.num_bytes.serialization()
-                + self._title.num_bytes.serialization()
+            else:
+                pairs.append(_free_format_big.pack(self.class_version, start, stop - 1))
+
+        if self._end < uproot.const.kStartBigFile:
+            pairs.append(
+                _free_format_small.pack(
+                    self.class_version, self._end, uproot.const.kStartBigFile
+                )
             )
         else:
-            return (
-                uproot.reading._key_format_small.pack(
-                    fNbytes,
-                    self.fVersion,
-                    self._uncompressed_bytes,
-                    1761927327,  # FIXME: compute fDatime
-                    fKeylen,
-                    self._cycle,
-                    self._location,
-                    self._parent_location,
-                )
-                + self._classname.num_bytes.serialization()
-                + self._name.num_bytes.serialization()
-                + self._title.num_bytes.serialization()
-            )
+            infinity = uproot.const.kStartBigFile
+            while not self._end < infinity:
+                infinity *= 2
+            pairs.append(_free_format_big.pack(self.class_version, self._end, infinity))
+
+        return b"".join(pairs)
+
+
+class WritableFreesWithKey(Writable):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, location, key, frees, file):
+        super(self, WritableFreesWithKey).__init__(location, None)
+        self._key = key
+        self._frees = frees
+        self._file = file
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def frees(self):
+        return self._frees
+
+    @property
+    def file(self):
+        return self._file
+
+    @property
+    def num_bytes(self):
+        return self._key.num_bytes + self._frees.num_bytes
+
+    def serialize(self):
+        return self._key.serialization + self._frees.serialization
+
+    def write(self, sink):
+        self._key.location = self._location
+        self._key.uncompressed_bytes = (
+            self._key.compressed_bytes
+        ) = self._frees.num_bytes
+        self._frees.location = self._location + self._key.num_bytes
+        self._frees.end = self._frees.location + self._key.uncompressed_bytes
+        self._file.free_location = self._location
+        self._file.free_num_bytes = self._frees.end - self._location
+        self._file.free_num_slices = len(self._frees.slices)
+        self._key.write()
+        self._frees.write()
+        self._file.write()
 
 
 class WritableFile(object):
@@ -369,4 +473,131 @@ class WritableFile(object):
     FIXME: docstring
     """
 
-    pass
+    magic = b"root"
+    class_version = 1062206  # ROOT 6.22/06 is our model
+    begin = 100
+
+    def __init__(
+        self,
+        end,
+        free_location,
+        free_num_bytes,
+        free_num_slices,
+        rootdir_keylen,
+        compression,
+        info_location,
+        info_num_bytes,
+        uuid_version,
+        uuid,
+    ):
+        super(self, WritableFile).__init__(0, self.begin)
+        self._end = end
+        self._free_location = free_location
+        self._free_num_bytes = free_num_bytes
+        self._free_num_slices = free_num_slices
+        self._rootdir_keylen = rootdir_keylen
+        self._compression = compression
+        self._info_location = info_location
+        self._info_num_bytes = info_num_bytes
+        self._uuid_version = uuid_version
+        self._uuid = uuid
+
+    @property
+    def end(self):
+        return self._end
+
+    @end.setter
+    def end(self, value):
+        if self._end != value:
+            self._file_dirty = True
+            self._end = value
+
+    @property
+    def free_location(self):
+        return self._free_location
+
+    @free_location.setter
+    def free_location(self, value):
+        if self._free_location != value:
+            self._file_dirty = True
+            self._free_location = value
+
+    @property
+    def free_num_bytes(self):
+        return self._free_num_bytes
+
+    @free_num_bytes.setter
+    def free_num_bytes(self, value):
+        if self._free_num_bytes != value:
+            self._file_dirty = True
+            self._free_num_bytes = value
+
+    @property
+    def free_num_slices(self):
+        return self._free_num_slices
+
+    @free_num_slices.setter
+    def free_num_slices(self, value):
+        if self._free_num_slices != value:
+            self._file_dirty = True
+            self._free_num_slices = value
+
+    @property
+    def rootdir_keylen(self):
+        return self._rootdir_keylen
+
+    @rootdir_keylen.setter
+    def rootdir_keylen(self, value):
+        if self._rootdir_keylen != value:
+            self._file_dirty = True
+            self._rootdir_keylen = value
+
+    @property
+    def compression(self):
+        return self._compression
+
+    @compression.setter
+    def compression(self, value):
+        if self._compression.code != value.code:
+            self._file_dirty = True
+            self._compression = value
+
+    @property
+    def info_location(self):
+        return self._info_location
+
+    @info_location.setter
+    def info_location(self, value):
+        if self._info_location != value:
+            self._file_dirty = True
+            self._info_location = value
+
+    @property
+    def info_num_bytes(self):
+        return self._info_num_bytes
+
+    @info_num_bytes.setter
+    def info_num_bytes(self, value):
+        if self._info_num_bytes != value:
+            self._file_dirty = True
+            self._info_num_bytes = value
+
+    @property
+    def uuid_version(self):
+        return self._uuid_version
+
+    @uuid_version.setter
+    def uuid_version(self, value):
+        if self._uuid_version != value:
+            self._file_dirty = True
+            self._uuid_version = value
+
+    @property
+    def uuid(self):
+        return self._uuid
+
+    @uuid.setter
+    def uuid(self, value):
+        if self._uuid != value:
+            self._file_dirty = True
+            self._uuid = value
