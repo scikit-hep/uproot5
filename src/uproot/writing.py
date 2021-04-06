@@ -50,7 +50,8 @@ import uproot.sink.file
 # create.defaults = {
 #     "compression": uproot.compression.ZLIB(1),
 #     "initial_directory_bytes": 256,
-#     "uuid": uuid.uuid1,
+#     "uuid_version": 1,
+#     "uuid_function": uuid.uuid1,
 # }
 
 
@@ -82,7 +83,8 @@ import uproot.sink.file
 # recreate.defaults = {
 #     "compression": uproot.compression.ZLIB(1),
 #     "initial_directory_bytes": 256,
-#     "uuid": uuid.uuid1,
+#     "uuid_version": 1,
+#     "uuid_function": uuid.uuid1,
 # }
 
 
@@ -115,7 +117,8 @@ import uproot.sink.file
 # update.defaults = {
 #     "compression": uproot.compression.ZLIB(1),
 #     "initial_directory_bytes": 256,
-#     "uuid": uuid.uuid1,
+#     "uuid_version": 1,
+#     "uuid_function": uuid.uuid1,
 # }
 
 
@@ -130,17 +133,13 @@ def _create_empty_root(
     if len(filename) >= 256:
         raise ValueError("ROOT file names must be less than 256 bytes")
 
-    if callable(uuid_function):
-        fUUID = uuid_function()
-    elif isinstance(uuid_function, uuid.UUID):
-        fUUID = uuid_function.bytes
-    elif isinstance(uuid_function, bytes):
-        fUUID = uuid_function
-    else:
-        fUUID = uuid.UUID(str(uuid_function)).bytes
+    # tmp = uuid_function()
+    tmp = uuid.UUID(
+        bytes=b"\xf7\xfe\xef\xda\x93\xe5\x11\xeb\x95\xc8\xd2\x01\xa8\xc0\xbe\xef"
+    )
 
     fileheader = WritableFileHeader(
-        None, None, None, None, None, compression, None, None, uuid_version, fUUID
+        None, None, None, None, None, compression, None, None, uuid_version, tmp
     )
 
     freesegments_key = WritableKey(
@@ -171,6 +170,11 @@ def _create_empty_root(
     )  # FIXME: parameterize initial_streamers_bytes
     streamers = Streamers(streamers_key, streamers_data, freesegments)
 
+    # tmp = uuid_function()
+    tmp = uuid.UUID(
+        bytes=b"\xf7\xfe\xef\xda\x93\xe5\x11\xeb\x95\xc8\xd2\x01\xa8\xc0\xbe\xef"
+    )
+
     directory_key = WritableKey(
         None,
         None,
@@ -184,7 +188,7 @@ def _create_empty_root(
     directory_name = WritableString(None, filename)
     directory_title = WritableString(None, "")
     directory_header = WritableDirectoryHeader(
-        None, fileheader.begin, None, None, None, 0
+        None, fileheader.begin, None, None, None, 0, uuid_version, tmp
     )
     directory_datakey = WritableKey(
         None,
@@ -197,7 +201,7 @@ def _create_empty_root(
         fileheader.begin,
     )
     directory_data = WritableDirectoryData(None, None, [])
-    directory = Directory(
+    rootdirectory = RootDirectory(
         directory_key,
         directory_name,
         directory_title,
@@ -210,9 +214,9 @@ def _create_empty_root(
     directory_key.location = fileheader.begin
     streamers_key.location = (
         directory_key.location
-        + directory_key.num_bytes
-        + directory_name.num_bytes
-        + directory_title.num_bytes
+        + directory_key.allocation
+        + directory_name.allocation
+        + directory_title.allocation
         + directory_header.allocation
     )
     directory_datakey.location = streamers_key.location + streamers.allocation
@@ -221,7 +225,7 @@ def _create_empty_root(
     fileheader.info_location = streamers_key.location
     fileheader.info_num_bytes = streamers_key.allocation + streamers_data.allocation
 
-    directory.write(sink)
+    rootdirectory.write(sink)
     streamers.write(sink)
 
 
@@ -410,16 +414,16 @@ class WritableKey(Writable):
         if self.big:
             return (
                 uproot.reading._key_format_big.size
-                + self._classname.num_bytes
-                + self._name.num_bytes
-                + self._title.num_bytes
+                + self._classname.allocation
+                + self._name.allocation
+                + self._title.allocation
             )
         else:
             return (
                 uproot.reading._key_format_small.size
-                + self._classname.num_bytes
-                + self._name.num_bytes
-                + self._title.num_bytes
+                + self._classname.allocation
+                + self._name.allocation
+                + self._title.allocation
             )
 
     def serialize(self):
@@ -578,7 +582,7 @@ class FreeSegments(HasDependencies):
     def write(self, sink):
         self._key.uncompressed_bytes = self._data.num_bytes
         self._key.compressed_bytes = self._key.uncompressed_bytes
-        self._data.location = self._key.location + self._key.num_bytes
+        self._data.location = self._key.location + self._key.allocation
         self._data.end = self._data.location + self._key.uncompressed_bytes
         self._fileheader.free_location = self._key.location
         self._fileheader.free_num_bytes = self._data.end - self._key.location
@@ -645,15 +649,15 @@ class Streamers(HasDependencies):
 
     @property
     def allocation(self):
-        return self._key.num_bytes + self._data.allocation
+        return self._key.allocation + self._data.allocation
 
     def write(self, sink):
         self._key.uncompressed_bytes = self._data.num_bytes
         self._key.compressed_bytes = self._key.uncompressed_bytes
-        self._data.location = self._key.location + self._key.num_bytes
+        self._data.location = self._key.location + self._key.allocation
         self._freesegments.fileheader.info_location = self._key.location
         self._freesegments.fileheader.info_num_bytes = (
-            self._key.num_bytes + self._data.allocation
+            self._key.allocation + self._data.allocation
         )
         super(Streamers, self).write(sink)
 
@@ -682,7 +686,7 @@ class WritableDirectoryData(Writable):
     @property
     def num_bytes(self):
         return uproot.reading._directory_format_num_keys.size + sum(
-            x.num_bytes for x in self._keys
+            x.allocation for x in self._keys
         )
 
     def serialize(self):
@@ -709,18 +713,24 @@ class WritableDirectoryHeader(Writable):
         data_location,
         data_num_bytes,
         parent_location,
+        uuid_version,
+        uuid,
     ):
-        super(WritableDirectoryHeader, self).__init__(location, 60)
+        super(WritableDirectoryHeader, self).__init__(
+            location, uproot.reading._directory_format_big.size + 2 + len(uuid.bytes)
+        )
         self._begin_location = begin_location
         self._begin_num_bytes = begin_num_bytes
         self._data_location = data_location
         self._data_num_bytes = data_num_bytes
         self._parent_location = parent_location
+        self._uuid_version = uuid_version
+        self._uuid = uuid
         self._created_on = datetime.datetime.now()
         self._modified_on = self._created_on
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6})".format(
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})".format(
             type(self).__name__,
             self._location,
             self._begin_location,
@@ -728,6 +738,8 @@ class WritableDirectoryHeader(Writable):
             self._data_location,
             self._data_num_bytes,
             self._parent_location,
+            self._uuid_version,
+            self._uuid,
         )
 
     @property
@@ -769,6 +781,14 @@ class WritableDirectoryHeader(Writable):
         return self._parent_location
 
     @property
+    def uuid_version(self):
+        return self._uuid_version
+
+    @property
+    def uuid(self):
+        return self._uuid
+
+    @property
     def big(self):
         return False  # FIXME
         # return (
@@ -788,29 +808,36 @@ class WritableDirectoryHeader(Writable):
         if self.big:
             format = uproot.reading._directory_format_big
             version = self.class_version + 1000
+            extra = b""
         else:
             format = uproot.reading._directory_format_small
             version = self.class_version
+            extra = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 
-        return format.pack(
-            version,  # fVersion
-            1761927327,  # FIXME: compute fDatimeC
-            1761927327,  # FIXME: compute fDatimeM
-            self._data_num_bytes,  # fNbytesKeys
-            self._begin_num_bytes,  # fNbytesName
-            self._begin_location,  # fSeekDir
-            self._parent_location,  # fSeekParent
-            self._data_location,  # fSeekKeys
+        return (
+            format.pack(
+                version,  # fVersion
+                1761927327,  # FIXME: compute fDatimeC
+                1761927327,  # FIXME: compute fDatimeM
+                self._data_num_bytes,  # fNbytesKeys
+                self._begin_num_bytes,  # fNbytesName
+                self._begin_location,  # fSeekDir
+                self._parent_location,  # fSeekParent
+                self._data_location,  # fSeekKeys
+            )
+            + struct.pack(">H", self._uuid_version)
+            + self._uuid.bytes
+            + extra
         )
 
 
-class Directory(HasDependencies):
+class RootDirectory(HasDependencies):
     """
     FIXME: docstring
     """
 
     def __init__(self, key, name, title, header, datakey, data, freesegments):
-        super(Directory, self).__init__(
+        super(RootDirectory, self).__init__(
             key, name, title, header, datakey, data, freesegments
         )
         self._key = key
@@ -822,12 +849,13 @@ class Directory(HasDependencies):
         self._freesegments = freesegments
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6})".format(
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
             type(self).__name__,
             self._key,
             self._name,
             self._title,
             self._header,
+            self._datakey,
             self._data,
             self._freesegments,
         )
@@ -862,23 +890,84 @@ class Directory(HasDependencies):
 
     @property
     def begin_num_bytes(self):
-        return self._key.num_bytes + self._name.num_bytes + self._title.num_bytes
+        return self._key.allocation + self._name.allocation + self._title.allocation
 
     def write(self, sink):
         self._key.uncompressed_bytes = (
-            self._name.num_bytes + self._title.num_bytes + self._header.allocation
+            self._name.allocation + self._title.allocation + self._header.allocation
         )
         self._key.compressed_bytes = self._key.uncompressed_bytes
-        self._name.location = self._key.location + self._key.num_bytes
-        self._title.location = self._name.location + self._name.num_bytes
-        self._header.location = self._title.location + self._title.num_bytes
+        self._name.location = self._key.location + self._key.allocation
+        self._title.location = self._name.location + self._name.allocation
+        self._header.location = self._title.location + self._title.allocation
         self._header.begin_num_bytes = self.begin_num_bytes
         self._header.data_location = self._datakey.location
         self._header.data_num_bytes = self._datakey.num_bytes + self._data.num_bytes
         self._datakey.uncompressed_bytes = self._data.num_bytes
         self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
         self._freesegments.fileheader.begin_num_bytes = self.begin_num_bytes
-        super(Directory, self).write(sink)
+        super(RootDirectory, self).write(sink)
+
+
+class SubDirectory(HasDependencies):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, key, header, datakey, data, parent, freesegments):
+        super(SubDirectory, self).__init__(key, header, datakey, data, parent)
+        self._key = key
+        self._header = header
+        self._datakey = datakey
+        self._data = data
+        self._parent = parent
+        self._freesegments = freesegments
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6})".format(
+            type(self).__name__,
+            self._key,
+            self._header,
+            self._datakey,
+            self._data,
+            self._parent,
+            self._freesegments,
+        )
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def header(self):
+        return self._header
+
+    @property
+    def datakey(self):
+        return self._datakey
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def freesegments(self):
+        return self._freesegments
+
+    def write(self, sink):
+        self._key.uncompressed_bytes = self._header.allocation
+        self._key.compressed_bytes = self._key.uncompressed_bytes
+        self._header.location = self._key.location + self._key.allocation
+        self._header.begin_num_bytes = self._key.num_bytes
+        self._header.data_location = self._datakey.location
+        self._header.data_num_bytes = self._datakey.num_bytes + self._data.num_bytes
+        self._datakey.uncompressed_bytes = self._data.num_bytes
+        self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
+        super(SubDirectory, self).write(sink)
 
 
 class WritableFileHeader(Writable):
