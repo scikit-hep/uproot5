@@ -200,7 +200,7 @@ def _create_empty_root(
         1,
         fileheader.begin,
     )
-    directory_data = WritableDirectoryData(None, None, [])
+    directory_data = WritableDirectoryData(None, initial_directory_bytes, [])
     rootdirectory = RootDirectory(
         directory_key,
         directory_name,
@@ -580,7 +580,7 @@ class FreeSegments(HasDependencies):
         return self._fileheader
 
     def write(self, sink):
-        self._key.uncompressed_bytes = self._data.num_bytes
+        self._key.uncompressed_bytes = self._data.allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
         self._data.location = self._key.location + self._key.allocation
         self._data.end = self._data.location + self._key.uncompressed_bytes
@@ -652,7 +652,7 @@ class Streamers(HasDependencies):
         return self._key.allocation + self._data.allocation
 
     def write(self, sink):
-        self._key.uncompressed_bytes = self._data.num_bytes
+        self._key.uncompressed_bytes = self._data.allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
         self._data.location = self._key.location + self._key.allocation
         self._freesegments.fileheader.info_location = self._key.location
@@ -902,8 +902,8 @@ class RootDirectory(HasDependencies):
         self._header.location = self._title.location + self._title.allocation
         self._header.begin_num_bytes = self.begin_num_bytes
         self._header.data_location = self._datakey.location
-        self._header.data_num_bytes = self._datakey.num_bytes + self._data.num_bytes
-        self._datakey.uncompressed_bytes = self._data.num_bytes
+        self._header.data_num_bytes = self._datakey.allocation + self._data.allocation
+        self._datakey.uncompressed_bytes = self._data.allocation
         self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
         self._freesegments.fileheader.begin_num_bytes = self.begin_num_bytes
         super(RootDirectory, self).write(sink)
@@ -964,8 +964,8 @@ class SubDirectory(HasDependencies):
         self._header.location = self._key.location + self._key.allocation
         self._header.begin_num_bytes = self._key.num_bytes
         self._header.data_location = self._datakey.location
-        self._header.data_num_bytes = self._datakey.num_bytes + self._data.num_bytes
-        self._datakey.uncompressed_bytes = self._data.num_bytes
+        self._header.data_num_bytes = self._datakey.allocation + self._data.allocation
+        self._datakey.uncompressed_bytes = self._data.allocation
         self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
         super(SubDirectory, self).write(sink)
 
