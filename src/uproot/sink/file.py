@@ -6,6 +6,7 @@ FIXME: docstring
 
 from __future__ import absolute_import
 
+import os
 import struct
 
 _string_size_format_4 = struct.Struct(">I")
@@ -55,6 +56,9 @@ class FileSink(object):
         if self._file is None:
             if self._file_path is None:
                 raise TypeError("FileSink created from an object cannot be reopened")
+            if not os.path.exists(self._file_path):
+                with open(self._file_path, "a"):
+                    pass
             self._file = open(self._file_path, "r+b")
             self._file.seek(0)
 

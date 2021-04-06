@@ -6,6 +6,7 @@ FIXME: docstring
 
 from __future__ import absolute_import
 
+import datetime
 import os.path
 import struct
 import uuid
@@ -16,101 +17,112 @@ import uproot.const
 import uproot.reading
 import uproot.sink.file
 
+# def create(file_path, **options):
+#     """
+#     FIXME: docstring
+#     """
+#     file_path = uproot._util.regularize_path(file_path)
+#     if uproot._util.isstr(file_path):
+#         if os.path.exists(file_path):
+#             raise OSError(
+#                 "path exists and refusing to overwrite (use 'uproot.recreate' to "
+#                 "overwrite)\n\nin path {0}".format(file_path)
+#             )
+#         file = uproot.sink.file.FileSink()
+#     else:
+#         file = uproot.sink.file.FileSink.from_object(file_path)
 
-def create(file_path, **options):
-    """
-    FIXME: docstring
-    """
-    file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
-        if os.path.exists(file_path):
-            raise OSError(
-                "path exists and refusing to overwrite (use 'uproot.recreate' to "
-                "overwrite)\n\nin path {0}".format(file_path)
-            )
-        file = uproot.sink.file.FileSink()
-    else:
-        file = uproot.sink.file.FileSink.from_object(file_path)
+#     compression = options.pop("compression", update.defaults["compression"])
+#     initial_directory_bytes = options.pop(
+#         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
+#     )
+#     uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
+#     uuid_function = options.pop("uuid", create.defaults["uuid"])
+#     if len(options) != 0:
+#         raise TypeError("unrecognized options: " + ", ".join(repr(x) for x in options))
 
-    compression = options.pop("compression", update.defaults["compression"])
-    initial_bytes = options.pop("initial_bytes", create.defaults["initial_bytes"])
-    uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
-    uuid_function = options.pop("uuid", create.defaults["uuid"])
-    if len(options) != 0:
-        raise TypeError("unrecognized options: " + ", ".join(repr(x) for x in options))
-
-    _create_empty_root(file, compression, initial_bytes, uuid_version, uuid_function)
-    return WritableFile(file, compression, initial_bytes)
-
-
-create.defaults = {
-    "compression": uproot.compression.ZLIB(1),
-    "initial_bytes": 256,
-    "uuid": uuid.uuid1,
-}
+#     _create_empty_root(
+#         file, compression, initial_directory_bytes, uuid_version, uuid_function
+#     )
+#     return WritableFile(file, compression, initial_directory_bytes)
 
 
-def recreate(file_path, **options):
-    """
-    FIXME: docstring
-    """
-    file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
-        file = uproot.sink.file.FileSink()
-    else:
-        file = uproot.sink.file.FileSink.from_object(file_path)
-
-    compression = options.pop("compression", update.defaults["compression"])
-    initial_bytes = options.pop("initial_bytes", recreate.defaults["initial_bytes"])
-    uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
-    uuid_function = options.pop("uuid", create.defaults["uuid"])
-    if len(options) != 0:
-        raise TypeError("unrecognized options: " + ", ".join(repr(x) for x in options))
-
-    _create_empty_root(file, compression, initial_bytes, uuid_version, uuid_function)
-    return WritableFile(file, compression, initial_bytes)
+# create.defaults = {
+#     "compression": uproot.compression.ZLIB(1),
+#     "initial_directory_bytes": 256,
+#     "uuid": uuid.uuid1,
+# }
 
 
-recreate.defaults = {
-    "compression": uproot.compression.ZLIB(1),
-    "initial_bytes": 256,
-    "uuid": uuid.uuid1,
-}
+# def recreate(file_path, **options):
+#     """
+#     FIXME: docstring
+#     """
+#     file_path = uproot._util.regularize_path(file_path)
+#     if uproot._util.isstr(file_path):
+#         file = uproot.sink.file.FileSink()
+#     else:
+#         file = uproot.sink.file.FileSink.from_object(file_path)
+
+#     compression = options.pop("compression", update.defaults["compression"])
+#     initial_directory_bytes = options.pop(
+#         "initial_directory_bytes", recreate.defaults["initial_directory_bytes"]
+#     )
+#     uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
+#     uuid_function = options.pop("uuid", create.defaults["uuid"])
+#     if len(options) != 0:
+#         raise TypeError("unrecognized options: " + ", ".join(repr(x) for x in options))
+
+#     _create_empty_root(
+#         file, compression, initial_directory_bytes, uuid_version, uuid_function
+#     )
+#     return WritableFile(file, compression, initial_directory_bytes)
 
 
-def update(file_path, **options):
-    """
-    FIXME: docstring
-    """
-    file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
-        file = uproot.sink.file.FileSink()
-    else:
-        file = uproot.sink.file.FileSink.from_object(file_path)
-
-    compression = options.pop("compression", update.defaults["compression"])
-    initial_bytes = options.pop("initial_bytes", update.defaults["initial_bytes"])
-    uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
-    uuid_function = options.pop("uuid", create.defaults["uuid"])
-    if len(options) != 0:
-        raise TypeError("unrecognized options: " + ", ".join(repr(x) for x in options))
-
-    if file.read_raw(4) != b"root":
-        _create_empty_root(
-            file, compression, initial_bytes, uuid_version, uuid_function
-        )
-    return WritableFile(file, compression, initial_bytes)
+# recreate.defaults = {
+#     "compression": uproot.compression.ZLIB(1),
+#     "initial_directory_bytes": 256,
+#     "uuid": uuid.uuid1,
+# }
 
 
-update.defaults = {
-    "compression": uproot.compression.ZLIB(1),
-    "initial_bytes": 256,
-    "uuid": uuid.uuid1,
-}
+# def update(file_path, **options):
+#     """
+#     FIXME: docstring
+#     """
+#     file_path = uproot._util.regularize_path(file_path)
+#     if uproot._util.isstr(file_path):
+#         file = uproot.sink.file.FileSink()
+#     else:
+#         file = uproot.sink.file.FileSink.from_object(file_path)
+
+#     compression = options.pop("compression", update.defaults["compression"])
+#     initial_directory_bytes = options.pop(
+#         "initial_directory_bytes", update.defaults["initial_directory_bytes"]
+#     )
+#     uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
+#     uuid_function = options.pop("uuid", create.defaults["uuid"])
+#     if len(options) != 0:
+#         raise TypeError("unrecognized options: " + ", ".join(repr(x) for x in options))
+
+#     if file.read_raw(4) != b"root":
+#         _create_empty_root(
+#             file, compression, initial_directory_bytes, uuid_version, uuid_function
+#         )
+#     return WritableFile(file, compression, initial_directory_bytes)
 
 
-def _create_empty_root(file, compression, initial_bytes, uuid_version, uuid_function):
-    filename = file.file_path
+# update.defaults = {
+#     "compression": uproot.compression.ZLIB(1),
+#     "initial_directory_bytes": 256,
+#     "uuid": uuid.uuid1,
+# }
+
+
+def _create_empty_root(
+    sink, compression, initial_directory_bytes, uuid_version, uuid_function
+):
+    filename = sink.file_path
     if filename is None:
         filename = "dynamic.root"
     else:
@@ -118,32 +130,99 @@ def _create_empty_root(file, compression, initial_bytes, uuid_version, uuid_func
     if len(filename) >= 256:
         raise ValueError("ROOT file names must be less than 256 bytes")
 
-    # temporary
-    # streamerinfo = b"\x00\x00\x01\x19\x00\x04\x00\x00\x01ri\x04\xe0\xc5\x00@\x00\x01\x00\x00\x016\x00\x00\x00d\x05TList\x0cStreamerInfo\x12Doubly linked listZL\x08\xd0\x00\x00r\x01\x00x\x01uP;\n\xc2@\x14\x9c\x185h#v\x01\x9b\x14b\xe7\x1d\x92\x80\xa0U@\xa3X\x08\x12u\x95\x08&\xb2F\xc4K\x88\x07\xf00\xdeLg\xd7\x0fn\xe1\xc0\x9bb\xde\xcc\x0eo}X\x19*\xb0@\x94\x14\x11\x96\x0fk\xfa \xe2Q!E\xb2\x13r\x90\xadsP\rQ\xf3\x01\x97v\x1d\xb0\xc9\xf58Zl\xe9K\xb3\rn\x97\xfe'\xef\xea<W\x81\x94\xc9Ye\xab\xb0\xcd\x1a]\xc7\xe7\x8eFU\x98\x1c\x04\xed\x98\xc3&\x8fQ&w\xbe\x85\x00\x1cU(\x96E\x93\xcet\xe9\r\xa3(\xf6r\xadp\x19r\x0c\\[\xf7\xee\xafP\x0e\x83Q\x8f\x02oDa\x14\xbfo\xa0>C\x89<\xd1\xd5m\xa3z\xfd25N2\xd9\xef\xc5\xcaS\x1f\xa4\x0e\x07\x02\x8e\xcb\xf9\x0b\xe7\xe3}\x024bH."
-    # streamerinfo = b"\x00\x00\x00U\x00\x04\x00\x00\x00\x15i\x04\xe0\x9f\x00@\x00\x01\x00\x00\x00\xd8\x00\x00\x00d\x05TList\x0cStreamerInfo\x12Doubly linked list@\x00\x00\x11\x00\x05\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00"
+    if callable(uuid_function):
+        fUUID = uuid_function()
+    elif isinstance(uuid_function, uuid.UUID):
+        fUUID = uuid_function.bytes
+    elif isinstance(uuid_function, bytes):
+        fUUID = uuid_function
+    else:
+        fUUID = uuid.UUID(str(uuid_function)).bytes
 
-    # magic = b"root"
-    # fVersion = 1062206  # ROOT 6.22/06 is my model
-    # fBEGIN = 100
-    # fEND = 0  # will be replaced
-    # fSeekFree = 0  # will be replaced
-    # nfree = 0  # will be replaced
-    # fNbytesName = 0  # will be replaced
-    # fUnits = 8
-    # fCompress = compression.code
-    # fSeekInfo = 0  # will be replaced
-    # fNbytesInfo = len(streamerinfo)
-    # fUUID_version = uuid_version
-    # if callable(uuid_function):
-    #     fUUID = uuid_function()
-    # elif isinstance(uuid_function, uuid.UUID):
-    #     fUUID = uuid_function.bytes
-    # elif isinstance(uuid_function, bytes):
-    #     fUUID = uuid_function
-    # else:
-    #     fUUID = uuid.UUID(str(uuid_function)).bytes
+    fileheader = WritableFileHeader(
+        None, None, None, None, None, compression, None, None, uuid_version, fUUID
+    )
 
-    # uproot.reading._file_header_fields_big
+    freesegments_key = WritableKey(
+        None,
+        None,
+        None,
+        WritableString(None, "TFile"),
+        WritableString(None, filename),
+        WritableString(None, ""),
+        1,
+        fileheader.begin,
+    )
+    freesegments_data = WritableFreeSegmentsData(None, (), None)
+    freesegments = FreeSegments(freesegments_key, freesegments_data, fileheader)
+
+    streamers_key = WritableKey(
+        None,
+        None,
+        None,
+        WritableString(None, "TList"),
+        WritableString(None, "StreamerInfo"),
+        WritableString(None, "Doubly linked list"),
+        1,
+        fileheader.begin,
+    )
+    streamers_data = WritableStreamersData(
+        None, 21
+    )  # FIXME: parameterize initial_streamers_bytes
+    streamers = Streamers(streamers_key, streamers_data, freesegments)
+
+    directory_key = WritableKey(
+        None,
+        None,
+        None,
+        WritableString(None, "TFile"),
+        WritableString(None, filename),
+        WritableString(None, ""),
+        1,
+        0,
+    )
+    directory_name = WritableString(None, filename)
+    directory_title = WritableString(None, "")
+    directory_header = WritableDirectoryHeader(
+        None, fileheader.begin, None, None, None, 0
+    )
+    directory_datakey = WritableKey(
+        None,
+        None,
+        None,
+        WritableString(None, "TFile"),
+        WritableString(None, filename),
+        WritableString(None, ""),
+        1,
+        fileheader.begin,
+    )
+    directory_data = WritableDirectoryData(None, None, [])
+    directory = Directory(
+        directory_key,
+        directory_name,
+        directory_title,
+        directory_header,
+        directory_datakey,
+        directory_data,
+        freesegments,
+    )
+
+    directory_key.location = fileheader.begin
+    streamers_key.location = (
+        directory_key.location
+        + directory_key.num_bytes
+        + directory_name.num_bytes
+        + directory_title.num_bytes
+        + directory_header.allocation
+    )
+    directory_datakey.location = streamers_key.location + streamers.allocation
+    directory_data.location = directory_datakey.location + directory_datakey.allocation
+    freesegments_key.location = directory_data.location + directory_data.allocation
+    fileheader.info_location = streamers_key.location
+    fileheader.info_num_bytes = streamers_key.allocation + streamers_data.allocation
+
+    directory.write(sink)
+    streamers.write(sink)
 
 
 class Writable(object):
@@ -169,7 +248,7 @@ class Writable(object):
     @property
     def allocation(self):
         if self._allocation is None:
-            return len(self.serialize())
+            return self.num_bytes
         else:
             return self._allocation
 
@@ -191,13 +270,26 @@ class Writable(object):
         raise AssertionError("Writable is abstract; 'serialize' must be overloaded")
 
 
+class HasDependencies(object):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, *dependencies):
+        self._dependencies = dependencies
+
+    def write(self, sink):
+        for dependency in self._dependencies:
+            dependency.write(sink)
+
+
 class WritableString(Writable):
     """
     FIXME: docstring
     """
 
     def __init__(self, location, string):
-        super(self, WritableString).__init__(location, None)
+        super(WritableString, self).__init__(location, None)
         self._string = string
 
         bytestring = self._string.encode(errors="surrogateescape")
@@ -208,6 +300,13 @@ class WritableString(Writable):
             self._serialization = struct.pack(
                 ">BI%ds" % length, 255, length, bytestring
             )
+
+    def __repr__(self):
+        return "{0}({1}, {2})".format(
+            type(self).__name__,
+            self._location,
+            repr(self._string),
+        )
 
     @property
     def string(self):
@@ -222,7 +321,7 @@ class WritableKey(Writable):
     FIXME: docstring
     """
 
-    class_version = 5
+    class_version = 4
 
     def __init__(
         self,
@@ -235,7 +334,7 @@ class WritableKey(Writable):
         cycle,
         parent_location,
     ):
-        super(self, WritableKey).__init__(location, None)
+        super(WritableKey, self).__init__(location, None)
         self._uncompressed_bytes = uncompressed_bytes
         self._compressed_bytes = compressed_bytes
         self._classname = classname
@@ -243,6 +342,19 @@ class WritableKey(Writable):
         self._title = title
         self._cycle = cycle
         self._parent_location = parent_location
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})".format(
+            type(self).__name__,
+            self._location,
+            self._uncompressed_bytes,
+            self._compressed_bytes,
+            repr(self._classname),
+            repr(self._name),
+            repr(self._title),
+            self._cycle,
+            self._parent_location,
+        )
 
     @property
     def uncompressed_bytes(self):
@@ -286,11 +398,12 @@ class WritableKey(Writable):
 
     @property
     def big(self):
-        return (
-            self._location is None
-            or self._location >= uproot.const.kStartBigFile
-            or self._parent_location >= uproot.const.kStartBigFile
-        )
+        return False  # FIXME
+        # return (
+        #     self._location is None
+        #     or self._location >= uproot.const.kStartBigFile
+        #     or self._parent_location >= uproot.const.kStartBigFile
+        # )
 
     @property
     def num_bytes(self):
@@ -315,34 +428,27 @@ class WritableKey(Writable):
                 "can't serialize key because location is unknown:\n\n    " + repr(self)
             )
 
-        fNbytes = self._compressed_bytes + self.num_bytes
-        fVersion = self.class_version + 1000 if self.big else self.class_version
-        fObjlen = self._uncompressed_bytes
-        fDatime = 1761927327  # FIXME: compute fDatime
-        fKeylen = self.num_bytes
-        fCycle = self._cycle
-        fSeekKey = self._location
-        fSeekPdir = self._parent_location
-
         if self.big:
             format = uproot.reading._key_format_big
+            version = self.class_version + 1000
         else:
             format = uproot.reading._key_format_small
+            version = self.class_version
 
         return (
             format.pack(
-                fNbytes,
-                fVersion,
-                fObjlen,
-                fDatime,
-                fKeylen,
-                fCycle,
-                fSeekKey,
-                fSeekPdir,
+                self._compressed_bytes + self.num_bytes,  # fNbytes
+                version,  # fVersion
+                self._uncompressed_bytes,  # fObjlen
+                1761927327,  # FIXME: compute fDatime
+                self.num_bytes,  # fKeylen
+                self._cycle,  # fCycle
+                self._location,  # fSeekKey
+                self._parent_location,  # fSeekPdir
             )
-            + self._classname.num_bytes.serialize()
-            + self._name.num_bytes.serialize()
-            + self._title.num_bytes.serialize()
+            + self._classname.serialize()
+            + self._name.serialize()
+            + self._title.serialize()
         )
 
 
@@ -350,7 +456,7 @@ _free_format_small = struct.Struct(">HII")
 _free_format_big = struct.Struct(">HQQ")
 
 
-class WritableFrees(Writable):
+class WritableFreeSegmentsData(Writable):
     """
     FIXME: docstring
     """
@@ -358,9 +464,17 @@ class WritableFrees(Writable):
     class_version = 1
 
     def __init__(self, location, slices, end):
-        super(self, WritableFrees).__init__(location, None)
+        super(WritableFreeSegmentsData, self).__init__(location, None)
         self._slices = slices
         self._end = end
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3})".format(
+            type(self).__name__,
+            self._location,
+            self._slices,
+            self._end,
+        )
 
     @property
     def slices(self):
@@ -386,15 +500,20 @@ class WritableFrees(Writable):
     def num_bytes(self):
         total = 0
         for _, stop in self._slices:
-            if stop - 1 < uproot.const.kStartBigFile:
-                total += _free_format_small.size()
+            if stop - 1 >= uproot.const.kStartBigFile:
+                total += _free_format_big.size
             else:
-                total += _free_format_big.size()
+                total += _free_format_small.size
 
-        if self._end < uproot.const.kStartBigFile:
-            total += _free_format_small.size()
+        if self._end is None:
+            if total + _free_format_small.size >= uproot.const.kStartBigFile:
+                total += _free_format_big.size
+            else:
+                total += _free_format_small.size
+        elif self._end >= uproot.const.kStartBigFile:
+            total += _free_format_big.size
         else:
-            total += _free_format_big.size()
+            total += _free_format_small.size
 
         return total
 
@@ -423,58 +542,352 @@ class WritableFrees(Writable):
         return b"".join(pairs)
 
 
-class WritableFreesWithKey(Writable):
+class FreeSegments(HasDependencies):
     """
     FIXME: docstring
     """
 
-    def __init__(self, location, key, frees, file):
-        super(self, WritableFreesWithKey).__init__(location, None)
+    # key cycle = 1, parent = 100 (fBEGIN), class = "TFile", name = filename, title = ""
+
+    def __init__(self, key, data, fileheader):
+        super(FreeSegments, self).__init__(key, data, fileheader)
         self._key = key
-        self._frees = frees
-        self._file = file
+        self._data = data
+        self._fileheader = fileheader
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3})".format(
+            type(self).__name__,
+            self._key,
+            self._data,
+            self._fileheader,
+        )
 
     @property
     def key(self):
         return self._key
 
     @property
-    def frees(self):
-        return self._frees
+    def data(self):
+        return self._data
 
     @property
-    def file(self):
-        return self._file
+    def fileheader(self):
+        return self._fileheader
+
+    def write(self, sink):
+        self._key.uncompressed_bytes = self._data.num_bytes
+        self._key.compressed_bytes = self._key.uncompressed_bytes
+        self._data.location = self._key.location + self._key.num_bytes
+        self._data.end = self._data.location + self._key.uncompressed_bytes
+        self._fileheader.free_location = self._key.location
+        self._fileheader.free_num_bytes = self._data.end - self._key.location
+        self._fileheader.free_num_slices = len(self._data.slices)
+        self._fileheader.end = self._data.end
+        super(FreeSegments, self).write(sink)
+
+
+class WritableStreamersData(Writable):
+    """
+    FIXME: docstring
+    """
+
+    # allocation = 21
+
+    def __init__(self, location, allocation):
+        super(WritableStreamersData, self).__init__(location, allocation)
+
+        self._serialization = b"@\x00\x00\x11\x00\x05\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00"
+
+    def __repr__(self):
+        return "{0}({1}, {2})".format(
+            type(self).__name__,
+            self._location,
+            self._allocation,
+        )
+
+    def serialize(self):
+        return self._serialization
+
+
+class Streamers(HasDependencies):
+    """
+    FIXME: docstring
+    """
+
+    # key cycle = 1, parent = 100 (fBEGIN), class = "TList", name = "StreamerInfo", title = "Doubly linked list"
+
+    def __init__(self, key, data, freesegments):
+        super(Streamers, self).__init__(key, data, freesegments)
+        self._key = key
+        self._data = data
+        self._freesegments = freesegments
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3})".format(
+            type(self).__name__,
+            self._key,
+            self._data,
+            self._freesegments,
+        )
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def freesegments(self):
+        return self._freesegments
+
+    @property
+    def allocation(self):
+        return self._key.num_bytes + self._data.allocation
+
+    def write(self, sink):
+        self._key.uncompressed_bytes = self._data.num_bytes
+        self._key.compressed_bytes = self._key.uncompressed_bytes
+        self._data.location = self._key.location + self._key.num_bytes
+        self._freesegments.fileheader.info_location = self._key.location
+        self._freesegments.fileheader.info_num_bytes = (
+            self._key.num_bytes + self._data.allocation
+        )
+        super(Streamers, self).write(sink)
+
+
+class WritableDirectoryData(Writable):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, location, allocation, keys):
+        super(WritableDirectoryData, self).__init__(location, allocation)
+        self._keys = keys
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3})".format(
+            type(self).__name__,
+            self._location,
+            self._allocation,
+            self._keys,
+        )
+
+    @property
+    def keys(self):
+        return self._keys
 
     @property
     def num_bytes(self):
-        return self._key.num_bytes + self._frees.num_bytes
+        return uproot.reading._directory_format_num_keys.size + sum(
+            x.num_bytes for x in self._keys
+        )
 
     def serialize(self):
-        return self._key.serialization + self._frees.serialization
+        out = [uproot.reading._directory_format_num_keys.pack(len(self._keys))]
+        for key in self._keys:
+            out.append(key.serialize())
+        return b"".join(out)
+
+
+class WritableDirectoryHeader(Writable):
+    """
+    FIXME: docstring
+    """
+
+    class_version = 5
+
+    # begin_location = 100 (fBEGIN), parent_location = 0
+
+    def __init__(
+        self,
+        location,
+        begin_location,
+        begin_num_bytes,
+        data_location,
+        data_num_bytes,
+        parent_location,
+    ):
+        super(WritableDirectoryHeader, self).__init__(location, 60)
+        self._begin_location = begin_location
+        self._begin_num_bytes = begin_num_bytes
+        self._data_location = data_location
+        self._data_num_bytes = data_num_bytes
+        self._parent_location = parent_location
+        self._created_on = datetime.datetime.now()
+        self._modified_on = self._created_on
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6})".format(
+            type(self).__name__,
+            self._location,
+            self._begin_location,
+            self._begin_num_bytes,
+            self._data_location,
+            self._data_num_bytes,
+            self._parent_location,
+        )
+
+    @property
+    def begin_location(self):
+        return self._begin_location
+
+    @property
+    def begin_num_bytes(self):
+        return self._begin_num_bytes
+
+    @begin_num_bytes.setter
+    def begin_num_bytes(self, value):
+        if self._begin_num_bytes != value:
+            self._file_dirty = True
+            self._begin_num_bytes = value
+
+    @property
+    def data_location(self):
+        return self._data_location
+
+    @data_location.setter
+    def data_location(self, value):
+        if self._data_location != value:
+            self._file_dirty = True
+            self._data_location = value
+
+    @property
+    def data_num_bytes(self):
+        return self._data_num_bytes
+
+    @data_num_bytes.setter
+    def data_num_bytes(self, value):
+        if self._data_num_bytes != value:
+            self._file_dirty = True
+            self._data_num_bytes = value
+
+    @property
+    def parent_location(self):
+        return self._parent_location
+
+    @property
+    def big(self):
+        return False  # FIXME
+        # return (
+        #     self._begin_location >= uproot.const.kStartBigFile
+        #     or self._data_location >= uproot.const.kStartBigFile
+        #     or self._parent_location >= uproot.const.kStartBigFile
+        # )
+
+    @property
+    def num_bytes(self):
+        if self.big:
+            return uproot.reading._directory_format_big.size
+        else:
+            return uproot.reading._directory_format_small.size
+
+    def serialize(self):
+        if self.big:
+            format = uproot.reading._directory_format_big
+            version = self.class_version + 1000
+        else:
+            format = uproot.reading._directory_format_small
+            version = self.class_version
+
+        return format.pack(
+            version,  # fVersion
+            1761927327,  # FIXME: compute fDatimeC
+            1761927327,  # FIXME: compute fDatimeM
+            self._data_num_bytes,  # fNbytesKeys
+            self._begin_num_bytes,  # fNbytesName
+            self._begin_location,  # fSeekDir
+            self._parent_location,  # fSeekParent
+            self._data_location,  # fSeekKeys
+        )
+
+
+class Directory(HasDependencies):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, key, name, title, header, datakey, data, freesegments):
+        super(Directory, self).__init__(
+            key, name, title, header, datakey, data, freesegments
+        )
+        self._key = key
+        self._name = name
+        self._title = title
+        self._header = header
+        self._datakey = datakey
+        self._data = data
+        self._freesegments = freesegments
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6})".format(
+            type(self).__name__,
+            self._key,
+            self._name,
+            self._title,
+            self._header,
+            self._data,
+            self._freesegments,
+        )
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def title(self):
+        return self._title
+
+    @property
+    def header(self):
+        return self._header
+
+    @property
+    def datakey(self):
+        return self._datakey
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def freesegments(self):
+        return self._freesegments
+
+    @property
+    def begin_num_bytes(self):
+        return self._key.num_bytes + self._name.num_bytes + self._title.num_bytes
 
     def write(self, sink):
-        self._key.location = self._location
         self._key.uncompressed_bytes = (
-            self._key.compressed_bytes
-        ) = self._frees.num_bytes
-        self._frees.location = self._location + self._key.num_bytes
-        self._frees.end = self._frees.location + self._key.uncompressed_bytes
-        self._file.free_location = self._location
-        self._file.free_num_bytes = self._frees.end - self._location
-        self._file.free_num_slices = len(self._frees.slices)
-        self._key.write()
-        self._frees.write()
-        self._file.write()
+            self._name.num_bytes + self._title.num_bytes + self._header.allocation
+        )
+        self._key.compressed_bytes = self._key.uncompressed_bytes
+        self._name.location = self._key.location + self._key.num_bytes
+        self._title.location = self._name.location + self._name.num_bytes
+        self._header.location = self._title.location + self._title.num_bytes
+        self._header.begin_num_bytes = self.begin_num_bytes
+        self._header.data_location = self._datakey.location
+        self._header.data_num_bytes = self._datakey.num_bytes + self._data.num_bytes
+        self._datakey.uncompressed_bytes = self._data.num_bytes
+        self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
+        self._freesegments.fileheader.begin_num_bytes = self.begin_num_bytes
+        super(Directory, self).write(sink)
 
 
-class WritableFile(object):
+class WritableFileHeader(Writable):
     """
     FIXME: docstring
     """
 
     magic = b"root"
-    class_version = 1062206  # ROOT 6.22/06 is our model
+    class_version = 62206  # ROOT 6.22/06 is our model
     begin = 100
 
     def __init__(
@@ -483,24 +896,39 @@ class WritableFile(object):
         free_location,
         free_num_bytes,
         free_num_slices,
-        rootdir_keylen,
+        begin_num_bytes,
         compression,
         info_location,
         info_num_bytes,
         uuid_version,
         uuid,
     ):
-        super(self, WritableFile).__init__(0, self.begin)
+        super(WritableFileHeader, self).__init__(0, self.begin)
         self._end = end
         self._free_location = free_location
         self._free_num_bytes = free_num_bytes
         self._free_num_slices = free_num_slices
-        self._rootdir_keylen = rootdir_keylen
+        self._begin_num_bytes = begin_num_bytes
         self._compression = compression
         self._info_location = info_location
         self._info_num_bytes = info_num_bytes
         self._uuid_version = uuid_version
         self._uuid = uuid
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})".format(
+            type(self).__name__,
+            self._end,
+            self._free_location,
+            self._free_num_bytes,
+            self._free_num_slices,
+            self._begin_num_bytes,
+            repr(self._compression),
+            self._info_location,
+            self._info_num_bytes,
+            self._uuid_version,
+            repr(self._uuid),
+        )
 
     @property
     def end(self):
@@ -543,14 +971,14 @@ class WritableFile(object):
             self._free_num_slices = value
 
     @property
-    def rootdir_keylen(self):
-        return self._rootdir_keylen
+    def begin_num_bytes(self):
+        return self._begin_num_bytes
 
-    @rootdir_keylen.setter
-    def rootdir_keylen(self, value):
-        if self._rootdir_keylen != value:
+    @begin_num_bytes.setter
+    def begin_num_bytes(self, value):
+        if self._begin_num_bytes != value:
             self._file_dirty = True
-            self._rootdir_keylen = value
+            self._begin_num_bytes = value
 
     @property
     def compression(self):
@@ -601,3 +1029,47 @@ class WritableFile(object):
         if self._uuid != value:
             self._file_dirty = True
             self._uuid = value
+
+    @property
+    def big(self):
+        return False  # FIXME
+        # return (
+        #     self._end is None
+        #     or self._end >= uproot.const.kStartBigFile
+        #     or self._free_location >= uproot.const.kStartBigFile
+        #     or self._info_location >= uproot.const.kStartBigFile
+        # )
+
+    @property
+    def num_bytes(self):
+        if self.big:
+            return uproot.reading._file_header_fields_big.size
+        else:
+            return uproot.reading._file_header_fields_small.size
+
+    def serialize(self):
+        if self.big:
+            format = uproot.reading._file_header_fields_big
+            version = self.class_version + 1000000
+            units = 8
+        else:
+            format = uproot.reading._file_header_fields_small
+            version = self.class_version
+            units = 4
+
+        return format.pack(
+            self.magic,
+            version,  # fVersion
+            self.begin,  # fBEGIN
+            self._end,  # fEND
+            self._free_location,  # fSeekFree
+            self._free_num_bytes,  # fNbytesFree
+            self._free_num_slices + 1,  # nfree
+            self._begin_num_bytes,  # fNbytesName
+            units,  # fUnits
+            self._compression.code,  # fCompress
+            self._info_location,  # fSeekInfo
+            self._info_num_bytes,  # fNbytesInfo
+            self._uuid_version,  # fUUID_version
+            self._uuid.bytes,  # fUUID
+        )
