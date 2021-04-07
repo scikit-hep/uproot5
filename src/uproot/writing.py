@@ -48,11 +48,13 @@ import uproot.sink.file
 
 
 # create.defaults = {
-#     "compression": uproot.compression.ZLIB(1),
-#     "initial_directory_bytes": 256,
-#     "uuid_version": 1,
-#     "uuid_function": uuid.uuid1,
-# }
+defaults = {
+    "compression": uproot.compression.ZLIB(1),
+    "initial_directory_bytes": 256,
+    "initial_streamers_bytes": 256,
+    "uuid_version": 1,
+    "uuid_function": uuid.uuid1,
+}
 
 
 # def recreate(file_path, **options):
@@ -83,6 +85,7 @@ import uproot.sink.file
 # recreate.defaults = {
 #     "compression": uproot.compression.ZLIB(1),
 #     "initial_directory_bytes": 256,
+#     "initial_streamers_bytes": 256,
 #     "uuid_version": 1,
 #     "uuid_function": uuid.uuid1,
 # }
@@ -117,13 +120,19 @@ import uproot.sink.file
 # update.defaults = {
 #     "compression": uproot.compression.ZLIB(1),
 #     "initial_directory_bytes": 256,
+#     "initial_streamers_bytes": 256,
 #     "uuid_version": 1,
 #     "uuid_function": uuid.uuid1,
 # }
 
 
 def _create_empty_root(
-    sink, compression, initial_directory_bytes, uuid_version, uuid_function
+    sink,
+    compression,
+    initial_directory_bytes,
+    initial_streamers_bytes,
+    uuid_version,
+    uuid_function,
 ):
     filename = sink.file_path
     if filename is None:
@@ -133,13 +142,17 @@ def _create_empty_root(
     if len(filename) >= 256:
         raise ValueError("ROOT file names must be less than 256 bytes")
 
-    # tmp = uuid_function()
-    tmp = uuid.UUID(
-        bytes=b"\xf7\xfe\xef\xda\x93\xe5\x11\xeb\x95\xc8\xd2\x01\xa8\xc0\xbe\xef"
-    )
-
     fileheader = WritableFileHeader(
-        None, None, None, None, None, compression, None, None, uuid_version, tmp
+        None,
+        None,
+        None,
+        None,
+        None,
+        compression,
+        None,
+        None,
+        uuid_version,
+        uuid_function(),
     )
 
     freesegments_key = WritableKey(
@@ -151,6 +164,7 @@ def _create_empty_root(
         WritableString(None, ""),
         1,
         fileheader.begin,
+        None,
     )
     freesegments_data = WritableFreeSegmentsData(None, (), None)
     freesegments = FreeSegments(freesegments_key, freesegments_data, fileheader)
@@ -164,16 +178,10 @@ def _create_empty_root(
         WritableString(None, "Doubly linked list"),
         1,
         fileheader.begin,
+        None,
     )
-    streamers_data = WritableStreamersData(
-        None, 21
-    )  # FIXME: parameterize initial_streamers_bytes
+    streamers_data = WritableStreamersData(None, initial_streamers_bytes)
     streamers = Streamers(streamers_key, streamers_data, freesegments)
-
-    # tmp = uuid_function()
-    tmp = uuid.UUID(
-        bytes=b"\xf7\xfe\xef\xda\x93\xe5\x11\xeb\x95\xc8\xd2\x01\xa8\xc0\xbe\xef"
-    )
 
     directory_key = WritableKey(
         None,
@@ -184,11 +192,12 @@ def _create_empty_root(
         WritableString(None, ""),
         1,
         0,
+        None,
     )
     directory_name = WritableString(None, filename)
     directory_title = WritableString(None, "")
     directory_header = WritableDirectoryHeader(
-        None, fileheader.begin, None, None, None, 0, uuid_version, tmp
+        None, fileheader.begin, None, None, None, 0, uuid_version, uuid_function()
     )
     directory_datakey = WritableKey(
         None,
@@ -199,6 +208,7 @@ def _create_empty_root(
         WritableString(None, ""),
         1,
         fileheader.begin,
+        None,
     )
     directory_data = WritableDirectoryData(None, initial_directory_bytes, [])
     rootdirectory = RootDirectory(
@@ -227,6 +237,68 @@ def _create_empty_root(
 
     rootdirectory.write(sink)
     streamers.write(sink)
+
+    # Now add a subdirectory.
+
+    subdirectory_key = WritableKey(
+        None,
+        None,
+        None,
+        WritableString(None, "TDirectory"),
+        WritableString(None, "yowza"),
+        WritableString(None, "yowza"),
+        1,
+        rootdirectory.location,
+        None,
+    )
+    subdirectory_header = WritableDirectoryHeader(
+        None,
+        None,
+        None,
+        None,
+        None,
+        rootdirectory.location,
+        uuid_version,
+        uuid_function(),
+    )
+    subdirectory_datakey = WritableKey(
+        None,
+        None,
+        None,
+        WritableString(None, "TDirectory"),
+        WritableString(None, "yowza"),
+        WritableString(None, "yowza"),
+        1,
+        rootdirectory.location,
+        None,
+    )
+    subdirectory_data = WritableDirectoryData(None, initial_directory_bytes, [])
+    subdirectory = SubDirectory(
+        subdirectory_key,
+        subdirectory_header,
+        subdirectory_datakey,
+        subdirectory_data,
+        rootdirectory,
+        rootdirectory.freesegments,
+    )
+
+    subdirectory_key.location = rootdirectory.freesegments.location
+    subdirectory_datakey.location = (
+        subdirectory_key.location
+        + subdirectory_key.allocation
+        + subdirectory_header.allocation
+    )
+    rootdirectory.freesegments.location = (
+        subdirectory_datakey.location
+        + subdirectory_datakey.allocation
+        + subdirectory_data.allocation
+    )
+
+    rootdirectory.freesegments.write(sink)
+    subdirectory.write(sink)
+
+    directory_data.add_key(subdirectory_key.copy_to(directory_data.next_location))
+    rootdirectory.write(sink)
 
 
 class Writable(object):
@@ -316,6 +388,9 @@ class WritableString(Writable):
     def string(self):
         return self._string
 
+    def copy_to(self, location):
+        return WritableString(location, self._string)
+
     def serialize(self):
         return self._serialization
 
@@ -337,6 +412,7 @@ class WritableKey(Writable):
         title,
         cycle,
         parent_location,
+        seek_location,
     ):
         super(WritableKey, self).__init__(location, None)
         self._uncompressed_bytes = uncompressed_bytes
@@ -346,9 +422,10 @@ class WritableKey(Writable):
         self._title = title
         self._cycle = cycle
         self._parent_location = parent_location
+        self._seek_location = seek_location
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})".format(
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})".format(
             type(self).__name__,
             self._location,
             self._uncompressed_bytes,
@@ -358,6 +435,7 @@ class WritableKey(Writable):
             repr(self._title),
             self._cycle,
             self._parent_location,
+            self._seek_location,
         )
 
     @property
@@ -401,13 +479,50 @@ class WritableKey(Writable):
         return self._parent_location
 
     @property
+    def seek_location(self):
+        return self._seek_location
+
+    def copy_to(self, location):
+        position = location + self.num_bytes
+        classname = self._classname.copy_to(position)
+
+        position += classname.num_bytes
+        name = self._name.copy_to(position)
+
+        position += name.num_bytes
+        title = self._title.copy_to(position)
+
+        if self._seek_location is not None:
+            location = self._seek_location
+        else:
+            location = self._location
+
+        return WritableKey(
+            location,
+            self._uncompressed_bytes,
+            self._compressed_bytes,
+            classname,
+            name,
+            title,
+            self._cycle,
+            self._parent_location,
+            location,
+        )
+
+    @property
     def big(self):
         return False  # FIXME
-        # return (
-        #     self._location is None
-        #     or self._location >= uproot.const.kStartBigFile
-        #     or self._parent_location >= uproot.const.kStartBigFile
-        # )
+        # if self._seek_location is not None:
+        #     return (
+        #         self._seek_location >= uproot.const.kStartBigFile
+        #         or self._parent_location >= uproot.const.kStartBigFile
+        #     )
+        # else:
+        #     return (
+        #         self._location is None
+        #         or self._location >= uproot.const.kStartBigFile
+        #         or self._parent_location >= uproot.const.kStartBigFile
+        #     )
 
     @property
     def num_bytes(self):
@@ -439,6 +554,11 @@ class WritableKey(Writable):
             format = uproot.reading._key_format_small
             version = self.class_version
 
+        if self._seek_location is not None:
+            location = self._seek_location
+        else:
+            location = self._location
+
         return (
             format.pack(
                 self._compressed_bytes + self.num_bytes,  # fNbytes
@@ -447,7 +567,7 @@ class WritableKey(Writable):
                 1761927327,  # FIXME: compute fDatime
                 self.num_bytes,  # fKeylen
                 self._cycle,  # fCycle
-                self._location,  # fSeekKey
+                location,  # fSeekKey
                 self._parent_location,  # fSeekPdir
             )
             + self._classname.serialize()
@@ -579,6 +699,14 @@ class FreeSegments(HasDependencies):
     def fileheader(self):
         return self._fileheader
 
+    @property
+    def location(self):
+        return self._key.location
+
+    @location.setter
+    def location(self, value):
+        self._key.location = value
+
     def write(self, sink):
         self._key.uncompressed_bytes = self._data.allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
@@ -679,15 +807,19 @@ class WritableDirectoryData(Writable):
             self._keys,
         )
 
-    @property
-    def keys(self):
-        return self._keys
+    def add_key(self, key):
+        self._file_dirty = True
+        self._keys.append(key)
 
     @property
     def num_bytes(self):
         return uproot.reading._directory_format_num_keys.size + sum(
             x.allocation for x in self._keys
         )
+
+    @property
+    def next_location(self):
+        return self._location + self.num_bytes
 
     def serialize(self):
         out = [uproot.reading._directory_format_num_keys.pack(len(self._keys))]
@@ -745,6 +877,12 @@ class WritableDirectoryHeader(Writable):
     @property
     def begin_location(self):
         return self._begin_location
+
+    @begin_location.setter
+    def begin_location(self, value):
+        if self._begin_location != value:
+            self._file_dirty = True
+            self._begin_location = value
 
     @property
     def begin_num_bytes(self):
@@ -813,7 +951,6 @@ class WritableDirectoryHeader(Writable):
             format = uproot.reading._directory_format_small
             version = self.class_version
             extra = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-
         return (
             format.pack(
                 version,  # fVersion
@@ -838,7 +975,7 @@ class RootDirectory(HasDependencies):
 
     def __init__(self, key, name, title, header, datakey, data, freesegments):
         super(RootDirectory, self).__init__(
-            key, name, title, header, datakey, data, freesegments
+            datakey, data, key, name, title, header, freesegments
         )
         self._key = key
         self._name = name
@@ -889,6 +1026,10 @@ class RootDirectory(HasDependencies):
         return self._freesegments
 
     @property
+    def location(self):
+        return self._key.location
+
+    @property
     def begin_num_bytes(self):
         return self._key.allocation + self._name.allocation + self._title.allocation
 
@@ -915,7 +1056,7 @@ class SubDirectory(HasDependencies):
     """
 
     def __init__(self, key, header, datakey, data, parent, freesegments):
-        super(SubDirectory, self).__init__(key, header, datakey, data, parent)
+        super(SubDirectory, self).__init__(datakey, data, key, header, parent)
         self._key = key
         self._header = header
         self._datakey = datakey
@@ -958,15 +1099,21 @@ class SubDirectory(HasDependencies):
     def freesegments(self):
         return self._freesegments
 
+    @property
+    def location(self):
+        return self._key.location
+
     def write(self, sink):
         self._key.uncompressed_bytes = self._header.allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
         self._header.location = self._key.location + self._key.allocation
+        self._header.begin_location = self._key.location
         self._header.begin_num_bytes = self._key.num_bytes
         self._header.data_location = self._datakey.location
         self._header.data_num_bytes = self._datakey.allocation + self._data.allocation
         self._datakey.uncompressed_bytes = self._data.allocation
         self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
+        self._data.location = self._datakey.location + self._datakey.allocation
         super(SubDirectory, self).write(sink)
 
 
