@@ -820,16 +820,12 @@ class Directory(CascadeNode):
     FIXME: docstring
     """
 
-    def reallocate_data(self, sink, factor=1.5):
-        assert factor > 1
-
+    def _reallocate_data(self, new_data_size):
         original_start = self._datakey.location
         original_stop = original_start + self._datakey.num_bytes + self._data.allocation
 
         self._datakey.location = None  # let it assume the key might be big
-        requested_num_bytes = self._datakey.num_bytes + int(
-            math.ceil(factor * self._data.allocation)
-        )
+        requested_num_bytes = self._datakey.num_bytes + new_data_size
         self._datakey.location = self._freesegments.allocate(requested_num_bytes)
         self._header.data_location = self._datakey.location
         self._data.location = self._datakey.location + self._datakey.num_bytes
@@ -837,7 +833,6 @@ class Directory(CascadeNode):
         self._data.allocation = might_be_slightly_more
 
         self._freesegments.release(original_start, original_stop)
-        self.write(sink)
 
     def add_directory(self, sink, name, initial_directory_bytes, uuid_version, uuid):
         cycle = self._data.next_cycle(name)
@@ -892,7 +887,6 @@ class Directory(CascadeNode):
             + subdirectory_header.allocation
             + subdirectory_datakey.num_bytes  # including this Key, too
         )
-
         subdirectory_data = DirectoryData(None, might_be_slightly_more, [])
 
         subdirectory = SubDirectory(
@@ -904,10 +898,19 @@ class Directory(CascadeNode):
             self._freesegments,
         )
 
+        subdirectory_key.uncompressed_bytes = subdirectory_header.allocation
+        subdirectory_key.compressed_bytes = subdirectory_key.uncompressed_bytes
+
+        next_key = subdirectory_key.copy_to(self._data.next_location)
+        if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
+            self._reallocate_data(
+                int(math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8)))
+            )
+            next_key = subdirectory_key.copy_to(self._data.next_location)
+        self._data.add_key(next_key)
+
         self._freesegments.write(sink)
         subdirectory.write(sink)
-
-        self._data.add_key(subdirectory_key.copy_to(self._data.next_location))
         self.write(sink)
 
         return subdirectory
