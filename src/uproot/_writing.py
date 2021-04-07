@@ -1273,28 +1273,19 @@ class CascadingFile(object):
         streamers,
         freesegments,
         rootdirectory,
-        initial_directory_bytes,
-        uuid_version,
-        uuid_function,
     ):
         self._fileheader = fileheader
         self._streamers = streamers
         self._freesegments = freesegments
         self._rootdirectory = rootdirectory
-        self._initial_directory_bytes = initial_directory_bytes
-        self._uuid_version = uuid_version
-        self._uuid_function = uuid_function
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
+        return "{0}({1}, {2}, {3}, {4})".format(
             type(self).__name__,
             self._fileheader,
             self._streamers,
             self._freesegments,
             self._rootdirectory,
-            self._initial_directory_bytes,
-            self._uuid_version,
-            self._uuid_function,
         )
 
     @property
@@ -1312,18 +1303,6 @@ class CascadingFile(object):
     @property
     def rootdirectory(self):
         return self._rootdirectory
-
-    @property
-    def initial_directory_bytes(self):
-        return self._initial_directory_bytes
-
-    @property
-    def uuid_version(self):
-        return self._uuid_version
-
-    @property
-    def uuid_function(self):
-        return self._uuid_function
 
 
 def create_empty(
@@ -1446,12 +1425,4 @@ def create_empty(
     rootdirectory.write(sink)
     streamers.write(sink)
 
-    return CascadingFile(
-        fileheader,
-        streamers,
-        freesegments,
-        rootdirectory,
-        initial_directory_bytes,
-        uuid_version,
-        uuid_function,
-    )
+    return CascadingFile(fileheader, streamers, freesegments, rootdirectory)
