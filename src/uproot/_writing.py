@@ -7,6 +7,7 @@ FIXME: docstring
 from __future__ import absolute_import
 
 import datetime
+import math
 import os.path
 import struct
 
@@ -152,6 +153,10 @@ class Key(CascadeLeaf):
         )
 
     @property
+    def allocation(self):
+        return self.num_bytes
+
+    @property
     def uncompressed_bytes(self):
         return self._uncompressed_bytes
 
@@ -224,18 +229,17 @@ class Key(CascadeLeaf):
 
     @property
     def big(self):
-        return False  # FIXME
-        # if self._seek_location is not None:
-        #     return (
-        #         self._seek_location >= uproot.const.kStartBigFile
-        #         or self._parent_location >= uproot.const.kStartBigFile
-        #     )
-        # else:
-        #     return (
-        #         self._location is None
-        #         or self._location >= uproot.const.kStartBigFile
-        #         or self._parent_location >= uproot.const.kStartBigFile
-        #     )
+        if self._seek_location is not None:
+            return (
+                self._seek_location >= uproot.const.kStartBigFile
+                or self._parent_location >= uproot.const.kStartBigFile
+            )
+        else:
+            return (
+                self._location is None
+                or self._location >= uproot.const.kStartBigFile
+                or self._parent_location >= uproot.const.kStartBigFile
+            )
 
     @property
     def num_bytes(self):
@@ -334,6 +338,18 @@ class FreeSegmentsData(CascadeLeaf):
             self._end = value
 
     @property
+    def allocation(self):
+        if self._allocation is None:
+            self._allocation = self.num_bytes
+        return self._allocation
+
+    @allocation.setter
+    def allocation(self, value):
+        if self._allocation != value:
+            self._file_dirty = True
+            self._allocation = value
+
+    @property
     def num_bytes(self):
         total = 0
         for _, stop in self._slices:
@@ -410,17 +426,127 @@ class FreeSegments(CascadeNode):
     def fileheader(self):
         return self._fileheader
 
+    @property
+    def at_end(self):
+        end_of_record = self._key.location + self._key.num_bytes + self._data.allocation
+        assert end_of_record <= self._data.end
+        return end_of_record == self._data.end
+
     def allocate(self, num_bytes):
-        # FIXME: don't assume that FreeSegments is at the end
-        out = self._key.location
-        self._key.location = self._key.location + num_bytes
-        return out
+        slices = self._data.slices
+        for i, (start, stop) in enumerate(slices):
+            if stop - start == num_bytes:
+                # This will reduce the num_bytes of the FreeSegments record,
+                # but the allocation can stay the same size.
+                self._data.slices = tuple(
+                    slices[j] for j in range(len(slices)) if i != j
+                )
+                return start
+
+            elif stop - start > num_bytes:
+                # This will not change the num_bytes of the FreeSegments record.
+                self._data.slices = tuple(
+                    slices[j] if i != j else (start + num_bytes, stop)
+                    for j in range(len(slices))
+                )
+                return start
+
+        if self.at_end:
+            # The new object can take FreeSegments's spot; FreeSegments will
+            # move to stay at the end.
+            out = self._key.location
+            self._key.location = self._key.location + num_bytes
+            self._data.end = (
+                self._key.location + self._key.allocation + self._data.allocation
+            )
+            return out
+
+        else:
+            # FreeSegments is not changing size and not at the end; it can
+            # stay where it is.
+            out = self._data.end
+            self._data.end = self._data.end + num_bytes
+            return out
+
+    @staticmethod
+    def _another_slice(slices, original_start, original_stop):
+        for start, stop in slices:
+            if start <= original_start < stop or start < original_stop <= stop:
+                raise RuntimeError(
+                    "segment of data to release overlaps one already marked as free: "
+                    "releasing [{0}, {1}) but [{2}, {3}) is free".format(
+                        original_start, original_stop, start, stop
+                    )
+                )
+
+        for i, (start, stop) in enumerate(slices):
+            if original_start == stop:
+                # This slice needs to grow to the right.
+                return tuple(
+                    slices[j] if i != j else (start, original_stop)
+                    for j in range(len(slices))
+                )
+
+            elif original_stop == start:
+                # This slice needs to grow to the left.
+                return tuple(
+                    slices[j] if i != j else (original_start, stop)
+                    for j in range(len(slices))
+                )
+
+        # The FreeSegments record will have to grow.
+        return tuple(sorted(slices + ((original_start, original_stop),)))
+
+    @staticmethod
+    def _slices_bytes(slices):
+        total = 0
+        for _, stop in slices:
+            if stop - 1 >= uproot.const.kStartBigFile:
+                total += _free_format_big.size
+            else:
+                total += _free_format_small.size
+        return total
+
+    def release(self, start, stop):
+        new_slices = self._another_slice(self._data.slices, start, stop)
+
+        if self.at_end:
+            self._data.slices = new_slices
+            self._data.allocation = None
+            self._key.uncompressed_bytes = self._data.allocation
+            self._key.compressed_bytes = self._key.uncompressed_bytes
+            self._data.end = (
+                self._key.location + self._key.allocation + self._key.uncompressed_bytes
+            )
+
+        elif self._slices_bytes(new_slices) <= self._slices_bytes(self._data.slices):
+            # Wherever the FreeSegments record is, it's not getting bigger.
+            # It can stay there.
+            self._data.slices = new_slices
+            self._data.allocation = None
+            self._key.uncompressed_bytes = self._data.allocation
+            self._key.compressed_bytes = self._key.uncompressed_bytes
+
+        else:
+            # The FreeSegments record needs to move, opening up yet another slice.
+            # Move it to the end (regardless of whether there's now enough room
+            # to put it elsewhere; we like keeping it at the end).
+            self._data.slices = self._another_slice(
+                new_slices,
+                self._key.location,
+                self._key.location + self._key.allocation + self._data.allocation,
+            )
+            self._data.allocation = None
+            self._key.uncompressed_bytes = self._data.allocation
+            self._key.compressed_bytes = self._key.uncompressed_bytes
+            self._key.location = self._data.end
+            self._data.location = self._key.location + self._key.allocation
+            self._data.end = self._data.location + self._key.uncompressed_bytes
 
     def write(self, sink):
         self._key.uncompressed_bytes = self._data.allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
         self._data.location = self._key.location + self._key.allocation
-        self._data.end = self._data.location + self._data.allocation
         self._fileheader.free_location = self._key.location
         self._fileheader.free_num_bytes = self._data.end - self._key.location
         self._fileheader.free_num_slices = len(self._data.slices)
@@ -511,6 +637,18 @@ class DirectoryData(CascadeLeaf):
             self._allocation,
             self._keys,
         )
+
+    @property
+    def allocation(self):
+        if self._allocation is None:
+            self._allocation = self.num_bytes
+        return self._allocation
+
+    @allocation.setter
+    def allocation(self, value):
+        if self._allocation != value:
+            self._file_dirty = True
+            self._allocation = value
 
     def next_cycle(self, name):
         cycle = 1
@@ -638,12 +776,11 @@ class DirectoryHeader(CascadeLeaf):
 
     @property
     def big(self):
-        return False  # FIXME
-        # return (
-        #     self._begin_location >= uproot.const.kStartBigFile
-        #     or self._data_location >= uproot.const.kStartBigFile
-        #     or self._parent_location >= uproot.const.kStartBigFile
-        # )
+        return (
+            self._begin_location >= uproot.const.kStartBigFile
+            or self._data_location >= uproot.const.kStartBigFile
+            or self._parent_location >= uproot.const.kStartBigFile
+        )
 
     @property
     def num_bytes(self):
@@ -683,6 +820,25 @@ class Directory(CascadeNode):
     FIXME: docstring
     """
 
+    def reallocate_data(self, sink, factor=1.5):
+        assert factor > 1
+
+        original_start = self._datakey.location
+        original_stop = original_start + self._datakey.num_bytes + self._data.allocation
+
+        self._datakey.location = None  # let it assume the key might be big
+        requested_num_bytes = self._datakey.num_bytes + int(
+            math.ceil(factor * self._data.allocation)
+        )
+        self._datakey.location = self._freesegments.allocate(requested_num_bytes)
+        self._header.data_location = self._datakey.location
+        self._data.location = self._datakey.location + self._datakey.num_bytes
+        might_be_slightly_more = requested_num_bytes - self._datakey.num_bytes
+        self._data.allocation = might_be_slightly_more
+
+        self._freesegments.release(original_start, original_stop)
+        self.write(sink)
+
     def add_directory(self, sink, name, initial_directory_bytes, uuid_version, uuid):
         cycle = self._data.next_cycle(name)
 
@@ -718,7 +874,27 @@ class Directory(CascadeNode):
             self._key.location,
             None,
         )
-        subdirectory_data = DirectoryData(None, initial_directory_bytes, [])
+
+        requested_num_bytes = (
+            subdirectory_key.num_bytes
+            + subdirectory_header.allocation
+            + subdirectory_datakey.num_bytes
+            + initial_directory_bytes
+        )
+        subdirectory_key.location = self._freesegments.allocate(requested_num_bytes)
+        subdirectory_datakey.location = (
+            subdirectory_key.location
+            + subdirectory_key.num_bytes
+            + subdirectory_header.allocation
+        )
+        might_be_slightly_more = requested_num_bytes - (
+            subdirectory_key.num_bytes  # because Key.num_bytes depends on location
+            + subdirectory_header.allocation
+            + subdirectory_datakey.num_bytes  # including this Key, too
+        )
+
+        subdirectory_data = DirectoryData(None, might_be_slightly_more, [])
+
         subdirectory = SubDirectory(
             subdirectory_key,
             subdirectory_header,
@@ -727,17 +903,7 @@ class Directory(CascadeNode):
             self,
             self._freesegments,
         )
-        subdirectory_key.location = self._freesegments.allocate(
-            subdirectory_key.allocation
-            + subdirectory_header.allocation
-            + subdirectory_datakey.allocation
-            + subdirectory_data.allocation
-        )
-        subdirectory_datakey.location = (
-            subdirectory_key.location
-            + subdirectory_key.allocation
-            + subdirectory_header.allocation
-        )
+
         self._freesegments.write(sink)
         subdirectory.write(sink)
 
@@ -1051,13 +1217,12 @@ class FileHeader(CascadeLeaf):
 
     @property
     def big(self):
-        return False  # FIXME
-        # return (
-        #     self._end is None
-        #     or self._end >= uproot.const.kStartBigFile
-        #     or self._free_location >= uproot.const.kStartBigFile
-        #     or self._info_location >= uproot.const.kStartBigFile
-        # )
+        return (
+            self._end is None
+            or self._end >= uproot.const.kStartBigFile
+            or self._free_location >= uproot.const.kStartBigFile
+            or self._info_location >= uproot.const.kStartBigFile
+        )
 
     @property
     def num_bytes(self):
@@ -1267,6 +1432,11 @@ def create_empty(
     directory_datakey.location = streamers_key.location + streamers.allocation
     directory_data.location = directory_datakey.location + directory_datakey.allocation
     freesegments_key.location = directory_data.location + directory_data.allocation
+    freesegments_data.end = (
+        freesegments_key.location
+        + freesegments_key.allocation
+        + freesegments_data.allocation
+    )
     fileheader.info_location = streamers_key.location
     fileheader.info_num_bytes = streamers_key.allocation + streamers_data.allocation
 
