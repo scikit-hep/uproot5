@@ -1317,7 +1317,6 @@ class ReadOnlyDirectory(Mapping):
         directory_start = cursor.index
         directory_stop = min(directory_start + _directory_format_big.size, file.fEND)
         chunk = file.chunk(directory_start, directory_stop)
-
         self.hook_before_interpret(chunk=chunk, cursor=cursor)
 
         (
