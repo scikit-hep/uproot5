@@ -10,6 +10,7 @@ from __future__ import absolute_import
 import glob
 import numbers
 import os
+import platform
 import re
 import sys
 
@@ -18,9 +19,9 @@ try:
 except ImportError:
     from collections import Iterable
 try:
-    from urllib.parse import urlparse
+    from urllib.parse import unquote, urlparse
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import urlparse, unquote
 
 import numpy
 
@@ -28,7 +29,7 @@ py2 = sys.version_info[0] <= 2
 py26 = py2 and sys.version_info[1] <= 6
 py27 = py2 and not py26
 py35 = not py2 and sys.version_info[1] <= 5
-win = os.name == "nt"
+win = platform.system().lower().startswith("win")
 
 
 if py2:
@@ -163,8 +164,8 @@ def regularize_path(path):
 
 
 _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
-_windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:\\")
-_windows_absolute_path_pattern_slash = re.compile(r"^/[A-Za-z]:\\")
+_windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
+_windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 _might_be_port = re.compile(r"^[0-9].*")
 
 
@@ -192,10 +193,7 @@ def file_object_path_split(path):
 
         if file_path.upper() in ("FILE", "HTTP", "HTTPS", "ROOT"):
             return path, None
-        elif (
-            os.name == "nt"
-            and _windows_drive_letter_ending.match(file_path) is not None
-        ):
+        elif win and _windows_drive_letter_ending.match(file_path) is not None:
             return path, None
         else:
             return file_path, object_path
@@ -227,18 +225,21 @@ def file_path_to_source_class(file_path, options):
         return out, file_path
 
     windows_absolute_path = None
-
-    if os.name == "nt":
+    if win:
         if _windows_absolute_path_pattern.match(file_path) is not None:
             windows_absolute_path = file_path
 
     parsed_url = urlparse(file_path)
+    if parsed_url.scheme.upper() == "FILE":
+        parsed_url_path = unquote(parsed_url.path)
+    else:
+        parsed_url_path = parsed_url.path
 
-    if os.name == "nt" and windows_absolute_path is None:
-        if _windows_absolute_path_pattern.match(parsed_url.path) is not None:
-            windows_absolute_path = parsed_url.path
-        elif _windows_absolute_path_pattern_slash.match(parsed_url.path) is not None:
-            windows_absolute_path = parsed_url.path[1:]
+    if win and windows_absolute_path is None:
+        if _windows_absolute_path_pattern.match(parsed_url_path) is not None:
+            windows_absolute_path = parsed_url_path
+        elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
+            windows_absolute_path = parsed_url_path[1:]
 
     if (
         parsed_url.scheme.upper() == "FILE"
@@ -247,9 +248,9 @@ def file_path_to_source_class(file_path, options):
     ):
         if windows_absolute_path is None:
             if parsed_url.netloc.upper() == "LOCALHOST":
-                file_path = parsed_url.path
+                file_path = parsed_url_path
             else:
-                file_path = parsed_url.netloc + parsed_url.path
+                file_path = parsed_url.netloc + parsed_url_path
         else:
             file_path = windows_absolute_path
 
