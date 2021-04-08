@@ -244,7 +244,7 @@ def file_path_to_source_class(file_path, options):
     if (
         parsed_url.scheme.upper() == "FILE"
         or len(parsed_url.scheme) == 0
-        or windows_absolute_path
+        or windows_absolute_path is not None
     ):
         if windows_absolute_path is None:
             if parsed_url.netloc.upper() == "LOCALHOST":

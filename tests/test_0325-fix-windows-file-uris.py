@@ -69,12 +69,13 @@ def test_escaped_uri_codes():
         )[1]
         == "/my file.root"
     )
-    assert (
-        uproot._util.file_path_to_source_class(
-            "file:///my%E2%80%92file.root", uproot.reading.open.defaults
-        )[1]
-        == u"/my\u2012file.root"
-    )
+    if not uproot._util.py2:
+        assert (
+            uproot._util.file_path_to_source_class(
+                "file:///my%E2%80%92file.root", uproot.reading.open.defaults
+            )[1]
+            == u"/my\u2012file.root"
+        )
 
     # Otherwise, no we should not.
     assert (
