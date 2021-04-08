@@ -6,6 +6,8 @@ FIXME: docstring
 
 from __future__ import absolute_import
 
+import numbers
+
 
 class FileSink(object):
     """
@@ -100,6 +102,21 @@ class FileSink(object):
     def __exit__(self, exception_type, exception_value, traceback):
         self.close()
 
+    @property
+    def in_path(self):
+        if self._file_path is None:
+            return ""
+        else:
+            return "\n\nin path: " + self._file_path
+
+    @property
+    def position(self):
+        """
+        FIXME: docstring
+        """
+        self._ensure()
+        return self._file.tell()
+
     def write(self, location, serialization):
         """
         FIXME: docstring
@@ -107,3 +124,55 @@ class FileSink(object):
         self._ensure()
         self._file.seek(location)
         self._file.write(serialization)
+
+    def read(self, location, num_bytes, insist=True):
+        """
+        FIXME: docstring
+        """
+        self._ensure()
+        self._file.seek(location)
+        out = self._file.read(num_bytes)
+        if insist is True:
+            if len(out) != num_bytes:
+                raise OSError(
+                    "could not read {0} bytes from the file at position {1}{2}".format(
+                        num_bytes,
+                        location,
+                        self.in_path,
+                    )
+                )
+        elif isinstance(insist, numbers.Integral):
+            if len(out) < insist:
+                raise OSError(
+                    "could not read {0} bytes from the file at position {1}{2}".format(
+                        insist,
+                        location,
+                        self.in_path,
+                    )
+                )
+        return out
+
+
+#     def read_classname(self, location):
+#         """
+#         FIXME: docstring
+#         """
+#         self._ensure()
+#         self._file.seek(location)
+#         char = None
+#         out = []
+#         while char != b"\x00":
+#             char = self._file.read(1)
+#             if char == b"":
+#                 raise OSError(
+#                     """C-style string has no terminator (null byte)
+# in file path {0}""".format(
+#                         self._file_path
+#                     )
+#                 )
+#             out.append(char)
+
+#         if uproot._util.py2:
+#             return b"".join(out)
+#         else:
+#             return b"".join(out).decode(errors="surrogateescape")
