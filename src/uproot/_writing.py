@@ -370,7 +370,7 @@ class Key(CascadeLeaf):
 
         if version != cls.class_version:
             raise ValueError(
-                "Uproot can't read TKey version {0}, only version {1}{2}".format(
+                "Uproot can't read TKey version {0} for writing, only version {1}{2}".format(
                     version,
                     cls.class_version,
                     in_path,
@@ -530,7 +530,7 @@ class FreeSegmentsData(CascadeLeaf):
 
             if version != cls.class_version:
                 raise ValueError(
-                    "Uproot can't read TFree version {0}, only version {1}{2}".format(
+                    "Uproot can't read TFree version {0} for writing, only version {1}{2}".format(
                         version,
                         cls.class_version,
                         in_path,
@@ -543,7 +543,9 @@ class FreeSegmentsData(CascadeLeaf):
 
         assert position == num_bytes
 
-        return FreeSegmentsData(location, tuple(slices), end)
+        out = FreeSegmentsData(location, tuple(slices), end)
+        out._allocation = num_bytes
+        return out
 
 
 class FreeSegments(CascadeNode):
@@ -876,7 +878,7 @@ class DirectoryHeader(CascadeLeaf):
             self._data_num_bytes,
             self._parent_location,
             self._uuid_version,
-            self._uuid,
+            repr(self._uuid),
         )
 
     @property
@@ -966,10 +968,74 @@ class DirectoryHeader(CascadeLeaf):
                 self._parent_location,  # fSeekParent
                 self._data_location,  # fSeekKeys
             )
-            + struct.pack(">H", self._uuid_version)
+            + _directory_uuid_version_format.pack(self._uuid_version)
             + self._uuid.bytes
             + extra
         )
+
+    @classmethod
+    def deserialize(cls, raw_bytes, location, in_path):
+        (
+            version,
+            fDatimeC,
+            fDatimeM,
+            fNbytesKeys,
+            fNbytesName,
+            fSeekDir,
+            fSeekParent,
+            fSeekKeys,
+        ) = uproot.reading._directory_format_small.unpack(
+            raw_bytes[: uproot.reading._directory_format_small.size]
+        )
+        position = location + uproot.reading._directory_format_small.size
+
+        if version >= 1000:
+            (
+                version,
+                fDatimeC,
+                fDatimeM,
+                fNbytesKeys,
+                fNbytesName,
+                fSeekDir,
+                fSeekParent,
+                fSeekKeys,
+            ) = uproot.reading._directory_format_big.unpack(
+                raw_bytes[: uproot.reading._directory_format_big.size]
+            )
+            version -= 1000
+            position = location + uproot.reading._directory_format_big.size
+
+        if version != cls.class_version:
+            raise ValueError(
+                "Uproot can't read TDirectory version {0} for writing, only version {1}{2}".format(
+                    version,
+                    cls.class_version,
+                    in_path,
+                )
+            )
+
+        (uuid_version,) = _directory_uuid_version_format.unpack(
+            raw_bytes[position - location : position - location + 2]
+        )
+
+        uuid_bytes = raw_bytes[position - location + 2 : position - location + 18]
+
+        out = DirectoryHeader(
+            location,
+            fSeekDir,  # begin_location
+            fNbytesName,  # begin_num_bytes
+            fSeekKeys,  # data_location
+            fNbytesKeys,  # data_num_bytes
+            fSeekParent,  # parent_location
+            uuid_version,
+            uuid.UUID(bytes=uuid_bytes),
+        )
+        out._created_on = datetime.datetime.now()  # FIXME: compute from fDatimeC
+        out._modified_on = out._created_on  # FIXME: compute from fDatimeM
+        return out
+
+
+_directory_uuid_version_format = struct.Struct(">H")
 
 
 class Directory(CascadeNode):
@@ -1710,4 +1776,27 @@ def update_existing(
 
     streamers = Streamers(streamers_key, streamers_data, freesegments)
 
-    return freesegments, streamers
+    raw_bytes = sink.read(
+        fileheader.begin,
+        fileheader.begin_num_bytes + uproot.reading._directory_format_big.size + 18,
+    )
+    directory_key = Key.deserialize(raw_bytes, fileheader.begin, sink.in_path)
+    position = fileheader.begin + directory_key.num_bytes
+
+    directory_name, position = String.deserialize(
+        raw_bytes[position - fileheader.begin :], position
+    )
+    directory_title, position = String.deserialize(
+        raw_bytes[position - fileheader.begin :], position
+    )
+
+    assert fileheader.begin_num_bytes == position - fileheader.begin
+
+    directory_header = DirectoryHeader.deserialize(
+        raw_bytes[position - fileheader.begin :], position, sink.in_path
+    )
+    assert directory_header.begin_location == fileheader.begin
+    assert directory_header.begin_num_bytes == fileheader.begin_num_bytes
+    assert directory_header.parent_location == 0
+
+    return freesegments, streamers, directory_header
