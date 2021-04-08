@@ -1,0 +1,109 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
+
+"""
+FIXME: docstring
+"""
+
+from __future__ import absolute_import
+
+
+class FileSink(object):
+    """
+    FIXME: docstring
+    """
+
+    @classmethod
+    def from_object(cls, obj):
+        """
+        FIXME: docstring
+        """
+        if (
+            callable(getattr(obj, "read", None))
+            and callable(getattr(obj, "write", None))
+            and callable(getattr(obj, "seek", None))
+            and callable(getattr(obj, "tell", None))
+            and obj.readable()
+            and obj.writable()
+            and obj.seekable()
+        ):
+            self = cls(None)
+            self._file = obj
+        else:
+            raise TypeError(
+                """writable file can only be created from a file path or an object
+
+    * that has 'read', 'write', 'seek', and 'tell' methods
+    * is 'readable() and writable() and seekable()'"""
+            )
+
+    def __init__(self, file_path):
+        self._file_path = file_path
+        self._file = None
+
+    @property
+    def file_path(self):
+        """
+        FIXME: docstring
+        """
+        return self._file_path
+
+    def _ensure(self):
+        if self._file is None:
+            if self._file_path is None:
+                raise TypeError("FileSink created from an object cannot be reopened")
+            self._file = open(self._file_path, "r+b")
+            self._file.seek(0)
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_file")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._file = None
+
+    def tell(self):
+        """
+        FIXME: docstring
+        """
+        self._ensure()
+        return self._file.tell()
+
+    def flush(self):
+        """
+        FIXME: docstring
+
+        (flush is only ever user-initiated)
+        """
+        self._ensure()
+        return self._file.flush()
+
+    @property
+    def closed(self):
+        """
+        FIXME: docstring
+        """
+        return self._file is None
+
+    def close(self):
+        """
+        FIXME: docstring
+        """
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.close()
+
+    def write(self, location, serialization):
+        """
+        FIXME: docstring
+        """
+        self._ensure()
+        self._file.seek(location)
+        self._file.write(serialization)

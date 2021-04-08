@@ -87,7 +87,7 @@ def open(
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
     * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 512)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
     * minimal_ttree_metadata (bool; True)
 
     Any object derived from a ROOT file is a context manager (works in Python's
@@ -160,7 +160,7 @@ open.defaults = {
     "max_num_elements": None,
     "num_workers": 1,
     "num_fallback_workers": 10,
-    "begin_chunk_size": 512,
+    "begin_chunk_size": 403,  # the smallest a ROOT file can be
     "minimal_ttree_metadata": True,
 }
 
@@ -512,7 +512,7 @@ class ReadOnlyFile(CommonFileMethods):
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
     * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 512)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
     * minimal_ttree_metadata (bool; True)
 
     See the `ROOT TFile documentation <https://root.cern.ch/doc/master/classTFile.html>`__
@@ -1317,7 +1317,6 @@ class ReadOnlyDirectory(Mapping):
         directory_start = cursor.index
         directory_stop = min(directory_start + _directory_format_big.size, file.fEND)
         chunk = file.chunk(directory_start, directory_stop)
-
         self.hook_before_interpret(chunk=chunk, cursor=cursor)
 
         (
