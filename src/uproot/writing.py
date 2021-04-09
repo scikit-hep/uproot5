@@ -100,10 +100,9 @@ def update(file_path, **options):
         uuid_version,
         uuid_function,
     )
-    # return WritableFile(
-    #     sink, cascading, initial_directory_bytes, uuid_version, uuid_function
-    # ).root_directory
-    return cascading
+    return WritableFile(
+        sink, cascading, initial_directory_bytes, uuid_version, uuid_function
+    ).root_directory
 
 
 create.defaults = {

@@ -836,6 +836,22 @@ class DirectoryData(CascadeLeaf):
             out.append(key.serialize())
         return b"".join(out)
 
+    @classmethod
+    def deserialize(cls, raw_bytes, location, in_path):
+        (num_keys,) = uproot.reading._directory_format_num_keys.unpack(raw_bytes[:4])
+        position = location + 4
+        keys = []
+        for _ in range(num_keys):
+            keys.append(
+                Key.deserialize(
+                    raw_bytes[position - location :],
+                    position,
+                    in_path,
+                    is_directory_key=True,
+                )
+            )
+        return DirectoryData(location, len(raw_bytes), keys)
+
 
 class DirectoryHeader(CascadeLeaf):
     """
@@ -1773,7 +1789,6 @@ def update_existing(
         raw_bytes[streamers_key.num_bytes :],
         fileheader.info_location + streamers_key.num_bytes,
     )
-
     streamers = Streamers(streamers_key, streamers_data, freesegments)
 
     raw_bytes = sink.read(
@@ -1799,4 +1814,26 @@ def update_existing(
     assert directory_header.begin_num_bytes == fileheader.begin_num_bytes
     assert directory_header.parent_location == 0
 
-    return freesegments, streamers, directory_header
+    raw_bytes = sink.read(
+        directory_header.data_location, directory_header.data_num_bytes
+    )
+    directory_datakey = Key.deserialize(
+        raw_bytes, directory_header.data_location, sink.in_path
+    )
+    directory_data = DirectoryData.deserialize(
+        raw_bytes[directory_datakey.num_bytes :],
+        directory_header.data_location + directory_datakey.num_bytes,
+        sink.in_path,
+    )
+
+    rootdirectory = RootDirectory(
+        directory_key,
+        directory_name,
+        directory_title,
+        directory_header,
+        directory_datakey,
+        directory_data,
+        freesegments,
+    )
+
+    return CascadingFile(fileheader, streamers, freesegments, rootdirectory)
