@@ -7,6 +7,7 @@ and may be changed without notice.
 
 from __future__ import absolute_import
 
+import datetime
 import glob
 import numbers
 import os
@@ -729,3 +730,31 @@ def damerau_levenshtein(a, b, ratio=False):
         return M[len(a)][len(b)]
     else:
         return (len(a) + len(b)) - M[len(a)][len(b)] / (len(a) + len(b))
+
+
+def code_to_datetime(code):
+    """
+    Converts a ROOT datime code into a Python datetime.
+    """
+    return datetime.datetime(
+        ((code & 0b11111100000000000000000000000000) >> 26) + 1995,
+        ((code & 0b00000011110000000000000000000000) >> 22),
+        ((code & 0b00000000001111100000000000000000) >> 17),
+        ((code & 0b00000000000000011111000000000000) >> 12),
+        ((code & 0b00000000000000000000111111000000) >> 6),
+        ((code & 0b00000000000000000000000000111111)),
+    )
+
+
+def datetime_to_code(dt):
+    """
+    Converts a Python datetime into a ROOT datime code.
+    """
+    return (
+        ((dt.year - 1995) << 26)
+        | (dt.month << 22)
+        | (dt.day << 17)
+        | (dt.hour << 12)
+        | (dt.minute << 6)
+        | (dt.second)
+    )

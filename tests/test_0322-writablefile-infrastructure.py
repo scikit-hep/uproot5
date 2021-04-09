@@ -7,6 +7,7 @@ import pytest
 import skhep_testdata
 
 import uproot
+import uproot._util
 import uproot.writing
 
 ROOT = pytest.importorskip("ROOT")
@@ -103,3 +104,10 @@ def test_subsubdir(tmp_path):
         "wowzers/yikes/you": "TObjString",
         "wowzers/yikes/one_more": "TObjString",
     }
+
+
+def test_little_datime_functions():
+    assert (
+        uproot._util.datetime_to_code(uproot._util.code_to_datetime(1762860281))
+        == 1762860281
+    )
