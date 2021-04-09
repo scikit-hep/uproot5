@@ -16,14 +16,6 @@ import uproot.const
 import uproot.reading
 import uproot.sink.file
 
-defaults = {
-    "compression": uproot.compression.ZLIB(1),
-    "initial_directory_bytes": 256,
-    "initial_streamers_bytes": 256,
-    "uuid_version": 1,
-    "uuid_function": uuid.uuid1,
-}
-
 
 def create(file_path, **options):
     """
@@ -34,7 +26,7 @@ def create(file_path, **options):
         if os.path.exists(file_path):
             raise OSError(
                 "path exists and refusing to overwrite (use 'uproot.recreate' to "
-                "overwrite)\n\nin path {0}".format(file_path)
+                "overwrite)\n\nfor path {0}".format(file_path)
             )
     return recreate(file_path, **options)
 
@@ -53,17 +45,20 @@ def recreate(file_path, **options):
     else:
         sink = uproot.sink.file.FileSink.from_object(file_path)
 
-    compression = options.pop("compression", defaults["compression"])
+    compression = options.pop("compression", create.defaults["compression"])
     initial_directory_bytes = options.pop(
-        "initial_directory_bytes", defaults["initial_directory_bytes"]
+        "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
     initial_streamers_bytes = options.pop(
-        "initial_streamers_bytes", defaults["initial_streamers_bytes"]
+        "initial_streamers_bytes", create.defaults["initial_streamers_bytes"]
     )
-    uuid_version = options.pop("uuid_version", defaults["uuid_version"])
-    uuid_function = options.pop("uuid_function", defaults["uuid_function"])
+    uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
+    uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
     if len(options) != 0:
-        raise TypeError("unrecognized options: " + ", ".join(repr(x) for x in options))
+        raise TypeError(
+            "unrecognized options for uproot.create or uproot.recreate: "
+            + ", ".join(repr(x) for x in options)
+        )
 
     cascading = uproot._writing.create_empty(
         sink,
@@ -78,8 +73,47 @@ def recreate(file_path, **options):
     ).root_directory
 
 
-create.defaults = defaults
-recreate.defaults = defaults
+def update(file_path, **options):
+    """
+    FIXME: docstring
+    """
+    file_path = uproot._util.regularize_path(file_path)
+    if uproot._util.isstr(file_path):
+        sink = uproot.sink.file.FileSink(file_path)
+    else:
+        sink = uproot.sink.file.FileSink.from_object(file_path)
+
+    initial_directory_bytes = options.pop(
+        "initial_directory_bytes", create.defaults["initial_directory_bytes"]
+    )
+    uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
+    uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
+    if len(options) != 0:
+        raise TypeError(
+            "unrecognized options for uproot.update: "
+            + ", ".join(repr(x) for x in options)
+        )
+
+    cascading = uproot._writing.update_existing(
+        sink,
+        initial_directory_bytes,
+        uuid_version,
+        uuid_function,
+    )
+    return WritableFile(
+        sink, cascading, initial_directory_bytes, uuid_version, uuid_function
+    ).root_directory
+
+
+create.defaults = {
+    "compression": uproot.compression.ZLIB(1),
+    "initial_directory_bytes": 256,
+    "initial_streamers_bytes": 256,
+    "uuid_version": 1,
+    "uuid_function": uuid.uuid1,
+}
+recreate.defaults = create.defaults
+update.defaults = create.defaults
 
 
 class WritableFile(object):

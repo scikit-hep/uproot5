@@ -10,6 +10,7 @@ import datetime
 import math
 import os.path
 import struct
+import uuid
 
 import uproot.const
 import uproot.reading
@@ -49,6 +50,12 @@ class CascadeLeaf(object):
     def serialize(self):
         raise AssertionError("CascadeLeaf is abstract; 'serialize' must be overloaded")
 
+    @classmethod
+    def deserialize(cls, raw_bytes, location):
+        raise AssertionError(
+            "CascadeLeaf is abstract; 'deserialize' must be overloaded"
+        )
+
     def write(self, sink):
         if self._file_dirty:
             if self._location is None:
@@ -71,6 +78,9 @@ class CascadeNode(object):
     def write(self, sink):
         for dependency in self._dependencies:
             dependency.write(sink)
+
+
+_string_size_format_4 = struct.Struct(">I")
 
 
 class String(CascadeLeaf):
@@ -108,6 +118,18 @@ class String(CascadeLeaf):
     def serialize(self):
         return self._serialization
 
+    @classmethod
+    def deserialize(cls, raw_bytes, location):
+        num_bytes = ord(raw_bytes[:1])
+        position = 1
+        if num_bytes == 255:
+            (num_bytes,) = _string_size_format_4.unpack(raw_bytes[1:5])
+            position = 5
+        out = raw_bytes[position : position + num_bytes]
+        if not uproot._util.py2:
+            out = out.decode(errors="surrogateescape")
+        return String(location, out), location + position + num_bytes
+
 
 class Key(CascadeLeaf):
     """
@@ -137,6 +159,8 @@ class Key(CascadeLeaf):
         self._cycle = cycle
         self._parent_location = parent_location
         self._seek_location = seek_location
+        self._created_on = datetime.datetime.now()
+        self._big = None
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})".format(
@@ -196,9 +220,23 @@ class Key(CascadeLeaf):
     def parent_location(self):
         return self._parent_location
 
+    @parent_location.setter
+    def parent_location(self, value):
+        if self._parent_location != value:
+            self._file_dirty = True
+            self._big = None
+            self._parent_location = value
+
     @property
     def seek_location(self):
         return self._seek_location
+
+    @seek_location.setter
+    def seek_location(self, value):
+        if self._seek_location != value:
+            self._file_dirty = True
+            self._big = None
+            self._seek_location = value
 
     def copy_to(self, location):
         position = location + self.num_bytes
@@ -215,7 +253,7 @@ class Key(CascadeLeaf):
         else:
             location = self._location
 
-        return Key(
+        out = Key(
             location,
             self._uncompressed_bytes,
             self._compressed_bytes,
@@ -226,10 +264,14 @@ class Key(CascadeLeaf):
             self._parent_location,
             location,
         )
+        out._created_on = self._created_on
+        return out
 
     @property
     def big(self):
-        if self._seek_location is not None:
+        if self._big is not None:
+            return self._big
+        elif self._seek_location is not None:
             return (
                 self._seek_location >= uproot.const.kStartBigFile
                 or self._parent_location >= uproot.const.kStartBigFile
@@ -291,6 +333,77 @@ class Key(CascadeLeaf):
             + self._name.serialize()
             + self._title.serialize()
         )
+
+    @classmethod
+    def deserialize(cls, raw_bytes, location, in_path, is_directory_key=False):
+        (
+            fNbytes,
+            version,
+            fObjlen,
+            fDatime,
+            fKeylen,
+            fCycle,
+            fSeekKey,
+            fSeekPdir,
+        ) = uproot.reading._key_format_small.unpack(
+            raw_bytes[: uproot.reading._key_format_small.size]
+        )
+        position = location + uproot.reading._key_format_small.size
+        big = False
+
+        if version >= 1000:
+            (
+                fNbytes,
+                version,
+                fObjlen,
+                fDatime,
+                fKeylen,
+                fCycle,
+                fSeekKey,
+                fSeekPdir,
+            ) = uproot.reading._key_format_big.unpack(
+                raw_bytes[: uproot.reading._key_format_big.size]
+            )
+            version -= 1000
+            position = location + uproot.reading._key_format_big.size
+            big = True
+
+        if version != cls.class_version:
+            raise ValueError(
+                "Uproot can't read TKey version {0} for writing, only version {1}{2}".format(
+                    version,
+                    cls.class_version,
+                    in_path,
+                )
+            )
+
+        assert 0 < fNbytes <= fKeylen + fObjlen
+        assert fCycle > 0
+        if not is_directory_key:
+            assert fSeekKey == location
+
+        classname, position = String.deserialize(
+            raw_bytes[position - location :], position
+        )
+        name, position = String.deserialize(raw_bytes[position - location :], position)
+        title, position = String.deserialize(raw_bytes[position - location :], position)
+
+        assert fKeylen == position - location
+
+        out = Key(
+            location,
+            fObjlen,  # uncompressed_bytes
+            fNbytes - fKeylen,  # compressed_bytes
+            classname,
+            name,
+            title,
+            fCycle,  # cycle
+            fSeekPdir,  # parent_location
+            fSeekKey,  # may be location
+        )
+        out._created_on = datetime.datetime.now()  # FIXME: compute from fDatime
+        out._big = big
+        return out
 
 
 _free_format_small = struct.Struct(">HII")
@@ -378,7 +491,9 @@ class FreeSegmentsData(CascadeLeaf):
                     _free_format_small.pack(self.class_version, start, stop - 1)
                 )
             else:
-                pairs.append(_free_format_big.pack(self.class_version, start, stop - 1))
+                pairs.append(
+                    _free_format_big.pack(self.class_version + 1000, start, stop - 1)
+                )
 
         if self._end < uproot.const.kStartBigFile:
             pairs.append(
@@ -390,9 +505,47 @@ class FreeSegmentsData(CascadeLeaf):
             infinity = uproot.const.kStartBigFile
             while not self._end < infinity:
                 infinity *= 2
-            pairs.append(_free_format_big.pack(self.class_version, self._end, infinity))
+            pairs.append(
+                _free_format_big.pack(self.class_version + 1000, self._end, infinity)
+            )
 
         return b"".join(pairs)
+
+    @classmethod
+    def deserialize(cls, raw_bytes, location, num_bytes, num_slices, in_path):
+        slices = []
+        position = 0
+        for _ in range(num_slices + 1):
+            version, fFirst, fLast = _free_format_small.unpack(
+                raw_bytes[: _free_format_small.size]
+            )
+            if version >= 1000:
+                version, fFirst, fLast = _free_format_small.unpack(
+                    raw_bytes[: _free_format_big.size]
+                )
+                version -= 1000
+                position += _free_format_big.size
+            else:
+                position += _free_format_small.size
+
+            if version != cls.class_version:
+                raise ValueError(
+                    "Uproot can't read TFree version {0} for writing, only version {1}{2}".format(
+                        version,
+                        cls.class_version,
+                        in_path,
+                    )
+                )
+
+            slices.append((fFirst, fLast + 1))
+
+        end = slices.pop()[0]
+
+        assert position == num_bytes
+
+        out = FreeSegmentsData(location, tuple(slices), end)
+        out._allocation = num_bytes
+        return out
 
 
 class FreeSegments(CascadeNode):
@@ -574,6 +727,12 @@ class StreamersData(CascadeLeaf):
     def serialize(self):
         return self._serialization
 
+    @classmethod
+    def deserialize(cls, raw_bytes, location):
+        out = StreamersData(location, len(raw_bytes))
+        out._serialization = raw_bytes
+        return out
+
 
 class Streamers(CascadeNode):
     """
@@ -677,6 +836,22 @@ class DirectoryData(CascadeLeaf):
             out.append(key.serialize())
         return b"".join(out)
 
+    @classmethod
+    def deserialize(cls, raw_bytes, location, in_path):
+        (num_keys,) = uproot.reading._directory_format_num_keys.unpack(raw_bytes[:4])
+        position = location + 4
+        keys = []
+        for _ in range(num_keys):
+            keys.append(
+                Key.deserialize(
+                    raw_bytes[position - location :],
+                    position,
+                    in_path,
+                    is_directory_key=True,
+                )
+            )
+        return DirectoryData(location, len(raw_bytes), keys)
+
 
 class DirectoryHeader(CascadeLeaf):
     """
@@ -719,7 +894,7 @@ class DirectoryHeader(CascadeLeaf):
             self._data_num_bytes,
             self._parent_location,
             self._uuid_version,
-            self._uuid,
+            repr(self._uuid),
         )
 
     @property
@@ -809,10 +984,74 @@ class DirectoryHeader(CascadeLeaf):
                 self._parent_location,  # fSeekParent
                 self._data_location,  # fSeekKeys
             )
-            + struct.pack(">H", self._uuid_version)
+            + _directory_uuid_version_format.pack(self._uuid_version)
             + self._uuid.bytes
             + extra
         )
+
+    @classmethod
+    def deserialize(cls, raw_bytes, location, in_path):
+        (
+            version,
+            fDatimeC,
+            fDatimeM,
+            fNbytesKeys,
+            fNbytesName,
+            fSeekDir,
+            fSeekParent,
+            fSeekKeys,
+        ) = uproot.reading._directory_format_small.unpack(
+            raw_bytes[: uproot.reading._directory_format_small.size]
+        )
+        position = location + uproot.reading._directory_format_small.size
+
+        if version >= 1000:
+            (
+                version,
+                fDatimeC,
+                fDatimeM,
+                fNbytesKeys,
+                fNbytesName,
+                fSeekDir,
+                fSeekParent,
+                fSeekKeys,
+            ) = uproot.reading._directory_format_big.unpack(
+                raw_bytes[: uproot.reading._directory_format_big.size]
+            )
+            version -= 1000
+            position = location + uproot.reading._directory_format_big.size
+
+        if version != cls.class_version:
+            raise ValueError(
+                "Uproot can't read TDirectory version {0} for writing, only version {1}{2}".format(
+                    version,
+                    cls.class_version,
+                    in_path,
+                )
+            )
+
+        (uuid_version,) = _directory_uuid_version_format.unpack(
+            raw_bytes[position - location : position - location + 2]
+        )
+
+        uuid_bytes = raw_bytes[position - location + 2 : position - location + 18]
+
+        out = DirectoryHeader(
+            location,
+            fSeekDir,  # begin_location
+            fNbytesName,  # begin_num_bytes
+            fSeekKeys,  # data_location
+            fNbytesKeys,  # data_num_bytes
+            fSeekParent,  # parent_location
+            uuid_version,
+            uuid.UUID(bytes=uuid_bytes),
+        )
+        out._created_on = datetime.datetime.now()  # FIXME: compute from fDatimeC
+        out._modified_on = out._created_on  # FIXME: compute from fDatimeM
+        return out
+
+
+_directory_uuid_version_format = struct.Struct(">H")
 
 
 class Directory(CascadeNode):
@@ -1076,7 +1315,6 @@ class FileHeader(CascadeLeaf):
 
     magic = b"root"
     class_version = 62206  # ROOT 6.22/06 is our model
-    begin = 100
 
     def __init__(
         self,
@@ -1091,7 +1329,7 @@ class FileHeader(CascadeLeaf):
         uuid_version,
         uuid,
     ):
-        super(FileHeader, self).__init__(0, self.begin)
+        super(FileHeader, self).__init__(0, 100)
         self._end = end
         self._free_location = free_location
         self._free_num_bytes = free_num_bytes
@@ -1102,6 +1340,8 @@ class FileHeader(CascadeLeaf):
         self._info_num_bytes = info_num_bytes
         self._uuid_version = uuid_version
         self._uuid = uuid
+        self._version = None
+        self._begin = 100
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})".format(
@@ -1219,6 +1459,17 @@ class FileHeader(CascadeLeaf):
             self._uuid = value
 
     @property
+    def version(self):
+        if self._version is None:
+            return self.class_version
+        else:
+            return self._version
+
+    @property
+    def begin(self):
+        return self._begin
+
+    @property
     def big(self):
         return (
             self._end is None
@@ -1237,11 +1488,11 @@ class FileHeader(CascadeLeaf):
     def serialize(self):
         if self.big:
             format = uproot.reading._file_header_fields_big
-            version = self.class_version + 1000000
+            version = self.version + 1000000
             units = 8
         else:
             format = uproot.reading._file_header_fields_small
-            version = self.class_version
+            version = self.version
             units = 4
 
         return format.pack(
@@ -1260,6 +1511,73 @@ class FileHeader(CascadeLeaf):
             self._uuid_version,  # fUUID_version
             self._uuid.bytes,  # fUUID
         )
+
+    @classmethod
+    def deserialize(cls, raw_bytes, location):
+        (
+            magic,
+            version,
+            begin,
+            end,
+            free_location,
+            free_num_bytes,
+            free_num_slices_plus_1,
+            begin_num_bytes,
+            units,
+            compression_code,
+            info_location,
+            info_num_bytes,
+            uuid_version,
+            uuid_bytes,
+        ) = uproot.reading._file_header_fields_small.unpack(
+            raw_bytes[: uproot.reading._file_header_fields_small.size]
+        )
+        assert begin >= uproot.reading._file_header_fields_small.size
+        assert free_location >= 0
+        assert free_num_bytes >= 0
+        assert free_num_slices_plus_1 >= 1
+        assert begin_num_bytes >= 0
+        assert compression_code >= 0
+        assert info_location >= 0
+        assert info_num_bytes >= 0
+        assert uuid_version >= 0
+
+        if version >= 1000000:
+            (
+                magic,
+                version,
+                begin,
+                end,
+                free_location,
+                free_num_bytes,
+                free_num_slices_plus_1,
+                begin_num_bytes,
+                units,
+                compression_code,
+                info_location,
+                info_num_bytes,
+                uuid_version,
+                uuid_bytes,
+            ) = uproot.reading._file_header_fields_big.unpack(raw_bytes)
+            assert units == 8
+        else:
+            assert units == 4
+
+        out = FileHeader(
+            end,
+            free_location,
+            free_num_bytes,
+            free_num_slices_plus_1 - 1,
+            begin_num_bytes,
+            uproot.compression.Compression.from_code(compression_code),
+            info_location,
+            info_num_bytes,
+            uuid_version,
+            uuid.UUID(bytes=uuid_bytes),
+        )
+        out._version = version - 1000000
+        out._begin = begin
+        return out
 
 
 class CascadingFile(object):
@@ -1424,5 +1742,98 @@ def create_empty(
 
     rootdirectory.write(sink)
     streamers.write(sink)
+
+    return CascadingFile(fileheader, streamers, freesegments, rootdirectory)
+
+
+def update_existing(
+    sink,
+    initial_directory_bytes,
+    uuid_version,
+    uuid_function,
+):
+    """
+    FIXME: docstring
+    """
+    raw_bytes = sink.read(
+        0,
+        uproot.reading._file_header_fields_big.size,
+        insist=uproot.reading._file_header_fields_small.size,
+    )
+    if raw_bytes[:4] != b"root":
+        raise ValueError(
+            "not a ROOT file: first four bytes are {0}{1}".format(
+                repr(raw_bytes[:4]), sink.in_path
+            )
+        )
+    fileheader = FileHeader.deserialize(raw_bytes, 0)
+
+    raw_bytes = sink.read(fileheader.free_location, fileheader.free_num_bytes)
+    freesegments_key = Key.deserialize(
+        raw_bytes, fileheader.free_location, sink.in_path
+    )
+
+    freesegments_data = FreeSegmentsData.deserialize(
+        raw_bytes[freesegments_key.num_bytes :],
+        fileheader.free_location + freesegments_key.num_bytes,
+        fileheader.free_num_bytes - freesegments_key.num_bytes,
+        fileheader.free_num_slices,
+        sink.in_path,
+    )
+
+    freesegments = FreeSegments(freesegments_key, freesegments_data, fileheader)
+
+    raw_bytes = sink.read(fileheader.info_location, fileheader.info_num_bytes)
+    streamers_key = Key.deserialize(raw_bytes, fileheader.info_location, sink.in_path)
+    streamers_data = StreamersData.deserialize(
+        raw_bytes[streamers_key.num_bytes :],
+        fileheader.info_location + streamers_key.num_bytes,
+    )
+    streamers = Streamers(streamers_key, streamers_data, freesegments)
+
+    raw_bytes = sink.read(
+        fileheader.begin,
+        fileheader.begin_num_bytes + uproot.reading._directory_format_big.size + 18,
+    )
+    directory_key = Key.deserialize(raw_bytes, fileheader.begin, sink.in_path)
+    position = fileheader.begin + directory_key.num_bytes
+
+    directory_name, position = String.deserialize(
+        raw_bytes[position - fileheader.begin :], position
+    )
+    directory_title, position = String.deserialize(
+        raw_bytes[position - fileheader.begin :], position
+    )
+
+    assert fileheader.begin_num_bytes == position - fileheader.begin
+
+    directory_header = DirectoryHeader.deserialize(
+        raw_bytes[position - fileheader.begin :], position, sink.in_path
+    )
+    assert directory_header.begin_location == fileheader.begin
+    assert directory_header.begin_num_bytes == fileheader.begin_num_bytes
+    assert directory_header.parent_location == 0
+
+    raw_bytes = sink.read(
+        directory_header.data_location, directory_header.data_num_bytes
+    )
+    directory_datakey = Key.deserialize(
+        raw_bytes, directory_header.data_location, sink.in_path
+    )
+    directory_data = DirectoryData.deserialize(
+        raw_bytes[directory_datakey.num_bytes :],
+        directory_header.data_location + directory_datakey.num_bytes,
+        sink.in_path,
+    )
+
+    rootdirectory = RootDirectory(
+        directory_key,
+        directory_name,
+        directory_title,
+        directory_header,
+        directory_datakey,
+        directory_data,
+        freesegments,
+    )
 
     return CascadingFile(fileheader, streamers, freesegments, rootdirectory)
