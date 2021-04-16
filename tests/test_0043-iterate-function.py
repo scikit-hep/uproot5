@@ -149,13 +149,28 @@ def test_iterate_report_2():
 
 
 def test_function_iterate():
-    files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-        "6.20.04", "*"
-    )
+    files = [
+        skhep_testdata.data_path("uproot-sample-{0}-uncompressed.root".format(x))
+        + ":sample"
+        for x in [
+            "5.23.02",
+            "5.24.00",
+            "5.25.02",
+            "5.26.00",
+            "5.27.02",
+            "5.28.00",
+            "5.29.02",
+            "5.30.00",
+            "6.08.04",
+            "6.10.05",
+            "6.14.00",
+            "6.16.00",
+            "6.18.00",
+            "6.20.04",
+        ]
+    ]
     expect = 0
-    for arrays, report in uproot.iterate(
-        {files: "sample"}, "i8", report=True, library="np"
-    ):
+    for arrays, report in uproot.iterate(files, "i8", report=True, library="np"):
         assert arrays["i8"][:5].tolist() == [-15, -14, -13, -12, -11]
         assert report.global_entry_start == expect
         assert report.global_entry_stop == expect + len(arrays["i8"])
@@ -164,13 +179,28 @@ def test_function_iterate():
 
 def test_function_iterate_pandas():
     pandas = pytest.importorskip("pandas")
-    files = skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root").replace(
-        "6.20.04", "*"
-    )
+    files = [
+        skhep_testdata.data_path("uproot-sample-{0}-uncompressed.root".format(x))
+        + ":sample"
+        for x in [
+            "5.23.02",
+            "5.24.00",
+            "5.25.02",
+            "5.26.00",
+            "5.27.02",
+            "5.28.00",
+            "5.29.02",
+            "5.30.00",
+            "6.08.04",
+            "6.10.05",
+            "6.14.00",
+            "6.16.00",
+            "6.18.00",
+            "6.20.04",
+        ]
+    ]
     expect = 0
-    for arrays, report in uproot.iterate(
-        {files: "sample"}, "i8", report=True, library="pd"
-    ):
+    for arrays, report in uproot.iterate(files, "i8", report=True, library="pd"):
         assert arrays["i8"].values[:5].tolist() == [-15, -14, -13, -12, -11]
         assert arrays.index.values[0] == expect
         assert report.global_entry_start == expect
@@ -180,12 +210,13 @@ def test_function_iterate_pandas():
 
 def test_function_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
-    files = skhep_testdata.data_path("uproot-HZZ.root").replace(
-        "HZZ", "HZZ-{uncompressed,zlib,lz4}"
-    )
+    files = [
+        skhep_testdata.data_path("uproot-HZZ.root") + ":events",
+        skhep_testdata.data_path("uproot-HZZ-uncompressed.root") + ":events",
+        skhep_testdata.data_path("uproot-HZZ-zlib.root") + ":events",
+        skhep_testdata.data_path("uproot-HZZ-lz4.root") + ":events",
+    ]
     expect = 0
-    for arrays, report in uproot.iterate(
-        {files: "events"}, "Muon_Px", report=True, library="pd"
-    ):
+    for arrays, report in uproot.iterate(files, "Muon_Px", report=True, library="pd"):
         assert arrays["Muon_Px"].index.values[0] == (expect, 0)
         expect += report.tree.num_entries
