@@ -404,7 +404,6 @@ class XRootDSource(uproot.source.chunk.Source):
         self._executor.shutdown()
         self._resource.__exit__(exception_type, exception_value, traceback)
 
-
     @property
     def num_bytes(self):
         if self._num_bytes is None:
