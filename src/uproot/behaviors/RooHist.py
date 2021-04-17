@@ -9,7 +9,6 @@ from __future__ import absolute_import
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_metadata, boost_axis_metadata
 
 # ['@fUniqueID', '@fBits', 'fName', 'fTitle', 'fLineColor', 'fLineStyle',
 #  'fLineWidth', 'fFillColor', 'fFillStyle', 'fMarkerColor', 'fMarkerStyle',
@@ -17,54 +16,20 @@ from uproot.behaviors.TH1 import boost_metadata, boost_axis_metadata
 #  'fMinimum', 'fMaximum', 'fEXlow', 'fEXhigh', 'fEYlow', 'fEYhigh']
 
 
-class AxisTraits(object):
-    """
-    Axis traits
-    """
+class AxisBinError(Exception):
+    "Error high and low bin edges are not compatible"
 
-    @property
-    def circular(self):
-        return False
-
-    @property
-    def discrete(self):
-        return False
-
-
-class RooHistAxis(object):
-    """
-    `RooHist`'s axis
-    """
-
-    def __init__(self, low_edges, high_edges):
-        self._traits = AxisTraits()
-        self._low_edges = low_edges
-        self._high_edges = high_edges
-
-    def __repr__(self):
-        return f"<RooHistAxis({list(zip(low_edges, high_edges))})>"
-
-    def __eq__(self, other):
-        return (self._low_edges == other._low_edges) and (
-            self._high_edges == other._high_edges
-        )
-
-    def __len__(self):
-        return len(self._low_edges)
-
-    def __getitem__(self, key):
-        return (self._low_edges[key], self._high_edges[key])
-
-    @property
-    def traits(self):
-        return self._traits
+    def __init__(self, msg):
+        "High and low bin edges are not compatible"
+        super()._init__(self, msg)
 
 
 class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
     """
-    Behavior for ``RooHist``
+    Behavior for ``RooHist``.
 
-    A minimal Histogram-like implementation is also provided.
+    This consists of ``to_boost`` (and ``to_hist``) and ``to_numpy``
+    providing access to the histogram.
     """
 
     @property
@@ -81,61 +46,66 @@ class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
         """
         return self.member("fTitle")
 
-    def __eq__(self, other):
+    def to_numpy(self, dd=False):
         """
-        Two histograms are equal if their axes are equal, their values are equal,
-        and their variances are equal.
+        Args:
+            dd (bool): If True, the return type follows
+                `numpy.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__;
+                otherwise, it follows `numpy.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__
+                and `numpy.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__.
+
+        Converts the ``RooHist`` into a form like the ones produced by the NumPy
+        histogram functions.
         """
-        if type(self) != type(other):
-            return False
-        if self.axes != other.axes:
-            return False
-        values_equal = numpy.array_equal(
-            super(RooHist, self).values("y"), super(RooHist, other).values("y")
+        bin_centers, values = self.values()
+        bin_edges_low = bin_centers - self.errors(which="low", axis="x")
+        bin_edges_high = bin_centers + self.errors(which="high", axis="x")
+        if numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
+            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
+        bin_edges = numpy.append(bin_edges_low, [bin_edges_high[-1]])
+        if dd:
+            return values, (bin_edges,)
+        else:
+            return values, bin_edges
+
+    def to_boost(self):
+        """
+        Converts ``RooHist`` into a ``boost-histogram`` object.
+        """
+        boost_histogram = uproot.extras.boost_histogram()
+        bin_centers, values = self.values()
+        bin_edges_low = bin_centers - self.errors(which="low", axis="x")
+        bin_edges_high = bin_centers + self.errors(which="high", axis="x")
+        if numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
+            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
+        # Boost histogram only supports symmetric errors
+        errors = self.errors(which="mean", axis="y")
+        variances = numpy.square(errors)
+
+        # Now make the Boost histogram
+        if bin_edges_low[1:] != bin_edges_high[:-1]:
+            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
+        bin_edges = numpy.append(bin_edges_low, [bin_edges_high[-1]])
+        axis = boost_histogram.axis.Variable(
+            bin_edges,
+            underflow=False,
+            overflow=False,
         )
-        variances_equal = numpy.array_equal(
-            super(RooHist, self).errors("mean", "x"),
-            super(RooHist, other).errors("mean", "y"),
-        )
-        return values_equal and variances_equal
+        axis.name = self.name
+        axis.title = self.title
+        hist = boost_histogram.Histogram(axis, storage=boost_histogram.storage.Weight())
+        hist.name = self.name
+        hist.title = self.title
+        view = hist.view()
+        view.value = values
+        view.variance = variances
+        return hist
 
-    def __ne__(self, other):
+    def to_hist(self):
         """
-        Some versions of Python don't automatically negate __eq__.
+        Converts ``RooHist`` into a ``hist`` object.
         """
-        return not self.__eq__(other)
+        return uproot.extras.hist().Hist(self.to_boost())
 
-    @property
-    def axes(self):
-        """
-        A tuple containing the X axis
-        """
-        low_edges = self._normalize_array("fX") - self._normalize_array("fEXLow")
-        high_edges = self._normalize_array("fX") - self._normalize_array("fEXHigh")
-        return (RooHistAxis(low_edges, high_edges),)
-
-    def axis(self, axis):
-        """
-        Return the X axis.
-
-        ``axis`` *must* be ``0``, ``-1``, or ``"x"``.
-        """
-        if axis not in (0, -1, "x"):
-            raise ValueError("axis must be 0 (-1) or 'x' for a RooHist")
-        low_edges = self._normalize_array("fX") - self._normalize_array("fEXLow")
-        high_edges = self._normalize_array("fX") - self._normalize_array("fEXHigh")
-        return RooHistAxis(low_edges, high_edges)
-
-    @property
-    def weighted(self):
-        """
-        Always return weighted since values are doubles
-        """
-        return True
-
-    @property
-    def kind(self):
-        """
-        ``RooHist``s are "COUNT" histograms.
-        """
-        return "COUNT"
+    def _to_boost_histogram_(self):
+        return self.to_boost()
