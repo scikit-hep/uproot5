@@ -30,11 +30,12 @@ try:
 except ImportError:
     import Queue as queue
 
+import base64
+
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
 
-import base64
 
 def make_connection(parsed_url, timeout):
     """
@@ -80,16 +81,21 @@ def full_path(parsed_url):
     else:
         return parsed_url.path
 
-def basic_auth_headers(parsed_url): 
-    """
-    Returns the headers required for basic authorization, if parsed_url contains 
-    a username / password pair, otherwise returns an empty dict
-    """ 
-    if parsed_url.username==None or parsed_url.password==None: 
-        return {} 
-    ret =  { "Authorization" : "Basic " + base64.b64encode( (parsed_url.username + ":" + parsed_url.password).encode("utf-8")).decode("utf-8") } 
-    return ret
 
+def basic_auth_headers(parsed_url):
+    """
+    Returns the headers required for basic authorization, if parsed_url contains
+    a username / password pair, otherwise returns an empty dict
+    """
+    if parsed_url.username == None or parsed_url.password == None:
+        return {}
+    ret = {
+        "Authorization": "Basic "
+        + base64.b64encode(
+            (parsed_url.username + ":" + parsed_url.password).encode("utf-8")
+        ).decode("utf-8")
+    }
+    return ret
 
 
 def get_num_bytes(file_path, parsed_url, timeout):
@@ -102,7 +108,7 @@ def get_num_bytes(file_path, parsed_url, timeout):
     Returns the number of bytes in the file by making a HEAD request.
     """
     connection = make_connection(parsed_url, timeout)
-    auth_headers = basic_auth_headers(parsed_url); 
+    auth_headers = basic_auth_headers(parsed_url)
     connection.request("HEAD", full_path(parsed_url), headers=auth_headers)
     response = connection.getresponse()
 
@@ -112,7 +118,9 @@ def get_num_bytes(file_path, parsed_url, timeout):
             if k.lower() == "location":
                 redirect_url = urlparse(x)
                 connection = make_connection(redirect_url, timeout)
-                connection.request("HEAD", full_path(redirect_url), headers = auth_headers)
+                connection.request(
+                    "HEAD", full_path(redirect_url), headers=auth_headers
+                )
                 response = connection.getresponse()
                 break
         else:
@@ -167,7 +175,7 @@ class HTTPResource(uproot.source.chunk.Resource):
         self._file_path = file_path
         self._timeout = timeout
         self._parsed_url = urlparse(file_path)
-        self._auth_headers = basic_auth_headers(self._parsed_url) 
+        self._auth_headers = basic_auth_headers(self._parsed_url)
 
     @property
     def timeout(self):
@@ -184,7 +192,7 @@ class HTTPResource(uproot.source.chunk.Resource):
         return self._parsed_url
 
     @property
-    def auth_headers(self): 
+    def auth_headers(self):
         """
         Returns a dict containing auth headers, if any for this resource
         """
@@ -220,7 +228,10 @@ class HTTPResource(uproot.source.chunk.Resource):
                     redirect.request(
                         "GET",
                         full_path(redirect_url),
-                        headers={**{"Range": "bytes={0}-{1}".format(start, stop - 1)}, **self.auth_headers },
+                        headers={
+                            **{"Range": "bytes={0}-{1}".format(start, stop - 1)},
+                            **self.auth_headers,
+                        },
                     )
                     return self.get(redirect, start, stop)
 
@@ -261,7 +272,10 @@ for URL {1}""".format(
         connection.request(
             "GET",
             full_path(source.parsed_url),
-            headers={**{"Range": "bytes={0}-{1}".format(start, stop - 1)}, **source.auth_headers},
+            headers={
+                **{"Range": "bytes={0}-{1}".format(start, stop - 1)},
+                **source.auth_headers,
+            },
         )
 
         def task(resource):
@@ -302,7 +316,10 @@ for URL {1}""".format(
         connection[0].request(
             "GET",
             full_path(source.parsed_url),
-            headers={**{"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers},
+            headers={
+                **{"Range": "bytes=" + ", ".join(range_strings)},
+                **source.auth_headers,
+            },
         )
 
         def task(resource):
@@ -321,7 +338,10 @@ for URL {1}""".format(
                             connection[0].request(
                                 "GET",
                                 full_path(redirect_url),
-                                headers={**{"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers},
+                                headers={
+                                    **{"Range": "bytes=" + ", ".join(range_strings)},
+                                    **source.auth_headers,
+                                },
                             )
                             task(resource)
                             return
@@ -752,4 +772,3 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         Dict containing auth headers, if any
         """
         return self._executor.workers[0].resource.auth_headers
-
