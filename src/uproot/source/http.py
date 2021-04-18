@@ -647,6 +647,8 @@ class HTTPSource(uproot.source.chunk.Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._executor.shutdown()
+        if self._fallback is not None:
+            self._fallback.__exit__(exception_type, exception_value, traceback)
 
     @property
     def timeout(self):
