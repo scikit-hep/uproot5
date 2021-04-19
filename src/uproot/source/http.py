@@ -220,7 +220,7 @@ class HTTPResource(uproot.source.chunk.Resource):
                     redirect.request(
                         "GET",
                         full_path(redirect_url),
-                        headers={**{"Range": "bytes={0}-{1}".format(start, stop - 1)}, **self.auth_headers },
+                        headers=dict({"Range": "bytes={0}-{1}".format(start, stop - 1)}, **self.auth_headers),
                     )
                     return self.get(redirect, start, stop)
 
@@ -261,7 +261,7 @@ for URL {1}""".format(
         connection.request(
             "GET",
             full_path(source.parsed_url),
-            headers={**{"Range": "bytes={0}-{1}".format(start, stop - 1)}, **source.auth_headers},
+            headers=dict({"Range": "bytes={0}-{1}".format(start, stop - 1)}, **source.auth_headers),
         )
 
         def task(resource):
@@ -302,7 +302,7 @@ for URL {1}""".format(
         connection[0].request(
             "GET",
             full_path(source.parsed_url),
-            headers={**{"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers},
+            headers=dict({"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers),
         )
 
         def task(resource):
@@ -321,7 +321,7 @@ for URL {1}""".format(
                             connection[0].request(
                                 "GET",
                                 full_path(redirect_url),
-                                headers={**{"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers},
+                                headers=dict({"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers),
                             )
                             task(resource)
                             return
