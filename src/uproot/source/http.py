@@ -85,7 +85,7 @@ def basic_auth_headers(parsed_url):
     Returns the headers required for basic authorization, if parsed_url contains 
     a username / password pair, otherwise returns an empty dict
     """ 
-    if parsed_url.username==None or parsed_url.password==None: 
+    if parsed_url.username is None or parsed_url.password is None: 
         return {} 
     ret =  { "Authorization" : "Basic " + base64.b64encode( (parsed_url.username + ":" + parsed_url.password).encode("utf-8")).decode("utf-8") } 
     return ret
