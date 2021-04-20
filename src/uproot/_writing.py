@@ -778,6 +778,10 @@ class TListHeader(CascadeLeaf):
             self._file_dirty = True
             self._num_entries = value
 
+    @property
+    def num_bytes(self):
+        return _tlistheader_format.size
+
     def serialize(self):
         return _tlistheader_format.pack(
             numpy.uint32(self._data_bytes - 4) | uproot.const.kByteCountMask,
@@ -786,7 +790,7 @@ class TListHeader(CascadeLeaf):
             0,
             uproot.const.kNotDeleted,
             0,
-            numpy.uint32(self._num_entries),
+            self._num_entries,
         )
 
 
@@ -866,10 +870,12 @@ class TListOfStreamers(CascadeNode):
         self._header.data_bytes = position - afterkey
         self._header.num_entries = len(self._rawstreamers)
 
-        self._key.uncompressed_bytes = self._header.data_bytes
+        self._key.uncompressed_bytes = self._allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
         self._freesegments.fileheader.info_location = self._key.location
-        self._freesegments.fileheader.info_num_bytes = position - self._key.location
+        self._freesegments.fileheader.info_num_bytes = (
+            self._key.allocation + self._allocation
+        )
         super(TListOfStreamers, self).write(sink)
 
 
@@ -906,7 +912,7 @@ class Streamers(CascadeNode):
 
     @property
     def allocation(self):
-        return self._key.allocation + self._data.allocation
+        return self._data.allocation
 
     def write(self, sink):
         self._key.uncompressed_bytes = self._data.allocation
@@ -1819,8 +1825,10 @@ def create_empty(
         fileheader.begin,
         None,
     )
-    streamers_data = StreamersData(None, initial_streamers_bytes)
-    streamers = Streamers(streamers_key, streamers_data, freesegments)
+    streamers_header = TListHeader(None, None, None)
+    streamers = TListOfStreamers(
+        initial_streamers_bytes, streamers_key, streamers_header, [], freesegments
+    )
 
     directory_key = Key(
         None,
@@ -1868,7 +1876,9 @@ def create_empty(
         + directory_title.allocation
         + directory_header.allocation
     )
-    directory_datakey.location = streamers_key.location + streamers.allocation
+    directory_datakey.location = (
+        streamers_key.location + streamers_key.allocation + streamers.allocation
+    )
     directory_data.location = directory_datakey.location + directory_datakey.allocation
     freesegments_key.location = directory_data.location + directory_data.allocation
     freesegments_data.end = (
@@ -1877,7 +1887,7 @@ def create_empty(
         + freesegments_data.allocation
     )
     fileheader.info_location = streamers_key.location
-    fileheader.info_num_bytes = streamers_key.allocation + streamers_data.allocation
+    fileheader.info_num_bytes = streamers_key.allocation + streamers.allocation
 
     rootdirectory.write(sink)
     streamers.write(sink)
