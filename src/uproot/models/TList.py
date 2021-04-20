@@ -48,7 +48,11 @@ in file {1}""".format(
         self._members["fSize"] = cursor.field(chunk, _tlist_format1, context)
 
         self._data = []
+        self._starts = []
+        self._stops = []
         for _ in uproot._util.range(self._members["fSize"]):
+            self._starts.append(cursor.index)
+
             item = uproot.deserialization.read_object_any(
                 chunk, cursor, context, file, self._file, self._parent
             )
@@ -57,6 +61,8 @@ in file {1}""".format(
             # ignore "option"
             n = cursor.field(chunk, _tlist_format2, context)
             cursor.skip(n)
+
+            self._stops.append(cursor.index)
 
     def __repr__(self):
         if self.class_version is None:
@@ -75,6 +81,10 @@ in file {1}""".format(
 
     def __len__(self):
         return len(self._data)
+
+    @property
+    def byte_ranges(self):
+        return zip(self._starts, self._stops)
 
     def tojson(self):
         return {

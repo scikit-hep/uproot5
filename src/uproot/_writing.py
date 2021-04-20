@@ -14,9 +14,14 @@ import uuid
 
 import numpy
 
+import uproot.compression
 import uproot.const
+import uproot.models.TList
 import uproot.reading
 import uproot.sink.file
+import uproot.source.chunk
+import uproot.source.cursor
+import uproot.streamers
 
 
 class CascadeLeaf(object):
@@ -799,15 +804,27 @@ class RawStreamerInfo(CascadeLeaf):
     FIXME: docstring
     """
 
-    def __init__(self, location, serialization):
+    def __init__(self, location, serialization, name, version):
         super(RawStreamerInfo, self).__init__(location, len(serialization))
         self._serialization = serialization
+        self._name = name
+        self._version = version
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def version(self):
+        return self._version
 
     def __repr__(self):
-        return "{0}({1}, {2})".format(
+        return "{0}({1}, {2}, {3}, {4})".format(
             type(self).__name__,
             self._location,
             self._serialization,
+            self._name,
+            self._version,
         )
 
     def serialize(self):
@@ -824,7 +841,7 @@ class TListOfStreamers(CascadeNode):
         self._allocation = allocation
         self._key = key
         self._header = header
-        self._rawstreamers = tuple(rawstreamers)
+        self._rawstreamers = rawstreamers
         self._freesegments = freesegments
 
     def __repr__(self):
@@ -842,6 +859,10 @@ class TListOfStreamers(CascadeNode):
         return self._allocation
 
     @property
+    def num_bytes(self):
+        return self._header.num_bytes + sum(x.num_bytes for x in self._rawstreamers)
+
+    @property
     def key(self):
         return self._key
 
@@ -850,14 +871,25 @@ class TListOfStreamers(CascadeNode):
         return self._header
 
     @property
-    def rawstreamers(self):
-        return self._rawstreamers
-
-    @property
     def freesegments(self):
         return self._freesegments
 
+    def _reallocate(self, self_num_bytes):
+        original_start = self._key.location
+        original_stop = self._key.location + self._key.allocation + self._allocation
+
+        requested_num_bytes = self._key.num_bytes + self_num_bytes
+        self._key.location = self._freesegments.allocate(requested_num_bytes)
+        self._key.seek_location = self._key.location
+        self._allocation = self_num_bytes
+
+        self._freesegments.release(original_start, original_stop)
+
     def write(self, sink):
+        self_num_bytes = self.num_bytes
+        if self_num_bytes > self.allocation:
+            self._reallocate(self_num_bytes)
+
         position = afterkey = self._key.location + self._key.num_bytes
 
         self._header.location = position
@@ -876,7 +908,64 @@ class TListOfStreamers(CascadeNode):
         self._freesegments.fileheader.info_num_bytes = (
             self._key.allocation + self._allocation
         )
+
         super(TListOfStreamers, self).write(sink)
+
+    @classmethod
+    def deserialize(cls, raw_bytes, location, key, freesegments, file_path):
+        readforupdate = _ReadForUpdate(file_path)
+
+        chunk = uproot.source.chunk.Chunk.wrap(readforupdate, raw_bytes)
+
+        if key.compressed_bytes == key.uncompressed_bytes:
+            uncompressed = chunk
+        else:
+            uncompressed = uproot.compression.decompress(
+                chunk,
+                uproot.source.cursor.Cursor(0),
+                {},
+                key.compressed_bytes,
+                key.uncompressed_bytes,
+            )
+
+        tlist = uproot.models.TList.Model_TList.read(
+            uncompressed,
+            uproot.source.cursor.Cursor(0),
+            {},
+            readforupdate,
+            readforupdate,
+            None,
+        )
+
+        header = TListHeader(location, key.uncompressed_bytes, len(tlist))
+
+        rawstreamers = []
+        for (start, stop), streamer in zip(tlist.byte_ranges, tlist):
+            rawstreamers.append(
+                RawStreamerInfo(
+                    location + start,
+                    uncompressed.raw_data[start:stop].tobytes(),
+                    streamer.name,
+                    streamer.class_version,
+                )
+            )
+
+        return TListOfStreamers(
+            key.compressed_bytes,
+            key,
+            header,
+            rawstreamers,
+            freesegments,
+        )
+
+
+class _ReadForUpdate(object):
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    @staticmethod
+    def class_named(classname):
+        return uproot.classes[classname]
 
 
 class Streamers(CascadeNode):
@@ -1934,11 +2023,13 @@ def update_existing(
 
     raw_bytes = sink.read(fileheader.info_location, fileheader.info_num_bytes)
     streamers_key = Key.deserialize(raw_bytes, fileheader.info_location, sink.in_path)
-    streamers_data = StreamersData.deserialize(
+    streamers = TListOfStreamers.deserialize(
         raw_bytes[streamers_key.num_bytes :],
         fileheader.info_location + streamers_key.num_bytes,
+        streamers_key,
+        freesegments,
+        sink.file_path,
     )
-    streamers = Streamers(streamers_key, streamers_data, freesegments)
 
     raw_bytes = sink.read(
         fileheader.begin,
