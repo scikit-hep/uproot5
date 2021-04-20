@@ -86,14 +86,15 @@ def basic_auth_headers(parsed_url):
     """
     Returns the headers required for basic authorization, if parsed_url contains
     a username / password pair, otherwise returns an empty dict
-    """ 
-    if parsed_url.username is None or parsed_url.password is None: 
-        return {} 
-    ret =  { "Authorization" : "Basic " + 
-              base64.b64encode( 
-                (parsed_url.username + ":" + 
-                 parsed_url.password).encode("utf-8")).decode("utf-8")
-            } 
+    """
+    if parsed_url.username is None or parsed_url.password is None:
+        return {}
+    ret = {
+        "Authorization": "Basic "
+        + base64.b64encode(
+            (parsed_url.username + ":" + parsed_url.password).encode("utf-8")
+        ).decode("utf-8")
+    }
     return ret
 
 
@@ -227,7 +228,10 @@ class HTTPResource(uproot.source.chunk.Resource):
                     redirect.request(
                         "GET",
                         full_path(redirect_url),
-                        headers=dict({"Range": "bytes={0}-{1}".format(start, stop - 1)}, **self.auth_headers),
+                        headers=dict(
+                            {"Range": "bytes={0}-{1}".format(start, stop - 1)},
+                            **self.auth_headers
+                        ),
                     )
                     return self.get(redirect, start, stop)
 
@@ -268,7 +272,10 @@ for URL {1}""".format(
         connection.request(
             "GET",
             full_path(source.parsed_url),
-            headers=dict({"Range": "bytes={0}-{1}".format(start, stop - 1)}, **source.auth_headers),
+            headers=dict(
+                {"Range": "bytes={0}-{1}".format(start, stop - 1)},
+                **source.auth_headers
+            ),
         )
 
         def task(resource):
@@ -309,7 +316,9 @@ for URL {1}""".format(
         connection[0].request(
             "GET",
             full_path(source.parsed_url),
-            headers=dict({"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers),
+            headers=dict(
+                {"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers
+            ),
         )
 
         def task(resource):
@@ -328,7 +337,10 @@ for URL {1}""".format(
                             connection[0].request(
                                 "GET",
                                 full_path(redirect_url),
-                                headers=dict({"Range": "bytes=" + ", ".join(range_strings)}, **source.auth_headers),
+                                headers=dict(
+                                    {"Range": "bytes=" + ", ".join(range_strings)},
+                                    **source.auth_headers
+                                ),
                             )
                             task(resource)
                             return
