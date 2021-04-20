@@ -12,6 +12,8 @@ import os.path
 import struct
 import uuid
 
+import numpy
+
 import uproot.const
 import uproot.reading
 import uproot.sink.file
@@ -714,8 +716,9 @@ class StreamersData(CascadeLeaf):
 
     def __init__(self, location, allocation):
         super(StreamersData, self).__init__(location, allocation)
-
         self._serialization = b"@\x00\x00\x11\x00\x05\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00"
+        # self._serialization = b'@\x00\x01n\x00\x05\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x01@\x00\x01X\xff\xff\xff\xffTStreamerInfo\x00@\x00\x01B\x00\t@\x00\x00\x18\x00\x01\x00\x01\x00\x00\x00\x00\x03\x01\x00\x00\nTObjString\x00\x9c\x8eH\x00\x00\x00\x00\x01@\x00\x01\x18\xff\xff\xff\xffTObjArray\x00@\x00\x01\x06\x00\x03\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00@\x00\x00u\xff\xff\xff\xffTStreamerBase\x00@\x00\x00_\x00\x03@\x00\x00U\x00\x04@\x00\x00&\x00\x01\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x07TObject\x11Basic ROOT object\x00\x00\x00B\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x90\x1b\xc0-\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04BASE\x00\x00\x00\x01@\x00\x00t\xff\xff\xff\xffTStreamerString\x00@\x00\x00\\\x00\x02@\x00\x00V\x00\x04@\x00\x00$\x00\x01\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x07fString\x0fwrapped TString\x00\x00\x00A\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07TString\x00'
+        # self._serialization = b'@\x00\x02\xcb\x00\x05\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x02@\x00\x01X\xff\xff\xff\xffTStreamerInfo\x00@\x00\x01B\x00\t@\x00\x00\x18\x00\x01\x00\x01\x00\x00\x00\x00\x03\x01\x00\x00\nTObjString\x00\x9c\x8eH\x00\x00\x00\x00\x01@\x00\x01\x18\xff\xff\xff\xffTObjArray\x00@\x00\x01\x06\x00\x03\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00@\x00\x00u\xff\xff\xff\xffTStreamerBase\x00@\x00\x00_\x00\x03@\x00\x00U\x00\x04@\x00\x00&\x00\x01\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x07TObject\x11Basic ROOT object\x00\x00\x00B\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x90\x1b\xc0-\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04BASE\x00\x00\x00\x01@\x00\x00t\xff\xff\xff\xffTStreamerString\x00@\x00\x00\\\x00\x02@\x00\x00V\x00\x04@\x00\x00$\x00\x01\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x07fString\x0fwrapped TString\x00\x00\x00A\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07TString\x00@\x00\x01X\xff\xff\xff\xffTStreamerInfo\x00@\x00\x01B\x00\t@\x00\x00\x18\x00\x01\x00\x01\x00\x00\x00\x00\x03\x01\x00\x00\nTObjString\x00\x9c\x8eH\x00\x00\x00\x00\x01@\x00\x01\x18\xff\xff\xff\xffTObjArray\x00@\x00\x01\x06\x00\x03\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00@\x00\x00u\xff\xff\xff\xffTStreamerBase\x00@\x00\x00_\x00\x03@\x00\x00U\x00\x04@\x00\x00&\x00\x01\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x07TObject\x11Basic ROOT object\x00\x00\x00B\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x90\x1b\xc0-\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04BASE\x00\x00\x00\x01@\x00\x00t\xff\xff\xff\xffTStreamerString\x00@\x00\x00\\\x00\x02@\x00\x00V\x00\x04@\x00\x00$\x00\x01\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x07fString\x0fwrapped TString\x00\x00\x00A\x00\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07TString\x00'
 
     def __repr__(self):
         return "{0}({1}, {2})".format(
@@ -732,6 +735,142 @@ class StreamersData(CascadeLeaf):
         out = StreamersData(location, len(raw_bytes))
         out._serialization = raw_bytes
         return out
+
+
+_tlistheader_format = struct.Struct(">IHHIIBI")
+
+
+class TListHeader(CascadeLeaf):
+    """
+    FIXME: docstring
+    """
+
+    class_version = 5
+    tobject_version = 1
+
+    def __init__(self, location, data_bytes, num_entries):
+        super(TListHeader, self).__init__(location, _tlistheader_format.size)
+        self._data_bytes = data_bytes
+        self._num_entries = num_entries
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3})".format(
+            type(self).__name__, self._location, self._data_bytes, self._num_entries
+        )
+
+    @property
+    def data_bytes(self):
+        return self._data_bytes
+
+    @data_bytes.setter
+    def data_bytes(self, value):
+        if self._data_bytes != value:
+            self._file_dirty = True
+            self._data_bytes = value
+
+    @property
+    def num_entries(self):
+        return self._num_entries
+
+    @num_entries.setter
+    def num_entries(self, value):
+        if self._num_entries != value:
+            self._file_dirty = True
+            self._num_entries = value
+
+    def serialize(self):
+        return _tlistheader_format.pack(
+            numpy.uint32(self._data_bytes - 4) | uproot.const.kByteCountMask,
+            self.class_version,
+            self.tobject_version,
+            0,
+            uproot.const.kNotDeleted,
+            0,
+            numpy.uint32(self._num_entries),
+        )
+
+
+class RawStreamerInfo(CascadeLeaf):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, location, serialization):
+        super(RawStreamerInfo, self).__init__(location, len(serialization))
+        self._serialization = serialization
+
+    def __repr__(self):
+        return "{0}({1}, {2})".format(
+            type(self).__name__,
+            self._location,
+            self._serialization,
+        )
+
+    def serialize(self):
+        return self._serialization
+
+
+class TListOfStreamers(CascadeNode):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, allocation, key, header, rawstreamers, freesegments):
+        super(TListOfStreamers, self).__init__(freesegments, key, header, *rawstreamers)
+        self._allocation = allocation
+        self._key = key
+        self._header = header
+        self._rawstreamers = tuple(rawstreamers)
+        self._freesegments = freesegments
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3}, {4}, {5})".format(
+            type(self).__name__,
+            self._allocation,
+            self._key,
+            self._header,
+            self._rawstreamers,
+            self._freesegments,
+        )
+
+    @property
+    def allocation(self):
+        return self._allocation
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def header(self):
+        return self._header
+
+    @property
+    def rawstreamers(self):
+        return self._rawstreamers
+
+    @property
+    def freesegments(self):
+        return self._freesegments
+
+    def write(self, sink):
+        position = afterkey = self._key.location + self._key.num_bytes
+
+        self._header.location = position
+        position += self._header.num_bytes
+
+        for rawstreamer in self._rawstreamers:
+            rawstreamer.location = position
+            position += rawstreamer.num_bytes
+
+        self._header.data_bytes = position - afterkey
+        self._header.num_entries = len(self._rawstreamers)
+
+        self._key.uncompressed_bytes = self._header.data_bytes
+        self._key.compressed_bytes = self._key.uncompressed_bytes
+        self._freesegments.fileheader.info_location = self._key.location
+        self._freesegments.fileheader.info_num_bytes = position - self._key.location
+        super(TListOfStreamers, self).write(sink)
 
 
 class Streamers(CascadeNode):

@@ -108,7 +108,7 @@ def update(file_path, **options):
 create.defaults = {
     "compression": uproot.compression.ZLIB(1),
     "initial_directory_bytes": 256,
-    "initial_streamers_bytes": 256,
+    "initial_streamers_bytes": 1024,  # 256,
     "uuid_version": 1,
     "uuid_function": uuid.uuid1,
 }
