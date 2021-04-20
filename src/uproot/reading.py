@@ -42,8 +42,10 @@ def open(
             rather than a file. Path objects are interpreted strictly as
             filesystem paths or URLs.
             Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``,
-            ``"http://where/what.root"``, ``"rel/file.root:tdirectory/ttree"``,
-            ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+            ``"http://where/what.root"``,
+            ``"https://username:password@where/secure.root"``,
+            ``"rel/file.root:tdirectory/ttree"``, ``Path("rel:/file.root")``,
+            ``Path("/abs/path:stuff.root")``
         object_cache (None, MutableMapping, or int): Cache of objects drawn
             from ROOT directories (e.g histograms, TTrees, other directories);
             if None, do not use a cache; if an int, create a new cache of this
@@ -113,6 +115,12 @@ def open(
       array from ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
+
+    For remote ROOT files served over HTTP(S), basic authentication is supported.
+    In this case, the credentials may be provided part of the URL in, as in
+    ``https://username:password@example.org/secure/protected.root.`` Note that
+    for security reasons, it is recommended basic authentication only be used
+    for HTTPS resources.
     """
     if isinstance(path, dict) and len(path) == 1:
         ((file_path, object_path),) = path.items()
