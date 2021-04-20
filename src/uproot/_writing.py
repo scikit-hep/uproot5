@@ -522,13 +522,14 @@ class FreeSegmentsData(CascadeLeaf):
     def deserialize(cls, raw_bytes, location, num_bytes, num_slices, in_path):
         slices = []
         position = 0
+
         for _ in range(num_slices + 1):
             version, fFirst, fLast = _free_format_small.unpack(
-                raw_bytes[: _free_format_small.size]
+                raw_bytes[position : position + _free_format_small.size]
             )
             if version >= 1000:
-                version, fFirst, fLast = _free_format_small.unpack(
-                    raw_bytes[: _free_format_big.size]
+                version, fFirst, fLast = _free_format_big.unpack(
+                    raw_bytes[position : position + _free_format_big.size]
                 )
                 version -= 1000
                 position += _free_format_big.size
@@ -879,6 +880,7 @@ class TListOfStreamers(CascadeNode):
         original_stop = self._key.location + self._key.allocation + self._allocation
 
         requested_num_bytes = self._key.num_bytes + self_num_bytes
+
         self._key.location = self._freesegments.allocate(requested_num_bytes)
         self._key.seek_location = self._key.location
         self._allocation = self_num_bytes
@@ -930,7 +932,7 @@ class TListOfStreamers(CascadeNode):
 
         tlist = uproot.models.TList.Model_TList.read(
             uncompressed,
-            uproot.source.cursor.Cursor(0),
+            uproot.source.cursor.Cursor(0, origin=-key.num_bytes),
             {},
             readforupdate,
             readforupdate,

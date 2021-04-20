@@ -11,7 +11,7 @@ import uproot.writing
 ROOT = pytest.importorskip("ROOT")
 
 
-def test(tmp_path):
+def test_volley(tmp_path):
     filename = os.path.join(tmp_path, "testy.root")
 
     f1 = ROOT.TFile(filename, "recreate")
@@ -61,23 +61,25 @@ def test(tmp_path):
         ]
     )
 
-    # with uproot.writing.update(filename) as f6:
-    #     f6.file._cascading.streamers.write(f6.file.sink)
+    with uproot.writing.update(filename) as f6:
+        f6.file._cascading.streamers.write(f6.file.sink)
 
-    # assert set(uproot.open(filename).file.streamers) == set([
-    #     "TObject",
-    #     "TNamed",
-    #     "TH1F",
-    #     "TH1",
-    #     "TAttLine",
-    #     "TAttFill",
-    #     "TAttMarker",
-    #     "TAxis",
-    #     "TAttAxis",
-    #     "THashList",
-    #     "TList",
-    #     "TSeqCollection",
-    #     "TCollection",
-    #     "TString",
-    #     "TObjString",
-    # ])
+    assert set(uproot.open(filename).file.streamers) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+            "TObjString",
+        ]
+    )
