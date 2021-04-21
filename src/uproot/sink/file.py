@@ -7,6 +7,7 @@ FIXME: docstring
 from __future__ import absolute_import
 
 import numbers
+import os
 
 
 class FileSink(object):
@@ -130,8 +131,13 @@ class FileSink(object):
         FIXME: docstring
         """
         self._ensure()
-        if hasattr(self._file, "truncate"):
-            self._file.truncate(length)
+        # self._file.truncate(length)
+
+        self._file.seek(0, os.SEEK_END)
+        missing = length - self._file.tell()
+        assert missing >= 0
+        if missing > 0:
+            self._file.write(b"\x00" * missing)
 
     def read(self, location, num_bytes, insist=True):
         """
