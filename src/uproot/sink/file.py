@@ -165,28 +165,3 @@ class FileSink(object):
                     )
                 )
         return out
-
-
-#     def read_classname(self, location):
-#         """
-#         FIXME: docstring
-#         """
-#         self._ensure()
-#         self._file.seek(location)
-#         char = None
-#         out = []
-#         while char != b"\x00":
-#             char = self._file.read(1)
-#             if char == b"":
-#                 raise OSError(
-#                     """C-style string has no terminator (null byte)
-# in file path {0}""".format(
-#                         self._file_path
-#                     )
-#                 )
-#             out.append(char)
-
-#         if uproot._util.py2:
-#             return b"".join(out)
-#         else:
-#             return b"".join(out).decode(errors="surrogateescape")

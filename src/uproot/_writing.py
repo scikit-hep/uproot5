@@ -18,6 +18,7 @@ import uproot.compression
 import uproot.const
 import uproot.models.TList
 import uproot.reading
+import uproot.serialization
 import uproot.sink.file
 import uproot.source.chunk
 import uproot.source.cursor
@@ -98,15 +99,7 @@ class String(CascadeLeaf):
     def __init__(self, location, string):
         super(String, self).__init__(location, None)
         self._string = string
-
-        bytestring = self._string.encode(errors="surrogateescape")
-        length = len(bytestring)
-        if length < 255:
-            self._serialization = struct.pack(">B%ds" % length, length, bytestring)
-        else:
-            self._serialization = struct.pack(
-                ">BI%ds" % length, 255, length, bytestring
-            )
+        self._serialization = uproot.serialization.string(self._string)
 
     def __repr__(self):
         return "{0}({1}, {2})".format(
@@ -731,7 +724,6 @@ class TListHeader(CascadeLeaf):
     """
 
     class_version = 5
-    tobject_version = 1
 
     def __init__(self, location, data_bytes, num_entries):
         super(TListHeader, self).__init__(location, _tlistheader_format.size)
@@ -771,9 +763,9 @@ class TListHeader(CascadeLeaf):
         return _tlistheader_format.pack(
             numpy.uint32(self._data_bytes - 4) | uproot.const.kByteCountMask,
             self.class_version,
-            self.tobject_version,
-            0,
-            uproot.const.kNotDeleted,
+            1,  # TObject version
+            0,  # TObject::fUniqueID
+            uproot.const.kNotDeleted,  # TObject::fBits
             0,
             self._num_entries,
         )

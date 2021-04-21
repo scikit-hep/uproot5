@@ -12,8 +12,7 @@ import uuid
 import uproot._util
 import uproot._writing
 import uproot.compression
-import uproot.const
-import uproot.reading
+import uproot.deserialization
 import uproot.sink.file
 
 

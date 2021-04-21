@@ -26,6 +26,8 @@ class Model_TObjArray(uproot.model.Model, Sequence):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {0}
@@ -49,12 +51,32 @@ in file {1}""".format(
         self._members["fSize"], self._members["fLowerBound"] = cursor.fields(
             chunk, _tobjarray_format1, context
         )
+
+        self._serialization = chunk.get(start, cursor.index, cursor, context)
+        if hasattr(self._serialization, "tobytes"):
+            self._serialization = self._serialization.tobytes()
+        else:
+            self._serialization = self._serialization.tostring()
+
         self._data = []
         for _ in uproot._util.range(self._members["fSize"]):
             item = uproot.deserialization.read_object_any(
                 chunk, cursor, context, file, self._file, self._parent
             )
             self._data.append(item)
+
+    def _serialize(self, out, header):
+        where = len(out)
+        out.append(self._serialization)
+        for item in self._data:
+            uproot.serialization._serialize_object_any(out, item)
+        if header:
+            out.insert(
+                where,
+                uproot.serialization.numbytes_version(
+                    sum(len(x) for x in out[where:]), self._instance_version
+                ),
+            )
 
     def __repr__(self):
         if self.class_version is None:

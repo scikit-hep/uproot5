@@ -401,6 +401,8 @@ class Model_TStreamerInfo(uproot.model.Model):
                 yield element
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             uproot.models.TNamed.Model_TNamed.read(
                 chunk,
@@ -420,9 +422,27 @@ class Model_TStreamerInfo(uproot.model.Model):
             chunk, _tstreamerinfo_format1, context
         )
 
+        self._serialization = chunk.get(start, cursor.index, cursor, context)
+        if hasattr(self._serialization, "tobytes"):
+            self._serialization = self._serialization.tobytes()
+        else:
+            self._serialization = self._serialization.tostring()
+
         self._members["fElements"] = uproot.deserialization.read_object_any(
             chunk, cursor, context, file, self._file, self.concrete
         )
+
+    def _serialize(self, out, header):
+        where = len(out)
+        out.append(self._serialization)
+        uproot.serialization._serialize_object_any(out, self._members["fElements"])
+        if header:
+            out.insert(
+                where,
+                uproot.serialization.numbytes_version(
+                    sum(len(x) for x in out[where:]), self._instance_version
+                ),
+            )
 
     def _dependencies(self, streamers, out):
         out.append((self.name, self.class_version))
@@ -702,6 +722,8 @@ class Model_TStreamerBase(Model_TStreamerElement):
         base_names_versions.append((self.name, self.base_version))
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -716,6 +738,23 @@ class Model_TStreamerBase(Model_TStreamerElement):
         if self._instance_version >= 2:
             self._members["fBaseVersion"] = cursor.field(
                 chunk, _tstreamerbase_format1, context
+            )
+
+        self._serialization = chunk.get(start, cursor.index, cursor, context)
+        if hasattr(self._serialization, "tobytes"):
+            self._serialization = self._serialization.tobytes()
+        else:
+            self._serialization = self._serialization.tostring()
+
+    def _serialize(self, out, header):
+        where = len(out)
+        out.append(self._serialization)
+        if header:
+            out.insert(
+                where,
+                uproot.serialization.numbytes_version(
+                    sum(len(x) for x in out[where:]), self._instance_version
+                ),
             )
 
     def _dependencies(self, streamers, out):
@@ -1536,6 +1575,8 @@ class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1547,6 +1588,23 @@ class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = chunk.get(start, cursor.index, cursor, context)
+        if hasattr(self._serialization, "tobytes"):
+            self._serialization = self._serialization.tobytes()
+        else:
+            self._serialization = self._serialization.tostring()
+
+    def _serialize(self, out, header):
+        where = len(out)
+        out.append(self._serialization)
+        if header:
+            out.insert(
+                where,
+                uproot.serialization.numbytes_version(
+                    sum(len(x) for x in out[where:]), self._instance_version
+                ),
+            )
 
 
 uproot.classes["TStreamerInfo"] = Model_TStreamerInfo

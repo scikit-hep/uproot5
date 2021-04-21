@@ -7,6 +7,7 @@ This module defines a versionless model for ``TObjString``.
 from __future__ import absolute_import
 
 import uproot
+import uproot.serialization
 
 
 class Model_TObjString(uproot.model.Model, str):
@@ -47,6 +48,16 @@ in file {1}""".format(
         out._num_bytes = self._num_bytes
         out._instance_version = self._instance_version
         return out
+
+    def _serialize(self, out, header):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True)
+        out.append(uproot.serialization.string(str(self)))
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 1
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
     def __repr__(self):
         if self.class_version is None:

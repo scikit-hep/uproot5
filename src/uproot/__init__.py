@@ -115,6 +115,12 @@ from uproot.model import has_class_named
 from uproot.model import class_named
 from uproot.model import reset_classes
 
+from uproot.writing import create
+from uproot.writing import recreate
+from uproot.writing import update
+from uproot.writing import WritableFile
+from uproot.writing import WritableDirectory
+
 import uproot.models.TObject
 import uproot.models.TString
 import uproot.models.TArray
