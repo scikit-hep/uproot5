@@ -83,3 +83,83 @@ def test_volley(tmp_path):
             "TObjString",
         ]
     )
+
+
+def test_with_mkdir(tmp_path):
+    filename = os.path.join(tmp_path, "testy.root")
+
+    f1 = ROOT.TFile(filename, "recreate")
+    f1.Close()
+
+    assert set(uproot.open(filename).file.streamers) == set([])
+
+    with uproot.writing.update(filename) as f2:
+        f2.mkdir("one")
+
+    assert set(uproot.open(filename).file.streamers) == set([])
+
+    f3 = ROOT.TFile(filename, "update")
+    f3.cd("one")
+    x = ROOT.TObjString("hello")
+    x.Write()
+    f3.Close()
+
+    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+
+    with uproot.writing.update(filename) as f4:
+        f4.mkdir("two")
+
+    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+
+    f5 = ROOT.TFile(filename, "update")
+    y = ROOT.TH1F("hey", "there", 100, -5, 5)
+    y.Write()
+    f5.Close()
+
+    assert set(uproot.open(filename).file.streamers) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+            "TObjString",
+        ]
+    )
+
+    # print(f"real length is {os.path.getsize(filename)}")
+
+    # print("===================================================")
+
+    # with uproot.writing.update(filename) as f6:
+    #     pass
+    #     f6.mkdir("three")
+
+    # assert set(uproot.open(filename).file.streamers) == set(
+    #     [
+    #         "TObject",
+    #         "TNamed",
+    #         "TH1F",
+    #         "TH1",
+    #         "TAttLine",
+    #         "TAttFill",
+    #         "TAttMarker",
+    #         "TAxis",
+    #         "TAttAxis",
+    #         "THashList",
+    #         "TList",
+    #         "TSeqCollection",
+    #         "TCollection",
+    #         "TString",
+    #         "TObjString",
+    #     ]
+    # )

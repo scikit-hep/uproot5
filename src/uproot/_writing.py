@@ -640,6 +640,13 @@ class FreeSegments(CascadeNode):
                     )
                 )
 
+        for i in range(len(slices) - 1):
+            if slices[i][1] == original_start and original_stop == slices[i + 1][0]:
+                # These two slices need to be merged, including the newly released interval.
+                return (
+                    slices[:i] + ((slices[i][0], slices[i + 1][1]),) + slices[i + 2 :]
+                )
+
         for i, (start, stop) in enumerate(slices):
             if original_start == stop:
                 # This slice needs to grow to the right.
@@ -1748,6 +1755,11 @@ class FileHeader(CascadeLeaf):
             self._uuid.bytes,  # fUUID
         )
 
+    def write(self, sink):
+        if self._file_dirty:
+            super(FileHeader, self).write(sink)
+            sink.ensure_length(self._end)
+
     @classmethod
     def deserialize(cls, raw_bytes, location):
         (
@@ -2077,5 +2089,7 @@ def update_existing(
         directory_data,
         freesegments,
     )
+
+    streamers.write(sink)
 
     return CascadingFile(fileheader, streamers, freesegments, rootdirectory)

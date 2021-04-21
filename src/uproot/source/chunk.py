@@ -315,10 +315,11 @@ class Chunk(object):
             if len(self._raw_data) != self._stop - self._start:
                 raise OSError(
                     """expected Chunk of length {0},
-received Chunk of length {1}
-for file path {2}""".format(
-                        len(self._raw_data),
+received {1} bytes from {2}
+for file path {3}""".format(
                         self._stop - self._start,
+                        len(self._raw_data),
+                        type(self._source).__name__,
                         self._source.file_path,
                     )
                 )
