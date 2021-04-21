@@ -16,7 +16,6 @@ except ImportError:
 import uproot
 
 _tlist_format1 = struct.Struct(">i")
-_tlist_format2 = struct.Struct(">B")
 
 
 class Model_TList(uproot.model.Model, Sequence):
@@ -58,9 +57,7 @@ in file {1}""".format(
             )
             self._data.append(item)
 
-            # ignore "option"
-            n = cursor.field(chunk, _tlist_format2, context)
-            cursor.skip(n)
+            cursor.bytestring(chunk, context)  # read past and ignore "option"
 
             self._stops.append(cursor.index)
 
