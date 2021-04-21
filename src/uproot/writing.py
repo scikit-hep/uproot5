@@ -168,6 +168,9 @@ class WritableFile(object):
     def root_directory(self):
         return WritableDirectory((), self, self._cascading.rootdirectory)
 
+    def update_streamers(self, streamers):
+        self._cascading.streamers.update_streamers(self.sink, streamers)
+
     def close(self):
         self._sink.close()
 

@@ -71,7 +71,9 @@ class CascadeLeaf(object):
                     "can't write object because location is unknown:\n\n    "
                     + repr(self)
                 )
-            sink.write(self._location, self.serialize())
+            tmp = self.serialize()
+            # print(f"writing {self._location}:{self._location + len(tmp)} ({len(tmp)}) {type(self).__name__}")
+            sink.write(self._location, tmp)
             self._file_dirty = False
 
 
@@ -82,6 +84,9 @@ class CascadeNode(object):
 
     def __init__(self, *dependencies):
         self._dependencies = dependencies
+
+    def more_dependencies(self, *dependencies):
+        self._dependencies = self._dependencies + dependencies
 
     def write(self, sink):
         for dependency in self._dependencies:
@@ -815,6 +820,7 @@ class TListOfStreamers(CascadeNode):
         self._header = header
         self._rawstreamers = rawstreamers
         self._freesegments = freesegments
+        self._lookup = set([(x.name, x.version) for x in self._rawstreamers])
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5})".format(
@@ -845,6 +851,26 @@ class TListOfStreamers(CascadeNode):
     @property
     def freesegments(self):
         return self._freesegments
+
+    def update_streamers(self, sink, streamers):
+        where = len(self._rawstreamers)
+
+        for streamer in streamers:
+            if (streamer.name, streamer.class_version) not in self._lookup:
+                self._lookup.add((streamer.name, streamer.class_version))
+                self._rawstreamers.append(
+                    RawStreamerInfo(
+                        self._key.location + self.num_bytes,
+                        uproot.serialization.serialize_object_any(streamer) + b"\x00",
+                        streamer.name,
+                        streamer.class_version,
+                    )
+                )
+
+        self.more_dependencies(*self._rawstreamers[where:])
+
+        self.write(sink)
+        sink.flush()
 
     def _reallocate(self, self_num_bytes):
         original_start = self._key.location
@@ -1314,6 +1340,7 @@ class Directory(CascadeNode):
         self.write(sink)
 
         sink.set_file_length(self._freesegments.fileheader.end)
+        sink.flush()
 
         return subdirectory
 
@@ -2006,5 +2033,6 @@ def update_existing(
     )
 
     streamers.write(sink)
+    sink.flush()
 
     return CascadingFile(fileheader, streamers, freesegments, rootdirectory)

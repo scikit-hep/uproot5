@@ -48,3 +48,12 @@ def _serialize_object_any(out, model):
     tag = uproot.const.kNewClassTag
 
     out.insert(where, _serialize_object_any_format1.pack(bcnt, tag) + classname)
+
+
+def serialize_object_any(model):
+    """
+    FIXME: docstring
+    """
+    out = []
+    _serialize_object_any(out, model)
+    return b"".join(out)

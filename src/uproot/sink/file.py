@@ -25,6 +25,7 @@ class FileSink(object):
             and callable(getattr(obj, "write", None))
             and callable(getattr(obj, "seek", None))
             and callable(getattr(obj, "tell", None))
+            and callable(getattr(obj, "flush", None))
             and (not hasattr(obj, "readable") or obj.readable())
             and (not hasattr(obj, "writable") or obj.writable())
             and (not hasattr(obj, "seekable") or obj.seekable())
@@ -76,8 +77,6 @@ class FileSink(object):
     def flush(self):
         """
         FIXME: docstring
-
-        (flush is only ever user-initiated)
         """
         self._ensure()
         return self._file.flush()
