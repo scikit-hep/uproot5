@@ -136,30 +136,25 @@ def test_with_mkdir(tmp_path):
         ]
     )
 
-    # print(f"real length is {os.path.getsize(filename)}")
+    with uproot.writing.update(filename) as f6:
+        f6.mkdir("three")
 
-    # print("===================================================")
-
-    # with uproot.writing.update(filename) as f6:
-    #     pass
-    #     f6.mkdir("three")
-
-    # assert set(uproot.open(filename).file.streamers) == set(
-    #     [
-    #         "TObject",
-    #         "TNamed",
-    #         "TH1F",
-    #         "TH1",
-    #         "TAttLine",
-    #         "TAttFill",
-    #         "TAttMarker",
-    #         "TAxis",
-    #         "TAttAxis",
-    #         "THashList",
-    #         "TList",
-    #         "TSeqCollection",
-    #         "TCollection",
-    #         "TString",
-    #         "TObjString",
-    #     ]
-    # )
+    assert set(uproot.open(filename).file.streamers) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+            "TObjString",
+        ]
+    )

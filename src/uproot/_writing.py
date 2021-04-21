@@ -716,7 +716,7 @@ class FreeSegments(CascadeNode):
         self._key.compressed_bytes = self._key.uncompressed_bytes
         self._data.location = self._key.location + self._key.allocation
         self._fileheader.free_location = self._key.location
-        self._fileheader.free_num_bytes = self._data.end - self._key.location
+        self._fileheader.free_num_bytes = self._key.allocation + self._data.allocation
         self._fileheader.free_num_slices = len(self._data.slices)
         self._fileheader.end = self._data.end
         super(FreeSegments, self).write(sink)
@@ -1395,6 +1395,8 @@ class Directory(CascadeNode):
         subdirectory.write(sink)
         self.write(sink)
 
+        sink.set_file_length(self._freesegments.fileheader.end)
+
         return subdirectory
 
 
@@ -1754,11 +1756,6 @@ class FileHeader(CascadeLeaf):
             self._uuid_version,  # fUUID_version
             self._uuid.bytes,  # fUUID
         )
-
-    def write(self, sink):
-        if self._file_dirty:
-            super(FileHeader, self).write(sink)
-            sink.ensure_length(self._end)
 
     @classmethod
     def deserialize(cls, raw_bytes, location):
