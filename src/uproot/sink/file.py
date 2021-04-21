@@ -24,9 +24,9 @@ class FileSink(object):
             and callable(getattr(obj, "write", None))
             and callable(getattr(obj, "seek", None))
             and callable(getattr(obj, "tell", None))
-            and obj.readable()
-            and obj.writable()
-            and obj.seekable()
+            and (not hasattr(obj, "readable") or obj.readable())
+            and (not hasattr(obj, "writable") or obj.writable())
+            and (not hasattr(obj, "seekable") or obj.seekable())
         ):
             self = cls(None)
             self._file = obj
@@ -130,7 +130,8 @@ class FileSink(object):
         FIXME: docstring
         """
         self._ensure()
-        self._file.truncate(length)
+        if hasattr(self._file, "truncate"):
+            self._file.truncate(length)
 
     def read(self, location, num_bytes, insist=True):
         """
