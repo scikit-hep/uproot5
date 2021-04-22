@@ -781,19 +781,19 @@ class RawStreamerInfo(CascadeLeaf):
     FIXME: docstring
     """
 
-    def __init__(self, location, serialization, name, version):
+    def __init__(self, location, serialization, name, class_version):
         super(RawStreamerInfo, self).__init__(location, len(serialization))
         self._serialization = serialization
         self._name = name
-        self._version = version
+        self._class_version = class_version
 
     @property
     def name(self):
         return self._name
 
     @property
-    def version(self):
-        return self._version
+    def class_version(self):
+        return self._class_version
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4})".format(
@@ -801,7 +801,12 @@ class RawStreamerInfo(CascadeLeaf):
             self._location,
             self._serialization,
             self._name,
-            self._version,
+            self._class_version,
+        )
+
+    def copy_to(self, location):
+        return RawStreamerInfo(
+            location, self._serialization, self._name, self._class_version
         )
 
     def serialize(self):
@@ -820,7 +825,7 @@ class TListOfStreamers(CascadeNode):
         self._header = header
         self._rawstreamers = rawstreamers
         self._freesegments = freesegments
-        self._lookup = set([(x.name, x.version) for x in self._rawstreamers])
+        self._lookup = set([(x.name, x.class_version) for x in self._rawstreamers])
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5})".format(
@@ -856,16 +861,25 @@ class TListOfStreamers(CascadeNode):
         where = len(self._rawstreamers)
 
         for streamer in streamers:
-            if (streamer.name, streamer.class_version) not in self._lookup:
-                self._lookup.add((streamer.name, streamer.class_version))
-                self._rawstreamers.append(
-                    RawStreamerInfo(
-                        self._key.location + self.num_bytes,
-                        uproot.serialization.serialize_object_any(streamer) + b"\x00",
-                        streamer.name,
-                        streamer.class_version,
+            pair = (streamer.name, streamer.class_version)
+            if pair not in self._lookup:
+                self._lookup.add(pair)
+
+                if isinstance(streamer, uproot.streamers.Model_TStreamerInfo):
+                    self._rawstreamers.append(
+                        RawStreamerInfo(
+                            self._key.location + self.num_bytes,
+                            uproot.serialization.serialize_object_any(streamer)
+                            + b"\x00",
+                            streamer.name,
+                            streamer.class_version,
+                        )
                     )
-                )
+
+                elif isinstance(streamer, uproot.streamers.RawStreamerInfo):
+                    self._rawstreamers.append(
+                        streamer.copy_to(self._key.location + self.num_bytes)
+                    )
 
         self.more_dependencies(*self._rawstreamers[where:])
 
