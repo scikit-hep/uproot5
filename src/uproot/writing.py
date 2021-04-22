@@ -303,10 +303,6 @@ class WritableDirectory(object):
 
         else:
 
-
-
-
-
             raise Exception
 
     def _subdir(self, key):
