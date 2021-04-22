@@ -328,7 +328,7 @@ class Key(CascadeLeaf):
                 self._compressed_bytes + self.num_bytes,  # fNbytes
                 version,  # fVersion
                 self._uncompressed_bytes,  # fObjlen
-                1761927327,  # FIXME: compute fDatime
+                uproot._util.datetime_to_code(self._created_on),  # fDatime
                 self.num_bytes,  # fKeylen
                 self._cycle,  # fCycle
                 location,  # fSeekKey
@@ -406,7 +406,7 @@ class Key(CascadeLeaf):
             fSeekPdir,  # parent_location
             fSeekKey,  # may be location
         )
-        out._created_on = datetime.datetime.now()  # FIXME: compute from fDatime
+        out._created_on = uproot._util.code_to_datetime(fDatime)
         out._big = big
         return out
 
@@ -1163,8 +1163,8 @@ class DirectoryHeader(CascadeLeaf):
         return (
             format.pack(
                 version,  # fVersion
-                1761927327,  # FIXME: compute fDatimeC
-                1761927327,  # FIXME: compute fDatimeM
+                uproot._util.datetime_to_code(self._created_on),  # fDatimeC
+                uproot._util.datetime_to_code(self._modified_on),  # fDatimeM
                 self._data_num_bytes,  # fNbytesKeys
                 self._begin_num_bytes,  # fNbytesName
                 self._begin_location,  # fSeekDir
@@ -1233,8 +1233,8 @@ class DirectoryHeader(CascadeLeaf):
             uuid_version,
             uuid.UUID(bytes=uuid_bytes),
         )
-        out._created_on = datetime.datetime.now()  # FIXME: compute from fDatimeC
-        out._modified_on = out._created_on  # FIXME: compute from fDatimeM
+        out._created_on = uproot._util.code_to_datetime(fDatimeC)
+        out._modified_on = uproot._util.code_to_datetime(fDatimeM)
         return out
 
 
@@ -1334,6 +1334,8 @@ class Directory(CascadeNode):
             )
             next_key = subdirectory_key.copy_to(self._data.next_location)
         self._data.add_key(next_key)
+
+        self._header.modified_on = datetime.datetime.now()
 
         self._freesegments.write(sink)
         subdirectory.write(sink)
