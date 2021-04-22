@@ -292,3 +292,129 @@ def test_add_streamers2(tmp_path):
     z = ROOT.TObjString("there")
     z.Write()
     f3.Close()
+
+
+def test_add_streamers3(tmp_path):
+    has_TObjString = os.path.join(tmp_path, "has_TObjString.root")
+
+    f_TObjString = ROOT.TFile(has_TObjString, "recreate")
+    x = ROOT.TObjString("hello")
+    x.Write()
+    f_TObjString.Close()
+
+    streamers = [uproot.open(has_TObjString).file.streamers["TObjString"][1]]
+
+    filename = os.path.join(tmp_path, "testy.root")
+
+    f1 = ROOT.TFile(filename, "recreate")
+    y = ROOT.TH1F("histogram", "", 100, -5, 5)
+    y.Write()
+    f1.Close()
+
+    assert set(uproot.open(filename).file.streamers) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+        ]
+    )
+
+    with uproot.writing.update(filename) as f2:
+        f2.file.update_streamers(streamers)
+
+    assert set(uproot.open(filename).file.streamers) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+            "TObjString",
+        ]
+    )
+
+    f2 = ROOT.TFile(filename, "update")
+    assert set([z.GetName() for z in f2.GetStreamerInfoList()]) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+            "TObjString",
+        ]
+    )
+    w = ROOT.TObjString("wow")
+    w.Write()
+    f2.Close()
+
+    assert set(uproot.open(filename).file.streamers) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+            "TObjString",
+        ]
+    )
+
+    f3 = ROOT.TFile(filename, "update")
+    assert set([z.GetName() for z in f3.GetStreamerInfoList()]) == set(
+        [
+            "TObject",
+            "TNamed",
+            "TH1F",
+            "TH1",
+            "TAttLine",
+            "TAttFill",
+            "TAttMarker",
+            "TAxis",
+            "TAttAxis",
+            "THashList",
+            "TList",
+            "TSeqCollection",
+            "TCollection",
+            "TString",
+            "TObjString",
+        ]
+    )
+    f3.Close()
