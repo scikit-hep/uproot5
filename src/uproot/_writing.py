@@ -1089,7 +1089,6 @@ class DirectoryHeader(CascadeLeaf):
         data_location,
         data_num_bytes,
         parent_location,
-        uuid_version,
         uuid,
     ):
         super(DirectoryHeader, self).__init__(
@@ -1100,13 +1099,12 @@ class DirectoryHeader(CascadeLeaf):
         self._data_location = data_location
         self._data_num_bytes = data_num_bytes
         self._parent_location = parent_location
-        self._uuid_version = uuid_version
         self._uuid = uuid
         self._created_on = datetime.datetime.now()
         self._modified_on = self._created_on
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8})".format(
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
             type(self).__name__,
             self._location,
             self._begin_location,
@@ -1114,7 +1112,6 @@ class DirectoryHeader(CascadeLeaf):
             self._data_location,
             self._data_num_bytes,
             self._parent_location,
-            self._uuid_version,
             repr(self._uuid),
         )
 
@@ -1163,10 +1160,6 @@ class DirectoryHeader(CascadeLeaf):
         return self._parent_location
 
     @property
-    def uuid_version(self):
-        return self._uuid_version
-
-    @property
     def uuid(self):
         return self._uuid
 
@@ -1205,7 +1198,7 @@ class DirectoryHeader(CascadeLeaf):
                 self._parent_location,  # fSeekParent
                 self._data_location,  # fSeekKeys
             )
-            + _directory_uuid_version_format.pack(self._uuid_version)
+            + b"\x00\x01"  # TUUID version 1
             + self._uuid.bytes
             + extra
         )
@@ -1251,10 +1244,8 @@ class DirectoryHeader(CascadeLeaf):
                 )
             )
 
-        (uuid_version,) = _directory_uuid_version_format.unpack(
-            raw_bytes[position - location : position - location + 2]
-        )
-
+        # TUUID version 1
+        assert raw_bytes[position - location : position - location + 2] == b"\x00\x01"
         uuid_bytes = raw_bytes[position - location + 2 : position - location + 18]
 
         out = DirectoryHeader(
@@ -1264,15 +1255,11 @@ class DirectoryHeader(CascadeLeaf):
             fSeekKeys,  # data_location
             fNbytesKeys,  # data_num_bytes
             fSeekParent,  # parent_location
-            uuid_version,
             uuid.UUID(bytes=uuid_bytes),
         )
         out._created_on = uproot._util.code_to_datetime(fDatimeC)
         out._modified_on = uproot._util.code_to_datetime(fDatimeM)
         return out
-
-
-_directory_uuid_version_format = struct.Struct(">H")
 
 
 class Directory(CascadeNode):
@@ -1294,7 +1281,7 @@ class Directory(CascadeNode):
 
         self._freesegments.release(original_start, original_stop)
 
-    def add_directory(self, sink, name, initial_directory_bytes, uuid_version, uuid):
+    def add_directory(self, sink, name, initial_directory_bytes, uuid):
         cycle = self._data.next_cycle(name)
 
         subdirectory_key = Key(
@@ -1315,7 +1302,6 @@ class Directory(CascadeNode):
             None,
             None,
             self._key.location,
-            uuid_version,
             uuid,
         )
         subdirectory_datakey = Key(
@@ -1551,7 +1537,6 @@ class FileHeader(CascadeLeaf):
         compression,
         info_location,
         info_num_bytes,
-        uuid_version,
         uuid,
     ):
         super(FileHeader, self).__init__(0, 100)
@@ -1563,13 +1548,12 @@ class FileHeader(CascadeLeaf):
         self._compression = compression
         self._info_location = info_location
         self._info_num_bytes = info_num_bytes
-        self._uuid_version = uuid_version
         self._uuid = uuid
         self._version = None
         self._begin = 100
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})".format(
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})".format(
             type(self).__name__,
             self._end,
             self._free_location,
@@ -1579,7 +1563,6 @@ class FileHeader(CascadeLeaf):
             repr(self._compression),
             self._info_location,
             self._info_num_bytes,
-            self._uuid_version,
             repr(self._uuid),
         )
 
@@ -1664,16 +1647,6 @@ class FileHeader(CascadeLeaf):
             self._info_num_bytes = value
 
     @property
-    def uuid_version(self):
-        return self._uuid_version
-
-    @uuid_version.setter
-    def uuid_version(self, value):
-        if self._uuid_version != value:
-            self._file_dirty = True
-            self._uuid_version = value
-
-    @property
     def uuid(self):
         return self._uuid
 
@@ -1733,7 +1706,7 @@ class FileHeader(CascadeLeaf):
             self._compression.code,  # fCompress
             self._info_location,  # fSeekInfo
             self._info_num_bytes,  # fNbytesInfo
-            self._uuid_version,  # fUUID_version
+            1,  # TUUID version
             self._uuid.bytes,  # fUUID
         )
 
@@ -1757,16 +1730,6 @@ class FileHeader(CascadeLeaf):
         ) = uproot.reading._file_header_fields_small.unpack(
             raw_bytes[: uproot.reading._file_header_fields_small.size]
         )
-        assert begin >= uproot.reading._file_header_fields_small.size
-        assert free_location >= 0
-        assert free_num_bytes >= 0
-        assert free_num_slices_plus_1 >= 1
-        assert begin_num_bytes >= 0
-        assert compression_code >= 0
-        assert info_location >= 0
-        assert info_num_bytes >= 0
-        assert uuid_version >= 0
-
         if version >= 1000000:
             (
                 magic,
@@ -1788,6 +1751,16 @@ class FileHeader(CascadeLeaf):
         else:
             assert units == 4
 
+        assert begin >= uproot.reading._file_header_fields_small.size
+        assert free_location >= 0
+        assert free_num_bytes >= 0
+        assert free_num_slices_plus_1 >= 1
+        assert begin_num_bytes >= 0
+        assert compression_code >= 0
+        assert info_location >= 0
+        assert info_num_bytes >= 0
+        assert uuid_version == 1
+
         out = FileHeader(
             end,
             free_location,
@@ -1797,7 +1770,6 @@ class FileHeader(CascadeLeaf):
             uproot.compression.Compression.from_code(compression_code),
             info_location,
             info_num_bytes,
-            uuid_version,
             uuid.UUID(bytes=uuid_bytes),
         )
         out._version = version - 1000000
@@ -1853,7 +1825,6 @@ def create_empty(
     compression,
     initial_directory_bytes,
     initial_streamers_bytes,
-    uuid_version,
     uuid_function,
 ):
     """
@@ -1876,7 +1847,6 @@ def create_empty(
         compression,
         None,
         None,
-        uuid_version,
         uuid_function(),
     )
 
@@ -1924,7 +1894,7 @@ def create_empty(
     directory_name = String(None, filename)
     directory_title = String(None, "")
     directory_header = DirectoryHeader(
-        None, fileheader.begin, None, None, None, 0, uuid_version, uuid_function()
+        None, fileheader.begin, None, None, None, 0, uuid_function()
     )
     directory_datakey = Key(
         None,
@@ -1975,12 +1945,7 @@ def create_empty(
     return CascadingFile(fileheader, streamers, freesegments, rootdirectory)
 
 
-def update_existing(
-    sink,
-    initial_directory_bytes,
-    uuid_version,
-    uuid_function,
-):
+def update_existing(sink, initial_directory_bytes, uuid_function):
     """
     FIXME: docstring
     """

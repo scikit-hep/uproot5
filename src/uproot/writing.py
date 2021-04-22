@@ -52,7 +52,6 @@ def recreate(file_path, **options):
     initial_streamers_bytes = options.pop(
         "initial_streamers_bytes", create.defaults["initial_streamers_bytes"]
     )
-    uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
     if len(options) != 0:
         raise TypeError(
@@ -65,11 +64,10 @@ def recreate(file_path, **options):
         compression,
         initial_directory_bytes,
         initial_streamers_bytes,
-        uuid_version,
         uuid_function,
     )
     return WritableFile(
-        sink, cascading, initial_directory_bytes, uuid_version, uuid_function
+        sink, cascading, initial_directory_bytes, uuid_function
     ).root_directory
 
 
@@ -86,7 +84,6 @@ def update(file_path, **options):
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
-    uuid_version = options.pop("uuid_version", create.defaults["uuid_version"])
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
     if len(options) != 0:
         raise TypeError(
@@ -97,11 +94,10 @@ def update(file_path, **options):
     cascading = uproot._writing.update_existing(
         sink,
         initial_directory_bytes,
-        uuid_version,
         uuid_function,
     )
     return WritableFile(
-        sink, cascading, initial_directory_bytes, uuid_version, uuid_function
+        sink, cascading, initial_directory_bytes, uuid_function
     ).root_directory
 
 
@@ -109,7 +105,6 @@ create.defaults = {
     "compression": uproot.compression.ZLIB(1),
     "initial_directory_bytes": 256,
     "initial_streamers_bytes": 1024,  # 256,
-    "uuid_version": 1,
     "uuid_function": uuid.uuid1,
 }
 recreate.defaults = create.defaults
@@ -121,20 +116,16 @@ class WritableFile(uproot.reading.CommonFileMethods):
     FIXME: docstring
     """
 
-    def __init__(
-        self, sink, cascading, initial_directory_bytes, uuid_version, uuid_function
-    ):
+    def __init__(self, sink, cascading, initial_directory_bytes, uuid_function):
         self._sink = sink
         self._cascading = cascading
         self._initial_directory_bytes = initial_directory_bytes
-        self._uuid_version = uuid_version
         self._uuid_function = uuid_function
 
         self._file_path = sink.file_path
         self._fVersion = self._cascading.fileheader.version
         self._fBEGIN = self._cascading.fileheader.begin
         self._fNbytesName = self._cascading.fileheader.begin_num_bytes
-        self._fUUID_version = self._cascading.fileheader.uuid_version
         self._fUUID = self._cascading.fileheader.uuid.bytes
 
     def __repr__(self):
@@ -153,14 +144,6 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._initial_directory_bytes = value
 
     @property
-    def uuid_version(self):
-        return self._uuid_version
-
-    @uuid_version.setter
-    def uuid_version(self, value):
-        self._uuid_version = value
-
-    @property
     def uuid_function(self):
         return self._uuid_function
 
@@ -172,7 +155,6 @@ class WritableFile(uproot.reading.CommonFileMethods):
     def options(self):
         return {
             "initial_directory_bytes": self._initial_directory_bytes,
-            "uuid_version": self._uuid_version,
             "uuid_function": self._uuid_function,
         }
 
@@ -406,7 +388,6 @@ class WritableDirectory(object):
                 self._file.sink,
                 name,
                 self._file.initial_directory_bytes,
-                self._file.uuid_version,
                 self._file.uuid_function(),
             ),
         )
