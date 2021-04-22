@@ -29,10 +29,10 @@ def test_get_subdir(tmp_path):
     del nonempty
 
     with uproot.update(empty_filename) as f1:
-        f1.subdir("subdir").mkdir("another")
+        f1._get("subdir", 1).mkdir("another")
 
     with uproot.update(nonempty_filename) as f2:
-        f2.subdir("subdir").mkdir("another")
+        f2._get("subdir", 1).mkdir("another")
 
     assert uproot.open(empty_filename).keys() == ["subdir;1", "subdir/another;1"]
     assert uproot.open(nonempty_filename).keys() == [

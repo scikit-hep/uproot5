@@ -116,7 +116,7 @@ recreate.defaults = create.defaults
 update.defaults = create.defaults
 
 
-class WritableFile(object):
+class WritableFile(uproot.reading.CommonFileMethods):
     """
     FIXME: docstring
     """
@@ -130,16 +130,19 @@ class WritableFile(object):
         self._uuid_version = uuid_version
         self._uuid_function = uuid_function
 
+        self._file_path = sink.file_path
+        self._fVersion = self._cascading.fileheader.version
+        self._fBEGIN = self._cascading.fileheader.begin
+        self._fNbytesName = self._cascading.fileheader.begin_num_bytes
+        self._fUUID_version = self._cascading.fileheader.uuid_version
+        self._fUUID = self._cascading.fileheader.uuid.bytes
+
     def __repr__(self):
         return "<WritableFile {0} at 0x{1:012x}>".format(repr(self.file_path), id(self))
 
     @property
     def sink(self):
         return self._sink
-
-    @property
-    def file_path(self):
-        return self._sink.file_path
 
     @property
     def initial_directory_bytes(self):
@@ -164,6 +167,58 @@ class WritableFile(object):
     @uuid_function.setter
     def uuid_function(self, value):
         self._uuid_function = value
+
+    @property
+    def options(self):
+        return {
+            "initial_directory_bytes": self._initial_directory_bytes,
+            "uuid_version": uuid_version,
+            "uuid_function": uuid_function,
+        }
+
+    @property
+    def is_64bit(self):
+        return self._cascading.fileheader.big
+
+    @property
+    def compression(self):
+        return self._cascading.fileheader.compression
+
+    @compression.setter
+    def compression(self, value):
+        self._cascading.fileheader.compression = value
+
+    @property
+    def fSeekFree(self):
+        return self._cascading.fileheader.free_location
+
+    @property
+    def fNbytesFree(self):
+        return self._cascading.fileheader.free_num_bytes
+
+    @property
+    def nfree(self):
+        return self._cascading.fileheader.free_num_slices + 1
+
+    @property
+    def fUnits(self):
+        return 8 if self._cascading.fileheader.big else 4
+
+    @property
+    def fCompress(self):
+        return self._cascading.fileheader.compression.code
+
+    @property
+    def fSeekInfo(self):
+        return self._cascading.fileheader.info_location
+
+    @property
+    def fNbytesInfo(self):
+        return self._cascading.fileheader.info_num_bytes
+
+    @property
+    def uuid(self):
+        return self._cascading.fileheader.uuid
 
     @property
     def root_directory(self):
@@ -232,12 +287,8 @@ class WritableDirectory(object):
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.sink.__exit__(exception_type, exception_value, traceback)
 
-    @property
-    def readonly(self):
-        raise Exception
-
-    def subdir(self, name, cycle=None):
-        key = self._cascading.data.get_key(name, cycle=cycle)
+    def _get(self, name, cycle):
+        key = self._cascading.data.get_key(name, cycle)
         if key is None:
             raise uproot.exceptions.KeyInFileError(
                 name,
@@ -247,6 +298,18 @@ class WritableDirectory(object):
                 object_path=self.object_path,
             )
 
+        if key.classname.string == "TDirectory":
+            return self._subdir(key)
+
+        else:
+
+
+
+
+
+            raise Exception
+
+    def _subdir(self, key):
         raw_bytes = self._file.sink.read(
             key.seek_location,
             key.num_bytes + uproot.reading._directory_format_big.size + 18,
@@ -261,6 +324,8 @@ class WritableDirectory(object):
         )
         assert directory_header.begin_location == key.seek_location
         assert directory_header.parent_location == self._cascading.key.location
+
+        name = key.name.string
 
         if directory_header.data_num_bytes == 0:
             directory_datakey = uproot._writing.Key(

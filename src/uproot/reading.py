@@ -216,8 +216,13 @@ class CommonFileMethods(object):
     @property
     def options(self):
         """
-        The dict of ``options`` originally passed to the
-        :doc:`uproot.reading.ReadOnlyFile` constructor.
+        The dict of ``options`` originally passed to the file constructor.
+
+        If this is a :doc:`uproot.writing.WritableFile`, the ``options`` are a copy
+        of the current state of the options; change the properties (e.g.
+        ``initial_directory_bytes``, ``uuid_function``) directly on the file object
+        to make a lasting change. Modifying the copied dict does not change the
+        file's future behavior.
         """
         return self._options
 
