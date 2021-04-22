@@ -950,6 +950,23 @@ class Model(object):
         """
         pass
 
+    def _serialize(self, out, header):
+        raise NotImplementedError(
+            "serialize method not implemented on {0}".format(type(self).__name__)
+        )
+
+    def serialize(self):
+        """
+        Serialize a object (from num_bytes and version onward) for writing into
+        an output ROOT file.
+
+        This method has not been implemented on all classes (raises
+        NotImplementedError).
+        """
+        out = []
+        self._serialize(out, True)
+        return b"".join(out)
+
 
 class VersionedModel(Model):
     """

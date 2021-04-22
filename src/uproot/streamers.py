@@ -124,6 +124,14 @@ def _ftype_to_struct(fType):
         raise NotImplementedError(fType)
 
 
+def _copy_bytes(chunk, start, stop, cursor, context):
+    out = chunk.get(start, stop, cursor, context)
+    if hasattr(out, "tobytes"):
+        return out.tobytes()
+    else:
+        return out.tostring()
+
+
 _tstreamerinfo_format1 = struct.Struct(">Ii")
 
 
@@ -401,6 +409,8 @@ class Model_TStreamerInfo(uproot.model.Model):
                 yield element
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             uproot.models.TNamed.Model_TNamed.read(
                 chunk,
@@ -420,9 +430,23 @@ class Model_TStreamerInfo(uproot.model.Model):
             chunk, _tstreamerinfo_format1, context
         )
 
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
+
         self._members["fElements"] = uproot.deserialization.read_object_any(
             chunk, cursor, context, file, self._file, self.concrete
         )
+
+    def _serialize(self, out, header):
+        where = len(out)
+        out.append(self._serialization)
+        uproot.serialization._serialize_object_any(out, self._members["fElements"])
+        if header:
+            out.insert(
+                where,
+                uproot.serialization.numbytes_version(
+                    sum(len(x) for x in out[where:]), self._instance_version
+                ),
+            )
 
     def _dependencies(self, streamers, out):
         out.append((self.name, self.class_version))
@@ -506,7 +530,6 @@ class Model_TStreamerElement(uproot.model.Model):
 
     def read_members(self, chunk, cursor, context, file):
         # https://github.com/root-project/root/blob/master/core/meta/src/TStreamerElement.cxx#L505
-
         self._bases.append(
             uproot.models.TNamed.Model_TNamed.read(
                 chunk,
@@ -553,6 +576,17 @@ class Model_TStreamerElement(uproot.model.Model):
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
 
+    def _serialize(self, out, header):
+        where = len(out)
+        out.append(self._serialization)
+        if header:
+            out.insert(
+                where,
+                uproot.serialization.numbytes_version(
+                    sum(len(x) for x in out[where:]), self._instance_version
+                ),
+            )
+
     def _dependencies(self, streamers, out):
         pass
 
@@ -567,6 +601,8 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -578,6 +614,8 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
     def class_code(
         self,
@@ -702,6 +740,8 @@ class Model_TStreamerBase(Model_TStreamerElement):
         base_names_versions.append((self.name, self.base_version))
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -717,6 +757,8 @@ class Model_TStreamerBase(Model_TStreamerElement):
             self._members["fBaseVersion"] = cursor.field(
                 chunk, _tstreamerbase_format1, context
             )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
     def _dependencies(self, streamers, out):
         streamer_versions = streamers.get(self.name)
@@ -819,6 +861,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         dtypes.append(_ftype_to_dtype(self.fType - uproot.const.kOffsetP))
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -835,6 +879,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         )
         self._members["fCountName"] = cursor.string(chunk, context)
         self._members["fCountClass"] = cursor.string(chunk, context)
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 class Model_TStreamerBasicType(Model_TStreamerElement):
@@ -984,6 +1030,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         member_names.append(self.name)
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1057,6 +1105,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         if basic and self._bases[0]._members["fArrayLength"] > 0:
             self._bases[0]._members["fSize"] *= self._bases[0]._members["fArrayLength"]
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 _tstreamerloop_format1 = struct.Struct(">i")
@@ -1135,6 +1185,8 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         member_names.append(self.name)
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1151,6 +1203,8 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         )
         self._members["fCountName"] = cursor.string(chunk, context)
         self._members["fCountClass"] = cursor.string(chunk, context)
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
     def _dependencies(self, streamers, out):
         streamer_versions = streamers.get(self.typename.rstrip("*"))
@@ -1238,6 +1292,8 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         member_names.append(self.name)
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1267,6 +1323,8 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             ) or self._bases[0]._members["fTypeName"].startswith("multimap"):
                 self._members["fSTLtype"] = uproot.const.kSTLmultimap
 
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
+
 
 class Model_TStreamerSTLstring(Model_TStreamerSTL):
     """
@@ -1278,6 +1336,8 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerSTL.read(
                 chunk,
@@ -1289,6 +1349,8 @@ class Model_TStreamerSTLstring(Model_TStreamerSTL):
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 class TStreamerPointerTypes(object):
@@ -1385,6 +1447,8 @@ class Model_TStreamerObjectAnyPointer(TStreamerPointerTypes, Model_TStreamerElem
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1396,6 +1460,8 @@ class Model_TStreamerObjectAnyPointer(TStreamerPointerTypes, Model_TStreamerElem
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement):
@@ -1408,6 +1474,8 @@ class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1419,6 +1487,8 @@ class Model_TStreamerObjectPointer(TStreamerPointerTypes, Model_TStreamerElement
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 class TStreamerObjectTypes(object):
@@ -1490,6 +1560,8 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1501,6 +1573,8 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
@@ -1513,6 +1587,8 @@ class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1524,6 +1600,8 @@ class Model_TStreamerObjectAny(TStreamerObjectTypes, Model_TStreamerElement):
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
@@ -1536,6 +1614,8 @@ class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        start = cursor.index
+
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1547,6 +1627,8 @@ class Model_TStreamerString(TStreamerObjectTypes, Model_TStreamerElement):
                 concrete=self.concrete,
             )
         )
+
+        self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
 uproot.classes["TStreamerInfo"] = Model_TStreamerInfo

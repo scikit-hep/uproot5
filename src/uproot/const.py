@@ -18,13 +18,13 @@ kClassMask = numpy.int64(0x80000000)
 kNewClassTag = numpy.int64(0xFFFFFFFF)
 
 kIsOnHeap = numpy.uint32(0x01000000)
+kNotDeleted = numpy.uint32(0x02000000)
 kIsReferenced = numpy.uint32(1 << 4)
 
 kMapOffset = 2
 
 # not used?
 kNullTag = 0
-kNotDeleted = numpy.uint32(0x02000000)
 kZombie = numpy.uint32(0x04000000)
 kBitMask = numpy.uint32(0x00FFFFFF)
 kDisplacementMask = numpy.uint32(0xFF000000)
