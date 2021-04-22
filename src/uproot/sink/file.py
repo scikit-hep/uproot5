@@ -7,6 +7,7 @@ FIXME: docstring
 from __future__ import absolute_import
 
 import numbers
+import os
 
 
 class FileSink(object):
@@ -24,9 +25,10 @@ class FileSink(object):
             and callable(getattr(obj, "write", None))
             and callable(getattr(obj, "seek", None))
             and callable(getattr(obj, "tell", None))
-            and obj.readable()
-            and obj.writable()
-            and obj.seekable()
+            and callable(getattr(obj, "flush", None))
+            and (not hasattr(obj, "readable") or obj.readable())
+            and (not hasattr(obj, "writable") or obj.writable())
+            and (not hasattr(obj, "seekable") or obj.seekable())
         ):
             self = cls(None)
             self._file = obj
@@ -75,8 +77,6 @@ class FileSink(object):
     def flush(self):
         """
         FIXME: docstring
-
-        (flush is only ever user-initiated)
         """
         self._ensure()
         return self._file.flush()
@@ -125,6 +125,19 @@ class FileSink(object):
         self._file.seek(location)
         self._file.write(serialization)
 
+    def set_file_length(self, length):
+        """
+        FIXME: docstring
+        """
+        self._ensure()
+        # self._file.truncate(length)
+
+        self._file.seek(0, os.SEEK_END)
+        missing = length - self._file.tell()
+        assert missing >= 0
+        if missing > 0:
+            self._file.write(b"\x00" * missing)
+
     def read(self, location, num_bytes, insist=True):
         """
         FIXME: docstring
@@ -151,28 +164,3 @@ class FileSink(object):
                     )
                 )
         return out
-
-
-#     def read_classname(self, location):
-#         """
-#         FIXME: docstring
-#         """
-#         self._ensure()
-#         self._file.seek(location)
-#         char = None
-#         out = []
-#         while char != b"\x00":
-#             char = self._file.read(1)
-#             if char == b"":
-#                 raise OSError(
-#                     """C-style string has no terminator (null byte)
-# in file path {0}""".format(
-#                         self._file_path
-#                     )
-#                 )
-#             out.append(char)
-
-#         if uproot._util.py2:
-#             return b"".join(out)
-#         else:
-#             return b"".join(out).decode(errors="surrogateescape")

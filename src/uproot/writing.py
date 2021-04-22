@@ -12,8 +12,7 @@ import uuid
 import uproot._util
 import uproot._writing
 import uproot.compression
-import uproot.const
-import uproot.reading
+import uproot.deserialization
 import uproot.sink.file
 
 
@@ -108,7 +107,7 @@ def update(file_path, **options):
 create.defaults = {
     "compression": uproot.compression.ZLIB(1),
     "initial_directory_bytes": 256,
-    "initial_streamers_bytes": 256,
+    "initial_streamers_bytes": 1024,  # 256,
     "uuid_version": 1,
     "uuid_function": uuid.uuid1,
 }
@@ -168,6 +167,9 @@ class WritableFile(object):
     @property
     def root_directory(self):
         return WritableDirectory((), self, self._cascading.rootdirectory)
+
+    def update_streamers(self, streamers):
+        self._cascading.streamers.update_streamers(self.sink, streamers)
 
     def close(self):
         self._sink.close()

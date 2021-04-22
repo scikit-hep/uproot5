@@ -12,6 +12,8 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 
 from __future__ import absolute_import
 
+import numbers
+
 import numpy
 
 import uproot
@@ -305,20 +307,41 @@ class Chunk(object):
             stop = stop.index
         return self._start <= start and stop <= self._stop
 
-    def wait(self):
+    def wait(self, insist=True):
         """
+        Args:
+            insist (bool or int): If True, raise an OSError if ``raw_data`` does
+                does not have exactly ``stop - start`` bytes. If False, do not check.
+                If an integer, only raise an OSError if data up to that index can't
+                be supplied (i.e. require ``len(raw_data) >= insist - start``).
+
         Explicitly wait until the chunk is filled (the
         :ref:`uproot.source.chunk.Chunk.future` completes).
         """
         if self._raw_data is None:
             self._raw_data = numpy.frombuffer(self._future.result(), dtype=self._dtype)
-            if len(self._raw_data) != self._stop - self._start:
+            if insist is True:
+                requirement = len(self._raw_data) == self._stop - self._start
+            elif isinstance(insist, numbers.Integral):
+                requirement = len(self._raw_data) >= insist - self._start
+            elif insist is False:
+                requirement = True
+            else:
+                raise TypeError(
+                    """insist must be a bool or an int, not {0}
+for file path {1}""".format(
+                        repr(insist), self._source.file_path
+                    )
+                )
+
+            if not requirement:
                 raise OSError(
                     """expected Chunk of length {0},
-received Chunk of length {1}
-for file path {2}""".format(
-                        len(self._raw_data),
+received {1} bytes from {2}
+for file path {3}""".format(
                         self._stop - self._start,
+                        len(self._raw_data),
+                        type(self._source).__name__,
                         self._source.file_path,
                     )
                 )
@@ -358,9 +381,8 @@ for file path {2}""".format(
         :ref:`uproot.source.chunk.Chunk.future` completes), if it isn't
         already.
         """
-        self.wait()
-
         if (start, stop) in self:
+            self.wait(insist=stop)
             local_start = start - self._start
             local_stop = stop - self._start
             return self._raw_data[local_start:local_stop]
