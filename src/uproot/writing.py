@@ -15,6 +15,7 @@ import uproot.compression
 import uproot.deserialization
 import uproot.exceptions
 import uproot.sink.file
+from uproot._util import no_filter
 
 
 def create(file_path, **options):
@@ -282,6 +283,303 @@ class WritableDirectory(object):
             if where in self._subdir(x):
                 return True
         return False
+
+    def __iter__(self):
+        return self.iterkeys()  # noqa B301 (not a dict)
+
+    def _ipython_key_completions_(self):
+        """
+        Supports key-completion in an IPython or Jupyter kernel.
+        """
+        return self.iterkeys()  # noqa: B301 (not a dict)
+
+    def keys(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names of objects directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in those names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names of the objects in this ``TDirectory`` as a list of
+        strings.
+
+        Note that this does not read any data from the file.
+        """
+        return list(
+            self.iterkeys(  # noqa: B301 (not a dict)
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def values(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return objects directly accessible in this
+                ``TDirectory``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns objects in this ``TDirectory`` as a list of
+        :doc:`uproot.model.Model`.
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        return list(
+            self.itervalues(  # noqa: B301 (not a dict)
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def items(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return (name, object) pairs directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns (name, object) pairs for objects in this ``TDirectory`` as a
+        list of 2-tuples of (str, :doc:`uproot.model.Model`).
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        return list(
+            self.iteritems(  # noqa: B301 (not a dict)
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def classnames(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names and classnames of objects
+                directly accessible in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names and C++ (decoded) classnames of the objects in this
+        ``TDirectory`` as a dict of str \u2192 str.
+
+        Note that this does not read any data from the file.
+        """
+        return dict(
+            self.iterclassnames(
+                recursive=recursive,
+                cycle=cycle,
+                filter_name=filter_name,
+                filter_classname=filter_classname,
+            )
+        )
+
+    def iterkeys(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names of objects directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in those names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names of the objects in this ``TDirectory`` as an iterator
+        over strings.
+
+        Note that this does not read any data from the file.
+        """
+        filter_name = uproot._util.regularize_filter(filter_name)
+        filter_classname = uproot._util.regularize_filter(filter_classname)
+        for keyname, cyclenum, classname in self._cascading.data.key_triples:
+            if (filter_name is no_filter or filter_name(keyname)) and (
+                filter_classname is no_filter or filter_classname(classname)
+            ):
+                if cycle:
+                    yield "{0};{1}".format(keyname, cyclenum)
+                else:
+                    yield keyname
+
+            if recursive and classname in ("TDirectory", "TDirectoryFile"):
+                for k1 in self._get(  # noqa: B301 (not a dict)
+                    keyname, cyclenum
+                ).iterkeys(
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=filter_name,
+                    filter_classname=filter_classname,
+                ):
+                    k2 = "{0}/{1}".format(keyname, k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name is no_filter or filter_name(k3):
+                        yield k2
+
+    def itervalues(
+        self,
+        recursive=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return objects directly accessible in this
+                ``TDirectory``.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns objects in this ``TDirectory`` as an iterator over
+        :doc:`uproot.model.Model`.
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        for keyname in self.iterkeys(  # noqa: B301 (not a dict)
+            recursive=recursive,
+            cycle=True,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        ):
+            yield self[keyname]
+
+    def iteritems(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return (name, object) pairs directly accessible
+                in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns (name, object) pairs for objects in this ``TDirectory`` as an
+        iterator over 2-tuples of (str, :doc:`uproot.model.Model`).
+
+        Note that this reads all objects that are selected by ``filter_name``
+        and ``filter_classname``.
+        """
+        for keyname in self.iterkeys(  # noqa: B301 (not a dict)
+            recursive=recursive,
+            cycle=True,
+            filter_name=filter_name,
+            filter_classname=filter_classname,
+        ):
+            if not cycle:
+                at = keyname.index(";")
+                keyname = keyname[:at]
+            yield keyname, self[keyname]
+
+    def iterclassnames(
+        self,
+        recursive=True,
+        cycle=True,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+    ):
+        u"""
+        Args:
+            recursive (bool): If True, descend into any nested subdirectories.
+                If False, only return the names and classnames of objects
+                directly accessible in this ``TDirectory``.
+            cycle (bool): If True, include the cycle numbers in the names.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+
+        Returns the names and C++ (decoded) classnames of the objects in this
+        ``TDirectory`` as an iterator of 2-tuples of (str, str).
+
+        Note that this does not read any data from the file.
+        """
+        filter_name = uproot._util.regularize_filter(filter_name)
+        filter_classname = uproot._util.regularize_filter(filter_classname)
+        for keyname, cyclenum, classname in self._cascading.data.key_triples:
+            if (filter_name is no_filter or filter_name(keyname)) and (
+                filter_classname is no_filter or filter_classname(classname)
+            ):
+                if cycle:
+                    yield "{0};{1}".format(keyname, cyclenum), classname
+                else:
+                    yield keyname, classname
+
+            if recursive and classname in ("TDirectory", "TDirectoryFile"):
+                for k1, c1 in self._get(
+                    keyname, cyclenum
+                ).iterclassnames(  # noqa: B301 (not a dict)
+                    recursive=recursive,
+                    cycle=cycle,
+                    filter_name=filter_name,
+                    filter_classname=filter_classname,
+                ):
+                    k2 = "{0}/{1}".format(keyname, k1)
+                    k3 = k2[: k2.index(";")] if ";" in k2 else k2
+                    if filter_name is no_filter or filter_name(k3):
+                        yield k2, c1
 
     def __getitem__(self, where):
         if "/" in where or ":" in where:

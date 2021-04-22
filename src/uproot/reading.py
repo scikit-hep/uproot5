@@ -1622,7 +1622,7 @@ class ReadOnlyDirectory(Mapping):
     def classnames(
         self,
         recursive=True,
-        cycle=False,
+        cycle=True,
         filter_name=no_filter,
         filter_classname=no_filter,
     ):

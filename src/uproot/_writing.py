@@ -1088,12 +1088,22 @@ class DirectoryData(CascadeLeaf):
         return [x.name.string for x in self._keys]
 
     @property
+    def key_triples(self):
+        return [(x.name.string, x.cycle, x.classname.string) for x in self._keys]
+
+    @property
     def dir_names(self):
         return [
             x.name.string
             for x in self._keys
             if x.classname.string in ("TDirectory", "TDirectoryFile")
         ]
+
+    def classname_of(self, name):
+        for key in self._keys:
+            if key.name.string == name:
+                return key.classname.string
+        return None
 
     @property
     def num_bytes(self):

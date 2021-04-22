@@ -102,7 +102,11 @@ def test_get_nested(tmp_path):
     x.Write()
     f1.Close()
 
-    print(uproot.open(filename).keys())
-
     with uproot.update(filename) as f2:
         assert str(f2["one/two/hello"]) == "hello"
+        assert f2.keys() == ["one;1", "one/two;1", "one/two/hello;1"]
+        assert f2.classnames() == {
+            "one;1": "TDirectory",
+            "one/two;1": "TDirectory",
+            "one/two/hello;1": "TObjString",
+        }
