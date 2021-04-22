@@ -385,7 +385,8 @@ class Key(CascadeLeaf):
         assert 0 < fNbytes <= fKeylen + fObjlen
         assert fCycle > 0
         if not is_directory_key:
-            assert fSeekKey == location
+            assert fSeekKey == location, "fSeekKey {0} location {1}".format(fSeekKey, location)
+            fSeekKey = None
 
         classname, position = String.deserialize(
             raw_bytes[position - location :], position
