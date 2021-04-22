@@ -18,7 +18,6 @@ def test_get_subdir(tmp_path):
     empty = ROOT.TFile(empty_filename, "recreate")
     empty.mkdir("subdir")
     empty.Close()
-    del empty
 
     nonempty = ROOT.TFile(nonempty_filename, "recreate")
     nonempty.mkdir("subdir")
@@ -26,7 +25,6 @@ def test_get_subdir(tmp_path):
     x = ROOT.TObjString("hello")
     x.Write()
     nonempty.Close()
-    del nonempty
 
     with uproot.update(empty_filename) as f1:
         f1._get("subdir", 1).mkdir("another")
@@ -46,14 +44,12 @@ def test_get_subdir(tmp_path):
     y = ROOT.TObjString("there")
     y.Write()
     f3.Close()
-    del f3
 
     f4 = ROOT.TFile(nonempty_filename, "update")
     f4.cd("subdir/another")
     z = ROOT.TObjString("you")
     z.Write()
     f4.Close()
-    del f4
 
     assert uproot.open(empty_filename).keys() == [
         "subdir;1",
@@ -66,3 +62,29 @@ def test_get_subdir(tmp_path):
         "subdir/another;1",
         "subdir/another/you;1",
     ]
+
+
+def test_get_string(tmp_path):
+    filename = os.path.join(tmp_path, "whatever.root")
+
+    f1 = ROOT.TFile(filename, "recreate")
+    x = ROOT.TObjString("hello")
+    x.Write()
+    f1.Close()
+
+    with uproot.update(filename) as f2:
+        assert str(f2._get("hello", 1)) == "hello"
+
+
+def test_get_histogram(tmp_path):
+    filename = os.path.join(tmp_path, "whatever.root")
+
+    f1 = ROOT.TFile(filename, "recreate")
+    x = ROOT.TH1F("name", "title", 100, -5, 5)
+    x.Write()
+    f1.Close()
+
+    with uproot.update(filename) as f2:
+        h = f2._get("name", 1)
+        assert h.name == "name"
+        assert h.title == "title"

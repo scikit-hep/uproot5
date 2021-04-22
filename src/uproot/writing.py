@@ -285,7 +285,32 @@ class WritableDirectory(object):
 
         else:
 
-            raise Exception
+            def get_chunk(start, stop):
+                raw_bytes = self._file.sink.read(start, stop - start)
+                return uproot.source.chunk.Chunk.wrap(
+                    readforupdate, raw_bytes, start=start
+                )
+
+            readforupdate = uproot._writing._ReadForUpdate(
+                self._file.file_path,
+                self._file.uuid,
+                get_chunk,
+                self.file._cascading.tlist_of_streamers,
+            )
+
+            raw_bytes = self._file.sink.read(
+                key.seek_location,
+                key.num_bytes + key.compressed_bytes,
+            )
+
+            chunk = uproot.source.chunk.Chunk.wrap(readforupdate, raw_bytes)
+            cursor = uproot.source.cursor.Cursor(0, origin=key.num_bytes)
+
+            readonlykey = uproot.reading.ReadOnlyKey(
+                chunk, cursor, {}, readforupdate, self, read_strings=True
+            )
+
+            return readonlykey.get()
 
     def _subdir(self, key):
         raw_bytes = self._file.sink.read(

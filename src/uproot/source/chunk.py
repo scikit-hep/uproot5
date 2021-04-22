@@ -247,17 +247,20 @@ class Chunk(object):
     _dtype = numpy.dtype(numpy.uint8)
 
     @classmethod
-    def wrap(cls, source, data):
+    def wrap(cls, source, data, start=0):
         """
         Args:
             source (:doc:`uproot.source.chunk.Source`): Source to attach to
                 the new chunk.
             data (``numpy.ndarray`` of ``numpy.uint8``): Data for the new chunk.
+            start (int): Virtual starting position for this chunk; if ``X``,
+                then a :doc:`uproot.source.cursor.Cursor` is valid from ``X``
+                to ``X + len(data)``.
 
         Manually creates a synchronous :doc:`uproot.source.chunk.Chunk`.
         """
         future = uproot.source.futures.TrivialFuture(data)
-        return Chunk(source, 0, len(data), future)
+        return Chunk(source, start, start + len(data), future)
 
     def __init__(self, source, start, stop, future):
         self._source = source

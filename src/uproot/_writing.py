@@ -928,8 +928,8 @@ class TListOfStreamers(CascadeNode):
         super(TListOfStreamers, self).write(sink)
 
     @classmethod
-    def deserialize(cls, raw_bytes, location, key, freesegments, file_path):
-        readforupdate = _ReadForUpdate(file_path)
+    def deserialize(cls, raw_bytes, location, key, freesegments, file_path, uuid):
+        readforupdate = _ReadForUpdate(file_path, uuid)
 
         chunk = uproot.source.chunk.Chunk.wrap(readforupdate, raw_bytes)
 
@@ -966,22 +966,61 @@ class TListOfStreamers(CascadeNode):
                 )
             )
 
-        return TListOfStreamers(
-            key.compressed_bytes,
-            key,
-            header,
-            rawstreamers,
-            freesegments,
+        return (
+            TListOfStreamers(
+                key.compressed_bytes,
+                key,
+                header,
+                rawstreamers,
+                freesegments,
+            ),
+            tlist,
         )
 
 
 class _ReadForUpdate(object):
-    def __init__(self, file_path):
+    def __init__(self, file_path, uuid, get_chunk=None, tlist_of_streamers=None):
         self.file_path = file_path
+        self.uuid = uuid
+        self.object_cache = None
+        self._get_chunk = get_chunk
+        self._tlist_of_streamers = tlist_of_streamers
+        self._custom_classes = None
 
-    @staticmethod
-    def class_named(classname):
-        return uproot.classes[classname]
+    @property
+    def detached(self):
+        return self
+
+    def chunk(self, start, stop):
+        return self._get_chunk(start, stop)
+
+    def class_named(self, classname, version=None):
+        return uproot.reading.ReadOnlyFile.class_named(self, classname, version=version)
+
+    def streamers_named(self, classname):
+        if self._tlist_of_streamers is None:
+            return []
+        else:
+            return [x for x in self._tlist_of_streamers if x.name == classname]
+
+    def streamer_named(self, classname, version="max"):
+        out = None
+        if self._tlist_of_streamers is not None:
+            for x in self._tlist_of_streamers:
+                if x.name == classname:
+                    if version == "max":
+                        if out is None or x.class_version > out.class_version:
+                            out = x
+                    elif version == "min":
+                        if out is None or x.class_version < out.class_version:
+                            out = x
+                    elif x.class_version == version:
+                        return x
+        return out
+
+    @property
+    def custom_classes(self):
+        return self._custom_classes
 
 
 class DirectoryData(CascadeLeaf):
@@ -1788,11 +1827,13 @@ class CascadingFile(object):
         streamers,
         freesegments,
         rootdirectory,
+        tlist_of_streamers,
     ):
         self._fileheader = fileheader
         self._streamers = streamers
         self._freesegments = freesegments
         self._rootdirectory = rootdirectory
+        self._tlist_of_streamers = tlist_of_streamers
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4})".format(
@@ -1818,6 +1859,10 @@ class CascadingFile(object):
     @property
     def rootdirectory(self):
         return self._rootdirectory
+
+    @property
+    def tlist_of_streamers(self):
+        return self._tlist_of_streamers
 
 
 def create_empty(
@@ -1942,7 +1987,7 @@ def create_empty(
     rootdirectory.write(sink)
     streamers.write(sink)
 
-    return CascadingFile(fileheader, streamers, freesegments, rootdirectory)
+    return CascadingFile(fileheader, streamers, freesegments, rootdirectory, None)
 
 
 def update_existing(sink, initial_directory_bytes, uuid_function):
@@ -1979,12 +2024,13 @@ def update_existing(sink, initial_directory_bytes, uuid_function):
 
     raw_bytes = sink.read(fileheader.info_location, fileheader.info_num_bytes)
     streamers_key = Key.deserialize(raw_bytes, fileheader.info_location, sink.in_path)
-    streamers = TListOfStreamers.deserialize(
+    streamers, tlist_of_streamers = TListOfStreamers.deserialize(
         raw_bytes[streamers_key.num_bytes :],
         fileheader.info_location + streamers_key.num_bytes,
         streamers_key,
         freesegments,
         sink.file_path,
+        fileheader.uuid,
     )
 
     raw_bytes = sink.read(
@@ -2035,4 +2081,6 @@ def update_existing(sink, initial_directory_bytes, uuid_function):
     streamers.write(sink)
     sink.flush()
 
-    return CascadingFile(fileheader, streamers, freesegments, rootdirectory)
+    return CascadingFile(
+        fileheader, streamers, freesegments, rootdirectory, tlist_of_streamers
+    )
