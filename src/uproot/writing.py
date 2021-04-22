@@ -233,6 +233,7 @@ class WritableDirectory(object):
         self._path = path
         self._file = file
         self._cascading = cascading
+        self._subdirs = {}
 
     def __repr__(self):
         return "<WritableDirectory {0} at 0x{1:012x}>".format(
@@ -268,6 +269,73 @@ class WritableDirectory(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.sink.__exit__(exception_type, exception_value, traceback)
+
+    def __len__(self):
+        return self._cascading.data.num_keys + sum(
+            len(self._subdir(x)) for x in self._cascading.data.dir_names
+        )
+
+    def __contains__(self, where):
+        if self._cascading.data.haskey(where):
+            return True
+        for x in self._cascading.data.dir_names:
+            if where in self._subdir(x):
+                return True
+        return False
+
+    def __getitem__(self, where):
+        if "/" in where or ":" in where:
+            items = where.split("/")
+            step = last = self
+
+            for i, item in enumerate(items):
+                if item != "":
+                    if isinstance(step, WritableDirectory):
+                        if ":" in item and not step._cascading.data.haskey(item):
+                            index = item.index(":")
+                            head, tail = item[:index], item[index + 1 :]
+                            last = step
+                            step = step.get(head)
+                            if isinstance(step, uproot.behaviors.TBranch.HasBranches):
+                                return step["/".join([tail] + items[i + 1 :])]
+                            else:
+                                raise uproot.KeyInFileError(
+                                    where,
+                                    because=repr(head)
+                                    + " is not a TDirectory, TTree, or TBranch",
+                                    keys=last._cascading.data.key_names,
+                                    file_path=self.file_path,
+                                )
+                        else:
+                            last = step
+                            step = step[item]
+
+                    elif isinstance(step, uproot.behaviors.TBranch.HasBranches):
+                        return step["/".join(items[i:])]
+
+                    else:
+                        raise uproot.KeyInFileError(
+                            where,
+                            because=repr(item)
+                            + " is not a TDirectory, TTree, or TBranch",
+                            keys=last._cascading.data.key_names,
+                            file_path=self.file_path,
+                        )
+
+            return step
+
+        else:
+            if ";" in where:
+                at = where.rindex(";")
+                item, cycle = where[:at], where[at + 1 :]
+                try:
+                    cycle = int(cycle)
+                except ValueError:
+                    item, cycle = where, None
+            else:
+                item, cycle = where, None
+
+            return self._get(item, cycle)
 
     def _get(self, name, cycle):
         key = self._cascading.data.get_key(name, cycle)
@@ -313,97 +381,115 @@ class WritableDirectory(object):
             return readonlykey.get()
 
     def _subdir(self, key):
-        raw_bytes = self._file.sink.read(
-            key.seek_location,
-            key.num_bytes + uproot.reading._directory_format_big.size + 18,
-        )
-        directory_key = uproot._writing.Key.deserialize(
-            raw_bytes, key.seek_location, self._file.sink.in_path
-        )
-        position = key.seek_location + directory_key.num_bytes
-
-        directory_header = uproot._writing.DirectoryHeader.deserialize(
-            raw_bytes[position - key.seek_location :], position, self._file.sink.in_path
-        )
-        assert directory_header.begin_location == key.seek_location
-        assert directory_header.parent_location == self._cascading.key.location
-
-        name = key.name.string
-
-        if directory_header.data_num_bytes == 0:
-            directory_datakey = uproot._writing.Key(
-                None,
-                None,
-                None,
-                uproot._writing.String(None, "TDirectory"),
-                uproot._writing.String(None, name),
-                uproot._writing.String(None, name),
-                directory_key.cycle,
-                directory_header.parent_location,
-                None,
-            )
-
-            requested_num_bytes = (
-                directory_datakey.num_bytes + self.file._initial_directory_bytes
-            )
-            directory_datakey.location = self._cascading.freesegments.allocate(
-                requested_num_bytes
-            )
-            might_be_slightly_more = requested_num_bytes - directory_datakey.num_bytes
-            directory_data = uproot._writing.DirectoryData(
-                directory_datakey.location + directory_datakey.num_bytes,
-                might_be_slightly_more,
-                [],
-            )
-
-            directory_datakey.uncompressed_bytes = directory_data.allocation
-            directory_datakey.compressed_bytes = directory_datakey.uncompressed_bytes
-
-            subdirectory = uproot._writing.SubDirectory(
-                directory_key,
-                directory_header,
-                directory_datakey,
-                directory_data,
-                self._cascading,
-                self._cascading.freesegments,
-            )
-
-            directory_header.data_location = directory_datakey.location
-            directory_header.data_num_bytes = (
-                directory_datakey.num_bytes + directory_data.allocation
-            )
-
-            subdirectory.write(self._file.sink)
-
-            self._file.sink.set_file_length(self._cascading.freesegments.fileheader.end)
-            self._file.sink.flush()
-
-            return WritableDirectory(self._path + (name,), self._file, subdirectory)
-
-        else:
+        if key not in self._subdirs:
             raw_bytes = self._file.sink.read(
-                directory_header.data_location, directory_header.data_num_bytes
+                key.seek_location,
+                key.num_bytes + uproot.reading._directory_format_big.size + 18,
             )
+            directory_key = uproot._writing.Key.deserialize(
+                raw_bytes, key.seek_location, self._file.sink.in_path
+            )
+            position = key.seek_location + directory_key.num_bytes
 
-            directory_datakey = uproot._writing.Key.deserialize(
-                raw_bytes, directory_header.data_location, self._file.sink.in_path
-            )
-            directory_data = uproot._writing.DirectoryData.deserialize(
-                raw_bytes[directory_datakey.num_bytes :],
-                directory_header.data_location + directory_datakey.num_bytes,
+            directory_header = uproot._writing.DirectoryHeader.deserialize(
+                raw_bytes[position - key.seek_location :],
+                position,
                 self._file.sink.in_path,
             )
-
-            subdirectory = uproot._writing.SubDirectory(
-                directory_key,
-                directory_header,
-                directory_datakey,
-                directory_data,
-                self._cascading,
-                self._cascading.freesegments,
+            assert directory_header.begin_location == key.seek_location
+            assert (
+                directory_header.parent_location
+                == self.file._cascading.fileheader.begin
             )
 
-            return WritableDirectory(self._path + (name,), self._file, subdirectory)
+            name = key.name.string
+
+            if directory_header.data_num_bytes == 0:
+                directory_datakey = uproot._writing.Key(
+                    None,
+                    None,
+                    None,
+                    uproot._writing.String(None, "TDirectory"),
+                    uproot._writing.String(None, name),
+                    uproot._writing.String(None, name),
+                    directory_key.cycle,
+                    directory_header.parent_location,
+                    None,
+                )
+
+                requested_num_bytes = (
+                    directory_datakey.num_bytes + self.file._initial_directory_bytes
+                )
+                directory_datakey.location = self._cascading.freesegments.allocate(
+                    requested_num_bytes
+                )
+                might_be_slightly_more = (
+                    requested_num_bytes - directory_datakey.num_bytes
+                )
+                directory_data = uproot._writing.DirectoryData(
+                    directory_datakey.location + directory_datakey.num_bytes,
+                    might_be_slightly_more,
+                    [],
+                )
+
+                directory_datakey.uncompressed_bytes = directory_data.allocation
+                directory_datakey.compressed_bytes = (
+                    directory_datakey.uncompressed_bytes
+                )
+
+                subdirectory = uproot._writing.SubDirectory(
+                    directory_key,
+                    directory_header,
+                    directory_datakey,
+                    directory_data,
+                    self._cascading,
+                    self._cascading.freesegments,
+                )
+
+                directory_header.data_location = directory_datakey.location
+                directory_header.data_num_bytes = (
+                    directory_datakey.num_bytes + directory_data.allocation
+                )
+
+                subdirectory.write(self._file.sink)
+
+                self._file.sink.set_file_length(
+                    self._cascading.freesegments.fileheader.end
+                )
+                self._file.sink.flush()
+
+                self._subdirs[key] = WritableDirectory(
+                    self._path + (name,), self._file, subdirectory
+                )
+
+            else:
+                raw_bytes = self._file.sink.read(
+                    directory_header.data_location, directory_header.data_num_bytes
+                )
+
+                directory_datakey = uproot._writing.Key.deserialize(
+                    raw_bytes, directory_header.data_location, self._file.sink.in_path
+                )
+                directory_data = uproot._writing.DirectoryData.deserialize(
+                    raw_bytes[directory_datakey.num_bytes :],
+                    directory_header.data_location + directory_datakey.num_bytes,
+                    self._file.sink.in_path,
+                )
+
+                subdirectory = uproot._writing.SubDirectory(
+                    directory_key,
+                    directory_header,
+                    directory_datakey,
+                    directory_data,
+                    self._cascading,
+                    self._cascading.freesegments,
+                )
+
+                self._subdirs[key] = WritableDirectory(
+                    self._path + (name,), self._file, subdirectory
+                )
+
+        return self._subdirs[key]
 
     def mkdir(self, name):
         return WritableDirectory(

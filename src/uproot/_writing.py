@@ -1063,6 +1063,16 @@ class DirectoryData(CascadeLeaf):
         self._file_dirty = True
         self._keys.append(key)
 
+    @property
+    def num_keys(self):
+        return len(self._keys)
+
+    def haskey(self, name):
+        for key in self._keys:
+            if key.name.string == name:
+                return True
+        return False
+
     def get_key(self, name, cycle=None):
         out = None
         for key in self._keys:
@@ -1076,6 +1086,14 @@ class DirectoryData(CascadeLeaf):
     @property
     def key_names(self):
         return [x.name.string for x in self._keys]
+
+    @property
+    def dir_names(self):
+        return [
+            x.name.string
+            for x in self._keys
+            if x.classname.string in ("TDirectory", "TDirectoryFile")
+        ]
 
     @property
     def num_bytes(self):

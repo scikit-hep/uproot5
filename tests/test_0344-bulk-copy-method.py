@@ -27,10 +27,10 @@ def test_get_subdir(tmp_path):
     nonempty.Close()
 
     with uproot.update(empty_filename) as f1:
-        f1._get("subdir", 1).mkdir("another")
+        f1["subdir"].mkdir("another")
 
     with uproot.update(nonempty_filename) as f2:
-        f2._get("subdir", 1).mkdir("another")
+        f2["subdir"].mkdir("another")
 
     assert uproot.open(empty_filename).keys() == ["subdir;1", "subdir/another;1"]
     assert uproot.open(nonempty_filename).keys() == [
@@ -73,7 +73,7 @@ def test_get_string(tmp_path):
     f1.Close()
 
     with uproot.update(filename) as f2:
-        assert str(f2._get("hello", 1)) == "hello"
+        assert str(f2["hello"]) == "hello"
 
 
 def test_get_histogram(tmp_path):
@@ -85,6 +85,24 @@ def test_get_histogram(tmp_path):
     f1.Close()
 
     with uproot.update(filename) as f2:
-        h = f2._get("name", 1)
+        h = f2["name"]
         assert h.name == "name"
         assert h.title == "title"
+
+
+def test_get_nested(tmp_path):
+    filename = os.path.join(tmp_path, "whatever.root")
+
+    f1 = ROOT.TFile(filename, "recreate")
+    one = f1.mkdir("one")
+    one.cd()
+    two = one.mkdir("two")
+    two.cd()
+    x = ROOT.TObjString("hello")
+    x.Write()
+    f1.Close()
+
+    print(uproot.open(filename).keys())
+
+    with uproot.update(filename) as f2:
+        assert str(f2["one/two/hello"]) == "hello"
