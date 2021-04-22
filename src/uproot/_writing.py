@@ -385,7 +385,9 @@ class Key(CascadeLeaf):
         assert 0 < fNbytes <= fKeylen + fObjlen
         assert fCycle > 0
         if not is_directory_key:
-            assert fSeekKey == location, "fSeekKey {0} location {1}".format(fSeekKey, location)
+            assert fSeekKey == location, "fSeekKey {0} location {1}".format(
+                fSeekKey, location
+            )
             fSeekKey = None
 
         classname, position = String.deserialize(
@@ -1022,6 +1024,20 @@ class DirectoryData(CascadeLeaf):
         self._file_dirty = True
         self._keys.append(key)
 
+    def get_key(self, name, cycle=None):
+        out = None
+        for key in self._keys:
+            if key.name.string == name and cycle is None:
+                if out is None or key.cycle > out.cycle:
+                    out = key
+            elif key.name.string == name and key.cycle == cycle:
+                return key
+        return out  # None if a match wasn't found
+
+    @property
+    def key_names(self):
+        return [x.name.string for x in self._keys]
+
     @property
     def num_bytes(self):
         return uproot.reading._directory_format_num_keys.size + sum(
@@ -1042,6 +1058,7 @@ class DirectoryData(CascadeLeaf):
     def deserialize(cls, raw_bytes, location, in_path):
         (num_keys,) = uproot.reading._directory_format_num_keys.unpack(raw_bytes[:4])
         position = location + 4
+
         keys = []
         for _ in range(num_keys):
             keys.append(
@@ -1052,6 +1069,8 @@ class DirectoryData(CascadeLeaf):
                     is_directory_key=True,
                 )
             )
+            position += keys[-1].num_bytes
+
         return DirectoryData(location, len(raw_bytes), keys)
 
 
@@ -1352,7 +1371,6 @@ class Directory(CascadeNode):
 
         self._header.modified_on = datetime.datetime.now()
 
-        self._freesegments.write(sink)
         subdirectory.write(sink)
         self.write(sink)
 

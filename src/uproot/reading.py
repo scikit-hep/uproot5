@@ -1436,6 +1436,14 @@ class ReadOnlyDirectory(Mapping):
         return "/".join(("",) + self._path + ("",)).replace("//", "/")
 
     @property
+    def file_path(self):
+        """
+        The original path to the file (converted to ``str`` if it was originally
+        a ``pathlib.Path``).
+        """
+        return self._file.file_path
+
+    @property
     def file(self):
         """
         The :doc:`uproot.reading.ReadOnlyFile` in which this ``TDirectory``
