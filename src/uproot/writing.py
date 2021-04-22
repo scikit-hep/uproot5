@@ -172,8 +172,8 @@ class WritableFile(uproot.reading.CommonFileMethods):
     def options(self):
         return {
             "initial_directory_bytes": self._initial_directory_bytes,
-            "uuid_version": uuid_version,
-            "uuid_function": uuid_function,
+            "uuid_version": self._uuid_version,
+            "uuid_function": self._uuid_function,
         }
 
     @property
