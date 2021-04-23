@@ -127,10 +127,8 @@ def regularize_filter(filter):
         m = _regularize_filter_regex.match(filter)
         if m is not None:
             regex, flags = m.groups()
-            return (
-                lambda x: re.match(regex, x, _regularize_filter_regex_flags(flags))
-                is not None
-            )
+            matcher = re.compile(regex, _regularize_filter_regex_flags(flags))
+            return lambda x: matcher.match(x) is not None
         elif "*" in filter or "?" in filter or "[" in filter:
             return lambda x: glob.fnmatch.fnmatchcase(x, filter)
         else:
@@ -162,25 +160,56 @@ def regularize_rename(rename):
     """
     if rename is None:
         return no_rename
+
     elif callable(rename):
         return rename
+
     elif isstr(rename):
         m = _regularize_filter_regex_rename.match(rename)
         if m is not None:
             regex, trans, flags = m.groups()
-            return lambda x: re.sub(
-                regex, trans, x, _regularize_filter_regex_flags(flags)
-            )
+            matcher = re.compile(regex, _regularize_filter_regex_flags(flags))
+            return lambda x: matcher.sub(trans, x)
         else:
             raise TypeError("rename regular expressions must be in '/from/to/' form")
+
     elif isinstance(rename, dict):
-        return lambda x: rename[x]
-    else:
-        raise TypeError(
-            "rename must be None, callable, a '/from/to/' regex, or a dict, not {0}".format(
-                repr(rename)
-            )
-        )
+        return lambda x: rename.get(x, x)
+
+    elif isinstance(rename, Iterable) and not isinstance(rename, bytes):
+        rules = []
+        for x in rename:
+            if isstr(x):
+                m = _regularize_filter_regex_rename.match(x)
+                if m is not None:
+                    regex, trans, flags = m.groups()
+                    rules.append(
+                        (
+                            re.compile(regex, _regularize_filter_regex_flags(flags)),
+                            trans,
+                        )
+                    )
+                else:
+                    raise TypeError(
+                        "rename regular expressions must be in '/from/to/' form"
+                    )
+            else:
+                break
+        else:
+
+            def applyrules(x):
+                for matcher, trans in rules:
+                    if matcher.search(x) is not None:
+                        return matcher.sub(trans, x)
+                else:
+                    return x
+
+            return applyrules
+
+    raise TypeError(
+        "rename must be None, callable, a '/from/to/' regex, an iterable of "
+        "regex rules, or a dict, not {0}".format(repr(rename))
+    )
 
 
 def regularize_path(path):
