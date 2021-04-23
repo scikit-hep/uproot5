@@ -867,6 +867,12 @@ in file {1} in directory {2}""".format(
 
         keys = [source.key(x) for x in old_names]
 
+        for key in keys:
+            if key.fClassName == "TTree" or key.fClassName.split("::")[-1] == "RNTuple":
+                raise NotImplementedError(
+                    "copy_from cannot copy {0} objects yet".format(key.fClassName)
+                )
+
         rename = uproot._util.regularize_rename(rename)
         new_names = [rename(x) for x in old_names]
 
