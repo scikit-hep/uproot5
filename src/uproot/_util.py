@@ -140,8 +140,46 @@ def regularize_filter(filter):
         return lambda x: any(f(x) for f in filters)
     else:
         raise TypeError(
-            "filter must be callable, a regex string between slashes, or a "
+            "filter must be None, callable, a regex string between slashes, or a "
             "glob pattern, not {0}".format(repr(filter))
+        )
+
+
+def no_rename(x):
+    """
+    A renaming function that keeps all names the same (identity function).
+    """
+    return x
+
+
+_regularize_filter_regex_rename = re.compile("^s?/(.*)/(.*)/([iLmsux]*)$")
+
+
+def regularize_rename(rename):
+    """
+    Convert None, dict, and regular expression mappings into the standard form
+    for renaming: a callable that maps strings to strings.
+    """
+    if rename is None:
+        return no_rename
+    elif callable(rename):
+        return rename
+    elif isstr(rename):
+        m = _regularize_filter_regex_rename.match(rename)
+        if m is not None:
+            regex, trans, flags = m.groups()
+            return lambda x: re.sub(
+                regex, trans, x, _regularize_filter_regex_flags(flags)
+            )
+        else:
+            raise TypeError("rename regular expressions must be in '/from/to/' form")
+    elif isinstance(rename, dict):
+        return lambda x: rename[x]
+    else:
+        raise TypeError(
+            "rename must be None, callable, a '/from/to/' regex, or a dict, not {0}".format(
+                repr(rename)
+            )
         )
 
 

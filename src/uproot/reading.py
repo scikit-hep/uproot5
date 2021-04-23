@@ -983,11 +983,30 @@ in file {1}""".format(
         :ref:`uproot.reading.ReadOnlyFile.streamer_named`.
         """
         classname = uproot.model.classname_regularize(classname)
-        streamer = self.streamer_named(classname, version=version)
-        out = []
-        if streamer is not None:
-            streamer._dependencies(self.streamers, out)
-        return out[::-1]
+
+        if version == "all":
+            streamers = self.streamers_named(classname)
+            streamers.sort(key=lambda x: -x.class_version)
+            out = []
+            for streamer in streamers:
+                batch = []
+                streamer._dependencies(self.streamers, batch)
+                for x in batch[::-1]:
+                    if x not in out:
+                        for i in range(-1, -len(out) - 1, -1):
+                            if out[i][0] == x[0]:
+                                out.insert(i + 1, x)
+                                break
+                        else:
+                            out.append(x)
+            return out
+
+        else:
+            streamer = self.streamer_named(classname, version=version)
+            out = []
+            if streamer is not None:
+                streamer._dependencies(self.streamers, out)
+            return out[::-1]
 
     @property
     def custom_classes(self):
@@ -1835,6 +1854,21 @@ class ReadOnlyDirectory(Mapping):
     def __iter__(self):
         return self.iterkeys()  # noqa: B301 (not a dict)
 
+    def title_of(self, where):
+        """
+        Returns the title of the object selected by ``where``.
+
+        The syntax for ``where`` is the same as in square brakets, namely that
+        cycle numbers can be specified after semicolons (``;``) and nested
+        ``TDirectories`` can be specified with slashes (``/``).
+
+        Unlike the square bracket syntax, this method cannot descend into the
+        ``TBranches`` of a ``TTree``.
+
+        Note that this does not read any data from the file.
+        """
+        return self.key(where).title()
+
     def classname_of(self, where, encoded=False, version=None):
         """
         Returns the classname of the object selected by ``where``. If
@@ -2245,13 +2279,19 @@ class ReadOnlyKey(object):
 
     def name(self, cycle=False):
         """
-        The name of this ``TKey``, with semicolon (``;``) and cycle number if
-        ``cycle`` is True.
+        The name of the object pointed to by this ``TKey``, with semicolon (``;``)
+        and cycle number if ``cycle`` is True.
         """
         if cycle:
             return "{0};{1}".format(self.fName, self.fCycle)
         else:
             return self.fName
+
+    def title(self):
+        """
+        The title of the object pointed to by this ``TKey``.
+        """
+        return self.fTitle
 
     def classname(self, encoded=False, version=None):
         """
