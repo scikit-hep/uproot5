@@ -940,6 +940,7 @@ class HasBranches(Mapping):
         if isinstance(self, TBranch):
             stream.write(
                 formatter.format(self.name, self.typename, repr(self.interpretation))
+                + "\n"
             )
 
         for name, branch in self.iteritems(  # noqa: B301 (not a dict)

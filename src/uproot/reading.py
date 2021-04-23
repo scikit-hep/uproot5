@@ -216,8 +216,13 @@ class CommonFileMethods(object):
     @property
     def options(self):
         """
-        The dict of ``options`` originally passed to the
-        :doc:`uproot.reading.ReadOnlyFile` constructor.
+        The dict of ``options`` originally passed to the file constructor.
+
+        If this is a :doc:`uproot.writing.WritableFile`, the ``options`` are a copy
+        of the current state of the options; change the properties (e.g.
+        ``initial_directory_bytes``, ``uuid_function``) directly on the file object
+        to make a lasting change. Modifying the copied dict does not change the
+        file's future behavior.
         """
         return self._options
 
@@ -1436,6 +1441,14 @@ class ReadOnlyDirectory(Mapping):
         return "/".join(("",) + self._path + ("",)).replace("//", "/")
 
     @property
+    def file_path(self):
+        """
+        The original path to the file (converted to ``str`` if it was originally
+        a ``pathlib.Path``).
+        """
+        return self._file.file_path
+
+    @property
     def file(self):
         """
         The :doc:`uproot.reading.ReadOnlyFile` in which this ``TDirectory``
@@ -1609,7 +1622,7 @@ class ReadOnlyDirectory(Mapping):
     def classnames(
         self,
         recursive=True,
-        cycle=False,
+        cycle=True,
         filter_name=no_filter,
         filter_classname=no_filter,
     ):

@@ -20,14 +20,14 @@ def test(tmp_path):
     x.Write()
     f.Close()
 
-    assert uproot.open(filename).classnames() == {"hello": "TObjString"}
+    assert uproot.open(filename).classnames() == {"hello;1": "TObjString"}
 
     with uproot.writing.update(filename) as root_directory:
         root_directory.mkdir("subdir")
 
     assert uproot.open(filename).classnames() == {
-        "hello": "TObjString",
-        "subdir": "TDirectory",
+        "hello;1": "TObjString",
+        "subdir;1": "TDirectory",
     }
 
     g = ROOT.TFile(filename, "update")
@@ -37,7 +37,7 @@ def test(tmp_path):
     g.Close()
 
     assert uproot.open(filename).classnames() == {
-        "hello": "TObjString",
-        "subdir": "TDirectory",
-        "subdir/there": "TObjString",
+        "hello;1": "TObjString",
+        "subdir;1": "TDirectory",
+        "subdir/there;1": "TObjString",
     }
