@@ -9,13 +9,18 @@ from __future__ import absolute_import
 import os
 import uuid
 
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+
 import uproot._util
 import uproot._writing
 import uproot.compression
 import uproot.deserialization
 import uproot.exceptions
 import uproot.sink.file
-from uproot._util import no_filter
+from uproot._util import no_filter, no_rename
 
 
 def create(file_path, **options):
@@ -646,7 +651,7 @@ class WritableDirectory(object):
                 object_path=self.object_path,
             )
 
-        if key.classname.string == "TDirectory":
+        if key.classname.string in ("TDirectory", "TDirectoryFile"):
             return self._subdir(key)
 
         else:
@@ -679,7 +684,9 @@ class WritableDirectory(object):
             return readonlykey.get()
 
     def _subdir(self, key):
-        if key not in self._subdirs:
+        name = key.name.string
+
+        if name not in self._subdirs:
             raw_bytes = self._file.sink.read(
                 key.seek_location,
                 key.num_bytes + uproot.reading._directory_format_big.size + 18,
@@ -699,8 +706,6 @@ class WritableDirectory(object):
                 directory_header.parent_location
                 == self.file._cascading.fileheader.begin
             )
-
-            name = key.name.string
 
             if directory_header.data_num_bytes == 0:
                 directory_datakey = uproot._writing.Key(
@@ -756,7 +761,7 @@ class WritableDirectory(object):
                 )
                 self._file.sink.flush()
 
-                self._subdirs[key] = WritableDirectory(
+                self._subdirs[name] = WritableDirectory(
                     self._path + (name,), self._file, subdirectory
                 )
 
@@ -783,20 +788,152 @@ class WritableDirectory(object):
                     self._cascading.freesegments,
                 )
 
-                self._subdirs[key] = WritableDirectory(
+                self._subdirs[name] = WritableDirectory(
                     self._path + (name,), self._file, subdirectory
                 )
 
-        return self._subdirs[key]
+        return self._subdirs[name]
 
-    def mkdir(self, name):
-        return WritableDirectory(
-            self._path + (name,),
-            self._file,
-            self._cascading.add_directory(
-                self._file.sink,
-                name,
-                self._file.initial_directory_bytes,
-                self._file.uuid_function(),
-            ),
+    def mkdir(self, name, initial_directory_bytes=None):
+        stripped = name.strip("/")
+        try:
+            at = stripped.index("/")
+        except ValueError:
+            head, tail = stripped, None
+        else:
+            head, tail = stripped[:at], stripped[at + 1 :]
+
+        key = self._cascading.data.get_key(head)
+        if key is None:
+            if initial_directory_bytes is None:
+                initial_directory_bytes = self._file.initial_directory_bytes
+            directory = WritableDirectory(
+                self._path + (head,),
+                self._file,
+                self._cascading.add_directory(
+                    self._file.sink,
+                    head,
+                    initial_directory_bytes,
+                    self._file.uuid_function(),
+                ),
+            )
+
+        elif key.classname.string not in ("TDirectory", "TDirectoryFile"):
+            raise TypeError(
+                """cannot make a directory named {0} because a {1} already has that name
+in file {2} in directory {3}""".format(
+                    repr(name), key.classname.string, self.file_path, self.path
+                )
+            )
+
+        else:
+            directory = self._subdir(key)
+
+        if tail is None:
+            return directory
+
+        else:
+            return directory.mkdir(tail)
+
+    def copy_from(
+        self,
+        source,
+        filter_name=no_filter,
+        filter_classname=no_filter,
+        rename=no_rename,
+        require_matches=True,
+    ):
+        if isinstance(source, WritableDirectory):
+            raise NotImplementedError(
+                "copying from a WritableDirectory is not yet supported; open the "
+                "'source' as a ReadOnlyDirectory (with uproot.open)"
+            )
+        elif not isinstance(source, uproot.reading.ReadOnlyDirectory):
+            raise TypeError("'source' must be a TDirectory")
+
+        old_names = source.keys(
+            filter_name=filter_name, filter_classname=filter_classname, cycle=False
         )
+        if len(old_names) == 0:
+            if require_matches:
+                raise ValueError(
+                    """no objects found with names matching {0}
+in file {1} in directory {2}""".format(
+                        repr(filter_name), source.file_path, source.path
+                    )
+                )
+            else:
+                return
+
+        keys = [source.key(x) for x in old_names]
+
+        rename = uproot._util.regularize_rename(rename)
+        new_names = [rename(x) for x in old_names]
+
+        notifications = queue.Queue()
+        ranges = {}
+        for new_name, old_key in zip(new_names, keys):
+            if old_key.fClassName not in ("TDirectory", "TDirectoryFile"):
+                start = old_key.data_cursor.index
+                stop = start + old_key.data_compressed_bytes
+                ranges[start, stop] = new_name, old_key
+
+        source.file.source.chunks(list(ranges), notifications=notifications)
+
+        classversion_pairs = set()
+        for classname in set(x.fClassName for x in keys):
+            for streamer in source.file.streamers_named(classname):
+                batch = []
+                streamer._dependencies(source.file.streamers, batch)
+                classversion_pairs.update(batch)
+
+        streamers = [source.file.streamer_named(c, v) for c, v in classversion_pairs]
+
+        self.file._cascading.streamers.update_streamers(self.file.sink, streamers)
+
+        new_dirs = {}
+        for new_name, old_key in zip(new_names, keys):
+            classname = old_key.fClassName
+            path = new_name.strip("/").split("/")
+            if classname not in ("TDirectory", "TDirectoryFile"):
+                path = path[:-1]
+            path = "/".join(path)
+            if path not in new_dirs:
+                new_dirs[path] = 4
+            new_dirs[path] += (
+                uproot.reading._key_format_big.size
+                + 5
+                + len(old_key.fClassName)
+                + 5
+                + len(old_key.fName)
+                + 5
+                + len(old_key.fTitle)
+            )
+
+        for name, allocation in new_dirs.items():
+            self.mkdir(name, max(self._file.initial_directory_bytes, allocation))
+
+        for _ in range(len(ranges)):
+            chunk = notifications.get()
+            assert isinstance(chunk, uproot.source.chunk.Chunk)
+
+            raw_data = chunk.raw_data
+            if hasattr(raw_data, "tobytes"):
+                raw_data = raw_data.tobytes()
+            else:
+                raw_data = raw_data.tostring()
+
+            new_name, old_key = ranges[chunk.start, chunk.stop]
+            path = new_name.strip("/").split("/")
+            directory = self
+            for item in path[:-1]:
+                directory = directory[item]
+
+            directory._cascading.add_object(
+                self._file.sink,
+                old_key.fClassName,
+                path[-1],
+                old_key.fTitle,
+                raw_data,
+                old_key.data_uncompressed_bytes,
+            )

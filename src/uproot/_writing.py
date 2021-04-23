@@ -594,40 +594,44 @@ class FreeSegments(CascadeNode):
         assert end_of_record <= self._data.end
         return end_of_record == self._data.end
 
-    def allocate(self, num_bytes):
+    def allocate(self, num_bytes, dry_run=False):
         slices = self._data.slices
         for i, (start, stop) in enumerate(slices):
             if stop - start == num_bytes:
                 # This will reduce the num_bytes of the FreeSegments record,
                 # but the allocation can stay the same size.
-                self._data.slices = tuple(
-                    slices[j] for j in range(len(slices)) if i != j
-                )
+                if not dry_run:
+                    self._data.slices = tuple(
+                        slices[j] for j in range(len(slices)) if i != j
+                    )
                 return start
 
             elif stop - start > num_bytes:
                 # This will not change the num_bytes of the FreeSegments record.
-                self._data.slices = tuple(
-                    slices[j] if i != j else (start + num_bytes, stop)
-                    for j in range(len(slices))
-                )
+                if not dry_run:
+                    self._data.slices = tuple(
+                        slices[j] if i != j else (start + num_bytes, stop)
+                        for j in range(len(slices))
+                    )
                 return start
 
         if self.at_end:
             # The new object can take FreeSegments's spot; FreeSegments will
             # move to stay at the end.
             out = self._key.location
-            self._key.location = self._key.location + num_bytes
-            self._data.end = (
-                self._key.location + self._key.allocation + self._data.allocation
-            )
+            if not dry_run:
+                self._key.location = self._key.location + num_bytes
+                self._data.end = (
+                    self._key.location + self._key.allocation + self._data.allocation
+                )
             return out
 
         else:
             # FreeSegments is not changing size and not at the end; it can
             # stay where it is.
             out = self._data.end
-            self._data.end = self._data.end + num_bytes
+            if not dry_run:
+                self._data.end = self._data.end + num_bytes
             return out
 
     @staticmethod
@@ -860,7 +864,7 @@ class TListOfStreamers(CascadeNode):
     def freesegments(self):
         return self._freesegments
 
-    def update_streamers(self, sink, streamers):
+    def update_streamers(self, sink, streamers, flush=True):
         where = len(self._rawstreamers)
 
         for streamer in streamers:
@@ -886,8 +890,9 @@ class TListOfStreamers(CascadeNode):
 
         self.more_dependencies(*self._rawstreamers[where:])
 
-        self.write(sink)
-        sink.flush()
+        if flush:
+            self.write(sink)
+            sink.flush()
 
     def _reallocate(self, self_num_bytes):
         original_start = self._key.location
@@ -1348,7 +1353,73 @@ class Directory(CascadeNode):
 
         self._freesegments.release(original_start, original_stop)
 
-    def add_directory(self, sink, name, initial_directory_bytes, uuid):
+    def add_object(self, sink, classname, name, title, raw_data, uncompressed_bytes):
+        cycle = self._data.next_cycle(name)
+
+        strings_size = 0
+        strings_size += (1 if len(classname) < 255 else 5) + len(classname)
+        strings_size += (1 if len(name) < 255 else 5) + len(name)
+        strings_size += (1 if len(title) < 255 else 5) + len(title)
+
+        parent_location = self._key.location  # FIXME: is this correct?
+
+        location = None
+        if parent_location < uproot.const.kStartBigFile:
+            requested_bytes = (
+                uproot.reading._key_format_small.size + strings_size + len(raw_data)
+            )
+            location = self._freesegments.allocate(requested_bytes, dry_run=True)
+            position = location + uproot.reading._key_format_small.size
+            if location < uproot.const.kStartBigFile:
+                self._freesegments.allocate(requested_bytes, dry_run=False)
+            else:
+                location = None
+
+        if location is None:
+            requested_bytes = (
+                uproot.reading._key_format_big.size + strings_size + len(raw_data)
+            )
+            location = self._freesegments.allocate(requested_bytes, dry_run=False)
+            position = location + uproot.reading._key_format_big.size
+
+        writable_classname = String(position, classname)
+        position += writable_classname.num_bytes
+
+        writable_name = String(position, name)
+        position += writable_name.num_bytes
+
+        writable_title = String(position, title)
+        position += writable_title.num_bytes
+
+        key = Key(
+            location,
+            uncompressed_bytes,
+            len(raw_data),
+            writable_classname,
+            writable_name,
+            writable_title,
+            cycle,
+            parent_location,
+            location,
+        )
+
+        next_key = key.copy_to(self._data.next_location)
+        if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
+            self._reallocate_data(
+                int(math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8)))
+            )
+            next_key = key.copy_to(self._data.next_location)
+        self._data.add_key(next_key)
+
+        self._header.modified_on = datetime.datetime.now()
+
+        key.write(sink)
+        sink.write(location + key.num_bytes, raw_data)
+        self.write(sink)
+        sink.set_file_length(self._freesegments.fileheader.end)
+        sink.flush()
+
+    def add_directory(self, sink, name, initial_directory_bytes, uuid, flush=True):
         cycle = self._data.next_cycle(name)
 
         subdirectory_key = Key(
@@ -1424,11 +1495,11 @@ class Directory(CascadeNode):
 
         self._header.modified_on = datetime.datetime.now()
 
-        subdirectory.write(sink)
-        self.write(sink)
-
-        sink.set_file_length(self._freesegments.fileheader.end)
-        sink.flush()
+        if flush:
+            subdirectory.write(sink)
+            self.write(sink)
+            sink.set_file_length(self._freesegments.fileheader.end)
+            sink.flush()
 
         return subdirectory
 
