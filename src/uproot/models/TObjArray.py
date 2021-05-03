@@ -57,10 +57,10 @@ in file {1}""".format(
             )
             self._data.append(item)
 
-    def _serialize(self, out, header):
+    def _serialize(self, out, header, name):
         where = len(out)
         for x in self._bases:
-            x._serialize(out, True)
+            x._serialize(out, True, name)
         out.append(uproot.serialization.string(self._members["fName"]))
         out.append(
             _tobjarray_format1.pack(
@@ -68,7 +68,7 @@ in file {1}""".format(
             )
         )
         for item in self._data:
-            uproot.serialization._serialize_object_any(out, item)
+            uproot.serialization._serialize_object_any(out, item, name)
         if header:
             out.insert(
                 where,

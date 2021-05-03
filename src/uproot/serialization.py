@@ -38,9 +38,9 @@ def numbytes_version(num_bytes, version):
 _serialize_object_any_format1 = struct.Struct(">II")
 
 
-def _serialize_object_any(out, model):
+def _serialize_object_any(out, model, name):
     where = len(out)
-    model._serialize(out, True)
+    model._serialize(out, True, name)
 
     classname = model.classname.encode(errors="surrogateescape") + b"\x00"
     num_bytes = sum(len(x) for x in out[where:]) + len(classname) + 4
@@ -50,10 +50,10 @@ def _serialize_object_any(out, model):
     out.insert(where, _serialize_object_any_format1.pack(bcnt, tag) + classname)
 
 
-def serialize_object_any(model):
+def serialize_object_any(model, name=None):
     """
     FIXME: docstring
     """
     out = []
-    _serialize_object_any(out, model)
+    _serialize_object_any(out, model, name)
     return b"".join(out)

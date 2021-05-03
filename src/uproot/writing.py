@@ -6,6 +6,7 @@ FIXME: docstring
 
 from __future__ import absolute_import
 
+import itertools
 import os
 import uuid
 
@@ -19,6 +20,8 @@ import uproot._writing
 import uproot.compression
 import uproot.deserialization
 import uproot.exceptions
+import uproot.model
+import uproot.models.TObjString
 import uproot.sink.file
 from uproot._util import no_filter, no_rename
 
@@ -666,7 +669,7 @@ class WritableDirectory(object):
                 self._file.file_path,
                 self._file.uuid,
                 get_chunk,
-                self.file._cascading.tlist_of_streamers,
+                self._file._cascading.tlist_of_streamers,
             )
 
             raw_bytes = self._file.sink.read(
@@ -704,7 +707,7 @@ class WritableDirectory(object):
             assert directory_header.begin_location == key.seek_location
             assert (
                 directory_header.parent_location
-                == self.file._cascading.fileheader.begin
+                == self._file._cascading.fileheader.begin
             )
 
             if directory_header.data_num_bytes == 0:
@@ -721,7 +724,7 @@ class WritableDirectory(object):
                 )
 
                 requested_num_bytes = (
-                    directory_datakey.num_bytes + self.file._initial_directory_bytes
+                    directory_datakey.num_bytes + self._file._initial_directory_bytes
                 )
                 directory_datakey.location = self._cascading.freesegments.allocate(
                     requested_num_bytes
@@ -895,7 +898,7 @@ in file {1} in directory {2}""".format(
 
         streamers = [source.file.streamer_named(c, v) for c, v in classversion_pairs]
 
-        self.file._cascading.streamers.update_streamers(self.file.sink, streamers)
+        self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
         new_dirs = {}
         for new_name, old_key in zip(new_names, keys):
@@ -943,3 +946,90 @@ in file {1} in directory {2}""".format(
                 raw_data,
                 old_key.data_uncompressed_bytes,
             )
+
+    def __setitem__(self, where, what):
+        self.update({where: what})
+
+    def update(self, pairs=None, **more_pairs):
+        streamers = []
+
+        if pairs is not None:
+            if hasattr(pairs, "keys"):
+                all_pairs = itertools.chain(
+                    ((k, pairs[k]) for k in pairs.keys()), more_pairs.items()
+                )
+            else:
+                all_pairs = itertools.chain(pairs, more_pairs.items())
+        else:
+            all_pairs = more_pairs.items()
+
+        for k, v in all_pairs:
+            writable = to_writable(v)
+
+            for rawstreamer in writable.class_rawstreamers:
+                streamers.append(rawstreamer)
+
+            fullpath = k.strip("/").split("/")
+            path, name = fullpath[:-1], fullpath[-1]
+
+            raw_data = writable.serialize(name=name)
+
+            if hasattr(writable, "fTitle"):
+                title = writable.fTitle
+            elif writable.has_member("fTitle"):
+                title = writable.member("fTitle")
+            else:
+                title = ""
+
+            if len(path) != 0:
+                self.mkdir("/".join(path), self._file.initial_directory_bytes)
+
+            directory = self
+            for item in path:
+                directory = directory[item]
+
+            directory._cascading.add_object(
+                self._file.sink,
+                writable.classname,
+                name,
+                title,
+                raw_data,
+                len(raw_data),
+            )
+
+        self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
+
+
+def to_writable(obj):
+    """
+    FIXME: docstring
+    """
+    if isinstance(obj, uproot.model.Model):
+        if obj.writable:
+            return obj
+        else:
+            raise NotImplementedError(
+                "this ROOT type is not writable: " + obj.classname
+            )
+
+    elif uproot._util.isstr(obj):
+        return to_TObjString(obj)
+
+    else:
+        raise TypeError(
+            "unrecognized type cannot be written to a ROOT file: " + type(obj).__name__
+        )
+
+
+def to_TObjString(string):
+    """
+    FIXME: docstring
+    """
+    out = uproot.models.TObjString.Model_TObjString(str(string))
+    out._cursor = None
+    out._parent = None
+    out._members = {}
+    out._bases = (uproot.models.TObject.Model_TObject(),)
+    out._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
+    out._instance_version = 1
+    return out
