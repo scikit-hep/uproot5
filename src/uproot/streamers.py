@@ -436,10 +436,12 @@ class Model_TStreamerInfo(uproot.model.Model):
             chunk, cursor, context, file, self._file, self.concrete
         )
 
-    def _serialize(self, out, header):
+    def _serialize(self, out, header, name):
         where = len(out)
         out.append(self._serialization)
-        uproot.serialization._serialize_object_any(out, self._members["fElements"])
+        uproot.serialization._serialize_object_any(
+            out, self._members["fElements"], name
+        )
         if header:
             out.insert(
                 where,
@@ -576,7 +578,7 @@ class Model_TStreamerElement(uproot.model.Model):
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
 
-    def _serialize(self, out, header):
+    def _serialize(self, out, header, name):
         where = len(out)
         out.append(self._serialization)
         if header:

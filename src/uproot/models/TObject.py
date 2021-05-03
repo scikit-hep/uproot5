@@ -45,7 +45,7 @@ in file {1}""".format(
             cursor.skip(2)
         self._members["@fBits"] = int(self._members["@fBits"])
 
-    def _serialize(self, out, header):
+    def _serialize(self, out, header, name):
         # struct.pack(">hII", 1, 0, uproot.const.kNotDeleted)
         out.append(b"\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00")
 

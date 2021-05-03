@@ -807,7 +807,7 @@ class RawStreamerInfo(CascadeLeaf):
             type(self).__name__,
             self._location,
             self._serialization,
-            self._name,
+            repr(self._name),
             self._class_version,
         )
 
@@ -876,14 +876,16 @@ class TListOfStreamers(CascadeNode):
                     self._rawstreamers.append(
                         RawStreamerInfo(
                             self._key.location + self.num_bytes,
-                            uproot.serialization.serialize_object_any(streamer)
+                            uproot.serialization.serialize_object_any(
+                                streamer, streamer.name
+                            )
                             + b"\x00",
                             streamer.name,
                             streamer.class_version,
                         )
                     )
 
-                elif isinstance(streamer, uproot.streamers.RawStreamerInfo):
+                elif isinstance(streamer, uproot._writing.RawStreamerInfo):
                     self._rawstreamers.append(
                         streamer.copy_to(self._key.location + self.num_bytes)
                     )
