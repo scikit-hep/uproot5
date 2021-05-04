@@ -39,10 +39,14 @@ def _centers(edges):
 
 
 class CurveTypeError(Exception):
-    "Incorrect curve type for method"
+    """
+    Incorrect curve type for method.
+    """
 
     def __init__(self, msg):
-        "Incorrect curve type for method"
+        """
+        Incorrect curve type for method.
+        """
         super().__init__(self, msg)
 
 

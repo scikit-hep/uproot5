@@ -18,10 +18,14 @@ import uproot.behaviors.TGraphAsymmErrors
 
 
 class AxisBinError(Exception):
-    "Error high and low bin edges are not compatible"
+    """
+    Error high and low bin edges are not compatible.
+    """
 
     def __init__(self, msg):
-        "High and low bin edges are not compatible"
+        """
+        High and low bin edges are not compatible.
+        """
         super().__init__(self, msg)
 
 
