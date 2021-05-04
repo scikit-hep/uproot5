@@ -9,6 +9,7 @@ from __future__ import absolute_import
 import numpy
 
 import uproot
+import uproot.behaviors.TGraph
 
 # '@fUniqueID', '@fBits', 'fName', 'fTitle', 'fLineColor', 'fLineStyle', 'fLineWidth',
 # 'fFillColor', 'fFillStyle', 'fMarkerColor', 'fMarkerStyle', 'fMarkerSize', 'fNpoints',
@@ -94,6 +95,25 @@ class RooCurve(uproot.behaviors.TGraph.TGraph):
             )
         xvals, yvals = self.values()
         return numpy.interp(xvalues, xvals, yvals)
+
+    def interpolate_asymm_errors(self, xvalues):
+        """
+        Args:
+            xvalues (array_like): xvalues to interpolate at.
+
+        Returns:
+            up (array_like): Upper boundary of uncertainty band.
+            down (array_like): Lower boundary of uncertainty band.
+
+        Returns asymmetric y errors when RooCurve is interpolated at the given x values.
+        """
+        if self.curve_type != "ERRORS":
+            raise CurveTypeError(
+                "interpolate_errors can only be called on an error (closed) curve. "
+                "Try interpolate."
+            )
+        up, down = _parse_errs(xvalues, self)
+        return (up, down)
 
     def interpolate_errors(self, xvalues):
         """

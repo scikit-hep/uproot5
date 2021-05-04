@@ -9,6 +9,7 @@ from __future__ import absolute_import
 import numpy
 
 import uproot
+import uproot.behaviors.TGraphAsymmErrors
 
 # ['@fUniqueID', '@fBits', 'fName', 'fTitle', 'fLineColor', 'fLineStyle',
 #  'fLineWidth', 'fFillColor', 'fFillStyle', 'fMarkerColor', 'fMarkerStyle',
@@ -21,7 +22,7 @@ class AxisBinError(Exception):
 
     def __init__(self, msg):
         "High and low bin edges are not compatible"
-        super()._init__(self, msg)
+        super().__init__(self, msg)
 
 
 class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
@@ -60,7 +61,7 @@ class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
         bin_centers, values = self.values()
         bin_edges_low = bin_centers - self.errors(which="low", axis="x")
         bin_edges_high = bin_centers + self.errors(which="high", axis="x")
-        if numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
+        if not numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
             raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
         bin_edges = numpy.append(bin_edges_low, [bin_edges_high[-1]])
         if dd:
@@ -76,15 +77,13 @@ class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
         bin_centers, values = self.values()
         bin_edges_low = bin_centers - self.errors(which="low", axis="x")
         bin_edges_high = bin_centers + self.errors(which="high", axis="x")
-        if numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
-            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
         # Boost histogram only supports symmetric errors
+        if not numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
+            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
         errors = self.errors(which="mean", axis="y")
         variances = numpy.square(errors)
 
         # Now make the Boost histogram
-        if bin_edges_low[1:] != bin_edges_high[:-1]:
-            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
         bin_edges = numpy.append(bin_edges_low, [bin_edges_high[-1]])
         axis = boost_histogram.axis.Variable(
             bin_edges,
