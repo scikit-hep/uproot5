@@ -49,12 +49,33 @@ in file {1}""".format(
         self._members["fSize"], self._members["fLowerBound"] = cursor.fields(
             chunk, _tobjarray_format1, context
         )
+
         self._data = []
         for _ in uproot._util.range(self._members["fSize"]):
             item = uproot.deserialization.read_object_any(
                 chunk, cursor, context, file, self._file, self._parent
             )
             self._data.append(item)
+
+    def _serialize(self, out, header, name):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, name)
+        out.append(uproot.serialization.string(self._members["fName"]))
+        out.append(
+            _tobjarray_format1.pack(
+                self._members["fSize"], self._members["fLowerBound"]
+            )
+        )
+        for item in self._data:
+            uproot.serialization._serialize_object_any(out, item, name)
+        if header:
+            out.insert(
+                where,
+                uproot.serialization.numbytes_version(
+                    sum(len(x) for x in out[where:]), self._instance_version
+                ),
+            )
 
     def __repr__(self):
         if self.class_version is None:

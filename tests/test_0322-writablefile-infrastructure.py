@@ -21,8 +21,8 @@ def test_subdirs(tmp_path):
         subdir2 = root_directory.mkdir("yikes")
 
     assert uproot.open(filename).classnames() == {
-        "wowzers": "TDirectory",
-        "yikes": "TDirectory",
+        "wowzers;1": "TDirectory",
+        "yikes;1": "TDirectory",
     }
 
     f = ROOT.TFile(filename, "update")
@@ -37,11 +37,11 @@ def test_subdirs(tmp_path):
     f.Close()
 
     assert uproot.open(filename).classnames() == {
-        "wowzers": "TDirectory",
-        "yikes": "TDirectory",
-        "hello": "TObjString",
-        "wowzers/there": "TObjString",
-        "yikes/you": "TObjString",
+        "wowzers;1": "TDirectory",
+        "yikes;1": "TDirectory",
+        "hello;1": "TObjString",
+        "wowzers/there;1": "TObjString",
+        "yikes/you;1": "TObjString",
     }
 
     g = ROOT.TFile(filename, "update")
@@ -50,12 +50,12 @@ def test_subdirs(tmp_path):
     g.Close()
 
     assert uproot.open(filename).classnames() == {
-        "wowzers": "TDirectory",
-        "yikes": "TDirectory",
-        "hello": "TObjString",
-        "one_more": "TObjString",
-        "wowzers/there": "TObjString",
-        "yikes/you": "TObjString",
+        "wowzers;1": "TDirectory",
+        "yikes;1": "TDirectory",
+        "hello;1": "TObjString",
+        "one_more;1": "TObjString",
+        "wowzers/there;1": "TObjString",
+        "yikes/you;1": "TObjString",
     }
 
 
@@ -67,8 +67,8 @@ def test_subsubdir(tmp_path):
         subdir2 = subdir1.mkdir("yikes")
 
     assert uproot.open(filename).classnames() == {
-        "wowzers": "TDirectory",
-        "wowzers/yikes": "TDirectory",
+        "wowzers;1": "TDirectory",
+        "wowzers/yikes;1": "TDirectory",
     }
 
     f = ROOT.TFile(filename, "update")
@@ -83,11 +83,11 @@ def test_subsubdir(tmp_path):
     f.Close()
 
     assert uproot.open(filename).classnames() == {
-        "wowzers": "TDirectory",
-        "wowzers/yikes": "TDirectory",
-        "hello": "TObjString",
-        "wowzers/there": "TObjString",
-        "wowzers/yikes/you": "TObjString",
+        "wowzers;1": "TDirectory",
+        "wowzers/yikes;1": "TDirectory",
+        "hello;1": "TObjString",
+        "wowzers/there;1": "TObjString",
+        "wowzers/yikes/you;1": "TObjString",
     }
 
     g = ROOT.TFile(filename, "update")
@@ -97,12 +97,12 @@ def test_subsubdir(tmp_path):
     g.Close()
 
     assert uproot.open(filename).classnames() == {
-        "wowzers": "TDirectory",
-        "wowzers/yikes": "TDirectory",
-        "hello": "TObjString",
-        "wowzers/there": "TObjString",
-        "wowzers/yikes/you": "TObjString",
-        "wowzers/yikes/one_more": "TObjString",
+        "wowzers;1": "TDirectory",
+        "wowzers/yikes;1": "TDirectory",
+        "hello;1": "TObjString",
+        "wowzers/there;1": "TObjString",
+        "wowzers/yikes/you;1": "TObjString",
+        "wowzers/yikes/one_more;1": "TObjString",
     }
 
 

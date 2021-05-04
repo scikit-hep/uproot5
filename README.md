@@ -138,6 +138,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     <td align="center"><a href="https://giordonstark.com/"><img src="https://avatars0.githubusercontent.com/u/761483?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Giordon Stark</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=kratsg" title="Code">💻</a></td>
     <td align="center"><a href="https://roneil.xyz"><img src="https://avatars.githubusercontent.com/u/56410978?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Ryunosuke O'Neil</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=ryuwd" title="Code">💻</a></td>
     <td align="center"><a href="https://christopherappold.netlify.app/index.html"><img src="https://avatars.githubusercontent.com/u/28101201?v=4?s=100" width="100px;" alt=""/><br /><sub><b>ChristopheRappold</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=ChristopheRappold" title="Documentation">📖</a></td>
+    <td align="center"><a href="http://cozzyd.net"><img src="https://avatars.githubusercontent.com/u/9206569?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Cosmin Deaconu</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=cozzyd" title="Tests">⚠️</a> <a href="https://github.com/scikit-hep/uproot4/commits?author=cozzyd" title="Code">💻</a></td>
   </tr>
 </table>
 

@@ -42,8 +42,10 @@ def open(
             rather than a file. Path objects are interpreted strictly as
             filesystem paths or URLs.
             Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``,
-            ``"http://where/what.root"``, ``"rel/file.root:tdirectory/ttree"``,
-            ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+            ``"http://where/what.root"``,
+            ``"https://username:password@where/secure.root"``,
+            ``"rel/file.root:tdirectory/ttree"``, ``Path("rel:/file.root")``,
+            ``Path("/abs/path:stuff.root")``
         object_cache (None, MutableMapping, or int): Cache of objects drawn
             from ROOT directories (e.g histograms, TTrees, other directories);
             if None, do not use a cache; if an int, create a new cache of this
@@ -113,6 +115,12 @@ def open(
       array from ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
+
+    For remote ROOT files served over HTTP(S), basic authentication is supported.
+    In this case, the credentials may be provided part of the URL in, as in
+    ``https://username:password@example.org/secure/protected.root.`` Note that
+    for security reasons, it is recommended basic authentication only be used
+    for HTTPS resources.
     """
     if isinstance(path, dict) and len(path) == 1:
         ((file_path, object_path),) = path.items()
@@ -208,8 +216,13 @@ class CommonFileMethods(object):
     @property
     def options(self):
         """
-        The dict of ``options`` originally passed to the
-        :doc:`uproot.reading.ReadOnlyFile` constructor.
+        The dict of ``options`` originally passed to the file constructor.
+
+        If this is a :doc:`uproot.writing.WritableFile`, the ``options`` are a copy
+        of the current state of the options; change the properties (e.g.
+        ``initial_directory_bytes``, ``uuid_function``) directly on the file object
+        to make a lasting change. Modifying the copied dict does not change the
+        file's future behavior.
         """
         return self._options
 
@@ -970,11 +983,30 @@ in file {1}""".format(
         :ref:`uproot.reading.ReadOnlyFile.streamer_named`.
         """
         classname = uproot.model.classname_regularize(classname)
-        streamer = self.streamer_named(classname, version=version)
-        out = []
-        if streamer is not None:
-            streamer._dependencies(self.streamers, out)
-        return out[::-1]
+
+        if version == "all":
+            streamers = self.streamers_named(classname)
+            streamers.sort(key=lambda x: -x.class_version)
+            out = []
+            for streamer in streamers:
+                batch = []
+                streamer._dependencies(self.streamers, batch)
+                for x in batch[::-1]:
+                    if x not in out:
+                        for i in range(-1, -len(out) - 1, -1):
+                            if out[i][0] == x[0]:
+                                out.insert(i + 1, x)
+                                break
+                        else:
+                            out.append(x)
+            return out
+
+        else:
+            streamer = self.streamer_named(classname, version=version)
+            out = []
+            if streamer is not None:
+                streamer._dependencies(self.streamers, out)
+            return out[::-1]
 
     @property
     def custom_classes(self):
@@ -1428,6 +1460,14 @@ class ReadOnlyDirectory(Mapping):
         return "/".join(("",) + self._path + ("",)).replace("//", "/")
 
     @property
+    def file_path(self):
+        """
+        The original path to the file (converted to ``str`` if it was originally
+        a ``pathlib.Path``).
+        """
+        return self._file.file_path
+
+    @property
     def file(self):
         """
         The :doc:`uproot.reading.ReadOnlyFile` in which this ``TDirectory``
@@ -1601,7 +1641,7 @@ class ReadOnlyDirectory(Mapping):
     def classnames(
         self,
         recursive=True,
-        cycle=False,
+        cycle=True,
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
@@ -1813,6 +1853,21 @@ class ReadOnlyDirectory(Mapping):
 
     def __iter__(self):
         return self.iterkeys()  # noqa: B301 (not a dict)
+
+    def title_of(self, where):
+        """
+        Returns the title of the object selected by ``where``.
+
+        The syntax for ``where`` is the same as in square brakets, namely that
+        cycle numbers can be specified after semicolons (``;``) and nested
+        ``TDirectories`` can be specified with slashes (``/``).
+
+        Unlike the square bracket syntax, this method cannot descend into the
+        ``TBranches`` of a ``TTree``.
+
+        Note that this does not read any data from the file.
+        """
+        return self.key(where).title()
 
     def classname_of(self, where, encoded=False, version=None):
         """
@@ -2224,13 +2279,19 @@ class ReadOnlyKey(object):
 
     def name(self, cycle=False):
         """
-        The name of this ``TKey``, with semicolon (``;``) and cycle number if
-        ``cycle`` is True.
+        The name of the object pointed to by this ``TKey``, with semicolon (``;``)
+        and cycle number if ``cycle`` is True.
         """
         if cycle:
             return "{0};{1}".format(self.fName, self.fCycle)
         else:
             return self.fName
+
+    def title(self):
+        """
+        The title of the object pointed to by this ``TKey``.
+        """
+        return self.fTitle
 
     def classname(self, encoded=False, version=None):
         """

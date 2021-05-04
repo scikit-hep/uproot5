@@ -355,6 +355,8 @@ class Model(object):
     """
 
     class_streamer = None
+    class_rawstreamers = ()
+    writable = False
     behaviors = ()
 
     def __repr__(self):
@@ -949,6 +951,25 @@ class Model(object):
         :ref:`uproot.model.Model.postprocess`.
         """
         pass
+
+    def _serialize(self, out, header, name):
+        raise NotImplementedError(
+            "serialize method not implemented on {0}".format(type(self).__name__)
+        )
+
+    def serialize(self, name=None):
+        """
+        Serialize a object (from num_bytes and version onward) for writing into
+        an output ROOT file.
+
+        If a ``name`` is given, override the object's current name.
+
+        This method has not been implemented on all classes (raises
+        NotImplementedError).
+        """
+        out = []
+        self._serialize(out, True, name)
+        return b"".join(out)
 
 
 class VersionedModel(Model):

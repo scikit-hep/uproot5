@@ -401,6 +401,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
+        self._executor.shutdown()
         self._resource.__exit__(exception_type, exception_value, traceback)
 
     @property

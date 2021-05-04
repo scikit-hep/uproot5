@@ -302,6 +302,16 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "cozzyd",
+      "name": "Cosmin Deaconu",
+      "avatar_url": "https://avatars.githubusercontent.com/u/9206569?v=4",
+      "profile": "http://cozzyd.net",
+      "contributions": [
+        "test",
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
