@@ -354,6 +354,10 @@ class Model(object):
     :ref:`uproot.model.Model.bases`.
     """
 
+    base_names_versions = []
+    member_names = []
+    class_flags = {}
+    class_code = None
     class_streamer = None
     class_rawstreamers = ()
     writable = False
@@ -997,6 +1001,8 @@ class VersionedModel(Model):
                 "class_flags": self.class_flags,
                 "class_code": self.class_code,
                 "class_streamer": self.class_streamer,
+                "class_rawstreamers": self.class_rawstreamers,
+                "writable": self.writable,
                 "behaviors": self.behaviors,
             },
             dict(self.__dict__),
