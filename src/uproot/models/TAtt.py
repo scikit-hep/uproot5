@@ -406,6 +406,310 @@ class Model_TAttMarker(uproot.model.DispatchByVersion):
     known_versions = {2: Model_TAttMarker_v2}
 
 
+class Model_TAttAxis_v4(uproot.model.VersionedModel):
+    """
+    A :doc:`uproot.model.VersionedModel` for ``TAttAxis`` version 4.
+    """
+
+    def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                "memberwise serialization of {0}\nin file {1}".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
+        (
+            self._members["fNdivisions"],
+            self._members["fAxisColor"],
+            self._members["fLabelColor"],
+            self._members["fLabelFont"],
+            self._members["fLabelOffset"],
+            self._members["fLabelSize"],
+            self._members["fTickLength"],
+            self._members["fTitleOffset"],
+            self._members["fTitleSize"],
+            self._members["fTitleColor"],
+            self._members["fTitleFont"],
+        ) = cursor.fields(chunk, self._format0, context)
+
+    def read_member_n(self, chunk, cursor, context, file, member_index):
+        if member_index == 0:
+            self._members["fNdivisions"] = cursor.field(
+                chunk, self._format_memberwise0, context
+            )
+        if member_index == 1:
+            self._members["fAxisColor"] = cursor.field(
+                chunk, self._format_memberwise1, context
+            )
+        if member_index == 2:
+            self._members["fLabelColor"] = cursor.field(
+                chunk, self._format_memberwise2, context
+            )
+        if member_index == 3:
+            self._members["fLabelFont"] = cursor.field(
+                chunk, self._format_memberwise3, context
+            )
+        if member_index == 4:
+            self._members["fLabelOffset"] = cursor.field(
+                chunk, self._format_memberwise4, context
+            )
+        if member_index == 5:
+            self._members["fLabelSize"] = cursor.field(
+                chunk, self._format_memberwise5, context
+            )
+        if member_index == 6:
+            self._members["fTickLength"] = cursor.field(
+                chunk, self._format_memberwise6, context
+            )
+        if member_index == 7:
+            self._members["fTitleOffset"] = cursor.field(
+                chunk, self._format_memberwise7, context
+            )
+        if member_index == 8:
+            self._members["fTitleSize"] = cursor.field(
+                chunk, self._format_memberwise8, context
+            )
+        if member_index == 9:
+            self._members["fTitleColor"] = cursor.field(
+                chunk, self._format_memberwise9, context
+            )
+        if member_index == 10:
+            self._members["fTitleFont"] = cursor.field(
+                chunk, self._format_memberwise10, context
+            )
+
+    @classmethod
+    def strided_interpretation(
+        cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
+    ):
+        if cls in breadcrumbs:
+            raise uproot.interpretation.objects.CannotBeStrided(
+                "classes that can contain members of the same type cannot be strided because the depth of instances is unbounded"
+            )
+        breadcrumbs = breadcrumbs + (cls,)
+        members = []
+        if header:
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("@instance_version", numpy.dtype(">u2")))
+        members.append(("fNdivisions", numpy.dtype(">i4")))
+        members.append(("fAxisColor", numpy.dtype(">i2")))
+        members.append(("fLabelColor", numpy.dtype(">i2")))
+        members.append(("fLabelFont", numpy.dtype(">i2")))
+        members.append(("fLabelOffset", numpy.dtype(">f4")))
+        members.append(("fLabelSize", numpy.dtype(">f4")))
+        members.append(("fTickLength", numpy.dtype(">f4")))
+        members.append(("fTitleOffset", numpy.dtype(">f4")))
+        members.append(("fTitleSize", numpy.dtype(">f4")))
+        members.append(("fTitleColor", numpy.dtype(">i2")))
+        members.append(("fTitleFont", numpy.dtype(">i2")))
+        return uproot.interpretation.objects.AsStridedObjects(
+            cls, members, original=original
+        )
+
+    @classmethod
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
+        from awkward.forms import RecordForm
+
+        if cls in breadcrumbs:
+            raise uproot.interpretation.objects.CannotBeAwkward(
+                "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
+            )
+        breadcrumbs = breadcrumbs + (cls,)
+        contents = {}
+        if header:
+            contents["@num_bytes"] = uproot._util.awkward_form(
+                numpy.dtype("u4"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
+            )
+            contents["@instance_version"] = uproot._util.awkward_form(
+                numpy.dtype("u2"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
+            )
+        contents["fNdivisions"] = uproot._util.awkward_form(
+            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fAxisColor"] = uproot._util.awkward_form(
+            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fLabelColor"] = uproot._util.awkward_form(
+            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fLabelFont"] = uproot._util.awkward_form(
+            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fLabelOffset"] = uproot._util.awkward_form(
+            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fLabelSize"] = uproot._util.awkward_form(
+            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fTickLength"] = uproot._util.awkward_form(
+            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fTitleOffset"] = uproot._util.awkward_form(
+            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fTitleSize"] = uproot._util.awkward_form(
+            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fTitleColor"] = uproot._util.awkward_form(
+            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        contents["fTitleFont"] = uproot._util.awkward_form(
+            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+        )
+        return RecordForm(contents, parameters={"__record__": "TAttAxis"})
+
+    _format0 = struct.Struct(">ihhhfffffhh")
+    _format_memberwise0 = struct.Struct(">i")
+    _format_memberwise1 = struct.Struct(">h")
+    _format_memberwise2 = struct.Struct(">h")
+    _format_memberwise3 = struct.Struct(">h")
+    _format_memberwise4 = struct.Struct(">f")
+    _format_memberwise5 = struct.Struct(">f")
+    _format_memberwise6 = struct.Struct(">f")
+    _format_memberwise7 = struct.Struct(">f")
+    _format_memberwise8 = struct.Struct(">f")
+    _format_memberwise9 = struct.Struct(">h")
+    _format_memberwise10 = struct.Struct(">h")
+    base_names_versions = []
+    member_names = [
+        "fNdivisions",
+        "fAxisColor",
+        "fLabelColor",
+        "fLabelFont",
+        "fLabelOffset",
+        "fLabelSize",
+        "fTickLength",
+        "fTitleOffset",
+        "fTitleSize",
+        "fTitleColor",
+        "fTitleFont",
+    ]
+    class_flags = {}
+
+    writable = True
+
+    def _serialize(self, out, header, name):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, name)
+        raise NotImplementedError("FIXME")
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 4
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
+
+class Model_TAttAxis(uproot.model.DispatchByVersion):
+    """
+    A :doc:`uproot.model.DispatchByVersion` for ``TAttAxis``.
+    """
+
+    known_versions = {4: Model_TAttAxis_v4}
+
+
+class Model_TAtt3D_v1(uproot.model.VersionedModel):
+    """
+    A :doc:`uproot.model.VersionedModel` for ``TAtt3D`` version 1.
+    """
+
+    def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                "memberwise serialization of {0}\nin file {1}".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
+
+    def read_member_n(self, chunk, cursor, context, file, member_index):
+        pass
+
+    @classmethod
+    def strided_interpretation(
+        cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
+    ):
+        if cls in breadcrumbs:
+            raise uproot.interpretation.objects.CannotBeStrided(
+                "classes that can contain members of the same type cannot be strided because the depth of instances is unbounded"
+            )
+        breadcrumbs = breadcrumbs + (cls,)
+        members = []
+        if header:
+            members.append(("@num_bytes", numpy.dtype(">u4")))
+            members.append(("@instance_version", numpy.dtype(">u2")))
+        return uproot.interpretation.objects.AsStridedObjects(
+            cls, members, original=original
+        )
+
+    @classmethod
+    def awkward_form(
+        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
+    ):
+        from awkward.forms import RecordForm
+
+        if cls in breadcrumbs:
+            raise uproot.interpretation.objects.CannotBeAwkward(
+                "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
+            )
+        breadcrumbs = breadcrumbs + (cls,)
+        contents = {}
+        if header:
+            contents["@num_bytes"] = uproot._util.awkward_form(
+                numpy.dtype("u4"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
+            )
+            contents["@instance_version"] = uproot._util.awkward_form(
+                numpy.dtype("u2"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
+            )
+        return RecordForm(contents, parameters={"__record__": "TAtt3D"})
+
+    base_names_versions = []
+    member_names = []
+    class_flags = {}
+
+    writable = True
+
+    def _serialize(self, out, header, name):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, name)
+        raise NotImplementedError("FIXME")
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 1
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
+
+class Model_TAtt3D(uproot.model.DispatchByVersion):
+    """
+    A :doc:`uproot.model.DispatchByVersion` for ``TAtt3D``.
+    """
+
+    known_versions = {1: Model_TAtt3D_v1}
+
+
 uproot.classes["TAttLine"] = Model_TAttLine
 uproot.classes["TAttFill"] = Model_TAttFill
 uproot.classes["TAttMarker"] = Model_TAttMarker
+uproot.classes["TAttAxis"] = Model_TAttAxis
+uproot.classes["TAtt3D"] = Model_TAtt3D
