@@ -161,7 +161,7 @@ def open(
 
 open.defaults = {
     "file_handler": uproot.source.file.MemmapSource,
-    "xrootd_handler": uproot.source.xrootd.MultithreadedXRootDSource,
+    "xrootd_handler": uproot.source.xrootd.XRootDSource,
     "http_handler": uproot.source.http.HTTPSource,
     "object_handler": uproot.source.object.ObjectSource,
     "timeout": 30,
@@ -171,6 +171,9 @@ open.defaults = {
     "begin_chunk_size": 403,  # the smallest a ROOT file can be
     "minimal_ttree_metadata": True,
 }
+# See https://github.com/scikit-hep/uproot4/issues/294
+if uproot.extras.older_xrootd("5.2.0"):
+    open.defaults["xrootd_handler"] = uproot.source.xrootd.MultithreadedXRootDSource
 
 
 must_be_attached = [

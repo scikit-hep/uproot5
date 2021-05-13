@@ -10,6 +10,9 @@ error messages containing instructions on how to install the library.
 
 from __future__ import absolute_import
 
+import atexit
+import pkg_resources
+from distutils.version import LooseVersion
 import os
 
 
@@ -74,31 +77,42 @@ def XRootD_client():
             """cmake; setting PYTHONPATH and LD_LIBRARY_PATH appropriately)."""
         )
 
-    import atexit
+    if older_xrootd("5.1.0"):
+        # This is registered after calling "import XRootD.client" so it is ran
+        # before XRootD.client.finalize.finalize()
+        @atexit.register
+        def cleanup_open_files():
+            """Clean up any open xrootd file objects at exit
 
-    # TODO: When fixed this should only be used for buggy XRootD versions
-    # This is registered after calling "import XRootD.client" so it is ran
-    # before XRootD.client.finalize.finalize()
-    @atexit.register
-    def cleanup_open_files():
-        """Clean up any open xrootd file objects at exit
+            Required to avoid deadlocks from XRootD, for details see:
+            * https://github.com/scikit-hep/uproot/issues/504
+            * https://github.com/xrootd/xrootd/pull/1260
+            """
+            import gc
 
-        Required to avoid deadlocks from XRootD, for details see:
-        * https://github.com/scikit-hep/uproot/issues/504
-        * https://github.com/xrootd/xrootd/pull/1260
-        """
-        import gc
-
-        for obj in gc.get_objects():
-            try:
-                isopen = isinstance(obj, XRootD.client.file.File) and obj.is_open()
-            except ReferenceError:
-                pass
-            else:
-                if isopen:
-                    obj.close()
+            for obj in gc.get_objects():
+                try:
+                    isopen = isinstance(obj, XRootD.client.file.File) and obj.is_open()
+                except ReferenceError:
+                    pass
+                else:
+                    if isopen:
+                        obj.close()
 
     return XRootD.client
+
+
+def older_xrootd(min_version):
+    """
+    Check if the installed XRootD bindings are newer than a given version
+    without importing. Defaults to False if XRootD is not installed.
+    """
+    try:
+        dist = pkg_resources.get_distribution("XRootD")
+    except pkg_resources.DistributionNotFound:
+        return False
+    else:
+        return LooseVersion(dist.version) < LooseVersion(min_version)
 
 
 def lzma():
