@@ -11,9 +11,10 @@ error messages containing instructions on how to install the library.
 from __future__ import absolute_import
 
 import atexit
-import pkg_resources
-from distutils.version import LooseVersion
 import os
+from distutils.version import LooseVersion
+
+import pkg_resources
 
 
 def awkward():
