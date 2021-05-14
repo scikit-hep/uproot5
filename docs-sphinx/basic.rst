@@ -804,7 +804,7 @@ The interface to :doc:`uproot.behaviors.TBranch.lazy` is like :doc:`uproot.behav
 
 .. code-block:: python
 
-    >>> array = events.lazy(["dir1/*.root:events", "dir2/*.root:events"])
+    >>> array = uproot.lazy(["dir1/*.root:events", "dir2/*.root:events"])
     >>> array
     <Array [{Type: 'GT', Run: 148031, ... M: 96.7}] type='23040 * {"Type": string, "R...'>
 
@@ -816,9 +816,11 @@ The fact that the data are being loaded on demand is (intentionally) hidden; one
 
 .. code-block:: python
 
+    >>> cache = uproot.LRUArrayCache("1 GB")
     >>> array = uproot.lazy("https://scikit-hep.org/uproot3/examples/Zmumu.root:events",
-    ...                      step_size=100)
-    >>> array.cache
+    ...                      step_size=100,
+    ...                      array_cache=cache)
+    >>> cache
     <LRUArrayCache (0/100000000 bytes full) at 0x7faf787abd00>
 
 If we then ask for a single element from a single field, it loads one TBranch-batch. Since we specified the ``step_size=100`` (much too small for a real case; the default is ``"100 MB"``), this TBranch-bath is 100 entries, or 800 bytes.
@@ -827,7 +829,7 @@ If we then ask for a single element from a single field, it loads one TBranch-ba
 
     >>> array["px1", 0]
     -41.1952876442
-    >>> array.cache
+    >>> cache
     <LRUArrayCache (800/100000000 bytes full) at 0x7faf787abd00>
 
 Requesting another element from the same TBranch-batch doesn't load anything else. The whole batch is already in memory.
@@ -836,7 +838,7 @@ Requesting another element from the same TBranch-batch doesn't load anything els
 
     >>> array["px1", 1]
     35.1180497674
-    >>> array.cache
+    >>> cache
     <LRUArrayCache (800/100000000 bytes full) at 0x7faf787abd00>
 
 Requesting an element from the next TBranch-batch loads the next batch.
@@ -845,7 +847,7 @@ Requesting an element from the next TBranch-batch loads the next batch.
 
     >>> array["px1", 100]
     27.3430272161
-    >>> array.cache
+    >>> cache
     <LRUArrayCache (1600/100000000 bytes full) at 0x7faf787abd00>
 
 Requesting a different TBranch also loads a batch.
@@ -854,7 +856,7 @@ Requesting a different TBranch also loads a batch.
 
     >>> array["py1", 100]
     11.351229626
-    >>> array.cache
+    >>> cache
     <LRUArrayCache (2400/100000000 bytes full) at 0x7faf787abd00>
 
 Performing a calculation on these two fields, ``array.px1`` and ``array.py1``, loads all batches for these two TBranches. Derived quantities, such as the result of the square root operation, are normal arrays (not lazy).
@@ -864,7 +866,7 @@ Performing a calculation on these two fields, ``array.px1`` and ``array.py1``, l
     >>> import numpy as np
     >>> np.sqrt(array.px1**2 + array.py1**2)
     <Array [44.7, 38.8, 38.8, ... 32.4, 32.4, 32.5] type='2304 * float64'>
-    >>> array.cache
+    >>> cache
     <LRUArrayCache (36864/100000000 bytes full) at 0x7faf787abd00>
 
 Although lazy arrays combine the convenience of :doc:`uproot.behaviors.TBranch.concatenate` with the gradual loading of :doc:`uproot.behaviors.TBranch.iterate`, it is not always the most efficient way to process data. Derived quantities are fully resident in memory, and most data analyses compute more quantities than they read.
