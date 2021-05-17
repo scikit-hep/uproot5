@@ -13,6 +13,9 @@ import numpy
 import uproot
 import uproot._util
 import uproot._writing
+import uproot.behaviors.TGraph
+import uproot.behaviors.TGraphAsymmErrors
+import uproot.behaviors.TGraphErrors
 import uproot.deserialization
 import uproot.model
 import uproot.models.TH
@@ -26,7 +29,7 @@ _rawstreamer_TGraph_v4 = uproot._writing.RawStreamerInfo(
 )
 
 
-class Model_TGraph_v4(uproot.model.VersionedModel):
+class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TGraph`` version 4.
     """
@@ -377,7 +380,9 @@ class Model_TGraph(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TGraph_v4}
 
 
-class Model_TGraphErrors_v3(uproot.model.VersionedModel):
+class Model_TGraphErrors_v3(
+    uproot.behaviors.TGraphErrors.TGraphErrors, uproot.model.VersionedModel
+):
     """
     A :doc:`uproot.model.VersionedModel` for ``TGraphErrors`` version 3.
     """
@@ -573,7 +578,9 @@ class Model_TGraphErrors(uproot.model.DispatchByVersion):
     known_versions = {3: Model_TGraphErrors_v3}
 
 
-class Model_TGraphAsymmErrors_v3(uproot.model.VersionedModel):
+class Model_TGraphAsymmErrors_v3(
+    uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors, uproot.model.VersionedModel
+):
     """
     A :doc:`uproot.model.VersionedModel` for ``TGraphAsymmErrors`` version 3.
     """
