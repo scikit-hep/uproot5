@@ -13,6 +13,13 @@ import numpy
 import uproot
 import uproot._util
 import uproot._writing
+import uproot.behaviors.TAxis
+import uproot.behaviors.TH1
+import uproot.behaviors.TH2
+import uproot.behaviors.TH3
+import uproot.behaviors.TProfile
+import uproot.behaviors.TProfile2D
+import uproot.behaviors.TProfile3D
 import uproot.deserialization
 import uproot.model
 import uproot.serialization
@@ -139,7 +146,7 @@ _rawstreamer_TH3D_v4 = uproot._writing.RawStreamerInfo(
 )
 
 
-class Model_TAxis_v10(uproot.model.VersionedModel):
+class Model_TAxis_v10(uproot.behaviors.TAxis.TAxis, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TAxis`` version 10.
     """
@@ -1389,7 +1396,7 @@ class Model_TH3(uproot.model.DispatchByVersion):
     known_versions = {6: Model_TH3_v6}
 
 
-class Model_TH1C_v3(uproot.model.VersionedModel):
+class Model_TH1C_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH1C`` version 3.
     """
@@ -1564,7 +1571,7 @@ class Model_TH1C(uproot.model.DispatchByVersion):
     known_versions = {3: Model_TH1C_v3}
 
 
-class Model_TH1D_v3(uproot.model.VersionedModel):
+class Model_TH1D_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH1D`` version 3.
     """
@@ -1734,7 +1741,7 @@ class Model_TH1D(uproot.model.DispatchByVersion):
     known_versions = {3: Model_TH1D_v3}
 
 
-class Model_TH1F_v3(uproot.model.VersionedModel):
+class Model_TH1F_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH1F`` version 3.
     """
@@ -1904,7 +1911,7 @@ class Model_TH1F(uproot.model.DispatchByVersion):
     known_versions = {3: Model_TH1F_v3}
 
 
-class Model_TH1I_v3(uproot.model.VersionedModel):
+class Model_TH1I_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH1I`` version 3.
     """
@@ -2079,7 +2086,7 @@ class Model_TH1I(uproot.model.DispatchByVersion):
     known_versions = {3: Model_TH1I_v3}
 
 
-class Model_TH1S_v3(uproot.model.VersionedModel):
+class Model_TH1S_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH1S`` version 3.
     """
@@ -2254,7 +2261,7 @@ class Model_TH1S(uproot.model.DispatchByVersion):
     known_versions = {3: Model_TH1S_v3}
 
 
-class Model_TH2C_v4(uproot.model.VersionedModel):
+class Model_TH2C_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH2C`` version 4.
     """
@@ -2430,7 +2437,7 @@ class Model_TH2C(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH2C_v4}
 
 
-class Model_TH2D_v4(uproot.model.VersionedModel):
+class Model_TH2D_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH2D`` version 4.
     """
@@ -2601,7 +2608,7 @@ class Model_TH2D(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH2D_v4}
 
 
-class Model_TH2F_v4(uproot.model.VersionedModel):
+class Model_TH2F_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH2F`` version 4.
     """
@@ -2777,7 +2784,7 @@ class Model_TH2F(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH2F_v4}
 
 
-class Model_TH2I_v4(uproot.model.VersionedModel):
+class Model_TH2I_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH2I`` version 4.
     """
@@ -2953,7 +2960,7 @@ class Model_TH2I(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH2I_v4}
 
 
-class Model_TH2S_v4(uproot.model.VersionedModel):
+class Model_TH2S_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH2S`` version 4.
     """
@@ -3129,7 +3136,7 @@ class Model_TH2S(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH2S_v4}
 
 
-class Model_TH3C_v4(uproot.model.VersionedModel):
+class Model_TH3C_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH3C`` version 4.
     """
@@ -3306,7 +3313,7 @@ class Model_TH3C(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH3C_v4}
 
 
-class Model_TH3D_v4(uproot.model.VersionedModel):
+class Model_TH3D_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH3D`` version 4.
     """
@@ -3478,7 +3485,7 @@ class Model_TH3D(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH3D_v4}
 
 
-class Model_TH3F_v4(uproot.model.VersionedModel):
+class Model_TH3F_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH3F`` version 4.
     """
@@ -3655,7 +3662,7 @@ class Model_TH3F(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH3F_v4}
 
 
-class Model_TH3I_v4(uproot.model.VersionedModel):
+class Model_TH3I_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH3I`` version 4.
     """
@@ -3832,7 +3839,7 @@ class Model_TH3I(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH3I_v4}
 
 
-class Model_TH3S_v4(uproot.model.VersionedModel):
+class Model_TH3S_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TH3S`` version 4.
     """
@@ -4009,7 +4016,9 @@ class Model_TH3S(uproot.model.DispatchByVersion):
     known_versions = {4: Model_TH3S_v4}
 
 
-class Model_TProfile_v7(uproot.model.VersionedModel):
+class Model_TProfile_v7(
+    uproot.behaviors.TProfile.TProfile, uproot.model.VersionedModel
+):
     """
     A :doc:`uproot.model.VersionedModel` for ``TProfile`` version 7.
     """
@@ -4249,7 +4258,9 @@ class Model_TProfile(uproot.model.DispatchByVersion):
     known_versions = {7: Model_TProfile_v7}
 
 
-class Model_TProfile2D_v8(uproot.model.VersionedModel):
+class Model_TProfile2D_v8(
+    uproot.behaviors.TProfile2D.TProfile2D, uproot.model.VersionedModel
+):
     """
     A :doc:`uproot.model.VersionedModel` for ``TProfile2D`` version 8.
     """
@@ -4490,7 +4501,9 @@ class Model_TProfile2D(uproot.model.DispatchByVersion):
     known_versions = {8: Model_TProfile2D_v8}
 
 
-class Model_TProfile3D_v8(uproot.model.VersionedModel):
+class Model_TProfile3D_v8(
+    uproot.behaviors.TProfile3D.TProfile3D, uproot.model.VersionedModel
+):
     """
     A :doc:`uproot.model.VersionedModel` for ``TProfile3D`` version 8.
     """
