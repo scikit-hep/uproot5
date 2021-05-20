@@ -13,6 +13,9 @@ from __future__ import absolute_import
 import struct
 import sys
 import uuid
+import warnings
+
+import pkg_resources
 
 try:
     from collections.abc import Mapping, MutableMapping
@@ -173,7 +176,14 @@ open.defaults = {
 }
 # See https://github.com/scikit-hep/uproot4/issues/294
 if uproot.extras.older_xrootd("5.2.0"):
-    open.defaults["xrootd_handler"] = uproot.source.xrootd.MultithreadedXRootDSource
+    dist = pkg_resources.get_distribution("XRootD")
+    message = """XRootD {0} is not fully supported; either upgrade to 5.2.0+ or set
+
+    open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
+""".format(
+        dist.version
+    )
+    warnings.warn(message, FutureWarning)
 
 
 must_be_attached = [
