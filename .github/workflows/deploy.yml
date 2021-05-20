@@ -1,32 +1,40 @@
 name: Deploy to PyPI
 
 on:
+  workflow_dispatch:
   release:
-    types: [created]
+    types:
+    - published
 
 jobs:
-  deploy:
-
+  dist:
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Build wheel and SDist
+      run: pipx run build
+
+    - name: Check metadata
+      run: pipx run twine check dist/*
+
+    - uses: actions/upload-artifact@v2
+      with:
+        path: dist/*
+
+
+  publish:
+    needs: [dist]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/download-artifact@v2
+      with:
+        name: artifact
+        path: dist
 
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: '3.x'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
-
-      - name: Build and publish
-        env:
-          TWINE_USERNAME: ${{ secrets.pypi_username }}
-          TWINE_PASSWORD: ${{ secrets.pypi_password }}
-        run: |
-          python setup.py sdist
-          python setup.py bdist_wheel --universal
-          twine upload dist/*
+    - uses: pypa/gh-action-pypi-publish@v1.4.2
+      with:
+        user: ${{ secrets.pypi_username }}
+        password: ${{ secrets.pypi_password }}
