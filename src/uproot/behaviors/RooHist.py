@@ -71,7 +71,7 @@ class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
         bin_edges_high = bin_centers + self.errors(which="high", axis="x")
         # Boost histogram only supports symmetric errors
         if not numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
-            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
+            raise ValueError("bin_edges_low[1:] != bin_edges_high[:-1]")
         errors = self.errors(which="mean", axis="y")
         variances = numpy.square(errors)
 
