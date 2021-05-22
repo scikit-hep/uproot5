@@ -139,6 +139,8 @@ import uproot.models.TBranch
 import uproot.models.TLeaf
 import uproot.models.TBasket
 import uproot.models.RNTuple
+import uproot.models.TH
+import uproot.models.TGraph
 
 from uproot.containers import STLVector
 from uproot.containers import STLSet

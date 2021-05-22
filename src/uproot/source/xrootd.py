@@ -77,15 +77,27 @@ class XRootDResource(uproot.source.chunk.Resource):
     """
 
     def __init__(self, file_path, timeout):
-        XRootD_client = uproot.extras.XRootD_client()
         self._file_path = file_path
         self._timeout = timeout
+        self._open()
+
+    def _open(self):
+        XRootD_client = uproot.extras.XRootD_client()
 
         self._file = XRootD_client.File()
 
         status, dummy = self._file.open(self._file_path, timeout=self._xrd_timeout())
         if status.error:
             self._xrd_error(status)
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_file")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
 
     def _xrd_timeout(self):
         if self._timeout is None:

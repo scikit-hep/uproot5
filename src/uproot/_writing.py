@@ -1665,7 +1665,7 @@ class FileHeader(CascadeLeaf):
     """
 
     magic = b"root"
-    class_version = 62206  # ROOT 6.22/06 is our model
+    class_version = 62400  # ROOT 6.24/00 is our model
 
     def __init__(
         self,
