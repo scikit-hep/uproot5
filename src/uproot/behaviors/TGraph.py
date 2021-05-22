@@ -41,4 +41,3 @@ class TGraph(object):
             raise ValueError(
                 "axis must be 0 (-2, 'x'), 1 (-1, 'y'), or 'both' for a TGraph"
             )
->>>>>>> upstream/main
