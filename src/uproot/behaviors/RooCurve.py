@@ -38,18 +38,6 @@ def _centers(edges):
     return (edges[1:] + edges[:-1]) / 2
 
 
-class CurveTypeError(Exception):
-    """
-    Incorrect curve type for method.
-    """
-
-    def __init__(self, msg):
-        """
-        Incorrect curve type for method.
-        """
-        super().__init__(self, msg)
-
-
 class RooCurve(uproot.behaviors.TGraph.TGraph):
     """Behaviors for RooCurve.
 
@@ -93,7 +81,7 @@ class RooCurve(uproot.behaviors.TGraph.TGraph):
         Returns y values when RooCurve is interpolated at the given x values.
         """
         if self.curve_type != "VALUES":
-            raise CurveTypeError(
+            raise ValueError(
                 "interpolate can only be called on a value (open) curve. "
                 "Try interpolate_errors."
             )
@@ -112,7 +100,7 @@ class RooCurve(uproot.behaviors.TGraph.TGraph):
         Returns asymmetric y errors when RooCurve is interpolated at the given x values.
         """
         if self.curve_type != "ERRORS":
-            raise CurveTypeError(
+            raise ValueError(
                 "interpolate_errors can only be called on an error (closed) curve. "
                 "Try interpolate."
             )
@@ -127,7 +115,7 @@ class RooCurve(uproot.behaviors.TGraph.TGraph):
         Returns y errors when RooCurve is interpolated at the given x values.
         """
         if self.curve_type != "ERRORS":
-            raise CurveTypeError(
+            raise ValueError(
                 "interpolate_errors can only be called on an error (closed) curve. "
                 "Try interpolate."
             )
@@ -143,7 +131,7 @@ class RooCurve(uproot.behaviors.TGraph.TGraph):
         Returns ``boost-histogram`` object by interpolating ``RooCurve``.
         """
         if self.curve_type != "VALUES":
-            raise CurveTypeError(
+            raise ValueError(
                 "to_boost should be called on the value curve. The error curve is passed using the"
                 "error_curve parameter."
             )

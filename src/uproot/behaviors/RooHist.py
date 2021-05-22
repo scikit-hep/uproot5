@@ -17,18 +17,6 @@ import uproot.behaviors.TGraphAsymmErrors
 #  'fMinimum', 'fMaximum', 'fEXlow', 'fEXhigh', 'fEYlow', 'fEYhigh']
 
 
-class AxisBinError(Exception):
-    """
-    Error high and low bin edges are not compatible.
-    """
-
-    def __init__(self, msg):
-        """
-        High and low bin edges are not compatible.
-        """
-        super().__init__(self, msg)
-
-
 class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
     """
     Behavior for ``RooHist``.
@@ -66,7 +54,7 @@ class RooHist(uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors):
         bin_edges_low = bin_centers - self.errors(which="low", axis="x")
         bin_edges_high = bin_centers + self.errors(which="high", axis="x")
         if not numpy.all(numpy.isclose(bin_edges_low[1:], bin_edges_high[:-1])):
-            raise AxisBinError("bin_edges_low[1:] != bin_edges_high[:-1]")
+            raise ValueError("bin_edges_low[1:] != bin_edges_high[:-1]")
         bin_edges = numpy.append(bin_edges_low, [bin_edges_high[-1]])
         if dd:
             return values, (bin_edges,)
