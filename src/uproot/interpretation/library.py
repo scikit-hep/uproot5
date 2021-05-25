@@ -653,6 +653,12 @@ in object {3}""".format(
                         cut -= 1
                     if cut == 0:
                         break
+                if (
+                    out is not None
+                    and cut != 0
+                    and jagged[0][:cut].strip("_./") in awkward.fields(out)
+                ):
+                    cut = 0
                 if cut == 0:
                     common = "jagged{0}".format(number)
                     if len(jagged) == 0:
@@ -679,8 +685,8 @@ in object {3}""".format(
                 if out is None:
                     out = awkward.Array({common: subarray})
                 else:
-                    for _ in jagged:
-                        out = awkward.with_field(out, subarray, common)
+                    out = awkward.with_field(out, subarray, common)
+
             return out
         else:
             raise TypeError(
