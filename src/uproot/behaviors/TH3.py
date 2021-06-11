@@ -107,7 +107,7 @@ class TH3(uproot.behaviors.TH1.Histogram):
         yedges = self.axis(1).edges(flow=flow)
         zedges = self.axis(2).edges(flow=flow)
         if dd:
-            return values, (xedges, yedges, xedges)
+            return values, (xedges, yedges, zedges)
         else:
             return values, xedges, yedges, zedges
 
