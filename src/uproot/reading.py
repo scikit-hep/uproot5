@@ -1919,7 +1919,7 @@ class ReadOnlyDirectory(Mapping):
         key = self.key(where)
         return self._file.class_named(key.fClassName, version=version)
 
-    def streamer_of(self, where, version):
+    def streamer_of(self, where, version="max"):
         """
         Returns a ``TStreamerInfo`` (:doc:`uproot.streamers.Model_TStreamerInfo`)
         for the object selected by ``where`` and ``version``.
