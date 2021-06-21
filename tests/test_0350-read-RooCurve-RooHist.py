@@ -2,10 +2,10 @@
 
 from __future__ import absolute_import
 
+import boost_histogram
 import numpy
 import pytest
 import skhep_testdata
-import boost_histogram
 
 import uproot
 
