@@ -22,7 +22,7 @@ def roohist(datafile):
 
 
 @pytest.fixture
-def roocurve_hist(datafile):
+def roocurve(datafile):
     with uproot.open(datafile) as f:
         yield f["data"]
 
