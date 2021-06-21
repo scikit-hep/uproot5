@@ -24,13 +24,13 @@ def roohist(datafile):
 @pytest.fixture
 def roocurve(datafile):
     with uproot.open(datafile) as f:
-        yield f["data"]
+        yield f["bhist"]
 
 
 @pytest.fixture
 def roocurve_err(datafile):
     with uproot.open(datafile) as f:
-        yield f["data"]
+        yield f["berr"]
 
 
 def test_interpretation(roohist, roocurve, roocurve_err):
