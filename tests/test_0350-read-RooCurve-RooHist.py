@@ -35,20 +35,20 @@ def roocurve_err(datafile):
 
 def test_interpretation(roohist, roocurve, roocurve_err):
     assert roohist.classname == "RooHist"
-    assert roohist.behaviors[0] == uproot.behaviours.RooHist.RooHist
+    assert roohist.behaviors[0] == uproot.behaviors.RooHist.RooHist
 
     assert roocurve.classname == "RooCurve"
-    assert roocurve.behaviors[0] == uproot.behaviours.RooCurve.RooCurve
+    assert roocurve.behaviors[0] == uproot.behaviors.RooCurve.RooCurve
     assert roocurve.curve_type == "VALUES"
 
     assert roocurve_err.classname == "RooCurve"
-    assert roocurve_err.behaviors[0] == uproot.behaviours.RooCurve.RooCurve
-    assert roocurve.curve_type == "ERRORS"
+    assert roocurve_err.behaviors[0] == uproot.behaviors.RooCurve.RooCurve
+    assert roocurve_err.curve_type == "ERRORS"
 
 
 def test_to_boost(roohist, roocurve, roocurve_err):
     rh_boost = roohist.to_boost()
-    assert rh_boost.axes[0].edges == numpy.arange(0.0, 51.0)
+    assert rh_boost.axes[0].edges == pytest.approx(numpy.arange(0.0, 51.0))
     assert rh_boost.values() == pytest.approx(
         numpy.array(
             [
@@ -107,10 +107,10 @@ def test_to_boost(roohist, roocurve, roocurve_err):
     )
 
     rc_boost = roocurve.to_boost(rh_boost.axes[0].edges)
-    assert rc_boost.axes[0].edges == rh_boost.axes[0].edges
+    assert (rc_boost.axes[0].edges == rh_boost.axes[0].edges).all()
     assert rc_boost._storage_type == boost_histogram.storage.Double
     rc_boost = roocurve.to_boost(rh_boost.axes[0].edges, error_curve=roocurve_err)
-    assert rc_boost.axes[0].edges == rh_boost.axes[0].edges
+    assert (rc_boost.axes[0].edges == rh_boost.axes[0].edges).all()
     assert rc_boost._storage_type == boost_histogram.storage.Weight
 
 
