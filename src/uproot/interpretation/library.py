@@ -620,16 +620,30 @@ in object {3}""".format(
             for name, context in expression_context:
                 array = renamed_arrays[_rename(name, context)] = arrays[name]
                 if context["is_jagged"]:
+                    if (
+                        isinstance(
+                            array.layout,
+                            (
+                                awkward.layout.ListArray32,
+                                awkward.layout.ListArrayU32,
+                                awkward.layout.ListArray64,
+                            ),
+                        )
+                        or array.layout.offsets[0] != 0
+                    ):
+                        array_layout = array.layout.toListOffsetArray64(True)
+                    else:
+                        array_layout = array.layout
                     if len(offsets) == 0:
-                        offsets.append(array.layout.offsets)
+                        offsets.append(array_layout.offsets)
                         jaggeds.append([_rename(name, context)])
                     else:
                         for o, j in zip(offsets, jaggeds):
-                            if numpy.array_equal(array.layout.offsets, o):
+                            if numpy.array_equal(array_layout.offsets, o):
                                 j.append(_rename(name, context))
                                 break
                         else:
-                            offsets.append(array.layout.offsets)
+                            offsets.append(array_layout.offsets)
                             jaggeds.append([_rename(name, context)])
                 else:
                     nonjagged.append(_rename(name, context))
@@ -653,6 +667,12 @@ in object {3}""".format(
                         cut -= 1
                     if cut == 0:
                         break
+                if (
+                    out is not None
+                    and cut != 0
+                    and jagged[0][:cut].strip("_./") in awkward.fields(out)
+                ):
+                    cut = 0
                 if cut == 0:
                     common = "jagged{0}".format(number)
                     if len(jagged) == 0:
@@ -679,8 +699,8 @@ in object {3}""".format(
                 if out is None:
                     out = awkward.Array({common: subarray})
                 else:
-                    for _ in jagged:
-                        out = awkward.with_field(out, subarray, common)
+                    out = awkward.with_field(out, subarray, common)
+
             return out
         else:
             raise TypeError(
