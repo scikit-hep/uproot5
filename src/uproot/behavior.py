@@ -9,6 +9,7 @@ that get auto-detected by :doc:`uproot.behavior.behavior_of`.
 from __future__ import absolute_import
 
 import pkgutil
+
 import uproot.behaviors
 
 
