@@ -103,7 +103,3 @@ behavior_of._specializations = [
     "_3c_Double_5f_t_3e_",
     "_3c_LongDouble_5f_t_3e_",
 ]
-
-del pkgutil
-
-from uproot._util import no_filter

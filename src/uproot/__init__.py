@@ -176,3 +176,5 @@ from uproot.behaviors.TBranch import concatenate
 from uproot.behaviors.TBranch import lazy
 
 from uproot.behavior import behavior_of
+
+from uproot._util import no_filter
