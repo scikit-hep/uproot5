@@ -13,6 +13,7 @@ order = [
     "uproot",
     "uproot.reading",
     "uproot.behaviors",
+    "uproot.behavior",
     "uproot.model",
     "uproot.streamers",
     "uproot.cache",
