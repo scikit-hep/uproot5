@@ -162,28 +162,39 @@ def open(
         return file.root_directory[object_path]
 
 
-open.defaults = {
-    "file_handler": uproot.source.file.MemmapSource,
-    "xrootd_handler": uproot.source.xrootd.XRootDSource,
-    "http_handler": uproot.source.http.HTTPSource,
-    "object_handler": uproot.source.object.ObjectSource,
-    "timeout": 30,
-    "max_num_elements": None,
-    "num_workers": 1,
-    "num_fallback_workers": 10,
-    "begin_chunk_size": 403,  # the smallest a ROOT file can be
-    "minimal_ttree_metadata": True,
-}
-# See https://github.com/scikit-hep/uproot4/issues/294
-if uproot.extras.older_xrootd("5.2.0"):
-    dist = pkg_resources.get_distribution("XRootD")
-    message = """XRootD {0} is not fully supported; either upgrade to 5.2.0+ or set
+class _OpenDefaults(dict):
+    def __getitem__(self, where):
+        if where == "xrootd_handler" and where not in self:
+            # See https://github.com/scikit-hep/uproot4/issues/294
+            if uproot.extras.older_xrootd("5.2.0"):
+                dist = pkg_resources.get_distribution("XRootD")
+                message = (
+                    "XRootD {0} is not fully supported; ".format(dist.version)
+                    + """either upgrade to 5.2.0+ or set
 
-    open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
-""".format(
-        dist.version
-    )
-    warnings.warn(message, FutureWarning)
+                open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
+            """
+                )
+                warnings.warn(message, FutureWarning)
+            else:
+                self["xrootd_handler"] = uproot.source.xrootd.XRootDSource
+
+        return dict.__getitem__(self, where)
+
+
+open.defaults = _OpenDefaults(
+    {
+        "file_handler": uproot.source.file.MemmapSource,
+        "http_handler": uproot.source.http.HTTPSource,
+        "object_handler": uproot.source.object.ObjectSource,
+        "timeout": 30,
+        "max_num_elements": None,
+        "num_workers": 1,
+        "num_fallback_workers": 10,
+        "begin_chunk_size": 403,  # the smallest a ROOT file can be
+        "minimal_ttree_metadata": True,
+    }
+)
 
 
 must_be_attached = [
@@ -562,7 +573,7 @@ class ReadOnlyFile(CommonFileMethods):
         self.decompression_executor = decompression_executor
         self.interpretation_executor = interpretation_executor
 
-        self._options = dict(open.defaults)
+        self._options = _OpenDefaults(open.defaults)
         self._options.update(options)
         for option in ["begin_chunk_size"]:
             self._options[option] = uproot._util.memory_size(self._options[option])
