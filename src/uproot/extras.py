@@ -106,14 +106,20 @@ def XRootD_client():
 def older_xrootd(min_version):
     """
     Check if the installed XRootD bindings are newer than a given version
-    without importing. Defaults to False if XRootD is not installed.
+    without importing. Defaults to False if XRootD is not installed. Unrecognized
+    versions (i.e. self-built XRootD, whose version numbers are strings)
+    return False: that is, they're assumed to be new, so that no warnings
+    are raised.
     """
     try:
         dist = pkg_resources.get_distribution("XRootD")
     except pkg_resources.DistributionNotFound:
         return False
     else:
-        return LooseVersion(dist.version) < LooseVersion(min_version)
+        try:
+            return LooseVersion(dist.version) < LooseVersion(min_version)
+        except TypeError:
+            return False
 
 
 def lzma():
