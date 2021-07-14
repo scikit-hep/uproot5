@@ -115,10 +115,10 @@ def older_xrootd(min_version):
     except pkg_resources.DistributionNotFound:
         return False
     else:
-        if dist.version.startswith("v"):
-            return False
-        else:
+        try:
             return LooseVersion(dist.version) < LooseVersion(min_version)
+        except Exception:
+            return False
 
 
 def lzma():
