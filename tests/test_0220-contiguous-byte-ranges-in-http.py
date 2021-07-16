@@ -8,6 +8,7 @@ import pytest
 import uproot
 
 
+@pytest.mark.network
 def test():
     with uproot.open(
         "https://starterkit.web.cern.ch/starterkit/data/advanced-python-2019/RD_distribution.root:tree"
