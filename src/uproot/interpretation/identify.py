@@ -61,35 +61,41 @@ def _ftype_to_dtype(fType):
         raise NotNumerical()
 
 
-def _leaf_to_dtype(leaf):
+def _leaf_to_dtype(leaf, getdims):
+    dims = ()
+    if getdims:
+        m = _title_has_dims.match(leaf.member("fTitle"))
+        if m is not None:
+            dims = tuple(eval(m.group(2).replace("][", ", ")))
+
     if leaf.classname == "TLeafO":
-        return numpy.dtype(numpy.bool_)
+        return numpy.dtype((numpy.bool_, dims))
     elif leaf.classname == "TLeafB":
         if leaf.member("fIsUnsigned"):
-            return numpy.dtype(numpy.uint8)
+            return numpy.dtype((numpy.uint8, dims))
         else:
-            return numpy.dtype(numpy.int8)
+            return numpy.dtype((numpy.int8, dims))
     elif leaf.classname == "TLeafS":
         if leaf.member("fIsUnsigned"):
-            return numpy.dtype(numpy.uint16)
+            return numpy.dtype((numpy.uint16, dims))
         else:
-            return numpy.dtype(numpy.int16)
+            return numpy.dtype((numpy.int16, dims))
     elif leaf.classname == "TLeafI":
         if leaf.member("fIsUnsigned"):
-            return numpy.dtype(numpy.uint32)
+            return numpy.dtype((numpy.uint32, dims))
         else:
-            return numpy.dtype(numpy.int32)
+            return numpy.dtype((numpy.int32, dims))
     elif leaf.classname == "TLeafL":
         if leaf.member("fIsUnsigned"):
-            return numpy.dtype(numpy.uint64)
+            return numpy.dtype((numpy.uint64, dims))
         else:
-            return numpy.dtype(numpy.int64)
+            return numpy.dtype((numpy.int64, dims))
     elif leaf.classname == "TLeafF":
-        return numpy.dtype(numpy.float32)
+        return numpy.dtype((numpy.float32, dims))
     elif leaf.classname == "TLeafD":
-        return numpy.dtype(numpy.float64)
+        return numpy.dtype((numpy.float64, dims))
     elif leaf.classname == "TLeafElement":
-        return _ftype_to_dtype(leaf.member("fType"))
+        return numpy.dtype((_ftype_to_dtype(leaf.member("fType")), dims))
     else:
         raise NotNumerical()
 
@@ -374,7 +380,7 @@ def interpretation_of(branch, context, simplify=True):
                 out = _float16_or_double32(branch, context, leaf, is_float16, dims)
 
             else:
-                from_dtype = _leaf_to_dtype(leaf).newbyteorder(">")
+                from_dtype = _leaf_to_dtype(leaf, getdims=False).newbyteorder(">")
 
                 if context.get("swap_bytes", True):
                     to_dtype = from_dtype.newbyteorder("=")
@@ -394,7 +400,10 @@ def interpretation_of(branch, context, simplify=True):
             from_dtype = []
             for leaf in branch.member("fLeaves"):
                 from_dtype.append(
-                    (leaf.member("fName"), _leaf_to_dtype(leaf).newbyteorder(">"))
+                    (
+                        leaf.member("fName"),
+                        _leaf_to_dtype(leaf, getdims=True).newbyteorder(">"),
+                    )
                 )
 
             if context.get("swap_bytes", True):
