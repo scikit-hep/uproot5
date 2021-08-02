@@ -594,7 +594,6 @@ def awkward_form_remove_uproot(awkward, form):
             dict(
                 (k, awkward_form_remove_uproot(awkward, v))
                 for k, v in form.contents.items()
-                if not k.startswith("@")
             ),
             form.has_identities,
             parameters,
