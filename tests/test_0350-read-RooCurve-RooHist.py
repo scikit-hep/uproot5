@@ -2,12 +2,13 @@
 
 from __future__ import absolute_import
 
-import boost_histogram
 import numpy
 import pytest
 import skhep_testdata
 
 import uproot
+
+boost_histogram = pytest.importorskip("boost_histogram")
 
 
 @pytest.fixture(scope="module")
