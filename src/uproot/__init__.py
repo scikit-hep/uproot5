@@ -79,33 +79,7 @@ import uproot.const
 import uproot.extras
 import uproot.dynamic
 
-
-class Dicty(dict):
-    pass
-
-
-class Dicty2(Dicty):
-    def __getitem__(self, where):
-        assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
-        print("but inside", dict.__getitem__(self, "TH1F"), uproot.models.TH.Model_TH1F)
-        return dict.__getitem__(self, where)
-
-    def get(self, where):
-        assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
-        return dict.get(self, where)
-
-    def __setitem__(self, where, what):
-        assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
-        dict.__setitem__(self, where, what)
-        assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
-
-    def __delitem__(self, where):
-        assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
-        dict.__delitem__(self, where)
-        assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
-
-
-classes = Dicty()
+classes = {}
 unknown_classes = {}
 
 from uproot.cache import LRUCache
@@ -204,5 +178,3 @@ from uproot.behaviors.TBranch import lazy
 from uproot.behavior import behavior_of
 
 from uproot._util import no_filter
-
-classes.__class__ = Dicty2
