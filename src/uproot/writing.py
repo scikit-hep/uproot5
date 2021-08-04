@@ -1005,7 +1005,9 @@ def to_writable(obj):
             return obj
         else:
             raise NotImplementedError(
-                "this ROOT type is not writable: {0} (version {1})".format(obj.classname, obj.instance_version)
+                "this ROOT type is not writable: {0} (version {1})".format(
+                    obj.classname, obj.instance_version
+                )
             )
 
     elif uproot._util.isstr(obj):

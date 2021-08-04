@@ -79,8 +79,10 @@ import uproot.const
 import uproot.extras
 import uproot.dynamic
 
+
 class Dicty(dict):
     pass
+
 
 class Dicty2(Dicty):
     def __getitem__(self, where):
@@ -101,6 +103,7 @@ class Dicty2(Dicty):
         assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
         dict.__delitem__(self, where)
         assert dict.__getitem__(self, "TH1F") is uproot.models.TH.Model_TH1F
+
 
 classes = Dicty()
 unknown_classes = {}
