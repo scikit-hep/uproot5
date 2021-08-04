@@ -157,6 +157,8 @@ in file {1}""".format(
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
@@ -321,6 +323,8 @@ in file {1}""".format(
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
@@ -422,6 +426,8 @@ in file {1}""".format(
         return awkward.forms.RecordForm(
             contents, parameters={"__record__": "TAttMarker"}
         )
+
+    writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
@@ -645,6 +651,8 @@ class Model_TAttAxis_v4(uproot.model.VersionedModel):
     ]
     class_flags = {}
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
@@ -745,6 +753,8 @@ class Model_TAtt3D_v1(uproot.model.VersionedModel):
     base_names_versions = []
     member_names = []
     class_flags = {}
+
+    writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)

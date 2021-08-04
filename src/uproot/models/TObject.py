@@ -45,6 +45,8 @@ in file {1}""".format(
             cursor.skip(2)
         self._members["@fBits"] = int(self._members["@fBits"])
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         out.append(b"\x00\x01" + _tobject_format2.pack(0, tobject_flags))
 

@@ -428,6 +428,12 @@ class Model_TAxis_v10(uproot.behaviors.TAxis.TAxis, uproot.model.VersionedModel)
     ]
     class_flags = {"has_read_object_any": True}
 
+    writable = True
+
+    def _to_writable_postprocess(self, original):
+        if "fModLabs" not in self._members:
+            self._members["fModLabs"] = None
+
     def _serialize(self, out, header, name, tobject_flags):
         import uproot.serialization
 
@@ -998,6 +1004,13 @@ class Model_TH1_v8(uproot.model.VersionedModel):
     ]
     class_flags = {}
 
+    writable = True
+
+    def _to_writable_postprocess(self, original):
+        self._speedbump1 = getattr(original, "_speedbump1", b"\x00")
+        if "fStatOverflows" not in self._members:
+            self._members["fStatOverflows"] = 0
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
@@ -1202,6 +1215,8 @@ class Model_TH2_v5(uproot.model.VersionedModel):
     base_names_versions = [("TH1", 8)]
     member_names = ["fScalefactor", "fTsumwy", "fTsumwy2", "fTsumwxy"]
     class_flags = {}
+
+    writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
@@ -1435,6 +1450,8 @@ class Model_TH3_v6(uproot.model.VersionedModel):
         "fTsumwyz",
     ]
     class_flags = {}
+
+    writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)

@@ -91,6 +91,11 @@ in file {1}""".format(
             parameters={"uproot": {"as": "TArray"}},
         )
 
+    writable = True
+
+    def _to_writable_postprocess(self, original):
+        self._data = original._data
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:

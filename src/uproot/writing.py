@@ -1001,14 +1001,11 @@ def to_writable(obj):
     FIXME: docstring
     """
     if isinstance(obj, uproot.model.Model):
-        if obj.writable:
-            return obj
-        else:
-            raise NotImplementedError(
-                "this ROOT type is not writable: {0} (version {1})".format(
-                    obj.classname, obj.instance_version
-                )
-            )
+        return obj.to_writable()
+
+        raise NotImplementedError(
+            "this ROOT type is not writable: {0}".format(obj.classname)
+        )
 
     elif uproot._util.isstr(obj):
         return to_TObjString(obj)

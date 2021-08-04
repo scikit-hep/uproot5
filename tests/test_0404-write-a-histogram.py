@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import pytest
+import skhep_testdata
 
 import uproot
 import uproot.writing
@@ -11,7 +12,7 @@ import uproot.writing
 ROOT = pytest.importorskip("ROOT")
 
 
-def test(tmp_path):
+def test_copy(tmp_path):
     original = os.path.join(tmp_path, "original.root")
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -48,3 +49,13 @@ def test(tmp_path):
     assert h3.GetBinContent(7) == pytest.approx(7.7)
     assert h3.GetBinContent(8) == pytest.approx(8.8)
     assert h3.GetBinContent(9) == pytest.approx(9.9)
+
+
+def test_from_old():
+    newfile = "newfile.root"
+
+    with uproot.open(skhep_testdata.data_path("uproot-histograms.root")) as fin:
+        one = fin["one"]
+
+        with uproot.recreate(newfile) as fout:
+            fout["one"] = one

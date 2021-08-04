@@ -60,6 +60,9 @@ in file {1}""".format(
             file, index_format, header, tobject_header, breadcrumbs
         )
 
+    writable = True
+    _is_memberwise = False
+
     def _serialize(self, out, header, name, tobject_flags):
         import uproot._writing
 

@@ -89,6 +89,12 @@ in file {1}""".format(
             "opt": [],
         }
 
+    writable = True
+
+    def _to_writable_postprocess(self, original):
+        self._data = original._data
+        self._options = original._options
+
     def _serialize(self, out, header, name, tobject_flags):
         import uproot._writing
 

@@ -81,6 +81,8 @@ in file {1}""".format(
             parameters={"__record__": "TNamed"},
         )
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         import uproot._writing
 

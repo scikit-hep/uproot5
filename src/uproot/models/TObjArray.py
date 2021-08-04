@@ -57,6 +57,8 @@ in file {1}""".format(
             )
             self._data.append(item)
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:

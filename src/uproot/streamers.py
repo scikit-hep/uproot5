@@ -432,6 +432,8 @@ class Model_TStreamerInfo(uproot.model.Model):
             chunk, cursor, context, file, self._file, self.concrete
         )
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         out.append(self._serialization)
@@ -573,6 +575,8 @@ class Model_TStreamerElement(uproot.model.Model):
             # FIXME
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
+
+    writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
