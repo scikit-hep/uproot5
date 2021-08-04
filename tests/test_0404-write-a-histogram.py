@@ -14,10 +14,15 @@ ROOT = pytest.importorskip("ROOT")
 
 def test():
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as fin:
+        chunk, cursor = fin.key("hpx").get_uncompressed_chunk_cursor()
+        cursor.debug(chunk, limit_bytes=20 * 8)
+
         hpx = fin["hpx"]
 
-        with uproot.recreate("try-histogram.root") as fout:
-            pass
+        # with uproot.recreate("try-histogram.root") as fout:
+        #     fout["hpx"] = hpx
+
+        # raise Exception
 
 
 # def test_recreate_update(tmp_path):
