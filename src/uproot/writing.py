@@ -926,11 +926,7 @@ in file {1} in directory {2}""".format(
             chunk = notifications.get()
             assert isinstance(chunk, uproot.source.chunk.Chunk)
 
-            raw_data = chunk.raw_data
-            if hasattr(raw_data, "tobytes"):
-                raw_data = raw_data.tobytes()
-            else:
-                raw_data = raw_data.tostring()
+            raw_data = uproot._util.tobytes(chunk.raw_data)
 
             new_name, old_key = ranges[chunk.start, chunk.stop]
             path = new_name.strip("/").split("/")
@@ -1009,7 +1005,7 @@ def to_writable(obj):
             return obj
         else:
             raise NotImplementedError(
-                "this ROOT type is not writable: " + obj.classname
+                "this ROOT type is not writable: {0} (version {1})".format(obj.classname, obj.instance_version)
             )
 
     elif uproot._util.isstr(obj):

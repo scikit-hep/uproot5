@@ -42,6 +42,17 @@ else:
     range = eval("range")
 
 
+def tobytes(array):
+    """
+    Calls ``array.tobytes()`` or its older equivalent, ``array.tostring()``,
+    depending on what's available in this NumPy version.
+    """
+    if hasattr(array, "tobytes"):
+        return array.tobytes()
+    else:
+        return array.tostring()
+
+
 def isint(x):
     """
     Returns True if and only if ``x`` is an integer (including NumPy, not

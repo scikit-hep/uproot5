@@ -81,5 +81,25 @@ in file {1}""".format(
             parameters={"__record__": "TNamed"},
         )
 
+    def _serialize(self, out, header, name, tobject_flags):
+        import uproot._writing
+
+        where = len(out)
+        self._bases[0]._serialize(
+            out,
+            True,
+            name,
+            tobject_flags | uproot.const.kIsOnHeap | uproot.const.kNotDeleted,
+        )
+        if name is None:
+            out.append(uproot._writing.serialize_string(self._members["fName"]))
+        else:
+            out.append(uproot._writing.serialize_string(name))
+        out.append(uproot._writing.serialize_string(self._members["fTitle"]))
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 1
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
 
 uproot.classes["TNamed"] = Model_TNamed

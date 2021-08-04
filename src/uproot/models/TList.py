@@ -46,19 +46,17 @@ in file {1}""".format(
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"] = cursor.field(chunk, _tlist_format1, context)
 
-        self._data = []
         self._starts = []
+        self._data = []
+        self._options = []
         self._stops = []
         for _ in uproot._util.range(self._members["fSize"]):
             self._starts.append(cursor.index)
-
             item = uproot.deserialization.read_object_any(
                 chunk, cursor, context, file, self._file, self._parent
             )
             self._data.append(item)
-
-            cursor.bytestring(chunk, context)  # read past and ignore "option"
-
+            self._options.append(cursor.bytestring(chunk, context))
             self._stops.append(cursor.index)
 
     def __repr__(self):
@@ -90,6 +88,25 @@ in file {1}""".format(
             "arr": [x.tojson() for x in self._data],
             "opt": [],
         }
+
+    def _serialize(self, out, header, name, tobject_flags):
+        import uproot._writing
+
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
+
+        out.append(uproot._writing.serialize_string(self._members["fName"]))
+        out.append(_tlist_format1.pack(self._members["fSize"]))
+
+        for datum, option in zip(self._data, self._options):
+            uproot.serialization._serialize_object_any(out, datum, None)
+            out.append(option)
+
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 5
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
 
 uproot.classes["TList"] = Model_TList

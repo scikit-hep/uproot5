@@ -91,11 +91,14 @@ def reset_classes():
     reload(uproot.models.TObjString)
     reload(uproot.models.TAtt)
     reload(uproot.models.TRef)
+
     reload(uproot.models.TTree)
     reload(uproot.models.TBranch)
     reload(uproot.models.TLeaf)
     reload(uproot.models.TBasket)
     reload(uproot.models.RNTuple)
+    reload(uproot.models.TH)
+    reload(uproot.models.TGraph)
 
 
 _classname_regularize = re.compile(r"\s*(<|>|::)\s*")
@@ -956,9 +959,11 @@ class Model(object):
         """
         pass
 
-    def _serialize(self, out, header, name):
+    def _serialize(self, out, header, name, tobject_flags):
         raise NotImplementedError(
-            "serialize method not implemented on {0}".format(type(self).__name__)
+            "can't write {0} instances yet ('serialize' method not implemented)".format(
+                type(self).__name__
+            )
         )
 
     def serialize(self, name=None):
@@ -972,7 +977,7 @@ class Model(object):
         NotImplementedError).
         """
         out = []
-        self._serialize(out, True, name)
+        self._serialize(out, True, name, numpy.uint32(0x00000000))
         return b"".join(out)
 
 

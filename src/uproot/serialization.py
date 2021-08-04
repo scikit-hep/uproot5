@@ -39,15 +39,19 @@ _serialize_object_any_format1 = struct.Struct(">II")
 
 
 def _serialize_object_any(out, model, name):
-    where = len(out)
-    model._serialize(out, True, name)
+    if model is None:
+        out.append(b"\x00\x00\x00\x00")
 
-    classname = model.classname.encode(errors="surrogateescape") + b"\x00"
-    num_bytes = sum(len(x) for x in out[where:]) + len(classname) + 4
-    bcnt = numpy.uint32(num_bytes) | uproot.const.kByteCountMask
-    tag = uproot.const.kNewClassTag
+    else:
+        where = len(out)
+        model._serialize(out, True, name, numpy.uint32(0x00000000))
 
-    out.insert(where, _serialize_object_any_format1.pack(bcnt, tag) + classname)
+        classname = model.classname.encode(errors="surrogateescape") + b"\x00"
+        num_bytes = sum(len(x) for x in out[where:]) + len(classname) + 4
+        bcnt = numpy.uint32(num_bytes) | uproot.const.kByteCountMask
+        tag = uproot.const.kNewClassTag
+
+        out.insert(where, _serialize_object_any_format1.pack(bcnt, tag) + classname)
 
 
 def serialize_object_any(model, name=None):

@@ -125,6 +125,13 @@ class FileSink(object):
         self._file.seek(location)
         self._file.write(serialization)
 
+    def current_length(self):
+        tmp = self._file.tell()
+        self._file.seek(0, os.SEEK_END)
+        out = self._file.tell()
+        self._file.seek(tmp)
+        return out
+
     def set_file_length(self, length):
         """
         FIXME: docstring
@@ -134,7 +141,6 @@ class FileSink(object):
 
         self._file.seek(0, os.SEEK_END)
         missing = length - self._file.tell()
-        assert missing >= 0
         if missing > 0:
             self._file.write(b"\x00" * missing)
 

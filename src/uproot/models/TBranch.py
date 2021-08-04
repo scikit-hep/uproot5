@@ -26,6 +26,8 @@ class Model_TBranch_v10(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 10.
     """
 
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -153,6 +155,8 @@ class Model_TBranch_v11(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     """
     A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 11.
     """
+
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -284,6 +288,8 @@ class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 12.
     """
 
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -414,6 +420,8 @@ class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     """
     A :doc:`uproot.model.VersionedModel` for ``TBranch`` version 13.
     """
+
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -563,6 +571,8 @@ class Model_TBranchElement_v8(
     A :doc:`uproot.model.VersionedModel` for ``TBranchElement`` version 8.
     """
 
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -635,6 +645,8 @@ class Model_TBranchElement_v9(
     A :doc:`uproot.model.VersionedModel` for ``TBranchElement`` version 9.
     """
 
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -706,6 +718,8 @@ class Model_TBranchElement_v10(
     """
     A :doc:`uproot.model.VersionedModel` for ``TBranchElement`` version 10.
     """
+
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -787,6 +801,8 @@ class Model_TBranchObject_v1(
     """
     A :doc:`uproot.model.VersionedModel` for ``TBranchObject`` version 1.
     """
+
+    behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:

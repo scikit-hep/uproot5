@@ -34,6 +34,8 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
     A :doc:`uproot.model.VersionedModel` for ``TGraph`` version 4.
     """
 
+    behaviors = (uproot.behaviors.TGraph.TGraph,)
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -361,10 +363,10 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
     )
     writable = True
 
-    def _serialize(self, out, header, name):
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
-            x._serialize(out, True, name)
+            x._serialize(out, True, name, tobject_flags)
         raise NotImplementedError("FIXME")
         if header:
             num_bytes = sum(len(x) for x in out[where:])
@@ -386,6 +388,8 @@ class Model_TGraphErrors_v3(
     """
     A :doc:`uproot.model.VersionedModel` for ``TGraphErrors`` version 3.
     """
+
+    behaviors = (uproot.behaviors.TGraphErrors.TGraphErrors,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -559,10 +563,10 @@ class Model_TGraphErrors_v3(
     )
     writable = True
 
-    def _serialize(self, out, header, name):
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
-            x._serialize(out, True, name)
+            x._serialize(out, True, name, tobject_flags)
         raise NotImplementedError("FIXME")
         if header:
             num_bytes = sum(len(x) for x in out[where:])
@@ -584,6 +588,8 @@ class Model_TGraphAsymmErrors_v3(
     """
     A :doc:`uproot.model.VersionedModel` for ``TGraphAsymmErrors`` version 3.
     """
+
+    behaviors = (uproot.behaviors.TGraphAsymmErrors.TGraphAsymmErrors,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -809,10 +815,10 @@ class Model_TGraphAsymmErrors_v3(
     )
     writable = True
 
-    def _serialize(self, out, header, name):
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
-            x._serialize(out, True, name)
+            x._serialize(out, True, name, tobject_flags)
         raise NotImplementedError("FIXME")
         if header:
             num_bytes = sum(len(x) for x in out[where:])

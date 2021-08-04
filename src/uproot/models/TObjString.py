@@ -63,10 +63,10 @@ in file {1}""".format(
     def fTitle(self):
         return "Collectable string class"
 
-    def _serialize(self, out, header, name):
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
-            x._serialize(out, True, name)
+            x._serialize(out, True, name, tobject_flags | uproot.const.kNotDeleted)
         out.append(uproot.serialization.string(str(self)))
         if header:
             num_bytes = sum(len(x) for x in out[where:])
