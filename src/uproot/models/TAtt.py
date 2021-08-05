@@ -467,7 +467,8 @@ class Model_TAttAxis_v4(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -694,7 +695,8 @@ class Model_TAtt3D_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -760,7 +762,6 @@ class Model_TAtt3D_v1(uproot.model.VersionedModel):
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, None, tobject_flags)
-        raise NotImplementedError("FIXME")
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 1

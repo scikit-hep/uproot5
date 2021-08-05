@@ -154,7 +154,8 @@ class Model_TAxis_v10(uproot.behaviors.TAxis.TAxis, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -483,7 +484,8 @@ class Model_TH1_v8(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -1081,7 +1083,8 @@ class Model_TH2_v5(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -1220,9 +1223,18 @@ class Model_TH2_v5(uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
+
         for x in self._bases:
             x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        out.append(
+            self._format0.pack(
+                self._members["fScalefactor"],
+                self._members["fTsumwy"],
+                self._members["fTsumwy2"],
+                self._members["fTsumwxy"],
+            )
+        )
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 5
@@ -1245,7 +1257,8 @@ class Model_TH3_v6(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -1457,7 +1470,18 @@ class Model_TH3_v6(uproot.model.VersionedModel):
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        out.append(
+            self._format0.pack(
+                self._members["fTsumwy"],
+                self._members["fTsumwy2"],
+                self._members["fTsumwxy"],
+                self._members["fTsumwz"],
+                self._members["fTsumwz2"],
+                self._members["fTsumwxz"],
+                self._members["fTsumwyz"],
+            )
+        )
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 6
@@ -1480,7 +1504,8 @@ class Model_TH1C_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -1630,9 +1655,9 @@ class Model_TH1C_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 3
@@ -1655,7 +1680,8 @@ class Model_TH1D_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -1800,9 +1826,9 @@ class Model_TH1D_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 3
@@ -1825,7 +1851,8 @@ class Model_TH1F_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -1995,7 +2022,8 @@ class Model_TH1I_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -2145,9 +2173,9 @@ class Model_TH1I_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 3
@@ -2170,7 +2198,8 @@ class Model_TH1S_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -2320,9 +2349,9 @@ class Model_TH1S_v3(uproot.behaviors.TH1.TH1, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 3
@@ -2345,7 +2374,8 @@ class Model_TH2C_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -2496,9 +2526,9 @@ class Model_TH2C_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -2521,7 +2551,8 @@ class Model_TH2D_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -2667,9 +2698,9 @@ class Model_TH2D_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -2692,7 +2723,8 @@ class Model_TH2F_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -2843,9 +2875,9 @@ class Model_TH2F_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -2868,7 +2900,8 @@ class Model_TH2I_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -3019,9 +3052,9 @@ class Model_TH2I_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -3044,7 +3077,8 @@ class Model_TH2S_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -3195,9 +3229,9 @@ class Model_TH2S_v4(uproot.behaviors.TH2.TH2, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -3220,7 +3254,8 @@ class Model_TH3C_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -3372,9 +3407,9 @@ class Model_TH3C_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -3397,7 +3432,8 @@ class Model_TH3D_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -3544,9 +3580,9 @@ class Model_TH3D_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -3569,7 +3605,8 @@ class Model_TH3F_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -3721,9 +3758,9 @@ class Model_TH3F_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -3746,7 +3783,8 @@ class Model_TH3I_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -3898,9 +3936,9 @@ class Model_TH3I_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -3923,7 +3961,8 @@ class Model_TH3S_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -4075,9 +4114,9 @@ class Model_TH3S_v4(uproot.behaviors.TH3.TH3, uproot.model.VersionedModel):
 
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._bases[0]._serialize(out, True, name, tobject_flags)
+        self._bases[1]._serialize(out, False, name, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -4102,7 +4141,8 @@ class Model_TProfile_v7(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -4319,7 +4359,18 @@ class Model_TProfile_v7(
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+        self._members["fBinEntries"]._serialize(out, False, None, tobject_flags)
+        out.append(
+            self._format0.pack(
+                self._members["fErrorMode"],
+                self._members["fYmin"],
+                self._members["fYmax"],
+                self._members["fTsumwy"],
+                self._members["fTsumwy2"],
+            )
+        )
+        self._members["fBinSumw2"]._serialize(out, False, None, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 7
@@ -4344,7 +4395,8 @@ class Model_TProfile2D_v8(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -4562,7 +4614,19 @@ class Model_TProfile2D_v8(
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+
+        self._members["fBinEntries"]._serialize(out, False, None, tobject_flags)
+        out.append(
+            self._format0.pack(
+                self._members["fErrorMode"],
+                self._members["fZmin"],
+                self._members["fZmax"],
+                self._members["fTsumwz"],
+                self._members["fTsumwz2"],
+            )
+        )
+        self._members["fBinSumw2"]._serialize(out, False, None, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 8
@@ -4587,7 +4651,8 @@ class Model_TProfile3D_v8(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -4806,7 +4871,19 @@ class Model_TProfile3D_v8(
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, name, tobject_flags)
-        raise NotImplementedError("FIXME")
+
+        self._members["fBinEntries"]._serialize(out, False, None, tobject_flags)
+        out.append(
+            self._format0.pack(
+                self._members["fErrorMode"],
+                self._members["fTmin"],
+                self._members["fTmax"],
+                self._members["fTsumwt"],
+                self._members["fTsumwt2"],
+            )
+        )
+        self._members["fBinSumw2"]._serialize(out, False, None, tobject_flags)
+
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 8
