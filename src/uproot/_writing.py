@@ -1062,13 +1062,23 @@ class DirectoryData(CascadeLeaf):
     def next_cycle(self, name):
         cycle = 1
         for key in self._keys:
-            if name == key.name:
+            if name == key.name.string:
                 cycle = max(cycle, key.cycle + 1)
         return cycle
 
     def add_key(self, key):
         self._file_dirty = True
         self._keys.append(key)
+
+    def replace_key(self, key):
+        self._file_dirty = True
+        for i in range(len(self._keys)):
+            old = self._keys[i]
+            if old.name.string == key.name.string and old.cycle == key.cycle:
+                self._keys[i] = key
+                return
+        else:
+            raise AssertionError
 
     @property
     def num_keys(self):
@@ -1355,8 +1365,13 @@ class Directory(CascadeNode):
 
         self._freesegments.release(original_start, original_stop)
 
-    def add_object(self, sink, classname, name, title, raw_data, uncompressed_bytes):
-        cycle = self._data.next_cycle(name)
+    def add_object(
+        self, sink, classname, name, title, raw_data, uncompressed_bytes, replaces=None
+    ):
+        if replaces is None:
+            cycle = self._data.next_cycle(name)
+        else:
+            cycle = replaces.cycle
 
         strings_size = 0
         strings_size += (1 if len(classname) < 255 else 5) + len(classname)
@@ -1405,13 +1420,36 @@ class Directory(CascadeNode):
             location,
         )
 
-        next_key = key.copy_to(self._data.next_location)
-        if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
-            self._reallocate_data(
-                int(math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8)))
-            )
+        if replaces is None:
             next_key = key.copy_to(self._data.next_location)
-        self._data.add_key(next_key)
+            if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
+                self._reallocate_data(
+                    int(
+                        math.ceil(
+                            1.5 * (self._data.allocation + next_key.num_bytes + 8)
+                        )
+                    )
+                )
+                next_key = key.copy_to(self._data.next_location)
+            self._data.add_key(next_key)
+
+        else:
+            original_key = self._data.get_key(replaces.name.string, replaces.cycle)
+            assert original_key is not None
+            new_key = key.copy_to(original_key.location)
+            if (
+                self._data.num_bytes + new_key.num_bytes - original_key.num_bytes
+                > self._data.allocation
+            ):
+                self._reallocate_data(
+                    int(
+                        math.ceil(1.5 * (self._data.allocation + new_key.num_bytes + 8))
+                    )
+                )
+                original_key = self._data.get_key(replaces.name.string, replaces.cycle)
+                assert original_key is not None
+                new_key = key.copy_to(original_key.location)
+            self._data.replace_key(new_key)
 
         self._header.modified_on = datetime.datetime.now()
 
@@ -1420,6 +1458,8 @@ class Directory(CascadeNode):
         self.write(sink)
         sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
+
+        return key
 
     def add_directory(self, sink, name, initial_directory_bytes, uuid, flush=True):
         cycle = self._data.next_cycle(name)
@@ -1504,6 +1544,65 @@ class Directory(CascadeNode):
             sink.flush()
 
         return subdirectory
+
+    def add_tree(
+        self, sink, name, title, branch_types, initial_num_baskets=10, resize_factor=1.5
+    ):
+        import uproot.writing
+
+        raw_data = uproot.writing.to_TObjString("rather long string").serialize(
+            name=name
+        )
+
+        key = self.add_object(sink, "TObjString", name, title, raw_data, len(raw_data))
+
+        return Tree(self, key, name, title, branch_types, self._freesegments)
+
+
+class Tree(CascadeLeaf):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, directory, key, name, title, branch_types, freesegments):
+        self._directory = directory
+        self._key = key
+        self._name = name
+        self._title = title
+        self._branch_types = branch_types
+        self._freesegments = freesegments
+
+    @property
+    def directory(self):
+        return self._directory
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def title(self):
+        return self._title
+
+    @property
+    def branch_types(self):
+        return self._branch_types
+
+    @property
+    def freesegments(self):
+        return self._freesegments
+
+    @property
+    def location(self):
+        return self._key.location
+
+    def change(self, sink, value):
+        sink.write(self._key.location + self._key.num_bytes + 17, value)
+        sink.flush()
 
 
 class RootDirectory(Directory):
