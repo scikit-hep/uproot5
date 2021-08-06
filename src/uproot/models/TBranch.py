@@ -547,6 +547,20 @@ in file {1}""".format(
     class_flags = {}
     class_code = None
 
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        where = len(out)
+        # for x in self._bases:
+        #     x._serialize(out, True, None, tobject_flags)
+
+        raise NotImplementedError
+
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 13
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
 
 class Model_TBranch(uproot.model.DispatchByVersion):
     """

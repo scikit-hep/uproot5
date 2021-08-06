@@ -831,6 +831,20 @@ in file {1}""".format(
     class_flags = {"has_read_object_any": True}
     class_code = None
 
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        where = len(out)
+        # for x in self._bases:
+        #     x._serialize(out, True, None, tobject_flags)
+
+        raise NotImplementedError
+
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 20
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
 
 class Model_TTree(uproot.model.DispatchByVersion):
     """
@@ -864,6 +878,20 @@ in file {1}""".format(
             )
         cursor.skip(4)
         self._members["fIOBits"] = cursor.field(chunk, _tiofeatures_format1, context)
+
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        where = len(out)
+        # for x in self._bases:
+        #     x._serialize(out, True, None, tobject_flags)
+
+        raise NotImplementedError
+
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 0
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
 
 uproot.classes["TTree"] = Model_TTree

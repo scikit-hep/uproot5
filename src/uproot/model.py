@@ -968,12 +968,16 @@ class Model(object):
         if self.writable:
             cls = type(self)
         else:
-            dispatch = uproot.classes.get(self.classname)
-            if dispatch is not None:
-                for versioned_cls in dispatch.known_versions.values():
+            unversioned = uproot.classes.get(self.classname)
+            if issubclass(unversioned, DispatchByVersion):
+                for versioned_cls in unversioned.known_versions.values():
                     if versioned_cls.writable:
                         cls = versioned_cls
                         break
+
+            elif unversioned is not None:
+                if unversioned.writable:
+                    cls = unversioned
 
         if cls is None:
             raise NotImplementedError(
