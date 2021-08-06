@@ -1506,8 +1506,8 @@ def to_TH2x(
             of sum of squares of weights.
         fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
             with ``fName="xaxis"`` and ``fTitle=""``.
-        fYaxis (None or :doc:`uproot.models.TH.Model_TAxis_v10`): None generates a
-            default for 1D histograms.
+        fYaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="yaxis"`` and ``fTitle=""``.
         fZaxis (None or :doc:`uproot.models.TH.Model_TAxis_v10`): None generates a
             default for 1D and 2D histograms.
         fScalefactor (float): Scale factor. (TH2 only.)
@@ -1600,7 +1600,7 @@ def to_TH2x(
         cls = uproot.models.TH.Model_TH2D_v4
     else:
         raise TypeError(
-            "no TH1* subclasses correspond to {0}".format(tarray_data.classname)
+            "no TH2* subclasses correspond to {0}".format(tarray_data.classname)
         )
 
     th2x = cls.empty()
@@ -1611,3 +1611,182 @@ def to_TH2x(
     th2x._deeply_writable = th2._deeply_writable
 
     return th2x
+
+
+def to_TH3x(
+    fName,
+    fTitle,
+    data,
+    fEntries,
+    fTsumw,
+    fTsumw2,
+    fTsumwx,
+    fTsumwx2,
+    fTsumwy,
+    fTsumwy2,
+    fTsumwxy,
+    fTsumwz,
+    fTsumwz2,
+    fTsumwxz,
+    fTsumwyz,
+    fSumw2,
+    fXaxis,
+    fYaxis,
+    fZaxis,
+    fNcells=None,
+    fBarOffset=0,
+    fBarWidth=1000,
+    fMaximum=-1111.0,
+    fMinimum=-1111.0,
+    fNormFactor=0.0,
+    fContour=None,
+    fOption="",
+    fFunctions=None,
+    fBufferSize=0,
+    fBuffer=None,
+    fBinStatErrOpt=0,
+    fStatOverflows=2,
+    fLineColor=602,
+    fLineStyle=1,
+    fLineWidth=1,
+    fFillColor=0,
+    fFillStyle=1001,
+    fMarkerColor=1,
+    fMarkerStyle=1,
+    fMarkerSize=1.0,
+):
+    """
+    Args:
+        fName (None or str): Temporary name, will be overwritten by the writing
+            process because Uproot's write syntax is ``file[name] = histogram``.
+        fTitle (str): Real title of the histogram.
+        data (numpy.ndarray or :doc:`uproot.models.TArray.Model_TArray`): Bin contents
+            with first bin as underflow, last bin as overflow. The dtype of this array
+            determines the return type of this function (TH1C, TH1D, TH1F, TH1I, or TH1S).
+        fEntries (float): Number of entries. (https://root.cern.ch/doc/master/classTH1.html)
+        fTsumw (float): Total Sum of weights.
+        fTsumw2 (float): Total Sum of squares of weights.
+        fTsumwx (float): Total Sum of weight*X.
+        fTsumwx2 (float): Total Sum of weight*X*X.
+        fTsumwy (float): Total Sum of weight*Y. (TH3 only: https://root.cern.ch/doc/master/classTH3.html)
+        fTsumwy2 (float): Total Sum of weight*Y*Y. (TH3 only.)
+        fTsumwxy (float): Total Sum of weight*X*Y. (TH3 only.)
+        fTsumwz (float): Total Sum of weight*Z. (TH3 only.)
+        fTsumwz2 (float): Total Sum of weight*Z*Z. (TH3 only.)
+        fTsumwxz (float): Total Sum of weight*X*Z. (TH3 only.)
+        fTsumwyz (float): Total Sum of weight*Y*Z. (TH3 only.)
+        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights.
+        fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="xaxis"`` and ``fTitle=""``.
+        fYaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="yaxis"`` and ``fTitle=""``.
+        fZaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="zaxis"`` and ``fTitle=""``.
+        fNcells (None or int): Number of bins(1D), cells (2D) +U/Overflows. Computed
+            from ``data`` if None.
+        fBarOffset (int): (1000*offset) for bar charts or legos
+        fBarWidth (int): (1000*width) for bar charts or legos
+        fMaximum (float): Maximum value for plotting.
+        fMinimum (float): Minimum value for plotting.
+        fNormFactor (float): Normalization factor.
+        fContour (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            to display contour levels. None generates an empty array.
+        fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
+        fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
+            list of functions (fits and user). None generates an empty list.
+        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
+            before automatically choosing the binning. (Irrelevant for serialization?)
+            None generates an empty array.
+        fBinStatErrOpt (int): Option for bin statistical errors.
+        fStatOverflows (int): Per object flag to use under/overflows in statistics.
+        fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
+        fLineStyle (int): Line style.
+        fLineWidth (int): Line width.
+        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
+        fFillStyle (int): Fill area style.
+        fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
+        fMarkerStyle (int): Marker style.
+        fMarkerSize (float): Marker size.
+
+    This function is for developers to create TH3* objects that can be
+    written to ROOT files, to implement conversion routines. The choice of
+    TH3C, TH3D, TH3F, TH3I, or TH3S depends on the dtype of the ``data`` array.
+    """
+    th1x = to_TH1x(
+        fName=fName,
+        fTitle=fTitle,
+        data=data,
+        fEntries=fEntries,
+        fTsumw=fTsumw,
+        fTsumw2=fTsumw2,
+        fTsumwx=fTsumwx,
+        fTsumwx2=fTsumwx2,
+        fSumw2=fSumw2,
+        fXaxis=fXaxis,
+        fYaxis=fYaxis,
+        fZaxis=fZaxis,
+        fNcells=fNcells,
+        fBarOffset=fBarOffset,
+        fBarWidth=fBarWidth,
+        fMaximum=fMaximum,
+        fMinimum=fMinimum,
+        fNormFactor=fNormFactor,
+        fContour=fContour,
+        fOption=fOption,
+        fFunctions=fFunctions,
+        fBufferSize=fBufferSize,
+        fBuffer=fBuffer,
+        fBinStatErrOpt=fBinStatErrOpt,
+        fStatOverflows=fStatOverflows,
+        fLineColor=fLineColor,
+        fLineStyle=fLineStyle,
+        fLineWidth=fLineWidth,
+        fFillColor=fFillColor,
+        fFillStyle=fFillStyle,
+        fMarkerColor=fMarkerColor,
+        fMarkerStyle=fMarkerStyle,
+        fMarkerSize=fMarkerSize,
+    )
+
+    th1 = th1x._bases[0]
+    tarray_data = th1x._bases[1]
+
+    tatt3d = uproot.models.TAtt.Model_TAtt3D_v1.empty()
+    tatt3d._deeply_writable = True
+
+    th3 = uproot.models.TH.Model_TH3_v6.empty()
+    th3._bases.append(th1)
+    th3._bases.append(tatt3d)
+    th3._members["fTsumwy"] = fTsumwy
+    th3._members["fTsumwy2"] = fTsumwy2
+    th3._members["fTsumwxy"] = fTsumwxy
+    th3._members["fTsumwz"] = fTsumwz
+    th3._members["fTsumwz2"] = fTsumwz2
+    th3._members["fTsumwxz"] = fTsumwxz
+    th3._members["fTsumwyz"] = fTsumwyz
+
+    if isinstance(tarray_data, uproot.models.TArray.Model_TArrayC):
+        cls = uproot.models.TH.Model_TH3C_v4
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayS):
+        cls = uproot.models.TH.Model_TH3S_v4
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayI):
+        cls = uproot.models.TH.Model_TH3I_v4
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayF):
+        cls = uproot.models.TH.Model_TH3F_v4
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayD):
+        cls = uproot.models.TH.Model_TH3D_v4
+    else:
+        raise TypeError(
+            "no TH3* subclasses correspond to {0}".format(tarray_data.classname)
+        )
+
+    th3x = cls.empty()
+    th3x._bases.append(th3)
+    th3x._bases.append(tarray_data)
+
+    th3._deeply_writable = th1._deeply_writable
+    th3x._deeply_writable = th3._deeply_writable
+
+    return th3x
