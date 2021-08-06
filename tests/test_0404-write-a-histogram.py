@@ -534,3 +534,48 @@ def test_ex_nihilo_TH3(tmp_path):
         [[0, 0, 0], approx([0, 5, 0]), [0, 0, 0], approx([0, 0, 0]), [0, 0, 0]],
         [[0, 0, 0], approx([0, 0, 0]), [0, 0, 0], approx([0, 4, 0]), [0, 0, 0]],
     ]
+
+
+def test_ex_nihilo_TProfile(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h1 = uproot.writing.to_TProfile(
+        fName="h1",
+        fTitle="title",
+        data=np.array([10, 30, 20, 20], np.float64),
+        fEntries=5.0,
+        fTsumw=3.0,
+        fTsumw2=3.0,
+        fTsumwx=-3.5,
+        fTsumwx2=26.51,
+        fTsumwy=50.0,
+        fTsumwy2=900.0,
+        fSumw2=np.array([100, 500, 400, 400], np.float64),
+        fBinEntries=np.array([1, 2, 1, 1], np.float64),
+        fBinSumw2=np.array([], np.float64),
+        fXaxis=uproot.writing.to_TAxis(
+            fName="xaxis",
+            fTitle="",
+            fNbins=2,
+            fXmin=-3.14,
+            fXmax=2.71,
+        ),
+    )
+
+    with uproot.recreate(newfile) as fout:
+        fout["out"] = h1
+
+    f3 = ROOT.TFile(newfile)
+    h3 = f3.Get("out")
+    assert h3.GetEntries() == 5
+    assert h3.GetSumOfWeights() == 35
+    assert h3.GetBinLowEdge(1) == pytest.approx(-3.14)
+    assert h3.GetBinWidth(1) == pytest.approx((2.71 - -3.14) / 2)
+    assert h3.GetBinContent(0) == pytest.approx(10)
+    assert h3.GetBinContent(1) == pytest.approx(15)
+    assert h3.GetBinContent(2) == pytest.approx(20)
+    assert h3.GetBinContent(3) == pytest.approx(20)
+    assert h3.GetBinError(0) == pytest.approx(0)
+    assert h3.GetBinError(1) == pytest.approx(np.sqrt(12.5))
+    assert h3.GetBinError(2) == pytest.approx(0)
+    assert h3.GetBinError(3) == pytest.approx(0)
