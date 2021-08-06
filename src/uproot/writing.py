@@ -2140,3 +2140,193 @@ def to_TProfile2D(
     tprofile2d._deeply_writable = th2x._deeply_writable
 
     return tprofile2d
+
+
+def to_TProfile3D(
+    fName,
+    fTitle,
+    data,
+    fEntries,
+    fTsumw,
+    fTsumw2,
+    fTsumwx,
+    fTsumwx2,
+    fTsumwy,
+    fTsumwy2,
+    fTsumwxy,
+    fTsumwz,
+    fTsumwz2,
+    fTsumwxz,
+    fTsumwyz,
+    fTsumwt,
+    fTsumwt2,
+    fSumw2,
+    fBinEntries,
+    fBinSumw2,
+    fXaxis,
+    fYaxis,
+    fZaxis,
+    fTmin=0.0,
+    fTmax=0.0,
+    fErrorMode=0,
+    fNcells=None,
+    fBarOffset=0,
+    fBarWidth=1000,
+    fMaximum=-1111.0,
+    fMinimum=-1111.0,
+    fNormFactor=0.0,
+    fContour=None,
+    fOption="",
+    fFunctions=None,
+    fBufferSize=0,
+    fBuffer=None,
+    fBinStatErrOpt=0,
+    fStatOverflows=2,
+    fLineColor=602,
+    fLineStyle=1,
+    fLineWidth=1,
+    fFillColor=0,
+    fFillStyle=1001,
+    fMarkerColor=1,
+    fMarkerStyle=1,
+    fMarkerSize=1.0,
+):
+    """
+    Args:
+        fName (None or str): Temporary name, will be overwritten by the writing
+            process because Uproot's write syntax is ``file[name] = histogram``.
+        fTitle (str): Real title of the histogram.
+        data (numpy.ndarray or :doc:`uproot.models.TArray.Model_TArray`): Bin contents
+            with first bin as underflow, last bin as overflow. The dtype of this array
+            must be float64.
+        fEntries (float): Number of entries. (https://root.cern.ch/doc/master/classTH1.html)
+        fTsumw (float): Total Sum of weights.
+        fTsumw2 (float): Total Sum of squares of weights.
+        fTsumwx (float): Total Sum of weight*X.
+        fTsumwx2 (float): Total Sum of weight*X*X.
+        fTsumwy (float): Total Sum of weight*Y. (TH3 only: https://root.cern.ch/doc/master/classTH3.html)
+        fTsumwy2 (float): Total Sum of weight*Y*Y. (TH3 only.)
+        fTsumwxy (float): Total Sum of weight*X*Y. (TH3 only.)
+        fTsumwz (float): Total Sum of weight*Z. (TH3 only.)
+        fTsumwz2 (float): Total Sum of weight*Z*Z. (TH3 only.)
+        fTsumwxz (float): Total Sum of weight*X*Z. (TH3 only.)
+        fTsumwyz (float): Total Sum of weight*Y*Z. (TH3 only.)
+        fTsumwt (float): Total Sum of weight*T. (TProfile3D only: https://root.cern.ch/doc/master/classTProfile3D.html)
+        fTsumwt2 (float): Total Sum of weight*T*T. (TProfile3D only.)
+        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights.
+        fBinEntries (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Number
+            of entries per bin. (TProfile3D only.)
+        fBinSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights per bin. (TProfile3D only.)
+        fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="xaxis"`` and ``fTitle=""``.
+        fYaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="yaxis"`` and ``fTitle=""``.
+        fZaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="zaxis"`` and ``fTitle=""``.
+        fTmin (float): Lower limit in T (if set). (TProfile3D only.)
+        fTmax (float): Upper limit in T (if set). (TProfile3D only.)
+        fErrorMode (int): Option to compute errors. (TProfile3D only.)
+        fNcells (None or int): Number of bins(1D), cells (2D) +U/Overflows. Computed
+            from ``data`` if None.
+        fBarOffset (int): (1000*offset) for bar charts or legos
+        fBarWidth (int): (1000*width) for bar charts or legos
+        fMaximum (float): Maximum value for plotting.
+        fMinimum (float): Minimum value for plotting.
+        fNormFactor (float): Normalization factor.
+        fContour (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            to display contour levels. None generates an empty array.
+        fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
+        fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
+            list of functions (fits and user). None generates an empty list.
+        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
+            before automatically choosing the binning. (Irrelevant for serialization?)
+            None generates an empty array.
+        fBinStatErrOpt (int): Option for bin statistical errors.
+        fStatOverflows (int): Per object flag to use under/overflows in statistics.
+        fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
+        fLineStyle (int): Line style.
+        fLineWidth (int): Line width.
+        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
+        fFillStyle (int): Fill area style.
+        fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
+        fMarkerStyle (int): Marker style.
+        fMarkerSize (float): Marker size.
+
+    This function is for developers to create TProfile3D objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+    th3x = to_TH3x(
+        fName=fName,
+        fTitle=fTitle,
+        data=data,
+        fEntries=fEntries,
+        fTsumw=fTsumw,
+        fTsumw2=fTsumw2,
+        fTsumwx=fTsumwx,
+        fTsumwx2=fTsumwx2,
+        fTsumwy=fTsumwy,
+        fTsumwy2=fTsumwy2,
+        fTsumwxy=fTsumwxy,
+        fTsumwz=fTsumwz,
+        fTsumwz2=fTsumwz2,
+        fTsumwxz=fTsumwxz,
+        fTsumwyz=fTsumwyz,
+        fSumw2=fSumw2,
+        fXaxis=fXaxis,
+        fYaxis=fYaxis,
+        fZaxis=fZaxis,
+        fNcells=fNcells,
+        fBarOffset=fBarOffset,
+        fBarWidth=fBarWidth,
+        fMaximum=fMaximum,
+        fMinimum=fMinimum,
+        fNormFactor=fNormFactor,
+        fContour=fContour,
+        fOption=fOption,
+        fFunctions=fFunctions,
+        fBufferSize=fBufferSize,
+        fBuffer=fBuffer,
+        fBinStatErrOpt=fBinStatErrOpt,
+        fStatOverflows=fStatOverflows,
+        fLineColor=fLineColor,
+        fLineStyle=fLineStyle,
+        fLineWidth=fLineWidth,
+        fFillColor=fFillColor,
+        fFillStyle=fFillStyle,
+        fMarkerColor=fMarkerColor,
+        fMarkerStyle=fMarkerStyle,
+        fMarkerSize=fMarkerSize,
+    )
+    if not isinstance(th3x, uproot.models.TH.Model_TH3D_v4):
+        raise TypeError("TProfile3D requires an array of float64 (TArrayD)")
+
+    if isinstance(fBinEntries, uproot.models.TArray.Model_TArray):
+        tarray_fBinEntries = fBinEntries
+    else:
+        tarray_fBinEntries = to_TArray(fBinEntries)
+    if not isinstance(tarray_fBinEntries, uproot.models.TArray.Model_TArrayD):
+        raise TypeError("fBinEntries must be an array of float64 (TArrayD)")
+
+    if isinstance(fBinSumw2, uproot.models.TArray.Model_TArray):
+        tarray_fBinSumw2 = fBinSumw2
+    else:
+        tarray_fBinSumw2 = to_TArray(fBinSumw2)
+    if not isinstance(tarray_fBinSumw2, uproot.models.TArray.Model_TArrayD):
+        raise TypeError("fBinSumw2 must be an array of float64 (TArrayD)")
+
+    tprofile3d = uproot.models.TH.Model_TProfile3D_v8.empty()
+    tprofile3d._bases.append(th3x)
+    tprofile3d._members["fBinEntries"] = tarray_fBinEntries
+    tprofile3d._members["fErrorMode"] = fErrorMode
+    tprofile3d._members["fTmin"] = fTmin
+    tprofile3d._members["fTmax"] = fTmax
+    tprofile3d._members["fTsumwt"] = fTsumwt
+    tprofile3d._members["fTsumwt2"] = fTsumwt2
+    tprofile3d._members["fBinSumw2"] = tarray_fBinSumw2
+
+    tprofile3d._deeply_writable = th3x._deeply_writable
+
+    return tprofile3d

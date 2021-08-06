@@ -649,3 +649,102 @@ def test_ex_nihilo_TProfile2D(tmp_path):
         pytest.approx([0, 0, 0, 0, 0]),
         pytest.approx([0, 0, 0, 0, 0]),
     ]
+
+
+def test_ex_nihilo_TProfile3D(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h1 = uproot.writing.to_TProfile3D(
+        fName="h1",
+        fTitle="title",
+        data=np.array(
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 10, 30, 0, 20, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            np.float64,
+        ),
+        fEntries=5.0,
+        fTsumw=3.0,
+        fTsumw2=3.0,
+        fTsumwx=-3.5,
+        fTsumwx2=26.51,
+        fTsumwy=14.0,
+        fTsumwy2=178.0,
+        fTsumwxy=-66.6,
+        fTsumwz=450.0,
+        fTsumwz2=67500.0,
+        fTsumwxz=-525.0,
+        fTsumwyz=2100.0,
+        fTsumwt=50.0,
+        fTsumwt2=900.0,
+        fSumw2=np.array(
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 400, 0, 0, 0, 0, 0, 100, 500, 0, 400, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            np.float64,
+        ),
+        fBinEntries=np.array(
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            np.float64,
+        ),
+        fBinSumw2=np.array([], np.float64),
+        fXaxis=uproot.writing.to_TAxis(
+            fName="xaxis",
+            fTitle="",
+            fNbins=2,
+            fXmin=-3.14,
+            fXmax=2.71,
+        ),
+        fYaxis=uproot.writing.to_TAxis(
+            fName="yaxis",
+            fTitle="",
+            fNbins=3,
+            fXmin=-5.0,
+            fXmax=10.0,
+        ),
+        fZaxis=uproot.writing.to_TAxis(
+            fName="zaxis",
+            fTitle="",
+            fNbins=1,
+            fXmin=100.0,
+            fXmax=200.0,
+        ),
+    )
+
+    with uproot.recreate(newfile) as fout:
+        fout["out"] = h1
+
+    f3 = ROOT.TFile(newfile)
+    h3 = f3.Get("out")
+    assert h3.GetEntries() == 5
+    assert h3.GetSumOfWeights() == 35
+    assert h3.GetNbinsX() == 2
+    assert h3.GetNbinsY() == 3
+    assert h3.GetNbinsZ() == 1
+    assert h3.GetXaxis().GetBinLowEdge(1) == pytest.approx(-3.14)
+    assert h3.GetXaxis().GetBinUpEdge(2) == pytest.approx(2.71)
+    assert h3.GetYaxis().GetBinLowEdge(1) == pytest.approx(-5)
+    assert h3.GetYaxis().GetBinUpEdge(3) == pytest.approx(10)
+    assert h3.GetZaxis().GetBinLowEdge(1) == pytest.approx(100)
+    assert h3.GetZaxis().GetBinUpEdge(1) == pytest.approx(200)
+    approx = pytest.approx
+    assert [
+        [[h3.GetBinContent(i, j, k) for k in range(3)] for j in range(5)]
+        for i in range(4)
+    ] == [
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 10, 0], [0, 0, 0]],
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 15, 0], [0, 0, 0]],
+        [[0, 0, 0], [0, 20, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 20, 0], [0, 0, 0]],
+    ]
+    assert [
+        [[h3.GetBinError(i, j, k) for k in range(3)] for j in range(5)]
+        for i in range(4)
+    ] == [
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, approx(np.sqrt(12.5)), 0], [0, 0, 0]],
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    ]
