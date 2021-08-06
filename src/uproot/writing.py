@@ -1848,7 +1848,7 @@ def to_TProfile(
         fTsumwx (float): Total Sum of weight*X.
         fTsumwx2 (float): Total Sum of weight*X*X.
         fTsumwy (float): Total Sum of weight*Y. (TProfile only: https://root.cern.ch/doc/master/classTProfile.html)
-        fTsumwy2 (float): Total Sum of weight*Y*Y. (TH3 only.)
+        fTsumwy2 (float): Total Sum of weight*Y*Y. (TProfile only.)
         fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
             of sum of squares of weights.
         fBinEntries (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Number
@@ -1959,3 +1959,184 @@ def to_TProfile(
     tprofile._deeply_writable = th1x._deeply_writable
 
     return tprofile
+
+
+def to_TProfile2D(
+    fName,
+    fTitle,
+    data,
+    fEntries,
+    fTsumw,
+    fTsumw2,
+    fTsumwx,
+    fTsumwx2,
+    fTsumwy,
+    fTsumwy2,
+    fTsumwxy,
+    fTsumwz,
+    fTsumwz2,
+    fSumw2,
+    fBinEntries,
+    fBinSumw2,
+    fXaxis,
+    fYaxis,
+    fZaxis=None,
+    fScalefactor=1.0,
+    fZmin=0.0,
+    fZmax=0.0,
+    fErrorMode=0,
+    fNcells=None,
+    fBarOffset=0,
+    fBarWidth=1000,
+    fMaximum=-1111.0,
+    fMinimum=-1111.0,
+    fNormFactor=0.0,
+    fContour=None,
+    fOption="",
+    fFunctions=None,
+    fBufferSize=0,
+    fBuffer=None,
+    fBinStatErrOpt=0,
+    fStatOverflows=2,
+    fLineColor=602,
+    fLineStyle=1,
+    fLineWidth=1,
+    fFillColor=0,
+    fFillStyle=1001,
+    fMarkerColor=1,
+    fMarkerStyle=1,
+    fMarkerSize=1.0,
+):
+    """
+    Args:
+        fName (None or str): Temporary name, will be overwritten by the writing
+            process because Uproot's write syntax is ``file[name] = histogram``.
+        fTitle (str): Real title of the histogram.
+        data (numpy.ndarray or :doc:`uproot.models.TArray.Model_TArray`): Bin contents
+            with first bin as underflow, last bin as overflow. The dtype of this array
+            must be float64.
+        fEntries (float): Number of entries. (https://root.cern.ch/doc/master/classTH1.html)
+        fTsumw (float): Total Sum of weights.
+        fTsumw2 (float): Total Sum of squares of weights.
+        fTsumwx (float): Total Sum of weight*X.
+        fTsumwx2 (float): Total Sum of weight*X*X.
+        fTsumwy (float): Total Sum of weight*Y. (TH2 only: https://root.cern.ch/doc/master/classTH2.html)
+        fTsumwy2 (float): Total Sum of weight*Y*Y. (TH2 only.)
+        fTsumwxy (float): Total Sum of weight*X*Y. (TH2 only.)
+        fTsumwz (float): Total Sum of weight*Z. (TProfile2D only: https://root.cern.ch/doc/master/classTProfile2D.html)
+        fTsumwz2 (float): Total Sum of weight*Z*Z. (TProfile2D only.)
+        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights.
+        fBinEntries (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Number
+            of entries per bin. (TProfile2D only.)
+        fBinSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights per bin. (TProfile2D only.)
+        fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="xaxis"`` and ``fTitle=""``.
+        fYaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="yaxis"`` and ``fTitle=""``.
+        fZaxis (None or :doc:`uproot.models.TH.Model_TAxis_v10`): None generates a
+            default for 1D and 2D histograms.
+        fScalefactor (float): Scale factor. (TH2 only.)
+        fZmin (float): Lower limit in Z (if set). (TProfile2D only.)
+        fZmax (float): Upper limit in Z (if set). (TProfile2D only.)
+        fErrorMode (int): Option to compute errors. (TProfile2D only.)
+        fNcells (None or int): Number of bins(1D), cells (2D) +U/Overflows. Computed
+            from ``data`` if None.
+        fBarOffset (int): (1000*offset) for bar charts or legos
+        fBarWidth (int): (1000*width) for bar charts or legos
+        fMaximum (float): Maximum value for plotting.
+        fMinimum (float): Minimum value for plotting.
+        fNormFactor (float): Normalization factor.
+        fContour (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            to display contour levels. None generates an empty array.
+        fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
+        fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
+            list of functions (fits and user). None generates an empty list.
+        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
+            before automatically choosing the binning. (Irrelevant for serialization?)
+            None generates an empty array.
+        fBinStatErrOpt (int): Option for bin statistical errors.
+        fStatOverflows (int): Per object flag to use under/overflows in statistics.
+        fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
+        fLineStyle (int): Line style.
+        fLineWidth (int): Line width.
+        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
+        fFillStyle (int): Fill area style.
+        fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
+        fMarkerStyle (int): Marker style.
+        fMarkerSize (float): Marker size.
+
+    This function is for developers to create TProfile2D objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+    th2x = to_TH2x(
+        fName=fName,
+        fTitle=fTitle,
+        data=data,
+        fEntries=fEntries,
+        fTsumw=fTsumw,
+        fTsumw2=fTsumw2,
+        fTsumwx=fTsumwx,
+        fTsumwx2=fTsumwx2,
+        fTsumwy=fTsumwy,
+        fTsumwy2=fTsumwy2,
+        fTsumwxy=fTsumwxy,
+        fSumw2=fSumw2,
+        fXaxis=fXaxis,
+        fYaxis=fYaxis,
+        fZaxis=fZaxis,
+        fScalefactor=fScalefactor,
+        fNcells=fNcells,
+        fBarOffset=fBarOffset,
+        fBarWidth=fBarWidth,
+        fMaximum=fMaximum,
+        fMinimum=fMinimum,
+        fNormFactor=fNormFactor,
+        fContour=fContour,
+        fOption=fOption,
+        fFunctions=fFunctions,
+        fBufferSize=fBufferSize,
+        fBuffer=fBuffer,
+        fBinStatErrOpt=fBinStatErrOpt,
+        fStatOverflows=fStatOverflows,
+        fLineColor=fLineColor,
+        fLineStyle=fLineStyle,
+        fLineWidth=fLineWidth,
+        fFillColor=fFillColor,
+        fFillStyle=fFillStyle,
+        fMarkerColor=fMarkerColor,
+        fMarkerStyle=fMarkerStyle,
+        fMarkerSize=fMarkerSize,
+    )
+    if not isinstance(th2x, uproot.models.TH.Model_TH2D_v4):
+        raise TypeError("TProfile2D requires an array of float64 (TArrayD)")
+
+    if isinstance(fBinEntries, uproot.models.TArray.Model_TArray):
+        tarray_fBinEntries = fBinEntries
+    else:
+        tarray_fBinEntries = to_TArray(fBinEntries)
+    if not isinstance(tarray_fBinEntries, uproot.models.TArray.Model_TArrayD):
+        raise TypeError("fBinEntries must be an array of float64 (TArrayD)")
+
+    if isinstance(fBinSumw2, uproot.models.TArray.Model_TArray):
+        tarray_fBinSumw2 = fBinSumw2
+    else:
+        tarray_fBinSumw2 = to_TArray(fBinSumw2)
+    if not isinstance(tarray_fBinSumw2, uproot.models.TArray.Model_TArrayD):
+        raise TypeError("fBinSumw2 must be an array of float64 (TArrayD)")
+
+    tprofile2d = uproot.models.TH.Model_TProfile2D_v8.empty()
+    tprofile2d._bases.append(th2x)
+    tprofile2d._members["fBinEntries"] = tarray_fBinEntries
+    tprofile2d._members["fErrorMode"] = fErrorMode
+    tprofile2d._members["fZmin"] = fZmin
+    tprofile2d._members["fZmax"] = fZmax
+    tprofile2d._members["fTsumwz"] = fTsumwz
+    tprofile2d._members["fTsumwz2"] = fTsumwz2
+    tprofile2d._members["fBinSumw2"] = tarray_fBinSumw2
+
+    tprofile2d._deeply_writable = th2x._deeply_writable
+
+    return tprofile2d
