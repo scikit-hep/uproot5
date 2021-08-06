@@ -357,7 +357,7 @@ def test_TProfile3D(tmp_path):
     ]
 
 
-def test_ex_nihilo(tmp_path):
+def test_ex_nihilo_TH1(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     h1 = uproot.writing.to_TH1x(
@@ -380,10 +380,10 @@ def test_ex_nihilo(tmp_path):
     )
 
     with uproot.recreate(newfile) as fout:
-        fout["h1"] = h1
+        fout["out"] = h1
 
     f3 = ROOT.TFile(newfile)
-    h3 = f3.Get("h1")
+    h3 = f3.Get("out")
     assert h3.GetEntries() == 5
     assert h3.GetSumOfWeights() == 7
     assert h3.GetBinLowEdge(1) == pytest.approx(-3.14)
@@ -396,3 +396,60 @@ def test_ex_nihilo(tmp_path):
     assert h3.GetBinError(1) == pytest.approx(1.4142135623730951)
     assert h3.GetBinError(2) == pytest.approx(5)
     assert h3.GetBinError(3) == pytest.approx(4)
+
+
+def test_ex_nihilo_TH2(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h1 = uproot.writing.to_TH2x(
+        fName="h1",
+        fTitle="title",
+        data=np.array(
+            [0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 1, 2, 0, 4, 0, 0, 0, 0], np.float64
+        ),
+        fEntries=5.0,
+        fTsumw=7.0,
+        fTsumw2=27.0,
+        fTsumwx=7.3,
+        fTsumwx2=55.67,
+        fTsumwy=-2.0,
+        fTsumwy2=242.0,
+        fTsumwxy=-19.8,
+        fSumw2=np.array(
+            [0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 1, 2, 0, 16, 0, 0, 0, 0], np.float64
+        ),
+        fXaxis=uproot.writing.to_TAxis(
+            fName="xaxis",
+            fTitle="",
+            fNbins=2,
+            fXmin=-3.14,
+            fXmax=2.71,
+        ),
+        fYaxis=uproot.writing.to_TAxis(
+            fName="yaxis",
+            fTitle="",
+            fNbins=3,
+            fXmin=-5.0,
+            fXmax=10.0,
+        ),
+    )
+
+    with uproot.recreate(newfile) as fout:
+        fout["out"] = h1
+
+    f3 = ROOT.TFile(newfile)
+    h3 = f3.Get("out")
+    assert h3.GetEntries() == 5
+    assert h3.GetSumOfWeights() == 7
+    assert h3.GetNbinsX() == 2
+    assert h3.GetNbinsY() == 3
+    assert h3.GetXaxis().GetBinLowEdge(1) == pytest.approx(-3.14)
+    assert h3.GetXaxis().GetBinUpEdge(2) == pytest.approx(2.71)
+    assert h3.GetYaxis().GetBinLowEdge(1) == pytest.approx(-5)
+    assert h3.GetYaxis().GetBinUpEdge(3) == pytest.approx(10)
+    assert [[h3.GetBinContent(i, j) for j in range(5)] for i in range(4)] == [
+        pytest.approx([0, 0, 0, 1, 0]),
+        pytest.approx([0, 0, 0, 2, 0]),
+        pytest.approx([0, 5, 0, 0, 0]),
+        pytest.approx([0, 0, 0, 4, 0]),
+    ]
