@@ -15,6 +15,8 @@ try:
 except ImportError:
     import Queue as queue
 
+import numpy
+
 import uproot._util
 import uproot._writing
 import uproot.compression
@@ -1016,15 +1018,430 @@ def to_writable(obj):
         )
 
 
+def to_TString(string):
+    """
+    This function is for developers to create TString objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+    tstring = uproot.models.TString.Model_TString(str(string))
+    tstring._deeply_writable = True
+    tstring._cursor = None
+    tstring._file = None
+    tstring._parent = None
+    tstring._members = {}
+    tstring._bases = []
+    tstring._num_bytes = None
+    tstring._instance_version = None
+    return tstring
+
+
 def to_TObjString(string):
     """
-    FIXME: docstring
+    This function is for developers to create TObjString objects that can be
+    written to ROOT files, to implement conversion routines.
     """
-    out = uproot.models.TObjString.Model_TObjString(str(string))
-    out._cursor = None
-    out._parent = None
-    out._members = {}
-    out._bases = (uproot.models.TObject.Model_TObject(),)
-    out._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
-    out._instance_version = 1
-    return out
+    tobjstring = uproot.models.TObjString.Model_TObjString(str(string))
+    tobjstring._deeply_writable = True
+    tobjstring._cursor = None
+    tobjstring._parent = None
+    tobjstring._members = {}
+    tobjstring._bases = (uproot.models.TObject.Model_TObject(),)
+    tobjstring._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
+    tobjstring._instance_version = 1
+    return tobjstring
+
+
+def to_TList(data, name=""):
+    """
+    Args:
+        data (:doc:`uproot.model.Model`): Python iterable to convert into a TList.
+        name (str): Name of the list (usually empty: ``""``).
+
+    This function is for developers to create TList objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+    if not all(isinstance(x, uproot.model.Model) for x in data):
+        raise TypeError(
+            "list to convert to TList must only contain ROOT objects (uproot.Model)"
+        )
+
+    tobject = uproot.models.TObject.Model_TObject.empty()
+    tobject._members["@fUniqueID"] = 0
+    tobject._members["@fBits"] = 0
+
+    tlist = uproot.models.TList.Model_TList.empty()
+    tlist._bases.append(tobject)
+    tlist._members["fName"] = name
+    tlist._data = list(data)
+    tlist._members["fSize"] = len(tlist._data)
+    tlist._options = [b""] * len(tlist._data)
+
+    if all(x._deeply_writable for x in tlist._data):
+        tlist._deeply_writable = True
+
+    return tlist
+
+
+def to_TArray(data):
+    """
+    Args:
+        data (numpy.ndarray): The array to convert to big-endian and wrap as
+            TArrayC, TArrayS, TArrayI, TArrayL, TArrayF, or TArrayD, depending
+            on its dtype.
+
+    This function is for developers to create TArray objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+    if data.ndim != 1:
+        raise ValueError("data to convert to TArray must be one-dimensional")
+
+    if issubclass(data.dtype.type, numpy.int8):
+        cls = uproot.models.TArray.Model_TArrayC
+    elif issubclass(data.dtype.type, numpy.int16):
+        cls = uproot.models.TArray.Model_TArrayS
+    elif issubclass(data.dtype.type, numpy.int32):
+        cls = uproot.models.TArray.Model_TArrayI
+    elif issubclass(data.dtype.type, numpy.int64):
+        cls = uproot.models.TArray.Model_TArrayL
+    elif issubclass(data.dtype.type, numpy.float32):
+        cls = uproot.models.TArray.Model_TArrayF
+    elif issubclass(data.dtype.type, numpy.float64):
+        cls = uproot.models.TArray.Model_TArrayD
+    else:
+        raise ValueError(
+            "data to convert to TArray must have signed integer or floating-point type, not {0}".format(
+                repr(data.dtype)
+            )
+        )
+
+    tarray = cls.empty()
+    tarray._deeply_writable = True
+    tarray._members["fN"] = len(data)
+    tarray._data = data.astype(data.dtype.newbyteorder(">"))
+    return tarray
+
+
+def to_TAxis(
+    fName,
+    fTitle,
+    fNbins,
+    fXmin,
+    fXmax,
+    fXbins=None,
+    fFirst=0,
+    fLast=0,
+    fBits2=0,
+    fTimeDisplay=False,
+    fTimeFormat="",
+    fLabels=None,
+    fModLabs=None,
+    fNdivisions=510,
+    fAxisColor=1,
+    fLabelColor=1,
+    fLabelFont=42,
+    fLabelOffset=0.005,
+    fLabelSize=0.035,
+    fTickLength=0.03,
+    fTitleOffset=1.0,
+    fTitleSize=0.035,
+    fTitleColor=1,
+    fTitleFont=42,
+):
+    """
+    Args:
+        fName (str): Internal name of axis, usually ``"xaxis"``, ``"yaxis"``, ``"zaxis"``.
+        fTitle (str): Internal title of axis, usually empty: ``""``.
+        fNbins (int): Number of bins. (https://root.cern.ch/doc/master/classTAxis.html)
+        fXmin (float): Low edge of first bin.
+        fXmax (float): Upper edge of last bin.
+        fXbins (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Bin
+            edges array in X. None generates an empty array.
+        fFirst (int): First bin to display. 1 if no range defined NOTE: in some cases a zero is returned (see TAxis::SetRange)
+        fLast (int): Last bin to display. fNbins if no range defined NOTE: in some cases a zero is returned (see TAxis::SetRange)
+        fBits2 (int): Second bit status word.
+        fTimeDisplay (bool): On/off displaying time values instead of numerics.
+        fTimeFormat (str or :doc:`uproot.models.TString.Model_TString`): Date&time format, ex: 09/12/99 12:34:00.
+        fLabels (None or :doc:`uproot.models.THashList.Model_THashList`): List of labels.
+        fModLabs (None or :doc:`uproot.models.List.Model_TList`): List of modified labels.
+        fNdivisions (int): Number of divisions(10000*n3 + 100*n2 + n1). (https://root.cern.ch/doc/master/classTAttAxis.html)
+        fAxisColor (int): Color of the line axis.
+        fLabelColor (int): Color of labels.
+        fLabelFont (int): Font for labels.
+        fLabelOffset (float): Offset of labels.
+        fLabelSize (float): Size of labels.
+        fTickLength (float): Length of tick marks.
+        fTitleOffset (float): Offset of axis title.
+        fTitleSize (float): Size of axis title.
+        fTitleColor (int): Color of axis title.
+        fTitleFont (int): Font for axis title.
+
+    This function is for developers to create TAxis objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+    tobject = uproot.models.TObject.Model_TObject.empty()
+    tobject._members["@fUniqueID"] = 0
+    tobject._members["@fBits"] = 0
+
+    tnamed = uproot.models.TNamed.Model_TNamed.empty()
+    tnamed._deeply_writable = True
+    tnamed._bases.append(tobject)
+    tnamed._members["fName"] = fName
+    tnamed._members["fTitle"] = fTitle
+
+    tattaxis = uproot.models.TAtt.Model_TAttAxis_v4.empty()
+    tattaxis._deeply_writable = True
+    tattaxis._members["fNdivisions"] = fNdivisions
+    tattaxis._members["fAxisColor"] = fAxisColor
+    tattaxis._members["fLabelColor"] = fLabelColor
+    tattaxis._members["fLabelFont"] = fLabelFont
+    tattaxis._members["fLabelOffset"] = fLabelOffset
+    tattaxis._members["fLabelSize"] = fLabelSize
+    tattaxis._members["fTickLength"] = fTickLength
+    tattaxis._members["fTitleOffset"] = fTitleOffset
+    tattaxis._members["fTitleSize"] = fTitleSize
+    tattaxis._members["fTitleColor"] = fTitleColor
+    tattaxis._members["fTitleFont"] = fTitleFont
+
+    if fXbins is None:
+        fXbins = numpy.array([], dtype=numpy.float64)
+
+    if isinstance(fXbins, uproot.models.TArray.Model_TArrayD):
+        tarray_fXbins = fXbins
+    else:
+        tarray_fXbins = to_TArray(fXbins)
+
+    if isinstance(fTimeFormat, uproot.models.TString.Model_TString):
+        tstring_fTimeFormat = fTimeFormat
+    else:
+        tstring_fTimeFormat = to_TString(fTimeFormat)
+
+    taxis = uproot.models.TH.Model_TAxis_v10.empty()
+    taxis._deeply_writable = True
+    taxis._bases.append(tnamed)
+    taxis._bases.append(tattaxis)
+    taxis._members["fNbins"] = fNbins
+    taxis._members["fXmin"] = fXmin
+    taxis._members["fXmax"] = fXmax
+    taxis._members["fXbins"] = tarray_fXbins
+    taxis._members["fFirst"] = fFirst
+    taxis._members["fLast"] = fLast
+    taxis._members["fBits2"] = fBits2
+    taxis._members["fTimeDisplay"] = fTimeDisplay
+    taxis._members["fTimeFormat"] = tstring_fTimeFormat
+    taxis._members["fLabels"] = fLabels
+    taxis._members["fModLabs"] = fModLabs
+
+    return taxis
+
+
+def to_TH1x(
+    fName,
+    fTitle,
+    data,
+    fEntries,
+    fTsumw,
+    fTsumw2,
+    fTsumwx,
+    fTsumwx2,
+    fSumw2,
+    fXaxis,
+    fYaxis=None,
+    fZaxis=None,
+    fNcells=None,
+    fBarOffset=0,
+    fBarWidth=1000,
+    fMaximum=-1111.0,
+    fMinimum=-1111.0,
+    fNormFactor=0.0,
+    fContour=None,
+    fOption="",
+    fFunctions=None,
+    fBufferSize=0,
+    fBuffer=None,
+    fBinStatErrOpt=0,
+    fStatOverflows=2,
+    fLineColor=602,
+    fLineStyle=1,
+    fLineWidth=1,
+    fFillColor=0,
+    fFillStyle=1001,
+    fMarkerColor=1,
+    fMarkerStyle=1,
+    fMarkerSize=1.0,
+):
+    """
+    Args:
+        fName (None or str): Temporary name, will be overwritten by the writing
+            process because Uproot's write syntax is ``file[name] = histogram``.
+        fTitle (str): Real title of the histogram.
+        data (numpy.ndarray or :doc:`uproot.models.TArray.Model_TArray`): Bin contents
+            with first bin as underflow, last bin as overflow. The dtype of this array
+            determines the return type of this function (TH1C, TH1D, TH1F, TH1I, or TH1S).
+        fEntries (float): Number of entries. (https://root.cern.ch/doc/master/classTH1.html)
+        fTsumw (float): Total Sum of weights.
+        fTsumw2 (float): Total Sum of squares of weights.
+        fTsumwx (float): Total Sum of weight*X.
+        fTsumwx2 (float): Total Sum of weight*X*X.
+        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights.
+        fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.to_TAxis`
+            with ``fName="xaxis"`` and ``fTitle=""``.
+        fYaxis (None or :doc:`uproot.models.TH.Model_TAxis_v10`): None generates a
+            default for 1D histograms.
+        fZaxis (None or :doc:`uproot.models.TH.Model_TAxis_v10`): None generates a
+            default for 1D and 2D histograms.
+        fNcells (None or int): Number of bins(1D), cells (2D) +U/Overflows. Computed
+            from ``data`` if None.
+        fBarOffset (int): (1000*offset) for bar charts or legos
+        fBarWidth (int): (1000*width) for bar charts or legos
+        fMaximum (float): Maximum value for plotting.
+        fMinimum (float): Minimum value for plotting.
+        fNormFactor (float): Normalization factor.
+        fContour (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            to display contour levels. None generates an empty array.
+        fOption (str or :doc:`uproot.models.TString.Model_TString`): Histogram options.
+        fFunctions (None, list, or :doc:`uproot.models.TList.Model_TList`): ->Pointer to
+            list of functions (fits and user). None generates an empty list.
+        fBufferSize (None or int): fBuffer size. Computed from ``fBuffer`` if None.
+        fBuffer (None or numpy.ndarray of numpy.float64): Buffer of entries accumulated
+            before automatically choosing the binning. (Irrelevant for serialization?)
+            None generates an empty array.
+        fBinStatErrOpt (int): Option for bin statistical errors.
+        fStatOverflows (int): Per object flag to use under/overflows in statistics.
+        fLineColor (int): Line color. (https://root.cern.ch/doc/master/classTAttLine.html)
+        fLineStyle (int): Line style.
+        fLineWidth (int): Line width.
+        fFillColor (int): Fill area color. (https://root.cern.ch/doc/master/classTAttFill.html)
+        fFillStyle (int): Fill area style.
+        fMarkerColor (int): Marker color. (https://root.cern.ch/doc/master/classTAttMarker.html)
+        fMarkerStyle (int): Marker style.
+        fMarkerSize (float): Marker size.
+
+    This function is for developers to create TH1* objects that can be
+    written to ROOT files, to implement conversion routines. The choice of
+    TH1C, TH1D, TH1F, TH1I, or TH1S depends on the dtype of the ``data`` array.
+    """
+    tobject = uproot.models.TObject.Model_TObject.empty()
+    tobject._members["@fUniqueID"] = 0
+    tobject._members["@fBits"] = 0
+
+    tnamed = uproot.models.TNamed.Model_TNamed.empty()
+    tnamed._deeply_writable = True
+    tnamed._bases.append(tobject)
+    tnamed._members["fName"] = fName
+    tnamed._members["fTitle"] = fTitle
+
+    tattline = uproot.models.TAtt.Model_TAttLine_v2.empty()
+    tattline._deeply_writable = True
+    tattline._members["fLineColor"] = fLineColor
+    tattline._members["fLineStyle"] = fLineStyle
+    tattline._members["fLineWidth"] = fLineWidth
+
+    tattfill = uproot.models.TAtt.Model_TAttFill_v2.empty()
+    tattfill._deeply_writable = True
+    tattfill._members["fFillColor"] = fFillColor
+    tattfill._members["fFillStyle"] = fFillStyle
+
+    tattmarker = uproot.models.TAtt.Model_TAttMarker_v2.empty()
+    tattmarker._deeply_writable = True
+    tattmarker._members["fMarkerColor"] = fMarkerColor
+    tattmarker._members["fMarkerStyle"] = fMarkerStyle
+    tattmarker._members["fMarkerSize"] = fMarkerSize
+
+    th1 = uproot.models.TH.Model_TH1_v8.empty()
+
+    th1._bases.append(tnamed)
+    th1._bases.append(tattline)
+    th1._bases.append(tattfill)
+    th1._bases.append(tattmarker)
+
+    if fYaxis is None:
+        fYaxis = to_TAxis(fName="yaxis", fTitle="", fNbins=1, fXmin=0.0, fXmax=1.0)
+    if fZaxis is None:
+        fZaxis = to_TAxis(fName="zaxis", fTitle="", fNbins=1, fXmin=0.0, fXmax=1.0)
+    if fContour is None:
+        fContour = numpy.array([], dtype=numpy.float64)
+    if fFunctions is None:
+        fFunctions = []
+    if fBuffer is None:
+        fBuffer = numpy.array([], dtype=numpy.float64)
+
+    if isinstance(data, uproot.models.TArray.Model_TArray):
+        tarray_data = data
+    else:
+        tarray_data = to_TArray(data)
+
+    if isinstance(fSumw2, uproot.models.TArray.Model_TArray):
+        tarray_fSumw2 = fSumw2
+    else:
+        tarray_fSumw2 = to_TArray(fSumw2)
+    if not isinstance(tarray_fSumw2, uproot.models.TArray.Model_TArrayD):
+        raise TypeError("fSumw2 must be an array of float64 (TArrayD)")
+
+    if isinstance(fContour, uproot.models.TArray.Model_TArray):
+        tarray_fContour = fContour
+    else:
+        tarray_fContour = to_TArray(fContour)
+    if not isinstance(tarray_fContour, uproot.models.TArray.Model_TArrayD):
+        raise TypeError("fContour must be an array of float64 (TArrayD)")
+
+    if isinstance(fOption, uproot.models.TString.Model_TString):
+        tstring_fOption = fOption
+    else:
+        tstring_fOption = to_TString(fOption)
+
+    if isinstance(fFunctions, uproot.models.TList.Model_TList):
+        tlist_fFunctions = fFunctions
+    else:
+        tlist_fFunctions = to_TList(fFunctions, name="")
+    # FIXME: require all list items to be the appropriate class (TFunction?)
+
+    th1._members["fNcells"] = len(tarray_data) if fNcells is None else fNcells
+    th1._members["fXaxis"] = fXaxis
+    th1._members["fYaxis"] = fYaxis
+    th1._members["fZaxis"] = fZaxis
+    th1._members["fBarOffset"] = fBarOffset
+    th1._members["fBarWidth"] = fBarWidth
+    th1._members["fEntries"] = fEntries
+    th1._members["fTsumw"] = fTsumw
+    th1._members["fTsumw2"] = fTsumw2
+    th1._members["fTsumwx"] = fTsumwx
+    th1._members["fTsumwx2"] = fTsumwx2
+    th1._members["fMaximum"] = fMaximum
+    th1._members["fMinimum"] = fMinimum
+    th1._members["fNormFactor"] = fNormFactor
+    th1._members["fContour"] = tarray_fContour
+    th1._members["fSumw2"] = tarray_fSumw2
+    th1._members["fOption"] = tstring_fOption
+    th1._members["fFunctions"] = tlist_fFunctions
+    th1._members["fBufferSize"] = len(fBuffer) if fBufferSize is None else fBufferSize
+    th1._members["fBuffer"] = fBuffer
+    th1._members["fBinStatErrOpt"] = fBinStatErrOpt
+    th1._members["fStatOverflows"] = fStatOverflows
+
+    th1._speedbump1 = b"\x00"
+
+    th1._deeply_writable = tlist_fFunctions._deeply_writable
+
+    if isinstance(tarray_data, uproot.models.TArray.Model_TArrayC):
+        cls = uproot.models.TH.Model_TH1C_v3
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayS):
+        cls = uproot.models.TH.Model_TH1S_v3
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayI):
+        cls = uproot.models.TH.Model_TH1I_v3
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayF):
+        cls = uproot.models.TH.Model_TH1F_v3
+    elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayD):
+        cls = uproot.models.TH.Model_TH1D_v3
+    else:
+        raise TypeError(
+            "no TH1* subclasses correspond to {0}".format(tarray_data.classname)
+        )
+
+    th1x = cls.empty()
+    th1x._bases.append(th1)
+    th1x._bases.append(tarray_data)
+
+    th1x._deeply_writable = th1._deeply_writable
+
+    return th1x
