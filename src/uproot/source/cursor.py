@@ -267,6 +267,24 @@ class Cursor(object):
 
         return out.item()
 
+    def byte(self, chunk, context, move=True):
+        """
+        Args:
+            chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
+                from the file :doc:`uproot.source.chunk.Source`.
+            context (dict): Auxiliary data used in deserialization.
+            move (bool): If True, move the
+                :ref:`uproot.source.cursor.Cursor.index` past the fields;
+                otherwise, leave it where it is.
+
+        Interpret data at this :ref:`uproot.source.cursor.Cursor.index` as a raw
+        byte.
+        """
+        out = chunk.get(self._index, self._index + 1, self, context)
+        if move:
+            self._index += 1
+        return out
+
     def bytes(self, chunk, length, context, move=True):
         """
         Args:
@@ -340,11 +358,7 @@ class Cursor(object):
         stop = start + length
         if move:
             self._index = stop
-        data = chunk.get(start, stop, self, context)
-        if hasattr(data, "tobytes"):
-            return data.tobytes()
-        else:
-            return data.tostring()
+        return uproot._util.tobytes(chunk.get(start, stop, self, context))
 
     def string(self, chunk, context, move=True):
         """
@@ -388,10 +402,7 @@ class Cursor(object):
         if move:
             self._index = stop
         data = chunk.get(start, stop, self, context)
-        if hasattr(data, "tobytes"):
-            return data.tobytes()
-        else:
-            return data.tostring()
+        return uproot._util.tobytes(data)
 
     def string_with_length(self, chunk, context, length, move=True):
         """
@@ -443,11 +454,7 @@ of file path {2}""".format(
         if move:
             self._index += local_stop
 
-        out = remainder[: local_stop - 1]
-        if hasattr(out, "tobytes"):
-            out = out.tobytes()
-        else:
-            out = out.tostring()
+        out = uproot._util.tobytes(remainder[: local_stop - 1])
 
         if uproot._util.py2:
             return out

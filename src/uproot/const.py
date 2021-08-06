@@ -19,6 +19,7 @@ kNewClassTag = numpy.int64(0xFFFFFFFF)
 
 kIsOnHeap = numpy.uint32(0x01000000)
 kNotDeleted = numpy.uint32(0x02000000)
+kMustCleanup = numpy.uint32(1 << 3)
 kIsReferenced = numpy.uint32(1 << 4)
 
 kMapOffset = 2

@@ -125,11 +125,7 @@ def _ftype_to_struct(fType):
 
 
 def _copy_bytes(chunk, start, stop, cursor, context):
-    out = chunk.get(start, stop, cursor, context)
-    if hasattr(out, "tobytes"):
-        return out.tobytes()
-    else:
-        return out.tostring()
+    return uproot._util.tobytes(chunk.get(start, stop, cursor, context))
 
 
 _tstreamerinfo_format1 = struct.Struct(">Ii")
@@ -436,11 +432,13 @@ class Model_TStreamerInfo(uproot.model.Model):
             chunk, cursor, context, file, self._file, self.concrete
         )
 
-    def _serialize(self, out, header, name):
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         out.append(self._serialization)
         uproot.serialization._serialize_object_any(
-            out, self._members["fElements"], name
+            out, self._members["fElements"], None
         )
         if header:
             out.insert(
@@ -578,7 +576,9 @@ class Model_TStreamerElement(uproot.model.Model):
             # if (TestBit(kHasRange)) GetRange(GetTitle(),fXmin,fXmax,fFactor)
             pass
 
-    def _serialize(self, out, header, name):
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         out.append(self._serialization)
         if header:

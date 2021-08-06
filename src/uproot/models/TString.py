@@ -60,5 +60,22 @@ in file {1}""".format(
             file, index_format, header, tobject_header, breadcrumbs
         )
 
+    writable = True
+    _is_memberwise = False
+
+    def _serialize(self, out, header, name, tobject_flags):
+        import uproot._writing
+
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
+
+        out.append(uproot._writing.serialize_string(self))
+
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 2
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
 
 uproot.classes["TString"] = Model_TString

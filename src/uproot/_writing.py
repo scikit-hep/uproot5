@@ -967,7 +967,7 @@ class TListOfStreamers(CascadeNode):
             rawstreamers.append(
                 RawStreamerInfo(
                     location + start,
-                    uncompressed.raw_data[start:stop].tobytes(),
+                    uproot._util.tobytes(uncompressed.raw_data[start:stop]),
                     streamer.name,
                     streamer.class_version,
                 )
@@ -2185,3 +2185,18 @@ def update_existing(sink, initial_directory_bytes, uuid_function):
     return CascadingFile(
         fileheader, streamers, freesegments, rootdirectory, tlist_of_streamers
     )
+
+
+_serialize_string_small = struct.Struct(">B")
+_serialize_string_big = struct.Struct(">BI")
+
+
+def serialize_string(string):
+    """
+    FIXME: docstring
+    """
+    as_bytes = string.encode(errors="surrogateescape")
+    if len(as_bytes) < 255:
+        return _serialize_string_small.pack(len(as_bytes)) + as_bytes
+    else:
+        return _serialize_string_big.pack(255, len(as_bytes)) + as_bytes

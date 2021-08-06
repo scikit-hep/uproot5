@@ -24,6 +24,8 @@ class Model_TTree_v16(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     A :doc:`uproot.model.VersionedModel` for ``TTree`` version 16.
     """
 
+    behaviors = (uproot.behaviors.TTree.TTree,)
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -173,6 +175,8 @@ class Model_TTree_v17(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     """
     A :doc:`uproot.model.VersionedModel` for ``TTree`` version 17.
     """
+
+    behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -324,6 +328,8 @@ class Model_TTree_v18(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     """
     A :doc:`uproot.model.VersionedModel` for ``TTree`` version 18.
     """
+
+    behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -481,6 +487,8 @@ class Model_TTree_v19(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     """
     A :doc:`uproot.model.VersionedModel` for ``TTree`` version 19.
     """
+
+    behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -654,6 +662,8 @@ class Model_TTree_v20(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     """
     A :doc:`uproot.model.VersionedModel` for ``TTree`` version 20.
     """
+
+    behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:

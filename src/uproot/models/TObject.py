@@ -45,9 +45,10 @@ in file {1}""".format(
             cursor.skip(2)
         self._members["@fBits"] = int(self._members["@fBits"])
 
-    def _serialize(self, out, header, name):
-        # struct.pack(">hII", 1, 0, uproot.const.kNotDeleted)
-        out.append(b"\x00\x01\x00\x00\x00\x00\x02\x00\x00\x00")
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        out.append(b"\x00\x01" + _tobject_format2.pack(0, tobject_flags))
 
     @classmethod
     def strided_interpretation(

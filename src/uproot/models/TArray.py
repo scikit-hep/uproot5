@@ -91,6 +91,24 @@ in file {1}""".format(
             parameters={"uproot": {"as": "TArray"}},
         )
 
+    writable = True
+
+    def _to_writable_postprocess(self, original):
+        self._data = original._data
+
+    def _serialize(self, out, header, name, tobject_flags):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
+
+        out.append(_tarray_format1.pack(self._members["fN"]))
+        out.append(uproot._util.tobytes(self._data))
+
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 1
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
 
 class Model_TArrayC(Model_TArray):
     """

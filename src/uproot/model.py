@@ -91,11 +91,14 @@ def reset_classes():
     reload(uproot.models.TObjString)
     reload(uproot.models.TAtt)
     reload(uproot.models.TRef)
+
     reload(uproot.models.TTree)
     reload(uproot.models.TBranch)
     reload(uproot.models.TLeaf)
     reload(uproot.models.TBasket)
     reload(uproot.models.RNTuple)
+    reload(uproot.models.TH)
+    reload(uproot.models.TGraph)
 
 
 _classname_regularize = re.compile(r"\s*(<|>|::)\s*")
@@ -361,6 +364,7 @@ class Model(object):
     class_streamer = None
     class_rawstreamers = ()
     writable = False
+    _deeply_writable = False
     behaviors = ()
 
     def __repr__(self):
@@ -721,6 +725,7 @@ class Model(object):
         self._cursor = None
         self._file = None
         self._parent = None
+        self._concrete = None
         self._members = {}
         self._bases = []
         self._num_bytes = None
@@ -757,7 +762,6 @@ class Model(object):
         self._file = selffile
         self._parent = parent
         self._concrete = concrete
-
         self._members = {}
         self._bases = []
         self._num_bytes = None
@@ -956,9 +960,71 @@ class Model(object):
         """
         pass
 
-    def _serialize(self, out, header, name):
+    def _to_writable_postprocess(self, original):
+        pass
+
+    def _to_writable(self, concrete):
+        cls = None
+        if self.writable:
+            cls = type(self)
+        else:
+            dispatch = uproot.classes.get(self.classname)
+            if dispatch is not None:
+                for versioned_cls in dispatch.known_versions.values():
+                    if versioned_cls.writable:
+                        cls = versioned_cls
+                        break
+
+        if cls is None:
+            raise NotImplementedError(
+                "this ROOT type is not writable: {0}".format(self.classname)
+            )
+        else:
+            out = cls.__new__(cls)
+            out._cursor = self._cursor
+            out._file = self._file
+            out._parent = self._parent
+            out._concrete = concrete
+            out._num_bytes = self._num_bytes
+            out._instance_version = classname_decode(cls.__name__)[1]
+            out._is_memberwise = self._is_memberwise
+
+            if concrete is None:
+                concrete = out
+
+            out._bases = []
+            for base in self._bases:
+                out._bases.append(base._to_writable(concrete))
+
+            out._members = {}
+            for key, value in self._members.items():
+                if isinstance(value, Model):
+                    out._members[key] = value._to_writable(None)
+                else:
+                    out._members[key] = value
+
+            out._to_writable_postprocess(self)
+            return out
+
+    def to_writable(self):
+        """
+        Args:
+            obj (:doc:`uproot.model.Model` instance of the same C++ class): The
+                object to convert to this class version.
+
+        Returns a writable version of this object or raises a NotImplementedError
+        if no writable version exists.
+        """
+        if self._deeply_writable:
+            return self
+        else:
+            return self._to_writable(None)
+
+    def _serialize(self, out, header, name, tobject_flags):
         raise NotImplementedError(
-            "serialize method not implemented on {0}".format(type(self).__name__)
+            "can't write {0} instances yet ('serialize' method not implemented)".format(
+                type(self).__name__
+            )
         )
 
     def serialize(self, name=None):
@@ -972,7 +1038,7 @@ class Model(object):
         NotImplementedError).
         """
         out = []
-        self._serialize(out, True, name)
+        self._serialize(out, True, name, numpy.uint32(0x00000000))
         return b"".join(out)
 
 

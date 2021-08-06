@@ -157,6 +157,24 @@ in file {1}""".format(
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
 
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
+        out.append(
+            _tattline1_format1.pack(
+                self._members["fLineColor"],
+                self._members["fLineStyle"],
+                self._members["fLineWidth"],
+            )
+        )
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 2
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
     class_flags = {}
@@ -305,6 +323,23 @@ in file {1}""".format(
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
 
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
+        out.append(
+            _tattfill2_format1.pack(
+                self._members["fFillColor"],
+                self._members["fFillStyle"],
+            )
+        )
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 2
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
     class_flags = {}
@@ -392,6 +427,24 @@ in file {1}""".format(
             contents, parameters={"__record__": "TAttMarker"}
         )
 
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
+        out.append(
+            _tattmarker2_format1.pack(
+                self._members["fMarkerColor"],
+                self._members["fMarkerStyle"],
+                self._members["fMarkerSize"],
+            )
+        )
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 2
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
+
     base_names_versions = []
     member_names = ["fMarkerColor", "fMarkerStyle", "fMarkserSize"]
     class_flags = {}
@@ -414,7 +467,8 @@ class Model_TAttAxis_v4(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -600,11 +654,25 @@ class Model_TAttAxis_v4(uproot.model.VersionedModel):
 
     writable = True
 
-    def _serialize(self, out, header, name):
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
-            x._serialize(out, True, name)
-        raise NotImplementedError("FIXME")
+            x._serialize(out, True, None, tobject_flags)
+        out.append(
+            self._format0.pack(
+                self._members["fNdivisions"],
+                self._members["fAxisColor"],
+                self._members["fLabelColor"],
+                self._members["fLabelFont"],
+                self._members["fLabelOffset"],
+                self._members["fLabelSize"],
+                self._members["fTickLength"],
+                self._members["fTitleOffset"],
+                self._members["fTitleSize"],
+                self._members["fTitleColor"],
+                self._members["fTitleFont"],
+            )
+        )
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 4
@@ -627,7 +695,8 @@ class Model_TAtt3D_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                """memberwise serialization of {0}
+in file {1}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -689,11 +758,10 @@ class Model_TAtt3D_v1(uproot.model.VersionedModel):
 
     writable = True
 
-    def _serialize(self, out, header, name):
+    def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
-            x._serialize(out, True, name)
-        raise NotImplementedError("FIXME")
+            x._serialize(out, True, None, tobject_flags)
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 1

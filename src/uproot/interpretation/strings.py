@@ -227,10 +227,7 @@ class AsStrings(uproot.interpretation.Interpretation):
         offsets[0] = 0
         numpy.cumsum(counts, out=offsets[1:])
 
-        if hasattr(data, "tobytes"):
-            data = data.tobytes()
-        else:
-            data = data.tostring()
+        data = uproot._util.tobytes(data)
         output = StringArray(offsets, data)
 
         self.hook_after_basket_array(
