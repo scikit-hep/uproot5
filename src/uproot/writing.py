@@ -57,6 +57,9 @@ def recreate(file_path, **options):
         sink = uproot.sink.file.FileSink.from_object(file_path)
 
     compression = options.pop("compression", create.defaults["compression"])
+    if compression is None:
+        compression = uproot.compression.ZLIB(0)
+
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )

@@ -59,6 +59,9 @@ in file {1}""".format(
 
     writable = True
 
+    def _to_writable_postprocess(self, original):
+        self._data = original._data
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
@@ -72,12 +75,9 @@ in file {1}""".format(
         for item in self._data:
             uproot.serialization._serialize_object_any(out, item, None)
         if header:
-            out.insert(
-                where,
-                uproot.serialization.numbytes_version(
-                    sum(len(x) for x in out[where:]), self._instance_version
-                ),
-            )
+            num_bytes = sum(len(x) for x in out[where:])
+            version = self._instance_version
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
     def __repr__(self):
         if self.class_version is None:
