@@ -1546,17 +1546,25 @@ class Directory(CascadeNode):
         return subdirectory
 
     def add_tree(
-        self, sink, name, title, branch_types, initial_num_baskets=10, resize_factor=1.5
+        self,
+        sink,
+        name,
+        title,
+        branch_types,
+        initial_basket_capacity=10,
+        resize_factor=1.5,
     ):
-        import uproot.writing
-
-        raw_data = uproot.writing.to_TObjString("rather long string").serialize(
-            name=name
+        tree = Tree(
+            self,
+            name,
+            title,
+            branch_types,
+            self._freesegments,
+            initial_basket_capacity,
+            resize_factor,
         )
-
-        key = self.add_object(sink, "TObjString", name, title, raw_data, len(raw_data))
-
-        return Tree(self, key, name, title, branch_types, self._freesegments)
+        tree.write_anew(sink)
+        return tree
 
 
 class Tree(CascadeLeaf):
@@ -1564,13 +1572,73 @@ class Tree(CascadeLeaf):
     FIXME: docstring
     """
 
-    def __init__(self, directory, key, name, title, branch_types, freesegments):
+    def __init__(
+        self,
+        directory,
+        name,
+        title,
+        branch_types,
+        freesegments,
+        initial_basket_capacity,
+        resize_factor,
+    ):
         self._directory = directory
-        self._key = key
         self._name = name
         self._title = title
-        self._branch_types = branch_types
         self._freesegments = freesegments
+        self._basket_capacity = initial_basket_capacity
+        self._resize_factor = resize_factor
+
+        if isinstance(branch_types, dict):
+            branch_types_items = branch_types.items()
+        else:
+            branch_types_items = branch_types
+
+        self._branch_data = []
+        for branch_name, branch_type in branch_types_items:
+            self._branch_data.append(
+                {
+                    "fName": branch_name,
+                    "type": branch_type,
+                    "fTitle": branch_name + "/D",  # FIXME
+                    "compression": directory.freesegments.fileheader.compression,
+                    "fTotBytes": 0,
+                    "fZipBytes": 0,
+                    "fBasketBytes": numpy.zeros(
+                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype1
+                    ),
+                    "fBasketEntry": numpy.zeros(
+                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype2
+                    ),
+                    "fBasketSeek": numpy.zeros(
+                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
+                    ),  # FIXME: make this always 64-bit (with speedbump = 2)
+                }
+            )
+
+        self._num_entries = 0
+        self._num_baskets = 0
+
+        self._metadata_start = None
+        self._metadata = {
+            "fTotBytes": 0,
+            "fZipBytes": 0,
+            "fSavedBytes": 0,
+            "fFlushedBytes": 0,
+        }
+        self._key = None
+
+    def __repr__(self):
+        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
+            type(self).__name__,
+            self._directory,
+            self._name,
+            self._title,
+            [(datum["fName"], datum["type"]) for datum in self._branch_types],
+            self._freesegments,
+            self._basket_capacity,
+            self._resize_factor,
+        )
 
     @property
     def directory(self):
@@ -1582,11 +1650,11 @@ class Tree(CascadeLeaf):
 
     @property
     def name(self):
-        return self._name
+        return self._key.name
 
     @property
     def title(self):
-        return self._title
+        return self._key.title
 
     @property
     def branch_types(self):
@@ -1597,12 +1665,322 @@ class Tree(CascadeLeaf):
         return self._freesegments
 
     @property
+    def basket_capacity(self):
+        return self._basket_capacity
+
+    @property
+    def resize_factor(self):
+        return self._resize_factor
+
+    @property
     def location(self):
         return self._key.location
 
-    def change(self, sink, value):
-        sink.write(self._key.location + self._key.num_bytes + 17, value)
-        sink.flush()
+    @property
+    def num_entries(self):
+        return self._num_entries
+
+    @property
+    def num_baskets(self):
+        return self._num_baskets
+
+    def write_anew(self, sink):
+        guess_key_size = uproot.reading._key_format_small.size + 6
+        name_asbytes = self._name.encode(errors="surrogateescape")
+        title_asbytes = self._title.encode(errors="surrogateescape")
+        guess_key_size += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
+        guess_key_size += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
+
+        out = [None]
+        ttree_header_index = 0
+
+        tobject = uproot.models.TObject.Model_TObject.empty()
+        tnamed = uproot.models.TNamed.Model_TNamed.empty()
+        tnamed._bases.append(tobject)
+        tnamed._members["fTitle"] = self._title
+        tnamed._serialize(out, True, self._name, uproot.const.kMustCleanup)
+
+        # TAttLine v2, fLineColor: 602 fLineStyle: 1 fLineWidth: 1
+        # TAttFill v2, fFillColor: 0, fFillStyle: 1001
+        # TAttMarker v2, fMarkerColor: 1, fMarkerStyle: 1, fMarkerSize: 1.0
+        out.append(
+            b"@\x00\x00\x08\x00\x02\x02Z\x00\x01\x00\x01"
+            + b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9"
+            + b"@\x00\x00\n\x00\x02\x00\x01\x00\x01?\x80\x00\x00"
+        )
+
+        metadata_out_index = len(out)
+        out.append(
+            uproot.models.TTree._ttree20_format1.pack(
+                self._num_entries,
+                self._metadata["fTotBytes"],
+                self._metadata["fZipBytes"],
+                self._metadata["fSavedBytes"],
+                self._metadata["fFlushedBytes"],
+                1.0,  # fWeight
+                0,  # fTimerInterval
+                25,  # fScanField
+                0,  # fUpdate
+                1000,  # fDefaultEntryOffsetLen
+                0,  # fNClusterRange
+                1000000000000,  # fMaxEntries
+                1000000000000,  # fMaxEntryLoop
+                0,  # fMaxVirtualSize
+                -300000000,  # fAutoSave
+                -30000000,  # fAutoFlush
+                1000000,  # fEstimate
+            )
+        )
+
+        # speedbump (0), fClusterRangeEnd (empty array),
+        # speedbump (0), fClusterSize (empty array)
+        # fIOFeatures (TIOFeatures)
+        out.append(b"\x00\x00@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
+
+        tleaf_reference_numbers = []
+
+        tobjarray_of_branches_index = len(out)
+        out.append(None)
+
+        # TObjArray header with fName: ""
+        out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
+        out.append(
+            uproot.models.TObjArray._tobjarray_format1.pack(
+                len(self._branch_data),  # TObjArray fSize
+                0,  # TObjArray fLowerBound
+            )
+        )
+
+        for datum in self._branch_data:
+            any_tbranch_index = len(out)
+            out.append(None)
+            out.append(b"TBranch\x00")
+
+            tbranch_index = len(out)
+            out.append(None)
+
+            tbranch_tobject = uproot.models.TObject.Model_TObject.empty()
+            tbranch_tnamed = uproot.models.TNamed.Model_TNamed.empty()
+            tbranch_tnamed._bases.append(tbranch_tobject)
+            tbranch_tnamed._members["fTitle"] = datum["fTitle"]
+            tbranch_tnamed._serialize(
+                out, True, datum["fName"], numpy.uint32(0x00400000)
+            )
+
+            # TAttFill v2, fFillColor: 0, fFillStyle: 1001
+            out.append(b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9")
+
+            out.append(
+                uproot.models.TBranch._tbranch13_format1.pack(
+                    datum["compression"].code,  # fCompress
+                    32000,  # fBasketSize
+                    0,  # fEntryOffsetLen
+                    self._num_baskets,  # fWriteBasket
+                    self._num_entries,  # fEntryNumber
+                )
+            )
+
+            # fIOFeatures (TIOFeatures)
+            out.append(b"@\x00\x00\x07\x00\x00\x1a\xa1/\x10\x00")
+
+            out.append(
+                uproot.models.TBranch._tbranch13_format2.pack(
+                    0,  # fOffset
+                    self._basket_capacity,  # fMaxBaskets
+                    0,  # fSplitLevel
+                    self._num_entries,  # fEntries
+                    0,  # fFirstEntry
+                    datum["fTotBytes"],
+                    datum["fZipBytes"],
+                )
+            )
+
+            # empty TObjArray of TBranches
+            out.append(
+                b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+
+            subtobjarray_of_leaves_index = len(out)
+            out.append(None)
+
+            # TObjArray header with fName: "", fSize: 1, fLowerBound: 0
+            out.append(
+                b"\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00"
+            )
+
+            absolute_location = guess_key_size + sum(
+                len(x) for x in out if x is not None
+            )
+            absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
+            tleaf_reference_numbers.append(absolute_location + 2)
+
+            subany_tleaf_index = len(out)
+            out.append(None)
+
+            # FIXME: figure out which type it is
+            if True:
+                out.append(b"TLeafD\x00")
+                special_struct = uproot.models.TLeaf._tleafd1_format1
+                lentype = 8
+                unsigned = False
+
+            # single TLeaf
+            leaf_name = datum["fName"].encode(errors="surrogateescape")
+            leaf_title = leaf_name
+            leaf_name_length = (1 if len(leaf_name) < 255 else 5) + len(leaf_name)
+            leaf_title_length = (1 if len(leaf_title) < 255 else 5) + len(leaf_title)
+
+            leaf_header = numpy.array(
+                [64, 0, 0, 76, 0, 1, 64, 0, 0, 54, 0, 2, 64, 0]
+                + [0, 30, 0, 1, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0],
+                numpy.uint8,
+            )
+            tmp = leaf_header[0:4].view(">u4")
+            tmp[:] = (
+                numpy.uint32(
+                    42 + leaf_name_length + leaf_title_length + special_struct.size
+                )
+                | uproot.const.kByteCountMask
+            )
+            tmp = leaf_header[6:10].view(">u4")
+            tmp[:] = (
+                numpy.uint32(
+                    20 + leaf_name_length + leaf_title_length + special_struct.size
+                )
+                | uproot.const.kByteCountMask
+            )
+            tmp = leaf_header[12:16].view(">u4")
+            tmp[:] = (
+                numpy.uint32(12 + leaf_name_length + leaf_title_length)
+                | uproot.const.kByteCountMask
+            )
+
+            out.append(uproot._util.tobytes(leaf_header))
+            if len(leaf_name) < 255:
+                out.append(
+                    struct.pack(">B%ds" % len(leaf_name), len(leaf_name), leaf_name)
+                )
+            else:
+                out.append(
+                    struct.pack(
+                        ">BI%ds" % len(leaf_name), 255, len(leaf_name), leaf_name
+                    )
+                )
+            if len(leaf_title) < 255:
+                out.append(
+                    struct.pack(">B%ds" % len(leaf_title), len(leaf_title), leaf_title)
+                )
+            else:
+                out.append(
+                    struct.pack(
+                        ">BI%ds" % len(leaf_title), 255, len(leaf_title), leaf_title
+                    )
+                )
+
+            # generic TLeaf members
+            out.append(
+                uproot.models.TLeaf._tleaf2_format0.pack(
+                    1,  # fLen
+                    lentype,  # fLenType
+                    0,  # fOffset
+                    False,  # fIsRange
+                    unsigned,  # fIsUnsigned
+                )
+            )
+
+            # null fLeafCount
+            out.append(b"\x00\x00\x00\x00")
+
+            # specialized TLeaf* members (fMinimum, fMaximum)
+            out.append(special_struct.pack(0, 0))
+
+            out[
+                subany_tleaf_index
+            ] = uproot.serialization._serialize_object_any_format1.pack(
+                numpy.uint32(sum(len(x) for x in out[subany_tleaf_index + 1 :]) + 4)
+                | uproot.const.kByteCountMask,
+                uproot.const.kNewClassTag,
+            )
+
+            out[subtobjarray_of_leaves_index] = uproot.serialization.numbytes_version(
+                sum(len(x) for x in out[subtobjarray_of_leaves_index + 1 :]),
+                3,  # TObjArray
+            )
+
+            # empty TObjArray of fBaskets (embedded)
+            out.append(
+                b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            )
+
+            # speedbump and fBasketBytes
+            out.append(b"\x01")
+            out.append(uproot._util.tobytes(datum["fBasketBytes"]))
+
+            # speedbump and fBasketEntry
+            out.append(b"\x01")
+            out.append(uproot._util.tobytes(datum["fBasketEntry"]))
+
+            # speedbump and fBasketSeek; FIXME: make the speedbump 2 when this is 64-bit
+            out.append(b"\x01")
+            out.append(uproot._util.tobytes(datum["fBasketSeek"]))
+
+            # empty fFileName
+            out.append(b"\x00")
+
+            out[tbranch_index] = uproot.serialization.numbytes_version(
+                sum(len(x) for x in out[tbranch_index + 1 :]), 13  # TBranch
+            )
+
+            out[
+                any_tbranch_index
+            ] = uproot.serialization._serialize_object_any_format1.pack(
+                numpy.uint32(sum(len(x) for x in out[any_tbranch_index + 1 :]) + 4)
+                | uproot.const.kByteCountMask,
+                uproot.const.kNewClassTag,
+            )
+
+        out[tobjarray_of_branches_index] = uproot.serialization.numbytes_version(
+            sum(len(x) for x in out[tobjarray_of_branches_index + 1 :]), 3  # TObjArray
+        )
+
+        # TObjArray of TLeaf references
+        tleaf_reference_numbers = uproot._util.tobytes(
+            numpy.array(tleaf_reference_numbers, ">u4")
+        )
+        out.append(
+            struct.pack(
+                ">I21s",
+                (21 + len(tleaf_reference_numbers)) | uproot.const.kByteCountMask,
+                b"\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00",
+            )
+        )
+
+        tleaf_reference_start = len(out)
+        out.append(tleaf_reference_numbers)
+
+        # null fAliases (b"\x00\x00\x00\x00")
+        # empty fIndexValues array (4-byte length is zero)
+        # empty fIndex array (4-byte length is zero)
+        # null fTreeIndex (b"\x00\x00\x00\x00")
+        # null fFriends (b"\x00\x00\x00\x00")
+        # null fUserInfo (b"\x00\x00\x00\x00")
+        # null fBranchRef (b"\x00\x00\x00\x00")
+        out.append(b"\x00" * 28)
+
+        out[ttree_header_index] = uproot.serialization.numbytes_version(
+            sum(len(x) for x in out[ttree_header_index + 1 :]), 20  # TTree
+        )
+
+        self._metadata_start = sum(len(x) for x in out[:metadata_out_index])
+
+        raw_data = b"".join(out)
+        self._key = self._directory.add_object(
+            sink, "TTree", self._name, self._title, raw_data, len(raw_data)
+        )
+
+        if self._key.num_bytes != guess_key_size:
+            tleaf_reference_start
+            raise NotImplementedError  # FIXME: adjust TLeaf references
 
 
 class RootDirectory(Directory):
