@@ -90,6 +90,7 @@ def reset_classes():
     reload(uproot.models.TObjArray)
     reload(uproot.models.TObjString)
     reload(uproot.models.TAtt)
+    reload(uproot.models.TDatime)
     reload(uproot.models.TRef)
     reload(uproot.models.TTree)
     reload(uproot.models.TBranch)
