@@ -11,7 +11,7 @@ import uproot
 
 @pytest.fixture(scope="module")
 def datafile(tmpdir_factory):
-    yield skhep_testdata.data_path("uproot-issue407.root")
+    yield skhep_testdata.data_path("uproot-issue-407.root")
 
 
 @pytest.fixture(params=["foo", "foo_padded"])
