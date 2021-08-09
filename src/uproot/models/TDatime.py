@@ -11,11 +11,12 @@ import struct
 import numpy
 
 import uproot
+import uproot.behaviors.TDatime
 
 _tdatime_format1 = struct.Struct(">I")
 
 
-class Model_TDatime(uproot.model.Model):
+class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
     """
     A versionless :doc:`uproot.model.Model` for ``TDatime``.
     """

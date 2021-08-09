@@ -2,6 +2,8 @@
 
 from __future__ import absolute_import
 
+import datetime
+
 import numpy
 import pytest
 import skhep_testdata
@@ -27,8 +29,8 @@ def tree(datafile):
 
 
 def test_streamer(_object):
-    assert _object.members["d"].members["fDatime"] == 1749155840
+    assert _object.members["d"].to_datetime() == datetime.datetime(2021, 1, 1, 0, 0, 0)
 
 
 def test_strided_interpretation(tree):
-    assert list(tree.iterate(how=tuple))[0][0].fDatime[0] == 1749155840
+    assert list(tree.iterate(how=tuple))[0][0].fDatime[0] == uproot._util.datetime_to_code(datetime.datetime(2021, 1, 1, 0, 0, 0))
