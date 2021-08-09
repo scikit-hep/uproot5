@@ -93,6 +93,7 @@ def reset_classes():
     reload(uproot.models.TDatime)
     reload(uproot.models.TRef)
 
+    reload(uproot.models.TTable)
     reload(uproot.models.TTree)
     reload(uproot.models.TBranch)
     reload(uproot.models.TLeaf)

@@ -134,6 +134,7 @@ import uproot.models.TAtt
 import uproot.models.TDatime
 import uproot.models.TRef
 
+import uproot.models.TTable
 import uproot.models.TTree
 import uproot.models.TBranch
 import uproot.models.TLeaf
