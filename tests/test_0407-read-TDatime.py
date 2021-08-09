@@ -33,4 +33,6 @@ def test_streamer(_object):
 
 
 def test_strided_interpretation(tree):
-    assert list(tree.iterate(how=tuple))[0][0].fDatime[0] == uproot._util.datetime_to_code(datetime.datetime(2021, 1, 1, 0, 0, 0))
+    assert list(tree.iterate(how=tuple))[0][0].fDatime[
+        0
+    ] == uproot._util.datetime_to_code(datetime.datetime(2021, 1, 1, 0, 0, 0))
