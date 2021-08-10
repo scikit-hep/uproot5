@@ -48,3 +48,36 @@ def test(tmp_path):
 
     assert t2.GetLeaf("branch1").GetName() == "branch1"
     assert t2.GetLeaf("branch1").GetTitle() == "branch1"
+
+
+def test_rename(tmp_path):
+    newfile = os.path.join(tmp_path, "newfiley_file.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        tree = fout._cascading.add_tree(
+            fout._file.sink,
+            "treey_tree",
+            "titley_title",
+            {"branchy_branch": np.float64},
+        )
+
+    f2 = ROOT.TFile(newfile)
+    t2 = f2.Get("treey_tree")
+
+    assert t2.GetName() == "treey_tree"
+    assert t2.GetTitle() == "titley_title"
+
+    assert t2.GetBranch("branchy_branch").GetName() == "branchy_branch"
+    assert t2.GetBranch("branchy_branch").GetTitle() == "branchy_branch/D"
+
+    assert (
+        t2.GetBranch("branchy_branch").GetLeaf("branchy_branch").GetName()
+        == "branchy_branch"
+    )
+    assert (
+        t2.GetBranch("branchy_branch").GetLeaf("branchy_branch").GetTitle()
+        == "branchy_branch"
+    )
+
+    assert t2.GetLeaf("branchy_branch").GetName() == "branchy_branch"
+    assert t2.GetLeaf("branchy_branch").GetTitle() == "branchy_branch"
