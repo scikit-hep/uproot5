@@ -1567,6 +1567,21 @@ class Directory(CascadeNode):
         return tree
 
 
+_dtype_to_char = {
+    numpy.dtype("bool"): "O",
+    numpy.dtype(">i1"): "B",
+    numpy.dtype(">u1"): "b",
+    numpy.dtype(">i2"): "S",
+    numpy.dtype(">u2"): "s",
+    numpy.dtype(">i4"): "I",
+    numpy.dtype(">u4"): "i",
+    numpy.dtype(">i8"): "L",
+    numpy.dtype(">u8"): "l",
+    numpy.dtype(">f4"): "F",
+    numpy.dtype(">f8"): "D",
+}
+
+
 class Tree(CascadeLeaf):
     """
     FIXME: docstring
@@ -1596,11 +1611,35 @@ class Tree(CascadeLeaf):
 
         self._branch_data = []
         for branch_name, branch_type in branch_types_items:
+            typestr = "np"
+
+            branch_dtype = numpy.dtype(branch_type).newbyteorder(">")
+
+            if branch_dtype.subdtype is None:
+                branch_shape = ()
+            else:
+                branch_dtype, branch_shape = branch_dtype.subdtype
+
+            letter = _dtype_to_char.get(branch_dtype)
+            if letter is None:
+                raise TypeError(
+                    "cannot write NumPy dtype {0} in TTree".format(branch_dtype)
+                )
+
+            if branch_shape == ():
+                dims = ""
+            else:
+                dims = "[" + ", ".join(str(x) for x in branch_shape) + "]"
+
+            title = "{0}/{1}{2}".format(branch_name, letter, dims)
+
             self._branch_data.append(
                 {
                     "fName": branch_name,
-                    "type": branch_type,
-                    "fTitle": branch_name + "/D",  # FIXME
+                    "type": typestr,
+                    "dtype": branch_dtype,
+                    "shape": branch_shape,
+                    "fTitle": title,
                     "compression": directory.freesegments.fileheader.compression,
                     "fTotBytes": 0,
                     "fZipBytes": 0,
@@ -1817,12 +1856,25 @@ class Tree(CascadeLeaf):
             subany_tleaf_index = len(out)
             out.append(None)
 
-            # FIXME: figure out which type it is
-            if True:
-                out.append(b"TLeafD\x00")
+            letter = _dtype_to_char[datum["dtype"]]
+            letter_upper = letter.upper()
+            out.append(("TLeaf" + letter_upper).encode() + b"\x00")
+            if letter_upper == "O":
+                special_struct = uproot.models.TLeaf._tleafO1_format1
+            elif letter_upper == "B":
+                special_struct = uproot.models.TLeaf._tleafb1_format1
+            elif letter_upper == "S":
+                special_struct = uproot.models.TLeaf._tleafs1_format1
+            elif letter_upper == "I":
+                special_struct = uproot.models.TLeaf._tleafi1_format1
+            elif letter_upper == "L":
+                special_struct = uproot.models.TLeaf._tleafl1_format0
+            elif letter_upper == "F":
+                special_struct = uproot.models.TLeaf._tleaff1_format1
+            elif letter_upper == "D":
                 special_struct = uproot.models.TLeaf._tleafd1_format1
-                lentype = 8
-                unsigned = False
+            lentype = datum["dtype"].itemsize
+            unsigned = letter != letter_upper
 
             # single TLeaf
             leaf_name = datum["fName"].encode(errors="surrogateescape")
@@ -1844,9 +1896,7 @@ class Tree(CascadeLeaf):
             )
             tmp = leaf_header[6:10].view(">u4")
             tmp[:] = (
-                numpy.uint32(
-                    20 + leaf_name_length + leaf_title_length + special_struct.size
-                )
+                numpy.uint32(36 + leaf_name_length + leaf_title_length)
                 | uproot.const.kByteCountMask
             )
             tmp = leaf_header[12:16].view(">u4")

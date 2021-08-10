@@ -136,3 +136,57 @@ def test_100_branches(tmp_path):
 
         assert t2.GetLeaf(branchname).GetName() == branchname
         assert t2.GetLeaf(branchname).GetTitle() == branchname
+
+
+def test_branch_types(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        tree = fout._cascading.add_tree(
+            fout._file.sink,
+            "t1",
+            "title",
+            {
+                "typeO": np.bool_,
+                "typeB": np.int8,
+                "typeb": np.uint8,
+                "typeS": np.int16,
+                "types": np.uint16,
+                "typeI": np.int32,
+                "typei": np.uint32,
+                "typeL": np.int64,
+                "typel": np.uint64,
+                "typeF": np.float32,
+                "typeD": np.float64,
+            },
+        )
+
+    f2 = ROOT.TFile(newfile)
+    t2 = f2.Get("t1")
+
+    assert t2.GetName() == "t1"
+    assert t2.GetTitle() == "title"
+
+    for name, size, isunsigned in [
+        ("typeO", 1, False),
+        ("typeB", 1, False),
+        ("typeb", 1, True),
+        ("typeS", 2, False),
+        ("types", 2, True),
+        ("typeI", 4, False),
+        ("typei", 4, True),
+        ("typeL", 8, False),
+        ("typel", 8, True),
+        ("typeF", 4, False),
+        ("typeD", 8, False),
+    ]:
+        assert t2.GetBranch(name).GetName() == name
+        assert t2.GetBranch(name).GetTitle() == name + "/" + name[-1]
+
+        assert t2.GetBranch(name).GetLeaf(name).GetName() == name
+        assert t2.GetBranch(name).GetLeaf(name).GetTitle() == name
+
+        assert t2.GetLeaf(name).GetName() == name
+        assert t2.GetLeaf(name).GetTitle() == name
+        assert t2.GetLeaf(name).GetLenType() == size
+        assert t2.GetLeaf(name).IsUnsigned() == isunsigned
