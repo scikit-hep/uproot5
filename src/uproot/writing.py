@@ -142,6 +142,8 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._fNbytesName = self._cascading.fileheader.begin_num_bytes
         self._fUUID = self._cascading.fileheader.uuid.bytes
 
+        self._trees = {}
+
     def __repr__(self):
         return "<WritableFile {0} at 0x{1:012x}>".format(repr(self.file_path), id(self))
 
@@ -607,13 +609,22 @@ class WritableDirectory(object):
                             head, tail = item[:index], item[index + 1 :]
                             last = step
                             step = step.get(head)
-                            if isinstance(step, uproot.behaviors.TBranch.HasBranches):
-                                return step["/".join([tail] + items[i + 1 :])]
+                            if isinstance(step, WritableTree):
+                                rest = [tail] + items[i + 1 :]
+                                if len(rest) != 0:
+                                    raise uproot.KeyInFileError(
+                                        where,
+                                        because="{0} is a WritableTree, which can't be internally indexed (by {1})".format(
+                                            repr(head), repr("/".join(rest))
+                                        ),
+                                        file_path=self.file_path,
+                                    )
+                                return step
                             else:
                                 raise uproot.KeyInFileError(
                                     where,
                                     because=repr(head)
-                                    + " is not a TDirectory, TTree, or TBranch",
+                                    + " is not a WritableDirectory or WritableTree",
                                     keys=last._cascading.data.key_names,
                                     file_path=self.file_path,
                                 )
@@ -621,14 +632,23 @@ class WritableDirectory(object):
                             last = step
                             step = step[item]
 
-                    elif isinstance(step, uproot.behaviors.TBranch.HasBranches):
-                        return step["/".join(items[i:])]
+                    elif isinstance(step, WritableTree):
+                        rest = items[i:]
+                        if len(rest) != 0:
+                            raise uproot.KeyInFileError(
+                                where,
+                                because="{0} is a WritableTree, which can't be internally indexed (by {1})".format(
+                                    repr(head), repr("/".join(rest))
+                                ),
+                                file_path=self.file_path,
+                            )
+                        return step
 
                     else:
                         raise uproot.KeyInFileError(
                             where,
                             because=repr(item)
-                            + " is not a TDirectory, TTree, or TBranch",
+                            + " is not a WritableDirectory or WritableTree",
                             keys=last._cascading.data.key_names,
                             file_path=self.file_path,
                         )
@@ -661,6 +681,9 @@ class WritableDirectory(object):
 
         if key.classname.string in ("TDirectory", "TDirectoryFile"):
             return self._subdir(key)
+
+        elif key.classname.string == "TTree":
+            return self._subtree(key)
 
         else:
 
@@ -710,10 +733,12 @@ class WritableDirectory(object):
                 self._file.sink.in_path,
             )
             assert directory_header.begin_location == key.seek_location
-            assert (
-                directory_header.parent_location
-                == self._file._cascading.fileheader.begin
-            )
+
+            # # FIXME: why was this here?
+            # assert (
+            #     directory_header.parent_location
+            #     == self._file._cascading.fileheader.begin
+            # )
 
             if directory_header.data_num_bytes == 0:
                 directory_datakey = uproot._writing.Key(
@@ -802,6 +827,17 @@ class WritableDirectory(object):
 
         return self._subdirs[name]
 
+    def _subtree(self, key):
+        name = key.name.string
+        path = self._path + (name,)
+
+        if path not in self._file._trees:
+            # maybe never-before-seen TTrees should be preemptively moved
+            # to account for versions different from v20
+            raise NotImplementedError  # FIXME: read a TTree to overwrite it
+
+        return self._file._trees[path]
+
     def mkdir(self, name, initial_directory_bytes=None):
         stripped = name.strip("/")
         try:
@@ -842,6 +878,40 @@ in file {2} in directory {3}""".format(
 
         else:
             return directory.mkdir(tail)
+
+    def mktree(
+        self,
+        name,
+        title,
+        branch_types,
+        initial_basket_capacity=10,
+        resize_factor=10.0,
+    ):
+        try:
+            at = name.rindex("/")
+        except ValueError:
+            treename = name
+            directory = self
+        else:
+            dirpath, treename = name[:at], name[at + 1 :]
+            directory = self.mkdir(dirpath)
+
+        path = directory._path + (treename,)
+
+        directory._file._trees[path] = WritableTree(
+            path,
+            directory._file,
+            directory._cascading.add_tree(
+                directory._file.sink,
+                treename,
+                title,
+                branch_types,
+                initial_basket_capacity,
+                resize_factor,
+            ),
+        )
+
+        return directory._file._trees[path]
 
     def copy_from(
         self,
@@ -1001,24 +1071,53 @@ in file {1} in directory {2}""".format(
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
 
-def to_writable(obj):
+class WritableTree(object):
     """
     FIXME: docstring
     """
-    if isinstance(obj, uproot.model.Model):
-        return obj.to_writable()
 
-        raise NotImplementedError(
-            "this ROOT type is not writable: {0}".format(obj.classname)
+    def __init__(self, path, file, cascading):
+        self._path = path
+        self._file = file
+        self._cascading = cascading
+
+    def __repr__(self):
+        return "<WritableTree {0} at 0x{1:012x}>".format(
+            repr("/" + "/".join(self._path)), id(self)
         )
 
-    elif uproot._util.isstr(obj):
-        return to_TObjString(obj)
+    @property
+    def path(self):
+        return self._path
 
-    else:
-        raise TypeError(
-            "unrecognized type cannot be written to a ROOT file: " + type(obj).__name__
-        )
+    @property
+    def object_path(self):
+        return "/".join(("",) + self._path + ("",)).replace("//", "/")
+
+    @property
+    def file_path(self):
+        return self._file.file_path
+
+    @property
+    def file(self):
+        return self._file
+
+    def close(self):
+        self._file.close()
+
+    @property
+    def closed(self):
+        return self._file.closed
+
+    def __enter__(self):
+        self._file.sink.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._file.sink.__exit__(exception_type, exception_value, traceback)
+
+    def extend(self, data):
+        self._cascading.extend(self._file.sink, data)
 
 
 def to_TString(string):
@@ -2333,3 +2432,23 @@ def to_TProfile3D(
     tprofile3d._deeply_writable = th3x._deeply_writable
 
     return tprofile3d
+
+
+def to_writable(obj):
+    """
+    FIXME: docstring
+    """
+    if isinstance(obj, uproot.model.Model):
+        return obj.to_writable()
+
+        raise NotImplementedError(
+            "this ROOT type is not writable: {0}".format(obj.classname)
+        )
+
+    elif uproot._util.isstr(obj):
+        return to_TObjString(obj)
+
+    else:
+        raise TypeError(
+            "unrecognized type cannot be written to a ROOT file: " + type(obj).__name__
+        )
