@@ -31,7 +31,4 @@ extras = {
 }
 extras["all"] = sum(extras.values(), [])
 
-setup(
-    version=get_version(),
-    extras_require=extras,
-)
+setup(version=get_version(), extras_require=extras)
