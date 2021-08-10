@@ -1944,19 +1944,21 @@ class Tree(CascadeLeaf):
         )
 
         # TObjArray of TLeaf references
-        tleaf_reference_numbers = uproot._util.tobytes(
+        tleaf_reference_bytes = uproot._util.tobytes(
             numpy.array(tleaf_reference_numbers, ">u4")
         )
         out.append(
             struct.pack(
-                ">I21s",
-                (21 + len(tleaf_reference_numbers)) | uproot.const.kByteCountMask,
-                b"\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00",
+                ">I13sI4s",
+                (21 + len(tleaf_reference_bytes)) | uproot.const.kByteCountMask,
+                b"\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00",
+                len(tleaf_reference_numbers),
+                b"\x00\x00\x00\x00",
             )
         )
 
         tleaf_reference_start = len(out)
-        out.append(tleaf_reference_numbers)
+        out.append(tleaf_reference_bytes)
 
         # null fAliases (b"\x00\x00\x00\x00")
         # empty fIndexValues array (4-byte length is zero)

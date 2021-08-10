@@ -12,7 +12,7 @@ import uproot.writing
 ROOT = pytest.importorskip("ROOT")
 
 
-def test(tmp_path):
+def test_basic(tmp_path):
     original = os.path.join(tmp_path, "original.root")
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -20,7 +20,6 @@ def test(tmp_path):
     f1.SetCompressionLevel(0)
     t1 = ROOT.TTree("t1", "title")
     d1 = array.array("d", [0.0])
-    d2 = array.array("d", [0.0])
     t1.Branch("branch1", d1, "branch1/D")
 
     t1.Write()
@@ -81,3 +80,59 @@ def test_rename(tmp_path):
 
     assert t2.GetLeaf("branchy_branch").GetName() == "branchy_branch"
     assert t2.GetLeaf("branchy_branch").GetTitle() == "branchy_branch"
+
+
+def test_2_branches(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        tree = fout._cascading.add_tree(
+            fout._file.sink,
+            "t1",
+            "title",
+            {"branch1": np.float64, "branch2": np.float64},
+        )
+
+    f2 = ROOT.TFile(newfile)
+    t2 = f2.Get("t1")
+
+    assert t2.GetName() == "t1"
+    assert t2.GetTitle() == "title"
+
+    for branchname in ["branch1", "branch2"]:
+        assert t2.GetBranch(branchname).GetName() == branchname
+        assert t2.GetBranch(branchname).GetTitle() == branchname + "/D"
+
+        assert t2.GetBranch(branchname).GetLeaf(branchname).GetName() == branchname
+        assert t2.GetBranch(branchname).GetLeaf(branchname).GetTitle() == branchname
+
+        assert t2.GetLeaf(branchname).GetName() == branchname
+        assert t2.GetLeaf(branchname).GetTitle() == branchname
+
+
+def test_100_branches(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        tree = fout._cascading.add_tree(
+            fout._file.sink,
+            "t1",
+            "title",
+            {"branch" + str(i): np.float64 for i in range(100)},
+        )
+
+    f2 = ROOT.TFile(newfile)
+    t2 = f2.Get("t1")
+
+    assert t2.GetName() == "t1"
+    assert t2.GetTitle() == "title"
+
+    for branchname in ["branch" + str(i) for i in range(100)]:
+        assert t2.GetBranch(branchname).GetName() == branchname
+        assert t2.GetBranch(branchname).GetTitle() == branchname + "/D"
+
+        assert t2.GetBranch(branchname).GetLeaf(branchname).GetName() == branchname
+        assert t2.GetBranch(branchname).GetLeaf(branchname).GetTitle() == branchname
+
+        assert t2.GetLeaf(branchname).GetName() == branchname
+        assert t2.GetLeaf(branchname).GetTitle() == branchname
