@@ -1551,8 +1551,8 @@ class Directory(CascadeNode):
         name,
         title,
         branch_types,
-        initial_basket_capacity=10,
-        resize_factor=10.0,
+        initial_basket_capacity,
+        resize_factor,
     ):
         tree = Tree(
             self,
@@ -1641,6 +1641,7 @@ class Tree(object):
             self._branch_data.append(
                 {
                     "fName": branch_name,
+                    "branch_type": branch_type,
                     "type": typestr,
                     "dtype": branch_dtype,
                     "shape": branch_shape,
@@ -1697,7 +1698,7 @@ class Tree(object):
             self._directory,
             self._name,
             self._title,
-            [(datum["fName"], datum["type"]) for datum in self._branch_types],
+            [(datum["fName"], datum["branch_type"]) for datum in self._branch_data],
             self._freesegments,
             self._basket_capacity,
             self._resize_factor,
