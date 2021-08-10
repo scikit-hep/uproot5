@@ -1552,7 +1552,7 @@ class Directory(CascadeNode):
         title,
         branch_types,
         initial_basket_capacity=10,
-        resize_factor=1.5,
+        resize_factor=10.0,
     ):
         tree = Tree(
             self,
@@ -1582,7 +1582,7 @@ _dtype_to_char = {
 }
 
 
-class Tree(CascadeLeaf):
+class Tree(object):
     """
     FIXME: docstring
     """
@@ -1609,7 +1609,11 @@ class Tree(CascadeLeaf):
         else:
             branch_types_items = branch_types
 
+        if len(branch_types) == 0:
+            raise ValueError("TTree must have at least one branch")
+
         self._branch_data = []
+        self._branch_lookup = {}
         for branch_name, branch_type in branch_types_items:
             typestr = "np"
 
@@ -1633,6 +1637,7 @@ class Tree(CascadeLeaf):
 
             title = "{0}/{1}{2}".format(branch_name, letter, dims)
 
+            self._branch_lookup[branch_name] = len(self._branch_data)
             self._branch_data.append(
                 {
                     "fName": branch_name,
@@ -1641,6 +1646,11 @@ class Tree(CascadeLeaf):
                     "shape": branch_shape,
                     "fTitle": title,
                     "compression": directory.freesegments.fileheader.compression,
+                    "fBasketSize": 32000,
+                    "fEntryOffsetLen": 0,
+                    "fOffset": 0,
+                    "fSplitLevel": 0,
+                    "fFirstEntry": 0,
                     "fTotBytes": 0,
                     "fZipBytes": 0,
                     "fBasketBytes": numpy.zeros(
@@ -1651,7 +1661,9 @@ class Tree(CascadeLeaf):
                     ),
                     "fBasketSeek": numpy.zeros(
                         self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
-                    ),  # FIXME: make this always 64-bit (with speedbump = 2)
+                    ),
+                    "metadata_start": None,
+                    "basket_metadata_start": None,
                 }
             )
 
@@ -1664,6 +1676,18 @@ class Tree(CascadeLeaf):
             "fZipBytes": 0,
             "fSavedBytes": 0,
             "fFlushedBytes": 0,
+            "fWeight": 1.0,
+            "fTimerInterval": 0,
+            "fScanField": 25,
+            "fUpdate": 0,
+            "fDefaultEntryOffsetLen": 1000,
+            "fNClusterRange": 0,
+            "fMaxEntries": 1000000000000,
+            "fMaxEntryLoop": 1000000000000,
+            "fMaxVirtualSize": 0,
+            "fAutoSave": -300000000,
+            "fAutoFlush": -30000000,
+            "fEstimate": 1000000,
         }
         self._key = None
 
@@ -1723,6 +1747,86 @@ class Tree(CascadeLeaf):
     def num_baskets(self):
         return self._num_baskets
 
+    def extend(self, sink, data):
+        if self._num_baskets >= self._basket_capacity:
+            raise NotImplementedError  # FIXME: rewrite the TTree with a larger capacity
+
+        assert isinstance(data, dict)
+        if not set(data) == set(x["fName"] for x in self._branch_data):
+            raise ValueError(
+                """'extend' must fill every branch and only existing branches of the TTree.
+
+This TTree has
+
+    {0}
+
+Attempting to extend with
+
+    {1}""".format(
+                    ", ".join(sorted(repr(x["fName"]) for x in self._branch_data)),
+                    ", ".join(sorted(repr(x) for x in data)),
+                )
+            )
+
+        tofill = []
+        num_entries = None
+        for branch_name, branch_array in data.items():
+            if num_entries is None:
+                num_entries = len(branch_array)
+            elif num_entries != len(branch_array):
+                raise ValueError(
+                    "'extend' must fill every branch with the same number of entries; {0} has {1} entries".format(
+                        repr(branch_name),
+                        len(branch_array),
+                    )
+                )
+
+            datum = self._branch_data[self._branch_lookup[branch_name]]
+            if datum["type"] == "np":
+                big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
+                if big_endian.shape != (len(branch_array),) + datum["shape"]:
+                    raise ValueError(
+                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                            datum["shape"],
+                            big_endian.shape[1:],
+                        )
+                    )
+                tofill.append((branch_name, big_endian))
+
+            else:
+                raise NotImplementedError(datum["type"])
+
+        # actually write baskets into the file
+        uncompressed_bytes = 0
+        compressed_bytes = 0
+        for branch_name, big_endian in tofill:
+            totbytes, zipbytes, location = self.write_np_basket(
+                sink, branch_name, big_endian
+            )
+            uncompressed_bytes += totbytes
+            compressed_bytes += zipbytes
+
+            datum = self._branch_data[self._branch_lookup[branch_name]]
+            datum["fTotBytes"] += totbytes
+            datum["fZipBytes"] += zipbytes
+
+            datum["fBasketBytes"][self._num_baskets] = zipbytes
+
+            if self._num_baskets + 1 < self._basket_capacity:
+                fBasketEntry = datum["fBasketEntry"]
+                i = self._num_baskets
+                fBasketEntry[i + 1] = num_entries + fBasketEntry[i]
+
+            datum["fBasketSeek"][self._num_baskets] = location
+
+        # update TTree metadata in file
+        self._num_entries += num_entries
+        self._num_baskets += 1
+        self._metadata["fTotBytes"] += uncompressed_bytes
+        self._metadata["fZipBytes"] += compressed_bytes
+
+        self.write_updates(sink)
+
     def write_anew(self, sink):
         guess_key_size = uproot.reading._key_format_small.size + 6
         name_asbytes = self._name.encode(errors="surrogateescape")
@@ -1756,18 +1860,18 @@ class Tree(CascadeLeaf):
                 self._metadata["fZipBytes"],
                 self._metadata["fSavedBytes"],
                 self._metadata["fFlushedBytes"],
-                1.0,  # fWeight
-                0,  # fTimerInterval
-                25,  # fScanField
-                0,  # fUpdate
-                1000,  # fDefaultEntryOffsetLen
-                0,  # fNClusterRange
-                1000000000000,  # fMaxEntries
-                1000000000000,  # fMaxEntryLoop
-                0,  # fMaxVirtualSize
-                -300000000,  # fAutoSave
-                -30000000,  # fAutoFlush
-                1000000,  # fEstimate
+                self._metadata["fWeight"],
+                self._metadata["fTimerInterval"],
+                self._metadata["fScanField"],
+                self._metadata["fUpdate"],
+                self._metadata["fDefaultEntryOffsetLen"],
+                self._metadata["fNClusterRange"],
+                self._metadata["fMaxEntries"],
+                self._metadata["fMaxEntryLoop"],
+                self._metadata["fMaxVirtualSize"],
+                self._metadata["fAutoSave"],
+                self._metadata["fAutoFlush"],
+                self._metadata["fEstimate"],
             )
         )
 
@@ -1809,11 +1913,16 @@ class Tree(CascadeLeaf):
             # TAttFill v2, fFillColor: 0, fFillStyle: 1001
             out.append(b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9")
 
+            assert sum(1 if x is None else 0 for x in out) == 4
+            datum["metadata_start"] = (
+                6 + 6 + 8 + 6 + sum(len(x) for x in out if x is not None)
+            )
+
             out.append(
                 uproot.models.TBranch._tbranch13_format1.pack(
-                    datum["compression"].code,  # fCompress
-                    32000,  # fBasketSize
-                    0,  # fEntryOffsetLen
+                    datum["compression"].code,
+                    datum["fBasketSize"],
+                    datum["fEntryOffsetLen"],
                     self._num_baskets,  # fWriteBasket
                     self._num_entries,  # fEntryNumber
                 )
@@ -1824,11 +1933,11 @@ class Tree(CascadeLeaf):
 
             out.append(
                 uproot.models.TBranch._tbranch13_format2.pack(
-                    0,  # fOffset
+                    datum["fOffset"],
                     self._basket_capacity,  # fMaxBaskets
-                    0,  # fSplitLevel
+                    datum["fSplitLevel"],
                     self._num_entries,  # fEntries
-                    0,  # fFirstEntry
+                    datum["fFirstEntry"],
                     datum["fTotBytes"],
                     datum["fZipBytes"],
                 )
@@ -1962,6 +2071,11 @@ class Tree(CascadeLeaf):
                 b"@\x00\x00\x15\x00\x03\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
             )
 
+            assert sum(1 if x is None else 0 for x in out) == 4
+            datum["basket_metadata_start"] = (
+                6 + 6 + 8 + 6 + sum(len(x) for x in out if x is not None)
+            )
+
             # speedbump and fBasketBytes
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketBytes"]))
@@ -1970,7 +2084,7 @@ class Tree(CascadeLeaf):
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketEntry"]))
 
-            # speedbump and fBasketSeek; FIXME: make the speedbump 2 when this is 64-bit
+            # speedbump and fBasketSeek
             out.append(b"\x01")
             out.append(uproot._util.tobytes(datum["fBasketSeek"]))
 
@@ -2033,6 +2147,129 @@ class Tree(CascadeLeaf):
         if self._key.num_bytes != guess_key_size:
             tleaf_reference_start
             raise NotImplementedError  # FIXME: adjust TLeaf references
+
+    def write_updates(self, sink):
+        base = self._key.seek_location + self._key.num_bytes
+
+        sink.write(
+            base + self._metadata_start,
+            uproot.models.TTree._ttree20_format1.pack(
+                self._num_entries,
+                self._metadata["fTotBytes"],
+                self._metadata["fZipBytes"],
+                self._metadata["fSavedBytes"],
+                self._metadata["fFlushedBytes"],
+                self._metadata["fWeight"],
+                self._metadata["fTimerInterval"],
+                self._metadata["fScanField"],
+                self._metadata["fUpdate"],
+                self._metadata["fDefaultEntryOffsetLen"],
+                self._metadata["fNClusterRange"],
+                self._metadata["fMaxEntries"],
+                self._metadata["fMaxEntryLoop"],
+                self._metadata["fMaxVirtualSize"],
+                self._metadata["fAutoSave"],
+                self._metadata["fAutoFlush"],
+                self._metadata["fEstimate"],
+            ),
+        )
+        sink.flush()
+
+        for datum in self._branch_data:
+            position = base + datum["metadata_start"]
+            sink.write(
+                position,
+                uproot.models.TBranch._tbranch13_format1.pack(
+                    datum["compression"].code,
+                    datum["fBasketSize"],
+                    datum["fEntryOffsetLen"],
+                    self._num_baskets,  # fWriteBasket
+                    self._num_entries,  # fEntryNumber
+                ),
+            )
+
+            position += uproot.models.TBranch._tbranch13_format1.size + 11
+            sink.write(
+                position,
+                uproot.models.TBranch._tbranch13_format2.pack(
+                    datum["fOffset"],
+                    self._basket_capacity,  # fMaxBaskets
+                    datum["fSplitLevel"],
+                    self._num_entries,  # fEntries
+                    datum["fFirstEntry"],
+                    datum["fTotBytes"],
+                    datum["fZipBytes"],
+                ),
+            )
+
+            fBasketBytes = uproot._util.tobytes(datum["fBasketBytes"])
+            fBasketEntry = uproot._util.tobytes(datum["fBasketEntry"])
+            fBasketSeek = uproot._util.tobytes(datum["fBasketSeek"])
+
+            position = base + datum["basket_metadata_start"] + 1
+            sink.write(position, fBasketBytes)
+            position += len(fBasketBytes) + 1
+            sink.write(position, fBasketEntry)
+            position += len(fBasketEntry) + 1
+            sink.write(position, fBasketSeek)
+
+    def write_np_basket(self, sink, branch_name, array):
+        fClassName = uproot.serialization.string("TBasket")
+        fName = uproot.serialization.string(branch_name)
+        fTitle = uproot.serialization.string(self._name)
+
+        fKeylen = (
+            uproot.reading._key_format_big.size
+            + len(fClassName)
+            + len(fName)
+            + len(fTitle)
+            + uproot.models.TBasket._tbasket_format2.size
+            + 1
+        )
+
+        raw_array = uproot._util.tobytes(array)
+        fObjlen = len(raw_array)
+
+        fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
+
+        parent_location = self._directory.key.location  # FIXME: is this correct?
+
+        location = self._freesegments.allocate(fNbytes, dry_run=False)
+
+        out = []
+        out.append(
+            uproot.reading._key_format_big.pack(
+                fNbytes,
+                1004,  # fVersion
+                fObjlen,
+                uproot._util.datetime_to_code(datetime.datetime.now()),  # fDatime
+                fKeylen,
+                0,  # fCycle
+                location,  # fSeekKey
+                parent_location,  # fSeekPdir
+            )
+        )
+        out.append(fClassName)
+        out.append(fName)
+        out.append(fTitle)
+        out.append(
+            uproot.models.TBasket._tbasket_format2.pack(
+                3,  # fVersion
+                32000,  # fBufferSize
+                array.dtype.itemsize,  # fNevBufSize
+                len(array),  # fNevBuf
+                fKeylen + len(raw_array),  # fLast
+            )
+        )
+        out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
+
+        out.append(raw_array)
+
+        sink.write(location, b"".join(out))
+        sink.set_file_length(self._freesegments.fileheader.end)
+        sink.flush()
+
+        return fNbytes, fNbytes, location
 
 
 class RootDirectory(Directory):

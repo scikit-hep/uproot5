@@ -13,20 +13,20 @@ ROOT = pytest.importorskip("ROOT")
 
 
 def test_basic(tmp_path):
-    original = os.path.join(tmp_path, "original.root")
+    # original = os.path.join(tmp_path, "original.root")
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    f1 = ROOT.TFile(original, "recreate")
-    f1.SetCompressionLevel(0)
-    t1 = ROOT.TTree("t1", "title")
-    d1 = array.array("d", [0.0])
-    t1.Branch("branch1", d1, "branch1/D")
+    # f1 = ROOT.TFile(original, "recreate")
+    # f1.SetCompressionLevel(0)
+    # t1 = ROOT.TTree("t1", "title")
+    # d1 = array.array("d", [0.0])
+    # t1.Branch("branch1", d1, "branch1/D")
 
-    t1.Write()
-    f1.Close()
+    # t1.Write()
+    # f1.Close()
 
-    with uproot.open(original) as fin:
-        fin["t1"]
+    # with uproot.open(original) as fin:
+    #     fin["t1"]
 
     with uproot.recreate(newfile, compression=None) as fout:
         tree = fout._cascading.add_tree(
@@ -109,6 +109,14 @@ def test_2_branches(tmp_path):
         assert t2.GetLeaf(branchname).GetName() == branchname
         assert t2.GetLeaf(branchname).GetTitle() == branchname
 
+    # FIXME: also test the following in a case where "t1" has a 64-bit TKey
+    with uproot.open(newfile) as fin:
+        t1 = fin["t1"]
+        branch1 = t1["branch1"]
+        branch2 = t1["branch2"]
+        assert branch1.member("fLeaves")[0] is t1.member("fLeaves")[0]
+        assert branch2.member("fLeaves")[0] is t1.member("fLeaves")[1]
+
 
 def test_100_branches(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
@@ -190,3 +198,48 @@ def test_branch_types(tmp_path):
         assert t2.GetLeaf(name).GetTitle() == name
         assert t2.GetLeaf(name).GetLenType() == size
         assert t2.GetLeaf(name).IsUnsigned() == isunsigned
+
+
+def test_basket(tmp_path):
+    # original = os.path.join(tmp_path, "original.root")
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    # f1 = ROOT.TFile(original, "recreate")
+    # f1.SetCompressionLevel(0)
+    # t1 = ROOT.TTree("t1", "title")
+    # d1 = array.array("i", [0])
+    # t1.Branch("branch1", d1, "branch1/I")
+
+    # d1[0] = 5
+    # t1.Fill()
+    # d1[0] = 4
+    # t1.Fill()
+    # d1[0] = 3
+    # t1.Fill()
+    # d1[0] = 2
+    # t1.Fill()
+    # d1[0] = 1
+    # t1.Fill()
+    # d1[0] = 5
+    # t1.Fill()
+
+    # t1.Write()
+    # f1.Close()
+
+    # with uproot.open(original) as fin:
+    #     t1 = fin["t1"]
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        tree = fout._cascading.add_tree(
+            fout._file.sink, "t2", "title", {"branch1": np.int32}
+        )
+        data = {"branch1": np.array([5, 4, 3, 2, 1, 5], ">i4")}
+        tree.extend(fout._file.sink, data)
+
+    with uproot.open(newfile) as fin2:
+        t2 = fin2["t2"]
+        assert t2["branch1"].array().tolist() == [5, 4, 3, 2, 1, 5]
+
+    f2 = ROOT.TFile(newfile)
+    t2 = f2.Get("t2")
+    assert [x.branch1 for x in t2] == [5, 4, 3, 2, 1, 5]
