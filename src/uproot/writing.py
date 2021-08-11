@@ -15,6 +15,10 @@ try:
     import queue
 except ImportError:
     import Queue as queue
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 import numpy
 
@@ -1047,22 +1051,8 @@ in file {1} in directory {2}""".format(
             all_pairs = more_pairs.items()
 
         for k, v in all_pairs:
-            writable = to_writable(v)
-
-            for rawstreamer in writable.class_rawstreamers:
-                streamers.append(rawstreamer)
-
             fullpath = k.strip("/").split("/")
             path, name = fullpath[:-1], fullpath[-1]
-
-            raw_data = writable.serialize(name=name)
-
-            if hasattr(writable, "fTitle"):
-                title = writable.fTitle
-            elif writable.has_member("fTitle"):
-                title = writable.member("fTitle")
-            else:
-                title = ""
 
             if len(path) != 0:
                 self.mkdir("/".join(path), self._file.initial_directory_bytes)
@@ -1071,14 +1061,37 @@ in file {1} in directory {2}""".format(
             for item in path:
                 directory = directory[item]
 
-            directory._cascading.add_object(
-                self._file.sink,
-                writable.classname,
-                name,
-                title,
-                raw_data,
-                len(raw_data),
-            )
+            if isinstance(v, Mapping) and all(
+                isinstance(x, numpy.ndarray) for x in v.values()
+            ):
+                tree = directory.mktree(
+                    name, "", {nm: arr.dtype for nm, arr in v.items()}
+                )
+                tree.extend(v)
+
+            else:
+                writable = to_writable(v)
+
+                for rawstreamer in writable.class_rawstreamers:
+                    streamers.append(rawstreamer)
+
+                raw_data = writable.serialize(name=name)
+
+                if hasattr(writable, "fTitle"):
+                    title = writable.fTitle
+                elif writable.has_member("fTitle"):
+                    title = writable.member("fTitle")
+                else:
+                    title = ""
+
+                directory._cascading.add_object(
+                    self._file.sink,
+                    writable.classname,
+                    name,
+                    title,
+                    raw_data,
+                    len(raw_data),
+                )
 
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
@@ -2459,6 +2472,64 @@ def to_writable(obj):
 
     elif uproot._util.isstr(obj):
         return to_TObjString(obj)
+
+    elif (
+        isinstance(obj, tuple)
+        and 2 <= len(obj) <= 5
+        and all(isinstance(x, numpy.ndarray) for x in obj)
+    ):
+        if uproot._util.isstr(obj[-1]):
+            obj, title = obj[:-1], obj[-1]
+        else:
+            title = ""
+
+        if len(obj) == 2:
+            (entries, edges) = obj
+            centers = (edges[:-1] + edges[1:]) / 2.0
+
+            fEntries = fTsumw = fTsumw2 = entries.sum()
+            fTsumwx = (entries * centers).sum()
+            fTsumwx2 = (entries * centers ** 2).sum()
+
+            with_flow = numpy.empty(len(entries) + 2, dtype=">f8")
+            with_flow[1:-1] = entries
+            with_flow[0] = 0
+            with_flow[-1] = 0
+
+            fNbins = len(edges) - 1
+            fXmin, fXmax = edges[0], edges[-1]
+            if numpy.array_equal(
+                edges, numpy.linspace(fXmin, fXmax, len(edges), edges.dtype)
+            ):
+                edges = numpy.array([], dtype=">f8")
+            else:
+                edges = edges.astype(">f8")
+
+            return uproot.writing.to_TH1x(
+                fName=None,
+                fTitle=title,
+                data=with_flow,
+                fEntries=fEntries,
+                fTsumw=fTsumw,
+                fTsumw2=fTsumw2,
+                fTsumwx=fTsumwx,
+                fTsumwx2=fTsumwx2,
+                fSumw2=with_flow,
+                fXaxis=uproot.writing.to_TAxis(
+                    fName="xaxis",
+                    fTitle="",
+                    fNbins=fNbins,
+                    fXmin=fXmin,
+                    fXmax=fXmax,
+                    fXbins=edges,
+                ),
+            )
+
+        elif len(obj) == 3:
+            raise NotImplementedError("NumPy -> TH2 not implemented yet")
+
+        elif len(obj) == 4:
+            raise NotImplementedError("NumPy -> TH3 not implemented yet")
 
     else:
         raise TypeError(

@@ -229,7 +229,7 @@ def test_basket(tmp_path):
 
     with uproot.open(newfile) as fin2:
         t2 = fin2["t2"]
-        assert t2["branch1"].array().tolist() == [5, 4, 3, 2, 1, 5]
+        assert t2["branch1"].array(library="np").tolist() == [5, 4, 3, 2, 1, 5]
 
     f2 = ROOT.TFile(newfile)
     t2 = f2.Get("t2")
@@ -255,8 +255,8 @@ def test_baskets_branches(tmp_path):
 
     with uproot.open(newfile + ":t") as t2:
         assert t2.num_entries == len(b1) + len(b1)
-        assert t2["b1"].array().tolist() == b1 + b1
-        assert t2["b2"].array().tolist() == b2 + b2
+        assert t2["b1"].array(library="np").tolist() == b1 + b1
+        assert t2["b2"].array(library="np").tolist() == b2 + b2
 
 
 def test_baskets_beyond_capacity(tmp_path):
@@ -295,8 +295,8 @@ def test_baskets_beyond_capacity(tmp_path):
         assert fin.keys() == ["t;1"]  # same cycle number
         t2 = fin["t"]
         assert t2.num_entries == len(b1) * 105
-        assert t2["b1"].array().tolist() == b1 * 105
-        assert t2["b2"].array().tolist() == b2 * 105
+        assert t2["b1"].array(library="np").tolist() == b1 * 105
+        assert t2["b2"].array(library="np").tolist() == b2 * 105
 
 
 def test_writable_vs_readable_tree(tmp_path):
@@ -348,7 +348,29 @@ def test_writable_vs_readable_tree(tmp_path):
     with uproot.open(newfile) as finagin:
         t2uproot = finagin["t2"]
         assert t2uproot.num_entries == len(b1) * 5
-        assert t2uproot["b1"].array().tolist() == b1 * 5
-        assert t2uproot["b2"].array().tolist() == b2 * 5
+        assert t2uproot["b1"].array(library="np").tolist() == b1 * 5
+        assert t2uproot["b2"].array(library="np").tolist() == b2 * 5
 
-        assert finagin["t1/branch1"].array().tolist() == [5, 4, 3, 2, 1, 5]
+        assert finagin["t1/branch1"].array(library="np").tolist() == [5, 4, 3, 2, 1, 5]
+
+
+def test_interface(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    branch1 = np.arange(10)
+    branch2 = 1.1 * np.arange(10)
+
+    (entries, edges) = np.histogram(branch2)
+
+    with uproot.recreate(newfile) as fout:
+
+        fout["tree"] = {"branch1": branch1, "branch2": branch2}
+        fout["tree"].extend({"branch1": branch1, "branch2": branch2})
+
+        fout["hist"] = (entries, edges)
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist() * 2
+        assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist() * 2
+        assert fin["hist"].to_numpy()[0].tolist() == entries.tolist()
+        assert fin["hist"].to_numpy()[1].tolist() == edges.tolist()
