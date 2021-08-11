@@ -297,3 +297,58 @@ def test_baskets_beyond_capacity(tmp_path):
         assert t2.num_entries == len(b1) * 105
         assert t2["b1"].array().tolist() == b1 * 105
         assert t2["b2"].array().tolist() == b2 * 105
+
+
+def test_writable_vs_readable_tree(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    f1 = ROOT.TFile(newfile, "recreate")
+    f1.SetCompressionLevel(0)
+    t1 = ROOT.TTree("t1", "title")
+    d1 = array.array("i", [0])
+    t1.Branch("branch1", d1, "branch1/I")
+
+    d1[0] = 5
+    t1.Fill()
+    d1[0] = 4
+    t1.Fill()
+    d1[0] = 3
+    t1.Fill()
+    d1[0] = 2
+    t1.Fill()
+    d1[0] = 1
+    t1.Fill()
+    d1[0] = 5
+    t1.Fill()
+
+    t1.Write()
+    f1.Close()
+
+    b1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    b2 = [0.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9]
+
+    with uproot.update(newfile) as fin:
+        with pytest.raises(TypeError):
+            oldtree = fin["t1"]
+
+        fin.mktree("t2", "title", {"b1": np.int32, "b2": np.float64})
+
+        for _ in range(5):
+            fin["t2"].extend({"b1": b1, "b2": b2})
+
+    f1 = ROOT.TFile(newfile)
+    t2root = f1.Get("t2")
+    assert t2root.GetEntries() == len(b1) * 5
+    assert [x.b1 for x in t2root] == b1 * 5
+    assert [x.b2 for x in t2root] == b2 * 5
+
+    t1root = f1.Get("t1")
+    assert [x.branch1 for x in t1root] == [5, 4, 3, 2, 1, 5]
+
+    with uproot.open(newfile) as finagin:
+        t2uproot = finagin["t2"]
+        assert t2uproot.num_entries == len(b1) * 5
+        assert t2uproot["b1"].array().tolist() == b1 * 5
+        assert t2uproot["b2"].array().tolist() == b2 * 5
+
+        assert finagin["t1/branch1"].array().tolist() == [5, 4, 3, 2, 1, 5]

@@ -820,17 +820,43 @@ class RawStreamerInfo(CascadeLeaf):
         return self._serialization
 
 
+class RawTListOfStrings(CascadeLeaf):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, location, serialization):
+        super(RawTListOfStrings, self).__init__(location, len(serialization))
+        self._serialization = serialization
+
+    def __repr__(self):
+        return "{0}({1}, {2})".format(
+            type(self).__name__,
+            self._location,
+            self._serialization,
+        )
+
+    def copy_to(self, location):
+        return RawTListOfStrings(location, self._serialization)
+
+    def serialize(self):
+        return self._serialization
+
+
 class TListOfStreamers(CascadeNode):
     """
     FIXME: docstring
     """
 
-    def __init__(self, allocation, key, header, rawstreamers, freesegments):
-        super(TListOfStreamers, self).__init__(freesegments, key, header, *rawstreamers)
+    def __init__(self, allocation, key, header, rawstreamers, rawstrings, freesegments):
+        super(TListOfStreamers, self).__init__(
+            freesegments, key, header, *(rawstreamers + rawstrings)
+        )
         self._allocation = allocation
         self._key = key
         self._header = header
         self._rawstreamers = rawstreamers
+        self._rawstrings = rawstrings
         self._freesegments = freesegments
         self._lookup = set([(x.name, x.class_version) for x in self._rawstreamers])
 
@@ -922,8 +948,12 @@ class TListOfStreamers(CascadeNode):
             rawstreamer.location = position
             position += rawstreamer.num_bytes
 
+        for rawstring in self._rawstrings:
+            rawstring.location = position
+            position += rawstring.num_bytes
+
         self._header.data_bytes = position - afterkey
-        self._header.num_entries = len(self._rawstreamers)
+        self._header.num_entries = len(self._rawstreamers) + len(self._rawstrings)
 
         self._key.uncompressed_bytes = self._allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
@@ -963,15 +993,26 @@ class TListOfStreamers(CascadeNode):
         header = TListHeader(location, key.uncompressed_bytes, len(tlist))
 
         rawstreamers = []
+        rawstrings = []
+
         for (start, stop), streamer in zip(tlist.byte_ranges, tlist):
-            rawstreamers.append(
-                RawStreamerInfo(
-                    location + start,
-                    uproot._util.tobytes(uncompressed.raw_data[start:stop]),
-                    streamer.name,
-                    streamer.class_version,
+            if isinstance(streamer, uproot.streamers.Model_TStreamerInfo):
+                rawstreamers.append(
+                    RawStreamerInfo(
+                        location + start,
+                        uproot._util.tobytes(uncompressed.raw_data[start:stop]),
+                        streamer.name,
+                        streamer.class_version,
+                    )
                 )
-            )
+
+            elif isinstance(streamer, uproot.models.TList.Model_TList):
+                rawstrings.append(
+                    RawTListOfStrings(
+                        location + start,
+                        uproot._util.tobytes(uncompressed.raw_data[start:stop]),
+                    )
+                )
 
         return (
             TListOfStreamers(
@@ -979,6 +1020,7 @@ class TListOfStreamers(CascadeNode):
                 key,
                 header,
                 rawstreamers,
+                rawstrings,
                 freesegments,
             ),
             tlist,
@@ -1976,9 +2018,14 @@ Attempting to extend with
                 6 + 6 + 8 + 6 + sum(len(x) for x in out if x is not None)
             )
 
+            if datum["compression"] is None:
+                fCompress = uproot.compression.ZLIB(0).code
+            else:
+                fCompress = datum["compression"].code
+
             out.append(
                 uproot.models.TBranch._tbranch13_format1.pack(
-                    datum["compression"].code,
+                    fCompress,
                     datum["fBasketSize"],
                     datum["fEntryOffsetLen"],
                     self._num_baskets,  # fWriteBasket
@@ -2241,10 +2288,16 @@ Attempting to extend with
 
         for datum in self._branch_data:
             position = base + datum["metadata_start"]
+
+            if datum["compression"] is None:
+                fCompress = uproot.compression.ZLIB(0).code
+            else:
+                fCompress = datum["compression"].code
+
             sink.write(
                 position,
                 uproot.models.TBranch._tbranch13_format1.pack(
-                    datum["compression"].code,
+                    fCompress,
                     datum["fBasketSize"],
                     datum["fEntryOffsetLen"],
                     self._num_baskets,  # fWriteBasket
@@ -2592,7 +2645,13 @@ class FileHeader(CascadeLeaf):
 
     @compression.setter
     def compression(self, value):
-        if self._compression.code != value.code:
+        if self._compression is None and value is None:
+            pass
+        elif (
+            self._compression is None
+            or self.value is None
+            or self._compression.code != value.code
+        ):
             self._file_dirty = True
             self._compression = value
 
@@ -2663,6 +2722,11 @@ class FileHeader(CascadeLeaf):
             version = self.version
             units = 4
 
+        if self._compression is None:
+            fCompress = uproot.compression.ZLIB(0).code
+        else:
+            fCompress = self._compression.code
+
         return format.pack(
             self.magic,
             version,  # fVersion
@@ -2673,7 +2737,7 @@ class FileHeader(CascadeLeaf):
             self._free_num_slices + 1,  # nfree
             self._begin_num_bytes,  # fNbytesName
             units,  # fUnits
-            self._compression.code,  # fCompress
+            fCompress,
             self._info_location,  # fSeekInfo
             self._info_num_bytes,  # fNbytesInfo
             1,  # TUUID version
@@ -2853,7 +2917,7 @@ def create_empty(
     )
     streamers_header = TListHeader(None, None, None)
     streamers = TListOfStreamers(
-        initial_streamers_bytes, streamers_key, streamers_header, [], freesegments
+        initial_streamers_bytes, streamers_key, streamers_header, [], [], freesegments
     )
 
     directory_key = Key(

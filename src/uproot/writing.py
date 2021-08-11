@@ -58,8 +58,6 @@ def recreate(file_path, **options):
         sink = uproot.sink.file.FileSink.from_object(file_path)
 
     compression = options.pop("compression", create.defaults["compression"])
-    if compression is None:
-        compression = uproot.compression.ZLIB(0)
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
@@ -205,7 +203,10 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def fCompress(self):
-        return self._cascading.fileheader.compression.code
+        if self._cascading.fileheader.compression is None:
+            return uproot.compression.ZLIB(0).code
+        else:
+            return self._cascading.fileheader.compression.code
 
     @property
     def fSeekInfo(self):
@@ -688,10 +689,13 @@ class WritableDirectory(object):
         if key.classname.string in ("TDirectory", "TDirectoryFile"):
             return self._subdir(key)
 
-        elif key.classname.string == "TTree" and self._file._has_tree(
-            key.seek_location
-        ):
-            return self._file._get_tree(key.seek_location)
+        elif key.classname.string == "TTree":
+            if self._file._has_tree(key.seek_location):
+                return self._file._get_tree(key.seek_location)
+            else:
+                raise TypeError(
+                    "WritableDirectory cannot view preexisting TTrees; open the file with uproot.open instead of uproot.recreate or uproot.update"
+                )
 
         else:
 
