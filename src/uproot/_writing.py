@@ -72,7 +72,7 @@ class CascadeLeaf(object):
                     + repr(self)
                 )
             tmp = self.serialize()
-            # print(f"writing {self._location}:{self._location + len(tmp)} ({len(tmp)}) {type(self).__name__}")
+            # print(f"writing {self._location}:{self._location + len(tmp)} ({len(tmp)}) {type(self).__name__} {self.name if hasattr(self, 'name') else ''} {self.title if hasattr(self, 'title') else ''}")
             sink.write(self._location, tmp)
             self._file_dirty = False
 
@@ -1258,6 +1258,16 @@ class DirectoryHeader(CascadeLeaf):
         return self._uuid
 
     @property
+    def modified_on(self):
+        return self._modified_on
+
+    @modified_on.setter
+    def modified_on(self, value):
+        if self._modified_on != value:
+            self._file_dirty = True
+            self._modified_on = value
+
+    @property
     def big(self):
         return (
             self._begin_location >= uproot.const.kStartBigFile
@@ -1758,7 +1768,7 @@ class Tree(object):
     def num_baskets(self):
         return self._num_baskets
 
-    def extend(self, sink, data):
+    def extend(self, file, sink, data):
         # expand capacity if this would REACH (not EXCEED) the existing capacity
         # that's because completely a full fBasketEntry has nowhere to put the
         # number of entries in the last basket (it's a fencepost principle thing),
@@ -1787,10 +1797,14 @@ class Tree(object):
                 datum["fBasketSeek"][: len(fBasketSeek)] = fBasketSeek
                 datum["fBasketEntry"][len(fBasketEntry)] = self._num_entries
 
-            start = self._key.location
+            oldloc = start = self._key.location
             stop = start + self._key.num_bytes + self._key.compressed_bytes
 
             self.write_anew(sink)
+
+            newloc = self._key.seek_location
+            file._move_tree(oldloc, newloc)
+
             self._freesegments.release(start, stop)
             sink.set_file_length(self._freesegments.fileheader.end)
             sink.flush()

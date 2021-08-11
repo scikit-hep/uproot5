@@ -240,6 +240,20 @@ class WritableFile(uproot.reading.CommonFileMethods):
     def __exit__(self, exception_type, exception_value, traceback):
         self._sink.__exit__(exception_type, exception_value, traceback)
 
+    def _new_tree(self, tree):
+        self._trees[tree._cascading.key.seek_location] = tree
+
+    def _has_tree(self, loc):
+        return loc in self._trees
+
+    def _get_tree(self, loc):
+        return self._trees[loc]
+
+    def _move_tree(self, oldloc, newloc):
+        tree = self._trees[oldloc]
+        del self._trees[oldloc]
+        self._trees[newloc] = tree
+
 
 class WritableDirectory(object):
     """
@@ -674,8 +688,10 @@ class WritableDirectory(object):
         if key.classname.string in ("TDirectory", "TDirectoryFile"):
             return self._subdir(key)
 
-        elif key.classname.string == "TTree":
-            return self._subtree(key)
+        elif key.classname.string == "TTree" and self._file._has_tree(
+            key.seek_location
+        ):
+            return self._file._get_tree(key.seek_location)
 
         else:
 
@@ -705,6 +721,19 @@ class WritableDirectory(object):
             )
 
             return readonlykey.get()
+
+    def _del(self, name, cycle):
+        key = self._cascading.data.get_key(name, cycle)
+        start = key.location
+        stop = start + key.num_bytes + key.compressed_bytes
+        self._cascading.freesegments.release(start, stop)
+
+        self._cascading._data.remove_key(key)
+        self._cascading.header.modified_on = datetime.datetime.now()
+
+        self._cascading.write(self._file.sink)
+        self._file.sink.set_file_length(self._cascading.freesegments.fileheader.end)
+        self._file.sink.flush()
 
     def _subdir(self, key):
         name = key.name.string
@@ -819,17 +848,6 @@ class WritableDirectory(object):
 
         return self._subdirs[name]
 
-    def _subtree(self, key):
-        name = key.name.string
-        path = self._path + (name,)
-
-        if path not in self._file._trees:
-            # maybe never-before-seen TTrees should be preemptively moved
-            # to account for versions different from v20
-            raise NotImplementedError  # FIXME: read a TTree to overwrite it
-
-        return self._file._trees[path]
-
     def mkdir(self, name, initial_directory_bytes=None):
         stripped = name.strip("/")
         try:
@@ -890,7 +908,7 @@ in file {2} in directory {3}""".format(
 
         path = directory._path + (treename,)
 
-        directory._file._trees[path] = WritableTree(
+        tree = WritableTree(
             path,
             directory._file,
             directory._cascading.add_tree(
@@ -902,8 +920,9 @@ in file {2} in directory {3}""".format(
                 resize_factor,
             ),
         )
+        directory._file._new_tree(tree)
 
-        return directory._file._trees[path]
+        return tree
 
     def copy_from(
         self,
@@ -1010,19 +1029,6 @@ in file {1} in directory {2}""".format(
                 old_key.data_uncompressed_bytes,
             )
 
-    def _del(self, name, cycle):
-        key = self._cascading.data.get_key(name, cycle)
-        start = key.location
-        stop = start + key.num_bytes + key.compressed_bytes
-        self._cascading.freesegments.release(start, stop)
-
-        self._cascading._data.remove_key(key)
-        self._cascading.header.modified_on = datetime.datetime.now()
-
-        self._cascading.write(self._file.sink)
-        self._file.sink.set_file_length(self._cascading.freesegments.fileheader.end)
-        self._file.sink.flush()
-
     def update(self, pairs=None, **more_pairs):
         streamers = []
 
@@ -1119,7 +1125,7 @@ class WritableTree(object):
         self._file.sink.__exit__(exception_type, exception_value, traceback)
 
     def extend(self, data):
-        self._cascading.extend(self._file.sink, data)
+        self._cascading.extend(self._file, self._file.sink, data)
 
 
 def to_TString(string):

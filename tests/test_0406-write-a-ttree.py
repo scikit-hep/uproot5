@@ -271,17 +271,17 @@ def test_baskets_beyond_capacity(tmp_path):
         assert tree._cascading._basket_capacity == 10
 
         for _ in range(5):
-            tree.extend({"b1": b1, "b2": b2})
+            fout["t"].extend({"b1": b1, "b2": b2})
 
         assert tree._cascading._basket_capacity == 10
 
         for _ in range(10):
-            tree.extend({"b1": b1, "b2": b2})
+            fout["t"].extend({"b1": b1, "b2": b2})
 
         assert tree._cascading._basket_capacity == 100
 
         for _ in range(90):
-            tree.extend({"b1": b1, "b2": b2})
+            fout["t"].extend({"b1": b1, "b2": b2})
 
         assert tree._cascading._basket_capacity == 1000
 
