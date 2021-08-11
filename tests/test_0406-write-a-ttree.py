@@ -257,3 +257,41 @@ def test_baskets_branches(tmp_path):
         assert t2.num_entries == len(b1) + len(b1)
         assert t2["b1"].array().tolist() == b1 + b1
         assert t2["b2"].array().tolist() == b2 + b2
+
+
+def test_baskets_beyond_capacity(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    b1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    b2 = [0.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9]
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        tree = fout.mktree("t", "title", {"b1": np.int32, "b2": np.float64})
+
+        assert tree._cascading._basket_capacity == 10
+
+        for _ in range(5):
+            tree.extend({"b1": b1, "b2": b2})
+
+        assert tree._cascading._basket_capacity == 10
+
+        for _ in range(10):
+            tree.extend({"b1": b1, "b2": b2})
+
+        assert tree._cascading._basket_capacity == 100
+
+        for _ in range(90):
+            tree.extend({"b1": b1, "b2": b2})
+
+        assert tree._cascading._basket_capacity == 1000
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("t")
+    assert t1.GetEntries() == len(b1) * 105
+    assert [x.b1 for x in t1] == b1 * 105
+    assert [x.b2 for x in t1] == b2 * 105
+
+    with uproot.open(newfile + ":t") as t2:
+        assert t2.num_entries == len(b1) * 105
+        assert t2["b1"].array().tolist() == b1 * 105
+        assert t2["b2"].array().tolist() == b2 * 105

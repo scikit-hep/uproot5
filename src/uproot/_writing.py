@@ -1749,8 +1749,35 @@ class Tree(object):
         return self._num_baskets
 
     def extend(self, sink, data):
-        if self._num_baskets >= self._basket_capacity:
-            raise NotImplementedError  # FIXME: rewrite the TTree with a larger capacity
+        # expand capacity if this would REACH (not EXCEED) the existing capacity
+        # that's because completely a full fBasketEntry has nowhere to put the
+        # number of entries in the last basket (it's a fencepost principle thing),
+        # forcing ROOT and Uproot to look it up from the basket header.
+        if self._num_baskets >= self._basket_capacity - 1:
+            self._basket_capacity = max(
+                self._basket_capacity + 1,
+                int(math.ceil(self._basket_capacity * self._resize_factor)),
+            )
+
+            for datum in self._branch_data:
+                fBasketBytes = datum["fBasketBytes"]
+                fBasketEntry = datum["fBasketEntry"]
+                fBasketSeek = datum["fBasketSeek"]
+                datum["fBasketBytes"] = numpy.zeros(
+                    self._basket_capacity, uproot.models.TBranch._tbranch13_dtype1
+                )
+                datum["fBasketEntry"] = numpy.zeros(
+                    self._basket_capacity, uproot.models.TBranch._tbranch13_dtype2
+                )
+                datum["fBasketSeek"] = numpy.zeros(
+                    self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
+                )
+                datum["fBasketBytes"][: len(fBasketBytes)] = fBasketBytes
+                datum["fBasketEntry"][: len(fBasketEntry)] = fBasketEntry
+                datum["fBasketSeek"][: len(fBasketSeek)] = fBasketSeek
+                datum["fBasketEntry"][len(fBasketEntry)] = self._num_entries
+
+            self.write_anew(sink)
 
         assert isinstance(data, dict)
         if not set(data) == set(x["fName"] for x in self._branch_data):
@@ -2142,7 +2169,13 @@ Attempting to extend with
 
         raw_data = b"".join(out)
         self._key = self._directory.add_object(
-            sink, "TTree", self._name, self._title, raw_data, len(raw_data)
+            sink,
+            "TTree",
+            self._name,
+            self._title,
+            raw_data,
+            len(raw_data),
+            replaces=self._key,
         )
 
         if self._key.num_bytes != guess_key_size:

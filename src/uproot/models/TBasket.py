@@ -249,6 +249,12 @@ class Model_TBasket(uproot.model.Model):
 
         self._block_compression_info = None
 
+        if not context.get("read_basket", True):
+            self._byte_offsets = None
+            self._raw_data = None
+            self._data = None
+            return
+
         if self.is_embedded:
             # https://github.com/root-project/root/blob/0e6282a641b65bdf5ad832882e547ca990e8f1a5/tree/tree/inc/TBasket.h#L62-L65
             maybe_entry_size = self._members["fNevBufSize"]
