@@ -2044,7 +2044,7 @@ class ReadOnlyDirectory(Mapping):
                     else:
                         raise uproot.KeyInFileError(
                             where,
-                            because=repr(item)
+                            because="/".join(items[:i])
                             + " is not a TDirectory, TTree, or TBranch",
                             keys=[key.fName for key in last._keys],
                             file_path=self._file.file_path,

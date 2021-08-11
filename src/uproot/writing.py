@@ -6,6 +6,7 @@ FIXME: docstring
 
 from __future__ import absolute_import
 
+import datetime
 import itertools
 import os
 import uuid
@@ -596,7 +597,7 @@ class WritableDirectory(object):
                     if filter_name is no_filter or filter_name(k3):
                         yield k2, c1
 
-    def __getitem__(self, where):
+    def _get_del_search(self, where, isget):
         if "/" in where or ":" in where:
             items = where.split("/")
             step = last = self
@@ -605,29 +606,11 @@ class WritableDirectory(object):
                 if item != "":
                     if isinstance(step, WritableDirectory):
                         if ":" in item and not step._cascading.data.haskey(item):
-                            index = item.index(":")
-                            head, tail = item[:index], item[index + 1 :]
-                            last = step
-                            step = step.get(head)
-                            if isinstance(step, WritableTree):
-                                rest = [tail] + items[i + 1 :]
-                                if len(rest) != 0:
-                                    raise uproot.KeyInFileError(
-                                        where,
-                                        because="{0} is a WritableTree, which can't be internally indexed (by {1})".format(
-                                            repr(head), repr("/".join(rest))
-                                        ),
-                                        file_path=self.file_path,
-                                    )
-                                return step
-                            else:
-                                raise uproot.KeyInFileError(
-                                    where,
-                                    because=repr(head)
-                                    + " is not a WritableDirectory or WritableTree",
-                                    keys=last._cascading.data.key_names,
-                                    file_path=self.file_path,
-                                )
+                            raise uproot.KeyInFileError(
+                                where,
+                                because="TTrees in writable files can't be indexed by TBranch name",
+                                file_path=self.file_path,
+                            )
                         else:
                             last = step
                             step = step[item]
@@ -637,9 +620,7 @@ class WritableDirectory(object):
                         if len(rest) != 0:
                             raise uproot.KeyInFileError(
                                 where,
-                                because="{0} is a WritableTree, which can't be internally indexed (by {1})".format(
-                                    repr(head), repr("/".join(rest))
-                                ),
+                                because="TTrees in writable files can't be indexed by TBranch name",
                                 file_path=self.file_path,
                             )
                         return step
@@ -647,8 +628,7 @@ class WritableDirectory(object):
                     else:
                         raise uproot.KeyInFileError(
                             where,
-                            because=repr(item)
-                            + " is not a WritableDirectory or WritableTree",
+                            because="/".join(items[:i]) + " is not a TDirectory",
                             keys=last._cascading.data.key_names,
                             file_path=self.file_path,
                         )
@@ -666,7 +646,19 @@ class WritableDirectory(object):
             else:
                 item, cycle = where, None
 
-            return self._get(item, cycle)
+            if isget:
+                return self._get(item, cycle)
+            else:
+                return self._del(item, cycle)
+
+    def __getitem__(self, where):
+        return self._get_del_search(where, True)
+
+    def __setitem__(self, where, what):
+        self.update({where: what})
+
+    def __delitem__(self, where):
+        return self._get_del_search(where, False)
 
     def _get(self, name, cycle):
         key = self._cascading.data.get_key(name, cycle)
@@ -1018,8 +1010,18 @@ in file {1} in directory {2}""".format(
                 old_key.data_uncompressed_bytes,
             )
 
-    def __setitem__(self, where, what):
-        self.update({where: what})
+    def _del(self, name, cycle):
+        key = self._cascading.data.get_key(name, cycle)
+        start = key.location
+        stop = start + key.num_bytes + key.compressed_bytes
+        self._cascading.freesegments.release(start, stop)
+
+        self._cascading._data.remove_key(key)
+        self._cascading.header.modified_on = datetime.datetime.now()
+
+        self._cascading.write(self._file.sink)
+        self._file.sink.set_file_length(self._cascading.freesegments.fileheader.end)
+        self._file.sink.flush()
 
     def update(self, pairs=None, **more_pairs):
         streamers = []

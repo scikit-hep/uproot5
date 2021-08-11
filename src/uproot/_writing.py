@@ -1080,6 +1080,16 @@ class DirectoryData(CascadeLeaf):
         else:
             raise AssertionError
 
+    def remove_key(self, key):
+        self._file_dirty = True
+        for i in range(len(self._keys)):
+            old = self._keys[i]
+            if old.name.string == key.name.string and old.cycle == key.cycle:
+                del self._keys[i]
+                return
+        else:
+            raise AssertionError
+
     @property
     def num_keys(self):
         return len(self._keys)
@@ -1782,6 +1792,8 @@ class Tree(object):
 
             self.write_anew(sink)
             self._freesegments.release(start, stop)
+            sink.set_file_length(self._freesegments.fileheader.end)
+            sink.flush()
 
         assert isinstance(data, dict)
         if not set(data) == set(x["fName"] for x in self._branch_data):
