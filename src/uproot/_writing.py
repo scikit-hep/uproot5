@@ -1777,7 +1777,11 @@ class Tree(object):
                 datum["fBasketSeek"][: len(fBasketSeek)] = fBasketSeek
                 datum["fBasketEntry"][len(fBasketEntry)] = self._num_entries
 
+            start = self._key.location
+            stop = start + self._key.num_bytes + self._key.compressed_bytes
+
             self.write_anew(sink)
+            self._freesegments.release(start, stop)
 
         assert isinstance(data, dict)
         if not set(data) == set(x["fName"] for x in self._branch_data):

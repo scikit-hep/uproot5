@@ -291,7 +291,9 @@ def test_baskets_beyond_capacity(tmp_path):
     assert [x.b1 for x in t1] == b1 * 105
     assert [x.b2 for x in t1] == b2 * 105
 
-    with uproot.open(newfile + ":t") as t2:
+    with uproot.open(newfile) as fin:
+        assert fin.keys() == ["t;1"]  # same cycle number
+        t2 = fin["t"]
         assert t2.num_entries == len(b1) * 105
         assert t2["b1"].array().tolist() == b1 * 105
         assert t2["b2"].array().tolist() == b2 * 105
