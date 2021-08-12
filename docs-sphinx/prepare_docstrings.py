@@ -160,10 +160,8 @@ def handle_class(classname, cls):
     link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
-    linelink = (
-        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}#L{0}>`__".format(
-            inspect.getsourcelines(cls)[1], latest_commit, shortfilename
-        )
+    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}#L{0}>`__".format(
+        inspect.getsourcelines(cls)[1], latest_commit, shortfilename
     )
 
     inheritance_header = ""
@@ -230,10 +228,8 @@ def handle_function(functionname, cls):
     link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
-    linelink = (
-        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}#L{0}>`__".format(
-            inspect.getsourcelines(cls)[1], latest_commit, shortfilename
-        )
+    linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}#L{0}>`__".format(
+        inspect.getsourcelines(cls)[1], latest_commit, shortfilename
     )
 
     content = """{0}
