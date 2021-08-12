@@ -2686,10 +2686,24 @@ in file {3}""".format(
                 break
             self._num_normal_baskets += 1
 
-        if (
-            self.member("fEntries")
-            == self.member("fBasketEntry")[self._num_normal_baskets]
-        ):
+        # the number of entries in basket i == fBasketEntry[i + 1] - fBasketEntry[i]
+        # but it's possible for len(fBasketEntry) == i (ROOT can read such files)
+        # so in that rare case, look at the header of the last basket
+        # and use that to extend the fBasketEntry array by one
+        fBasketEntry = self.member("fBasketEntry")
+        if len(fBasketEntry) == self._num_normal_baskets:
+            start = self.member("fBasketSeek")[len(fBasketEntry) - 1]
+            stop = start + self.basket_compressed_bytes(len(fBasketEntry) - 1)
+            cursor = uproot.source.cursor.Cursor(start)
+            chunk = self._file.source.chunk(start, stop)
+            basket_header = uproot.models.TBasket.Model_TBasket.read(
+                chunk, cursor, {"read_basket": False}, self._file, self._file, self
+            )
+            fBasketEntry = self._members["fBasketEntry"] = numpy.append(
+                fBasketEntry, fBasketEntry[-1] + basket_header.member("fNevBuf")
+            )
+
+        if self.member("fEntries") == fBasketEntry[self._num_normal_baskets]:
             self._embedded_baskets = []
             self._embedded_baskets_lock = None
 

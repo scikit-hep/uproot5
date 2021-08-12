@@ -6,6 +6,7 @@ FIXME: docstring
 
 from __future__ import absolute_import
 
+import datetime
 import itertools
 import os
 import uuid
@@ -14,6 +15,10 @@ try:
     import queue
 except ImportError:
     import Queue as queue
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 import numpy
 
@@ -57,8 +62,6 @@ def recreate(file_path, **options):
         sink = uproot.sink.file.FileSink.from_object(file_path)
 
     compression = options.pop("compression", create.defaults["compression"])
-    if compression is None:
-        compression = uproot.compression.ZLIB(0)
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
@@ -204,7 +207,10 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def fCompress(self):
-        return self._cascading.fileheader.compression.code
+        if self._cascading.fileheader.compression is None:
+            return uproot.compression.ZLIB(0).code
+        else:
+            return self._cascading.fileheader.compression.code
 
     @property
     def fSeekInfo(self):
@@ -238,6 +244,20 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._sink.__exit__(exception_type, exception_value, traceback)
+
+    def _new_tree(self, tree):
+        self._trees[tree._cascading.key.seek_location] = tree
+
+    def _has_tree(self, loc):
+        return loc in self._trees
+
+    def _get_tree(self, loc):
+        return self._trees[loc]
+
+    def _move_tree(self, oldloc, newloc):
+        tree = self._trees[oldloc]
+        del self._trees[oldloc]
+        self._trees[newloc] = tree
 
 
 class WritableDirectory(object):
@@ -596,7 +616,7 @@ class WritableDirectory(object):
                     if filter_name is no_filter or filter_name(k3):
                         yield k2, c1
 
-    def __getitem__(self, where):
+    def _get_del_search(self, where, isget):
         if "/" in where or ":" in where:
             items = where.split("/")
             step = last = self
@@ -605,29 +625,11 @@ class WritableDirectory(object):
                 if item != "":
                     if isinstance(step, WritableDirectory):
                         if ":" in item and not step._cascading.data.haskey(item):
-                            index = item.index(":")
-                            head, tail = item[:index], item[index + 1 :]
-                            last = step
-                            step = step.get(head)
-                            if isinstance(step, WritableTree):
-                                rest = [tail] + items[i + 1 :]
-                                if len(rest) != 0:
-                                    raise uproot.KeyInFileError(
-                                        where,
-                                        because="{0} is a WritableTree, which can't be internally indexed (by {1})".format(
-                                            repr(head), repr("/".join(rest))
-                                        ),
-                                        file_path=self.file_path,
-                                    )
-                                return step
-                            else:
-                                raise uproot.KeyInFileError(
-                                    where,
-                                    because=repr(head)
-                                    + " is not a WritableDirectory or WritableTree",
-                                    keys=last._cascading.data.key_names,
-                                    file_path=self.file_path,
-                                )
+                            raise uproot.KeyInFileError(
+                                where,
+                                because="TTrees in writable files can't be indexed by TBranch name",
+                                file_path=self.file_path,
+                            )
                         else:
                             last = step
                             step = step[item]
@@ -637,9 +639,7 @@ class WritableDirectory(object):
                         if len(rest) != 0:
                             raise uproot.KeyInFileError(
                                 where,
-                                because="{0} is a WritableTree, which can't be internally indexed (by {1})".format(
-                                    repr(head), repr("/".join(rest))
-                                ),
+                                because="TTrees in writable files can't be indexed by TBranch name",
                                 file_path=self.file_path,
                             )
                         return step
@@ -647,8 +647,7 @@ class WritableDirectory(object):
                     else:
                         raise uproot.KeyInFileError(
                             where,
-                            because=repr(item)
-                            + " is not a WritableDirectory or WritableTree",
+                            because="/".join(items[:i]) + " is not a TDirectory",
                             keys=last._cascading.data.key_names,
                             file_path=self.file_path,
                         )
@@ -666,7 +665,19 @@ class WritableDirectory(object):
             else:
                 item, cycle = where, None
 
-            return self._get(item, cycle)
+            if isget:
+                return self._get(item, cycle)
+            else:
+                return self._del(item, cycle)
+
+    def __getitem__(self, where):
+        return self._get_del_search(where, True)
+
+    def __setitem__(self, where, what):
+        self.update({where: what})
+
+    def __delitem__(self, where):
+        return self._get_del_search(where, False)
 
     def _get(self, name, cycle):
         key = self._cascading.data.get_key(name, cycle)
@@ -683,7 +694,12 @@ class WritableDirectory(object):
             return self._subdir(key)
 
         elif key.classname.string == "TTree":
-            return self._subtree(key)
+            if self._file._has_tree(key.seek_location):
+                return self._file._get_tree(key.seek_location)
+            else:
+                raise TypeError(
+                    "WritableDirectory cannot view preexisting TTrees; open the file with uproot.open instead of uproot.recreate or uproot.update"
+                )
 
         else:
 
@@ -713,6 +729,19 @@ class WritableDirectory(object):
             )
 
             return readonlykey.get()
+
+    def _del(self, name, cycle):
+        key = self._cascading.data.get_key(name, cycle)
+        start = key.location
+        stop = start + key.num_bytes + key.compressed_bytes
+        self._cascading.freesegments.release(start, stop)
+
+        self._cascading._data.remove_key(key)
+        self._cascading.header.modified_on = datetime.datetime.now()
+
+        self._cascading.write(self._file.sink)
+        self._file.sink.set_file_length(self._cascading.freesegments.fileheader.end)
+        self._file.sink.flush()
 
     def _subdir(self, key):
         name = key.name.string
@@ -827,17 +856,6 @@ class WritableDirectory(object):
 
         return self._subdirs[name]
 
-    def _subtree(self, key):
-        name = key.name.string
-        path = self._path + (name,)
-
-        if path not in self._file._trees:
-            # maybe never-before-seen TTrees should be preemptively moved
-            # to account for versions different from v20
-            raise NotImplementedError  # FIXME: read a TTree to overwrite it
-
-        return self._file._trees[path]
-
     def mkdir(self, name, initial_directory_bytes=None):
         stripped = name.strip("/")
         try:
@@ -898,7 +916,7 @@ in file {2} in directory {3}""".format(
 
         path = directory._path + (treename,)
 
-        directory._file._trees[path] = WritableTree(
+        tree = WritableTree(
             path,
             directory._file,
             directory._cascading.add_tree(
@@ -910,8 +928,9 @@ in file {2} in directory {3}""".format(
                 resize_factor,
             ),
         )
+        directory._file._new_tree(tree)
 
-        return directory._file._trees[path]
+        return tree
 
     def copy_from(
         self,
@@ -1018,9 +1037,6 @@ in file {1} in directory {2}""".format(
                 old_key.data_uncompressed_bytes,
             )
 
-    def __setitem__(self, where, what):
-        self.update({where: what})
-
     def update(self, pairs=None, **more_pairs):
         streamers = []
 
@@ -1035,22 +1051,8 @@ in file {1} in directory {2}""".format(
             all_pairs = more_pairs.items()
 
         for k, v in all_pairs:
-            writable = to_writable(v)
-
-            for rawstreamer in writable.class_rawstreamers:
-                streamers.append(rawstreamer)
-
             fullpath = k.strip("/").split("/")
             path, name = fullpath[:-1], fullpath[-1]
-
-            raw_data = writable.serialize(name=name)
-
-            if hasattr(writable, "fTitle"):
-                title = writable.fTitle
-            elif writable.has_member("fTitle"):
-                title = writable.member("fTitle")
-            else:
-                title = ""
 
             if len(path) != 0:
                 self.mkdir("/".join(path), self._file.initial_directory_bytes)
@@ -1059,14 +1061,37 @@ in file {1} in directory {2}""".format(
             for item in path:
                 directory = directory[item]
 
-            directory._cascading.add_object(
-                self._file.sink,
-                writable.classname,
-                name,
-                title,
-                raw_data,
-                len(raw_data),
-            )
+            if isinstance(v, Mapping) and all(
+                isinstance(x, numpy.ndarray) for x in v.values()
+            ):
+                tree = directory.mktree(
+                    name, "", {nm: arr.dtype for nm, arr in v.items()}
+                )
+                tree.extend(v)
+
+            else:
+                writable = to_writable(v)
+
+                for rawstreamer in writable.class_rawstreamers:
+                    streamers.append(rawstreamer)
+
+                raw_data = writable.serialize(name=name)
+
+                if hasattr(writable, "fTitle"):
+                    title = writable.fTitle
+                elif writable.has_member("fTitle"):
+                    title = writable.member("fTitle")
+                else:
+                    title = ""
+
+                directory._cascading.add_object(
+                    self._file.sink,
+                    writable.classname,
+                    name,
+                    title,
+                    raw_data,
+                    len(raw_data),
+                )
 
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
@@ -1117,7 +1142,7 @@ class WritableTree(object):
         self._file.sink.__exit__(exception_type, exception_value, traceback)
 
     def extend(self, data):
-        self._cascading.extend(self._file.sink, data)
+        self._cascading.extend(self._file, self._file.sink, data)
 
 
 def to_TString(string):
@@ -2447,6 +2472,64 @@ def to_writable(obj):
 
     elif uproot._util.isstr(obj):
         return to_TObjString(obj)
+
+    elif (
+        isinstance(obj, tuple)
+        and 2 <= len(obj) <= 5
+        and all(isinstance(x, numpy.ndarray) for x in obj)
+    ):
+        if uproot._util.isstr(obj[-1]):
+            obj, title = obj[:-1], obj[-1]
+        else:
+            title = ""
+
+        if len(obj) == 2:
+            (entries, edges) = obj
+            centers = (edges[:-1] + edges[1:]) / 2.0
+
+            fEntries = fTsumw = fTsumw2 = entries.sum()
+            fTsumwx = (entries * centers).sum()
+            fTsumwx2 = (entries * centers ** 2).sum()
+
+            with_flow = numpy.empty(len(entries) + 2, dtype=">f8")
+            with_flow[1:-1] = entries
+            with_flow[0] = 0
+            with_flow[-1] = 0
+
+            fNbins = len(edges) - 1
+            fXmin, fXmax = edges[0], edges[-1]
+            if numpy.array_equal(
+                edges, numpy.linspace(fXmin, fXmax, len(edges), edges.dtype)
+            ):
+                edges = numpy.array([], dtype=">f8")
+            else:
+                edges = edges.astype(">f8")
+
+            return uproot.writing.to_TH1x(
+                fName=None,
+                fTitle=title,
+                data=with_flow,
+                fEntries=fEntries,
+                fTsumw=fTsumw,
+                fTsumw2=fTsumw2,
+                fTsumwx=fTsumwx,
+                fTsumwx2=fTsumwx2,
+                fSumw2=with_flow,
+                fXaxis=uproot.writing.to_TAxis(
+                    fName="xaxis",
+                    fTitle="",
+                    fNbins=fNbins,
+                    fXmin=fXmin,
+                    fXmax=fXmax,
+                    fXbins=edges,
+                ),
+            )
+
+        elif len(obj) == 3:
+            raise NotImplementedError("NumPy -> TH2 not implemented yet")
+
+        elif len(obj) == 4:
+            raise NotImplementedError("NumPy -> TH3 not implemented yet")
 
     else:
         raise TypeError(
