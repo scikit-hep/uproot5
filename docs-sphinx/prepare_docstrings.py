@@ -157,11 +157,11 @@ def handle_class(classname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
     linelink = (
-        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
+        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}#L{0}>`__".format(
             inspect.getsourcelines(cls)[1], latest_commit, shortfilename
         )
     )
@@ -227,11 +227,11 @@ def handle_function(functionname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}>`__".format(
+    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
     linelink = (
-        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/{2}#L{0}>`__".format(
+        "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}#L{0}>`__".format(
             inspect.getsourcelines(cls)[1], latest_commit, shortfilename
         )
     )
