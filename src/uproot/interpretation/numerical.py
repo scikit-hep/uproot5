@@ -624,8 +624,8 @@ class AsFloat16(TruncatedNumerical):
         self._num_bits = num_bits
         self._to_dims = to_dims
 
-        if not uproot._util.isint(num_bits) or not 2 <= num_bits <= 16:
-            raise TypeError("num_bits must be an integer between 2 and 16 (inclusive)")
+        if not uproot._util.isint(num_bits) or not 2 <= num_bits <= 32:
+            raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
         if high <= low and not self.is_truncated:
             raise ValueError(
                 "high ({0}) must be strictly greater than low ({1})".format(high, low)
