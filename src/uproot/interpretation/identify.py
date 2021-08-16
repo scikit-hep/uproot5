@@ -240,7 +240,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
         right = title.index("]")
 
     except (ValueError, AttributeError):
-        low, high, num_bits = 0, 0, 0
+        low, high, num_bits = 0, 0, "no brackets"  # distinct from "None"
 
     else:
         source = title[left : right + 1]
@@ -280,19 +280,19 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             )
 
     if not is_float16:
-        if num_bits == 0:
+        if num_bits == "no brackets":
             return uproot.interpretation.numerical.AsDtype(
                 numpy.dtype((">f4", dims)), numpy.dtype(("f8", dims))
             )
-        elif num_bits is None:
+        elif num_bits is None or not 2 <= num_bits <= 32:
             return uproot.interpretation.numerical.AsDouble32(low, high, 32, dims)
         else:
             return uproot.interpretation.numerical.AsDouble32(low, high, num_bits, dims)
 
     else:
-        if num_bits == 0:
+        if num_bits == "no brackets":
             return uproot.interpretation.numerical.AsFloat16(low, high, 12, dims)
-        elif num_bits is None:
+        elif num_bits is None or not 2 <= num_bits <= 32:
             return uproot.interpretation.numerical.AsFloat16(low, high, 32, dims)
         else:
             return uproot.interpretation.numerical.AsFloat16(low, high, num_bits, dims)
