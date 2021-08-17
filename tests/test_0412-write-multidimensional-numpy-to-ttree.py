@@ -101,3 +101,33 @@ def test_2dim_interface_2(tmp_path):
             [4.0, 5.0, 6.0],
             [7.0, 8.0, 9.0],
         ]
+
+
+def test_structured_array(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        fout["tree"] = np.array(
+            [(1, 1.1), (2, 2.2), (3, 3.3)], [("x", np.int32), ("y", np.float64)]
+        )
+        fout["tree"].extend(
+            np.array(
+                [(4, 4.4), (5, 5.5), (6, 6.6)], [("x", np.int32), ("y", np.float64)]
+            )
+        )
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+
+    assert t1.GetBranch("x").GetName() == "x"
+    assert t1.GetBranch("y").GetName() == "y"
+    assert [np.asarray(x.x).tolist() for x in t1] == [1, 2, 3, 4, 5, 6]
+    assert [np.asarray(x.y).tolist() for x in t1] == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/x"].name == "x"
+        assert fin["tree/y"].name == "y"
+        assert fin["tree/x"].typename == "int32_t"
+        assert fin["tree/y"].typename == "double"
+        assert fin["tree/x"].array().tolist() == [1, 2, 3, 4, 5, 6]
+        assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]

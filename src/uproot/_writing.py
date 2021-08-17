@@ -1856,6 +1856,9 @@ class Tree(object):
             sink.set_file_length(self._freesegments.fileheader.end)
             sink.flush()
 
+        if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
+            data = recarray_to_dict(data)
+
         if not isinstance(data, Mapping) or not all(
             uproot._util.isstr(x) for x in data
         ):
@@ -2411,6 +2414,21 @@ Attempting to extend with
         sink.flush()
 
         return fNbytes, fNbytes, location
+
+
+def recarray_to_dict(array):
+    """
+    FIXME: docstring
+    """
+    out = {}
+    for field_name in array.dtype.fields:
+        field = array[field_name]
+        if field.dtype.fields is not None:
+            for subfield_name, subfield in recarray_to_dict(field):
+                out[field_name + "." + subfield_name] = subfield
+        else:
+            out[field_name] = field
+    return out
 
 
 class RootDirectory(Directory):

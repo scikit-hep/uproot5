@@ -1062,6 +1062,10 @@ in file {1} in directory {2}""".format(
                 directory = directory[item]
 
             is_ttree = False
+
+            if isinstance(v, numpy.ndarray) and v.dtype.fields is not None:
+                v = uproot._writing.recarray_to_dict(v)
+
             if isinstance(v, Mapping) and all(uproot._util.isstr(x) for x in v):
                 data = {}
                 metadata = {}
