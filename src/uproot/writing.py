@@ -2488,6 +2488,20 @@ def to_writable(obj):
     """
     FIXME: docstring
     """
+    if (
+        isinstance(obj, tuple)
+        and 2 <= len(obj) <= 3  # might have a histogram title as the last item
+        and isinstance(obj[0], numpy.ndarray)
+        and isinstance(obj[1], tuple)
+        and 2 <= len(obj[1]) <= 3  # 2D or 3D
+        and isinstance(obj[1][0], numpy.ndarray)
+        and isinstance(obj[1][1], numpy.ndarray)
+        and (len(obj[1]) == 2 or isinstance(obj[1][2], numpy.ndarray))
+        and all(len(x.shape) == 1 for x in obj[1])
+        and len(obj[0].shape) == len(obj[1])
+    ):
+        obj = (obj[0],) + obj[1] + obj[2:]
+
     if isinstance(obj, uproot.model.Model):
         return obj.to_writable()
 
@@ -2500,8 +2514,11 @@ def to_writable(obj):
 
     elif (
         isinstance(obj, tuple)
-        and 2 <= len(obj) <= 5
-        and all(isinstance(x, numpy.ndarray) for x in obj)
+        and 2 <= len(obj) <= 5  # might have a histogram title as the last item
+        and all(isinstance(x, numpy.ndarray) for x in obj[:-1])
+        and (isinstance(obj[-1], numpy.ndarray) or uproot._util.isstr(obj[-1]))
+        and len(obj[0].shape) == sum(int(isinstance(x, numpy.ndarray)) for x in obj[1:])
+        and all(len(x.shape) == 1 for x in obj[1:] if isinstance(x, numpy.ndarray))
     ):
         if uproot._util.isstr(obj[-1]):
             obj, title = obj[:-1], obj[-1]
@@ -2551,10 +2568,170 @@ def to_writable(obj):
             )
 
         elif len(obj) == 3:
-            raise NotImplementedError("NumPy -> TH2 not implemented yet")
+            (entries, xedges, yedges) = obj
+            xcenters = (xedges[:-1] + xedges[1:]) / 2.0
+            ycenters = (yedges[:-1] + yedges[1:]) / 2.0
+
+            fEntries = fTsumw = fTsumw2 = entries.sum()
+            fTsumwx = (entries.T * xcenters).sum()
+            fTsumwx2 = (entries.T * xcenters ** 2).sum()
+            fTsumwy = (entries * ycenters).sum()
+            fTsumwy2 = (entries * ycenters ** 2).sum()
+            fTsumwxy = ((entries * ycenters).T * xcenters).sum()
+
+            with_flow = numpy.zeros(
+                (entries.shape[0] + 2, entries.shape[1] + 2), dtype=">f8"
+            )
+            with_flow[1:-1, 1:-1] = entries
+            with_flow = with_flow.T.reshape(-1)
+
+            fXaxis_fNbins = len(xedges) - 1
+            fXmin, fXmax = xedges[0], xedges[-1]
+            if numpy.array_equal(
+                xedges, numpy.linspace(fXmin, fXmax, len(xedges), xedges.dtype)
+            ):
+                xedges = numpy.array([], dtype=">f8")
+            else:
+                xedges = xedges.astype(">f8")
+
+            fYaxis_fNbins = len(yedges) - 1
+            fYmin, fYmax = yedges[0], yedges[-1]
+            if numpy.array_equal(
+                yedges, numpy.linspace(fYmin, fYmax, len(yedges), yedges.dtype)
+            ):
+                yedges = numpy.array([], dtype=">f8")
+            else:
+                yedges = yedges.astype(">f8")
+
+            return uproot.writing.to_TH2x(
+                fName=None,
+                fTitle=title,
+                data=with_flow,
+                fEntries=fEntries,
+                fTsumw=fTsumw,
+                fTsumw2=fTsumw2,
+                fTsumwx=fTsumwx,
+                fTsumwx2=fTsumwx2,
+                fTsumwy=fTsumwy,
+                fTsumwy2=fTsumwy2,
+                fTsumwxy=fTsumwxy,
+                fSumw2=with_flow,
+                fXaxis=uproot.writing.to_TAxis(
+                    fName="xaxis",
+                    fTitle="",
+                    fNbins=fXaxis_fNbins,
+                    fXmin=fXmin,
+                    fXmax=fXmax,
+                    fXbins=xedges,
+                ),
+                fYaxis=uproot.writing.to_TAxis(
+                    fName="yaxis",
+                    fTitle="",
+                    fNbins=fYaxis_fNbins,
+                    fXmin=fYmin,
+                    fXmax=fYmax,
+                    fXbins=yedges,
+                ),
+            )
 
         elif len(obj) == 4:
-            raise NotImplementedError("NumPy -> TH3 not implemented yet")
+            (entries, xedges, yedges, zedges) = obj
+            xcenters = (xedges[:-1] + xedges[1:]) / 2.0
+            ycenters = (yedges[:-1] + yedges[1:]) / 2.0
+            zcenters = (zedges[:-1] + zedges[1:]) / 2.0
+
+            fEntries = fTsumw = fTsumw2 = entries.sum()
+            fTsumwx = (numpy.transpose(entries, (1, 2, 0)) * xcenters).sum()
+            fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters ** 2).sum()
+            fTsumwy = (numpy.transpose(entries, (2, 0, 1)) * ycenters).sum()
+            fTsumwy2 = (numpy.transpose(entries, (2, 0, 1)) * ycenters ** 2).sum()
+            fTsumwz = (entries * zcenters).sum()
+            fTsumwz2 = (entries * zcenters ** 2).sum()
+            fTsumwxy = (
+                numpy.transpose(
+                    numpy.transpose(entries, (2, 0, 1)) * ycenters, (2, 0, 1)
+                )
+                * xcenters
+            ).sum()
+            fTsumwxz = (numpy.transpose(entries * zcenters, (1, 2, 0)) * xcenters).sum()
+            fTsumwyz = (numpy.transpose(entries * zcenters, (2, 0, 1)) * ycenters).sum()
+
+            with_flow = numpy.zeros(
+                (entries.shape[0] + 2, entries.shape[1] + 2, entries.shape[2] + 2),
+                dtype=">f8",
+            )
+            with_flow[1:-1, 1:-1, 1:-1] = entries
+            with_flow = with_flow.T.reshape(-1)
+
+            fXaxis_fNbins = len(xedges) - 1
+            fXmin, fXmax = xedges[0], xedges[-1]
+            if numpy.array_equal(
+                xedges, numpy.linspace(fXmin, fXmax, len(xedges), xedges.dtype)
+            ):
+                xedges = numpy.array([], dtype=">f8")
+            else:
+                xedges = xedges.astype(">f8")
+
+            fYaxis_fNbins = len(yedges) - 1
+            fYmin, fYmax = yedges[0], yedges[-1]
+            if numpy.array_equal(
+                yedges, numpy.linspace(fYmin, fYmax, len(yedges), yedges.dtype)
+            ):
+                yedges = numpy.array([], dtype=">f8")
+            else:
+                yedges = yedges.astype(">f8")
+
+            fZaxis_fNbins = len(zedges) - 1
+            fZmin, fZmax = zedges[0], zedges[-1]
+            if numpy.array_equal(
+                zedges, numpy.linspace(fZmin, fZmax, len(zedges), zedges.dtype)
+            ):
+                zedges = numpy.array([], dtype=">f8")
+            else:
+                zedges = zedges.astype(">f8")
+
+            return uproot.writing.to_TH3x(
+                fName=None,
+                fTitle=title,
+                data=with_flow,
+                fEntries=fEntries,
+                fTsumw=fTsumw,
+                fTsumw2=fTsumw2,
+                fTsumwx=fTsumwx,
+                fTsumwx2=fTsumwx2,
+                fTsumwy=fTsumwy,
+                fTsumwy2=fTsumwy2,
+                fTsumwxy=fTsumwxy,
+                fTsumwz=fTsumwz,
+                fTsumwz2=fTsumwz2,
+                fTsumwxz=fTsumwxz,
+                fTsumwyz=fTsumwyz,
+                fSumw2=with_flow,
+                fXaxis=uproot.writing.to_TAxis(
+                    fName="xaxis",
+                    fTitle="",
+                    fNbins=fXaxis_fNbins,
+                    fXmin=fXmin,
+                    fXmax=fXmax,
+                    fXbins=xedges,
+                ),
+                fYaxis=uproot.writing.to_TAxis(
+                    fName="yaxis",
+                    fTitle="",
+                    fNbins=fYaxis_fNbins,
+                    fXmin=fYmin,
+                    fXmax=fYmax,
+                    fXbins=yedges,
+                ),
+                fZaxis=uproot.writing.to_TAxis(
+                    fName="zaxis",
+                    fTitle="",
+                    fNbins=fZaxis_fNbins,
+                    fXmin=fZmin,
+                    fXmax=fZmax,
+                    fXbins=zedges,
+                ),
+            )
 
     else:
         raise TypeError(

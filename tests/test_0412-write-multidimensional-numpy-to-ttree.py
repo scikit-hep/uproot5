@@ -5,6 +5,7 @@ import os
 
 import numpy as np
 import pytest
+import skhep_testdata
 
 import uproot
 import uproot.writing
@@ -163,3 +164,314 @@ def test_pandas(tmp_path):
         assert fin["tree/y"].typename == "double"
         assert fin["tree/x"].array().tolist() == [1, 2, 3, 4, 5, 6]
         assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
+
+
+def test_histogram_interface(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as fin:
+        h1d, h2d = fin["hpx"], fin["hpxpy"]
+
+        with uproot.recreate(newfile) as fout:
+            fout["h1d"] = h1d.to_numpy()
+            fout["h2d"] = h2d.to_numpy(dd=False)
+            fout["h2d_dd"] = h2d.to_numpy(dd=True)
+
+    with uproot.open(newfile) as finagin:
+        (entries_1, xedges_1) = h1d.to_numpy()
+        (entries_2, xedges_2) = fout["h1d"].to_numpy()
+        assert np.array_equal(entries_1, entries_2)
+        assert np.array_equal(xedges_1, xedges_2)
+
+        (entries_1, xedges_1, yedges_1) = h2d.to_numpy(dd=False)
+        (entries_2, xedges_2, yedges_2) = fout["h2d"].to_numpy(dd=False)
+        assert np.array_equal(entries_1, entries_2)
+        assert np.array_equal(xedges_1, xedges_2)
+        assert np.array_equal(yedges_1, yedges_2)
+
+        (entries_1, (xedges_1, yedges_1)) = h2d.to_numpy(dd=True)
+        (entries_2, (xedges_2, yedges_2)) = fout["h2d_dd"].to_numpy(dd=True)
+        assert np.array_equal(entries_1, entries_2)
+        assert np.array_equal(xedges_1, xedges_2)
+        assert np.array_equal(yedges_1, yedges_2)
+
+
+def test_ex_nihilo_TH1(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h1 = uproot.writing.to_TH1x(
+        fName="h1",
+        fTitle="title",
+        data=np.array([0, 2, 5, 0], np.float64),
+        fEntries=7,
+        fTsumw=1,
+        fTsumw2=1,
+        fTsumwx=1,
+        fTsumwx2=1,
+        fSumw2=np.array([0, 2, 5, 0], np.float64),
+        fXaxis=uproot.writing.to_TAxis(
+            fName="xaxis",
+            fTitle="",
+            fNbins=2,
+            fXmin=-3.14,
+            fXmax=2.71,
+        ),
+    )
+
+    with uproot.recreate(newfile) as fout:
+        fout["out"] = h1
+        fout["there"] = h1.to_numpy()
+
+    f3 = ROOT.TFile(newfile)
+    for name in "out", "there":
+        h3 = f3.Get(name)
+        assert h3.GetEntries() == pytest.approx(7)
+        assert h3.GetBinLowEdge(1) == pytest.approx(-3.14)
+        assert h3.GetBinWidth(1) == pytest.approx((2.71 - -3.14) / 2)
+        assert h3.GetBinContent(0) == pytest.approx(0)
+        assert h3.GetBinContent(1) == pytest.approx(2)
+        assert h3.GetBinContent(2) == pytest.approx(5)
+        assert h3.GetBinContent(3) == pytest.approx(0)
+        assert h3.GetBinError(0) == pytest.approx(0)
+        assert h3.GetBinError(1) == pytest.approx(np.sqrt(2))
+        assert h3.GetBinError(2) == pytest.approx(np.sqrt(5))
+        assert h3.GetBinError(3) == pytest.approx(0)
+
+
+def test_ex_nihilo_TH2(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h1 = uproot.writing.to_TH2x(
+        fName="h1",
+        fTitle="title",
+        data=np.array(
+            [0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0], np.float64
+        ),
+        fEntries=7,
+        fTsumw=1,
+        fTsumw2=1,
+        fTsumwx=1,
+        fTsumwx2=1,
+        fTsumwy=-1,
+        fTsumwy2=1,
+        fTsumwxy=-1,
+        fSumw2=np.array(
+            [0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0], np.float64
+        ),
+        fXaxis=uproot.writing.to_TAxis(
+            fName="xaxis",
+            fTitle="",
+            fNbins=2,
+            fXmin=-3.14,
+            fXmax=2.71,
+        ),
+        fYaxis=uproot.writing.to_TAxis(
+            fName="yaxis",
+            fTitle="",
+            fNbins=3,
+            fXmin=-5.0,
+            fXmax=10.0,
+        ),
+    )
+
+    with uproot.recreate(newfile) as fout:
+        fout["out"] = h1
+        fout["there"] = h1.to_numpy()
+
+    f3 = ROOT.TFile(newfile)
+    for name in "out", "there":
+        h3 = f3.Get(name)
+        assert h3.GetEntries() == 7
+        assert h3.GetNbinsX() == 2
+        assert h3.GetNbinsY() == 3
+        assert h3.GetXaxis().GetBinLowEdge(1) == pytest.approx(-3.14)
+        assert h3.GetXaxis().GetBinUpEdge(2) == pytest.approx(2.71)
+        assert h3.GetYaxis().GetBinLowEdge(1) == pytest.approx(-5)
+        assert h3.GetYaxis().GetBinUpEdge(3) == pytest.approx(10)
+        assert [[h3.GetBinContent(i, j) for j in range(5)] for i in range(4)] == [
+            pytest.approx([0, 0, 0, 0, 0]),
+            pytest.approx([0, 0, 0, 2, 0]),
+            pytest.approx([0, 5, 0, 0, 0]),
+            pytest.approx([0, 0, 0, 0, 0]),
+        ]
+
+
+def test_ex_nihilo_TH3(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h1 = uproot.writing.to_TH3x(
+        fName="h1",
+        fTitle="title",
+        data=np.array(
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            np.float64,
+        ),
+        fEntries=7,
+        fTsumw=1,
+        fTsumw2=1,
+        fTsumwx=1,
+        fTsumwx2=1,
+        fTsumwy=1,
+        fTsumwy2=1,
+        fTsumwxy=1,
+        fTsumwz=1,
+        fTsumwz2=1,
+        fTsumwxz=1,
+        fTsumwyz=1,
+        fSumw2=np.array(
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0]
+            + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            np.float64,
+        ),
+        fXaxis=uproot.writing.to_TAxis(
+            fName="xaxis",
+            fTitle="",
+            fNbins=2,
+            fXmin=-3.14,
+            fXmax=2.71,
+        ),
+        fYaxis=uproot.writing.to_TAxis(
+            fName="yaxis",
+            fTitle="",
+            fNbins=3,
+            fXmin=-5.0,
+            fXmax=10.0,
+        ),
+        fZaxis=uproot.writing.to_TAxis(
+            fName="zaxis",
+            fTitle="",
+            fNbins=1,
+            fXmin=100.0,
+            fXmax=200.0,
+        ),
+    )
+
+    with uproot.recreate(newfile) as fout:
+        fout["out"] = h1
+        fout["there"] = h1.to_numpy()
+
+    f3 = ROOT.TFile(newfile)
+    for name in "out", "there":
+        h3 = f3.Get(name)
+        assert h3.GetEntries() == 7
+        assert h3.GetNbinsX() == 2
+        assert h3.GetNbinsY() == 3
+        assert h3.GetNbinsZ() == 1
+        assert h3.GetXaxis().GetBinLowEdge(1) == pytest.approx(-3.14)
+        assert h3.GetXaxis().GetBinUpEdge(2) == pytest.approx(2.71)
+        assert h3.GetYaxis().GetBinLowEdge(1) == pytest.approx(-5)
+        assert h3.GetYaxis().GetBinUpEdge(3) == pytest.approx(10)
+        assert h3.GetZaxis().GetBinLowEdge(1) == pytest.approx(100)
+        assert h3.GetZaxis().GetBinUpEdge(1) == pytest.approx(200)
+        approx = pytest.approx
+        assert [
+            [[h3.GetBinContent(i, j, k) for k in range(3)] for j in range(5)]
+            for i in range(4)
+        ] == [
+            [[0, 0, 0], approx([0, 0, 0]), [0, 0, 0], approx([0, 0, 0]), [0, 0, 0]],
+            [[0, 0, 0], approx([0, 0, 0]), [0, 0, 0], approx([0, 2, 0]), [0, 0, 0]],
+            [[0, 0, 0], approx([0, 5, 0]), [0, 0, 0], approx([0, 0, 0]), [0, 0, 0]],
+            [[0, 0, 0], approx([0, 0, 0]), [0, 0, 0], approx([0, 0, 0]), [0, 0, 0]],
+        ]
+
+
+def test_fromroot_TH1(tmp_path):
+    original = os.path.join(tmp_path, "original.root")
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    f1 = ROOT.TFile(original, "recreate")
+    h1 = ROOT.TH1D("h1", "title", 2, 3.0, 5.0)  # centers: 3.5 4.5
+    h1.Sumw2()
+    h1.Fill(3.5)
+    h1.Fill(3.5)
+    h1.Fill(4.5)
+    h1.Write()
+    f1.Close()
+
+    with uproot.open(original) as fin:
+        h2 = fin["h1"]
+
+        with uproot.recreate(newfile) as fout:
+            fout["out"] = h2
+            fout["there"] = h2.to_numpy()
+
+    with uproot.open(newfile) as finagin:
+        assert np.array_equal(
+            finagin["out"].member("fSumw2"), finagin["there"].member("fSumw2")
+        )
+        assert {
+            k: v for k, v in finagin["out"].all_members.items() if k.startswith("fTs")
+        } == {
+            k: v for k, v in finagin["there"].all_members.items() if k.startswith("fTs")
+        }
+
+
+def test_fromroot_TH2(tmp_path):
+    original = os.path.join(tmp_path, "original.root")
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    f1 = ROOT.TFile(original, "recreate")
+    h1 = ROOT.TH2D(
+        "h1", "title", 2, 3.0, 5.0, 3, 10, 13
+    )  # centers: 3.5 4.5; 10.5 11.5 12.5
+    h1.Sumw2()
+    h1.Fill(3.5, 10.5)
+    h1.Fill(3.5, 10.5)
+    h1.Fill(4.5, 11.5)
+    h1.Fill(4.5, 12.5)
+
+    h1.Write()
+    f1.Close()
+
+    with uproot.open(original) as fin:
+        h2 = fin["h1"]
+
+        with uproot.recreate(newfile) as fout:
+            fout["out"] = h2
+            fout["there"] = h2.to_numpy()
+
+    with uproot.open(newfile) as finagin:
+        assert np.array_equal(
+            finagin["out"].member("fSumw2"), finagin["there"].member("fSumw2")
+        )
+        assert {
+            k: v for k, v in finagin["out"].all_members.items() if k.startswith("fTs")
+        } == {
+            k: v for k, v in finagin["there"].all_members.items() if k.startswith("fTs")
+        }
+
+
+def test_fromroot_TH3(tmp_path):
+    original = os.path.join(tmp_path, "original.root")
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    f1 = ROOT.TFile(original, "recreate")
+    h1 = ROOT.TH3D(
+        "h1", "title", 2, 3.0, 5.0, 3, 10, 13, 4, 100, 104
+    )  # centers: 3.5 4.5; 10.5 11.5 12.5; 100.5, 101.5, 102.5, 103.5
+    h1.Sumw2()
+    h1.Fill(3.5, 10.5, 100.5)
+    h1.Fill(3.5, 10.5, 100.5)
+    h1.Fill(3.5, 11.5, 102.5)
+    h1.Fill(3.5, 12.5, 101.5)
+    h1.Write()
+    f1.Close()
+
+    with uproot.open(original) as fin:
+        h2 = fin["h1"]
+        with uproot.recreate(newfile) as fout:
+            fout["out"] = h2
+            fout["there"] = h2.to_numpy()
+
+    with uproot.open(newfile) as finagin:
+        assert np.array_equal(
+            finagin["out"].member("fSumw2"), finagin["there"].member("fSumw2")
+        )
+        assert {
+            k: v for k, v in finagin["out"].all_members.items() if k.startswith("fTs")
+        } == {
+            k: v for k, v in finagin["there"].all_members.items() if k.startswith("fTs")
+        }
