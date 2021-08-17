@@ -1061,13 +1061,27 @@ in file {1} in directory {2}""".format(
             for item in path:
                 directory = directory[item]
 
-            if isinstance(v, Mapping) and all(
-                isinstance(x, numpy.ndarray) for x in v.values()
-            ):
-                tree = directory.mktree(
-                    name, "", {nm: arr.dtype for nm, arr in v.items()}
-                )
-                tree.extend(v)
+            is_ttree = False
+            if isinstance(v, Mapping) and all(uproot._util.isstr(x) for x in v):
+                data = {}
+                metadata = {}
+                for branch_name, branch_array in v.items():
+                    try:
+                        branch_array = uproot._util.ensure_numpy(branch_array)
+                    except TypeError:
+                        break
+                    data[branch_name] = branch_array
+                    branch_dtype = branch_array.dtype
+                    branch_shape = branch_array.shape[1:]
+                    if branch_shape != ():
+                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                    metadata[branch_name] = branch_dtype
+                else:
+                    is_ttree = True
+
+            if is_ttree:
+                tree = directory.mktree(name, "", metadata)
+                tree.extend(data)
 
             else:
                 writable = to_writable(v)
