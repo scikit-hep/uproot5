@@ -1062,6 +1062,13 @@ in file {1} in directory {2}""".format(
                 directory = directory[item]
 
             is_ttree = False
+            module_name = type(v).__module__
+
+            if module_name == "pandas" or module_name.startswith("pandas."):
+                import pandas
+
+                if isinstance(v, pandas.DataFrame) and v.index.is_numeric():
+                    v = uproot._writing.dataframe_to_dict(v)
 
             if isinstance(v, numpy.ndarray) and v.dtype.fields is not None:
                 v = uproot._writing.recarray_to_dict(v)

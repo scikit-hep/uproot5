@@ -131,3 +131,35 @@ def test_structured_array(tmp_path):
         assert fin["tree/y"].typename == "double"
         assert fin["tree/x"].array().tolist() == [1, 2, 3, 4, 5, 6]
         assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
+
+
+def test_pandas(tmp_path):
+    pandas = pytest.importorskip("pandas")
+
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    df1 = pandas.DataFrame({"x": [1, 2, 3], "y": [1.1, 2.2, 3.3]})
+    df2 = pandas.DataFrame({"x": [4, 5, 6], "y": [4.4, 5.5, 6.6]})
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        fout["tree"] = df1
+        fout["tree"].extend(df2)
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+
+    assert t1.GetBranch("index").GetName() == "index"
+    assert t1.GetBranch("x").GetName() == "x"
+    assert t1.GetBranch("y").GetName() == "y"
+    assert [np.asarray(x.x).tolist() for x in t1] == [1, 2, 3, 4, 5, 6]
+    assert [np.asarray(x.y).tolist() for x in t1] == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/index"].name == "index"
+        assert fin["tree/x"].name == "x"
+        assert fin["tree/y"].name == "y"
+        assert fin["tree/index"].typename.startswith("int")
+        assert fin["tree/x"].typename.startswith("int")
+        assert fin["tree/y"].typename == "double"
+        assert fin["tree/x"].array().tolist() == [1, 2, 3, 4, 5, 6]
+        assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]

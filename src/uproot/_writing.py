@@ -1856,6 +1856,14 @@ class Tree(object):
             sink.set_file_length(self._freesegments.fileheader.end)
             sink.flush()
 
+        module_name = type(data).__module__
+
+        if module_name == "pandas" or module_name.startswith("pandas."):
+            import pandas
+
+            if isinstance(data, pandas.DataFrame) and data.index.is_numeric():
+                data = dataframe_to_dict(data)
+
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
             data = recarray_to_dict(data)
 
@@ -2414,6 +2422,16 @@ Attempting to extend with
         sink.flush()
 
         return fNbytes, fNbytes, location
+
+
+def dataframe_to_dict(df):
+    """
+    FIXME: docstring
+    """
+    out = {"index": df.index.values}
+    for column_name in df.columns:
+        out[str(column_name)] = df[column_name].values
+    return out
 
 
 def recarray_to_dict(array):
