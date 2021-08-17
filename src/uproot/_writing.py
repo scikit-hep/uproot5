@@ -12,6 +12,11 @@ import os.path
 import struct
 import uuid
 
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
+
 import numpy
 
 import uproot.compression
@@ -1695,9 +1700,9 @@ class Tree(object):
             if branch_shape == ():
                 dims = ""
             else:
-                dims = "[" + ", ".join(str(x) for x in branch_shape) + "]"
+                dims = "".join("[" + str(x) + "]" for x in branch_shape)
 
-            title = "{0}/{1}{2}".format(branch_name, letter, dims)
+            title = "{0}{1}/{2}".format(branch_name, dims, letter)
 
             self._branch_lookup[branch_name] = len(self._branch_data)
             self._branch_data.append(
@@ -1851,7 +1856,13 @@ class Tree(object):
             sink.set_file_length(self._freesegments.fileheader.end)
             sink.flush()
 
-        assert isinstance(data, dict)
+        if not isinstance(data, Mapping) or not all(
+            uproot._util.isstr(x) for x in data
+        ):
+            raise TypeError(
+                "'extend' requires a mapping from branch name (str) to arrays"
+            )
+
         if not set(data) == set(x["fName"] for x in self._branch_data):
             raise ValueError(
                 """'extend' must fill every branch and only existing branches of the TTree.
@@ -2087,12 +2098,17 @@ Attempting to extend with
                 special_struct = uproot.models.TLeaf._tleaff1_format1
             elif letter_upper == "D":
                 special_struct = uproot.models.TLeaf._tleafd1_format1
-            lentype = datum["dtype"].itemsize
-            unsigned = letter != letter_upper
+            fLenType = datum["dtype"].itemsize
+            fIsUnsigned = letter != letter_upper
+
+            if datum["shape"] == ():
+                dims = ""
+            else:
+                dims = "".join("[" + str(x) + "]" for x in datum["shape"])
 
             # single TLeaf
             leaf_name = datum["fName"].encode(errors="surrogateescape")
-            leaf_title = leaf_name
+            leaf_title = (datum["fName"] + dims).encode(errors="surrogateescape")
             leaf_name_length = (1 if len(leaf_name) < 255 else 5) + len(leaf_name)
             leaf_title_length = (1 if len(leaf_title) < 255 else 5) + len(leaf_title)
 
@@ -2141,14 +2157,18 @@ Attempting to extend with
                     )
                 )
 
+            fLen = 1
+            for item in datum["shape"]:
+                fLen *= item
+
             # generic TLeaf members
             out.append(
                 uproot.models.TLeaf._tleaf2_format0.pack(
-                    1,  # fLen
-                    lentype,  # fLenType
+                    fLen,
+                    fLenType,
                     0,  # fOffset
                     False,  # fIsRange
-                    unsigned,  # fIsUnsigned
+                    fIsUnsigned,
                 )
             )
 
@@ -2353,6 +2373,10 @@ Attempting to extend with
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
 
+        itemsize = array.dtype.itemsize
+        for item in array.shape[1:]:
+            itemsize *= item
+
         out = []
         out.append(
             uproot.reading._key_format_big.pack(
@@ -2373,7 +2397,7 @@ Attempting to extend with
             uproot.models.TBasket._tbasket_format2.pack(
                 3,  # fVersion
                 32000,  # fBufferSize
-                array.dtype.itemsize,  # fNevBufSize
+                itemsize,  # fNevBufSize
                 len(array),  # fNevBuf
                 fKeylen + len(raw_array),  # fLast
             )
