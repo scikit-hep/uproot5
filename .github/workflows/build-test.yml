@@ -69,7 +69,7 @@ jobs:
 
       - name: "Install pytest-rerunfailures"
         id: rerunfailures-install
-        if: "matrix.python-version != 3.5  ||  runner.os != 'Linux'"
+        if: "matrix.python-version != 3.5"
         run: |
           conda env list
           conda install pytest-rerunfailures
