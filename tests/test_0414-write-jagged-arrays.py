@@ -10,11 +10,11 @@ import skhep_testdata
 import uproot
 import uproot.writing
 
-ROOT = pytest.importorskip("ROOT")
+# ROOT = pytest.importorskip("ROOT")
 awkward = pytest.importorskip("awkward")
 
 
-def test(tmp_path):
+def test_awkward_as_numpy(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
@@ -33,3 +33,21 @@ def test(tmp_path):
         assert fin["tree/b2"].typename == "double[2]"
         assert fin["tree/b3"].typename == "double[2][3]"
         assert fin["tree/b4"].typename == "double"
+
+
+def test_awkward_record(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        fout.mktree(
+            "tree",
+            {
+                "b1": "int32",
+                "b2": awkward.types.from_datashape('{"x": float64, "y": 3 * float64}'),
+            },
+        )
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int32_t"
+        assert fin["tree/b2_x"].typename == "double"
+        assert fin["tree/b2_y"].typename == "double[3]"

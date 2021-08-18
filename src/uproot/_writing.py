@@ -1747,7 +1747,34 @@ class Tree(object):
                         raise NotImplementedError("array of lists of numbers")
 
                 elif type(branch_datashape).__name__ == "RecordType":
-                    raise NotImplementedError("array of records")
+                    if hasattr(branch_datashape, "contents"):
+                        contents = branch_datashape.contents
+                    else:
+                        contents = branch_datashape.fields()
+                    keys = branch_datashape.keys
+                    if callable(keys):
+                        keys = keys()
+                    if keys is None:
+                        keys = [str(x) for x in range(len(contents))]
+
+                    self._branch_lookup[branch_name] = len(self._branch_data)
+                    self._branch_data.append(
+                        {"kind": "record", "name": branch_name, "keys": keys}
+                    )
+
+                    for key, content in zip(keys, contents):
+                        subname = branch_name + "_" + key
+                        dtype = self._branch_ak_to_np(content)
+                        if dtype is None:
+                            raise TypeError(
+                                "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
+                                    repr(key), str(content)
+                                )
+                            )
+                        self._branch_lookup[subname] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(subname, str(content), dtype)
+                        )
 
                 else:
                     raise TypeError(
@@ -1825,7 +1852,7 @@ class Tree(object):
         return {
             "fName": branch_name,
             "branch_type": branch_type,
-            "type": "np",
+            "kind": "normal",
             "leaf": None,
             "dtype": branch_dtype,
             "shape": branch_shape,
@@ -1996,7 +2023,7 @@ Attempting to extend with
                 )
 
             datum = self._branch_data[self._branch_lookup[branch_name]]
-            if datum["type"] == "np":
+            if datum["kind"] == "normal":
                 big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
                 if big_endian.shape != (len(branch_array),) + datum["shape"]:
                     raise ValueError(
@@ -2008,7 +2035,7 @@ Attempting to extend with
                 tofill.append((branch_name, big_endian))
 
             else:
-                raise NotImplementedError(datum["type"])
+                raise NotImplementedError(datum["kind"])
 
         # actually write baskets into the file
         uncompressed_bytes = 0
@@ -2099,16 +2126,23 @@ Attempting to extend with
         tobjarray_of_branches_index = len(out)
         out.append(None)
 
+        num_branches = sum(
+            1 if datum["kind"] == "normal" else 0 for datum in self._branch_data
+        )
+
         # TObjArray header with fName: ""
         out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
         out.append(
             uproot.models.TObjArray._tobjarray_format1.pack(
-                len(self._branch_data),  # TObjArray fSize
+                num_branches,  # TObjArray fSize
                 0,  # TObjArray fLowerBound
             )
         )
 
         for datum in self._branch_data:
+            if datum["kind"] != "normal":
+                continue
+
             any_tbranch_index = len(out)
             out.append(None)
             out.append(b"TBranch\x00")
@@ -2410,6 +2444,9 @@ Attempting to extend with
         sink.flush()
 
         for datum in self._branch_data:
+            if datum["kind"] != "normal":
+                continue
+
             position = base + datum["metadata_start"]
 
             if datum["compression"] is None:
