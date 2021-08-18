@@ -67,8 +67,9 @@ jobs:
           conda install xrootd
           conda list
 
-      - name: "Install pytest-rerunfialures"
-        continue-on-error: true
+      - name: "Install pytest-rerunfailures"
+        id: rerunfailures-install
+        if: "matrix.python-version !== 3.5  &&  runner.os != 'Linux'"
         run: |
           conda env list
           conda install pytest-rerunfailures
@@ -79,6 +80,10 @@ jobs:
 
       - name: "Run pytest"
         run: |
-          python -m pytest -vv tests \
-            --reruns 3 --reruns-delay 30 \
-            `if [ "${{ matrix.python-version != 2.7 }}" = "true" ]; then echo '--only-rerun requests.exceptions.HTTPError'; fi`
+          if [ "${{ steps.rerunfailures-install.outcome }}" = "success" ]; then
+            PYTEST_EXTRA_FLAGS="--reruns 3 --reruns-delay 30"
+            if [ "${{ matrix.python-version != 2.7 }}" = "true" ]; then
+              PYTEST_EXTRA_FLAGS="${PYTEST_EXTRA_FLAGS} --only-rerun requests.exceptions.HTTPError"
+            fi
+          fi
+          python -m pytest -vv tests ${PYTEST_EXTRA_FLAGS:-}
