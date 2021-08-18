@@ -1696,7 +1696,9 @@ class Tree(object):
                     import awkward
                 except ImportError:
                     raise TypeError(
-                        "not a NumPy dtype and 'awkward' cannot be imported: {0}".format(repr(branch_type))
+                        "not a NumPy dtype and 'awkward' cannot be imported: {0}".format(
+                            repr(branch_type)
+                        )
                     )
                 if isinstance(branch_type, awkward.types.Type):
                     branch_datashape = branch_type
@@ -1705,7 +1707,9 @@ class Tree(object):
                         branch_datashape = awkward.types.from_datashape(branch_type)
                     except Exception:
                         raise TypeError(
-                            "not a NumPy dtype or an Awkward datashape: {0}".format(repr(branch_type))
+                            "not a NumPy dtype or an Awkward datashape: {0}".format(
+                                repr(branch_type)
+                            )
                         )
                 branch_dtype = _branch_ak_to_np(branch_datashape)
 
@@ -1741,7 +1745,9 @@ class Tree(object):
 
                 else:
                     raise TypeError(
-                        "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(str(branch_datashape))
+                        "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                            str(branch_datashape)
+                        )
                     )
 
         self._num_entries = 0

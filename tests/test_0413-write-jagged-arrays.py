@@ -15,7 +15,7 @@ ak = pytest.importorskip("awkward")
 
 
 def test(tmp_path):
-    newfile = "newfile.root"   # os.path.join(tmp_path, "newfile.root")
+    newfile = "newfile.root"  # os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
         fout.mktree("tree", {"b1": "int32", "b2": "float64"})
