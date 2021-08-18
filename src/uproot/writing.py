@@ -671,12 +671,18 @@ class WritableDirectory(object):
                 return self._del(item, cycle)
 
     def __getitem__(self, where):
+        if self._file.sink.closed:
+            raise ValueError("cannot get data from a closed file")
         return self._get_del_search(where, True)
 
     def __setitem__(self, where, what):
+        if self._file.sink.closed:
+            raise ValueError("cannot write data to a closed file")
         self.update({where: what})
 
     def __delitem__(self, where):
+        if self._file.sink.closed:
+            raise ValueError("cannot delete data from a closed file")
         return self._get_del_search(where, False)
 
     def _get(self, name, cycle):
@@ -857,6 +863,9 @@ class WritableDirectory(object):
         return self._subdirs[name]
 
     def mkdir(self, name, initial_directory_bytes=None):
+        if self._file.sink.closed:
+            raise ValueError("cannot create a TDirectory in a closed file")
+
         stripped = name.strip("/")
         try:
             at = stripped.index("/")
@@ -905,6 +914,9 @@ in file {2} in directory {3}""".format(
         initial_basket_capacity=10,
         resize_factor=10.0,
     ):
+        if self._file.sink.closed:
+            raise ValueError("cannot create a TTree in a closed file")
+
         try:
             at = name.rindex("/")
         except ValueError:
@@ -1070,6 +1082,12 @@ in file {1} in directory {2}""".format(
                 if isinstance(v, pandas.DataFrame) and v.index.is_numeric():
                     v = uproot._writing.dataframe_to_dict(v)
 
+            if module_name == "awkward" or module_name.startswith("awkward."):
+                import awkward
+
+                if isinstance(v, awkward.Array):
+                    v = dict(zip(awkward.fields(v), awkward.unzip(v)))
+
             if isinstance(v, numpy.ndarray) and v.dtype.fields is not None:
                 v = uproot._writing.recarray_to_dict(v)
 
@@ -1077,16 +1095,49 @@ in file {1} in directory {2}""".format(
                 data = {}
                 metadata = {}
                 for branch_name, branch_array in v.items():
-                    try:
-                        branch_array = uproot._util.ensure_numpy(branch_array)
-                    except TypeError:
-                        break
-                    data[branch_name] = branch_array
-                    branch_dtype = branch_array.dtype
-                    branch_shape = branch_array.shape[1:]
-                    if branch_shape != ():
-                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
-                    metadata[branch_name] = branch_dtype
+                    module_name = type(branch_array).__module__
+
+                    if module_name == "pandas" or module_name.startswith("pandas."):
+                        branch_array = uproot._writing.dataframe_to_dict(branch_array)
+
+                    if (
+                        isinstance(branch_array, numpy.ndarray)
+                        and branch_array.dtype.fields is not None
+                    ):
+                        branch_array = uproot._writing.recarray_to_dict(branch_array)
+
+                    if isinstance(branch_array, Mapping) and all(
+                        uproot._util.isstr(x) for x in branch_array
+                    ):
+                        datum = {}
+                        metadatum = {}
+                        for kk, vv in branch_array.items():
+                            try:
+                                vv = uproot._util.ensure_numpy(vv)
+                            except TypeError:
+                                break
+                            datum[kk] = vv
+                            branch_dtype = vv.dtype
+                            branch_shape = vv.shape[1:]
+                            if branch_shape != ():
+                                branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                            metadatum[kk] = branch_dtype
+
+                        data[branch_name] = datum
+                        metadata[branch_name] = metadatum
+
+                    else:
+                        try:
+                            branch_array = uproot._util.ensure_numpy(branch_array)
+                        except TypeError:
+                            break
+                        data[branch_name] = branch_array
+                        branch_dtype = branch_array.dtype
+                        branch_shape = branch_array.shape[1:]
+                        if branch_shape != ():
+                            branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                        metadata[branch_name] = branch_dtype
+
                 else:
                     is_ttree = True
 

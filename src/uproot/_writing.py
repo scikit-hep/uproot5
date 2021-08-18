@@ -1682,48 +1682,79 @@ class Tree(object):
         self._branch_data = []
         self._branch_lookup = {}
         for branch_name, branch_type in branch_types_items:
+            branch_dict = None
             branch_dtype = None
             branch_datashape = None
-            try:
-                if type(branch_type).__module__.startswith("awkward."):
-                    raise TypeError
-                if uproot._util.isstr(branch_type) and branch_type.strip() == "bytes":
-                    raise TypeError
-                branch_dtype = numpy.dtype(branch_type)
 
-            except TypeError:
+            if isinstance(branch_type, Mapping) and all(
+                uproot._util.isstr(x) for x in branch_type
+            ):
+                branch_dict = branch_type
+
+            else:
                 try:
-                    import awkward
-                except ImportError:
-                    raise TypeError(
-                        "not a NumPy dtype and 'awkward' cannot be imported: {0}".format(
-                            repr(branch_type)
-                        )
-                    )
-                if isinstance(branch_type, awkward.types.Type):
-                    branch_datashape = branch_type
-                else:
+                    if type(branch_type).__module__.startswith("awkward."):
+                        raise TypeError
+                    if (
+                        uproot._util.isstr(branch_type)
+                        and branch_type.strip() == "bytes"
+                    ):
+                        raise TypeError
+                    branch_dtype = numpy.dtype(branch_type)
+
+                except TypeError:
                     try:
-                        branch_datashape = awkward.types.from_datashape(branch_type)
-                    except Exception:
+                        import awkward
+                    except ImportError:
                         raise TypeError(
-                            "not a NumPy dtype or an Awkward datashape: {0}".format(
+                            "not a NumPy dtype and 'awkward' cannot be imported: {0}".format(
                                 repr(branch_type)
                             )
                         )
-                # checking by class name to be Awkward v1/v2 insensitive
-                if type(branch_datashape).__name__ == "ArrayType":
-                    if hasattr(branch_datashape, "content"):
-                        branch_datashape = branch_datashape.content
+                    if isinstance(branch_type, awkward.types.Type):
+                        branch_datashape = branch_type
                     else:
-                        branch_datashape = branch_datashape.type
-                branch_dtype = self._branch_ak_to_np(branch_datashape)
+                        try:
+                            branch_datashape = awkward.types.from_datashape(branch_type)
+                        except Exception:
+                            raise TypeError(
+                                "not a NumPy dtype or an Awkward datashape: {0}".format(
+                                    repr(branch_type)
+                                )
+                            )
+                    # checking by class name to be Awkward v1/v2 insensitive
+                    if type(branch_datashape).__name__ == "ArrayType":
+                        if hasattr(branch_datashape, "content"):
+                            branch_datashape = branch_datashape.content
+                        else:
+                            branch_datashape = branch_datashape.type
+                    branch_dtype = self._branch_ak_to_np(branch_datashape)
 
-            if branch_dtype is not None:
+            if branch_dict is not None:
+                self._branch_lookup[branch_name] = len(self._branch_data)
+                self._branch_data.append(
+                    {"kind": "record", "name": branch_name, "keys": list(branch_dict)}
+                )
+
+                for key, content in branch_dict.items():
+                    subname = branch_name + "_" + key
+                    try:
+                        dtype = numpy.dtype(content)
+                    except Exception:
+                        raise TypeError(
+                            "values of a dict must be NumPy types\n\n    key {0} has type {1}".format(
+                                repr(key), repr(content)
+                            )
+                        )
+                    self._branch_lookup[subname] = len(self._branch_data)
+                    self._branch_data.append(self._branch_np(subname, content, dtype))
+
+            elif branch_dtype is not None:
                 self._branch_lookup[branch_name] = len(self._branch_data)
                 self._branch_data.append(
                     self._branch_np(branch_name, branch_type, branch_dtype)
                 )
+
             else:
                 parameters = branch_datashape.parameters
                 if parameters is None:
@@ -1773,7 +1804,7 @@ class Tree(object):
                             )
                         self._branch_lookup[subname] = len(self._branch_data)
                         self._branch_data.append(
-                            self._branch_np(subname, str(content), dtype)
+                            self._branch_np(subname, content, dtype)
                         )
 
                 else:
@@ -1984,6 +2015,12 @@ class Tree(object):
             if isinstance(data, pandas.DataFrame) and data.index.is_numeric():
                 provided = dataframe_to_dict(data)
 
+        if module_name == "awkward" or module_name.startswith("awkward."):
+            import awkward
+
+            if isinstance(data, awkward.Array):
+                provided = dict(zip(awkward.fields(data), awkward.unzip(data)))
+
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
             provided = recarray_to_dict(data)
 
@@ -2001,6 +2038,17 @@ class Tree(object):
             if datum["kind"] == "record":
                 if datum["name"] in provided:
                     recordarray = provided.pop(datum["name"])
+
+                    module_name = type(recordarray).__module__
+                    if module_name == "pandas" or module_name.startswith("pandas."):
+                        import pandas
+
+                        if isinstance(recordarray, pandas.DataFrame):
+                            tmp = {"index": recordarray.index.values}
+                            for column in recordarray.columns:
+                                tmp[column] = recordarray[column]
+                            recordarray = tmp
+
                     for key in datum["keys"]:
                         provided[datum["name"] + "_" + key] = recordarray[key]
                 else:

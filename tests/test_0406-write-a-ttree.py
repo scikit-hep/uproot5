@@ -46,6 +46,8 @@ def test_basic(tmp_path):
     assert t2.GetLeaf("branch1").GetName() == "branch1"
     assert t2.GetLeaf("branch1").GetTitle() == "branch1"
 
+    f2.Close()
+
 
 def test_rename(tmp_path):
     newfile = os.path.join(tmp_path, "newfiley_file.root")
@@ -77,6 +79,8 @@ def test_rename(tmp_path):
 
     assert t2.GetLeaf("branchy_branch").GetName() == "branchy_branch"
     assert t2.GetLeaf("branchy_branch").GetTitle() == "branchy_branch"
+
+    f2.Close()
 
 
 def test_2_branches(tmp_path):
@@ -113,6 +117,8 @@ def test_2_branches(tmp_path):
         assert branch1.member("fLeaves")[0] is t1.member("fLeaves")[0]
         assert branch2.member("fLeaves")[0] is t1.member("fLeaves")[1]
 
+    f2.Close()
+
 
 def test_100_branches(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
@@ -139,6 +145,8 @@ def test_100_branches(tmp_path):
 
         assert t2.GetLeaf(branchname).GetName() == branchname
         assert t2.GetLeaf(branchname).GetTitle() == branchname
+
+    f2.Close()
 
 
 def test_branch_types(tmp_path):
@@ -193,6 +201,8 @@ def test_branch_types(tmp_path):
         assert t2.GetLeaf(name).GetLenType() == size
         assert t2.GetLeaf(name).IsUnsigned() == isunsigned
 
+    f2.Close()
+
 
 def test_basket(tmp_path):
     # original = os.path.join(tmp_path, "original.root")
@@ -234,6 +244,7 @@ def test_basket(tmp_path):
     f2 = ROOT.TFile(newfile)
     t2 = f2.Get("t2")
     assert [x.branch1 for x in t2] == [5, 4, 3, 2, 1, 5]
+    f2.Close()
 
 
 def test_baskets_branches(tmp_path):
@@ -257,6 +268,8 @@ def test_baskets_branches(tmp_path):
         assert t2.num_entries == len(b1) + len(b1)
         assert t2["b1"].array(library="np").tolist() == b1 + b1
         assert t2["b2"].array(library="np").tolist() == b2 + b2
+
+    f1.Close()
 
 
 def test_baskets_beyond_capacity(tmp_path):
@@ -297,6 +310,8 @@ def test_baskets_beyond_capacity(tmp_path):
         assert t2.num_entries == len(b1) * 105
         assert t2["b1"].array(library="np").tolist() == b1 * 105
         assert t2["b2"].array(library="np").tolist() == b2 * 105
+
+    f1.Close()
 
 
 def test_writable_vs_readable_tree(tmp_path):
@@ -352,6 +367,8 @@ def test_writable_vs_readable_tree(tmp_path):
         assert t2uproot["b2"].array(library="np").tolist() == b2 * 5
 
         assert finagin["t1/branch1"].array(library="np").tolist() == [5, 4, 3, 2, 1, 5]
+
+    f1.Close()
 
 
 def test_interface(tmp_path):

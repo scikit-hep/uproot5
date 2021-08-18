@@ -49,6 +49,7 @@ def test_copy(tmp_path):
     assert h3.GetBinContent(7) == pytest.approx(7.7)
     assert h3.GetBinContent(8) == pytest.approx(8.8)
     assert h3.GetBinContent(9) == pytest.approx(9.9)
+    f3.Close()
 
 
 def test_from_old(tmp_path):
@@ -74,6 +75,7 @@ def test_from_old(tmp_path):
     assert h1.GetBinContent(9) == 289
     assert h1.GetBinContent(10) == 76
     assert h1.GetBinContent(11) == 0
+    f1.Close()
 
 
 def test_new_name(tmp_path):
@@ -99,6 +101,7 @@ def test_new_name(tmp_path):
     assert h1.GetBinContent(9) == 289
     assert h1.GetBinContent(10) == 76
     assert h1.GetBinContent(11) == 0
+    f1.Close()
 
 
 @pytest.mark.parametrize("cls", [ROOT.TH1C, ROOT.TH1D, ROOT.TH1F, ROOT.TH1I, ROOT.TH1S])
@@ -136,6 +139,7 @@ def test_all_TH1(tmp_path, cls):
     assert h3.GetBinError(1) == pytest.approx(1.4142135623730951)
     assert h3.GetBinError(2) == pytest.approx(5)
     assert h3.GetBinError(3) == pytest.approx(4)
+    f3.Close()
 
 
 @pytest.mark.parametrize("cls", [ROOT.TH2C, ROOT.TH2D, ROOT.TH2F, ROOT.TH2I, ROOT.TH2S])
@@ -175,6 +179,7 @@ def test_all_TH2(tmp_path, cls):
         pytest.approx([0, 5, 0, 0, 0]),
         pytest.approx([0, 0, 0, 4, 0]),
     ]
+    f3.Close()
 
 
 @pytest.mark.parametrize("cls", [ROOT.TH3C, ROOT.TH3D, ROOT.TH3F, ROOT.TH3I, ROOT.TH3S])
@@ -221,6 +226,7 @@ def test_all_TH3(tmp_path, cls):
         [[0, 0, 0], approx([0, 5, 0]), [0, 0, 0], approx([0, 0, 0]), [0, 0, 0]],
         [[0, 0, 0], approx([0, 0, 0]), [0, 0, 0], approx([0, 4, 0]), [0, 0, 0]],
     ]
+    f3.Close()
 
 
 def test_TProfile(tmp_path):
@@ -257,6 +263,7 @@ def test_TProfile(tmp_path):
     assert h3.GetBinError(1) == pytest.approx(np.sqrt(12.5))
     assert h3.GetBinError(2) == pytest.approx(0)
     assert h3.GetBinError(3) == pytest.approx(0)
+    f3.Close()
 
 
 def test_TProfile2D(tmp_path):
@@ -301,6 +308,7 @@ def test_TProfile2D(tmp_path):
         pytest.approx([0, 0, 0, 0, 0]),
         pytest.approx([0, 0, 0, 0, 0]),
     ]
+    f3.Close()
 
 
 def test_TProfile3D(tmp_path):
@@ -355,6 +363,7 @@ def test_TProfile3D(tmp_path):
         [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
         [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
     ]
+    f3.Close()
 
 
 def test_ex_nihilo_TH1(tmp_path):
@@ -396,6 +405,7 @@ def test_ex_nihilo_TH1(tmp_path):
     assert h3.GetBinError(1) == pytest.approx(1.4142135623730951)
     assert h3.GetBinError(2) == pytest.approx(5)
     assert h3.GetBinError(3) == pytest.approx(4)
+    f3.Close()
 
 
 def test_ex_nihilo_TH2(tmp_path):
@@ -453,6 +463,7 @@ def test_ex_nihilo_TH2(tmp_path):
         pytest.approx([0, 5, 0, 0, 0]),
         pytest.approx([0, 0, 0, 4, 0]),
     ]
+    f3.Close()
 
 
 def test_ex_nihilo_TH3(tmp_path):
@@ -534,6 +545,7 @@ def test_ex_nihilo_TH3(tmp_path):
         [[0, 0, 0], approx([0, 5, 0]), [0, 0, 0], approx([0, 0, 0]), [0, 0, 0]],
         [[0, 0, 0], approx([0, 0, 0]), [0, 0, 0], approx([0, 4, 0]), [0, 0, 0]],
     ]
+    f3.Close()
 
 
 def test_ex_nihilo_TProfile(tmp_path):
@@ -579,6 +591,7 @@ def test_ex_nihilo_TProfile(tmp_path):
     assert h3.GetBinError(1) == pytest.approx(np.sqrt(12.5))
     assert h3.GetBinError(2) == pytest.approx(0)
     assert h3.GetBinError(3) == pytest.approx(0)
+    f3.Close()
 
 
 def test_ex_nihilo_TProfile2D(tmp_path):
@@ -649,6 +662,7 @@ def test_ex_nihilo_TProfile2D(tmp_path):
         pytest.approx([0, 0, 0, 0, 0]),
         pytest.approx([0, 0, 0, 0, 0]),
     ]
+    f3.Close()
 
 
 def test_ex_nihilo_TProfile3D(tmp_path):
@@ -748,6 +762,7 @@ def test_ex_nihilo_TProfile3D(tmp_path):
         [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
         [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
     ]
+    f3.Close()
 
 
 def test_delete(tmp_path):
@@ -793,3 +808,4 @@ def test_delete(tmp_path):
     assert h3.GetBinError(1) == pytest.approx(1.4142135623730951)
     assert h3.GetBinError(2) == pytest.approx(5)
     assert h3.GetBinError(3) == pytest.approx(4)
+    f3.Close()

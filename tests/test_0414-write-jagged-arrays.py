@@ -69,3 +69,110 @@ def test_awkward_record_data(tmp_path):
         assert fin["tree/b1"].array().tolist() == [1, 2, 3]
         assert fin["tree/b2_x"].array().tolist() == [1.1, 2.2, 3.3]
         assert fin["tree/b2_y"].array().tolist() == [4, 5, 6]
+
+
+def test_awkward_record_dict_1(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        b1 = np.array([1, 2, 3], np.int32)
+        b2 = {"x": np.array([1.1, 2.2, 3.3]), "y": np.array([4, 5, 6], np.int64)}
+        fout.mktree(
+            "tree", {"b1": b1.dtype, "b2": {"x": b2["x"].dtype, "y": b2["y"].dtype}}
+        )
+        fout["tree"].extend({"b1": b1, "b2": b2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int32_t"
+        assert fin["tree/b2_x"].typename == "double"
+        assert fin["tree/b2_y"].typename == "int64_t"
+        assert fin["tree/b1"].array().tolist() == [1, 2, 3]
+        assert fin["tree/b2_x"].array().tolist() == [1.1, 2.2, 3.3]
+        assert fin["tree/b2_y"].array().tolist() == [4, 5, 6]
+
+
+def test_awkward_record_dict_2(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        b1 = np.array([1, 2, 3], np.int32)
+        b2 = {"x": np.array([1.1, 2.2, 3.3]), "y": np.array([4, 5, 6], np.int64)}
+        fout["tree"] = {"b1": b1, "b2": b2}
+        fout["tree"].extend({"b1": b1, "b2": b2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int32_t"
+        assert fin["tree/b2_x"].typename == "double"
+        assert fin["tree/b2_y"].typename == "int64_t"
+        assert fin["tree/b1"].array().tolist() == [1, 2, 3, 1, 2, 3]
+        assert fin["tree/b2_x"].array().tolist() == [1.1, 2.2, 3.3, 1.1, 2.2, 3.3]
+        assert fin["tree/b2_y"].array().tolist() == [4, 5, 6, 4, 5, 6]
+
+
+def test_awkward_record_recarray(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        b1 = np.array([1, 2, 3], np.int32)
+        b2 = np.array(
+            [(1.1, 4), (2.2, 5), (3.3, 6)], [("x", np.float64), ("y", np.int64)]
+        )
+        fout["tree"] = {"b1": b1, "b2": b2}
+        fout["tree"].extend({"b1": b1, "b2": b2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int32_t"
+        assert fin["tree/b2_x"].typename == "double"
+        assert fin["tree/b2_y"].typename == "int64_t"
+        assert fin["tree/b1"].array().tolist() == [1, 2, 3, 1, 2, 3]
+        assert fin["tree/b2_x"].array().tolist() == [1.1, 2.2, 3.3, 1.1, 2.2, 3.3]
+        assert fin["tree/b2_y"].array().tolist() == [4, 5, 6, 4, 5, 6]
+
+
+def test_awkward_record_pandas(tmp_path):
+    pandas = pytest.importorskip("pandas")
+
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        b1 = np.array([1, 2, 3], np.int32)
+        b2 = pandas.DataFrame({"x": [1.1, 2.2, 3.3], "y": [4, 5, 6]})
+        fout["tree"] = {"b1": b1, "b2": b2}
+        fout["tree"].extend({"b1": b1, "b2": b2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int32_t"
+        assert fin["tree/b2_x"].typename == "double"
+        assert fin["tree/b2_y"].typename == "int64_t"
+        assert fin["tree/b1"].array().tolist() == [1, 2, 3, 1, 2, 3]
+        assert fin["tree/b2_x"].array().tolist() == [1.1, 2.2, 3.3, 1.1, 2.2, 3.3]
+        assert fin["tree/b2_y"].array().tolist() == [4, 5, 6, 4, 5, 6]
+
+
+def test_top_level(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    df1 = awkward.Array({"x": [1, 2, 3], "y": [1.1, 2.2, 3.3]})
+    df2 = awkward.Array({"x": [4, 5, 6], "y": [4.4, 5.5, 6.6]})
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        fout["tree"] = df1
+        fout["tree"].extend(df2)
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+
+    assert t1.GetBranch("x").GetName() == "x"
+    assert t1.GetBranch("y").GetName() == "y"
+    assert [np.asarray(x.x).tolist() for x in t1] == [1, 2, 3, 4, 5, 6]
+    assert [np.asarray(x.y).tolist() for x in t1] == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/x"].name == "x"
+        assert fin["tree/y"].name == "y"
+        assert fin["tree/x"].typename.startswith("int")
+        assert fin["tree/y"].typename == "double"
+        assert fin["tree/x"].array().tolist() == [1, 2, 3, 4, 5, 6]
+        assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
+
+    f1.Close()
