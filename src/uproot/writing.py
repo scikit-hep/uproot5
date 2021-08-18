@@ -2489,10 +2489,10 @@ def to_writable(obj):
     FIXME: docstring
     """
     if (
-        isinstance(obj, tuple)
+        isinstance(obj, (tuple, list))
         and 2 <= len(obj) <= 3  # might have a histogram title as the last item
         and isinstance(obj[0], numpy.ndarray)
-        and isinstance(obj[1], tuple)
+        and isinstance(obj[1], (tuple, list))
         and 2 <= len(obj[1]) <= 3  # 2D or 3D
         and isinstance(obj[1][0], numpy.ndarray)
         and isinstance(obj[1][1], numpy.ndarray)
@@ -2500,7 +2500,7 @@ def to_writable(obj):
         and all(len(x.shape) == 1 for x in obj[1])
         and len(obj[0].shape) == len(obj[1])
     ):
-        obj = (obj[0],) + obj[1] + obj[2:]
+        obj = (obj[0],) + tuple(obj[1]) + tuple(obj[2:])
 
     if isinstance(obj, uproot.model.Model):
         return obj.to_writable()
@@ -2513,7 +2513,7 @@ def to_writable(obj):
         return to_TObjString(obj)
 
     elif (
-        isinstance(obj, tuple)
+        isinstance(obj, (tuple, list))
         and 2 <= len(obj) <= 5  # might have a histogram title as the last item
         and all(isinstance(x, numpy.ndarray) for x in obj[:-1])
         and (isinstance(obj[-1], numpy.ndarray) or uproot._util.isstr(obj[-1]))
