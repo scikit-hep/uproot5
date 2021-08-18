@@ -81,4 +81,4 @@ jobs:
         run: |
           python -m pytest -vv tests \
             --reruns 3 --reruns-delay 30 \
-            `if [ "${{ matrix.python-version != 2.7 }}" -eq "true" ]; then echo '--only-rerun requests.exceptions.HTTPError'; fi`
+            `if [ "${{ matrix.python-version != 2.7 }}" = "true" ]; then echo '--only-rerun requests.exceptions.HTTPError'; fi`
