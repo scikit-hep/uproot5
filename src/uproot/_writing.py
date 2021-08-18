@@ -1618,6 +1618,8 @@ class Directory(CascadeNode):
         name,
         title,
         branch_types,
+        counter_name,
+        field_name,
         initial_basket_capacity,
         resize_factor,
     ):
@@ -1627,6 +1629,8 @@ class Directory(CascadeNode):
             title,
             branch_types,
             self._freesegments,
+            counter_name,
+            field_name,
             initial_basket_capacity,
             resize_factor,
         )
@@ -1661,6 +1665,8 @@ class Tree(object):
         title,
         branch_types,
         freesegments,
+        counter_name,
+        field_name,
         initial_basket_capacity,
         resize_factor,
     ):
@@ -1668,6 +1674,8 @@ class Tree(object):
         self._name = name
         self._title = title
         self._freesegments = freesegments
+        self._counter_name = counter_name
+        self._field_name = field_name
         self._basket_capacity = initial_basket_capacity
         self._resize_factor = resize_factor
 
@@ -1737,7 +1745,7 @@ class Tree(object):
                 )
 
                 for key, content in branch_dict.items():
-                    subname = branch_name + "_" + key
+                    subname = self._field_name(branch_name, key)
                     try:
                         dtype = numpy.dtype(content)
                     except Exception:
@@ -1773,7 +1781,7 @@ class Tree(object):
                     else:
                         content = branch_datashape.type
 
-                    counter_name = "N" + branch_name
+                    counter_name = self._counter_name(branch_name)
                     counter_dtype = numpy.dtype(numpy.int32)
                     counter = self._branch_np(
                         counter_name, counter_dtype, counter_dtype
@@ -1798,7 +1806,7 @@ class Tree(object):
                         )
 
                         for key, cont in zip(keys, contents):
-                            subname = branch_name + "_" + key
+                            subname = self._field_name(branch_name, key)
                             dtype = self._branch_ak_to_np(cont)
                             if dtype is None:
                                 raise TypeError(
@@ -1841,7 +1849,7 @@ class Tree(object):
                     )
 
                     for key, content in zip(keys, contents):
-                        subname = branch_name + "_" + key
+                        subname = self._field_name(branch_name, key)
                         dtype = self._branch_ak_to_np(content)
                         if dtype is None:
                             raise TypeError(
@@ -1994,6 +2002,14 @@ class Tree(object):
         return self._freesegments
 
     @property
+    def counter_name(self):
+        return self._counter_name
+
+    @property
+    def field_name(self):
+        return self._field_name
+
+    @property
     def basket_capacity(self):
         return self._basket_capacity
 
@@ -2098,7 +2114,9 @@ class Tree(object):
                             recordarray = tmp
 
                     for key in datum["keys"]:
-                        provided[datum["name"] + "_" + key] = recordarray[key]
+                        provided[self._field_name(datum["name"], key)] = recordarray[
+                            key
+                        ]
                 else:
                     raise ValueError(
                         "'extend' must be given an array for every branch; missing {0}".format(

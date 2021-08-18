@@ -911,6 +911,8 @@ in file {2} in directory {3}""".format(
         name,
         branch_types,
         title="",
+        counter_name=lambda counted: "N" + counted,
+        field_name=lambda outer, inner: outer + "_" + inner,
         initial_basket_capacity=10,
         resize_factor=10.0,
     ):
@@ -936,6 +938,8 @@ in file {2} in directory {3}""".format(
                 treename,
                 title,
                 branch_types,
+                counter_name,
+                field_name,
                 initial_basket_capacity,
                 resize_factor,
             ),
