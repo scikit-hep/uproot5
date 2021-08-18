@@ -176,3 +176,81 @@ def test_top_level(tmp_path):
         assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
 
     f1.Close()
+
+
+def test_awkward_jagged_metadata(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        fout.mktree(
+            "tree",
+            {
+                "b1": "int64",
+                "b2": awkward.types.from_datashape("var * float64"),
+            },
+        )
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int64_t"
+        assert fin["tree/Nb2"].typename == "int32_t"
+        assert fin["tree/b2"].typename == "double[]"
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+
+    b1 = t1.GetBranch("b1")
+    assert b1.GetLeaf("b1").GetName() == "b1"
+    assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+
+    Nb2 = t1.GetBranch("Nb2")
+    assert Nb2.GetLeaf("Nb2").GetName() == "Nb2"
+    assert Nb2.GetLeaf("Nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+
+    b2 = t1.GetBranch("b2")
+    assert b2.GetLeaf("b2").GetName() == "b2"
+    assert b2.GetLeaf("b2").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2.GetLeaf("b2").GetLeafCount().GetName() == "Nb2"
+
+    f1.Close()
+
+
+def test_awkward_jagged_record_metadata(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        fout.mktree(
+            "tree",
+            {
+                "b1": "int64",
+                "b2": awkward.types.from_datashape('var * {"x": float64, "y": int8}'),
+            },
+        )
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int64_t"
+        assert fin["tree/Nb2"].typename == "int32_t"
+        assert fin["tree/b2_x"].typename == "double[]"
+        assert fin["tree/b2_y"].typename == "int8_t[]"
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+
+    b1 = t1.GetBranch("b1")
+    assert b1.GetLeaf("b1").GetName() == "b1"
+    assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+
+    Nb2 = t1.GetBranch("Nb2")
+    assert Nb2.GetLeaf("Nb2").GetName() == "Nb2"
+    assert Nb2.GetLeaf("Nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+
+    b2_x = t1.GetBranch("b2_x")
+    assert b2_x.GetLeaf("b2_x").GetName() == "b2_x"
+    assert b2_x.GetLeaf("b2_x").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2_x.GetLeaf("b2_x").GetLeafCount().GetName() == "Nb2"
+
+    b2_y = t1.GetBranch("b2_y")
+    assert b2_y.GetLeaf("b2_y").GetName() == "b2_y"
+    assert b2_y.GetLeaf("b2_y").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2_y.GetLeaf("b2_y").GetLeafCount().GetName() == "Nb2"
+
+    f1.Close()

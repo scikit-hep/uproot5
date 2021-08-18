@@ -1772,10 +1772,57 @@ class Tree(object):
                         content = branch_datashape.content
                     else:
                         content = branch_datashape.type
+
+                    counter_name = "N" + branch_name
+                    counter_dtype = numpy.dtype(numpy.int32)
+                    counter = self._branch_np(
+                        counter_name, counter_dtype, counter_dtype
+                    )
+                    self._branch_lookup[counter_name] = len(self._branch_data)
+                    self._branch_data.append(counter)
+
                     if type(content).__name__ == "RecordType":
-                        raise NotImplementedError("array of lists of records")
+                        if hasattr(content, "contents"):
+                            contents = content.contents
+                        else:
+                            contents = content.fields()
+                        keys = content.keys
+                        if callable(keys):
+                            keys = keys()
+                        if keys is None:
+                            keys = [str(x) for x in range(len(contents))]
+
+                        self._branch_lookup[branch_name] = len(self._branch_data)
+                        self._branch_data.append(
+                            {"kind": "record", "name": branch_name, "keys": keys}
+                        )
+
+                        for key, cont in zip(keys, contents):
+                            subname = branch_name + "_" + key
+                            dtype = self._branch_ak_to_np(cont)
+                            if dtype is None:
+                                raise TypeError(
+                                    "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
+                                        repr(key), str(cont)
+                                    )
+                                )
+                            self._branch_lookup[subname] = len(self._branch_data)
+                            self._branch_data.append(
+                                self._branch_np(subname, cont, dtype, counter=counter)
+                            )
+
                     else:
-                        raise NotImplementedError("array of lists of numbers")
+                        dt = self._branch_ak_to_np(content)
+                        if dt is None:
+                            raise TypeError(
+                                "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                                    str(branch_datashape)
+                                )
+                            )
+                        self._branch_lookup[branch_name] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(branch_name, dt, dt, counter=counter)
+                        )
 
                 elif type(branch_datashape).__name__ == "RecordType":
                     if hasattr(branch_datashape, "contents"):
@@ -1859,7 +1906,7 @@ class Tree(object):
         else:
             return None
 
-    def _branch_np(self, branch_name, branch_type, branch_dtype):
+    def _branch_np(self, branch_name, branch_type, branch_dtype, counter=None):
         branch_dtype = branch_dtype.newbyteorder(">")
 
         if branch_dtype.subdtype is None:
@@ -1884,7 +1931,7 @@ class Tree(object):
             "fName": branch_name,
             "branch_type": branch_type,
             "kind": "normal",
-            "leaf": None,
+            "counter": counter,
             "dtype": branch_dtype,
             "shape": branch_shape,
             "fTitle": title,
@@ -1907,6 +1954,7 @@ class Tree(object):
             ),
             "metadata_start": None,
             "basket_metadata_start": None,
+            "tleaf_reference_number": None,
         }
 
     def __repr__(self):
@@ -2100,9 +2148,6 @@ class Tree(object):
                     )
                 tofill.append((branch_name, big_endian))
 
-            else:
-                raise NotImplementedError(datum["kind"])
-
         # actually write baskets into the file
         uncompressed_bytes = 0
         compressed_bytes = 0
@@ -2279,7 +2324,8 @@ class Tree(object):
                 len(x) for x in out if x is not None
             )
             absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
-            tleaf_reference_numbers.append(absolute_location + 2)
+            datum["tleaf_reference_number"] = absolute_location + 2
+            tleaf_reference_numbers.append(datum["tleaf_reference_number"])
 
             subany_tleaf_index = len(out)
             out.append(None)
@@ -2376,7 +2422,14 @@ class Tree(object):
             )
 
             # null fLeafCount
-            out.append(b"\x00\x00\x00\x00")
+            if datum["counter"] is None:
+                out.append(b"\x00\x00\x00\x00")
+            else:
+                out.append(
+                    uproot.deserialization._read_object_any_format1.pack(
+                        datum["counter"]["tleaf_reference_number"]
+                    )
+                )
 
             # specialized TLeaf* members (fMinimum, fMaximum)
             out.append(special_struct.pack(0, 0))
