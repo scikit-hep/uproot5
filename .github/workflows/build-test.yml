@@ -43,7 +43,7 @@ jobs:
         run: |
           conda env list
           conda info
-          conda install numpy pandas pytest lz4 python-xxhash requests
+          conda install numpy pandas pytest pytest-rerunfailures lz4 python-xxhash requests
           pip install scikit-hep-testdata boost-histogram hist
           conda list
 
@@ -71,4 +71,7 @@ jobs:
         run: python -m pip install .
 
       - name: "Run pytest"
-        run: python -m pytest -vv tests
+        run: |
+          python -m pytest -vv tests \
+            --reruns 3 --reruns-delay 30 \
+            `if [ "${{ matrix.python-version != 2.7 }}" -eq "true" ]; then echo '--only-rerun requests.exceptions.HTTPError'; fi`
