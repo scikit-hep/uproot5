@@ -43,7 +43,7 @@ jobs:
         run: |
           conda env list
           conda info
-          conda install numpy pandas pytest pytest-rerunfailures lz4 python-xxhash requests
+          conda install numpy pandas pytest lz4 python-xxhash requests
           pip install scikit-hep-testdata boost-histogram hist
           conda list
 
@@ -65,6 +65,13 @@ jobs:
         run: |
           conda env list
           conda install xrootd
+          conda list
+
+      - name: "Install pytest-rerunfialures"
+        continue-on-error: true
+        run: |
+          conda env list
+          conda install pytest-rerunfailures
           conda list
 
       - name: "Pip install the package"
