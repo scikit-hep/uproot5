@@ -10,7 +10,7 @@ import skhep_testdata
 import uproot
 import uproot.writing
 
-# ROOT = pytest.importorskip("ROOT")
+ROOT = pytest.importorskip("ROOT")
 awkward = pytest.importorskip("awkward")
 
 
@@ -51,3 +51,21 @@ def test_awkward_record(tmp_path):
         assert fin["tree/b1"].typename == "int32_t"
         assert fin["tree/b2_x"].typename == "double"
         assert fin["tree/b2_y"].typename == "double[3]"
+
+
+def test_awkward_record_data(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        b1 = np.array([1, 2, 3], np.int32)
+        b2 = awkward.Array([{"x": 1.1, "y": 4}, {"x": 2.2, "y": 5}, {"x": 3.3, "y": 6}])
+        fout.mktree("tree", {"b1": b1.dtype, "b2": b2.type})
+        fout["tree"].extend({"b1": b1, "b2": b2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/b1"].typename == "int32_t"
+        assert fin["tree/b2_x"].typename == "double"
+        assert fin["tree/b2_y"].typename == "int64_t"
+        assert fin["tree/b1"].array().tolist() == [1, 2, 3]
+        assert fin["tree/b2_x"].array().tolist() == [1.1, 2.2, 3.3]
+        assert fin["tree/b2_y"].array().tolist() == [4, 5, 6]

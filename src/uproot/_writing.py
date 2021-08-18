@@ -1975,43 +1975,61 @@ class Tree(object):
             sink.set_file_length(self._freesegments.fileheader.end)
             sink.flush()
 
+        provided = None
         module_name = type(data).__module__
 
         if module_name == "pandas" or module_name.startswith("pandas."):
             import pandas
 
             if isinstance(data, pandas.DataFrame) and data.index.is_numeric():
-                data = dataframe_to_dict(data)
+                provided = dataframe_to_dict(data)
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
-            data = recarray_to_dict(data)
+            provided = recarray_to_dict(data)
 
-        if not isinstance(data, Mapping) or not all(
-            uproot._util.isstr(x) for x in data
-        ):
-            raise TypeError(
-                "'extend' requires a mapping from branch name (str) to arrays"
-            )
+        if provided is None:
+            if not isinstance(data, Mapping) or not all(
+                uproot._util.isstr(x) for x in data
+            ):
+                raise TypeError(
+                    "'extend' requires a mapping from branch name (str) to arrays"
+                )
+            provided = dict(data)
 
-        if not set(data) == set(x["fName"] for x in self._branch_data):
+        actual_branches = {}
+        for datum in self._branch_data:
+            if datum["kind"] == "record":
+                if datum["name"] in provided:
+                    recordarray = provided.pop(datum["name"])
+                    for key in datum["keys"]:
+                        provided[datum["name"] + "_" + key] = recordarray[key]
+                else:
+                    raise ValueError(
+                        "'extend' must be given an array for every branch; missing {0}".format(
+                            repr(datum["name"])
+                        )
+                    )
+
+            else:
+                if datum["fName"] in provided:
+                    actual_branches[datum["fName"]] = provided.pop(datum["fName"])
+                else:
+                    raise ValueError(
+                        "'extend' must be given an array for every branch; missing {0}".format(
+                            repr(datum["fName"])
+                        )
+                    )
+
+        if len(provided) != 0:
             raise ValueError(
-                """'extend' must fill every branch and only existing branches of the TTree.
-
-This TTree has
-
-    {0}
-
-Attempting to extend with
-
-    {1}""".format(
-                    ", ".join(sorted(repr(x["fName"]) for x in self._branch_data)),
-                    ", ".join(sorted(repr(x) for x in data)),
+                "'extend' was given data that do not correspond to any branch: {0}".format(
+                    ", ".join(repr(x) for x in provided)
                 )
             )
 
         tofill = []
         num_entries = None
-        for branch_name, branch_array in data.items():
+        for branch_name, branch_array in actual_branches.items():
             if num_entries is None:
                 num_entries = len(branch_array)
             elif num_entries != len(branch_array):
@@ -2023,7 +2041,7 @@ Attempting to extend with
                 )
 
             datum = self._branch_data[self._branch_lookup[branch_name]]
-            if datum["kind"] == "normal":
+            if datum["kind"] != "record":
                 big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
                 if big_endian.shape != (len(branch_array),) + datum["shape"]:
                     raise ValueError(
@@ -2127,7 +2145,7 @@ Attempting to extend with
         out.append(None)
 
         num_branches = sum(
-            1 if datum["kind"] == "normal" else 0 for datum in self._branch_data
+            0 if datum["kind"] == "record" else 1 for datum in self._branch_data
         )
 
         # TObjArray header with fName: ""
@@ -2140,7 +2158,7 @@ Attempting to extend with
         )
 
         for datum in self._branch_data:
-            if datum["kind"] != "normal":
+            if datum["kind"] == "record":
                 continue
 
             any_tbranch_index = len(out)
@@ -2444,7 +2462,7 @@ Attempting to extend with
         sink.flush()
 
         for datum in self._branch_data:
-            if datum["kind"] != "normal":
+            if datum["kind"] == "record":
                 continue
 
             position = base + datum["metadata_start"]
