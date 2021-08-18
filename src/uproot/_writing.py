@@ -1685,7 +1685,7 @@ class Tree(object):
             branch_dtype = None
             branch_datashape = None
             try:
-                if type(branch_types).__module__.startswith("awkward."):
+                if type(branch_type).__module__.startswith("awkward."):
                     raise TypeError
                 if uproot._util.isstr(branch_type) and branch_type.strip() == "bytes":
                     raise TypeError
@@ -1711,7 +1711,13 @@ class Tree(object):
                                 repr(branch_type)
                             )
                         )
-                branch_dtype = _branch_ak_to_np(branch_datashape)
+                # checking by class name to be Awkward v1/v2 insensitive
+                if type(branch_datashape).__name__ == "ArrayType":
+                    if hasattr(branch_datashape, "content"):
+                        branch_datashape = branch_datashape.content
+                    else:
+                        branch_datashape = branch_datashape.type
+                branch_dtype = self._branch_ak_to_np(branch_datashape)
 
             if branch_dtype is not None:
                 self._branch_lookup[branch_name] = len(self._branch_data)
