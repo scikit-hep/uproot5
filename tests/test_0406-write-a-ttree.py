@@ -29,7 +29,7 @@ def test_basic(tmp_path):
     #     fin["t1"]
 
     with uproot.recreate(newfile, compression=None) as fout:
-        tree = fout.mktree("t1", "title", {"branch1": np.float64})
+        tree = fout.mktree("t1", {"branch1": np.float64}, "title")
 
     f2 = ROOT.TFile(newfile)
     t2 = f2.Get("t1")
@@ -53,8 +53,8 @@ def test_rename(tmp_path):
     with uproot.recreate(newfile, compression=None) as fout:
         tree = fout.mktree(
             "treey_tree",
-            "titley_title",
             {"branchy_branch": np.float64},
+            "titley_title",
         )
 
     f2 = ROOT.TFile(newfile)
@@ -85,8 +85,8 @@ def test_2_branches(tmp_path):
     with uproot.recreate(newfile, compression=None) as fout:
         tree = fout.mktree(
             "t1",
-            "title",
             {"branch1": np.float64, "branch2": np.float64},
+            "title",
         )
 
     f2 = ROOT.TFile(newfile)
@@ -120,8 +120,8 @@ def test_100_branches(tmp_path):
     with uproot.recreate(newfile, compression=None) as fout:
         tree = fout.mktree(
             "t1",
-            "title",
             {"branch" + str(i): np.float64 for i in range(100)},
+            "title",
         )
 
     f2 = ROOT.TFile(newfile)
@@ -147,7 +147,6 @@ def test_branch_types(tmp_path):
     with uproot.recreate(newfile, compression=None) as fout:
         tree = fout.mktree(
             "t1",
-            "title",
             {
                 "typeO": np.bool_,
                 "typeB": np.int8,
@@ -161,6 +160,7 @@ def test_branch_types(tmp_path):
                 "typeF": np.float32,
                 "typeD": np.float64,
             },
+            "title",
         )
 
     f2 = ROOT.TFile(newfile)
@@ -224,7 +224,7 @@ def test_basket(tmp_path):
     #     t1 = fin["t1"]
 
     with uproot.recreate(newfile, compression=None) as fout:
-        tree = fout.mktree("t2", "title", {"branch1": np.int32})
+        tree = fout.mktree("t2", {"branch1": np.int32}, "title")
         tree.extend({"branch1": np.array([5, 4, 3, 2, 1, 5], ">i4")})
 
     with uproot.open(newfile) as fin2:
@@ -243,7 +243,7 @@ def test_baskets_branches(tmp_path):
     b2 = [0.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9]
 
     with uproot.recreate(newfile, compression=None) as fout:
-        tree = fout.mktree("t", "title", {"b1": np.int32, "b2": np.float64})
+        tree = fout.mktree("t", {"b1": np.int32, "b2": np.float64}, "title")
         tree.extend({"b1": b1, "b2": b2})
         tree.extend({"b1": b1, "b2": b2})
 
@@ -266,7 +266,7 @@ def test_baskets_beyond_capacity(tmp_path):
     b2 = [0.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9]
 
     with uproot.recreate(newfile, compression=None) as fout:
-        tree = fout.mktree("t", "title", {"b1": np.int32, "b2": np.float64})
+        tree = fout.mktree("t", {"b1": np.int32, "b2": np.float64}, "title")
 
         assert tree._cascading._basket_capacity == 10
 
@@ -331,7 +331,7 @@ def test_writable_vs_readable_tree(tmp_path):
         with pytest.raises(TypeError):
             oldtree = fin["t1"]
 
-        fin.mktree("t2", "title", {"b1": np.int32, "b2": np.float64})
+        fin.mktree("t2", {"b1": np.int32, "b2": np.float64}, "title")
 
         for _ in range(5):
             fin["t2"].extend({"b1": b1, "b2": b2})

@@ -17,7 +17,7 @@ def test_2dim(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        tree = fout.mktree("tree", "title", {"branch": np.dtype((np.float64, (3,)))})
+        tree = fout.mktree("tree", {"branch": np.dtype((np.float64, (3,)))})
         tree.extend({"branch": np.array([[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]])})
         with pytest.raises(ValueError):
             tree.extend({"branch": np.array([7.7, 8.8, 9.9])})

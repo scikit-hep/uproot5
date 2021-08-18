@@ -900,8 +900,8 @@ in file {2} in directory {3}""".format(
     def mktree(
         self,
         name,
-        title,
         branch_types,
+        title="",
         initial_basket_capacity=10,
         resize_factor=10.0,
     ):
@@ -1091,7 +1091,7 @@ in file {1} in directory {2}""".format(
                     is_ttree = True
 
             if is_ttree:
-                tree = directory.mktree(name, "", metadata)
+                tree = directory.mktree(name, metadata)
                 tree.extend(data)
 
             else:

@@ -1682,58 +1682,67 @@ class Tree(object):
         self._branch_data = []
         self._branch_lookup = {}
         for branch_name, branch_type in branch_types_items:
-            typestr = "np"
+            branch_dtype = None
+            branch_datashape = None
+            try:
+                if type(branch_types).__module__.startswith("awkward."):
+                    raise TypeError
+                if uproot._util.isstr(branch_type) and branch_type.strip() == "bytes":
+                    raise TypeError
+                branch_dtype = numpy.dtype(branch_type)
 
-            branch_dtype = numpy.dtype(branch_type).newbyteorder(">")
+            except TypeError:
+                try:
+                    import awkward
+                except ImportError:
+                    raise TypeError(
+                        "not a NumPy dtype and 'awkward' cannot be imported: {0}".format(repr(branch_type))
+                    )
+                if isinstance(branch_type, awkward.types.Type):
+                    branch_datashape = branch_type
+                else:
+                    try:
+                        branch_datashape = awkward.types.from_datashape(branch_type)
+                    except Exception:
+                        raise TypeError(
+                            "not a NumPy dtype or an Awkward datashape: {0}".format(repr(branch_type))
+                        )
+                branch_dtype = _branch_ak_to_np(branch_datashape)
 
-            if branch_dtype.subdtype is None:
-                branch_shape = ()
-            else:
-                branch_dtype, branch_shape = branch_dtype.subdtype
-
-            letter = _dtype_to_char.get(branch_dtype)
-            if letter is None:
-                raise TypeError(
-                    "cannot write NumPy dtype {0} in TTree".format(branch_dtype)
+            if branch_dtype is not None:
+                self._branch_lookup[branch_name] = len(self._branch_data)
+                self._branch_data.append(
+                    self._branch_np(branch_name, branch_type, branch_dtype)
                 )
-
-            if branch_shape == ():
-                dims = ""
             else:
-                dims = "".join("[" + str(x) + "]" for x in branch_shape)
+                parameters = branch_datashape.parameters
+                if parameters is None:
+                    parameters = {}
 
-            title = "{0}{1}/{2}".format(branch_name, dims, letter)
+                if parameters.get("__array__") == "string":
+                    raise NotImplementedError("array of strings")
 
-            self._branch_lookup[branch_name] = len(self._branch_data)
-            self._branch_data.append(
-                {
-                    "fName": branch_name,
-                    "branch_type": branch_type,
-                    "type": typestr,
-                    "dtype": branch_dtype,
-                    "shape": branch_shape,
-                    "fTitle": title,
-                    "compression": directory.freesegments.fileheader.compression,
-                    "fBasketSize": 32000,
-                    "fEntryOffsetLen": 0,
-                    "fOffset": 0,
-                    "fSplitLevel": 0,
-                    "fFirstEntry": 0,
-                    "fTotBytes": 0,
-                    "fZipBytes": 0,
-                    "fBasketBytes": numpy.zeros(
-                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype1
-                    ),
-                    "fBasketEntry": numpy.zeros(
-                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype2
-                    ),
-                    "fBasketSeek": numpy.zeros(
-                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
-                    ),
-                    "metadata_start": None,
-                    "basket_metadata_start": None,
-                }
-            )
+                elif parameters.get("__array__") == "bytes":
+                    raise NotImplementedError("array of bytes")
+
+                # checking by class name to be Awkward v1/v2 insensitive
+                elif type(branch_datashape).__name__ == "ListType":
+                    if hasattr(branch_datashape, "content"):
+                        content = branch_datashape.content
+                    else:
+                        content = branch_datashape.type
+                    if type(content).__name__ == "RecordType":
+                        raise NotImplementedError("array of lists of records")
+                    else:
+                        raise NotImplementedError("array of lists of numbers")
+
+                elif type(branch_datashape).__name__ == "RecordType":
+                    raise NotImplementedError("array of records")
+
+                else:
+                    raise TypeError(
+                        "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(str(branch_datashape))
+                    )
 
         self._num_entries = 0
         self._num_baskets = 0
@@ -1758,6 +1767,77 @@ class Tree(object):
             "fEstimate": 1000000,
         }
         self._key = None
+
+    def _branch_ak_to_np(self, branch_datashape):
+        # checking by class name to be Awkward v1/v2 insensitive
+        if type(branch_datashape).__name__ == "NumpyType":
+            return numpy.dtype(branch_datashape.primitive)
+        elif type(branch_datashape).__name__ == "PrimitiveType":
+            return numpy.dtype(branch_datashape.dtype)
+        elif type(branch_datashape).__name__ == "RegularType":
+            if hasattr(branch_datashape, "content"):
+                content = self._branch_ak_to_np(branch_datashape.content)
+            else:
+                content = self._branch_ak_to_np(branch_datashape.type)
+            if content is None:
+                return None
+            elif content.subdtype is None:
+                dtype, shape = content, ()
+            else:
+                dtype, shape = content.subdtype
+            return numpy.dtype((dtype, (branch_datashape.size,) + shape))
+        else:
+            return None
+
+    def _branch_np(self, branch_name, branch_type, branch_dtype):
+        branch_dtype = branch_dtype.newbyteorder(">")
+
+        if branch_dtype.subdtype is None:
+            branch_shape = ()
+        else:
+            branch_dtype, branch_shape = branch_dtype.subdtype
+
+        letter = _dtype_to_char.get(branch_dtype)
+        if letter is None:
+            raise TypeError(
+                "cannot write NumPy dtype {0} in TTree".format(branch_dtype)
+            )
+
+        if branch_shape == ():
+            dims = ""
+        else:
+            dims = "".join("[" + str(x) + "]" for x in branch_shape)
+
+        title = "{0}{1}/{2}".format(branch_name, dims, letter)
+
+        return {
+            "fName": branch_name,
+            "branch_type": branch_type,
+            "type": "np",
+            "leaf": None,
+            "dtype": branch_dtype,
+            "shape": branch_shape,
+            "fTitle": title,
+            "compression": self._directory.freesegments.fileheader.compression,
+            "fBasketSize": 32000,
+            "fEntryOffsetLen": 0,
+            "fOffset": 0,
+            "fSplitLevel": 0,
+            "fFirstEntry": 0,
+            "fTotBytes": 0,
+            "fZipBytes": 0,
+            "fBasketBytes": numpy.zeros(
+                self._basket_capacity, uproot.models.TBranch._tbranch13_dtype1
+            ),
+            "fBasketEntry": numpy.zeros(
+                self._basket_capacity, uproot.models.TBranch._tbranch13_dtype2
+            ),
+            "fBasketSeek": numpy.zeros(
+                self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
+            ),
+            "metadata_start": None,
+            "basket_metadata_start": None,
+        }
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
