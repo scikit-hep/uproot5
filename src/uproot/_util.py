@@ -14,6 +14,7 @@ import os
 import platform
 import re
 import sys
+import warnings
 
 try:
     from collections.abc import Iterable
@@ -95,6 +96,24 @@ def ensure_str(x):
         return x
     else:
         raise TypeError("expected a string, not {0}".format(type(x)))
+
+
+def ensure_numpy(array, types=(numpy.integer, numpy.floating)):
+    """
+    Returns an ``np.ndarray`` if ``array`` can be converted to an array of the
+    desired type and raises TypeError if it cannot.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", numpy.VisibleDeprecationWarning)
+        try:
+            out = numpy.asarray(array)
+        except (ValueError, numpy.VisibleDeprecationWarning):
+            raise TypeError("cannot be converted to a NumPy array")
+        if not issubclass(out.dtype.type, types):
+            raise TypeError(
+                "cannot be converted to a NumPy array of type {0}".format(types)
+            )
+        return out
 
 
 _regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
