@@ -44,7 +44,7 @@ jobs:
           conda env list
           conda info
           conda install numpy pandas pytest lz4 python-xxhash requests
-          pip install pytest-rerunfailures scikit-hep-testdata boost-histogram hist
+          pip install scikit-hep-testdata boost-histogram hist
           conda list
 
       - name: "Install Awkward"
@@ -67,14 +67,23 @@ jobs:
           conda install xrootd
           conda list
 
+      - name: "Install pytest-rerunfailures"
+        id: rerunfailures-install
+        if: "matrix.python-version != 3.5"
+        run: |
+          conda env list
+          conda install pytest-rerunfailures
+          conda list
+
       - name: "Pip install the package"
         run: python -m pip install .
 
       - name: "Run pytest"
         run: |
-          if [ "${{ matrix.python-version != 2.7 }}" = "true" ]; then
-            PYTEST_EXTRA_FLAGS="--only-rerun requests.exceptions.HTTPError"
+          if [ "${{ steps.rerunfailures-install.outcome }}" = "success" ]; then
+            PYTEST_EXTRA_FLAGS="--reruns 3 --reruns-delay 30"
+            if [ "${{ matrix.python-version != 2.7 }}" = "true" ]; then
+              PYTEST_EXTRA_FLAGS="${PYTEST_EXTRA_FLAGS} --only-rerun requests.exceptions.HTTPError"
+            fi
           fi
-          python -m pytest -vv tests \
-            --reruns 3 --reruns-delay 30 \
-            ${PYTEST_EXTRA_FLAGS:-}
+          python -m pytest -vv tests ${PYTEST_EXTRA_FLAGS:-}
