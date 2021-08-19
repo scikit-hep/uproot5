@@ -1434,7 +1434,15 @@ class Directory(CascadeNode):
         self._freesegments.release(original_start, original_stop)
 
     def add_object(
-        self, sink, classname, name, title, raw_data, uncompressed_bytes, replaces=None, big=None
+        self,
+        sink,
+        classname,
+        name,
+        title,
+        raw_data,
+        uncompressed_bytes,
+        replaces=None,
+        big=None,
     ):
         if replaces is None:
             cycle = self._data.next_cycle(name)
