@@ -369,7 +369,7 @@ def test_TProfile3D(tmp_path):
 def test_ex_nihilo_TH1(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TH1x(
+    h1 = uproot.writing.identify.to_TH1x(
         fName="h1",
         fTitle="title",
         data=np.array([1.0, 2.0, 5.0, 4.0], np.float64),
@@ -379,7 +379,7 @@ def test_ex_nihilo_TH1(tmp_path):
         fTsumwx=7.3,
         fTsumwx2=55.67,
         fSumw2=np.array([1.0, 2.0, 25.0, 16.0], np.float64),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
@@ -411,7 +411,7 @@ def test_ex_nihilo_TH1(tmp_path):
 def test_ex_nihilo_TH2(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TH2x(
+    h1 = uproot.writing.identify.to_TH2x(
         fName="h1",
         fTitle="title",
         data=np.array(
@@ -428,14 +428,14 @@ def test_ex_nihilo_TH2(tmp_path):
         fSumw2=np.array(
             [0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 1, 2, 0, 16, 0, 0, 0, 0], np.float64
         ),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
             fXmin=-3.14,
             fXmax=2.71,
         ),
-        fYaxis=uproot.writing.to_TAxis(
+        fYaxis=uproot.writing.identify.to_TAxis(
             fName="yaxis",
             fTitle="",
             fNbins=3,
@@ -469,7 +469,7 @@ def test_ex_nihilo_TH2(tmp_path):
 def test_ex_nihilo_TH3(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TH3x(
+    h1 = uproot.writing.identify.to_TH3x(
         fName="h1",
         fTitle="title",
         data=np.array(
@@ -496,21 +496,21 @@ def test_ex_nihilo_TH3(tmp_path):
             + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             np.float64,
         ),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
             fXmin=-3.14,
             fXmax=2.71,
         ),
-        fYaxis=uproot.writing.to_TAxis(
+        fYaxis=uproot.writing.identify.to_TAxis(
             fName="yaxis",
             fTitle="",
             fNbins=3,
             fXmin=-5.0,
             fXmax=10.0,
         ),
-        fZaxis=uproot.writing.to_TAxis(
+        fZaxis=uproot.writing.identify.to_TAxis(
             fName="zaxis",
             fTitle="",
             fNbins=1,
@@ -551,7 +551,7 @@ def test_ex_nihilo_TH3(tmp_path):
 def test_ex_nihilo_TProfile(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TProfile(
+    h1 = uproot.writing.identify.to_TProfile(
         fName="h1",
         fTitle="title",
         data=np.array([10, 30, 20, 20], np.float64),
@@ -565,7 +565,7 @@ def test_ex_nihilo_TProfile(tmp_path):
         fSumw2=np.array([100, 500, 400, 400], np.float64),
         fBinEntries=np.array([1, 2, 1, 1], np.float64),
         fBinSumw2=np.array([], np.float64),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
@@ -597,7 +597,7 @@ def test_ex_nihilo_TProfile(tmp_path):
 def test_ex_nihilo_TProfile2D(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TProfile2D(
+    h1 = uproot.writing.identify.to_TProfile2D(
         fName="h1",
         fTitle="title",
         data=np.array(
@@ -621,14 +621,14 @@ def test_ex_nihilo_TProfile2D(tmp_path):
             [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 0, 0], np.float64
         ),
         fBinSumw2=np.array([], np.float64),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
             fXmin=-3.14,
             fXmax=2.71,
         ),
-        fYaxis=uproot.writing.to_TAxis(
+        fYaxis=uproot.writing.identify.to_TAxis(
             fName="yaxis",
             fTitle="",
             fNbins=3,
@@ -668,7 +668,7 @@ def test_ex_nihilo_TProfile2D(tmp_path):
 def test_ex_nihilo_TProfile3D(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TProfile3D(
+    h1 = uproot.writing.identify.to_TProfile3D(
         fName="h1",
         fTitle="title",
         data=np.array(
@@ -704,21 +704,21 @@ def test_ex_nihilo_TProfile3D(tmp_path):
             np.float64,
         ),
         fBinSumw2=np.array([], np.float64),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
             fXmin=-3.14,
             fXmax=2.71,
         ),
-        fYaxis=uproot.writing.to_TAxis(
+        fYaxis=uproot.writing.identify.to_TAxis(
             fName="yaxis",
             fTitle="",
             fNbins=3,
             fXmin=-5.0,
             fXmax=10.0,
         ),
-        fZaxis=uproot.writing.to_TAxis(
+        fZaxis=uproot.writing.identify.to_TAxis(
             fName="zaxis",
             fTitle="",
             fNbins=1,
@@ -768,7 +768,7 @@ def test_ex_nihilo_TProfile3D(tmp_path):
 def test_delete(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TH1x(
+    h1 = uproot.writing.identify.to_TH1x(
         fName="h1",
         fTitle="title",
         data=np.array([1.0, 2.0, 5.0, 4.0], np.float64),
@@ -778,7 +778,7 @@ def test_delete(tmp_path):
         fTsumwx=7.3,
         fTsumwx2=55.67,
         fSumw2=np.array([1.0, 2.0, 25.0, 16.0], np.float64),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,

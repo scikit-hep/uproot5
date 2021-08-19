@@ -211,7 +211,7 @@ def test_histogram_interface(tmp_path):
 def test_ex_nihilo_TH1(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TH1x(
+    h1 = uproot.writing.identify.to_TH1x(
         fName="h1",
         fTitle="title",
         data=np.array([0, 2, 5, 0], np.float64),
@@ -221,7 +221,7 @@ def test_ex_nihilo_TH1(tmp_path):
         fTsumwx=1,
         fTsumwx2=1,
         fSumw2=np.array([0, 2, 5, 0], np.float64),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
@@ -255,7 +255,7 @@ def test_ex_nihilo_TH1(tmp_path):
 def test_ex_nihilo_TH2(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TH2x(
+    h1 = uproot.writing.identify.to_TH2x(
         fName="h1",
         fTitle="title",
         data=np.array(
@@ -272,14 +272,14 @@ def test_ex_nihilo_TH2(tmp_path):
         fSumw2=np.array(
             [0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0], np.float64
         ),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
             fXmin=-3.14,
             fXmax=2.71,
         ),
-        fYaxis=uproot.writing.to_TAxis(
+        fYaxis=uproot.writing.identify.to_TAxis(
             fName="yaxis",
             fTitle="",
             fNbins=3,
@@ -315,7 +315,7 @@ def test_ex_nihilo_TH2(tmp_path):
 def test_ex_nihilo_TH3(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h1 = uproot.writing.to_TH3x(
+    h1 = uproot.writing.identify.to_TH3x(
         fName="h1",
         fTitle="title",
         data=np.array(
@@ -342,21 +342,21 @@ def test_ex_nihilo_TH3(tmp_path):
             + [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             np.float64,
         ),
-        fXaxis=uproot.writing.to_TAxis(
+        fXaxis=uproot.writing.identify.to_TAxis(
             fName="xaxis",
             fTitle="",
             fNbins=2,
             fXmin=-3.14,
             fXmax=2.71,
         ),
-        fYaxis=uproot.writing.to_TAxis(
+        fYaxis=uproot.writing.identify.to_TAxis(
             fName="yaxis",
             fTitle="",
             fNbins=3,
             fXmin=-5.0,
             fXmax=10.0,
         ),
-        fZaxis=uproot.writing.to_TAxis(
+        fZaxis=uproot.writing.identify.to_TAxis(
             fName="zaxis",
             fTitle="",
             fNbins=1,

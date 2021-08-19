@@ -96,13 +96,13 @@ in file {1}""".format(
         self._options = original._options
 
     def _serialize(self, out, header, name, tobject_flags):
-        import uproot._writing
+        import uproot.writing._cascade
 
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, None, tobject_flags)
 
-        out.append(uproot._writing.serialize_string(self._members["fName"]))
+        out.append(uproot.writing._cascade.serialize_string(self._members["fName"]))
         out.append(_tlist_format1.pack(self._members["fSize"]))
 
         for datum, option in zip(self._data, self._options):

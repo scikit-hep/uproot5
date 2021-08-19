@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 import uproot
-import uproot.writing
 
 ROOT = pytest.importorskip("ROOT")
 

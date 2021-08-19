@@ -64,13 +64,13 @@ in file {1}""".format(
     _is_memberwise = False
 
     def _serialize(self, out, header, name, tobject_flags):
-        import uproot._writing
+        import uproot.writing._cascade
 
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, None, tobject_flags)
 
-        out.append(uproot._writing.serialize_string(self))
+        out.append(uproot.writing._cascade.serialize_string(self))
 
         if header:
             num_bytes = sum(len(x) for x in out[where:])
