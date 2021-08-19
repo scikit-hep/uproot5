@@ -98,7 +98,7 @@ def ensure_str(x):
         raise TypeError("expected a string, not {0}".format(type(x)))
 
 
-def ensure_numpy(array, types=(numpy.integer, numpy.floating)):
+def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
     """
     Returns an ``np.ndarray`` if ``array`` can be converted to an array of the
     desired type and raises TypeError if it cannot.
