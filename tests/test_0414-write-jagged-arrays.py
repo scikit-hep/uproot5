@@ -291,6 +291,7 @@ def test_awkward_jagged_data_1(tmp_path):
         [5.5],
         [6.6, 7.7, 8.8, 9.9],
     ]
+    f1.Close()
 
 
 def test_awkward_jagged_data_2(tmp_path):
@@ -334,6 +335,7 @@ def test_awkward_jagged_data_2(tmp_path):
         [],
         [3.3, 4.4],
     ]
+    f1.Close()
 
 
 def test_awkward_jagged_data_3(tmp_path):
@@ -344,6 +346,7 @@ def test_awkward_jagged_data_3(tmp_path):
             [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]] * 300
         )
         fout["tree"] = {"big": big}
+        # more than 1000 entries, a special number for fNevBufSize and fEntryOffsetLen
 
     with uproot.open(newfile) as fin:
         assert fin["tree/Nbig"].member("fLeaves")[0].member("fMaximum") == 4
@@ -371,3 +374,68 @@ def test_awkward_jagged_data_3(tmp_path):
         [5.5],
         [6.6, 7.7, 8.8, 9.9],
     ] * 300
+    f1.Close()
+
+
+def test_awkward_jagged_record_1(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        array = awkward.Array(
+            [
+                [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
+                [],
+                [{"x": 4, "y": 4.4}, {"x": 5, "y": 5.5}],
+            ]
+        )
+        fout["tree"] = {"array": array}
+        fout["tree"].extend({"array": array})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/Narray"].array().tolist() == [3, 0, 2] * 2
+        assert fin["tree/array_x"].array().tolist() == [[1, 2, 3], [], [4, 5]] * 2
+        assert (
+            fin["tree/array_y"].array().tolist()
+            == [[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 2
+        )
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+    assert [x.Narray for x in t1] == [3, 0, 2] * 2
+    assert [list(x.array_x) for x in t1] == [[1, 2, 3], [], [4, 5]] * 2
+    assert [list(x.array_y) for x in t1] == [[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 2
+    f1.Close()
+
+
+def test_awkward_jagged_record_2(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        fout["tree"] = awkward.Array(
+            [
+                [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
+                [],
+                [{"x": 4, "y": 4.4}, {"x": 5, "y": 5.5}],
+            ]
+        )
+        fout["tree"].extend(
+            awkward.Array(
+                [
+                    [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
+                    [],
+                    [{"x": 4, "y": 4.4}, {"x": 5, "y": 5.5}],
+                ]
+            )
+        )
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/N"].array().tolist() == [3, 0, 2] * 2
+        assert fin["tree/x"].array().tolist() == [[1, 2, 3], [], [4, 5]] * 2
+        assert fin["tree/y"].array().tolist() == [[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 2
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+    assert [x.N for x in t1] == [3, 0, 2] * 2
+    assert [list(x.x) for x in t1] == [[1, 2, 3], [], [4, 5]] * 2
+    assert [list(x.y) for x in t1] == [[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 2
+    f1.Close()

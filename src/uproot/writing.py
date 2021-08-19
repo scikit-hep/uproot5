@@ -912,7 +912,7 @@ in file {2} in directory {3}""".format(
         branch_types,
         title="",
         counter_name=lambda counted: "N" + counted,
-        field_name=lambda outer, inner: outer + "_" + inner,
+        field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
         initial_basket_capacity=10,
         resize_factor=10.0,
     ):
@@ -1090,7 +1090,7 @@ in file {1} in directory {2}""".format(
                 import awkward
 
                 if isinstance(v, awkward.Array):
-                    v = dict(zip(awkward.fields(v), awkward.unzip(v)))
+                    v = {"": v}
 
             if isinstance(v, numpy.ndarray) and v.dtype.fields is not None:
                 v = uproot._writing.recarray_to_dict(v)

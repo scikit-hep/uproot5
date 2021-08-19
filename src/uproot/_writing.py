@@ -2097,7 +2097,12 @@ class Tree(object):
             import awkward
 
             if isinstance(data, awkward.Array):
-                provided = dict(zip(awkward.fields(data), awkward.unzip(data)))
+                if data.ndim > 1 and not data.layout.purelist_isregular:
+                    provided = {self._counter_name(""): awkward.num(data, axis=1)}
+                else:
+                    provided = {}
+                for k, v in zip(awkward.fields(data), awkward.unzip(data)):
+                    provided[k] = v
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
             provided = recarray_to_dict(data)
@@ -2145,6 +2150,13 @@ class Tree(object):
                         provided[self._field_name(datum["name"], key)] = recordarray[
                             key
                         ]
+
+                elif datum["name"] == "":
+                    for key in datum["keys"]:
+                        provided[self._field_name(datum["name"], key)] = provided.pop(
+                            key
+                        )
+
                 else:
                     raise ValueError(
                         "'extend' must be given an array for every branch; missing {0}".format(
