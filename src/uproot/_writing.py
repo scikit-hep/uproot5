@@ -159,6 +159,8 @@ class Key(CascadeLeaf):
         cycle,
         parent_location,
         seek_location,
+        created_on=None,
+        big=None,
     ):
         super(Key, self).__init__(location, None)
         self._uncompressed_bytes = uncompressed_bytes
@@ -169,8 +171,8 @@ class Key(CascadeLeaf):
         self._cycle = cycle
         self._parent_location = parent_location
         self._seek_location = seek_location
-        self._created_on = datetime.datetime.now()
-        self._big = None
+        self._created_on = datetime.datetime.now() if created_on is None else created_on
+        self._big = big
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})".format(
@@ -263,7 +265,7 @@ class Key(CascadeLeaf):
         else:
             location = self._location
 
-        out = Key(
+        return Key(
             location,
             self._uncompressed_bytes,
             self._compressed_bytes,
@@ -273,9 +275,9 @@ class Key(CascadeLeaf):
             self._cycle,
             self._parent_location,
             location,
+            created_on=self._created_on,
+            big=self._big,
         )
-        out._created_on = self._created_on
-        return out
 
     @property
     def big(self):
@@ -403,7 +405,7 @@ class Key(CascadeLeaf):
 
         assert fKeylen == position - location
 
-        out = Key(
+        return Key(
             location,
             fObjlen,  # uncompressed_bytes
             fNbytes - fKeylen,  # compressed_bytes
@@ -413,10 +415,9 @@ class Key(CascadeLeaf):
             fCycle,  # cycle
             fSeekPdir,  # parent_location
             fSeekKey,  # may be location
+            created_on=uproot._util.code_to_datetime(fDatime),
+            big=big,
         )
-        out._created_on = uproot._util.code_to_datetime(fDatime)
-        out._big = big
-        return out
 
 
 _free_format_small = struct.Struct(">HII")
@@ -1433,7 +1434,7 @@ class Directory(CascadeNode):
         self._freesegments.release(original_start, original_stop)
 
     def add_object(
-        self, sink, classname, name, title, raw_data, uncompressed_bytes, replaces=None
+        self, sink, classname, name, title, raw_data, uncompressed_bytes, replaces=None, big=None
     ):
         if replaces is None:
             cycle = self._data.next_cycle(name)
@@ -1448,7 +1449,7 @@ class Directory(CascadeNode):
         parent_location = self._key.location  # FIXME: is this correct?
 
         location = None
-        if parent_location < uproot.const.kStartBigFile:
+        if not big and parent_location < uproot.const.kStartBigFile:
             requested_bytes = (
                 uproot.reading._key_format_small.size + strings_size + len(raw_data)
             )
@@ -1485,6 +1486,7 @@ class Directory(CascadeNode):
             cycle,
             parent_location,
             location,
+            big=big,
         )
 
         if replaces is None:
@@ -2317,11 +2319,11 @@ class Tree(object):
         self.write_updates(sink)
 
     def write_anew(self, sink):
-        guess_key_size = uproot.reading._key_format_small.size + 6
+        key_num_bytes = uproot.reading._key_format_big.size + 6
         name_asbytes = self._name.encode(errors="surrogateescape")
         title_asbytes = self._title.encode(errors="surrogateescape")
-        guess_key_size += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
-        guess_key_size += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
+        key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
+        key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
 
         out = [None]
         ttree_header_index = 0
@@ -2457,7 +2459,7 @@ class Tree(object):
                 b"\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00"
             )
 
-            absolute_location = guess_key_size + sum(
+            absolute_location = key_num_bytes + sum(
                 len(x) for x in out if x is not None
             )
             absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
@@ -2668,11 +2670,8 @@ class Tree(object):
             raw_data,
             len(raw_data),
             replaces=self._key,
+            big=True,
         )
-
-        if self._key.num_bytes != guess_key_size:
-            tleaf_reference_start
-            raise NotImplementedError  # FIXME: adjust TLeaf references
 
     def write_updates(self, sink):
         base = self._key.seek_location + self._key.num_bytes
