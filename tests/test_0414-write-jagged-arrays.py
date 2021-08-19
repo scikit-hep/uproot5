@@ -256,21 +256,118 @@ def test_awkward_jagged_record_metadata(tmp_path):
     f1.Close()
 
 
-# def test_awkward_jagged_data_1(tmp_path):
-#     newfile = os.path.join(tmp_path, "newfile.root")
+def test_awkward_jagged_data_1(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
 
-#     with uproot.recreate(newfile, compression=None) as fout:
-#         b1 = np.array([1, 2, 3], np.int64)
-#         b2 = awkward.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])
-#         fout.mktree("tree", {"b1": b1.dtype, "b2": b2.type})
-#         fout["tree"].extend({"b1": b1, "b2": b2})
+    with uproot.recreate(newfile, compression=None) as fout:
+        b1 = np.array([1, 2, 3, 4, 5], np.int64)
+        b2 = awkward.Array(
+            [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]]
+        )
+        fout.mktree("tree", {"b1": b1.dtype, "b2": b2.type})
+        fout["tree"].extend({"b1": b1, "b2": b2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/Nb2"].member("fLeaves")[0].member("fMaximum") == 4
+        assert fin["tree/b2"].member("fEntryOffsetLen") == 4 * 5
+        assert fin["tree/b1"].array().tolist() == [1, 2, 3, 4, 5]
+        assert fin["tree/Nb2"].array().tolist() == [3, 0, 2, 1, 4]
+        assert fin["tree/b2"].array().tolist() == [
+            [0.0, 1.1, 2.2],
+            [],
+            [3.3, 4.4],
+            [5.5],
+            [6.6, 7.7, 8.8, 9.9],
+        ]
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+    assert [x.b1 for x in t1] == [1, 2, 3, 4, 5]
+    assert [x.Nb2 for x in t1] == [3, 0, 2, 1, 4]
+    assert [list(x.b2) for x in t1] == [
+        [0.0, 1.1, 2.2],
+        [],
+        [3.3, 4.4],
+        [5.5],
+        [6.6, 7.7, 8.8, 9.9],
+    ]
 
 
-# def test_awkward_jagged_data_2(tmp_path):
-#     newfile = os.path.join(tmp_path, "newfile.root")
+def test_awkward_jagged_data_2(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
 
-#     with uproot.recreate(newfile, compression=None) as fout:
-#         b1 = np.array([1, 2, 3], np.int64)
-#         b2 = awkward.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])
-#         fout["tree"] = {"b1": b1, "b2": b2}
-#         fout["tree"].extend({"b1": b1, "b2": b2})
+    with uproot.recreate(newfile, compression=None) as fout:
+        b1 = np.array([1, 2, 3, 4, 5], np.int64)
+        b2 = awkward.Array(
+            [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]]
+        )
+        fout["tree"] = {"b1": b1, "b2": b2}
+        fout["tree"].extend({"b1": b1[:3], "b2": b2[:3]})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/Nb2"].member("fLeaves")[0].member("fMaximum") == 4
+        assert fin["tree/b2"].member("fEntryOffsetLen") == 4 * 3
+        assert fin["tree/b1"].array().tolist() == [1, 2, 3, 4, 5, 1, 2, 3]
+        assert fin["tree/Nb2"].array().tolist() == [3, 0, 2, 1, 4, 3, 0, 2]
+        assert fin["tree/b2"].array().tolist() == [
+            [0.0, 1.1, 2.2],
+            [],
+            [3.3, 4.4],
+            [5.5],
+            [6.6, 7.7, 8.8, 9.9],
+            [0.0, 1.1, 2.2],
+            [],
+            [3.3, 4.4],
+        ]
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+    assert [x.b1 for x in t1] == [1, 2, 3, 4, 5, 1, 2, 3]
+    assert [x.Nb2 for x in t1] == [3, 0, 2, 1, 4, 3, 0, 2]
+    assert [list(x.b2) for x in t1] == [
+        [0.0, 1.1, 2.2],
+        [],
+        [3.3, 4.4],
+        [5.5],
+        [6.6, 7.7, 8.8, 9.9],
+        [0.0, 1.1, 2.2],
+        [],
+        [3.3, 4.4],
+    ]
+
+
+def test_awkward_jagged_data_3(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    with uproot.recreate(newfile, compression=None) as fout:
+        big = awkward.Array(
+            [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]] * 300
+        )
+        fout["tree"] = {"big": big}
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/Nbig"].member("fLeaves")[0].member("fMaximum") == 4
+        assert fin["tree/big"].member("fEntryOffsetLen") == 4 * 1500
+        assert fin["tree/Nbig"].array().tolist() == [3, 0, 2, 1, 4] * 300
+        assert (
+            fin["tree/big"].array().tolist()
+            == [
+                [0.0, 1.1, 2.2],
+                [],
+                [3.3, 4.4],
+                [5.5],
+                [6.6, 7.7, 8.8, 9.9],
+            ]
+            * 300
+        )
+
+    f1 = ROOT.TFile(newfile)
+    t1 = f1.Get("tree")
+    assert [x.Nbig for x in t1] == [3, 0, 2, 1, 4] * 300
+    assert [list(x.big) for x in t1] == [
+        [0.0, 1.1, 2.2],
+        [],
+        [3.3, 4.4],
+        [5.5],
+        [6.6, 7.7, 8.8, 9.9],
+    ] * 300

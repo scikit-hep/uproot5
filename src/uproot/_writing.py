@@ -1784,7 +1784,7 @@ class Tree(object):
                     counter_name = self._counter_name(branch_name)
                     counter_dtype = numpy.dtype(numpy.int32)
                     counter = self._branch_np(
-                        counter_name, counter_dtype, counter_dtype
+                        counter_name, counter_dtype, counter_dtype, kind="counter"
                     )
                     self._branch_lookup[counter_name] = len(self._branch_data)
                     self._branch_data.append(counter)
@@ -1914,7 +1914,9 @@ class Tree(object):
         else:
             return None
 
-    def _branch_np(self, branch_name, branch_type, branch_dtype, counter=None):
+    def _branch_np(
+        self, branch_name, branch_type, branch_dtype, counter=None, kind="normal"
+    ):
         branch_dtype = branch_dtype.newbyteorder(">")
 
         if branch_dtype.subdtype is None:
@@ -1938,14 +1940,14 @@ class Tree(object):
         return {
             "fName": branch_name,
             "branch_type": branch_type,
-            "kind": "normal",
+            "kind": kind,
             "counter": counter,
             "dtype": branch_dtype,
             "shape": branch_shape,
             "fTitle": title,
             "compression": self._directory.freesegments.fileheader.compression,
             "fBasketSize": 32000,
-            "fEntryOffsetLen": 0,
+            "fEntryOffsetLen": 0 if counter is None else 1000,
             "fOffset": 0,
             "fSplitLevel": 0,
             "fFirstEntry": 0,
@@ -1963,6 +1965,8 @@ class Tree(object):
             "metadata_start": None,
             "basket_metadata_start": None,
             "tleaf_reference_number": None,
+            "tleaf_maximum_value": 0,
+            "tleaf_special_struct": None,
         }
 
     def __repr__(self):
@@ -2169,122 +2173,129 @@ class Tree(object):
                 )
 
             datum = self._branch_data[self._branch_lookup[branch_name]]
-            if datum["kind"] != "record":
-                if datum["counter"] is None:
-                    big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
-                    if big_endian.shape != (len(branch_array),) + datum["shape"]:
-                        raise ValueError(
-                            "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
-                                datum["shape"],
-                                big_endian.shape[1:],
-                            )
+            if datum["kind"] == "record":
+                continue
+
+            if datum["counter"] is None:
+                big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
+                if big_endian.shape != (len(branch_array),) + datum["shape"]:
+                    raise ValueError(
+                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                            datum["shape"],
+                            big_endian.shape[1:],
                         )
-                    tofill.append((branch_name, big_endian, None))
+                    )
+                tofill.append((branch_name, big_endian, None))
 
-                else:
-                    import awkward
+                if datum["kind"] == "counter":
+                    datum["tleaf_maximum_value"] = max(
+                        big_endian.max(), datum["tleaf_maximum_value"]
+                    )
 
-                    layout = branch_array.layout
-                    while not isinstance(
+            else:
+                import awkward
+
+                layout = branch_array.layout
+                while not isinstance(
+                    layout,
+                    (
+                        awkward.layout.ListOffsetArray32,
+                        awkward.layout.ListOffsetArrayU32,
+                        awkward.layout.ListOffsetArray64,
+                    ),
+                ):
+                    if isinstance(layout, awkward.partition.PartitionedArray):
+                        layout = awkward.concatenate(layout.partitions, highlevel=False)
+
+                    elif isinstance(
                         layout,
                         (
-                            awkward.layout.ListOffsetArray32,
-                            awkward.layout.ListOffsetArrayU32,
-                            awkward.layout.ListOffsetArray64,
+                            awkward.layout.IndexedArray32,
+                            awkward.layout.IndexedArrayU32,
+                            awkward.layout.IndexedArray64,
                         ),
                     ):
-                        if isinstance(layout, awkward.partition.PartitionedArray):
-                            layout = awkward.concatenate(
-                                layout.partitions, highlevel=False
-                            )
+                        layout = layout.project()
 
-                        elif isinstance(
-                            layout,
-                            (
-                                awkward.layout.IndexedArray32,
-                                awkward.layout.IndexedArrayU32,
-                                awkward.layout.IndexedArray64,
-                            ),
-                        ):
-                            layout = layout.project()
+                    elif isinstance(
+                        layout,
+                        (
+                            awkward.layout.ListArray32,
+                            awkward.layout.ListArrayU32,
+                            awkward.layout.ListArray64,
+                        ),
+                    ):
+                        layout = layout.toListOffsetArray64(False)
 
-                        elif isinstance(
-                            layout,
-                            (
-                                awkward.layout.ListArray32,
-                                awkward.layout.ListArrayU32,
-                                awkward.layout.ListArray64,
-                            ),
-                        ):
-                            layout = layout.toListOffsetArray64(False)
-
-                        else:
-                            raise AssertionError(
-                                "how did this pass the type check?\n\n" + repr(layout)
-                            )
-
-                    content = layout.content
-                    offsets = numpy.asarray(layout.offsets)
-                    if offsets[0] != 0:
-                        content = content[offsets[0] :]
-                        offsets -= offsets[0]
-                    if len(content) > offsets[-1]:
-                        content = content[: offsets[-1]]
-
-                    shape = [len(content)]
-                    while not isinstance(content, awkward.layout.NumpyArray):
-                        if isinstance(
-                            content,
-                            (
-                                awkward.layout.IndexedArray32,
-                                awkward.layout.IndexedArrayU32,
-                                awkward.layout.IndexedArray64,
-                            ),
-                        ):
-                            content = content.project()
-
-                        elif isinstance(content, awkward.layout.EmptyArray):
-                            content = content.toNumpyArray()
-
-                        elif isinstance(content, awkward.layout.RegularArray):
-                            shape.append(content.size)
-                            content = content.content
-
-                        else:
-                            raise AssertionError(
-                                "how did this pass the type check?\n\n" + repr(content)
-                            )
-
-                    big_endian = numpy.asarray(content, dtype=datum["dtype"])
-                    shape = tuple(shape) + big_endian.shape[1:]
-
-                    if shape[1:] != datum["shape"]:
-                        raise ValueError(
-                            "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
-                                datum["shape"],
-                                shape[1:],
-                            )
+                    else:
+                        raise AssertionError(
+                            "how did this pass the type check?\n\n" + repr(layout)
                         )
-                    tofill.append(
-                        (branch_name, big_endian.reshape(-1), offsets.astype(">i4"))
+
+                content = layout.content
+                offsets = numpy.asarray(layout.offsets)
+                if offsets[0] != 0:
+                    content = content[offsets[0] :]
+                    offsets -= offsets[0]
+                if len(content) > offsets[-1]:
+                    content = content[: offsets[-1]]
+
+                shape = [len(content)]
+                while not isinstance(content, awkward.layout.NumpyArray):
+                    if isinstance(
+                        content,
+                        (
+                            awkward.layout.IndexedArray32,
+                            awkward.layout.IndexedArrayU32,
+                            awkward.layout.IndexedArray64,
+                        ),
+                    ):
+                        content = content.project()
+
+                    elif isinstance(content, awkward.layout.EmptyArray):
+                        content = content.toNumpyArray()
+
+                    elif isinstance(content, awkward.layout.RegularArray):
+                        shape.append(content.size)
+                        content = content.content
+
+                    else:
+                        raise AssertionError(
+                            "how did this pass the type check?\n\n" + repr(content)
+                        )
+
+                big_endian = numpy.asarray(content, dtype=datum["dtype"])
+                shape = tuple(shape) + big_endian.shape[1:]
+
+                if shape[1:] != datum["shape"]:
+                    raise ValueError(
+                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                            datum["shape"],
+                            shape[1:],
+                        )
                     )
+                big_endian_offsets = offsets.astype(">i4", copy=True)
+
+                tofill.append((branch_name, big_endian.reshape(-1), big_endian_offsets))
 
         # actually write baskets into the file
         uncompressed_bytes = 0
         compressed_bytes = 0
-        for branch_name, big_endian, offsets in tofill:
-            if offsets is None:
+        for branch_name, big_endian, big_endian_offsets in tofill:
+            datum = self._branch_data[self._branch_lookup[branch_name]]
+
+            if big_endian_offsets is None:
                 totbytes, zipbytes, location = self.write_np_basket(
                     sink, branch_name, big_endian
                 )
             else:
                 totbytes, zipbytes, location = self.write_jagged_basket(
-                    sink, branch_name, big_endian, offsets
+                    sink, branch_name, big_endian, big_endian_offsets
                 )
+                datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
             uncompressed_bytes += totbytes
             compressed_bytes += zipbytes
 
-            datum = self._branch_data[self._branch_lookup[branch_name]]
             datum["fTotBytes"] += totbytes
             datum["fZipBytes"] += zipbytes
 
@@ -2399,8 +2410,8 @@ class Tree(object):
             out.append(b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9")
 
             assert sum(1 if x is None else 0 for x in out) == 4
-            datum["metadata_start"] = (
-                6 + 6 + 8 + 6 + sum(len(x) for x in out if x is not None)
+            datum["metadata_start"] = (6 + 6 + 8 + 6) + sum(
+                len(x) for x in out if x is not None
             )
 
             if datum["compression"] is None:
@@ -2542,15 +2553,16 @@ class Tree(object):
                     fLen,
                     fLenType,
                     0,  # fOffset
-                    False,  # fIsRange
+                    datum["kind"] == "counter",  # fIsRange
                     fIsUnsigned,
                 )
             )
 
-            # null fLeafCount
             if datum["counter"] is None:
+                # null fLeafCount
                 out.append(b"\x00\x00\x00\x00")
             else:
+                # reference to fLeafCount
                 out.append(
                     uproot.deserialization._read_object_any_format1.pack(
                         datum["counter"]["tleaf_reference_number"]
@@ -2559,6 +2571,7 @@ class Tree(object):
 
             # specialized TLeaf* members (fMinimum, fMaximum)
             out.append(special_struct.pack(0, 0))
+            datum["tleaf_special_struct"] = special_struct
 
             out[
                 subany_tleaf_index
@@ -2579,8 +2592,8 @@ class Tree(object):
             )
 
             assert sum(1 if x is None else 0 for x in out) == 4
-            datum["basket_metadata_start"] = (
-                6 + 6 + 8 + 6 + sum(len(x) for x in out if x is not None)
+            datum["basket_metadata_start"] = (6 + 6 + 8 + 6) + sum(
+                len(x) for x in out if x is not None
             )
 
             # speedbump and fBasketBytes
@@ -2735,6 +2748,21 @@ class Tree(object):
             position += len(fBasketEntry) + 1
             sink.write(position, fBasketSeek)
 
+            if datum["kind"] == "counter":
+                position = (
+                    base
+                    + datum["basket_metadata_start"]
+                    - 25  # empty TObjArray of fBaskets (embedded)
+                    - datum["tleaf_special_struct"].size
+                )
+                sink.write(
+                    position,
+                    datum["tleaf_special_struct"].pack(
+                        0,
+                        datum["tleaf_maximum_value"],
+                    ),
+                )
+
     def write_np_basket(self, sink, branch_name, array):
         fClassName = uproot.serialization.string("TBasket")
         fName = uproot.serialization.string(branch_name)
@@ -2750,6 +2778,10 @@ class Tree(object):
         )
 
         raw_array = uproot._util.tobytes(array)
+        itemsize = array.dtype.itemsize
+        for item in array.shape[1:]:
+            itemsize *= item
+
         fObjlen = len(raw_array)
 
         fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
@@ -2757,10 +2789,6 @@ class Tree(object):
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
-
-        itemsize = array.dtype.itemsize
-        for item in array.shape[1:]:
-            itemsize *= item
 
         out = []
         out.append(
@@ -2798,68 +2826,79 @@ class Tree(object):
         return fNbytes, fNbytes, location
 
     def write_jagged_basket(self, sink, branch_name, array, offsets):
-        raise Exception("ready to fill basket!", array, offsets)
+        fClassName = uproot.serialization.string("TBasket")
+        fName = uproot.serialization.string(branch_name)
+        fTitle = uproot.serialization.string(self._name)
 
-        # fClassName = uproot.serialization.string("TBasket")
-        # fName = uproot.serialization.string(branch_name)
-        # fTitle = uproot.serialization.string(self._name)
+        fKeylen = (
+            uproot.reading._key_format_big.size
+            + len(fClassName)
+            + len(fName)
+            + len(fTitle)
+            + uproot.models.TBasket._tbasket_format2.size
+            + 1
+        )
 
-        # fKeylen = (
-        #     uproot.reading._key_format_big.size
-        #     + len(fClassName)
-        #     + len(fName)
-        #     + len(fTitle)
-        #     + uproot.models.TBasket._tbasket_format2.size
-        #     + 1
-        # )
+        raw_array = uproot._util.tobytes(array)
+        itemsize = array.dtype.itemsize
+        for item in array.shape[1:]:
+            itemsize *= item
 
-        # raw_array = uproot._util.tobytes(array)
-        # fObjlen = len(raw_array)
+        # offsets became a *copy* of the Awkward Array's offsets
+        # when it was converted to big-endian (astype with copy=True)
+        offsets *= itemsize
+        offsets += fKeylen
+        fLast = offsets[-1]
+        offsets[-1] = 0
+        raw_offsets = uproot._util.tobytes(offsets)
 
-        # fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
+        fObjlen = len(raw_array) + 4 + len(raw_offsets)
 
-        # parent_location = self._directory.key.location  # FIXME: is this correct?
+        fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
 
-        # location = self._freesegments.allocate(fNbytes, dry_run=False)
+        parent_location = self._directory.key.location  # FIXME: is this correct?
 
-        # itemsize = array.dtype.itemsize
-        # for item in array.shape[1:]:
-        #     itemsize *= item
+        location = self._freesegments.allocate(fNbytes, dry_run=False)
 
-        # out = []
-        # out.append(
-        #     uproot.reading._key_format_big.pack(
-        #         fNbytes,
-        #         1004,  # fVersion
-        #         fObjlen,
-        #         uproot._util.datetime_to_code(datetime.datetime.now()),  # fDatime
-        #         fKeylen,
-        #         0,  # fCycle
-        #         location,  # fSeekKey
-        #         parent_location,  # fSeekPdir
-        #     )
-        # )
-        # out.append(fClassName)
-        # out.append(fName)
-        # out.append(fTitle)
-        # out.append(
-        #     uproot.models.TBasket._tbasket_format2.pack(
-        #         3,  # fVersion
-        #         32000,  # fBufferSize
-        #         itemsize,  # fNevBufSize
-        #         len(array),  # fNevBuf
-        #         fKeylen + len(raw_array),  # fLast
-        #     )
-        # )
-        # out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
+        out = []
+        out.append(
+            uproot.reading._key_format_big.pack(
+                fNbytes,
+                1004,  # fVersion
+                fObjlen,
+                uproot._util.datetime_to_code(datetime.datetime.now()),  # fDatime
+                fKeylen,
+                0,  # fCycle
+                location,  # fSeekKey
+                parent_location,  # fSeekPdir
+            )
+        )
+        out.append(fClassName)
+        out.append(fName)
+        out.append(fTitle)
+        out.append(
+            uproot.models.TBasket._tbasket_format2.pack(
+                3,  # fVersion
+                32000,  # fBufferSize
+                len(offsets) + 1,  # fNevBufSize
+                len(offsets) - 1,  # fNevBuf
+                fLast,
+            )
+        )
+        out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
 
-        # out.append(raw_array)
+        out.append(raw_array)
+        out.append(_tbasket_offsets_length.pack(len(offsets)))
+        out.append(raw_offsets)
 
-        # sink.write(location, b"".join(out))
-        # sink.set_file_length(self._freesegments.fileheader.end)
-        # sink.flush()
+        sink.write(location, b"".join(out))
+        sink.set_file_length(self._freesegments.fileheader.end)
+        sink.flush()
 
-        # return fNbytes, fNbytes, location
+        return fNbytes, fNbytes, location
+
+
+_tbasket_offsets_length = struct.Struct(">I")
 
 
 def dataframe_to_dict(df):
