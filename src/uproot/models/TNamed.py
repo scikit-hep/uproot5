@@ -84,7 +84,7 @@ in file {1}""".format(
     writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
-        import uproot._writing
+        import uproot.writing._cascade
 
         where = len(out)
         self._bases[0]._serialize(
@@ -94,10 +94,10 @@ in file {1}""".format(
             tobject_flags | uproot.const.kIsOnHeap | uproot.const.kNotDeleted,
         )
         if name is None:
-            out.append(uproot._writing.serialize_string(self._members["fName"]))
+            out.append(uproot.writing._cascade.serialize_string(self._members["fName"]))
         else:
-            out.append(uproot._writing.serialize_string(name))
-        out.append(uproot._writing.serialize_string(self._members["fTitle"]))
+            out.append(uproot.writing._cascade.serialize_string(name))
+        out.append(uproot.writing._cascade.serialize_string(self._members["fTitle"]))
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 1
