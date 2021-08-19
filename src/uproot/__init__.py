@@ -132,6 +132,7 @@ import uproot.models.THashList
 import uproot.models.TObjArray
 import uproot.models.TObjString
 import uproot.models.TAtt
+import uproot.models.TDatime
 import uproot.models.TRef
 
 import uproot.models.TTree
