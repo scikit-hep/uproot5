@@ -254,3 +254,23 @@ def test_awkward_jagged_record_metadata(tmp_path):
     assert b2_y.GetLeaf("b2_y").GetLeafCount().GetName() == "Nb2"
 
     f1.Close()
+
+
+# def test_awkward_jagged_data_1(tmp_path):
+#     newfile = os.path.join(tmp_path, "newfile.root")
+
+#     with uproot.recreate(newfile, compression=None) as fout:
+#         b1 = np.array([1, 2, 3], np.int64)
+#         b2 = awkward.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])
+#         fout.mktree("tree", {"b1": b1.dtype, "b2": b2.type})
+#         fout["tree"].extend({"b1": b1, "b2": b2})
+
+
+# def test_awkward_jagged_data_2(tmp_path):
+#     newfile = os.path.join(tmp_path, "newfile.root")
+
+#     with uproot.recreate(newfile, compression=None) as fout:
+#         b1 = np.array([1, 2, 3], np.int64)
+#         b2 = awkward.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])
+#         fout["tree"] = {"b1": b1, "b2": b2}
+#         fout["tree"].extend({"b1": b1, "b2": b2})

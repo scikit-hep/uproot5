@@ -2095,7 +2095,21 @@ class Tree(object):
                 raise TypeError(
                     "'extend' requires a mapping from branch name (str) to arrays"
                 )
-            provided = dict(data)
+
+            provided = {}
+            for k, v in data.items():
+                module_name = type(v).__module__
+                if module_name == "awkward" or module_name.startswith("awkward."):
+                    import awkward
+
+                    if (
+                        isinstance(v, awkward.Array)
+                        and v.ndim > 1
+                        and not v.layout.purelist_isregular
+                    ):
+                        provided[self._counter_name(k)] = awkward.num(v, axis=1)
+
+                provided[k] = v
 
         actual_branches = {}
         for datum in self._branch_data:
@@ -2156,23 +2170,117 @@ class Tree(object):
 
             datum = self._branch_data[self._branch_lookup[branch_name]]
             if datum["kind"] != "record":
-                big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
-                if big_endian.shape != (len(branch_array),) + datum["shape"]:
-                    raise ValueError(
-                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
-                            datum["shape"],
-                            big_endian.shape[1:],
+                if datum["counter"] is None:
+                    big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
+                    if big_endian.shape != (len(branch_array),) + datum["shape"]:
+                        raise ValueError(
+                            "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                                datum["shape"],
+                                big_endian.shape[1:],
+                            )
                         )
+                    tofill.append((branch_name, big_endian, None))
+
+                else:
+                    import awkward
+
+                    layout = branch_array.layout
+                    while not isinstance(
+                        layout,
+                        (
+                            awkward.layout.ListOffsetArray32,
+                            awkward.layout.ListOffsetArrayU32,
+                            awkward.layout.ListOffsetArray64,
+                        ),
+                    ):
+                        if isinstance(layout, awkward.partition.PartitionedArray):
+                            layout = awkward.concatenate(
+                                layout.partitions, highlevel=False
+                            )
+
+                        elif isinstance(
+                            layout,
+                            (
+                                awkward.layout.IndexedArray32,
+                                awkward.layout.IndexedArrayU32,
+                                awkward.layout.IndexedArray64,
+                            ),
+                        ):
+                            layout = layout.project()
+
+                        elif isinstance(
+                            layout,
+                            (
+                                awkward.layout.ListArray32,
+                                awkward.layout.ListArrayU32,
+                                awkward.layout.ListArray64,
+                            ),
+                        ):
+                            layout = layout.toListOffsetArray64(False)
+
+                        else:
+                            raise AssertionError(
+                                "how did this pass the type check?\n\n" + repr(layout)
+                            )
+
+                    content = layout.content
+                    offsets = numpy.asarray(layout.offsets)
+                    if offsets[0] != 0:
+                        content = content[offsets[0] :]
+                        offsets -= offsets[0]
+                    if len(content) > offsets[-1]:
+                        content = content[: offsets[-1]]
+
+                    shape = [len(content)]
+                    while not isinstance(content, awkward.layout.NumpyArray):
+                        if isinstance(
+                            content,
+                            (
+                                awkward.layout.IndexedArray32,
+                                awkward.layout.IndexedArrayU32,
+                                awkward.layout.IndexedArray64,
+                            ),
+                        ):
+                            content = content.project()
+
+                        elif isinstance(content, awkward.layout.EmptyArray):
+                            content = content.toNumpyArray()
+
+                        elif isinstance(content, awkward.layout.RegularArray):
+                            shape.append(content.size)
+                            content = content.content
+
+                        else:
+                            raise AssertionError(
+                                "how did this pass the type check?\n\n" + repr(content)
+                            )
+
+                    big_endian = numpy.asarray(content, dtype=datum["dtype"])
+                    shape = tuple(shape) + big_endian.shape[1:]
+
+                    if shape[1:] != datum["shape"]:
+                        raise ValueError(
+                            "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                                datum["shape"],
+                                shape[1:],
+                            )
+                        )
+                    tofill.append(
+                        (branch_name, big_endian.reshape(-1), offsets.astype(">i4"))
                     )
-                tofill.append((branch_name, big_endian))
 
         # actually write baskets into the file
         uncompressed_bytes = 0
         compressed_bytes = 0
-        for branch_name, big_endian in tofill:
-            totbytes, zipbytes, location = self.write_np_basket(
-                sink, branch_name, big_endian
-            )
+        for branch_name, big_endian, offsets in tofill:
+            if offsets is None:
+                totbytes, zipbytes, location = self.write_np_basket(
+                    sink, branch_name, big_endian
+                )
+            else:
+                totbytes, zipbytes, location = self.write_jagged_basket(
+                    sink, branch_name, big_endian, offsets
+                )
             uncompressed_bytes += totbytes
             compressed_bytes += zipbytes
 
@@ -2688,6 +2796,70 @@ class Tree(object):
         sink.flush()
 
         return fNbytes, fNbytes, location
+
+    def write_jagged_basket(self, sink, branch_name, array, offsets):
+        raise Exception("ready to fill basket!", array, offsets)
+
+        # fClassName = uproot.serialization.string("TBasket")
+        # fName = uproot.serialization.string(branch_name)
+        # fTitle = uproot.serialization.string(self._name)
+
+        # fKeylen = (
+        #     uproot.reading._key_format_big.size
+        #     + len(fClassName)
+        #     + len(fName)
+        #     + len(fTitle)
+        #     + uproot.models.TBasket._tbasket_format2.size
+        #     + 1
+        # )
+
+        # raw_array = uproot._util.tobytes(array)
+        # fObjlen = len(raw_array)
+
+        # fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
+
+        # parent_location = self._directory.key.location  # FIXME: is this correct?
+
+        # location = self._freesegments.allocate(fNbytes, dry_run=False)
+
+        # itemsize = array.dtype.itemsize
+        # for item in array.shape[1:]:
+        #     itemsize *= item
+
+        # out = []
+        # out.append(
+        #     uproot.reading._key_format_big.pack(
+        #         fNbytes,
+        #         1004,  # fVersion
+        #         fObjlen,
+        #         uproot._util.datetime_to_code(datetime.datetime.now()),  # fDatime
+        #         fKeylen,
+        #         0,  # fCycle
+        #         location,  # fSeekKey
+        #         parent_location,  # fSeekPdir
+        #     )
+        # )
+        # out.append(fClassName)
+        # out.append(fName)
+        # out.append(fTitle)
+        # out.append(
+        #     uproot.models.TBasket._tbasket_format2.pack(
+        #         3,  # fVersion
+        #         32000,  # fBufferSize
+        #         itemsize,  # fNevBufSize
+        #         len(array),  # fNevBuf
+        #         fKeylen + len(raw_array),  # fLast
+        #     )
+        # )
+        # out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
+
+        # out.append(raw_array)
+
+        # sink.write(location, b"".join(out))
+        # sink.set_file_length(self._freesegments.fileheader.end)
+        # sink.flush()
+
+        # return fNbytes, fNbytes, location
 
 
 def dataframe_to_dict(df):

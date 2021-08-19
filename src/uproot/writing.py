@@ -1113,19 +1113,23 @@ in file {1} in directory {2}""".format(
                     if isinstance(branch_array, Mapping) and all(
                         uproot._util.isstr(x) for x in branch_array
                     ):
+                        okay = True
                         datum = {}
                         metadatum = {}
                         for kk, vv in branch_array.items():
                             try:
                                 vv = uproot._util.ensure_numpy(vv)
                             except TypeError:
-                                break
+                                okay = False
                             datum[kk] = vv
                             branch_dtype = vv.dtype
                             branch_shape = vv.shape[1:]
                             if branch_shape != ():
                                 branch_dtype = numpy.dtype((branch_dtype, branch_shape))
                             metadatum[kk] = branch_dtype
+
+                        if not okay:
+                            break
 
                         data[branch_name] = datum
                         metadata[branch_name] = metadatum
@@ -1134,13 +1138,31 @@ in file {1} in directory {2}""".format(
                         try:
                             branch_array = uproot._util.ensure_numpy(branch_array)
                         except TypeError:
-                            break
-                        data[branch_name] = branch_array
-                        branch_dtype = branch_array.dtype
-                        branch_shape = branch_array.shape[1:]
-                        if branch_shape != ():
-                            branch_dtype = numpy.dtype((branch_dtype, branch_shape))
-                        metadata[branch_name] = branch_dtype
+                            module_name = type(branch_array).__module__
+                            if module_name == "awkward" or module_name.startswith(
+                                "awkward."
+                            ):
+                                data[branch_name] = branch_array
+                                metadata[branch_name] = branch_array.type
+                            else:
+                                try:
+                                    import awkward
+                                except ImportError:
+                                    break
+                                try:
+                                    branch_array = awkward.from_iter(branch_array)
+                                except Exception:
+                                    break
+                                else:
+                                    data[branch_name] = branch_array
+                                    metadata[branch_name] = awkward.type(branch_array)
+                        else:
+                            data[branch_name] = branch_array
+                            branch_dtype = branch_array.dtype
+                            branch_shape = branch_array.shape[1:]
+                            if branch_shape != ():
+                                branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                            metadata[branch_name] = branch_dtype
 
                 else:
                     is_ttree = True
