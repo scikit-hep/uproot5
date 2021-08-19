@@ -2651,7 +2651,6 @@ class Tree(object):
             )
         )
 
-        tleaf_reference_start = len(out)
         out.append(tleaf_reference_bytes)
 
         # null fAliases (b"\x00\x00\x00\x00")
