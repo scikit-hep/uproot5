@@ -17,7 +17,7 @@ def test_2dim(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        tree = fout.mktree("tree", "title", {"branch": np.dtype((np.float64, (3,)))})
+        tree = fout.mktree("tree", {"branch": np.dtype((np.float64, (3,)))})
         tree.extend({"branch": np.array([[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]])})
         with pytest.raises(ValueError):
             tree.extend({"branch": np.array([7.7, 8.8, 9.9])})
@@ -34,6 +34,8 @@ def test_2dim(tmp_path):
 
     with uproot.open(newfile) as fin:
         assert fin["tree/branch"].array().tolist() == [[1.1, 2.2, 3.3], [4.4, 5.5, 6.6]]
+
+    f1.Close()
 
 
 def test_2dim_interface(tmp_path):
@@ -69,6 +71,8 @@ def test_2dim_interface(tmp_path):
             [7.0, 8.0, 9.0],
         ]
 
+    f1.Close()
+
 
 def test_2dim_interface_2(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
@@ -103,6 +107,8 @@ def test_2dim_interface_2(tmp_path):
             [7.0, 8.0, 9.0],
         ]
 
+    f1.Close()
+
 
 def test_structured_array(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
@@ -132,6 +138,8 @@ def test_structured_array(tmp_path):
         assert fin["tree/y"].typename == "double"
         assert fin["tree/x"].array().tolist() == [1, 2, 3, 4, 5, 6]
         assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
+
+    f1.Close()
 
 
 def test_pandas(tmp_path):
@@ -165,35 +173,39 @@ def test_pandas(tmp_path):
         assert fin["tree/x"].array().tolist() == [1, 2, 3, 4, 5, 6]
         assert fin["tree/y"].array().tolist() == [1.1, 2.2, 3.3, 4.4, 5.5, 6.6]
 
+    f1.Close()
+
 
 def test_histogram_interface(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as fin:
         h1d, h2d = fin["hpx"], fin["hpxpy"]
+        (h1d_entries_1, h1d_xedges_1) = h1d.to_numpy()
+        (h2d_entries_1, h2d_xedges_1, h2d_yedges_1) = h2d.to_numpy(dd=False)
+        (h2d_dd_entries_1, (h2d_dd_xedges_1, h2d_dd_yedges_1)) = h2d.to_numpy(dd=True)
 
         with uproot.recreate(newfile) as fout:
             fout["h1d"] = h1d.to_numpy()
             fout["h2d"] = h2d.to_numpy(dd=False)
             fout["h2d_dd"] = h2d.to_numpy(dd=True)
+            (h1d_entries_2, h1d_xedges_2) = fout["h1d"].to_numpy()
+            (h2d_entries_2, h2d_xedges_2, h2d_yedges_2) = fout["h2d"].to_numpy(dd=False)
+            (h2d_dd_entries_2, (h2d_dd_xedges_2, h2d_dd_yedges_2)) = fout[
+                "h2d_dd"
+            ].to_numpy(dd=True)
 
     with uproot.open(newfile) as finagin:
-        (entries_1, xedges_1) = h1d.to_numpy()
-        (entries_2, xedges_2) = fout["h1d"].to_numpy()
-        assert np.array_equal(entries_1, entries_2)
-        assert np.array_equal(xedges_1, xedges_2)
+        assert np.array_equal(h1d_entries_1, h1d_entries_2)
+        assert np.array_equal(h1d_xedges_1, h1d_xedges_2)
 
-        (entries_1, xedges_1, yedges_1) = h2d.to_numpy(dd=False)
-        (entries_2, xedges_2, yedges_2) = fout["h2d"].to_numpy(dd=False)
-        assert np.array_equal(entries_1, entries_2)
-        assert np.array_equal(xedges_1, xedges_2)
-        assert np.array_equal(yedges_1, yedges_2)
+        assert np.array_equal(h2d_entries_1, h2d_entries_2)
+        assert np.array_equal(h2d_xedges_1, h2d_xedges_2)
+        assert np.array_equal(h2d_yedges_1, h2d_yedges_2)
 
-        (entries_1, (xedges_1, yedges_1)) = h2d.to_numpy(dd=True)
-        (entries_2, (xedges_2, yedges_2)) = fout["h2d_dd"].to_numpy(dd=True)
-        assert np.array_equal(entries_1, entries_2)
-        assert np.array_equal(xedges_1, xedges_2)
-        assert np.array_equal(yedges_1, yedges_2)
+        assert np.array_equal(h2d_dd_entries_1, h2d_dd_entries_2)
+        assert np.array_equal(h2d_dd_xedges_1, h2d_dd_xedges_2)
+        assert np.array_equal(h2d_dd_yedges_1, h2d_dd_yedges_2)
 
 
 def test_ex_nihilo_TH1(tmp_path):
@@ -236,6 +248,8 @@ def test_ex_nihilo_TH1(tmp_path):
         assert h3.GetBinError(1) == pytest.approx(np.sqrt(2))
         assert h3.GetBinError(2) == pytest.approx(np.sqrt(5))
         assert h3.GetBinError(3) == pytest.approx(0)
+
+    f3.Close()
 
 
 def test_ex_nihilo_TH2(tmp_path):
@@ -294,6 +308,8 @@ def test_ex_nihilo_TH2(tmp_path):
             pytest.approx([0, 5, 0, 0, 0]),
             pytest.approx([0, 0, 0, 0, 0]),
         ]
+
+    f3.Close()
 
 
 def test_ex_nihilo_TH3(tmp_path):
@@ -377,6 +393,8 @@ def test_ex_nihilo_TH3(tmp_path):
             [[0, 0, 0], approx([0, 0, 0]), [0, 0, 0], approx([0, 0, 0]), [0, 0, 0]],
         ]
 
+    f3.Close()
+
 
 def test_fromroot_TH1(tmp_path):
     original = os.path.join(tmp_path, "original.root")
@@ -407,6 +425,8 @@ def test_fromroot_TH1(tmp_path):
         } == {
             k: v for k, v in finagin["there"].all_members.items() if k.startswith("fTs")
         }
+
+    f1.Close()
 
 
 def test_fromroot_TH2(tmp_path):
@@ -443,6 +463,8 @@ def test_fromroot_TH2(tmp_path):
             k: v for k, v in finagin["there"].all_members.items() if k.startswith("fTs")
         }
 
+    f1.Close()
+
 
 def test_fromroot_TH3(tmp_path):
     original = os.path.join(tmp_path, "original.root")
@@ -462,6 +484,7 @@ def test_fromroot_TH3(tmp_path):
 
     with uproot.open(original) as fin:
         h2 = fin["h1"]
+
         with uproot.recreate(newfile) as fout:
             fout["out"] = h2
             fout["there"] = h2.to_numpy()
@@ -475,3 +498,5 @@ def test_fromroot_TH3(tmp_path):
         } == {
             k: v for k, v in finagin["there"].all_members.items() if k.startswith("fTs")
         }
+
+    f1.Close()

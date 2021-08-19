@@ -16,9 +16,9 @@ def test_numpy():
 
 
 def test_awkward():
-    ak = pytest.importorskip("awkward")
+    awkward = pytest.importorskip("awkward")
 
     with uproot.open(skhep_testdata.data_path("uproot-HZZ.root")) as f:
         a = f["events/Muon_Px"].array(entry_start=1, entry_stop=1)
-        assert isinstance(a, ak.Array)
+        assert isinstance(a, awkward.Array)
         assert len(a) == 0

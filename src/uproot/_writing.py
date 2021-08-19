@@ -159,6 +159,8 @@ class Key(CascadeLeaf):
         cycle,
         parent_location,
         seek_location,
+        created_on=None,
+        big=None,
     ):
         super(Key, self).__init__(location, None)
         self._uncompressed_bytes = uncompressed_bytes
@@ -169,8 +171,8 @@ class Key(CascadeLeaf):
         self._cycle = cycle
         self._parent_location = parent_location
         self._seek_location = seek_location
-        self._created_on = datetime.datetime.now()
-        self._big = None
+        self._created_on = datetime.datetime.now() if created_on is None else created_on
+        self._big = big
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})".format(
@@ -263,7 +265,7 @@ class Key(CascadeLeaf):
         else:
             location = self._location
 
-        out = Key(
+        return Key(
             location,
             self._uncompressed_bytes,
             self._compressed_bytes,
@@ -273,9 +275,9 @@ class Key(CascadeLeaf):
             self._cycle,
             self._parent_location,
             location,
+            created_on=self._created_on,
+            big=self._big,
         )
-        out._created_on = self._created_on
-        return out
 
     @property
     def big(self):
@@ -403,7 +405,7 @@ class Key(CascadeLeaf):
 
         assert fKeylen == position - location
 
-        out = Key(
+        return Key(
             location,
             fObjlen,  # uncompressed_bytes
             fNbytes - fKeylen,  # compressed_bytes
@@ -413,10 +415,9 @@ class Key(CascadeLeaf):
             fCycle,  # cycle
             fSeekPdir,  # parent_location
             fSeekKey,  # may be location
+            created_on=uproot._util.code_to_datetime(fDatime),
+            big=big,
         )
-        out._created_on = uproot._util.code_to_datetime(fDatime)
-        out._big = big
-        return out
 
 
 _free_format_small = struct.Struct(">HII")
@@ -1433,7 +1434,15 @@ class Directory(CascadeNode):
         self._freesegments.release(original_start, original_stop)
 
     def add_object(
-        self, sink, classname, name, title, raw_data, uncompressed_bytes, replaces=None
+        self,
+        sink,
+        classname,
+        name,
+        title,
+        raw_data,
+        uncompressed_bytes,
+        replaces=None,
+        big=None,
     ):
         if replaces is None:
             cycle = self._data.next_cycle(name)
@@ -1448,7 +1457,7 @@ class Directory(CascadeNode):
         parent_location = self._key.location  # FIXME: is this correct?
 
         location = None
-        if parent_location < uproot.const.kStartBigFile:
+        if not big and parent_location < uproot.const.kStartBigFile:
             requested_bytes = (
                 uproot.reading._key_format_small.size + strings_size + len(raw_data)
             )
@@ -1485,6 +1494,7 @@ class Directory(CascadeNode):
             cycle,
             parent_location,
             location,
+            big=big,
         )
 
         if replaces is None:
@@ -1618,6 +1628,8 @@ class Directory(CascadeNode):
         name,
         title,
         branch_types,
+        counter_name,
+        field_name,
         initial_basket_capacity,
         resize_factor,
     ):
@@ -1627,6 +1639,8 @@ class Directory(CascadeNode):
             title,
             branch_types,
             self._freesegments,
+            counter_name,
+            field_name,
             initial_basket_capacity,
             resize_factor,
         )
@@ -1661,6 +1675,8 @@ class Tree(object):
         title,
         branch_types,
         freesegments,
+        counter_name,
+        field_name,
         initial_basket_capacity,
         resize_factor,
     ):
@@ -1668,6 +1684,8 @@ class Tree(object):
         self._name = name
         self._title = title
         self._freesegments = freesegments
+        self._counter_name = counter_name
+        self._field_name = field_name
         self._basket_capacity = initial_basket_capacity
         self._resize_factor = resize_factor
 
@@ -1682,58 +1700,184 @@ class Tree(object):
         self._branch_data = []
         self._branch_lookup = {}
         for branch_name, branch_type in branch_types_items:
-            typestr = "np"
+            branch_dict = None
+            branch_dtype = None
+            branch_datashape = None
 
-            branch_dtype = numpy.dtype(branch_type).newbyteorder(">")
+            if isinstance(branch_type, Mapping) and all(
+                uproot._util.isstr(x) for x in branch_type
+            ):
+                branch_dict = branch_type
 
-            if branch_dtype.subdtype is None:
-                branch_shape = ()
             else:
-                branch_dtype, branch_shape = branch_dtype.subdtype
+                try:
+                    if type(branch_type).__module__.startswith("awkward."):
+                        raise TypeError
+                    if (
+                        uproot._util.isstr(branch_type)
+                        and branch_type.strip() == "bytes"
+                    ):
+                        raise TypeError
+                    branch_dtype = numpy.dtype(branch_type)
 
-            letter = _dtype_to_char.get(branch_dtype)
-            if letter is None:
-                raise TypeError(
-                    "cannot write NumPy dtype {0} in TTree".format(branch_dtype)
+                except TypeError:
+                    try:
+                        import awkward
+                    except ImportError:
+                        raise TypeError(
+                            "not a NumPy dtype and 'awkward' cannot be imported: {0}".format(
+                                repr(branch_type)
+                            )
+                        )
+                    if isinstance(branch_type, awkward.types.Type):
+                        branch_datashape = branch_type
+                    else:
+                        try:
+                            branch_datashape = awkward.types.from_datashape(branch_type)
+                        except Exception:
+                            raise TypeError(
+                                "not a NumPy dtype or an Awkward datashape: {0}".format(
+                                    repr(branch_type)
+                                )
+                            )
+                    # checking by class name to be Awkward v1/v2 insensitive
+                    if type(branch_datashape).__name__ == "ArrayType":
+                        if hasattr(branch_datashape, "content"):
+                            branch_datashape = branch_datashape.content
+                        else:
+                            branch_datashape = branch_datashape.type
+                    branch_dtype = self._branch_ak_to_np(branch_datashape)
+
+            if branch_dict is not None:
+                self._branch_lookup[branch_name] = len(self._branch_data)
+                self._branch_data.append(
+                    {"kind": "record", "name": branch_name, "keys": list(branch_dict)}
                 )
 
-            if branch_shape == ():
-                dims = ""
+                for key, content in branch_dict.items():
+                    subname = self._field_name(branch_name, key)
+                    try:
+                        dtype = numpy.dtype(content)
+                    except Exception:
+                        raise TypeError(
+                            "values of a dict must be NumPy types\n\n    key {0} has type {1}".format(
+                                repr(key), repr(content)
+                            )
+                        )
+                    self._branch_lookup[subname] = len(self._branch_data)
+                    self._branch_data.append(self._branch_np(subname, content, dtype))
+
+            elif branch_dtype is not None:
+                self._branch_lookup[branch_name] = len(self._branch_data)
+                self._branch_data.append(
+                    self._branch_np(branch_name, branch_type, branch_dtype)
+                )
+
             else:
-                dims = "".join("[" + str(x) + "]" for x in branch_shape)
+                parameters = branch_datashape.parameters
+                if parameters is None:
+                    parameters = {}
 
-            title = "{0}{1}/{2}".format(branch_name, dims, letter)
+                if parameters.get("__array__") == "string":
+                    raise NotImplementedError("array of strings")
 
-            self._branch_lookup[branch_name] = len(self._branch_data)
-            self._branch_data.append(
-                {
-                    "fName": branch_name,
-                    "branch_type": branch_type,
-                    "type": typestr,
-                    "dtype": branch_dtype,
-                    "shape": branch_shape,
-                    "fTitle": title,
-                    "compression": directory.freesegments.fileheader.compression,
-                    "fBasketSize": 32000,
-                    "fEntryOffsetLen": 0,
-                    "fOffset": 0,
-                    "fSplitLevel": 0,
-                    "fFirstEntry": 0,
-                    "fTotBytes": 0,
-                    "fZipBytes": 0,
-                    "fBasketBytes": numpy.zeros(
-                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype1
-                    ),
-                    "fBasketEntry": numpy.zeros(
-                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype2
-                    ),
-                    "fBasketSeek": numpy.zeros(
-                        self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
-                    ),
-                    "metadata_start": None,
-                    "basket_metadata_start": None,
-                }
-            )
+                elif parameters.get("__array__") == "bytes":
+                    raise NotImplementedError("array of bytes")
+
+                # checking by class name to be Awkward v1/v2 insensitive
+                elif type(branch_datashape).__name__ == "ListType":
+                    if hasattr(branch_datashape, "content"):
+                        content = branch_datashape.content
+                    else:
+                        content = branch_datashape.type
+
+                    counter_name = self._counter_name(branch_name)
+                    counter_dtype = numpy.dtype(numpy.int32)
+                    counter = self._branch_np(
+                        counter_name, counter_dtype, counter_dtype, kind="counter"
+                    )
+                    self._branch_lookup[counter_name] = len(self._branch_data)
+                    self._branch_data.append(counter)
+
+                    if type(content).__name__ == "RecordType":
+                        if hasattr(content, "contents"):
+                            contents = content.contents
+                        else:
+                            contents = content.fields()
+                        keys = content.keys
+                        if callable(keys):
+                            keys = keys()
+                        if keys is None:
+                            keys = [str(x) for x in range(len(contents))]
+
+                        self._branch_lookup[branch_name] = len(self._branch_data)
+                        self._branch_data.append(
+                            {"kind": "record", "name": branch_name, "keys": keys}
+                        )
+
+                        for key, cont in zip(keys, contents):
+                            subname = self._field_name(branch_name, key)
+                            dtype = self._branch_ak_to_np(cont)
+                            if dtype is None:
+                                raise TypeError(
+                                    "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
+                                        repr(key), str(cont)
+                                    )
+                                )
+                            self._branch_lookup[subname] = len(self._branch_data)
+                            self._branch_data.append(
+                                self._branch_np(subname, cont, dtype, counter=counter)
+                            )
+
+                    else:
+                        dt = self._branch_ak_to_np(content)
+                        if dt is None:
+                            raise TypeError(
+                                "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                                    str(branch_datashape)
+                                )
+                            )
+                        self._branch_lookup[branch_name] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(branch_name, dt, dt, counter=counter)
+                        )
+
+                elif type(branch_datashape).__name__ == "RecordType":
+                    if hasattr(branch_datashape, "contents"):
+                        contents = branch_datashape.contents
+                    else:
+                        contents = branch_datashape.fields()
+                    keys = branch_datashape.keys
+                    if callable(keys):
+                        keys = keys()
+                    if keys is None:
+                        keys = [str(x) for x in range(len(contents))]
+
+                    self._branch_lookup[branch_name] = len(self._branch_data)
+                    self._branch_data.append(
+                        {"kind": "record", "name": branch_name, "keys": keys}
+                    )
+
+                    for key, content in zip(keys, contents):
+                        subname = self._field_name(branch_name, key)
+                        dtype = self._branch_ak_to_np(content)
+                        if dtype is None:
+                            raise TypeError(
+                                "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
+                                    repr(key), str(content)
+                                )
+                            )
+                        self._branch_lookup[subname] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(subname, content, dtype)
+                        )
+
+                else:
+                    raise TypeError(
+                        "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                            str(branch_datashape)
+                        )
+                    )
 
         self._num_entries = 0
         self._num_baskets = 0
@@ -1758,6 +1902,82 @@ class Tree(object):
             "fEstimate": 1000000,
         }
         self._key = None
+
+    def _branch_ak_to_np(self, branch_datashape):
+        # checking by class name to be Awkward v1/v2 insensitive
+        if type(branch_datashape).__name__ == "NumpyType":
+            return numpy.dtype(branch_datashape.primitive)
+        elif type(branch_datashape).__name__ == "PrimitiveType":
+            return numpy.dtype(branch_datashape.dtype)
+        elif type(branch_datashape).__name__ == "RegularType":
+            if hasattr(branch_datashape, "content"):
+                content = self._branch_ak_to_np(branch_datashape.content)
+            else:
+                content = self._branch_ak_to_np(branch_datashape.type)
+            if content is None:
+                return None
+            elif content.subdtype is None:
+                dtype, shape = content, ()
+            else:
+                dtype, shape = content.subdtype
+            return numpy.dtype((dtype, (branch_datashape.size,) + shape))
+        else:
+            return None
+
+    def _branch_np(
+        self, branch_name, branch_type, branch_dtype, counter=None, kind="normal"
+    ):
+        branch_dtype = branch_dtype.newbyteorder(">")
+
+        if branch_dtype.subdtype is None:
+            branch_shape = ()
+        else:
+            branch_dtype, branch_shape = branch_dtype.subdtype
+
+        letter = _dtype_to_char.get(branch_dtype)
+        if letter is None:
+            raise TypeError(
+                "cannot write NumPy dtype {0} in TTree".format(branch_dtype)
+            )
+
+        if branch_shape == ():
+            dims = ""
+        else:
+            dims = "".join("[" + str(x) + "]" for x in branch_shape)
+
+        title = "{0}{1}/{2}".format(branch_name, dims, letter)
+
+        return {
+            "fName": branch_name,
+            "branch_type": branch_type,
+            "kind": kind,
+            "counter": counter,
+            "dtype": branch_dtype,
+            "shape": branch_shape,
+            "fTitle": title,
+            "compression": self._directory.freesegments.fileheader.compression,
+            "fBasketSize": 32000,
+            "fEntryOffsetLen": 0 if counter is None else 1000,
+            "fOffset": 0,
+            "fSplitLevel": 0,
+            "fFirstEntry": 0,
+            "fTotBytes": 0,
+            "fZipBytes": 0,
+            "fBasketBytes": numpy.zeros(
+                self._basket_capacity, uproot.models.TBranch._tbranch13_dtype1
+            ),
+            "fBasketEntry": numpy.zeros(
+                self._basket_capacity, uproot.models.TBranch._tbranch13_dtype2
+            ),
+            "fBasketSeek": numpy.zeros(
+                self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
+            ),
+            "metadata_start": None,
+            "basket_metadata_start": None,
+            "tleaf_reference_number": None,
+            "tleaf_maximum_value": 0,
+            "tleaf_special_struct": None,
+        }
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
@@ -1794,6 +2014,14 @@ class Tree(object):
     @property
     def freesegments(self):
         return self._freesegments
+
+    @property
+    def counter_name(self):
+        return self._counter_name
+
+    @property
+    def field_name(self):
+        return self._field_name
 
     @property
     def basket_capacity(self):
@@ -1856,43 +2084,106 @@ class Tree(object):
             sink.set_file_length(self._freesegments.fileheader.end)
             sink.flush()
 
+        provided = None
         module_name = type(data).__module__
 
         if module_name == "pandas" or module_name.startswith("pandas."):
             import pandas
 
             if isinstance(data, pandas.DataFrame) and data.index.is_numeric():
-                data = dataframe_to_dict(data)
+                provided = dataframe_to_dict(data)
+
+        if module_name == "awkward" or module_name.startswith("awkward."):
+            import awkward
+
+            if isinstance(data, awkward.Array):
+                if data.ndim > 1 and not data.layout.purelist_isregular:
+                    provided = {self._counter_name(""): awkward.num(data, axis=1)}
+                else:
+                    provided = {}
+                for k, v in zip(awkward.fields(data), awkward.unzip(data)):
+                    provided[k] = v
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
-            data = recarray_to_dict(data)
+            provided = recarray_to_dict(data)
 
-        if not isinstance(data, Mapping) or not all(
-            uproot._util.isstr(x) for x in data
-        ):
-            raise TypeError(
-                "'extend' requires a mapping from branch name (str) to arrays"
-            )
+        if provided is None:
+            if not isinstance(data, Mapping) or not all(
+                uproot._util.isstr(x) for x in data
+            ):
+                raise TypeError(
+                    "'extend' requires a mapping from branch name (str) to arrays"
+                )
 
-        if not set(data) == set(x["fName"] for x in self._branch_data):
+            provided = {}
+            for k, v in data.items():
+                module_name = type(v).__module__
+                if module_name == "awkward" or module_name.startswith("awkward."):
+                    import awkward
+
+                    if (
+                        isinstance(v, awkward.Array)
+                        and v.ndim > 1
+                        and not v.layout.purelist_isregular
+                    ):
+                        provided[self._counter_name(k)] = awkward.num(v, axis=1)
+
+                provided[k] = v
+
+        actual_branches = {}
+        for datum in self._branch_data:
+            if datum["kind"] == "record":
+                if datum["name"] in provided:
+                    recordarray = provided.pop(datum["name"])
+
+                    module_name = type(recordarray).__module__
+                    if module_name == "pandas" or module_name.startswith("pandas."):
+                        import pandas
+
+                        if isinstance(recordarray, pandas.DataFrame):
+                            tmp = {"index": recordarray.index.values}
+                            for column in recordarray.columns:
+                                tmp[column] = recordarray[column]
+                            recordarray = tmp
+
+                    for key in datum["keys"]:
+                        provided[self._field_name(datum["name"], key)] = recordarray[
+                            key
+                        ]
+
+                elif datum["name"] == "":
+                    for key in datum["keys"]:
+                        provided[self._field_name(datum["name"], key)] = provided.pop(
+                            key
+                        )
+
+                else:
+                    raise ValueError(
+                        "'extend' must be given an array for every branch; missing {0}".format(
+                            repr(datum["name"])
+                        )
+                    )
+
+            else:
+                if datum["fName"] in provided:
+                    actual_branches[datum["fName"]] = provided.pop(datum["fName"])
+                else:
+                    raise ValueError(
+                        "'extend' must be given an array for every branch; missing {0}".format(
+                            repr(datum["fName"])
+                        )
+                    )
+
+        if len(provided) != 0:
             raise ValueError(
-                """'extend' must fill every branch and only existing branches of the TTree.
-
-This TTree has
-
-    {0}
-
-Attempting to extend with
-
-    {1}""".format(
-                    ", ".join(sorted(repr(x["fName"]) for x in self._branch_data)),
-                    ", ".join(sorted(repr(x) for x in data)),
+                "'extend' was given data that do not correspond to any branch: {0}".format(
+                    ", ".join(repr(x) for x in provided)
                 )
             )
 
         tofill = []
         num_entries = None
-        for branch_name, branch_array in data.items():
+        for branch_name, branch_array in actual_branches.items():
             if num_entries is None:
                 num_entries = len(branch_array)
             elif num_entries != len(branch_array):
@@ -1904,7 +2195,10 @@ Attempting to extend with
                 )
 
             datum = self._branch_data[self._branch_lookup[branch_name]]
-            if datum["type"] == "np":
+            if datum["kind"] == "record":
+                continue
+
+            if datum["counter"] is None:
                 big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
                 if big_endian.shape != (len(branch_array),) + datum["shape"]:
                     raise ValueError(
@@ -1913,22 +2207,117 @@ Attempting to extend with
                             big_endian.shape[1:],
                         )
                     )
-                tofill.append((branch_name, big_endian))
+                tofill.append((branch_name, big_endian, None))
+
+                if datum["kind"] == "counter":
+                    datum["tleaf_maximum_value"] = max(
+                        big_endian.max(), datum["tleaf_maximum_value"]
+                    )
 
             else:
-                raise NotImplementedError(datum["type"])
+                import awkward
+
+                layout = branch_array.layout
+                while not isinstance(
+                    layout,
+                    (
+                        awkward.layout.ListOffsetArray32,
+                        awkward.layout.ListOffsetArrayU32,
+                        awkward.layout.ListOffsetArray64,
+                    ),
+                ):
+                    if isinstance(layout, awkward.partition.PartitionedArray):
+                        layout = awkward.concatenate(layout.partitions, highlevel=False)
+
+                    elif isinstance(
+                        layout,
+                        (
+                            awkward.layout.IndexedArray32,
+                            awkward.layout.IndexedArrayU32,
+                            awkward.layout.IndexedArray64,
+                        ),
+                    ):
+                        layout = layout.project()
+
+                    elif isinstance(
+                        layout,
+                        (
+                            awkward.layout.ListArray32,
+                            awkward.layout.ListArrayU32,
+                            awkward.layout.ListArray64,
+                        ),
+                    ):
+                        layout = layout.toListOffsetArray64(False)
+
+                    else:
+                        raise AssertionError(
+                            "how did this pass the type check?\n\n" + repr(layout)
+                        )
+
+                content = layout.content
+                offsets = numpy.asarray(layout.offsets)
+                if offsets[0] != 0:
+                    content = content[offsets[0] :]
+                    offsets -= offsets[0]
+                if len(content) > offsets[-1]:
+                    content = content[: offsets[-1]]
+
+                shape = [len(content)]
+                while not isinstance(content, awkward.layout.NumpyArray):
+                    if isinstance(
+                        content,
+                        (
+                            awkward.layout.IndexedArray32,
+                            awkward.layout.IndexedArrayU32,
+                            awkward.layout.IndexedArray64,
+                        ),
+                    ):
+                        content = content.project()
+
+                    elif isinstance(content, awkward.layout.EmptyArray):
+                        content = content.toNumpyArray()
+
+                    elif isinstance(content, awkward.layout.RegularArray):
+                        shape.append(content.size)
+                        content = content.content
+
+                    else:
+                        raise AssertionError(
+                            "how did this pass the type check?\n\n" + repr(content)
+                        )
+
+                big_endian = numpy.asarray(content, dtype=datum["dtype"])
+                shape = tuple(shape) + big_endian.shape[1:]
+
+                if shape[1:] != datum["shape"]:
+                    raise ValueError(
+                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                            datum["shape"],
+                            shape[1:],
+                        )
+                    )
+                big_endian_offsets = offsets.astype(">i4", copy=True)
+
+                tofill.append((branch_name, big_endian.reshape(-1), big_endian_offsets))
 
         # actually write baskets into the file
         uncompressed_bytes = 0
         compressed_bytes = 0
-        for branch_name, big_endian in tofill:
-            totbytes, zipbytes, location = self.write_np_basket(
-                sink, branch_name, big_endian
-            )
+        for branch_name, big_endian, big_endian_offsets in tofill:
+            datum = self._branch_data[self._branch_lookup[branch_name]]
+
+            if big_endian_offsets is None:
+                totbytes, zipbytes, location = self.write_np_basket(
+                    sink, branch_name, big_endian
+                )
+            else:
+                totbytes, zipbytes, location = self.write_jagged_basket(
+                    sink, branch_name, big_endian, big_endian_offsets
+                )
+                datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
             uncompressed_bytes += totbytes
             compressed_bytes += zipbytes
 
-            datum = self._branch_data[self._branch_lookup[branch_name]]
             datum["fTotBytes"] += totbytes
             datum["fZipBytes"] += zipbytes
 
@@ -1950,11 +2339,11 @@ Attempting to extend with
         self.write_updates(sink)
 
     def write_anew(self, sink):
-        guess_key_size = uproot.reading._key_format_small.size + 6
+        key_num_bytes = uproot.reading._key_format_big.size + 6
         name_asbytes = self._name.encode(errors="surrogateescape")
         title_asbytes = self._title.encode(errors="surrogateescape")
-        guess_key_size += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
-        guess_key_size += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
+        key_num_bytes += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
+        key_num_bytes += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
 
         out = [None]
         ttree_header_index = 0
@@ -2007,16 +2396,23 @@ Attempting to extend with
         tobjarray_of_branches_index = len(out)
         out.append(None)
 
+        num_branches = sum(
+            0 if datum["kind"] == "record" else 1 for datum in self._branch_data
+        )
+
         # TObjArray header with fName: ""
         out.append(b"\x00\x01\x00\x00\x00\x00\x03\x00@\x00\x00")
         out.append(
             uproot.models.TObjArray._tobjarray_format1.pack(
-                len(self._branch_data),  # TObjArray fSize
+                num_branches,  # TObjArray fSize
                 0,  # TObjArray fLowerBound
             )
         )
 
         for datum in self._branch_data:
+            if datum["kind"] == "record":
+                continue
+
             any_tbranch_index = len(out)
             out.append(None)
             out.append(b"TBranch\x00")
@@ -2036,8 +2432,8 @@ Attempting to extend with
             out.append(b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9")
 
             assert sum(1 if x is None else 0 for x in out) == 4
-            datum["metadata_start"] = (
-                6 + 6 + 8 + 6 + sum(len(x) for x in out if x is not None)
+            datum["metadata_start"] = (6 + 6 + 8 + 6) + sum(
+                len(x) for x in out if x is not None
             )
 
             if datum["compression"] is None:
@@ -2083,11 +2479,12 @@ Attempting to extend with
                 b"\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00"
             )
 
-            absolute_location = guess_key_size + sum(
+            absolute_location = key_num_bytes + sum(
                 len(x) for x in out if x is not None
             )
             absolute_location += 8 + 6 * (sum(1 if x is None else 0 for x in out) - 1)
-            tleaf_reference_numbers.append(absolute_location + 2)
+            datum["tleaf_reference_number"] = absolute_location + 2
+            tleaf_reference_numbers.append(datum["tleaf_reference_number"])
 
             subany_tleaf_index = len(out)
             out.append(None)
@@ -2178,16 +2575,25 @@ Attempting to extend with
                     fLen,
                     fLenType,
                     0,  # fOffset
-                    False,  # fIsRange
+                    datum["kind"] == "counter",  # fIsRange
                     fIsUnsigned,
                 )
             )
 
-            # null fLeafCount
-            out.append(b"\x00\x00\x00\x00")
+            if datum["counter"] is None:
+                # null fLeafCount
+                out.append(b"\x00\x00\x00\x00")
+            else:
+                # reference to fLeafCount
+                out.append(
+                    uproot.deserialization._read_object_any_format1.pack(
+                        datum["counter"]["tleaf_reference_number"]
+                    )
+                )
 
             # specialized TLeaf* members (fMinimum, fMaximum)
             out.append(special_struct.pack(0, 0))
+            datum["tleaf_special_struct"] = special_struct
 
             out[
                 subany_tleaf_index
@@ -2208,8 +2614,8 @@ Attempting to extend with
             )
 
             assert sum(1 if x is None else 0 for x in out) == 4
-            datum["basket_metadata_start"] = (
-                6 + 6 + 8 + 6 + sum(len(x) for x in out if x is not None)
+            datum["basket_metadata_start"] = (6 + 6 + 8 + 6) + sum(
+                len(x) for x in out if x is not None
             )
 
             # speedbump and fBasketBytes
@@ -2257,7 +2663,6 @@ Attempting to extend with
             )
         )
 
-        tleaf_reference_start = len(out)
         out.append(tleaf_reference_bytes)
 
         # null fAliases (b"\x00\x00\x00\x00")
@@ -2284,11 +2689,8 @@ Attempting to extend with
             raw_data,
             len(raw_data),
             replaces=self._key,
+            big=True,
         )
-
-        if self._key.num_bytes != guess_key_size:
-            tleaf_reference_start
-            raise NotImplementedError  # FIXME: adjust TLeaf references
 
     def write_updates(self, sink):
         base = self._key.seek_location + self._key.num_bytes
@@ -2318,6 +2720,9 @@ Attempting to extend with
         sink.flush()
 
         for datum in self._branch_data:
+            if datum["kind"] == "record":
+                continue
+
             position = base + datum["metadata_start"]
 
             if datum["compression"] is None:
@@ -2361,6 +2766,21 @@ Attempting to extend with
             position += len(fBasketEntry) + 1
             sink.write(position, fBasketSeek)
 
+            if datum["kind"] == "counter":
+                position = (
+                    base
+                    + datum["basket_metadata_start"]
+                    - 25  # empty TObjArray of fBaskets (embedded)
+                    - datum["tleaf_special_struct"].size
+                )
+                sink.write(
+                    position,
+                    datum["tleaf_special_struct"].pack(
+                        0,
+                        datum["tleaf_maximum_value"],
+                    ),
+                )
+
     def write_np_basket(self, sink, branch_name, array):
         fClassName = uproot.serialization.string("TBasket")
         fName = uproot.serialization.string(branch_name)
@@ -2376,6 +2796,10 @@ Attempting to extend with
         )
 
         raw_array = uproot._util.tobytes(array)
+        itemsize = array.dtype.itemsize
+        for item in array.shape[1:]:
+            itemsize *= item
+
         fObjlen = len(raw_array)
 
         fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
@@ -2383,10 +2807,6 @@ Attempting to extend with
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
         location = self._freesegments.allocate(fNbytes, dry_run=False)
-
-        itemsize = array.dtype.itemsize
-        for item in array.shape[1:]:
-            itemsize *= item
 
         out = []
         out.append(
@@ -2422,6 +2842,81 @@ Attempting to extend with
         sink.flush()
 
         return fNbytes, fNbytes, location
+
+    def write_jagged_basket(self, sink, branch_name, array, offsets):
+        fClassName = uproot.serialization.string("TBasket")
+        fName = uproot.serialization.string(branch_name)
+        fTitle = uproot.serialization.string(self._name)
+
+        fKeylen = (
+            uproot.reading._key_format_big.size
+            + len(fClassName)
+            + len(fName)
+            + len(fTitle)
+            + uproot.models.TBasket._tbasket_format2.size
+            + 1
+        )
+
+        raw_array = uproot._util.tobytes(array)
+        itemsize = array.dtype.itemsize
+        for item in array.shape[1:]:
+            itemsize *= item
+
+        # offsets became a *copy* of the Awkward Array's offsets
+        # when it was converted to big-endian (astype with copy=True)
+        offsets *= itemsize
+        offsets += fKeylen
+        fLast = offsets[-1]
+        offsets[-1] = 0
+        raw_offsets = uproot._util.tobytes(offsets)
+
+        fObjlen = len(raw_array) + 4 + len(raw_offsets)
+
+        fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
+
+        parent_location = self._directory.key.location  # FIXME: is this correct?
+
+        location = self._freesegments.allocate(fNbytes, dry_run=False)
+
+        out = []
+        out.append(
+            uproot.reading._key_format_big.pack(
+                fNbytes,
+                1004,  # fVersion
+                fObjlen,
+                uproot._util.datetime_to_code(datetime.datetime.now()),  # fDatime
+                fKeylen,
+                0,  # fCycle
+                location,  # fSeekKey
+                parent_location,  # fSeekPdir
+            )
+        )
+        out.append(fClassName)
+        out.append(fName)
+        out.append(fTitle)
+        out.append(
+            uproot.models.TBasket._tbasket_format2.pack(
+                3,  # fVersion
+                32000,  # fBufferSize
+                len(offsets) + 1,  # fNevBufSize
+                len(offsets) - 1,  # fNevBuf
+                fLast,
+            )
+        )
+        out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
+
+        out.append(raw_array)
+        out.append(_tbasket_offsets_length.pack(len(offsets)))
+        out.append(raw_offsets)
+
+        sink.write(location, b"".join(out))
+        sink.set_file_length(self._freesegments.fileheader.end)
+        sink.flush()
+
+        return fNbytes, fNbytes, location
+
+
+_tbasket_offsets_length = struct.Struct(">I")
 
 
 def dataframe_to_dict(df):
