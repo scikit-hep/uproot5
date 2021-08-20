@@ -198,10 +198,13 @@ class Model_TBasket(uproot.model.Model):
         """
         For compressed ``TBaskets``, a tuple of 3-tuples containing
 
-        ``(compression type class, num compressed bytes, num uncompressed bytes)``
+        ``(name of algorithm, num compressed bytes, num uncompressed bytes)``
 
         to describe the actual compression algorithms and sizes encountered in
         each block of data.
+
+        The name of the algorithm can be ``"ZLIB"``, ``"LZMA"``, ``"LZ4"``, or
+        ``"ZSTD"``.
 
         For uncompressed ``TBaskets``, this is None.
         """

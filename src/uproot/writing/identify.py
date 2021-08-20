@@ -13,6 +13,7 @@ except ImportError:
 
 import numpy
 
+import uproot.compression
 import uproot.writing._cascadetree
 
 
@@ -125,7 +126,10 @@ def add_to_directory(obj, name, directory, streamers):
             else:
                 streamers.append(rawstreamer)
 
-        raw_data = writable.serialize(name=name)
+        uncompressed_data = writable.serialize(name=name)
+        compressed_data = uproot.compression.compress(
+            uncompressed_data, directory.file.compression
+        )
 
         if hasattr(writable, "fTitle"):
             title = writable.fTitle
@@ -139,8 +143,8 @@ def add_to_directory(obj, name, directory, streamers):
             writable.classname,
             name,
             title,
-            raw_data,
-            len(raw_data),
+            compressed_data,
+            len(uncompressed_data),
         )
 
 
