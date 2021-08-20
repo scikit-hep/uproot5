@@ -905,7 +905,7 @@ in file {2} in directory {3}""".format(
         name,
         branch_types,
         title="",
-        counter_name=lambda counted: "N" + counted,
+        counter_name=lambda counted: "n" + counted,
         field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
         initial_basket_capacity=10,
         resize_factor=10.0,

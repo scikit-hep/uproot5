@@ -192,7 +192,7 @@ def test_awkward_jagged_metadata(tmp_path):
 
     with uproot.open(newfile) as fin:
         assert fin["tree/b1"].typename == "int64_t"
-        assert fin["tree/Nb2"].typename == "int32_t"
+        assert fin["tree/nb2"].typename == "int32_t"
         assert fin["tree/b2"].typename == "double[]"
 
     f1 = ROOT.TFile(newfile)
@@ -202,14 +202,14 @@ def test_awkward_jagged_metadata(tmp_path):
     assert b1.GetLeaf("b1").GetName() == "b1"
     assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
 
-    Nb2 = t1.GetBranch("Nb2")
-    assert Nb2.GetLeaf("Nb2").GetName() == "Nb2"
-    assert Nb2.GetLeaf("Nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    nb2 = t1.GetBranch("nb2")
+    assert nb2.GetLeaf("nb2").GetName() == "nb2"
+    assert nb2.GetLeaf("nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
 
     b2 = t1.GetBranch("b2")
     assert b2.GetLeaf("b2").GetName() == "b2"
     assert b2.GetLeaf("b2").GetLeafCount() != None  # noqa: E711 (ROOT null check)
-    assert b2.GetLeaf("b2").GetLeafCount().GetName() == "Nb2"
+    assert b2.GetLeaf("b2").GetLeafCount().GetName() == "nb2"
 
     f1.Close()
 
@@ -228,7 +228,7 @@ def test_awkward_jagged_record_metadata(tmp_path):
 
     with uproot.open(newfile) as fin:
         assert fin["tree/b1"].typename == "int64_t"
-        assert fin["tree/Nb2"].typename == "int32_t"
+        assert fin["tree/nb2"].typename == "int32_t"
         assert fin["tree/b2_x"].typename == "double[]"
         assert fin["tree/b2_y"].typename == "int8_t[]"
 
@@ -239,19 +239,19 @@ def test_awkward_jagged_record_metadata(tmp_path):
     assert b1.GetLeaf("b1").GetName() == "b1"
     assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
 
-    Nb2 = t1.GetBranch("Nb2")
-    assert Nb2.GetLeaf("Nb2").GetName() == "Nb2"
-    assert Nb2.GetLeaf("Nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    nb2 = t1.GetBranch("nb2")
+    assert nb2.GetLeaf("nb2").GetName() == "nb2"
+    assert nb2.GetLeaf("nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
 
     b2_x = t1.GetBranch("b2_x")
     assert b2_x.GetLeaf("b2_x").GetName() == "b2_x"
     assert b2_x.GetLeaf("b2_x").GetLeafCount() != None  # noqa: E711 (ROOT null check)
-    assert b2_x.GetLeaf("b2_x").GetLeafCount().GetName() == "Nb2"
+    assert b2_x.GetLeaf("b2_x").GetLeafCount().GetName() == "nb2"
 
     b2_y = t1.GetBranch("b2_y")
     assert b2_y.GetLeaf("b2_y").GetName() == "b2_y"
     assert b2_y.GetLeaf("b2_y").GetLeafCount() != None  # noqa: E711 (ROOT null check)
-    assert b2_y.GetLeaf("b2_y").GetLeafCount().GetName() == "Nb2"
+    assert b2_y.GetLeaf("b2_y").GetLeafCount().GetName() == "nb2"
 
     f1.Close()
 
@@ -268,10 +268,10 @@ def test_awkward_jagged_data_1(tmp_path):
         fout["tree"].extend({"b1": b1, "b2": b2})
 
     with uproot.open(newfile) as fin:
-        assert fin["tree/Nb2"].member("fLeaves")[0].member("fMaximum") == 4
+        assert fin["tree/nb2"].member("fLeaves")[0].member("fMaximum") == 4
         assert fin["tree/b2"].member("fEntryOffsetLen") == 4 * 5
         assert fin["tree/b1"].array().tolist() == [1, 2, 3, 4, 5]
-        assert fin["tree/Nb2"].array().tolist() == [3, 0, 2, 1, 4]
+        assert fin["tree/nb2"].array().tolist() == [3, 0, 2, 1, 4]
         assert fin["tree/b2"].array().tolist() == [
             [0.0, 1.1, 2.2],
             [],
@@ -283,7 +283,7 @@ def test_awkward_jagged_data_1(tmp_path):
     f1 = ROOT.TFile(newfile)
     t1 = f1.Get("tree")
     assert [x.b1 for x in t1] == [1, 2, 3, 4, 5]
-    assert [x.Nb2 for x in t1] == [3, 0, 2, 1, 4]
+    assert [x.nb2 for x in t1] == [3, 0, 2, 1, 4]
     assert [list(x.b2) for x in t1] == [
         [0.0, 1.1, 2.2],
         [],
@@ -306,10 +306,10 @@ def test_awkward_jagged_data_2(tmp_path):
         fout["tree"].extend({"b1": b1[:3], "b2": b2[:3]})
 
     with uproot.open(newfile) as fin:
-        assert fin["tree/Nb2"].member("fLeaves")[0].member("fMaximum") == 4
+        assert fin["tree/nb2"].member("fLeaves")[0].member("fMaximum") == 4
         assert fin["tree/b2"].member("fEntryOffsetLen") == 4 * 3
         assert fin["tree/b1"].array().tolist() == [1, 2, 3, 4, 5, 1, 2, 3]
-        assert fin["tree/Nb2"].array().tolist() == [3, 0, 2, 1, 4, 3, 0, 2]
+        assert fin["tree/nb2"].array().tolist() == [3, 0, 2, 1, 4, 3, 0, 2]
         assert fin["tree/b2"].array().tolist() == [
             [0.0, 1.1, 2.2],
             [],
@@ -324,7 +324,7 @@ def test_awkward_jagged_data_2(tmp_path):
     f1 = ROOT.TFile(newfile)
     t1 = f1.Get("tree")
     assert [x.b1 for x in t1] == [1, 2, 3, 4, 5, 1, 2, 3]
-    assert [x.Nb2 for x in t1] == [3, 0, 2, 1, 4, 3, 0, 2]
+    assert [x.nb2 for x in t1] == [3, 0, 2, 1, 4, 3, 0, 2]
     assert [list(x.b2) for x in t1] == [
         [0.0, 1.1, 2.2],
         [],
@@ -349,9 +349,9 @@ def test_awkward_jagged_data_3(tmp_path):
         # more than 1000 entries, a special number for fNevBufSize and fEntryOffsetLen
 
     with uproot.open(newfile) as fin:
-        assert fin["tree/Nbig"].member("fLeaves")[0].member("fMaximum") == 4
+        assert fin["tree/nbig"].member("fLeaves")[0].member("fMaximum") == 4
         assert fin["tree/big"].member("fEntryOffsetLen") == 4 * 1500
-        assert fin["tree/Nbig"].array().tolist() == [3, 0, 2, 1, 4] * 300
+        assert fin["tree/nbig"].array().tolist() == [3, 0, 2, 1, 4] * 300
         assert (
             fin["tree/big"].array().tolist()
             == [
@@ -366,7 +366,7 @@ def test_awkward_jagged_data_3(tmp_path):
 
     f1 = ROOT.TFile(newfile)
     t1 = f1.Get("tree")
-    assert [x.Nbig for x in t1] == [3, 0, 2, 1, 4] * 300
+    assert [x.nbig for x in t1] == [3, 0, 2, 1, 4] * 300
     assert [list(x.big) for x in t1] == [
         [0.0, 1.1, 2.2],
         [],
@@ -392,7 +392,7 @@ def test_awkward_jagged_record_1(tmp_path):
         fout["tree"].extend({"array": array})
 
     with uproot.open(newfile) as fin:
-        assert fin["tree/Narray"].array().tolist() == [3, 0, 2] * 2
+        assert fin["tree/narray"].array().tolist() == [3, 0, 2] * 2
         assert fin["tree/array_x"].array().tolist() == [[1, 2, 3], [], [4, 5]] * 2
         assert (
             fin["tree/array_y"].array().tolist()
@@ -401,7 +401,7 @@ def test_awkward_jagged_record_1(tmp_path):
 
     f1 = ROOT.TFile(newfile)
     t1 = f1.Get("tree")
-    assert [x.Narray for x in t1] == [3, 0, 2] * 2
+    assert [x.narray for x in t1] == [3, 0, 2] * 2
     assert [list(x.array_x) for x in t1] == [[1, 2, 3], [], [4, 5]] * 2
     assert [list(x.array_y) for x in t1] == [[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 2
     f1.Close()
@@ -429,13 +429,13 @@ def test_awkward_jagged_record_2(tmp_path):
         )
 
     with uproot.open(newfile) as fin:
-        assert fin["tree/N"].array().tolist() == [3, 0, 2] * 2
+        assert fin["tree/n"].array().tolist() == [3, 0, 2] * 2
         assert fin["tree/x"].array().tolist() == [[1, 2, 3], [], [4, 5]] * 2
         assert fin["tree/y"].array().tolist() == [[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 2
 
     f1 = ROOT.TFile(newfile)
     t1 = f1.Get("tree")
-    assert [x.N for x in t1] == [3, 0, 2] * 2
+    assert [x.n for x in t1] == [3, 0, 2] * 2
     assert [list(x.x) for x in t1] == [[1, 2, 3], [], [4, 5]] * 2
     assert [list(x.y) for x in t1] == [[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 2
     f1.Close()
