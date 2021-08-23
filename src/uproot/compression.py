@@ -86,8 +86,25 @@ class Compression(object):
             raise ValueError("Compression level must be between 0 and 9 (inclusive)")
         self._level = int(value)
 
+    def __eq__(self, other):
+        if isinstance(other, Compression):
+            return self.name == other.name and self.level == other.level
+        else:
+            return False
 
-class ZLIB(Compression):
+
+class _DecompressZLIB(object):
+    name = "ZLIB"
+    _2byte = b"ZL"
+    _method = b"\x08"
+
+    def decompress(self, data, uncompressed_bytes=None):
+        import zlib
+
+        return zlib.decompress(data)
+
+
+class ZLIB(Compression, _DecompressZLIB):
     """
     Args:
         level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
@@ -98,14 +115,27 @@ class ZLIB(Compression):
     Uproot uses ``zlib`` from the Python standard library.
     """
 
-    @classmethod
-    def decompress(cls, data, uncompressed_bytes=None):
+    def __init__(self, level):
+        _DecompressZLIB.__init__(self)
+        Compression.__init__(self, level)
+
+    def compress(self, data):
         import zlib
 
-        return zlib.decompress(data)
+        return zlib.compress(data, level=self._level)
 
 
-class LZMA(Compression):
+class _DecompressLZMA(object):
+    name = "LZMA"
+    _2byte = b"XZ"
+    _method = b"\x00"
+
+    def decompress(self, data, uncompressed_bytes=None):
+        lzma = uproot.extras.lzma()
+        return lzma.decompress(data)
+
+
+class LZMA(Compression, _DecompressLZMA):
     """
     Args:
         level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
@@ -118,13 +148,30 @@ class LZMA(Compression):
     In Python 2, ``backports.lzma`` must be installed.
     """
 
-    @classmethod
-    def decompress(cls, data, uncompressed_bytes=None):
+    def __init__(self, level):
+        _DecompressLZMA.__init__(self)
+        Compression.__init__(self, level)
+
+    def compress(self, data):
         lzma = uproot.extras.lzma()
-        return lzma.decompress(data)
+        return lzma.compress(data, preset=self._level)
 
 
-class LZ4(Compression):
+class _DecompressLZ4(object):
+    name = "LZ4"
+    _2byte = b"L4"
+    _method = b"\x01"
+
+    def decompress(self, data, uncompressed_bytes=None):
+        lz4_block = uproot.extras.lz4_block()
+        if uncompressed_bytes is None:
+            raise ValueError(
+                "lz4 block decompression requires the number of uncompressed bytes"
+            )
+        return lz4_block.decompress(data, uncompressed_size=uncompressed_bytes)
+
+
+class LZ4(Compression, _DecompressLZ4):
     """
     Args:
         level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
@@ -135,17 +182,35 @@ class LZ4(Compression):
     The ``zl4`` and ``xxhash`` libraries must be installed.
     """
 
-    @classmethod
-    def decompress(cls, data, uncompressed_bytes=None):
+    def __init__(self, level):
+        _DecompressLZ4.__init__(self)
+        Compression.__init__(self, level)
+
+    def compress(self, data):
         lz4_block = uproot.extras.lz4_block()
-        if uncompressed_bytes is None:
-            raise ValueError(
-                "lz4 block decompression requires the number of uncompressed bytes"
-            )
-        return lz4_block.decompress(data, uncompressed_size=uncompressed_bytes)
+        return lz4_block.compress(data, compression=self._level, store_size=False)
 
 
-class ZSTD(Compression):
+class _DecompressZSTD(object):
+    name = "ZSTD"
+    _2byte = b"ZS"
+    _method = b"\x01"
+
+    def __init__(self):
+        self._decompressor = None
+
+    @property
+    def decompressor(self):
+        if self._decompressor is None:
+            zstandard = uproot.extras.zstandard()
+            self._decompressor = zstandard.ZstdDecompressor()
+        return self._decompressor
+
+    def decompress(self, data, uncompressed_bytes=None):
+        return self.decompressor.decompress(data)
+
+
+class ZSTD(Compression, _DecompressZSTD):
     """
     Args:
         level (int, 0-9): Compression level: 0 is uncompressed, 1 is minimally
@@ -156,11 +221,20 @@ class ZSTD(Compression):
     The ``zstandard`` library must be installed.
     """
 
-    @classmethod
-    def decompress(cls, data, uncompressed_bytes=None):
-        zstandard = uproot.extras.zstandard()
-        dctx = zstandard.ZstdDecompressor()
-        return dctx.decompress(data)
+    def __init__(self, level):
+        _DecompressZSTD.__init__(self)
+        Compression.__init__(self, level)
+        self._compressor = None
+
+    @property
+    def compressor(self):
+        if self._compressor is None:
+            zstandard = uproot.extras.zstandard()
+            self._compressor = zstandard.ZstdCompressor(level=self._level)
+        return self._compressor
+
+    def compress(self, data):
+        return self.compressor.compress(data)
 
 
 algorithm_codes = {
@@ -170,6 +244,10 @@ algorithm_codes = {
     uproot.const.kZSTD: ZSTD,
 }
 
+_decompress_ZLIB = _DecompressZLIB()
+_decompress_LZMA = _DecompressLZMA()
+_decompress_LZ4 = _DecompressLZ4()
+_decompress_ZSTD = _DecompressZSTD()
 
 _decompress_header_format = struct.Struct("2sBBBBBBB")
 _decompress_checksum_format = struct.Struct(">Q")
@@ -227,16 +305,16 @@ def decompress(
         block_compressed_bytes = c1 + (c2 << 8) + (c3 << 16)
         block_uncompressed_bytes = u1 + (u2 << 8) + (u3 << 16)
 
-        if algo == b"ZL":
-            cls = ZLIB
+        if algo == _decompress_ZLIB._2byte:
+            decompressor = _decompress_ZLIB
             data = cursor.bytes(chunk, block_compressed_bytes, context)
 
-        elif algo == b"XZ":
-            cls = LZMA
+        elif algo == _decompress_LZMA._2byte:
+            decompressor = _decompress_LZMA
             data = cursor.bytes(chunk, block_compressed_bytes, context)
 
-        elif algo == b"L4":
-            cls = LZ4
+        elif algo == _decompress_LZ4._2byte:
+            decompressor = _decompress_LZ4
             block_compressed_bytes -= 8
             expected_checksum = cursor.field(
                 chunk, _decompress_checksum_format, context
@@ -253,8 +331,8 @@ in file {2}""".format(
                     )
                 )
 
-        elif algo == b"ZS":
-            cls = ZSTD
+        elif algo == _decompress_ZSTD._2byte:
+            decompressor = _decompress_ZSTD
             data = cursor.bytes(chunk, block_compressed_bytes, context)
 
         elif algo == b"CS":
@@ -275,9 +353,13 @@ in file {1}""".format(
             )
 
         if block_info is not None:
-            block_info.append((cls, block_compressed_bytes, block_uncompressed_bytes))
+            block_info.append(
+                (decompressor.name, block_compressed_bytes, block_uncompressed_bytes)
+            )
 
-        uncompressed_bytestring = cls.decompress(data, block_uncompressed_bytes)
+        uncompressed_bytestring = decompressor.decompress(
+            data, block_uncompressed_bytes
+        )
 
         if len(uncompressed_bytestring) != block_uncompressed_bytes:
             raise ValueError(
@@ -337,3 +419,51 @@ def hook_after_block(**kwargs):  # noqa: D103
 
 decompress.hook_before_block = hook_before_block
 decompress.hook_after_block = hook_after_block
+
+_3BYTE_MAX = 2 ** 24 - 1
+_4byte = struct.Struct("<I")  # compressed sizes are 3-byte little endian!
+
+
+def compress(data, compression):
+    """
+    FIXME: docstring
+    """
+    if compression is None or compression.level == 0:
+        return data
+
+    out = []
+    next = data
+
+    while len(next) > 0:
+        block, next = next[:_3BYTE_MAX], next[_3BYTE_MAX:]
+
+        compressed = compression.compress(block)
+        len_compressed = len(compressed)
+
+        if isinstance(compression, LZ4):
+            xxhash = uproot.extras.xxhash()
+            computed_checksum = xxhash.xxh64(compressed).intdigest()
+            checksum = _decompress_checksum_format.pack(computed_checksum)
+            len_compressed += 8
+        else:
+            checksum = b""
+
+        uncompressed_size = _4byte.pack(len(block))[:-1]
+        compressed_size = _4byte.pack(len_compressed)[:-1]
+
+        out.append(
+            compression._2byte
+            + compression._method
+            + compressed_size
+            + uncompressed_size
+            + checksum
+        )
+
+        out.append(compressed)
+
+    out = b"".join(out)
+
+    if len(out) < len(data):
+        return out
+    else:
+        return data

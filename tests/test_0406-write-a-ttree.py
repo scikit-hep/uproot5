@@ -379,10 +379,8 @@ def test_interface(tmp_path):
     (entries, edges) = np.histogram(branch2)
 
     with uproot.recreate(newfile) as fout:
-
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
         fout["tree"].extend({"branch1": branch1, "branch2": branch2})
-
         fout["hist"] = (entries, edges)
 
     with uproot.open(newfile) as fin:

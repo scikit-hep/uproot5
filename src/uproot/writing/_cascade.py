@@ -1899,15 +1899,9 @@ class FileHeader(CascadeLeaf):
 
     @compression.setter
     def compression(self, value):
-        if self._compression is None and value is None:
-            pass
-        elif (
-            self._compression is None
-            or self.value is None
-            or self._compression.code != value.code
-        ):
+        if self._compression != value:
             self._file_dirty = True
-            self._compression = value
+        self._compression = value
 
     @property
     def info_location(self):
@@ -1937,7 +1931,7 @@ class FileHeader(CascadeLeaf):
     def uuid(self, value):
         if self._uuid != value:
             self._file_dirty = True
-            self._uuid = value
+        self._uuid = value
 
     @property
     def version(self):

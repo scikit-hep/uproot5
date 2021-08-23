@@ -85,6 +85,40 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         return self
 
     @property
+    def compressed_bytes(self):
+        """
+        The number of compressed bytes in all ``TBaskets`` of all ``TBranches``
+        of this ``TTree``, including all the TKey headers (which are always
+        uncompressed).
+
+        This information is specified in the ``TTree`` metadata (``fZipBytes``)
+        and can be determined without reading any additional data.
+        """
+        return self.member("fZipBytes")
+
+    @property
+    def uncompressed_bytes(self):
+        """
+        The number of uncompressed bytes in all ``TBaskets`` of all ``TBranches``
+        of this ``TTree``, including all the TKey headers.
+
+        This information is specified in the ``TTree`` metadata (``fTotBytes``)
+        and can be determined without reading any additional data.
+        """
+        return self.member("fTotBytes")
+
+    @property
+    def compression_ratio(self):
+        """
+        The number of uncompressed bytes divided by the number of compressed
+        bytes for this ``TTree``.
+
+        See :ref:`uproot.behaviors.TTree.TTree.compressed_bytes` and
+        :ref:`uproot.behaviors.TTree.TTree.uncompressed_bytes`.
+        """
+        return float(self.uncompressed_bytes) / float(self.compressed_bytes)
+
+    @property
     def aliases(self):
         u"""
         The ``TTree``'s ``fAliases``, which are used as the ``aliases``

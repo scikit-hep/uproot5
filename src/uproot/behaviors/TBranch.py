@@ -2458,25 +2458,24 @@ in file {3}""".format(
     @property
     def compressed_bytes(self):
         """
-        The number of compressed bytes in all ``TBaskets`` of this ``TBranch``.
+        The number of compressed bytes in all ``TBaskets`` of this ``TBranch``,
+        including the TKey headers (which are always uncompressed).
 
-        The number of compressed bytes is specified in the ``TBranch`` metadata
-        and can be determined without reading any additional data. The
-        uncompressed bytes requires reading all of the ``TBasket`` ``TKeys`` at
-        least.
+        This information is specified in the ``TBranch`` metadata (``fZipBytes``)
+        and can be determined without reading any additional data.
         """
-        return sum(self.basket_compressed_bytes(i) for i in range(self.num_baskets))
+        return self.member("fZipBytes")
 
     @property
     def uncompressed_bytes(self):
         """
-        The number of uncompressed bytes in all ``TBaskets`` of this ``TBranch``.
+        The number of uncompressed bytes in all ``TBaskets`` of this ``TBranch``,
+        including the TKey headers.
 
-        The number of uncompressed bytes cannot be determined without reading a
-        ``TKey``, which are small, but may be slow for remote connections because
-        of the latency of round-trip requests.
+        This information is specified in the ``TBranch`` metadata (``fTotBytes``)
+        and can be determined without reading any additional data.
         """
-        return sum(self.basket_uncompressed_bytes(i) for i in range(self.num_baskets))
+        return self.member("fTotBytes")
 
     @property
     def compression_ratio(self):
@@ -2554,7 +2553,8 @@ in file {3}""".format(
 
     def basket_compressed_bytes(self, basket_num):
         """
-        The number of compressed bytes for the ``TBasket`` at ``basket_num``.
+        The number of compressed bytes for the ``TBasket`` at ``basket_num``,
+        including the TKey header.
 
         The number of compressed bytes is specified in the ``TBranch`` metadata
         and can be determined without reading any additional data. The
@@ -2576,7 +2576,8 @@ in file {3}""".format(
 
     def basket_uncompressed_bytes(self, basket_num):
         """
-        The number of uncompressed bytes for the ``TBasket`` at ``basket_num``.
+        The number of uncompressed bytes for the ``TBasket`` at ``basket_num``,
+        including the TKey header.
 
         The number of uncompressed bytes cannot be determined without reading a
         ``TKey``, which are small, but may be slow for remote connections because
