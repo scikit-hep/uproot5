@@ -12,6 +12,10 @@ import os
 import uuid
 
 try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
+try:
     import queue
 except ImportError:
     import Queue as queue
@@ -181,7 +185,12 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @compression.setter
     def compression(self, value):
-        self._cascading.fileheader.compression = value
+        if value is None or isinstance(value, uproot.compression.Compression):
+            self._cascading.fileheader.compression = value
+        else:
+            raise TypeError(
+                "compression must be None or a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0)"
+            )
 
     @property
     def fSeekFree(self):
@@ -1121,5 +1130,96 @@ class WritableTree(object):
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.sink.__exit__(exception_type, exception_value, traceback)
 
+    @property
+    def compression(self):
+        """
+        FIXME: docstring
+        """
+        out = {}
+        last = None
+        for datum in self._cascading._branch_data:
+            if datum["kind"] != "record":
+                last = out[datum["fName"]] = datum["compression"]
+        if all(x == last for x in out.values()):
+            return last
+        else:
+            return out
+
+    @compression.setter
+    def compression(self, value):
+        if value is None or isinstance(value, uproot.compression.Compression):
+            for datum in self._cascading._branch_data:
+                if datum["kind"] != "record":
+                    datum["compression"] = value
+
+        elif (
+            isinstance(value, Mapping)
+            and all(
+                uproot._util.isstr(k)
+                and (v is None or isinstance(v, uproot.compression.Compression))
+                for k, v in value.items()
+            )
+            and all(
+                datum["fName"] in value
+                for datum in self._cascading._branch_data
+                if datum["kind"] != "record"
+            )
+            and len(value)
+            == len(
+                [
+                    datum
+                    for datum in self._cascading._branch_data
+                    if datum["kind"] != "record"
+                ]
+            )
+        ):
+            for datum in self._cascading._branch_data:
+                if datum["kind"] != "record":
+                    datum["compression"] = value[datum["fName"]]
+
+        else:
+            raise TypeError(
+                "compression must be None, a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0), or a mapping of branch names to such objects"
+            )
+
+    def __getitem__(self, where):
+        for datum in self._cascading._branch_data:
+            if datum["kind"] != "record" and datum["fName"] == where:
+                return WritableBranch(self, datum)
+        else:
+            raise uproot.KeyInFileError(
+                where,
+                because="no such branch in writable tree",
+                file_path=self.file_path,
+            )
+
     def extend(self, data):
         self._cascading.extend(self._file, self._file.sink, data)
+
+
+class WritableBranch(object):
+    """
+    FIXME: docstring
+    """
+
+    def __init__(self, tree, datum):
+        self._tree = tree
+        self._datum = datum
+
+    def __repr__(self):
+        return "<WritableBranch {0} in {1} at 0x{2:012x}>".format(
+            repr(self._datum["fName"]), repr("/" + "/".join(self._tree.path)), id(self)
+        )
+
+    @property
+    def compression(self):
+        return self._datum["compression"]
+
+    @compression.setter
+    def compression(self, value):
+        if value is None or isinstance(value, uproot.compression.Compression):
+            self._datum["compression"] = value
+        else:
+            raise TypeError(
+                "compression must be None or a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0)"
+            )

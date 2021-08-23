@@ -581,7 +581,7 @@ class Tree(object):
                             big_endian.shape[1:],
                         )
                     )
-                tofill.append((branch_name, big_endian, None))
+                tofill.append((branch_name, datum["compression"], big_endian, None))
 
                 if datum["kind"] == "counter":
                     datum["tleaf_maximum_value"] = max(
@@ -672,21 +672,28 @@ class Tree(object):
                     )
                 big_endian_offsets = offsets.astype(">i4", copy=True)
 
-                tofill.append((branch_name, big_endian.reshape(-1), big_endian_offsets))
+                tofill.append(
+                    (
+                        branch_name,
+                        datum["compression"],
+                        big_endian.reshape(-1),
+                        big_endian_offsets,
+                    )
+                )
 
         # actually write baskets into the file
         uncompressed_bytes = 0
         compressed_bytes = 0
-        for branch_name, big_endian, big_endian_offsets in tofill:
+        for branch_name, compression, big_endian, big_endian_offsets in tofill:
             datum = self._branch_data[self._branch_lookup[branch_name]]
 
             if big_endian_offsets is None:
                 totbytes, zipbytes, location = self.write_np_basket(
-                    sink, branch_name, big_endian
+                    sink, branch_name, compression, big_endian
                 )
             else:
                 totbytes, zipbytes, location = self.write_jagged_basket(
-                    sink, branch_name, big_endian, big_endian_offsets
+                    sink, branch_name, compression, big_endian, big_endian_offsets
                 )
                 datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
             uncompressed_bytes += totbytes
@@ -1155,7 +1162,7 @@ class Tree(object):
                     ),
                 )
 
-    def write_np_basket(self, sink, branch_name, array):
+    def write_np_basket(self, sink, branch_name, compression, array):
         fClassName = uproot.serialization.string("TBasket")
         fName = uproot.serialization.string(branch_name)
         fTitle = uproot.serialization.string(self._name)
@@ -1169,14 +1176,15 @@ class Tree(object):
             + 1
         )
 
-        raw_array = uproot._util.tobytes(array)
         itemsize = array.dtype.itemsize
         for item in array.shape[1:]:
             itemsize *= item
 
-        fObjlen = len(raw_array)
+        uncompressed_data = uproot._util.tobytes(array)
+        compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
-        fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
+        fObjlen = len(uncompressed_data)
+        fNbytes = fKeylen + len(compressed_data)
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
@@ -1204,20 +1212,20 @@ class Tree(object):
                 32000,  # fBufferSize
                 itemsize,  # fNevBufSize
                 len(array),  # fNevBuf
-                fKeylen + len(raw_array),  # fLast
+                fKeylen + len(uncompressed_data),  # fLast
             )
         )
         out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
 
-        out.append(raw_array)
+        out.append(compressed_data)
 
         sink.write(location, b"".join(out))
         sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
 
-        return fNbytes, fNbytes, location
+        return fKeylen + fObjlen, fNbytes, location
 
-    def write_jagged_basket(self, sink, branch_name, array, offsets):
+    def write_jagged_basket(self, sink, branch_name, compression, array, offsets):
         fClassName = uproot.serialization.string("TBasket")
         fName = uproot.serialization.string(branch_name)
         fTitle = uproot.serialization.string(self._name)
@@ -1231,22 +1239,26 @@ class Tree(object):
             + 1
         )
 
-        raw_array = uproot._util.tobytes(array)
+        # offsets became a *copy* of the Awkward Array's offsets
+        # when it was converted to big-endian (astype with copy=True)
         itemsize = array.dtype.itemsize
         for item in array.shape[1:]:
             itemsize *= item
-
-        # offsets became a *copy* of the Awkward Array's offsets
-        # when it was converted to big-endian (astype with copy=True)
         offsets *= itemsize
         offsets += fKeylen
+
+        raw_array = uproot._util.tobytes(array)
+        raw_offsets = uproot._util.tobytes(offsets)
+        uncompressed_data = (
+            raw_array + _tbasket_offsets_length.pack(len(offsets)) + raw_offsets
+        )
+        compressed_data = uproot.compression.compress(uncompressed_data, compression)
+
         fLast = offsets[-1]
         offsets[-1] = 0
-        raw_offsets = uproot._util.tobytes(offsets)
 
-        fObjlen = len(raw_array) + 4 + len(raw_offsets)
-
-        fNbytes = fKeylen + fObjlen  # FIXME: no compression yet
+        fObjlen = len(uncompressed_data)
+        fNbytes = fKeylen + len(compressed_data)
 
         parent_location = self._directory.key.location  # FIXME: is this correct?
 
@@ -1279,15 +1291,13 @@ class Tree(object):
         )
         out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
 
-        out.append(raw_array)
-        out.append(_tbasket_offsets_length.pack(len(offsets)))
-        out.append(raw_offsets)
+        out.append(compressed_data)
 
         sink.write(location, b"".join(out))
         sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
 
-        return fNbytes, fNbytes, location
+        return fKeylen + fObjlen, fNbytes, location
 
 
 _tbasket_offsets_length = struct.Struct(">I")

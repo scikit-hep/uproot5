@@ -163,35 +163,23 @@ class Model_TBasket(uproot.model.Model):
     @property
     def uncompressed_bytes(self):
         """
-        The number of bytes for the uncompressed data, not including the header.
+        The number of bytes for the uncompressed data, including the TKey header.
 
         If the ``TBasket`` is uncompressed, this is equal to
         :ref:`uproot.models.TBasket.Model_TBasket.compressed_bytes`.
         """
-        if self.is_embedded:
-            if self._byte_offsets is None:
-                return self._data.nbytes
-            else:
-                return self._data.nbytes + 4 + self.num_entries * 4
-        else:
-            return self._members["fObjlen"]
+        return self._members["fKeylen"] + self._members["fObjlen"]
 
     @property
     def compressed_bytes(self):
         """
-        The number of bytes for the compressed data, not including the header
+        The number of bytes for the compressed data, including the TKey header
         (which is always uncompressed).
 
         If the ``TBasket`` is uncompressed, this is equal to
         :ref:`uproot.models.TBasket.Model_TBasket.uncompressed_bytes`.
         """
-        if self.is_embedded:
-            if self._byte_offsets is None:
-                return self._data.nbytes
-            else:
-                return self._data.nbytes + 4 + self.num_entries * 4
-        else:
-            return self._members["fNbytes"] - self._members["fKeylen"]
+        return self._members["fNbytes"]
 
     @property
     def block_compression_info(self):
@@ -285,27 +273,30 @@ class Model_TBasket(uproot.model.Model):
             self._data = cursor.bytes(chunk, self.border, context)
 
         else:
-            if self.compressed_bytes != self.uncompressed_bytes:
+            compressed_bytes = self._members["fNbytes"] - self._members["fKeylen"]
+            uncompressed_bytes = self._members["fObjlen"]
+
+            if compressed_bytes != uncompressed_bytes:
                 self._block_compression_info = []
                 uncompressed = uproot.compression.decompress(
                     chunk,
                     cursor,
                     {},
-                    self.compressed_bytes,
-                    self.uncompressed_bytes,
+                    compressed_bytes,
+                    uncompressed_bytes,
                     self._block_compression_info,
                 )
                 self._block_compression_info = tuple(self._block_compression_info)
                 self._raw_data = uncompressed.get(
                     0,
-                    self.uncompressed_bytes,
+                    uncompressed_bytes,
                     uproot.source.cursor.Cursor(0),
                     context,
                 )
             else:
-                self._raw_data = cursor.bytes(chunk, self.uncompressed_bytes, context)
+                self._raw_data = cursor.bytes(chunk, uncompressed_bytes, context)
 
-            if self.border != self.uncompressed_bytes:
+            if self.border != uncompressed_bytes:
                 self._data = self._raw_data[: self.border]
                 raw_byte_offsets = self._raw_data[self.border :].view(
                     _tbasket_offsets_dtype

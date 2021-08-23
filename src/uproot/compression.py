@@ -86,6 +86,12 @@ class Compression(object):
             raise ValueError("Compression level must be between 0 and 9 (inclusive)")
         self._level = int(value)
 
+    def __eq__(self, other):
+        if isinstance(other, Compression):
+            return self.name == other.name and self.level == other.level
+        else:
+            return False
+
 
 class _DecompressZLIB(object):
     name = "ZLIB"
@@ -432,22 +438,26 @@ def compress(data, compression):
         block, next = next[:_3BYTE_MAX], next[_3BYTE_MAX:]
 
         compressed = compression.compress(block)
+        len_compressed = len(compressed)
+
+        if isinstance(compression, LZ4):
+            xxhash = uproot.extras.xxhash()
+            computed_checksum = xxhash.xxh64(compressed).intdigest()
+            checksum = _decompress_checksum_format.pack(computed_checksum)
+            len_compressed += 8
+        else:
+            checksum = b""
 
         uncompressed_size = _4byte.pack(len(block))[:-1]
-        compressed_size = _4byte.pack(len(compressed))[:-1]
+        compressed_size = _4byte.pack(len_compressed)[:-1]
 
         out.append(
             compression._2byte
             + compression._method
             + compressed_size
             + uncompressed_size
+            + checksum
         )
-
-        if isinstance(compression, LZ4):
-            xxhash = uproot.extras.xxhash()
-            out.append(
-                _decompress_checksum_format.pack(xxhash.xxh64(block).intdigest())
-            )
 
         out.append(compressed)
 
