@@ -413,3 +413,87 @@ def test_multicompression_2(tmp_path):
     assert [x.branch1 for x in t3] == branch1.tolist()
     assert [x.branch2 for x in t3] == branch2.tolist()
     f3.Close()
+
+
+def test_multicompression_3(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
+
+    with uproot.recreate(newfile) as fout:
+        fout.mktree("tree", {"branch1": branch1.dtype, "branch2": branch2.dtype})
+        fout["tree"].compression = {"branch1": uproot.ZLIB(5), "branch2": None}
+        fout["tree"].compression = uproot.ZLIB(5)
+        fout["tree"].extend({"branch1": branch1, "branch2": branch2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
+        assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
+        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
+        assert fin["tree/branch2"].compression == uproot.ZLIB(5)
+        assert fin["tree/branch1"].compressed_bytes < 874
+        assert fin["tree/branch2"].compressed_bytes < 874
+        assert fin["tree/branch1"].uncompressed_bytes == 874
+        assert fin["tree/branch2"].uncompressed_bytes == 874
+
+    f3 = ROOT.TFile(newfile)
+    t3 = f3.Get("tree")
+    assert [x.branch1 for x in t3] == branch1.tolist()
+    assert [x.branch2 for x in t3] == branch2.tolist()
+    f3.Close()
+
+
+def test_multicompression_4(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
+
+    with uproot.recreate(newfile, compression=uproot.ZLIB(5)) as fout:
+        fout.mktree("tree", {"branch1": branch1.dtype, "branch2": branch2.dtype})
+        fout["tree"].extend({"branch1": branch1, "branch2": branch2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
+        assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
+        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
+        assert fin["tree/branch2"].compression == uproot.ZLIB(5)
+        assert fin["tree/branch1"].compressed_bytes < 874
+        assert fin["tree/branch2"].compressed_bytes < 874
+        assert fin["tree/branch1"].uncompressed_bytes == 874
+        assert fin["tree/branch2"].uncompressed_bytes == 874
+
+    f3 = ROOT.TFile(newfile)
+    t3 = f3.Get("tree")
+    assert [x.branch1 for x in t3] == branch1.tolist()
+    assert [x.branch2 for x in t3] == branch2.tolist()
+    f3.Close()
+
+
+def test_multicompression_5(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
+
+    with uproot.recreate(newfile, compression=uproot.ZLIB(5)) as fout:
+        fout.compression = None
+        fout.mktree("tree", {"branch1": branch1.dtype, "branch2": branch2.dtype})
+        fout["tree"].extend({"branch1": branch1, "branch2": branch2})
+
+    with uproot.open(newfile) as fin:
+        assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
+        assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
+        assert fin["tree/branch1"].compression is None
+        assert fin["tree/branch2"].compression is None
+        assert fin["tree/branch1"].compressed_bytes == 874
+        assert fin["tree/branch2"].compressed_bytes == 874
+        assert fin["tree/branch1"].uncompressed_bytes == 874
+        assert fin["tree/branch2"].uncompressed_bytes == 874
+
+    f3 = ROOT.TFile(newfile)
+    t3 = f3.Get("tree")
+    assert [x.branch1 for x in t3] == branch1.tolist()
+    assert [x.branch2 for x in t3] == branch2.tolist()
+    f3.Close()

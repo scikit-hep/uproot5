@@ -187,6 +187,8 @@ class WritableFile(uproot.reading.CommonFileMethods):
     def compression(self, value):
         if value is None or isinstance(value, uproot.compression.Compression):
             self._cascading.fileheader.compression = value
+            self._cascading.fileheader.write(self._sink)
+            self._sink.flush()
         else:
             raise TypeError(
                 "compression must be None or a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0)"
@@ -308,6 +310,14 @@ class WritableDirectory(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.sink.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def compression(self):
+        return self._file.compression
+
+    @compression.setter
+    def compression(self, value):
+        self._file.compression = value
 
     def __len__(self):
         return self._cascading.data.num_keys + sum(
