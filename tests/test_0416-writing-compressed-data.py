@@ -176,8 +176,8 @@ def test_histogram_ZSTD(tmp_path):
 def test_flattree_ZLIB(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = np.arange(10) * 10
-    branch2 = 1.1 * np.arange(10) * 10
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.ZLIB(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
@@ -199,8 +199,8 @@ def test_flattree_LZMA(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = np.arange(10) * 10
-    branch2 = 1.1 * np.arange(10) * 10
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.LZMA(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
@@ -222,8 +222,8 @@ def test_flattree_LZ4(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = np.arange(10)
-    branch2 = 1.1 * np.arange(10)
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.LZ4(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
@@ -245,8 +245,8 @@ def test_flattree_ZSTD(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = np.arange(10)
-    branch2 = 1.1 * np.arange(10)
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile, compression=uproot.ZSTD(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
@@ -361,8 +361,8 @@ def test_jaggedtree_ZSTD(tmp_path):
 def test_multicompression_1(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = np.arange(10) * 10
-    branch2 = 1.1 * np.arange(10) * 10
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile) as fout:
         fout.mktree("tree", {"branch1": branch1.dtype, "branch2": branch2.dtype})
@@ -375,10 +375,10 @@ def test_multicompression_1(tmp_path):
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
         assert fin["tree/branch1"].compression == uproot.ZLIB(5)
         assert fin["tree/branch2"].compression is None
-        assert fin["tree/branch1"].compressed_bytes == 116
-        assert fin["tree/branch2"].compressed_bytes == 154
-        assert fin["tree/branch1"].uncompressed_bytes == 154
-        assert fin["tree/branch2"].uncompressed_bytes == 154
+        assert fin["tree/branch1"].compressed_bytes < 874
+        assert fin["tree/branch2"].compressed_bytes == 874
+        assert fin["tree/branch1"].uncompressed_bytes == 874
+        assert fin["tree/branch2"].uncompressed_bytes == 874
 
     f3 = ROOT.TFile(newfile)
     t3 = f3.Get("tree")
@@ -390,8 +390,8 @@ def test_multicompression_1(tmp_path):
 def test_multicompression_2(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = np.arange(10) * 10
-    branch2 = 1.1 * np.arange(10) * 10
+    branch1 = np.arange(100)
+    branch2 = 1.1 * np.arange(100)
 
     with uproot.recreate(newfile) as fout:
         fout.mktree("tree", {"branch1": branch1.dtype, "branch2": branch2.dtype})
@@ -403,10 +403,10 @@ def test_multicompression_2(tmp_path):
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
         assert fin["tree/branch1"].compression == uproot.ZLIB(5)
         assert fin["tree/branch2"].compression is None
-        assert fin["tree/branch1"].compressed_bytes == 116
-        assert fin["tree/branch2"].compressed_bytes == 154
-        assert fin["tree/branch1"].uncompressed_bytes == 154
-        assert fin["tree/branch2"].uncompressed_bytes == 154
+        assert fin["tree/branch1"].compressed_bytes < 874
+        assert fin["tree/branch2"].compressed_bytes == 874
+        assert fin["tree/branch1"].uncompressed_bytes == 874
+        assert fin["tree/branch2"].uncompressed_bytes == 874
 
     f3 = ROOT.TFile(newfile)
     t3 = f3.Get("tree")
