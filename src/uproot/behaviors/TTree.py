@@ -102,7 +102,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         The number of uncompressed bytes in all ``TBaskets`` of all ``TBranches``
         of this ``TTree``, including all the TKey headers.
 
-        This information is specified in the ``TTree`` metadata (``fZipBytes``)
+        This information is specified in the ``TTree`` metadata (``fTotBytes``)
         and can be determined without reading any additional data.
         """
         return self.member("fTotBytes")
