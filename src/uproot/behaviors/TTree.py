@@ -111,7 +111,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     def compression_ratio(self):
         """
         The number of uncompressed bytes divided by the number of compressed
-        bytes for this ``TBranch``.
+        bytes for this ``TTree``.
 
         See :ref:`uproot.behaviors.TTree.TTree.compressed_bytes` and
         :ref:`uproot.behaviors.TTree.TTree.uncompressed_bytes`.
