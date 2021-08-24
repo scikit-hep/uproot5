@@ -16,8 +16,8 @@ import numpy
 
 import uproot
 
-
 _tdataset_format1 = struct.Struct(">I")
+
 
 class Model_TDataSet(uproot.model.Model):
     """
@@ -61,6 +61,8 @@ in file {1}""".format(
 
 
 from enum import Enum
+
+
 class EColumnType(Enum):
     kNAN = 0
     kFloat = 1
@@ -76,43 +78,47 @@ class EColumnType(Enum):
     kPtr = 11
     kBool = 12
 
+
 format = {
-    EColumnType.kFloat : struct.Struct(">f"),
-    EColumnType.kInt : struct.Struct(">i"),
-    EColumnType.kLong : struct.Struct(">q"),
-    EColumnType.kShort : struct.Struct(">h"),
-    EColumnType.kDouble : struct.Struct(">d"),
-    EColumnType.kUInt : struct.Struct(">I"),
-    EColumnType.kULong : struct.Struct(">Q"),
-    EColumnType.kUShort : struct.Struct(">H"),
-    EColumnType.kChar : struct.Struct("c"),
-    EColumnType.kBool : struct.Struct("?"),
+    EColumnType.kFloat: struct.Struct(">f"),
+    EColumnType.kInt: struct.Struct(">i"),
+    EColumnType.kLong: struct.Struct(">q"),
+    EColumnType.kShort: struct.Struct(">h"),
+    EColumnType.kDouble: struct.Struct(">d"),
+    EColumnType.kUInt: struct.Struct(">I"),
+    EColumnType.kULong: struct.Struct(">Q"),
+    EColumnType.kUShort: struct.Struct(">H"),
+    EColumnType.kChar: struct.Struct("c"),
+    EColumnType.kBool: struct.Struct("?"),
 }
 
 _dtype = {
-    EColumnType.kFloat : numpy.dtype(">f4"),
-    EColumnType.kInt : numpy.dtype(">i4"),
-    EColumnType.kLong : numpy.dtype(">i8"),
-    EColumnType.kShort : numpy.dtype(">i2"),
-    EColumnType.kDouble : numpy.dtype(">d"),
-    EColumnType.kUInt : numpy.dtype(">u4"),
-    EColumnType.kULong : numpy.dtype(">u8"),
-    EColumnType.kUShort : numpy.dtype(">u2"),
-    EColumnType.kChar : numpy.dtype("u1"),
-    EColumnType.kBool : numpy.dtype("?"),
+    EColumnType.kFloat: numpy.dtype(">f4"),
+    EColumnType.kInt: numpy.dtype(">i4"),
+    EColumnType.kLong: numpy.dtype(">i8"),
+    EColumnType.kShort: numpy.dtype(">i2"),
+    EColumnType.kDouble: numpy.dtype(">d"),
+    EColumnType.kUInt: numpy.dtype(">u4"),
+    EColumnType.kULong: numpy.dtype(">u8"),
+    EColumnType.kUShort: numpy.dtype(">u2"),
+    EColumnType.kChar: numpy.dtype("u1"),
+    EColumnType.kBool: numpy.dtype("?"),
 }
 
-tableDescriptor_st = namedtuple("tableDescriptor_st", [
-    "fColumnName",
-    "fIndexArray0",
-    "fIndexArray1",
-    "fIndexArray2",
-    "fOffset",
-    "fSize",
-    "fTypeSize",
-    "fDimensions",
-    "fType",
-])
+tableDescriptor_st = namedtuple(
+    "tableDescriptor_st",
+    [
+        "fColumnName",
+        "fIndexArray0",
+        "fIndexArray1",
+        "fIndexArray2",
+        "fOffset",
+        "fSize",
+        "fTypeSize",
+        "fDimensions",
+        "fType",
+    ],
+)
 
 
 _ttabledescriptor4_format1 = struct.Struct(">iqq")
@@ -134,7 +140,13 @@ in file {1}""".format(
 
         self._bases.append(
             Model_TDataSet.read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self.concrete,
             )
         )
 
@@ -145,11 +157,13 @@ in file {1}""".format(
         ) = cursor.fields(chunk, _ttabledescriptor4_format1, context)
 
         self._columns = []
-        for _ in range(self._members['fMaxIndex']):
-            column = tableDescriptor_st(*cursor.fields(chunk, struct.Struct(">32s3iiiiii"), context))
+        for _ in range(self._members["fMaxIndex"]):
+            column = tableDescriptor_st(
+                *cursor.fields(chunk, struct.Struct(">32s3iiiiii"), context)
+            )
             column = column._replace(
-                fColumnName=column.fColumnName.rstrip(b"\x00").decode('utf-8'),
-                fType=EColumnType(column.fType)
+                fColumnName=column.fColumnName.rstrip(b"\x00").decode("utf-8"),
+                fType=EColumnType(column.fType),
             )
             self._columns.append(column)
 
@@ -190,7 +204,13 @@ in file {1}""".format(
 
         self._bases.append(
             Model_TDataSet.read(
-                chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self.concrete,
             )
         )
 
@@ -200,22 +220,29 @@ in file {1}""".format(
             self._members["fSize"],
         ) = cursor.fields(chunk, _ttable4_format1, context)
 
-        assert sum([col.fSize for col in ioDescriptor._columns]) == self._members['fSize']
+        assert (
+            sum([col.fSize for col in ioDescriptor._columns]) == self._members["fSize"]
+        )
 
-        row = cursor.bytes(chunk, self._members["fSize"] * self._members["fMaxIndex"], context)
+        row = cursor.bytes(
+            chunk, self._members["fSize"] * self._members["fMaxIndex"], context
+        )
+
         def getFormat(col):
             dtype = _dtype[col.fType]
             if col.fDimensions:
                 dtype = (dtype, (col.fSize // _dtype[col.fType].itemsize,))
             return dtype
-        dtype = numpy.dtype(dict(
-            names=[col.fColumnName for col in ioDescriptor._columns],
-            formats=[getFormat(col) for col in ioDescriptor._columns],
-            offsets=[col.fOffset for col in ioDescriptor._columns],
-            itemsize=self._members["fSize"],
-        ))
-        self._data = numpy.frombuffer(row, dtype=dtype)
 
+        dtype = numpy.dtype(
+            dict(
+                names=[col.fColumnName for col in ioDescriptor._columns],
+                formats=[getFormat(col) for col in ioDescriptor._columns],
+                offsets=[col.fOffset for col in ioDescriptor._columns],
+                itemsize=self._members["fSize"],
+            )
+        )
+        self._data = numpy.frombuffer(row, dtype=dtype)
 
     base_names_versions = []
     member_names = ["fN", "fMaxIndex", "fSize"]
