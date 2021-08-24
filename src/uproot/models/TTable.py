@@ -9,8 +9,9 @@ functions.
 
 from __future__ import absolute_import
 
-import struct
 from collections import namedtuple
+from enum import Enum
+import struct
 
 import numpy
 
@@ -60,10 +61,10 @@ in file {1}""".format(
     class_code = None
 
 
-from enum import Enum
-
-
 class EColumnType(Enum):
+    """
+    An :doc:`Enum` of possible TTable column types.
+    """
     kNAN = 0
     kFloat = 1
     kInt = 2
