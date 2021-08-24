@@ -12,11 +12,13 @@ import numpy
 
 import uproot
 
+
 def pyroot_to_buffer(obj):
     import ROOT
 
     if pyroot_to_buffer.sizer is None:
-        ROOT.gInterpreter.Declare('''
+        ROOT.gInterpreter.Declare(
+            """
 class _Uproot_buffer_sizer : public TObject {
 public:
   size_t buffer;
@@ -41,13 +43,14 @@ char* _uproot_TMessage_reallocate(char* buffer, size_t newsize, size_t oldsize) 
 void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize) {
     message.SetBuffer(buffer, newsize, false, _uproot_TMessage_reallocate);
 }
-''')
+"""
+        )
         pyroot_to_buffer.sizer = ROOT._Uproot_buffer_sizer()
         pyroot_to_buffer.buffer = numpy.empty(1024, numpy.uint8)
 
         def reallocate():
             newbuf = numpy.empty(pyroot_to_buffer.sizer.newsize, numpy.uint8)
-            newbuf[:len(pyroot_to_buffer.buffer)] = pyroot_to_buffer.buffer
+            newbuf[: len(pyroot_to_buffer.buffer)] = pyroot_to_buffer.buffer
             pyroot_to_buffer.buffer = newbuf
 
         pyroot_to_buffer.reallocate = reallocate
@@ -57,7 +60,7 @@ void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize)
         message, pyroot_to_buffer.buffer, len(pyroot_to_buffer.buffer)
     )
     message.WriteObject(obj)
-    return pyroot_to_buffer.buffer[:message.Length()]
+    return pyroot_to_buffer.buffer[: message.Length()]
 
 
 pyroot_to_buffer.lock = threading.Lock()
