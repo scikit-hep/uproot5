@@ -14,6 +14,9 @@ import uproot
 
 
 def pyroot_to_buffer(obj):
+    """
+    FIXME: docstring
+    """
     import ROOT
 
     if pyroot_to_buffer.sizer is None:
@@ -74,6 +77,9 @@ class _ReadFromTMessage(object):
 
 
 def from_pyroot(obj):
+    """
+    FIXME: docstring
+    """
     with pyroot_to_buffer.lock:
         buffer = pyroot_to_buffer(obj)
         chunk = uproot.source.chunk.Chunk.wrap(None, buffer)
