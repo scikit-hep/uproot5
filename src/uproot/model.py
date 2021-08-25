@@ -1199,6 +1199,12 @@ class DispatchByVersion(object):
         if streamer is None:
             streamer = file.streamer_named(classname, "max")
 
+        if streamer is None and file.custom_classes is not None:
+            cls2 = uproot.classes.get(classname)
+            versioned_cls2 = cls2.class_of_version(version)
+            if versioned_cls2 is not None:
+                return versioned_cls2
+
         if streamer is not None:
             versioned_cls = streamer.new_class(file)
             versioned_cls.class_streamer = streamer

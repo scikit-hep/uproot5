@@ -1133,7 +1133,10 @@ in file {1}""".format(
 
         if cls is None:
             streamers = self.streamers_named(classname)
+            if len(streamers) == 0 and self._custom_classes is not None:
+                cls = uproot.classes.get(classname)
 
+        if cls is None:
             if len(streamers) == 0:
                 unknown_cls = uproot.unknown_classes.get(classname)
                 if unknown_cls is None:
