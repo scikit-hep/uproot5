@@ -75,6 +75,7 @@ pyroot_to_buffer.buffer = None
 class _GetStreamersOnce(object):
     _custom_classes = {}
     _streamers = {}
+    _streamer_dependencies = {}
 
     def __init__(self, obj):
         self._obj = obj
@@ -115,12 +116,9 @@ class _GetStreamersOnce(object):
     @property
     def streamers(self):
         tclass = self._obj.IsA()
-        if (
-            self._streamers.get(tclass.GetName(), {}).get(
-                tclass.GetClassVersion(), None
-            )
-            is None
-        ):
+        obj_classname = tclass.GetName()
+        obj_version = tclass.GetClassVersion()
+        if self._streamers.get(obj_classname, {}).get(obj_version, None) is None:
             import ROOT
 
             memfile = ROOT.TMemFile("noname.root", "new")
@@ -134,11 +132,14 @@ class _GetStreamersOnce(object):
 
             file = uproot.open(_GetStreamersOnce.ArrayFile(buffer))
 
+            dependencies = self._streamer_dependencies[obj_classname, obj_version] = []
+
             for classname, versions in file.file.streamers.items():
                 if classname not in self._streamers:
                     self._streamers[classname] = {}
                 for version, streamerinfo in versions.items():
                     self._streamers[classname][version] = streamerinfo
+                    dependencies.append(streamerinfo)
 
         return self._streamers
 
@@ -185,3 +186,34 @@ def from_pyroot(obj):
         return uproot.deserialization.read_object_any(
             chunk, cursor, {}, maybestreamers, detatched, None
         )
+
+
+class _PyROOTWritable(object):
+    def __init__(self, obj):
+        self._obj = obj
+
+    @property
+    def class_rawstreamers(self):
+        tclass = self._obj.IsA()
+        key = (tclass.GetName(), tclass.GetClassVersion())
+        return _GetStreamersOnce._streamer_dependencies.get(key, [])
+
+    @property
+    def classname(self):
+        tclass = self._obj.IsA()
+        return tclass.GetName()
+
+    @property
+    def fTitle(self):
+        return self._obj.GetTitle()
+
+    def serialize(self, name=None):
+        if name is None or name == self._obj.GetName():
+            obj = self._obj
+        else:
+            obj = self._obj.Clone(name)
+
+        with pyroot_to_buffer.lock:
+            data = pyroot_to_buffer(obj).tobytes()
+
+        return data[len(self.classname) + 9 :]
