@@ -22,3 +22,7 @@ def test_from_pyroot():
     pyroot_vec = ROOT.TLorentzVector(1, 2, 3, 4)
     uproot_vec = uproot.from_pyroot(pyroot_vec)
     assert isinstance(uproot_vec, uproot.Model)
+    assert uproot_vec.member("fP").member("fX") == 1
+    assert uproot_vec.member("fP").member("fY") == 2
+    assert uproot_vec.member("fP").member("fZ") == 3
+    assert uproot_vec.member("fE") == 4
