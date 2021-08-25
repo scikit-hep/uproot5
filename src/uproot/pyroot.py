@@ -7,6 +7,7 @@ FIXME: docstring
 from __future__ import absolute_import
 
 import threading
+import uuid
 
 import numpy
 
@@ -71,9 +72,104 @@ pyroot_to_buffer.sizer = None
 pyroot_to_buffer.buffer = None
 
 
-class _ReadFromTMessage(object):
+class _GetStreamersOnce(object):
+    _custom_classes = {}
+    _streamers = {}
+
+    def __init__(self, obj):
+        self._obj = obj
+
     def class_named(self, classname, version=None):
-        return uproot.class_named(classname, version=version)
+        return uproot.reading.ReadOnlyFile.class_named(self, classname, version)
+
+    def streamers_named(self, classname):
+        return uproot.reading.ReadOnlyFile.streamers_named(self, classname)
+
+    def streamer_named(self, classname, version):
+        return uproot.reading.ReadOnlyFile.streamer_named(
+            self, classname, version=version
+        )
+
+    @property
+    def custom_classes(self):
+        return self._custom_classes
+
+    @property
+    def file_path(self):
+        return None
+
+    class ArrayFile(object):
+        def __init__(self, array):
+            self.array = array
+            self.current = 0
+
+        def seek(self, position):
+            self.current = position
+
+        def read(self, num_bytes):
+            position = self.current + num_bytes
+            out = self.array[self.current : position]
+            self.current = position
+            return out
+
+    @property
+    def streamers(self):
+        tclass = self._obj.IsA()
+        if (
+            self._streamers.get(tclass.GetName(), {}).get(
+                tclass.GetClassVersion(), None
+            )
+            is None
+        ):
+            import ROOT
+
+            memfile = ROOT.TMemFile("noname.root", "new")
+            memfile.SetCompressionLevel(0)
+            memfile.WriteObjectAny(self._obj, self._obj.IsA(), "noname")
+            memfile.WriteStreamerInfo()
+            memfile.Close()
+
+            buffer = numpy.empty(memfile.GetEND(), numpy.uint8)
+            memfile.CopyTo(buffer, len(buffer))
+
+            file = uproot.open(_GetStreamersOnce.ArrayFile(buffer))
+
+            for classname, versions in file.file.streamers.items():
+                if classname not in self._streamers:
+                    self._streamers[classname] = {}
+                for version, streamerinfo in versions.items():
+                    self._streamers[classname][version] = streamerinfo
+
+        return self._streamers
+
+
+class _NoFile:
+    def __init__(self):
+        import ROOT
+
+        self._file_path = ""
+        self._options = {}
+        self._fVersion = ROOT.gROOT.GetVersionInt()
+        self._fBEGIN = 0
+        self._fEND = 0
+        self._fSeekFree = 0
+        self._fNbytesFree = 0
+        self._nfree = 0
+        self._fNbytesName = 0
+        self._fUnits = 0
+        self._fCompress = 0
+        self._fSeekInfo = 0
+        self._fNbytesInfo = 0
+        self._fUUID_version = 1
+        self._fUUID = uuid.UUID("00000000-0000-0000-0000-000000000000")
+
+    @property
+    def streamers(self):
+        return _GetStreamersOnce._streamers
+
+    @property
+    def custom_classes(self):
+        return _GetStreamersOnce._custom_classes
 
 
 def from_pyroot(obj):
@@ -84,7 +180,8 @@ def from_pyroot(obj):
         buffer = pyroot_to_buffer(obj)
         chunk = uproot.source.chunk.Chunk.wrap(None, buffer)
         cursor = uproot.source.cursor.Cursor(0)
-        fakefile = _ReadFromTMessage()
+        maybestreamers = _GetStreamersOnce(obj)
+        detatched = _NoFile()
         return uproot.deserialization.read_object_any(
-            chunk, cursor, {}, fakefile, fakefile, None
+            chunk, cursor, {}, maybestreamers, detatched, None
         )

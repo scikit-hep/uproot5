@@ -46,6 +46,10 @@ bootstrap_classnames = [
     "TObjArray",
     "TObjString",
 ]
+never_from_streamers = [
+    "TString",
+    "TList",
+]
 
 np_uint8 = numpy.dtype("u1")
 
@@ -286,7 +290,7 @@ def has_class_named(classname, version=None, custom_classes=None):
     Returns True if :doc:`uproot.model.class_named` would find a class,
     False if it would raise an exception.
     """
-    cls = maybe_custom_classes(custom_classes).get(classname)
+    cls = maybe_custom_classes(classname, custom_classes).get(classname)
     if cls is None:
         return False
 
@@ -296,12 +300,14 @@ def has_class_named(classname, version=None, custom_classes=None):
         return True
 
 
-def maybe_custom_classes(custom_classes):
+def maybe_custom_classes(classname, custom_classes):
     """
     Passes through ``custom_classes`` if it is not None; returns
     ``uproot.classes`` otherwise.
+
+    Some ``classnames`` are never custom (see ``uproot.model.never_from_streamers``).
     """
-    if custom_classes is None:
+    if custom_classes is None or classname in never_from_streamers:
         return uproot.classes
     else:
         return custom_classes

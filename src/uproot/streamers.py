@@ -341,9 +341,9 @@ class Model_TStreamerInfo(uproot.model.Model):
             )
         )
 
-        class_name = uproot.model.classname_encode(self.name, self.class_version)
+        classname = uproot.model.classname_encode(self.name, self.class_version)
         return "\n".join(
-            ["class {0}(uproot.model.VersionedModel):".format(class_name)]
+            ["class {0}(uproot.model.VersionedModel):".format(classname)]
             + read_members
             + read_member_n
             + strided_interpretation
@@ -363,10 +363,10 @@ class Model_TStreamerInfo(uproot.model.Model):
         class and version.
         """
         class_code = self.class_code()
-        class_name = uproot.model.classname_encode(self.name, self.class_version)
-        classes = uproot.model.maybe_custom_classes(file.custom_classes)
+        classname = uproot.model.classname_encode(self.name, self.class_version)
+        classes = uproot.model.maybe_custom_classes(classname, file.custom_classes)
         return uproot.deserialization.compile_class(
-            file, classes, class_code, class_name
+            file, classes, class_code, classname
         )
 
     @property
