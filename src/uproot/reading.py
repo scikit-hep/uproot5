@@ -242,7 +242,7 @@ class CommonFileMethods(object):
         """
         The dict of ``options`` originally passed to the file constructor.
 
-        If this is a :doc:`uproot.writing.WritableFile`, the ``options`` are a copy
+        If this is a :doc:`uproot.writing.writable.WritableFile`, the ``options`` are a copy
         of the current state of the options; change the properties (e.g.
         ``initial_directory_bytes``, ``uuid_function``) directly on the file object
         to make a lasting change. Modifying the copied dict does not change the
@@ -400,9 +400,8 @@ class CommonFileMethods(object):
     @property
     def fUnits(self):
         """
-        Number of bytes in the serialization of file seek points.
-
-        Usually 4 or 8.
+        Number of bytes in the serialization of file seek points, which can either
+        be 4 or 8.
         """
         return self._fUnits
 
@@ -1538,7 +1537,7 @@ class ReadOnlyDirectory(Mapping):
         """
         Creation date/time as a Python datetime.
 
-        :doc:`uproot.reading.ReadOnlyDirectory.fDatimeC` presents this in ROOT's
+        :ref:`uproot.reading.ReadOnlyDirectory.fDatimeC` presents this in ROOT's
         raw integer encoding.
         """
         return uproot._util.code_to_datetime(self._fDatimeC)
@@ -1548,7 +1547,7 @@ class ReadOnlyDirectory(Mapping):
         """
         Modification date/time as a Python datetime.
 
-        :doc:`uproot.reading.ReadOnlyDirectory.fDatimeM` presents this in ROOT's
+        :ref:`uproot.reading.ReadOnlyDirectory.fDatimeM` presents this in ROOT's
         raw integer encoding.
         """
         return uproot._util.code_to_datetime(self._fDatimeM)
@@ -2092,7 +2091,7 @@ class ReadOnlyDirectory(Mapping):
         """
         Raw integer creation date/time.
 
-        :doc:`uproot.reading.ReadOnlyDirectory.created_on` presents this time
+        :ref:`uproot.reading.ReadOnlyDirectory.created_on` presents this time
         as a Python datetime.
         """
         return self._fDatimeC
@@ -2102,7 +2101,7 @@ class ReadOnlyDirectory(Mapping):
         """
         Raw integer date/time of last modification.
 
-        :doc:`uproot.reading.ReadOnlyDirectory.modified_on` presents this time
+        :ref:`uproot.reading.ReadOnlyDirectory.modified_on` presents this time
         as a Python datetime.
         """
         return self._fDatimeM

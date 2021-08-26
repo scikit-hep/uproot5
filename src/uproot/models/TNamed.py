@@ -101,9 +101,9 @@ in file {1}""".format(
         if name is None:
             name = "untitled_{0}".format(Model_TNamed._untitled_count)
             Model_TNamed._untitled_count += 1
-        out.append(uproot.writing._cascade.serialize_string(name))
+        out.append(uproot.serialization.string(name))
 
-        out.append(uproot.writing._cascade.serialize_string(self._members["fTitle"]))
+        out.append(uproot.serialization.string(self._members["fTitle"]))
         if header:
             num_bytes = sum(len(x) for x in out[where:])
             version = 1

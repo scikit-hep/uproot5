@@ -1,7 +1,23 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This module provides an interface between Uproot and PyROOT.
+
+PyROOT is a *complete* set of ROOT bindings generated automatically from ROOT's
+reflected C++ code. Uproot is a pure Python reimplementation of ROOT I/O, with
+incomplete coverage of ROOT's suite of classes, but without an install-time
+dependence on ROOT.
+
+The only point of contact between Uproot and PyROOT is that they both recognize
+the same *serialized* form of ROOT objects, so conversions in this module proceed
+by serializing and deserializing the objects through a TMessage. This makes it
+possible to
+
+- convert any PyROOT object into its Uproot :doc:`uproot.model.Model` *if Uproot can read it* (which is possible for most classes)
+- convert any Uproot :doc:`uproot.model.Model` into the corresponding PyROOT object *if Uproot can write it* (which is considerably more constrained; mostly just histograms).
+
+This module also makes it possible for PyROOT objects to be added to ROOT files
+that Uproot is writing (regardless of whether Uproot could read such objects).
 """
 
 from __future__ import absolute_import
@@ -16,7 +32,14 @@ import uproot
 
 def to_pyroot(obj, name=None):
     """
-    FIXME: docstring
+    Args:
+        obj (:doc:`uproot.model.Model`): The Uproot model to convert.
+        name (str or None): A name for the new PyROOT object.
+
+    Converts an :doc:`uproot.model.Model` into a PyROOT object *if it is writable by Uproot*.
+    A minority of Uproot models are writable, mostly just histograms. Writability
+    is necessary for conversion to PyROOT because it is serialized through a
+    ROOT TMessage.
     """
     import ROOT
 
@@ -47,7 +70,23 @@ to_pyroot._Uproot_FromTMessage = None
 
 def pyroot_to_buffer(obj):
     """
-    FIXME: docstring
+    Args:
+        obj (PyROOT object inheriting from TObject): PyROOT object to serialize.
+
+    Serializes a PyROOT object into a NumPy array that is owned by this function.
+
+    This function is not thread-safe and the output buffer gets overwritten by
+    the next call to this function. It is essential for callers to copy the data
+    out of the returned buffer, perhaps by calling :doc:`uproot._util.tobytes` on
+    it or by assigning it into another array.
+
+    A lock is provided for safety: callers should always call this function within
+    the lock's context:
+
+    .. code-block:: python
+
+        with pyroot_to_buffer.lock:
+            return uproot._util.tobytes(pyroot_to_buffer(obj))
     """
     import ROOT
 
@@ -207,7 +246,14 @@ class _NoFile:
 
 def from_pyroot(obj):
     """
-    FIXME: docstring
+    Args:
+        obj (PyROOT object inheriting from TObject): PyROOT object to convert to
+            an Uproot :doc:`uproot.model.Model`.
+
+    Converts a PyROOT object into its corresponding Uproot :doc:`uproot.model.Model`
+    *if it is readable by Uproot*. Most ROOT classes are readable by Uproot. Readability
+    is necessary for conversion from PyROOT because the object is serialized through a
+    ROOT TMessage.
     """
     with pyroot_to_buffer.lock:
         buffer = pyroot_to_buffer(obj)
@@ -246,4 +292,6 @@ class _PyROOTWritable(object):
             obj = self._obj.Clone(name)
 
         with pyroot_to_buffer.lock:
-            return pyroot_to_buffer(obj)[len(self.classname) + 9 :].tobytes()
+            return uproot._util.tobytes(
+                pyroot_to_buffer(obj)[len(self.classname) + 9 :]
+            )

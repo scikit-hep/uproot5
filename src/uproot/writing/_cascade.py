@@ -1,7 +1,22 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This is an internal module defining the "cascading" file writer, which is like a
+reactive programming environment. A tree of data structures whose leaves are
+:doc:`uproot.writing._cascade.CascadeLeaf` each control a part of the ROOT file,
+and when a change is needed, they rewrite their section in an organized flow that
+updates pointers after updating content, so that pointers are always valid.
+
+Modifying data in a ROOT file has many non-local effects. For instance, if you add
+a new object, the space for that object must be claimed from the FreeSegments record
+at the end of the file, and the FreeSegments record may even need to be rewritten
+because it has to move to make space for the new object. Then a pointer must be added
+to a TDirectory to point to the new object, and that might exceed the space allocated
+for the TDirectory, in which case it, too needs to claim space from FreeSegments
+(possibly moving it). When a TDirectory moves, the pointer to it must be updated
+as well, which might be in another TDirectory if it's a subdirectory, etc. If these
+updates were not organized, redundant overwrites or even infinite cycles could occur.
+Thus, the structure of the cascade tree must be carefully laid out.
 """
 
 from __future__ import absolute_import
@@ -27,7 +42,22 @@ import uproot.writing._cascadetree
 
 class CascadeLeaf(object):
     """
-    FIXME: docstring
+    A leaf node in the tree of cascading, low-level writables.
+
+    Only leaf nodes actually write to the file. The general strategy is that non-leaf
+    nodes modify their children's attributes, and any modification causes a leaf's
+    ``file_dirty`` property to become True. When all variables are updated, the
+    writing process is triggered in a single pass, though a particular leaf will
+    only actually write if its ``file_dirty`` is True.
+
+    This is similar to the way that graphical elements update pixels in a graphical
+    user interface: each item owns a region of pixels and only updates those pixels
+    if they are marked as "dirty" (would change). The difference here is that a
+    file is one-dimensional. Leaves own a one-dimensional interval from ``location``
+    to ``location + num_bytes``. Some of these attributes might not be known (and
+    therefore set to None) before it is time to write.
+
+    See :doc:`uproot.writing._cascade` for a general overview.
     """
 
     def __init__(self, location, allocation):
@@ -79,7 +109,18 @@ class CascadeLeaf(object):
 
 class CascadeNode(object):
     """
-    FIXME: docstring
+    A non-leaf node in the tree of cascading, low-level writables.
+
+    Non-leaf nodes contain other nodes as attributes and propagate their information
+    downward toward the leaves, which do the actual writing.
+
+    A non-leaf node defines a ``dependencies`` order in which the writing is to take
+    place. The order is such that referents are written before references. If writing
+    is interrupted after writing a referent but before writing its references, the
+    resulting file will contain unreachable data, but all references would be valid,
+    providing some resilience against incomplete writes.
+
+    See :doc:`uproot.writing._cascade` for a general overview.
     """
 
     def __init__(self, *dependencies):
@@ -98,7 +139,12 @@ _string_size_format_4 = struct.Struct(">I")
 
 class String(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing a string, such
+    as a name, a title, or a class name.
+
+    If the string's byte representation (UTF-8) has fewer than 255 bytes, it
+    is preceded by a 1-byte length; otherwise, it is preceded by ``b'\xff'`` and a
+    4-byte length.
     """
 
     def __init__(self, location, string):
@@ -138,7 +184,15 @@ class String(CascadeLeaf):
 
 class Key(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing a ROOT TKey.
+
+    TKeys may have 4-byte pointers (small) or 8-byte pointers (big), which changes
+    their size depending on where their referents are located (before or after the
+    ``kStartBigFile`` boundary of 2 GB, not 2 GiB). Their size also depends on
+    three strings: name, title, and class name, but these do not change as
+    an object's position moves within the file.
+
+    See `ROOT TKey specification <https://github.com/root-project/root/blob/master/io/doc/TFile/datarecord.md>`__.
     """
 
     class_version = 4
@@ -421,7 +475,7 @@ _free_format_big = struct.Struct(">HQQ")
 
 class FreeSegmentsData(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for the FreeSegments record
     """
 
     class_version = 1
@@ -560,7 +614,25 @@ class FreeSegmentsData(CascadeLeaf):
 
 class FreeSegments(CascadeNode):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeNode` for writing a ROOT FreeSegments record.
+
+    The FreeSegments describes which parts of the ROOT file are unused by valid objects;
+    they may have been invalidated by moving/rewriting an object in a new space. Every
+    request for a new allocation or release of an old one goes through this object: the
+    disk I/O equivalent of malloc and free.
+
+    Since allocation and release usually change the size of the FreeSegments record,
+    forcing it to be rewritten and possibly requiring another allocation, our ``allocate``
+    method attempts to keep the FreeSegments record at the end of the file, where it can
+    grow freely without bumping into an object after it (which might itself invoke
+    another allocation!). The exceptions to this rule are when we are updating an
+    existing ROOT file, the FreeSegments record is not at the end of that file, and
+    updating it does not require more space.
+
+    This is different from ROOT's allocation algorithm, but compatible with it because
+    Uproot and ROOT can both accept a FreeSegments record at any position in a file.
+
+    See `ROOT TFree specification <https://github.com/root-project/root/blob/master/io/doc/TFile/freesegments.md>`__.
     """
 
     def __init__(self, key, data, fileheader):
@@ -733,7 +805,9 @@ _tlistheader_format = struct.Struct(">IHHIIBI")
 
 class TListHeader(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing a ROOT TList header.
+
+    A TList contains the TStreamerInfo records, so it must be writable in the cascade.
     """
 
     class_version = 5
@@ -786,7 +860,9 @@ class TListHeader(CascadeLeaf):
 
 class RawStreamerInfo(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing a TStreamerInfo record
+    defined by a raw byte stream, rather than a fully interpreted
+    :doc:`uproot.streamers.Model_TStreamerInfo`.
     """
 
     def __init__(self, location, serialization, name, class_version):
@@ -823,7 +899,11 @@ class RawStreamerInfo(CascadeLeaf):
 
 class RawTListOfStrings(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing a TList of ROOT TStrings.
+
+    Sometimes, a TList of TStrings is included in a TList of TStreamerInfo to specify
+    schema evolution rules as snippets of C++ code. Uproot can't interpret them, but it
+    does need to pass them on when updating a preexisting file.
     """
 
     def __init__(self, location, serialization):
@@ -846,7 +926,9 @@ class RawTListOfStrings(CascadeLeaf):
 
 class TListOfStreamers(CascadeNode):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeNode` for writing a TList of ROOT TStreamerInfos.
+
+    (And sometimes a nested TList of TStrings, see :doc:`uproot.writing._cascade.RawTListOfStrings`.)
     """
 
     def __init__(self, allocation, key, header, rawstreamers, rawstrings, freesegments):
@@ -1075,7 +1157,15 @@ class _ReadForUpdate(object):
 
 class DirectoryData(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing the data part of a ROOT
+    TDirectory.
+
+    TDirectory (and TFileDirectory) objects have two parts: a fixed size header that
+    does not move, providing a stable reference point, and a list of TKeys that would
+    need to be rewritten if it grows beyond its initial allocation. This "data" part
+    is the list of TKeys.
+
+    See `ROOT TDirectory specification <https://github.com/root-project/root/blob/master/io/doc/TFile/tdirectory.md>`__.
     """
 
     def __init__(self, location, allocation, keys):
@@ -1213,7 +1303,15 @@ class DirectoryData(CascadeLeaf):
 
 class DirectoryHeader(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing the header part of a ROOT
+    TDirectory.
+
+    TDirectory (and TFileDirectory) objects have two parts: a fixed size header that
+    does not move, providing a stable reference point, and a list of TKeys that would
+    need to be rewritten if it grows beyond its initial allocation. This is the "header"
+    part.
+
+    See `ROOT TDirectory specification <https://github.com/root-project/root/blob/master/io/doc/TFile/tdirectory.md>`__.
     """
 
     class_version = 5
@@ -1411,7 +1509,17 @@ class DirectoryHeader(CascadeLeaf):
 
 class Directory(CascadeNode):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeNode` for writing a TDirectory.
+
+    TDirectory (and TFileDirectory) objects have two parts: a fixed size header that
+    does not move, providing a stable reference point, and a list of TKeys that would
+    need to be rewritten if it grows beyond its initial allocation. This node manages
+    both parts.
+
+    See `ROOT TDirectory specification <https://github.com/root-project/root/blob/master/io/doc/TFile/tdirectory.md>`__.
+
+    This class is an abstract superclass; the concrete subclasses are
+    :doc:`uproot.writing._cascade.RootDirectory` and :doc:`uproot.writing._cascade.SubDirectory`.
     """
 
     def _reallocate_data(self, new_data_size):
@@ -1645,7 +1753,10 @@ class Directory(CascadeNode):
 
 class RootDirectory(Directory):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.Directory` for the root (first) directory in a file.
+
+    Subdirectories are :doc:`uproot.writing._cascade.SubDirectory` objects. Two classes
+    are needed because their structure is slightly different.
     """
 
     def __init__(self, key, name, title, header, datakey, data, freesegments):
@@ -1729,7 +1840,10 @@ class RootDirectory(Directory):
 
 class SubDirectory(Directory):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.Directory` for any subdirectories in a file.
+
+    The root (first) directory is a :doc:`uproot.writing._cascade.RootDirectory` object.
+    Two classes are needed because their structure is slightly different.
     """
 
     def __init__(self, key, header, datakey, data, parent, freesegments):
@@ -1798,7 +1912,18 @@ class SubDirectory(Directory):
 
 class FileHeader(CascadeLeaf):
     """
-    FIXME: docstring
+    A :doc:`uproot.writing._cascade.CascadeLeaf` for writing the header of a ROOT file.
+
+    The header is in the first 100 bytes of the ROOT file, starting with the magic
+    ``b'root'`` sequence. It contains a pointer to the root (first) directory (:doc:`uproot.writing._cascade.RootDirectory`),
+    the FreeSegments (:doc:`uproot.writing._cascade.FreeSegments`) record, the list of
+    TStreamerInfos (:doc:`uproot.writing._cascade.TListOfStreamers`), preferred compression
+    codec, UUID, and the version of ROOT used to make the file.
+
+    Uproot declares its ROOT version to be 6.24/00 and versions of all self-generated
+    classes are consistent with that version.
+
+    See `ROOT header specification <https://github.com/root-project/root/blob/master/io/doc/TFile/header.md>`__.
     """
 
     magic = b"root"
@@ -2061,7 +2186,9 @@ class FileHeader(CascadeLeaf):
 
 class CascadingFile(object):
     """
-    FIXME: docstring
+    An object that represents an entire file, the root of the cascading-node tree.
+
+    See :doc:`uproot.writing._cascade` for a general overview.
     """
 
     def __init__(
@@ -2116,7 +2243,7 @@ def create_empty(
     uuid_function,
 ):
     """
-    FIXME: docstring
+    Function to create an empty ROOT file, returning a :doc:`uproot.writing._cascade.CascadingFile`.
     """
     filename = sink.file_path
     if filename is None:
@@ -2235,7 +2362,10 @@ def create_empty(
 
 def update_existing(sink, initial_directory_bytes, uuid_function):
     """
-    FIXME: docstring
+    Function to derive a :doc:`uproot.writing._cascade.CascadingFile` from an existing
+    file.
+
+    This function *does* write to the file, overwriting the TStreamerInfo.
     """
     raw_bytes = sink.read(
         0,
@@ -2327,18 +2457,3 @@ def update_existing(sink, initial_directory_bytes, uuid_function):
     return CascadingFile(
         fileheader, streamers, freesegments, rootdirectory, tlist_of_streamers
     )
-
-
-_serialize_string_small = struct.Struct(">B")
-_serialize_string_big = struct.Struct(">BI")
-
-
-def serialize_string(string):
-    """
-    FIXME: docstring
-    """
-    as_bytes = string.encode(errors="surrogateescape")
-    if len(as_bytes) < 255:
-        return _serialize_string_small.pack(len(as_bytes)) + as_bytes
-    else:
-        return _serialize_string_big.pack(255, len(as_bytes)) + as_bytes

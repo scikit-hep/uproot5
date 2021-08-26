@@ -70,7 +70,7 @@ in file {1}""".format(
         for x in self._bases:
             x._serialize(out, True, None, tobject_flags)
 
-        out.append(uproot.writing._cascade.serialize_string(self))
+        out.append(uproot.serialization.string(self))
 
         if header:
             num_bytes = sum(len(x) for x in out[where:])

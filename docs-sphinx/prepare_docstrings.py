@@ -46,6 +46,7 @@ common = [
     "uproot.writing.writable.WritableFile",
     "uproot.writing.writable.WritableDirectory",
     "uproot.writing.writable.WritableTree",
+    "uproot.writing.writable.WritableBranch",
     "uproot.compression.ZLIB",
     "uproot.compression.LZMA",
     "uproot.compression.LZ4",
