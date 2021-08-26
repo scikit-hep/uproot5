@@ -75,7 +75,9 @@ main.write(
     :caption: Main Interface
     :hidden:
 
-{0}""".format("".join("    {0}\n".format(x) for x in common))
+{0}""".format(
+        "".join("    {0}\n".format(x) for x in common)
+    )
 )
 toctree = open("uproot.toctree", "w")
 toctree.write(
@@ -86,6 +88,7 @@ toctree.write(
 """
 )
 toctree2 = None
+
 
 def ensure(filename, content):
     overwrite = not os.path.exists(filename)
