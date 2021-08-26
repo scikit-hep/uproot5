@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/logo/logo-300px.png">
+<img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/logo/logo.svg" width="300px">
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)

@@ -58,7 +58,7 @@
 
     <br/>
 
-.. image:: https://github.com/scikit-hep/uproot4/raw/main/docs-img/logo/logo-300px.png
+.. image:: https://github.com/scikit-hep/uproot4/raw/main/docs-img/logo/logo.svg
     :width: 300px
     :alt: Uproot
     :target: https://github.com/scikit-hep/uproot4
