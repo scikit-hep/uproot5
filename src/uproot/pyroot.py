@@ -14,6 +14,37 @@ import numpy
 import uproot
 
 
+def to_pyroot(obj, name=None):
+    """
+    FIXME: docstring
+    """
+    import ROOT
+
+    if to_pyroot._Uproot_FromTMessage is None:
+        ROOT.gInterpreter.Declare(
+            """
+class _Uproot_FromTMessage : public TMessage {
+public:
+    _Uproot_FromTMessage(void* buffer, Int_t size): TMessage(buffer, size) { }
+};
+"""
+        )
+        to_pyroot._Uproot_FromTMessage = ROOT._Uproot_FromTMessage
+
+    serialized = uproot.serialization.serialize_object_any(obj, name)
+    buffer = numpy.empty(len(serialized) + 8, numpy.uint8)
+    buffer[:8].view(numpy.uint64)[0] = ROOT.kMESS_OBJECT
+    buffer[8:] = numpy.frombuffer(serialized, numpy.uint8)
+
+    message = to_pyroot._Uproot_FromTMessage(buffer, len(buffer))
+    out = message.ReadObject(message.GetClass())
+    message.DetachBuffer()
+    return out
+
+
+to_pyroot._Uproot_FromTMessage = None
+
+
 def pyroot_to_buffer(obj):
     """
     FIXME: docstring
@@ -60,6 +91,7 @@ void _uproot_TMessage_SetBuffer(TMessage& message, void* buffer, UInt_t newsize)
         pyroot_to_buffer.reallocate = reallocate
 
     message = ROOT.TMessage(ROOT.kMESS_OBJECT)
+    message.SetCompressionLevel(0)
     ROOT._uproot_TMessage_SetBuffer(
         message, pyroot_to_buffer.buffer, len(pyroot_to_buffer.buffer)
     )
@@ -214,6 +246,4 @@ class _PyROOTWritable(object):
             obj = self._obj.Clone(name)
 
         with pyroot_to_buffer.lock:
-            data = pyroot_to_buffer(obj).tobytes()
-
-        return data[len(self.classname) + 9 :]
+            return pyroot_to_buffer(obj)[len(self.classname) + 9 :].tobytes()

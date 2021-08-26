@@ -1052,6 +1052,12 @@ class Model(object):
         self._serialize(out, True, name, numpy.uint32(0x00000000))
         return b"".join(out)
 
+    def to_pyroot(self, name=None):
+        """
+        FIXME: docstring
+        """
+        return uproot.pyroot.to_pyroot(self, name=name)
+
 
 class VersionedModel(Model):
     """

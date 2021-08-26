@@ -83,3 +83,20 @@ def test_write_pyroot_TH1F(tmp_path):
     assert pyroot_hist.GetBinLowEdge(1) == pytest.approx(-5)
     assert pyroot_hist.GetBinWidth(1) == pytest.approx(1)
     f.Close()
+
+
+def test_convert_to_pyroot():
+    uproot_tobjstring = uproot.to_writable("hello")
+    uproot_histogram = uproot.to_writable(
+        (np.array([3, 2, 1.0]), np.array([10, 15, 20, 25.0]))
+    )
+
+    pyroot_tobjstring = uproot_tobjstring.to_pyroot()
+    pyroot_histogram = uproot_histogram.to_pyroot()
+
+    assert str(pyroot_tobjstring) == "hello"
+    assert pyroot_histogram.GetBinContent(1) == 3
+    assert pyroot_histogram.GetBinContent(2) == 2
+    assert pyroot_histogram.GetBinContent(3) == 1
+    assert pyroot_histogram.GetBinLowEdge(1) == pytest.approx(10)
+    assert pyroot_histogram.GetBinWidth(1) == pytest.approx(5)
