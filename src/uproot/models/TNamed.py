@@ -83,6 +83,8 @@ in file {1}""".format(
 
     writable = True
 
+    _untitled_count = 0
+
     def _serialize(self, out, header, name, tobject_flags):
         import uproot.writing._cascade
 
@@ -93,10 +95,14 @@ in file {1}""".format(
             name,
             tobject_flags | uproot.const.kIsOnHeap | uproot.const.kNotDeleted,
         )
+
         if name is None:
-            out.append(uproot.writing._cascade.serialize_string(self._members["fName"]))
-        else:
-            out.append(uproot.writing._cascade.serialize_string(name))
+            name = self._members["fName"]
+        if name is None:
+            name = "untitled_{0}".format(Model_TNamed._untitled_count)
+            Model_TNamed._untitled_count += 1
+        out.append(uproot.writing._cascade.serialize_string(name))
+
         out.append(uproot.writing._cascade.serialize_string(self._members["fTitle"]))
         if header:
             num_bytes = sum(len(x) for x in out[where:])

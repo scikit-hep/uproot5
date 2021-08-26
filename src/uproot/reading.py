@@ -901,7 +901,9 @@ in file {1}""".format(
                     streamer_chunk=streamer_chunk,
                 )
 
-                classes = uproot.model.maybe_custom_classes(self._custom_classes)
+                classes = uproot.model.maybe_custom_classes(
+                    "TList", self._custom_classes
+                )
                 tlist = classes["TList"].read(
                     streamer_chunk, streamer_cursor, {}, self, self.detached, None
                 )
@@ -1128,12 +1130,15 @@ in file {1}""".format(
         global ``uproot.classes``.
         """
         classname = uproot.model.classname_regularize(classname)
-        classes = uproot.model.maybe_custom_classes(self._custom_classes)
+        classes = uproot.model.maybe_custom_classes(classname, self._custom_classes)
         cls = classes.get(classname)
 
         if cls is None:
             streamers = self.streamers_named(classname)
+            if len(streamers) == 0 and self._custom_classes is not None:
+                cls = uproot.classes.get(classname)
 
+        if cls is None:
             if len(streamers) == 0:
                 unknown_cls = uproot.unknown_classes.get(classname)
                 if unknown_cls is None:

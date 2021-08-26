@@ -46,6 +46,10 @@ bootstrap_classnames = [
     "TObjArray",
     "TObjString",
 ]
+never_from_streamers = [
+    "TString",
+    "TList",
+]
 
 np_uint8 = numpy.dtype("u1")
 
@@ -286,7 +290,7 @@ def has_class_named(classname, version=None, custom_classes=None):
     Returns True if :doc:`uproot.model.class_named` would find a class,
     False if it would raise an exception.
     """
-    cls = maybe_custom_classes(custom_classes).get(classname)
+    cls = maybe_custom_classes(classname, custom_classes).get(classname)
     if cls is None:
         return False
 
@@ -296,12 +300,14 @@ def has_class_named(classname, version=None, custom_classes=None):
         return True
 
 
-def maybe_custom_classes(custom_classes):
+def maybe_custom_classes(classname, custom_classes):
     """
     Passes through ``custom_classes`` if it is not None; returns
     ``uproot.classes`` otherwise.
+
+    Some ``classnames`` are never custom (see ``uproot.model.never_from_streamers``).
     """
-    if custom_classes is None:
+    if custom_classes is None or classname in never_from_streamers:
         return uproot.classes
     else:
         return custom_classes
@@ -1046,6 +1052,12 @@ class Model(object):
         self._serialize(out, True, name, numpy.uint32(0x00000000))
         return b"".join(out)
 
+    def to_pyroot(self, name=None):
+        """
+        FIXME: docstring
+        """
+        return uproot.pyroot.to_pyroot(self, name=name)
+
 
 class VersionedModel(Model):
     """
@@ -1198,6 +1210,12 @@ class DispatchByVersion(object):
 
         if streamer is None:
             streamer = file.streamer_named(classname, "max")
+
+        if streamer is None and file.custom_classes is not None:
+            cls2 = uproot.classes.get(classname)
+            versioned_cls2 = cls2.class_of_version(version)
+            if versioned_cls2 is not None:
+                return versioned_cls2
 
         if streamer is not None:
             versioned_cls = streamer.new_class(file)

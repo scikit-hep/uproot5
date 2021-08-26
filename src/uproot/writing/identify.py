@@ -14,6 +14,7 @@ except ImportError:
 import numpy
 
 import uproot.compression
+import uproot.pyroot
 import uproot.writing._cascadetree
 
 
@@ -172,6 +173,18 @@ def to_writable(obj):
         raise NotImplementedError(
             "this ROOT type is not writable: {0}".format(obj.classname)
         )
+
+    elif type(obj).__module__ == "cppyy.gbl":
+        import ROOT
+
+        if isinstance(obj, ROOT.TObject):
+            return uproot.pyroot._PyROOTWritable(obj)
+        else:
+            raise TypeError(
+                "only instances of TObject can be written to files, not {0}".format(
+                    type(obj).__name__
+                )
+            )
 
     elif uproot._util.isstr(obj):
         return to_TObjString(obj)
