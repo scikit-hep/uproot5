@@ -12,32 +12,32 @@
 [![Documentation](https://img.shields.io/badge/docs-online-success)](https://uproot.readthedocs.io/)
 [![Gitter](https://img.shields.io/badge/chat-online-success)](https://gitter.im/Scikit-HEP/uproot)
 
-Uproot is a reader and a writer of the [ROOT file format](https://root.cern/) using only Python and Numpy. Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, Uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
+Uproot is a library for reading and writing [ROOT files](https://root.cern/) in pure Python and NumPy.
 
-<p align="center"><img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/abstraction-layers.png" width="700px"></p>
+Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, Uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
+
+<p align="center"><img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/abstraction-layers.svg" width="700px"></p>
 
 # Installation
 
-Uproot can be installed [from PyPI](https://pypi.org/project/uproot) using pip ([Awkward Array](https://pypi.org/project/awkward) is optional but highly recommended):
+Uproot can be installed [from PyPI](https://pypi.org/project/uproot) using pip. [Awkward Array](https://pypi.org/project/awkward) is optional but highly recommended:
 
 ```bash
 pip install uproot awkward
 ```
 
-Uproot is also available using [conda](https://anaconda.org/conda-forge/uproot) (so is [Awkward Array](https://anaconda.org/conda-forge/awkward), which conda installs automatically):
+Uproot is also available using [conda](https://anaconda.org/conda-forge/uproot) (in this case, [Awkward Array](https://anaconda.org/conda-forge/awkward) is automatically installed):
 
 ```bash
 conda install -c conda-forge uproot
 ```
 
-If you have already added `conda-forge` as a channel, the `-c conda-forge` is unnecessary. Adding the channel is recommended because it ensures that all of your packages use compatible versions:
+If you have already added `conda-forge` as a channel, the `-c conda-forge` is unnecessary. Adding the channel is recommended because it ensures that all of your packages use compatible versions (see [conda-forge docs](https://conda-forge.org/docs/user/introduction.html#how-can-i-install-packages-from-conda-forge)):
 
 ```bash
 conda config --add channels conda-forge
 conda update --all
 ```
-
-**Note:** if you need to _write_ ROOT files, you'll need to use the deprecated [uproot3](https://github.com/scikit-hep/uproot) for now. This feature is coming to the new version soon.
 
 ## Getting help
 

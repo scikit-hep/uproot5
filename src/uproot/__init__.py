@@ -120,6 +120,7 @@ from uproot.writing import recreate
 from uproot.writing import update
 from uproot.writing import WritableFile
 from uproot.writing import WritableDirectory
+from uproot.writing import WritableTree
 from uproot.writing import to_writable
 
 import uproot.models.TObject

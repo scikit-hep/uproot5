@@ -17,7 +17,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "Uproot"
-copyright = "2020, Jim Pivarski"
+copyright = "2017-2021, Jim Pivarski"
 author = "Jim Pivarski"
 
 # -- General configuration ---------------------------------------------------

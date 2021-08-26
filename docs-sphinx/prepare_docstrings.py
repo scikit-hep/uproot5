@@ -12,6 +12,7 @@ import uproot
 order = [
     "uproot",
     "uproot.reading",
+    "uproot.writing",
     "uproot.behaviors",
     "uproot.behavior",
     "uproot.model",
@@ -19,12 +20,47 @@ order = [
     "uproot.cache",
     "uproot.compression",
     "uproot.deserialization",
+    "uproot.serialization",
+    "uproot.pyroot",
     "uproot.source",
+    "uproot.sink",
     "uproot.interpretation",
     "uproot.containers",
     "uproot.language",
     "uproot.models",
     "uproot.exceptions",
+]
+
+common = [
+    "uproot.reading.open",
+    "uproot.behaviors.TBranch.iterate",
+    "uproot.behaviors.TBranch.concatenate",
+    "uproot.behaviors.TBranch.lazy",
+    "uproot.writing.writable.create",
+    "uproot.writing.writable.recreate",
+    "uproot.writing.writable.update",
+    "uproot.reading.ReadOnlyFile",
+    "uproot.reading.ReadOnlyDirectory",
+    "uproot.behaviors.TTree.TTree",
+    "uproot.behaviors.TBranch.TBranch",
+    "uproot.writing.writable.WritableFile",
+    "uproot.writing.writable.WritableDirectory",
+    "uproot.writing.writable.WritableTree",
+    "uproot.compression.ZLIB",
+    "uproot.compression.LZMA",
+    "uproot.compression.LZ4",
+    "uproot.compression.ZSTD",
+    "uproot.cache.LRUCache",
+    "uproot.cache.LRUArrayCache",
+    "uproot.model.Model",
+    "uproot.pyroot.from_pyroot",
+    "uproot.source.object.ObjectSource",
+    "uproot.source.file.MemmapSource",
+    "uproot.source.file.MultithreadedFileSource",
+    "uproot.source.http.HTTPSource",
+    "uproot.source.http.MultithreadedHTTPSource",
+    "uproot.source.xrootd.XRootDSource",
+    "uproot.source.xrootd.MultithreadedXRootDSource",
 ]
 
 latest_commit = (
@@ -33,16 +69,23 @@ latest_commit = (
     .strip()
 )
 
+main = open("main.toctree", "w")
+main.write(
+    """.. toctree::
+    :caption: Main Interface
+    :hidden:
+
+{0}""".format("".join("    {0}\n".format(x) for x in common))
+)
 toctree = open("uproot.toctree", "w")
 toctree.write(
     """.. toctree::
-    :caption: Reference
+    :caption: Detailed Reference
     :hidden:
 
 """
 )
 toctree2 = None
-
 
 def ensure(filename, content):
     overwrite = not os.path.exists(filename)
@@ -56,6 +99,9 @@ def ensure(filename, content):
 
 
 def handle_module(modulename, module):
+    if any(x.startswith("_") for x in modulename.split(".")):
+        return
+
     content = """{0}
 {1}
 
@@ -65,9 +111,9 @@ def handle_module(modulename, module):
     )
     ensure(modulename + ".rst", content)
     if toctree2 is None:
-        toctree.write("    " + modulename + "\n")
+        toctree.write("    " + modulename + " (module) <" + modulename + ">\n")
     else:
-        toctree2.write("    " + modulename + "\n")
+        toctree2.write("    " + modulename + " (module) <" + modulename + ">\n")
 
     if modulename != "uproot" and all(
         not x.startswith("_") for x in modulename.split(".")
@@ -209,7 +255,8 @@ Defined in {2} on {3}.
 
     ensure(classname + ".rst", content)
     if upfront or toctree2 is None:
-        toctree.write("    " + classname + "\n")
+        if classname not in common:
+            toctree.write("    " + classname + "\n")
         toctree2.write("    " + classname + " <" + classname + ">\n")
     else:
         toctree2.write("    " + classname + "\n")
@@ -243,7 +290,8 @@ Defined in {2} on {3}.
     )
     ensure(functionname + ".rst", content)
     if upfront or toctree2 is None:
-        toctree.write("    " + functionname + "\n")
+        if functionname not in common:
+            toctree.write("    " + functionname + "\n")
         toctree2.write("    " + functionname + " <" + functionname + ">\n")
     else:
         toctree2.write("    " + functionname + "\n")
