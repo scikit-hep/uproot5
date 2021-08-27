@@ -1,7 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This module defines a physical layer for writing local files.
+
+Defines a :doc:`uproot.sink.file.FileSink`, which can wrap a Python file-like object
+that has ``read``, ``write``, ``seek``, ``tell``, and ``flush`` methods and has a
+context manager (Python's ``with`` statement) to ensure that files are properly closed
+(although files are flushed after every object-write).
 """
 
 from __future__ import absolute_import
@@ -12,13 +17,27 @@ import os
 
 class FileSink(object):
     """
-    FIXME: docstring
+    Args:
+        file_path (str): The filesystem path of the file to open.
+
+    An object that can write (and read) files on a local filesystem, which either opens
+    a new file from a ``file_path`` in ``"r+b"`` mode or wraps a file-like object
+    with the :ref:`uproot.sink.file.FileSink.from_object` constructor.
+
+    With the ``file_path``-based constructor, the file is opened upon first read or
+    write.
     """
 
     @classmethod
     def from_object(cls, obj):
         """
-        FIXME: docstring
+        Args:
+            obj (file-like object): An object with ``read``, ``write``, ``seek``,
+                ``tell``, and ``flush`` methods.
+
+        Creates a :doc:`uproot.sink.file.FileSink` from a file-like object, such
+        as ``io.BytesIO``. The object must be readable, writable, and seekable
+        with ``"r+b"`` mode semantics.
         """
         if (
             callable(getattr(obj, "read", None))
@@ -47,7 +66,7 @@ class FileSink(object):
     @property
     def file_path(self):
         """
-        FIXME: docstring
+        A path to the file, which is None if constructed with a file-like object.
         """
         return self._file_path
 
@@ -69,14 +88,14 @@ class FileSink(object):
 
     def tell(self):
         """
-        FIXME: docstring
+        Calls the file or file-like object's ``tell`` method.
         """
         self._ensure()
         return self._file.tell()
 
     def flush(self):
         """
-        FIXME: docstring
+        Calls the file or file-like object's ``flush`` method.
         """
         self._ensure()
         return self._file.flush()
@@ -84,16 +103,18 @@ class FileSink(object):
     @property
     def closed(self):
         """
-        FIXME: docstring
+        True if the file is closed; False otherwise.
         """
         return self._file is None
 
     def close(self):
         """
-        FIXME: docstring
+        Closes the file (calls ``close`` if it has such a method) and sets it to
+        None so that closure is permanent.
         """
         if self._file is not None:
-            self._file.close()
+            if hasattr(self._file, "close"):
+                self._file.close()
             self._file = None
 
     def __enter__(self):
@@ -109,32 +130,24 @@ class FileSink(object):
         else:
             return "\n\nin path: " + self._file_path
 
-    @property
-    def position(self):
-        """
-        FIXME: docstring
-        """
-        self._ensure()
-        return self._file.tell()
-
     def write(self, location, serialization):
         """
-        FIXME: docstring
+        Args:
+            location (int): Position in the file to write.
+            serialization (bytes or NumPy array): Data to write to the file.
+
+        Writes data to the file at a specific location, calling the file-like
+        object's ``seek`` and ``write`` methods.
         """
         self._ensure()
         self._file.seek(location)
         self._file.write(serialization)
 
-    def current_length(self):
-        tmp = self._file.tell()
-        self._file.seek(0, os.SEEK_END)
-        out = self._file.tell()
-        self._file.seek(tmp)
-        return out
-
     def set_file_length(self, length):
         """
-        FIXME: docstring
+        Sets the file's length to ``length``, truncating with zeros if necessary.
+
+        Calls ``seek``, ``tell``, and possibly ``write``.
         """
         self._ensure()
         # self._file.truncate(length)
@@ -146,7 +159,16 @@ class FileSink(object):
 
     def read(self, location, num_bytes, insist=True):
         """
-        FIXME: docstring
+        Args:
+            location (int): Position in the file to read.
+            num_bytes (int): Number of bytes to read from the file.
+            insist (bool): If True, raise an OSError if ``num_bytes`` cannot be read
+                from the file. Otherwise, this function may return data with fewer
+                than ``num_bytes``.
+
+        Returns a bytes object of data from the file by calling the file-like
+        object's ``seek`` and ``read`` methods. The ``insist`` parameter can be
+        used to ensure that the output has the requested length.
         """
         self._ensure()
         self._file.seek(location)

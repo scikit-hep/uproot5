@@ -242,7 +242,7 @@ class CommonFileMethods(object):
         """
         The dict of ``options`` originally passed to the file constructor.
 
-        If this is a :doc:`uproot.writing.WritableFile`, the ``options`` are a copy
+        If this is a :doc:`uproot.writing.writable.WritableFile`, the ``options`` are a copy
         of the current state of the options; change the properties (e.g.
         ``initial_directory_bytes``, ``uuid_function``) directly on the file object
         to make a lasting change. Modifying the copied dict does not change the
@@ -400,9 +400,8 @@ class CommonFileMethods(object):
     @property
     def fUnits(self):
         """
-        Number of bytes in the serialization of file seek points.
-
-        Usually 4 or 8.
+        Number of bytes in the serialization of file seek points, which can either
+        be 4 or 8.
         """
         return self._fUnits
 
@@ -1534,6 +1533,26 @@ class ReadOnlyDirectory(Mapping):
         self._file.source.__exit__(exception_type, exception_value, traceback)
 
     @property
+    def created_on(self):
+        """
+        Creation date/time as a Python datetime.
+
+        :ref:`uproot.reading.ReadOnlyDirectory.fDatimeC` presents this in ROOT's
+        raw integer encoding.
+        """
+        return uproot._util.code_to_datetime(self._fDatimeC)
+
+    @property
+    def modified_on(self):
+        """
+        Modification date/time as a Python datetime.
+
+        :ref:`uproot.reading.ReadOnlyDirectory.fDatimeM` presents this in ROOT's
+        raw integer encoding.
+        """
+        return uproot._util.code_to_datetime(self._fDatimeM)
+
+    @property
     def cursor(self):
         """
         A :doc:`uproot.source.cursor.Cursor` pointing to the seek point in the
@@ -2072,7 +2091,8 @@ class ReadOnlyDirectory(Mapping):
         """
         Raw integer creation date/time.
 
-        FIXME: include a property that converts this to a Python ``datetime``.
+        :ref:`uproot.reading.ReadOnlyDirectory.created_on` presents this time
+        as a Python datetime.
         """
         return self._fDatimeC
 
@@ -2081,7 +2101,8 @@ class ReadOnlyDirectory(Mapping):
         """
         Raw integer date/time of last modification.
 
-        FIXME: include a property that converts this to a Python ``datetime``.
+        :ref:`uproot.reading.ReadOnlyDirectory.modified_on` presents this time
+        as a Python datetime.
         """
         return self._fDatimeM
 
@@ -2399,6 +2420,16 @@ class ReadOnlyKey(object):
         """
         return self._fNbytes - self._fKeylen
 
+    @property
+    def created_on(self):
+        """
+        Creation date/time as a Python datetime.
+
+        :doc:`uproot.reading.ReadOnlyKey.fDatime` presents this in ROOT's
+        raw integer encoding.
+        """
+        return uproot._util.code_to_datetime(self._fDatime)
+
     def get(self):
         """
         Returns the object pointed to by this ``TKey``, decompressing it if
@@ -2545,7 +2576,8 @@ class ReadOnlyKey(object):
         """
         Raw integer date/time when the object was written.
 
-        FIXME: include a property that converts this to a Python ``datetime``.
+        :doc:`uproot.reading.ReadOnlyKey.created_on` presents this as a Python
+        datetime.
         """
         return self._fDatime
 

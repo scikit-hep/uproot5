@@ -1,7 +1,19 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This module defines a series of rules for identifying Python objects that can be written
+to ROOT files and preparing them for writing.
+
+The :doc:`uproot.writing.identify.add_to_directory` function is the most general in that
+it recognizes data that could be converted into a TTree or into a normal object. It also
+adds the data to a :doc:`uproot.writing.writable.WritableDirectory`.
+
+The :doc:`uproot.writing.identify.to_writable` function recognizes all static objects
+(everything but TTrees) as a series of rules, returning a :doc:`uproot.model.Model`
+but not adding it to any :doc:`uproot.writing.writable.WritableDirectory`.
+
+The (many) other functions in this module construct writable :doc:`uproot.model.Model`
+objects from Python builtins and other writable models.
 """
 
 from __future__ import absolute_import
@@ -20,7 +32,24 @@ import uproot.writing._cascadetree
 
 def add_to_directory(obj, name, directory, streamers):
     """
-    FIXME: docstring
+    Args:
+        obj: Object to attempt to recognize as something that can be written to a
+            ROOT file.
+        name (str or None): Name to assign to the writable object.
+        directory (:doc:`uproot.writing.writable.WritableDirectory`): Directory to
+            add the object to, if successful.
+        streamers (list of :doc:`uproot.streamers.Model_TStreamerInfo`, :doc:`uproot.writable._cascade.RawStreamerInfo`, or constructor arguments for the latter): Collects
+            streamers to add to the output file so that all objects in it can be read
+            in any version of ROOT.
+
+    This function performs two tasks: it attempts to recognize ``obj`` as a writable
+    object and, if successful, writes it to a ``directory``.
+
+    It can recognize dynamic TTrees and static objects such as histograms. For only
+    static objects, without the additional concern of writing the resulting object
+    in a ``directory``, see :doc:`uproot.writing.identify.to_writable`.
+
+    Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
     is_ttree = False
     module_name = type(obj).__module__
@@ -151,7 +180,15 @@ def add_to_directory(obj, name, directory, streamers):
 
 def to_writable(obj):
     """
-    FIXME: docstring
+    Converts arbitrary Python object ``obj`` to a writable :doc:`uproot.model.Model`
+    if possible; raises ``TypeError`` otherwise.
+
+    This function is a series of rules that defines what Python data can or cannot be
+    written to ROOT files. For instance, a 2-tuple of NumPy arrays with the appropriate
+    dimensions is recognized as a histogram, since NumPy's ``np.histogram`` function
+    produces such objects.
+
+    This series of rules is expected to grow with time.
     """
     if (
         isinstance(obj, (tuple, list))
@@ -560,7 +597,7 @@ def to_TAxis(
         fTimeDisplay (bool): On/off displaying time values instead of numerics.
         fTimeFormat (str or :doc:`uproot.models.TString.Model_TString`): Date&time format, ex: 09/12/99 12:34:00.
         fLabels (None or :doc:`uproot.models.THashList.Model_THashList`): List of labels.
-        fModLabs (None or :doc:`uproot.models.List.Model_TList`): List of modified labels.
+        fModLabs (None or :doc:`uproot.models.TList.Model_TList`): List of modified labels.
         fNdivisions (int): Number of divisions(10000*n3 + 100*n2 + n1). (https://root.cern.ch/doc/master/classTAttAxis.html)
         fAxisColor (int): Color of the line axis.
         fLabelColor (int): Color of labels.

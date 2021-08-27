@@ -1,7 +1,13 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This module defines all of the classes and functions that are needed for writing ROOT
+files. Uproot has a strong asymmetry between reading and writing, with writing defined
+as a distinct task.
+
+The :doc:`uproot.writing.writable` submodule defines the entry-points for user
+interaction: :doc:`uproot.writing.writable.create`, :doc:`uproot.writing.writable.recreate`,
+and :doc:`uproot.writing.writable.update`.
 """
 
 from __future__ import absolute_import
@@ -19,6 +25,7 @@ from uproot.writing.identify import (
     to_writable,
 )
 from uproot.writing.writable import (
+    WritableBranch,
     WritableDirectory,
     WritableFile,
     WritableTree,
@@ -41,6 +48,7 @@ __all__ = [
     "WritableDirectory",
     "WritableFile",
     "WritableTree",
+    "WritableBranch",
     "create",
     "recreate",
     "update",

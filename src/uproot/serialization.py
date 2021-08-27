@@ -1,7 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This module defines low-level methods for serialization, including :doc:`uproot.serialization.string`,
+which prepends string lengths following ROOT's convention, :doc:`uproot.serialization.numbytes_version`,
+the opposite of :doc:`uproot.deserialization.numbytes_version`, and :doc:`uproot.serialization.serialize_object_any`,
+the opposite of :doc:`uproot.deserialization.read_object_any`.
 """
 
 from __future__ import absolute_import
@@ -16,7 +19,11 @@ import uproot.deserialization
 
 def string(data):
     """
-    FIXME: docstring
+    Converts a Python string into bytes, ready to be written to a file.
+
+    If the string's byte representation (UTF-8) has fewer than 255 bytes, it
+    is preceded by a 1-byte length; otherwise, it is preceded by ``b'\xff'`` and a
+    4-byte length.
     """
     bytestring = data.encode(errors="surrogateescape")
     length = len(bytestring)
@@ -28,7 +35,17 @@ def string(data):
 
 def numbytes_version(num_bytes, version):
     """
-    FIXME: docstring
+    Args:
+        num_bytes (int): The first value to include in the header.
+        version (int): The second value to include in the header.
+
+    Returns a 6-byte bytes object consisting of ``num_bytes`` and ``version``,
+    with the appropriate offset (+2) and ``uproot.const.kByteCountMask`` applied
+    to ``num_bytes``.
+
+    This function is the opposite of :doc:`uproot.deserialization.numbytes_version`,
+    but only generates one case (whereas the deserializer must handle special flags
+    in the ``num_bytes``).
     """
     return uproot.deserialization._numbytes_version_1.pack(
         numpy.uint32(num_bytes + 2) | uproot.const.kByteCountMask, version
@@ -56,7 +73,11 @@ def _serialize_object_any(out, model, name):
 
 def serialize_object_any(model, name=None):
     """
-    FIXME: docstring
+    Args:
+        model (:doc:`uproot.model.Model`): Object to serialize.
+        name (str or None): If not None, overrides the object's name.
+
+    Serializes the object in a form that could be read by :doc:`uproot.deserialization.read_object_any`.
     """
     out = []
     _serialize_object_any(out, model, name)

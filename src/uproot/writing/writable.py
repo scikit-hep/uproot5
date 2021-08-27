@@ -1,7 +1,19 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This module defines high-level functions and objects for file-writing.
+
+The :doc:`uproot.writing.writable.create`, :doc:`uproot.writing.writable.recreate`, and :doc:`uproot.writing.writable.update`
+functions open files for writing, overwriting, or updating, in a way that is similar
+to :doc:`uproot.reading.open`.
+
+The :doc:`uproot.writing.writable.WritableFile`, :doc:`uproot.writing.writable.WritableDirectory`,
+:doc:`uproot.writing.writable.WritableTree`, and :doc:`uproot.writing.writable.WritableBranch`
+classes are writable versions of :doc:`uproot.reading.ReadOnlyFile`, :doc:`uproot.reading.ReadOnlyDirectory`,
+:doc:`uproot.behaviors.TTree.TTree`, and :doc:`uproot.behaviors.TBranch.TBranch`.
+
+There is no feature parity between writable and readable versions of each of these
+types. Writing and reading are considered separate projects with different capabilities.
 """
 
 from __future__ import absolute_import
@@ -9,12 +21,13 @@ from __future__ import absolute_import
 import datetime
 import itertools
 import os
+import sys
 import uuid
 
 try:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, MutableMapping
 except ImportError:
-    from collections import Mapping
+    from collections import Mapping, MutableMapping
 try:
     import queue
 except ImportError:
@@ -33,7 +46,25 @@ from uproot._util import no_filter, no_rename
 
 def create(file_path, **options):
     """
-    FIXME: docstring
+    Args:
+        file_path (str or ``pathlib.Path``): The filesystem path of the file to open.
+        compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
+            and level for new objects added to the file. Can be updated after creating
+            the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
+        options: See below.
+
+    Opens a local file for writing. Like ROOT's ``"CREATE"`` option, this function
+    raises an error (``OSError``) if a file already exists at ``file_path``.
+
+    Returns a :doc:`uproot.writing.writable.WritableDirectory`.
+
+    Options (type; default):
+
+    * initial_directory_bytes (int; 256)
+    * initial_streamers_bytes (int; 1024)
+    * uuid_function (callable; ``uuid.uuid1``)
+
+    See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
     file_path = uproot._util.regularize_path(file_path)
     if uproot._util.isstr(file_path):
@@ -47,7 +78,25 @@ def create(file_path, **options):
 
 def recreate(file_path, **options):
     """
-    FIXME: docstring
+    Args:
+        file_path (str or ``pathlib.Path``): The filesystem path of the file to open.
+        compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
+            and level for new objects added to the file. Can be updated after creating
+            the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
+        options: See below.
+
+    Opens a local file for writing. Like ROOT's ``"RECREATE"`` option, this function
+    overwrites any file that already exists at ``file_path``.
+
+    Returns a :doc:`uproot.writing.writable.WritableDirectory`.
+
+    Options (type; default):
+
+    * initial_directory_bytes (int; 256)
+    * initial_streamers_bytes (int; 1024)
+    * uuid_function (callable; ``uuid.uuid1``)
+
+    See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
     file_path = uproot._util.regularize_path(file_path)
     if uproot._util.isstr(file_path):
@@ -88,7 +137,22 @@ def recreate(file_path, **options):
 
 def update(file_path, **options):
     """
-    FIXME: docstring
+    Args:
+        file_path (str or ``pathlib.Path``): The filesystem path of the file to open.
+        options: See below.
+
+    Opens a local file for writing. Like ROOT's ``"UPDATE"`` option, this function
+    expects a file to already exist at ``file_path`` and opens it so that new data
+    can be added to it or individual objects may be deleted from it.
+
+    Returns a :doc:`uproot.writing.writable.WritableDirectory`.
+
+    Options (type; default):
+
+    * initial_directory_bytes (int; 256)
+    * uuid_function (callable; ``uuid.uuid1``)
+
+    See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
     file_path = uproot._util.regularize_path(file_path)
     if uproot._util.isstr(file_path):
@@ -128,7 +192,19 @@ update.defaults = create.defaults
 
 class WritableFile(uproot.reading.CommonFileMethods):
     """
-    FIXME: docstring
+    Args:
+        sink (:doc:`uproot.sink.file.FileSink`): The physical layer for file-writing.
+        cascading (:doc:`uproot.writing._cascade.CascadingFile`): The low-level file
+            object.
+        initial_directory_bytes (int): Number of bytes to allocate for new directories,
+            so that TKeys can be added to them without immediately needing to rewrite
+            the block.
+        uuid_function (zero-argument callable returning a ``uuid.UUID``): Function to
+            create the file's UUID and/or any directory's UUID.
+
+    Handle to a writable ROOT file, usually created by :doc:`uproot.writing.writable.create`,
+    :doc:`uproot.writing.writable.recreate`, or :doc:`uproot.writing.writable.update` and
+    accessed through a :doc:`uproot.writing.writable.WritableDirectory`.
     """
 
     def __init__(self, sink, cascading, initial_directory_bytes, uuid_function):
@@ -150,10 +226,18 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def sink(self):
+        """
+        Returns a :doc:`uproot.sink.file.FileSink`, the physical layer for writing
+        (and sometimes reading) data.
+        """
         return self._sink
 
     @property
     def initial_directory_bytes(self):
+        """
+        Number of bytes to allocate for new directories, so that TKeys can be added
+        to them without immediately needing to rewrite the block.
+        """
         return self._initial_directory_bytes
 
     @initial_directory_bytes.setter
@@ -162,6 +246,9 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def uuid_function(self):
+        """
+        The function used to create the file's UUID and/or any directory's UUID.
+        """
         return self._uuid_function
 
     @uuid_function.setter
@@ -170,6 +257,11 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def options(self):
+        """
+        The options passed to :doc:`uproot.writing.writable.create`,
+        :doc:`uproot.writing.writable.recreate`, or :doc:`uproot.writing.writable.update`
+        when opening this file.
+        """
         return {
             "initial_directory_bytes": self._initial_directory_bytes,
             "uuid_function": self._uuid_function,
@@ -177,10 +269,22 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def is_64bit(self):
+        """
+        True if the file has 8-byte pointers in its header; False if the pointers are 4-byte.
+        """
         return self._cascading.fileheader.big
 
     @property
     def compression(self):
+        """
+        Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
+        for new objects added to the file.
+
+        This property can be changed, which allows you to write different objects
+        with different compression settings.
+
+        See also :ref:`uproot.writing.writable.WritableFile.fCompress`.
+        """
         return self._cascading.fileheader.compression
 
     @compression.setter
@@ -196,22 +300,47 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def fSeekFree(self):
+        """
+        The seek point (int) to the ``TFree`` data, for managing empty spaces
+        in a ROOT file (filesystem-like fragmentation).
+        """
         return self._cascading.fileheader.free_location
 
     @property
     def fNbytesFree(self):
+        """
+        The number of bytes in the ``TFree`` data, for managing empty spaces
+        in a ROOT file (filesystem-like fragmentation).
+        """
         return self._cascading.fileheader.free_num_bytes
 
     @property
     def nfree(self):
+        """
+        The number of objects in the ``TFree`` data, for managing empty spaces
+        in a ROOT file (filesystem-like fragmentation).
+        """
         return self._cascading.fileheader.free_num_slices + 1
 
     @property
     def fUnits(self):
+        """
+        Number of bytes in the serialization of file seek points, which can either
+        be 4 or 8.
+        """
         return 8 if self._cascading.fileheader.big else 4
 
     @property
     def fCompress(self):
+        """
+        Compression algorithm and level (as an integer code) for new objects added
+        to the file.
+
+        This property can be changed, which allows you to write different objects
+        with different compression settings.
+
+        See also :ref:`uproot.writing.writable.WritableFile.compression`.
+        """
         if self._cascading.fileheader.compression is None:
             return uproot.compression.ZLIB(0).code
         else:
@@ -219,28 +348,71 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     @property
     def fSeekInfo(self):
+        """
+        The seek point (int) to the ``TStreamerInfo`` data, where
+        TStreamerInfo records are located.
+        """
         return self._cascading.fileheader.info_location
 
     @property
     def fNbytesInfo(self):
+        """
+        The number of bytes in the ``TStreamerInfo`` data, where
+        TStreamerInfo records are located.
+        """
         return self._cascading.fileheader.info_num_bytes
 
     @property
     def uuid(self):
+        """
+        The unique identifier (UUID) of the ROOT file expressed as a Python
+        ``uuid.UUID`` object.
+        """
         return self._cascading.fileheader.uuid
 
     @property
     def root_directory(self):
+        """
+        The root (first) directory in the file as a :doc:`uproot.writing.writable.WritableDirectory`.
+        """
         return WritableDirectory((), self, self._cascading.rootdirectory)
 
     def update_streamers(self, streamers):
+        """
+        Overwrite the TStreamerInfo in this file with a new list of :doc:`uproot.streamers.Model_TStreamerInfo`
+        or :doc:`uproot.writable._cascade.RawStreamerInfo`.
+        """
         self._cascading.streamers.update_streamers(self.sink, streamers)
 
+    @property
+    def file_path(self):
+        """
+        Filesystem path of the open file, or None if using a file-like object.
+        """
+        return self._file_path
+
     def close(self):
+        """
+        Explicitly close the file.
+
+        (Files can also be closed with the Python ``with`` statement, as context
+        managers.)
+
+        After closing, objects cannot be read from or written to the file.
+        """
         self._sink.close()
 
     @property
     def closed(self):
+        """
+        True if the file has been closed; False otherwise.
+
+        The file may have been closed explicitly with
+        :ref:`uproot.writing.writable.WritableFile.close` or implicitly in the Python
+        ``with`` statement, as a context manager.
+
+        After closing, objects cannot be read from or written to the file.
+        """
         return self._sink.closed
 
     def __enter__(self):
@@ -265,9 +437,73 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._trees[newloc] = tree
 
 
-class WritableDirectory(object):
+class WritableDirectory(MutableMapping):
     """
-    FIXME: docstring
+    Args:
+        path (tuple of str): Path of directory names to this subdirectory; ``()`` for
+            the root (first) directory.
+        file (:doc:`uproot.writing.writable.WritableFile`): Handle to the file in
+            which this directory can be found.
+        cascading (:doc:`uproot.writing._cascade.CascadingDirectory`): The low-level
+            directory object.
+
+    Represents a writable ``TDirectory`` from a ROOT file.
+
+    Be careful not to confuse :doc:`uproot.writing.writable.WritableFile` and
+    :doc:`uproot.writing.writable.WritableDirectory`: files are for modifying global
+    information such as the TStreamerInfo and FreeSegments, whereas directories
+    are for data in local hierarchies.
+
+    A :doc:`uproot.writing.writable.WritableDirectory` is a Python ``MutableMapping``,
+    which uses square bracket syntax to read, write, and delete objects:
+
+    .. code-block:: python
+
+        my_directory["histogram"]
+        my_directory["histogram"] = np.histogram(...)
+        del my_directory["histogram"]
+
+    Objects in ROOT files also have "cycle numbers," which allow multiple versions
+    of an object to exist with the same name. A cycle number may be specified after
+    a semicolon for *reading* and *deleting* only:
+
+    .. code-block:: python
+
+        my_directory["histogram;2"]
+        del my_directory["histogram;2"]
+
+    When *writing*, cycle numbers are generated to avoid overwriting previous objects:
+
+    .. code-block:: python
+
+        my_directory["histogram"] = np.histogram(...)   # creates a new histogram
+        my_directory["histogram"] = np.histogram(...)   # creates another histogram
+
+    Note that this is unlike a Python ``MutableMapping``, which would overwrite the
+    object in the second assignment. However, it is the way ROOT I/O works; use ``del``
+    to remove unwanted versions of objects.
+
+    Any types of objects that can be read from a :doc:`uproot.reading.ReadOnlyDirectory`
+    can be read from a :doc:`uproot.writing.writable.WritableDirectory` *except TTrees*. A
+    TTree can only be read from a :doc:`uproot.reading.ReadOnlyDirectory` if it was
+    created in this open file handle, and then it returns a :doc:`uproot.writing.writable.WritableTree`
+    instead of the :doc:`uproot.behaviors.TTree.TTree` that you would get from a
+    :doc:`uproot.reading.ReadOnlyDirectory`. Readable TTrees and writable TTrees are
+    distinct, with separate sets of features.
+
+    Note that subdirectories can be created by assigning to path names that include
+    slashes:
+
+    .. code-block:: python
+
+        my_directory["subdir1/subdir2/new_object"] = new_object
+
+    Subdirectories created this way will never be empty; to make an empty directory,
+    use :ref:`uproot.writing.writable.WritableDirectory.mkdir`.
+
+    Similarly, non-empty TTrees can be created by assignment (see :doc:`uproot.writing.writable.WritableTree`
+    for recognized TTree-like data), but empty TTrees require the
+    :ref:`uproot.writing.writable.WritableDirectory.mktree` method.
     """
 
     def __init__(self, path, file, cascading):
@@ -283,25 +519,57 @@ class WritableDirectory(object):
 
     @property
     def path(self):
+        """
+        Path of directory names to this subdirectory as a tuple of strings; e.g. ``()``
+        for the root (first) directory.
+        """
         return self._path
 
     @property
     def object_path(self):
+        """
+        Path of directory names to this subdirectory as a single string, delimited
+        by slashes.
+        """
         return "/".join(("",) + self._path + ("",)).replace("//", "/")
 
     @property
     def file_path(self):
+        """
+        Filesystem path of the open file, or None if using a file-like object.
+        """
         return self._file.file_path
 
     @property
     def file(self):
+        """
+        Handle to the :doc:`uproot.writing.writable.WritableDirectory` in which
+        this directory can be found.
+        """
         return self._file
 
     def close(self):
+        """
+        Explicitly close the file.
+
+        (Files can also be closed with the Python ``with`` statement, as context
+        managers.)
+
+        After closing, objects cannot be read from or written to the file.
+        """
         self._file.close()
 
     @property
     def closed(self):
+        """
+        True if the file has been closed; False otherwise.
+
+        The file may have been closed explicitly with
+        :ref:`uproot.writing.writable.WritableFile.close` or implicitly in the Python
+        ``with`` statement, as a context manager.
+
+        After closing, objects cannot be read from or written to the file.
+        """
         return self._file.closed
 
     def __enter__(self):
@@ -313,6 +581,13 @@ class WritableDirectory(object):
 
     @property
     def compression(self):
+        """
+        Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
+        for new objects added to the file.
+
+        This property can be changed, which allows you to write different objects
+        with different compression settings.
+        """
         return self._file.compression
 
     @compression.setter
@@ -876,6 +1151,26 @@ class WritableDirectory(object):
         return self._subdirs[name]
 
     def mkdir(self, name, initial_directory_bytes=None):
+        """
+        Args:
+            name (str): Name of the new subdirectory.
+            initial_directory_bytes (None or int): Number of bytes to allocate
+                for the new directory, so that TKeys can be added to it without
+                immediately needing to rewrite the block. If None, the
+                :doc:`uproot.writing.writable.WritableFile`'s value is used.
+
+        Creates an empty subdirectory in this directory.
+
+        Note that subdirectories can be created by assigning to path names that
+        include slashes:
+
+        .. code-block:: python
+
+            my_directory["subdir1/subdir2/new_object"] = new_object
+
+        but subdirectories created this way will never be empty. Use this method
+        to make an empty directory or to control directory parameters.
+        """
         if self._file.sink.closed:
             raise ValueError("cannot create a TDirectory in a closed file")
 
@@ -929,6 +1224,34 @@ in file {2} in directory {3}""".format(
         initial_basket_capacity=10,
         resize_factor=10.0,
     ):
+        u"""
+        Args:
+            name (str): Name of the new TTree.
+            branch_types (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
+                and type specification for the TBranches.
+            title (str): Title for the new TTree.
+            counter_name (callable of str \u2192 str): Function to generate counter-TBranch
+                names for Awkward Arrays of variable-length lists.
+            field_name (callable of str \u2192 str): Function to generate TBranch
+                names for columns of an Awkward record array or a Pandas DataFrame.
+            initial_basket_capacity (int): Number of TBaskets that can be written to the
+                TTree without rewriting the TTree metadata to make room.
+            resize_factor (float): When the TTree metadata needs to be rewritten,
+                this specifies how many more TBasket slots to allocate as a multiplicative
+                factor.
+
+        Creates an empty TTree in this directory.
+
+        Note that TTrees can be created by assigning TTree-like data to a directory
+        (see :doc:`uproot.writing.writable.WritableTree` for recognized TTree-like types):
+
+        .. code-block:: python
+
+            my_directory["tree"] = {"branch1": np.array(...), "branch2": ak.Array(...)}
+
+        but TTrees created this way will never be empty. Use this method
+        to make an empty TTree or to control its parameters.
+        """
         if self._file.sink.closed:
             raise ValueError("cannot create a TTree in a closed file")
 
@@ -969,6 +1292,26 @@ in file {2} in directory {3}""".format(
         rename=no_rename,
         require_matches=True,
     ):
+        u"""
+        Args:
+            source (:doc:`uproot.writing.writable.WritableDirectory` or :doc:`uproot.reading.ReadOnlyDirectory`): Directory from which to copy.
+            filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by name.
+            filter_classname (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+                filter to select keys by C++ (decoded) classname.
+            rename (None, regex string in ``"/from/to/"`` syntax, dict of str \u2192 str, function of str \u2192 str, or iterable of the above): A
+                function to convert old names into new names.
+            require_matches (bool): If True and the filters do not match any data, raise
+                a ``ValueError``.
+
+        Bulk-copy method to copy data from one ROOT file to another without interpretation
+        or even decompression/recompression.
+
+        This method will likely have performance advantages over copying objects one
+        at a time, in part because it avoids interpretation and decompression/recompression,
+        and also because it collects TStreamerInfo from all of the data types and
+        rewrites the output file's TStreamerInfo exactly once.
+        """
         if isinstance(source, WritableDirectory):
             raise NotImplementedError(
                 "copying from a WritableDirectory is not yet supported; open the "
@@ -1067,6 +1410,14 @@ in file {1} in directory {2}""".format(
             )
 
     def update(self, pairs=None, **more_pairs):
+        u"""
+        Args:
+            pairs (dict or pairs of str \u2192 writable data): Names and data to write.
+            more_pairs (dict or pairs of str \u2192 writable data): More names and data to write.
+
+        Bulk-update function, like assignment, but it collects TStreamerInfo for a single
+        update.
+        """
         streamers = []
 
         if pairs is not None:
@@ -1097,7 +1448,82 @@ in file {1} in directory {2}""".format(
 
 class WritableTree(object):
     """
-    FIXME: docstring
+    Args:
+        path (tuple of str): Path of directory names to this TTree.
+        file (:doc:`uproot.writing.writable.WritableFile`): Handle to the file in
+            which this TTree can be found.
+        cascading (:doc:`uproot.writing._cascadetree.Tree`): The low-level
+            directory object.
+
+    Represents a writable ``TTree`` from a ROOT file.
+
+    This object would normally be created by assigning a TTree-like data to a
+    :doc:`uproot.writing.writable.WritableDirectory`. For instance:
+
+    .. code-block:: python
+
+        my_directory["tree1"] = {"branch1": np.array(...), "branch2": ak.Array(...)}
+        my_directory["tree2"] = numpy_structured_array
+        my_directory["tree3"] = awkward_record_array
+        my_directory["tree4"] = pandas_dataframe
+
+    Recognized data types:
+
+    * dict of NumPy arrays (flat, multidimensional, and/or structured), Awkward Arrays containing one level of variable-length lists and/or one level of records, or a Pandas DataFrame with a numeric index
+    * a single NumPy structured array (one level deep)
+    * a single Awkward Array containing one level of variable-length lists and/or one level of records
+    * a single Pandas DataFrame with a numeric index
+
+    The arrays may have different types, but their lengths must be identical, at
+    least in the first dimension (i.e. number of entries).
+
+    If the Awkward Array contains variable-length lists (i.e. it is "jagged"), a
+    counter TBranch will be created along with the data TBranch. ROOT needs the
+    counter TBranch to quantify the size of the variable-size arrays. Combining
+    Awkward Arrays with the same number of nested items using
+    `ak.zip <https://awkward-array.readthedocs.io/en/latest/_auto/ak.zip.html>`__ prevents
+    a proliferation of counter TBranches:
+
+    .. code-block:: python
+
+        my_directory["tree5"] = ak.zip({"branch1": array1, "branch2": array2, "branch3": array3})
+
+    would produce only one counter TBranch.
+
+    Assigning TTree-like data to a directory creates the TTree object with all of
+    its metadata and fills it with the contents of the arrays in one step. To separate
+    the process of creating the TTree metadata from filling the first TBasket, use the
+    :doc:`uproot.writing.writable.WritableDirectory.mktree` method:
+
+    .. code-block:: python
+
+        my_directory.mktree("tree6", {"branch1": numpy_dtype, "branch2": awkward_type})
+
+    The :doc:`uproot.writing.writable.WritableDirectory.mktree` method can also control the
+    title of the TTree and the rules used to name counter TBranches and nested field TBranches.
+
+    The ``numpy_dtype`` is any data that NumPy recognizes as a ``np.dtype``, and the
+    ``awkward_type`` is an `ak.types.Type <https://awkward-array.readthedocs.io/en/latest/ak.types.Type.html>`__ from
+    `ak.type <https://awkward-array.readthedocs.io/en/latest/_auto/ak.type.html>`__ or
+    a string in that form, such as ``"var * float64"`` for variable-length doubles.
+
+    TBaskets can be added to each TBranch using the :ref:`uproot.writing.writable.WritableTree.extend`
+    method:
+
+    .. code-block:: python
+
+        my_directory["tree6"].extend({"branch1": another_numpy_array,
+                                      "branch2": another_awkward_array})
+
+    Be sure to make these extensions as large as is feasible within memory constraints,
+    because a ROOT file full of small TBaskets is bloated (larger than it needs to be)
+    and slow to read (especially for Uproot, but also for ROOT).
+
+    For instance, if you want to write a million events and have enough memory
+    available to do that 100 thousand events at a time (total of 10 TBaskets),
+    then do so. Filling the TTree a hundred events at a time (total of 10000 TBaskets)
+    would be considerably slower for writing and reading, and the file would be much
+    larger than it could otherwise be, even with compression.
     """
 
     def __init__(self, path, file, cascading):
@@ -1112,25 +1538,56 @@ class WritableTree(object):
 
     @property
     def path(self):
+        """
+        Path of directory names to this TTree as a tuple of strings.
+        """
         return self._path
 
     @property
     def object_path(self):
+        """
+        Path of directory names to this TTree as a single string, delimited by
+        slashes.
+        """
         return "/".join(("",) + self._path + ("",)).replace("//", "/")
 
     @property
     def file_path(self):
+        """
+        Filesystem path of the open file, or None if using a file-like object.
+        """
         return self._file.file_path
 
     @property
     def file(self):
+        """
+        Handle to the :doc:`uproot.writing.writable.WritableDirectory` in which
+        this directory can be found.
+        """
         return self._file
 
     def close(self):
+        """
+        Explicitly close the file.
+
+        (Files can also be closed with the Python ``with`` statement, as context
+        managers.)
+
+        After closing, objects cannot be read from or written to the file.
+        """
         self._file.close()
 
     @property
     def closed(self):
+        """
+        True if the file has been closed; False otherwise.
+
+        The file may have been closed explicitly with
+        :ref:`uproot.writing.writable.WritableFile.close` or implicitly in the Python
+        ``with`` statement, as a context manager.
+
+        After closing, objects cannot be read from or written to the file.
+        """
         return self._file.closed
 
     def __enter__(self):
@@ -1143,7 +1600,26 @@ class WritableTree(object):
     @property
     def compression(self):
         """
-        FIXME: docstring
+        Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
+        for new TBaskets added to the TTree.
+
+        This property can be changed and doesn't have to be the same as the compression
+        of the file, which allows you to write different objects with different
+        compression settings.
+
+        The following are equivalent:
+
+        .. code-block:: python
+
+            my_directory["tree"]["branch1"].compression = uproot.ZLIB(1)
+            my_directory["tree"]["branch2"].compression = uproot.LZMA(9)
+
+        and
+
+        .. code-block:: python
+
+            my_directory["tree"].compression = {"branch1": uproot.ZLIB(1),
+                                                "branch2": uproot.LZMA(9)}
         """
         out = {}
         last = None
@@ -1203,13 +1679,103 @@ class WritableTree(object):
                 file_path=self.file_path,
             )
 
+    @property
+    def num_entries(self):
+        """
+        The number of entries accumulated so far.
+        """
+        return self._cascading.num_entries
+
+    @property
+    def num_baskets(self):
+        """
+        The number of TBaskets accumulated so far.
+        """
+        return self._cascading.num_baskets
+
     def extend(self, data):
+        u"""
+        Args:
+            data (dict of str \u2192 arrays): More array data to add to the TTree.
+
+        This method adds data to an existing TTree, whether it was created through
+        assignment or :doc:`uproot.writing.writable.WritableDirectory.mktree`.
+
+        The arrays must be a dict, but the values of the dict can be any of the
+        array/DataFrame types described in :doc:`uproot.writing.writable.WritableTree`.
+        However, these types must be compatible with the established TBranch
+        types, the dict must contain a key for every TBranch, and the arrays must have
+        the same lengths (in their first dimension).
+
+        For example,
+
+        .. code-block:: python
+
+            my_directory.mktree("tree6", {"branch1": numpy_dtype, "branch2": awkward_type})
+
+            my_directory["tree6"].extend({"branch1": another_numpy_array,
+                                          "branch2": another_awkward_array})
+
+        Be sure to make these extensions as large as is feasible within memory constraints,
+        because a ROOT file full of small TBaskets is bloated (larger than it needs to be)
+        and slow to read (especially for Uproot, but also for ROOT).
+
+        For instance, if you want to write a million events and have enough memory
+        available to do that 100 thousand events at a time (total of 10 TBaskets),
+        then do so. Filling the TTree a hundred events at a time (total of 10000 TBaskets)
+        would be considerably slower for writing and reading, and the file would be much
+        larger than it could otherwise be, even with compression.
+        """
         self._cascading.extend(self._file, self._file.sink, data)
+
+    def show(
+        self,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        recursive=True,
+        full_paths=True,
+        name_width=20,
+        typename_width=24,
+        interpretation_width=30,
+        stream=sys.stdout,
+    ):
+        """
+        Opens the TTree for reading and calls :doc:`uproot.behaviors.TBranch.HasBranches.show`
+        on it (follow link for documentation of this method).
+        """
+        uproot.open(self._file.sink._file)[self.object_path].show(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            recursive=recursive,
+            full_paths=full_paths,
+            name_width=name_width,
+            typename_width=typename_width,
+            interpretation_width=interpretation_width,
+            stream=stream,
+        )
 
 
 class WritableBranch(object):
     """
-    FIXME: docstring
+    Represents a TBranch from a :doc:`uproot.writing.writable.WritableTree`.
+
+    This object exists only to be able to assign compression settings differently
+    on each TBranch:
+
+    .. code-block:: python
+
+        my_directory["tree"]["branch1"].compression = uproot.ZLIB(1)
+        my_directory["tree"]["branch2"].compression = uproot.LZMA(9)
+
+    Note that compression settings on all TBranches can be set through
+    :doc:`uproot.writing.writable.WritableTree.compression`:
+
+    .. code-block:: python
+
+        my_directory["tree"].compression = {"branch1": uproot.ZLIB(1),
+                                            "branch2": uproot.LZMA(9)}
     """
 
     def __init__(self, tree, datum):
@@ -1222,7 +1788,36 @@ class WritableBranch(object):
         )
 
     @property
+    def type(self):
+        """
+        The type used to initialize this TBranch.
+        """
+        return self._datum["branch_type"]
+
+    @property
     def compression(self):
+        """
+        Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
+        for new TBaskets added to the TBranch.
+
+        This property can be changed and doesn't have to be the same as the compression
+        of the file or the rest of the TTree, which allows you to write different objects
+        with different compression settings.
+
+        The following are equivalent:
+
+        .. code-block:: python
+
+            my_directory["tree"]["branch1"].compression = uproot.ZLIB(1)
+            my_directory["tree"]["branch2"].compression = uproot.LZMA(9)
+
+        and
+
+        .. code-block:: python
+
+            my_directory["tree"].compression = {"branch1": uproot.ZLIB(1),
+                                                "branch2": uproot.LZMA(9)}
+        """
         return self._datum["compression"]
 
     @compression.setter

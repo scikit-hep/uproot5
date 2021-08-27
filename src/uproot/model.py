@@ -1054,7 +1054,13 @@ class Model(object):
 
     def to_pyroot(self, name=None):
         """
-        FIXME: docstring
+        Args:
+            name (str or None): A name for the new PyROOT object.
+
+        Converts this :doc:`uproot.model.Model` into a PyROOT object *if it is writable*.
+        A minority of Uproot models are writable, mostly just histograms. Writability
+        is necessary for conversion to PyROOT because it is serialized through a
+        ROOT TMessage.
         """
         return uproot.pyroot.to_pyroot(self, name=name)
 

@@ -74,17 +74,9 @@ class Compression(object):
     def level(self):
         """
         The compression level: 0 is uncompressed, 1 is minimally compressed, and
-        9 is maximally compressed.
+        higher levels increase compression. (See specific algorithms for maximum values.)
         """
         return self._level
-
-    @level.setter
-    def level(self, value):
-        if not uproot._util.isint(value):
-            raise TypeError("Compression level must be an integer")
-        if not 0 <= value <= 9:
-            raise ValueError("Compression level must be between 0 and 9 (inclusive)")
-        self._level = int(value)
 
     def __eq__(self, other):
         if isinstance(other, Compression):
@@ -119,6 +111,22 @@ class ZLIB(Compression, _DecompressZLIB):
         _DecompressZLIB.__init__(self)
         Compression.__init__(self, level)
 
+    @property
+    def level(self):
+        """
+        The compression level: 0 is uncompressed, 1 is minimally compressed, and
+        9 is maximally compressed.
+        """
+        return self._level
+
+    @level.setter
+    def level(self, value):
+        if not uproot._util.isint(value):
+            raise TypeError("Compression level must be an integer")
+        if not 0 <= value <= 9:
+            raise ValueError("Compression level must be between 0 and 9 (inclusive)")
+        self._level = int(value)
+
     def compress(self, data):
         import zlib
 
@@ -151,6 +159,22 @@ class LZMA(Compression, _DecompressLZMA):
     def __init__(self, level):
         _DecompressLZMA.__init__(self)
         Compression.__init__(self, level)
+
+    @property
+    def level(self):
+        """
+        The compression level: 0 is uncompressed, 1 is minimally compressed, and
+        9 is maximally compressed.
+        """
+        return self._level
+
+    @level.setter
+    def level(self, value):
+        if not uproot._util.isint(value):
+            raise TypeError("Compression level must be an integer")
+        if not 0 <= value <= 9:
+            raise ValueError("Compression level must be between 0 and 9 (inclusive)")
+        self._level = int(value)
 
     def compress(self, data):
         lzma = uproot.extras.lzma()
@@ -185,6 +209,22 @@ class LZ4(Compression, _DecompressLZ4):
     def __init__(self, level):
         _DecompressLZ4.__init__(self)
         Compression.__init__(self, level)
+
+    @property
+    def level(self):
+        """
+        The compression level: 0 is uncompressed, 1 is minimally compressed, and
+        12 is maximally compressed.
+        """
+        return self._level
+
+    @level.setter
+    def level(self, value):
+        if not uproot._util.isint(value):
+            raise TypeError("Compression level must be an integer")
+        if not 0 <= value <= 12:
+            raise ValueError("Compression level must be between 0 and 12 (inclusive)")
+        self._level = int(value)
 
     def compress(self, data):
         lz4_block = uproot.extras.lz4_block()
@@ -225,6 +265,22 @@ class ZSTD(Compression, _DecompressZSTD):
         _DecompressZSTD.__init__(self)
         Compression.__init__(self, level)
         self._compressor = None
+
+    @property
+    def level(self):
+        """
+        The compression level: 0 is uncompressed, 1 is minimally compressed, and
+        22 is maximally compressed.
+        """
+        return self._level
+
+    @level.setter
+    def level(self, value):
+        if not uproot._util.isint(value):
+            raise TypeError("Compression level must be an integer")
+        if not 0 <= value <= 22:
+            raise ValueError("Compression level must be between 0 and 22 (inclusive)")
+        self._level = int(value)
 
     @property
     def compressor(self):
@@ -426,7 +482,23 @@ _4byte = struct.Struct("<I")  # compressed sizes are 3-byte little endian!
 
 def compress(data, compression):
     """
-    FIXME: docstring
+    Args:
+        data (bytes, memoryview, or NumPy array): Data to compress.
+        compression (:doc:`uproot.compression.Compression`): Algorithm and level
+            to use in compressing the data.
+
+    Compress ``data`` using ``compression`` and return a bytes object (or the
+    original object in some circumstances).
+
+    This function generates ROOT's 9-byte compression headers (17 bytes for LZ4
+    because it includes a checksum), with multiple blocks for each 2**24 - 1 bytes
+    of input. The return value has all blocks concatenated into a single bytes
+    object, and the splitting into multiple blocks is necessary because the compression
+    headers can only specify uncompressed and compressed sizes up to 2**24 - 1.
+
+    If the compression level (``compression.level``) is zero or the compressed
+    output would be larger than the input, the input is returned instead, in whatever
+    format (bytes, memoryview, or NumPy array) it was provided.
     """
     if compression is None or compression.level == 0:
         return data

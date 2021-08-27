@@ -11,7 +11,7 @@ Open a ROOT file for reading with the :doc:`uproot.reading.open` function.
     >>> import uproot
     >>> file = uproot.open("path/to/dataset.root")
 
-The :doc:`uproot.reading.open` function can also be used like this:
+The :doc:`uproot.reading.open` function can be (and usually should be) used like this:
 
 .. code-block:: python
 
@@ -947,3 +947,321 @@ Data are or can be read in parallel in each of the following three stages.
 Like the caches, the default values for the last two are global ``uproot.decompression_executor`` and ``uproot.interpretation_executor`` objects. The default ``decompression_executor`` is a :doc:`uproot.source.futures.ThreadPoolExecutor` with as many workers as your computer has CPU cores. Decompression workloads are executed in compiled extensions with the `Python GIL <https://wiki.python.org/moin/GlobalInterpreterLock>`__ released, so they can afford to run with full parallelism. The default ``interpretation_executor`` is a :doc:`uproot.source.futures.TrivialExecutor` that behaves like an distributed executor, but actually runs sequentially. Most interpretation workflows are not computationally intensive or are currently implemented in Python, so they would not currently benefit from parallelism.
 
 If, however, you're working in an environment that puts limits on parallel processing (e.g. the CMS LPC or informal university computers), you may want to modify the defaults, either locally through a ``decompression_executor`` or ``interpretation_executor`` function parameter, or globally by replacing the global object.
+
+Opening a file for writing
+--------------------------
+
+All of the above describes reading data only. If you want to *write* to ROOT files, you open them in a different way:
+
+.. code-block:: python
+
+    >>> file = uproot.recreate("path/to/new-file.root")
+
+or
+
+.. code-block:: python
+
+    >>> file = uproot.update("path/to/existing-file.root")
+
+The :doc:`uproot.writing.writable.recreate` function creates a new file, deleting any that might have previously existed with that name, and :doc:`uproot.writing.writable.update` opens a preexisting file to add to it or delete some of its objects. These correspond to ``"RECREATE"`` and ``"UPDATE"`` in ROOT (as well as the less often used :doc:`uproot.writing.writable.create` for ``"CREATE"``).
+
+All of these functions can be (and usually should be) used like this:
+
+.. code-block:: python
+
+    >>> with uproot.recreate("/path/to/new-file.root") as file:
+    ...     do_something...
+
+to automatically close the file after leaving the ``with`` block.
+
+The key thing to be aware of is that writing is completely separate from reading: these functions return a :doc:`uproot.writing.writable.WritableDirectory`, rather than the :doc:`uproot.reading.ReadOnlyDirectory` that :doc:`uproot.reading.open` returns, and these objects have different methods.
+
+Writing objects to a file
+-------------------------
+
+The object returned by :doc:`uproot.writing.writable.recreate` or :doc:`uproot.writing.writable.update` represents a TDirectory inside the file.
+
+.. code-block:: python
+
+    >>> file = uproot.recreate("example.root")
+    >>> file
+    <WritableDirectory '/' at 0x7fad19df3cd0>
+
+This object is a Python `MutableMapping <https://docs.python.org/3/library/collections.abc.html#collections.abc.MutableMapping>`__, which means that you can add data to it by assignment.
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> file["hist"] = np.histogram(np.random.normal(0, 1, 100000))
+    >>> file["hist"]
+    <TH1D (version 3) at 0x7fad19e0a550>
+
+To put data in a nested directory, just include slashes in the name.
+
+.. code-block:: python
+
+    >>> file["subdir/hist"] = np.histogram(np.random.normal(0, 1, 100000))
+    >>> file["subdir/hist"]
+    <TH1D (version 3) at 0x7fad1d472e20>
+
+    >>> file["subdir/README"] = "This directory has all the stuff in it."
+    >>> file["subdir/README"]
+    <TObjString 'This directory has all the stuff in it.' at 0x7faca9c354a0>
+    >>> file.keys()
+    ['hist;1', 'subdir;1', 'subdir/hist;1', 'subdir/README;1']
+    >>> file.classnames()
+    {'hist;1': 'TH1D',
+     'subdir;1': 'TDirectory',
+     'subdir/hist;1': 'TH1D',
+     'subdir/README;1': 'TObjString'}
+
+Empty directories can be made with the :ref:`uproot.writing.writable.WritableDirectory.mkdir` method.
+
+A small but growing list of data types can be written to files:
+
+* strings: TObjString
+* histograms: TH1*, TH2*, TH3*
+* profile plots: TProfile, TProfile2D, TProfile3D
+* NumPy histograms created with `np.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__, `np.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__, and `np.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__ for ``d <= 3``
+* `hist histograms <https://hist.readthedocs.io/>`__ (3 dimensions or fewer)
+* PyROOT objects
+
+Consider the following example of the latter:
+
+.. code-block:: python
+
+    >>> import ROOT
+    >>> pyroot_hist = ROOT.TH1F("h", "", 100, -3, 3)
+    >>> pyroot_hist.FillRandom("gaus", 100000)
+    >>> file["from_pyroot"] = pyroot_hist
+    >>> file["from_pyroot"]
+    <TH1F (version 3) at 0x7facaa8aac10>
+
+This makes use of the :doc:`uproot.pyroot.from_pyroot` function, which turns any (readable) PyROOT object into its corresponding :doc:`uproot.model.Model`.
+
+.. code-block:: python
+
+    >>> uproot.from_pyroot(pyroot_hist)
+    <TH1F (version 3) at 0x7facaa8b6df0>
+    >>> uproot.from_pyroot(pyroot_hist).to_numpy()
+    (array([  28.,   24.,   36.,   50.,   70.,   71.,   86.,  101.,   82.,
+             128.,  139.,  181.,  187.,  218.,  251.,  281.,  345.,  355.,
+             387.,  482.,  492.,  557.,  577.,  691.,  701.,  820.,  919.,
+             882., 1016., 1122., 1269., 1353., 1426., 1474., 1517., 1610.,
+            1700., 1818., 1844., 2002., 2070., 2195., 2219., 2177., 2272.,
+            2278., 2347., 2407., 2431., 2410., 2407., 2462., 2375., 2388.,
+            2284., 2274., 2235., 2209., 2138., 1996., 1895., 1800., 1789.,
+            1698., 1648., 1604., 1478., 1399., 1264., 1213., 1128., 1019.,
+             948.,  861.,  825.,  739.,  636.,  631.,  511.,  499.,  464.,
+             420.,  384.,  296.,  314.,  258.,  235.,  187.,  159.,  134.,
+             121.,  101.,   92.,   78.,   79.,   63.,   49.,   38.,   42.,
+              35.], dtype=float32),
+     array([-3.  , -2.94, -2.88, -2.82, -2.76, -2.7 , -2.64, -2.58, -2.52,
+            -2.46, -2.4 , -2.34, -2.28, -2.22, -2.16, -2.1 , -2.04, -1.98,
+            -1.92, -1.86, -1.8 , -1.74, -1.68, -1.62, -1.56, -1.5 , -1.44,
+            -1.38, -1.32, -1.26, -1.2 , -1.14, -1.08, -1.02, -0.96, -0.9 ,
+            -0.84, -0.78, -0.72, -0.66, -0.6 , -0.54, -0.48, -0.42, -0.36,
+            -0.3 , -0.24, -0.18, -0.12, -0.06,  0.  ,  0.06,  0.12,  0.18,
+             0.24,  0.3 ,  0.36,  0.42,  0.48,  0.54,  0.6 ,  0.66,  0.72,
+             0.78,  0.84,  0.9 ,  0.96,  1.02,  1.08,  1.14,  1.2 ,  1.26,
+             1.32,  1.38,  1.44,  1.5 ,  1.56,  1.62,  1.68,  1.74,  1.8 ,
+             1.86,  1.92,  1.98,  2.04,  2.1 ,  2.16,  2.22,  2.28,  2.34,
+             2.4 ,  2.46,  2.52,  2.58,  2.64,  2.7 ,  2.76,  2.82,  2.88,
+             2.94,  3.  ]))
+
+Removing objects from a file
+----------------------------
+
+As usual with a `MutableMapping <https://docs.python.org/3/library/collections.abc.html#collections.abc.MutableMapping>`__, you can delete objects with the ``del`` operator.
+
+.. code-block:: python
+
+    >>> file.keys()
+    ['hist;1', 'subdir;1', 'subdir/hist;1', 'subdir/README;1', 'from_pyroot;1']
+    >>> del file["from_pyroot"]
+    >>> del file["hist"]
+    >>> file.keys()
+    ['subdir;1', 'subdir/hist;1', 'subdir/README;1']
+
+This can delete objects created by Uproot or objects created by ROOT if the file was opened with :doc:`uproot.writing.writable.update`.
+
+Writing TTrees to a file
+------------------------
+
+TTrees are a special type of object, just as TDirectories are special: data can be cumulatively added to them.
+
+However, :doc:`uproot.writing.writable.WritableTree` objects can be created in the same way as static objects, by assigning TTree-like data to a name in a directory.
+
+.. code-block:: python
+
+    >>> file["tree1"] = {"branch1": np.arange(1000), "branch2": np.arange(1000)*1.1}
+    >>> file["tree1"]
+    <WritableTree '/tree1' at 0x7f2ede193e20>
+    >>> file["tree1"].show()
+    name                 | typename                 | interpretation
+    ---------------------+--------------------------+-------------------------------
+    branch1              | int64_t                  | AsDtype('>i8')
+    branch2              | double                   | AsDtype('>f8')
+
+Python dicts of equal-length NumPy arrays are TTree-like, as are Pandas DataFrames:
+
+.. code-block:: python
+
+    >>> import pandas as pd
+    >>> df = pd.DataFrame({"x": np.arange(1000), "y": np.arange(1000)*1.1})
+    >>> df
+           x       y
+    0      0     0.0
+    1      1     1.1
+    2      2     2.2
+    3      3     3.3
+    4      4     4.4
+    ..   ...     ...
+    995  995  1094.5
+    996  996  1095.6
+    997  997  1096.7
+    998  998  1097.8
+    999  999  1098.9
+
+    [1000 rows x 2 columns]
+    >>> file["tree2"] = df
+    >>> file["tree2"]
+    <WritableTree '/tree2' at 0x7f2e7c516d90>
+    >>> file["tree2"].show()
+    name                 | typename                 | interpretation
+    ---------------------+--------------------------+-------------------------------
+    index                | int64_t                  | AsDtype('>i8')
+    x                    | int64_t                  | AsDtype('>i8')
+    y                    | double                   | AsDtype('>f8')
+
+If the arrays are Awkward Arrays, they can contain a variable number of values per entry:
+
+.. code-block:: python
+
+    >>> import awkward as ak
+    >>> file["tree3"] = {"branch": ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]])}
+    >>> file["tree3"]
+    <WritableTree '/tree3' at 0x7f2e7c516dc0>
+    >>> file["tree3"].show()
+    name                 | typename                 | interpretation
+    ---------------------+--------------------------+-------------------------------
+    nbranch              | int32_t                  | AsDtype('>i4')
+    branch               | double[]                 | AsJagged(AsDtype('>f8'))
+
+And Awkward record arrays, constructed with `ak.zip <https://awkward-array.readthedocs.io/en/latest/_auto/ak.zip.html>`__, can consolidate arrays to ensure that there is only one "counter" TBranch.
+
+.. code-block:: python
+
+    >>> file["tree4"] = {"Muon": ak.zip({"pt": muon_pt, "eta": muon_eta, "phi": muon_phi})}
+    >>> file["tree4"]
+    <WritableTree '/tree4' at 0x7fee9e3ebc40>
+    >>> file["tree4"].show()
+    name                 | typename                 | interpretation
+    ---------------------+--------------------------+-------------------------------
+    nMuon                | int32_t                  | AsDtype('>i4')
+    Muon_pt              | double[]                 | AsJagged(AsDtype('>f8'))
+    Muon_eta             | double[]                 | AsJagged(AsDtype('>f8'))
+    Muon_phi             | double[]                 | AsJagged(AsDtype('>f8'))
+
+The small but growing list of data types can be written as TTrees is:
+
+* dict of NumPy arrays (flat, multidimensional, and/or structured), Awkward Arrays containing one level of variable-length lists and/or one level of records, or a Pandas DataFrame with a numeric index
+* a single NumPy structured array (one level deep)
+* a single Awkward Array containing one level of variable-length lists and/or one level of records
+* a single Pandas DataFrame with a numeric index
+
+Just as empty directories can be made with the :ref:`uproot.writing.writable.WritableDirectory.mkdir` method, empty TTrees can be made with :ref:`uproot.writing.writable.WritableDirectory.mktree`.
+
+.. code-block:: python
+
+    >>> file.mktree("tree5", {"x": ("f4", (3,)), "y": "var * int64"}, title="A title")
+    <WritableTree '/tree5' at 0x7fee9d3a5190>
+    >>> file["tree5"].show()
+    name                 | typename                 | interpretation
+    ---------------------+--------------------------+-------------------------------
+    x                    | float[3]                 | AsDtype("('>f4', (3,))")
+    ny                   | int32_t                  | AsDtype('>i4')
+    y                    | int64_t[]                | AsJagged(AsDtype('>i8'))
+
+This method also provides control over the naming convention for counter TBranches and subfield TBranches (for structured NumPy, Pandas DataFrames, and Awkward record arrays inside a dict); see its documentation.
+
+Extending TTrees with large datasets
+------------------------------------
+
+It's likely that you'll want to write more data to disk than can fit in memory. The data in a :doc:`uproot.writing.writable.WritableTree` can be extended with the :ref:`uproot.writing.writable.WritableTree.extend` method (named in analogy with Python's `list.extend <https://docs.python.org/3/tutorial/datastructures.html#more-on-lists>`__).
+
+Using ``"tree5"`` as an example (above),
+
+.. code-block:: python
+
+    >>> file["tree5"].num_entries, file["tree5"].num_baskets
+    (0, 0)
+
+    >>> file["tree5"].extend({
+    ...     "x": np.arange(15).reshape(5, 3),
+    ...     "y": ak.Array([[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]])
+    ... })
+    >>> file["tree5"].num_entries, file["tree5"].num_baskets
+    (5, 1)
+
+    >>> file["tree5"].extend({
+    ...     "x": np.arange(15).reshape(5, 3),
+    ...     "y": ak.Array([[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]])
+    ... })
+    >>> file["tree5"].num_entries, file["tree5"].num_baskets
+    (10, 2)
+
+The :ref:`uproot.writing.writable.WritableTree.extend` method always adds one TBasket to each TBranch in the TTree. The data you provide must have the types that have been established in the first write or :ref:`uproot.writing.writable.WritableDirectory.mktree` call: exactly the same set of TBranch names and the same data type for each TBranch (or castable to it).
+
+The arrays also have to have the same lengths as each other, though only in the first dimension. Above, the ``"x"`` NumPy array has shape ``(5, 3)``: the first dimension has length 5. The ``"y"`` Awkward array has type ``5 * var * float64``: the first dimension has length 5. This is why they are compatible; the inner dimensions don't matter (except inasmuch as they have the right *type*).
+
+**As a word of warning,** be sure to make these extensions as large as is feasible within memory constraints. A ROOT file full of small TBaskets is both bloated (larger than it needs to be) and slow to read (especially for Uproot, but also for ROOT).
+
+For instance, if you want to write a million events and have enough memory available to do that 100 thousand events at a time (i.e. a total of 10 TBaskets), then do so. Filling the TTree a hundred events at a time (i.e. a total of 10000 TBaskets) would be considerably slower for writing and reading, and the file would be much larger than it could otherwise be, even with compression.
+
+The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. You have been warned!
+
+Specifying the compression
+--------------------------
+
+You can specify the compression for a whole file while opening it:
+
+.. code-block:: python
+
+    >>> file = uproot.recreate("example.root", compression=uproot.ZLIB(4))
+    >>> file.compression
+    ZLIB(4)
+
+This compression setting is mutable; you can change it at any time to compress some objects with one compression setting and other objects with another.
+
+.. code-block:: python
+
+    >>> file.compression = uproot.LZMA(9)
+    >>> file.compression
+    LZMA(9)
+
+:doc:`uproot.writing.writable.WritableTree` objects also have a :ref:`uproot.writing.writable.WritableTree.compression` setting that can override the global one for the :doc:`uproot.writing.writable.WritableFile`.
+
+.. code-block:: python
+
+    >>> file.mktree("tree", {"x": "f4", "y": "var * int64"})
+    <WritableTree '/tree' at 0x7fcaeda25640>
+    >>> file["tree"].compression
+    LZMA(9)
+    >>> file["tree"].compression = uproot.LZ4(1)
+    >>> file["tree"].compression
+    LZ4(1)
+
+In addition, each TBranch of the TTree can have a different compression setting:
+
+.. code-block:: python
+
+    >>> file["tree"]["x"].compression = uproot.ZSTD(1)
+    >>> file["tree"]["y"].compression = uproot.ZSTD(9)
+    >>> file["tree"].compression
+    {'x': ZSTD(1), 'ny': LZ4(1), 'y': ZSTD(9)}
+    >>> file["tree"].compression = {"x": None, "ny": None, "y": uproot.ZLIB(4)}
+    >>> file["tree"].compression
+    {'x': None, 'ny': None, 'y': ZLIB(4)}
+
+Changes to the compression setting only affect TBaskets written after the change (with :ref:`uproot.writing.writable.WritableTree.extend`; see above).

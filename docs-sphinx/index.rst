@@ -10,15 +10,21 @@
     basic
     uproot3-to-4
 
-.. include:: uproot.toctree
+.. include:: main.toctree
 
 .. toctree::
     :caption: Modules
     :hidden:
 
+.. include:: uproot.toctree
+
 .. include:: uproot.reading.toctree
 
+.. include:: uproot.writing.toctree
+
 .. include:: uproot.behaviors.toctree
+
+.. include:: uproot.behavior.toctree
 
 .. include:: uproot.model.toctree
 
@@ -30,7 +36,13 @@
 
 .. include:: uproot.deserialization.toctree
 
+.. include:: uproot.serialization.toctree
+
+.. include:: uproot.pyroot.toctree
+
 .. include:: uproot.source.toctree
+
+.. include:: uproot.sink.toctree
 
 .. include:: uproot.interpretation.toctree
 
@@ -46,7 +58,7 @@
 
     <br/>
 
-.. image:: https://github.com/scikit-hep/uproot4/raw/main/docs-img/logo/logo-300px.png
+.. image:: https://github.com/scikit-hep/uproot4/raw/main/docs-img/logo/logo.svg
     :width: 300px
     :alt: Uproot
     :target: https://github.com/scikit-hep/uproot4
@@ -102,24 +114,33 @@
 
 :raw-html:`</p>`
 
-|br| Uproot is a library for reading (and soon, writing) ROOT files in pure Python and NumPy.
+|br| Uproot is a library for reading and writing ROOT files in pure Python and NumPy.
+
+Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, Uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
+
+:raw-html:`<p align="center"><img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/abstraction-layers.svg" width="700px"></p>`
 
 How to install
 ==============
 
-Usually, you'll want to install Uproot with `Awkward Array <https://awkward-array.org>`__ because this is the default array format.
+Uproot can be installed `from PyPI <https://pypi.org/project/uproot>`__ using pip. `Awkward Array <https://pypi.org/project/awkward>`__ is optional but highly recommended:
 
 .. code-block:: bash
 
     pip install uproot awkward
 
-But if you are working in a limited environment, Uproot can be installed without Awkward Array.
+Uproot is also available using `conda <https://anaconda.org/conda-forge/uproot>`__ (in this case, `Awkward Array <https://anaconda.org/conda-forge/awkward>`__ is automatically installed):
 
 .. code-block:: bash
 
-    pip install uproot
+    conda install -c conda-forge uproot
 
-Just be sure to pass ``library="np"`` to any function that returns arrays or globally set ``uproot.default_library`` to specify that you want NumPy arrays, rather than Awkward Arrays. Alternatively, you can specify ``library="pd"`` for `Pandas <https://pandas.pydata.org/>`__, which, like Awkward Array, would need to be explicitly installed.
+If you have already added ``conda-forge`` as a channel, the ``-c conda-forge`` is unnecessary. Adding the channel is recommended because it ensures that all of your packages use compatible versions (see `conda-forge docs <https://conda-forge.org/docs/user/introduction.html#how-can-i-install-packages-from-conda-forge>`__):
+
+.. code-block:: bash
+
+    conda config --add channels conda-forge
+    conda update --all
 
 Documentation
 =============

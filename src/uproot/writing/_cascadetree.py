@@ -1,7 +1,17 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 """
-FIXME: docstring
+This is an internal module for writing TTrees in the "cascading" file writer. TTrees
+are more like TDirectories than they are like histograms in that they can create
+objects, TBaskets, which have to be allocated through the FreeSegments.
+
+The implementation in this module does not use the TTree infrastructure in
+:doc:`uproot.models.TTree`, :doc:`uproot.models.TBranch`, and :doc:`uproot.models.TBasket`,
+since the models intended for reading have to adapt to different class versions, but
+a writer can always write the same class version, and because writing involves allocating
+and sometimes freeing data.
+
+See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
 
 from __future__ import absolute_import
@@ -39,7 +49,32 @@ _dtype_to_char = {
 
 class Tree(object):
     """
-    FIXME: docstring
+    Writes a TTree, including all TBranches, TLeaves, and (upon ``extend``) TBaskets.
+
+    Rather than treating TBranches as a separate object, this *writable* TTree writes
+    the whole metadata block in one function, so that interrelationships are easier
+    to preserve.
+
+    Writes the following class instance versions:
+
+    - TTree: version 20
+    - TBranch: version 13
+    - TLeaf: version 2
+    - TLeaf*: version 1
+    - TBasket: version 3
+
+    The ``write_anew`` method writes the whole tree, possibly for the first time, possibly
+    because it has been moved (exceeded its initial allocation of TBasket pointers).
+
+    The ``write_updates`` method rewrites the parts that change when new TBaskets are
+    added.
+
+    The ``extend`` method adds a TBasket to every TBranch.
+
+    The ``write_np_basket`` and ``write_jagged_basket`` methods write one TBasket in one
+    TBranch, either a rectilinear one from NumPy or a simple jagged array from Awkward Array.
+
+    See `ROOT TTree specification <https://github.com/root-project/root/blob/master/io/doc/TFile/ttree.md>`__.
     """
 
     def __init__(
@@ -623,6 +658,9 @@ class Tree(object):
                     ):
                         layout = layout.toListOffsetArray64(False)
 
+                    elif isinstance(layout, awkward.layout.VirtualArray):
+                        layout = layout.array
+
                     else:
                         raise AssertionError(
                             "how did this pass the type check?\n\n" + repr(layout)
@@ -654,6 +692,9 @@ class Tree(object):
                     elif isinstance(content, awkward.layout.RegularArray):
                         shape.append(content.size)
                         content = content.content
+
+                    elif isinstance(layout, awkward.layout.VirtualArray):
+                        content = content.array
 
                     else:
                         raise AssertionError(
@@ -1305,7 +1346,7 @@ _tbasket_offsets_length = struct.Struct(">I")
 
 def dataframe_to_dict(df):
     """
-    FIXME: docstring
+    Converts a Pandas DataFrame into a dict of NumPy arrays for writing.
     """
     out = {"index": df.index.values}
     for column_name in df.columns:
@@ -1315,7 +1356,7 @@ def dataframe_to_dict(df):
 
 def recarray_to_dict(array):
     """
-    FIXME: docstring
+    Converts a NumPy structured array into a dict of non-structured arrays for writing.
     """
     out = {}
     for field_name in array.dtype.fields:
