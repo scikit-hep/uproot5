@@ -21,6 +21,7 @@ from __future__ import absolute_import
 import datetime
 import itertools
 import os
+import sys
 import uuid
 
 try:
@@ -1468,7 +1469,7 @@ class WritableTree(object):
 
     Recognized data types:
 
-    * dict of NumPy arrays (flat, multidimensional, and/or structured), Awkard Arrays containing one level of variable-length lists and/or one level of records, or a Pandas DataFrame with a numeric index
+    * dict of NumPy arrays (flat, multidimensional, and/or structured), Awkward Arrays containing one level of variable-length lists and/or one level of records, or a Pandas DataFrame with a numeric index
     * a single NumPy structured array (one level deep)
     * a single Awkward Array containing one level of variable-length lists and/or one level of records
     * a single Pandas DataFrame with a numeric index
@@ -1678,6 +1679,20 @@ class WritableTree(object):
                 file_path=self.file_path,
             )
 
+    @property
+    def num_entries(self):
+        """
+        The number of entries accumulated so far.
+        """
+        return self._cascading.num_entries
+
+    @property
+    def num_baskets(self):
+        """
+        The number of TBaskets accumulated so far.
+        """
+        return self._cascading.num_baskets
+
     def extend(self, data):
         u"""
         Args:
@@ -1713,6 +1728,34 @@ class WritableTree(object):
         """
         self._cascading.extend(self._file, self._file.sink, data)
 
+    def show(
+        self,
+        filter_name=no_filter,
+        filter_typename=no_filter,
+        filter_branch=no_filter,
+        recursive=True,
+        full_paths=True,
+        name_width=20,
+        typename_width=24,
+        interpretation_width=30,
+        stream=sys.stdout,
+    ):
+        """
+        Opens the TTree for reading and calls :doc:`uproot.behaviors.TBranch.HasBranches.show`
+        on it (follow link for documentation of this method).
+        """
+        uproot.open(self._file.sink._file)[self.object_path].show(
+            filter_name=filter_name,
+            filter_typename=filter_typename,
+            filter_branch=filter_branch,
+            recursive=recursive,
+            full_paths=full_paths,
+            name_width=name_width,
+            typename_width=typename_width,
+            interpretation_width=interpretation_width,
+            stream=stream,
+        )
+
 
 class WritableBranch(object):
     """
@@ -1743,6 +1786,13 @@ class WritableBranch(object):
         return "<WritableBranch {0} in {1} at 0x{2:012x}>".format(
             repr(self._datum["fName"]), repr("/" + "/".join(self._tree.path)), id(self)
         )
+
+    @property
+    def type(self):
+        """
+        The type used to initialize this TBranch.
+        """
+        return self._datum["branch_type"]
 
     @property
     def compression(self):

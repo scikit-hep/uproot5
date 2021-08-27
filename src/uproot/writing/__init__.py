@@ -25,6 +25,7 @@ from uproot.writing.identify import (
     to_writable,
 )
 from uproot.writing.writable import (
+    WritableBranch,
     WritableDirectory,
     WritableFile,
     WritableTree,
@@ -47,6 +48,7 @@ __all__ = [
     "WritableDirectory",
     "WritableFile",
     "WritableTree",
+    "WritableBranch",
     "create",
     "recreate",
     "update",
