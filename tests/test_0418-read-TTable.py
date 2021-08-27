@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import pytest
+import skhep_testdata
 
 import uproot
 from uproot.models.TTable import Model_TTable
@@ -30,7 +31,7 @@ class Model_StIOEvent(uproot.model.Model):
 
 @pytest.fixture(scope="module")
 def datafile():
-    yield "https://www.star.bnl.gov/~veprbl/2021/ttable_sample.geant.root"
+    yield skhep_testdata.data_path("uproot-issue-418.root")
 
 
 @pytest.fixture
