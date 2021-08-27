@@ -11,7 +11,6 @@ from uproot.models.TTable import Model_TTable
 
 class Model_StIOEvent(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
-        print(cursor)
         self._bases.append(
             uproot.models.TObject.Model_TObject.read(
                 chunk,
