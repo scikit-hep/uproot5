@@ -11,8 +11,8 @@ import numpy
 
 import uproot
 
-boost_metadata = {"name": "fName", "title": "fTitle"}
-boost_axis_metadata = {"name": "fName", "title": "fTitle"}
+boost_metadata = {"name": "fName", "label": "fTitle"}
+boost_axis_metadata = {"name": "fName", "label": "fTitle"}
 
 
 def _boost_axis(axis, metadata):

@@ -190,6 +190,7 @@ def to_writable(obj):
 
     This series of rules is expected to grow with time.
     """
+    # This is turns histogramdd-style into histogram2d-style.
     if (
         isinstance(obj, (tuple, list))
         and 2 <= len(obj) <= 3  # might have a histogram title as the last item
@@ -204,12 +205,9 @@ def to_writable(obj):
     ):
         obj = (obj[0],) + tuple(obj[1]) + tuple(obj[2:])
 
+    # This is the big if-elif-else chain of rules
     if isinstance(obj, uproot.model.Model):
         return obj.to_writable()
-
-        raise NotImplementedError(
-            "this ROOT type is not writable: {0}".format(obj.classname)
-        )
 
     elif type(obj).__module__ == "cppyy.gbl":
         import ROOT
@@ -227,6 +225,193 @@ def to_writable(obj):
         return to_TObjString(obj)
 
     elif (
+        hasattr(obj, "axes")
+        and hasattr(obj, "kind")
+        and hasattr(obj, "values")
+        and hasattr(obj, "variances")
+        and hasattr(obj, "counts")
+    ):
+        # boost_histogram is used in _fXbins_maybe_regular *if* this is such a type
+        boost_histogram = None
+        if (
+            type(obj).__module__ == "boost_histogram"
+            or type(obj).__module__.startswith("boost_histogram.")
+            or type(obj).__module__ == "hist"
+            or type(obj).__module__.startswith("hist.")
+        ):
+            import boost_histogram
+
+        if obj.kind == "MEAN":
+            raise NotImplementedError(
+                "PlottableHistogram with kind='MEAN' (i.e. profile plots) not supported yet"
+            )
+        elif obj.kind != "COUNT":
+            raise ValueError(
+                "PlottableHistogram can only be converted to ROOT TH* if kind='COUNT' or 'MEAN'"
+            )
+
+        ndim = len(obj.axes)
+        if not 1 <= ndim <= 3:
+            raise ValueError(
+                "PlottableHistogram can only be converted to ROOT TH* if it has between 1 and 3 axes (TH1, TH2, TH3)"
+            )
+
+        title = getattr(obj, "title", getattr(obj, "name", ""))
+
+        try:
+            # using flow=True if supported
+            data = obj.values(flow=True)
+            fSumw2 = obj.variances(flow=True)
+
+        except TypeError:
+            # flow=True is not supported, fallback to allocate-and-fill
+
+            tmp = obj.values()
+            s = tmp.shape
+            d = tmp.dtype.newbyteorder(">")
+            if ndim == 1:
+                data = numpy.zeros(s[0] + 2, dtype=d)
+                data[1:-1] = tmp
+            elif ndim == 2:
+                data = numpy.zeros((s[0] + 2, s[1] + 2), dtype=d)
+                data[1:-1, 1:-1] = tmp
+            elif ndim == 3:
+                data = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=d)
+                data[1:-1, 1:-1, 1:-1] = tmp
+
+            tmp = obj.variances()
+            s = tmp.shape
+            if tmp is None:
+                fSumw2 = data
+            elif ndim == 1:
+                fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
+                fSumw2[1:-1] = tmp
+            elif ndim == 2:
+                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
+                fSumw2[1:-1, 1:-1] = tmp
+            elif ndim == 3:
+                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
+                fSumw2[1:-1, 1:-1, 1:-1] = tmp
+
+        else:
+            # continuing to use flow=True, because it is supported
+            if fSumw2 is None:
+                fSumw2 = data
+            data = data.astype(data.dtype.newbyteorder(">"))
+            fSumw2 = fSumw2.astype(">f8")
+
+        # we're assuming the PlottableHistogram ensures data.shape == weights.shape
+        assert data.shape == fSumw2.shape
+
+        # data are stored in transposed order for 2D and 3D
+        data = data.T.reshape(-1)
+        fSumw2 = fSumw2.T.reshape(-1)
+
+        # ROOT has fEntries = sum *without* weights, *with* flow bins
+        fEntries = data.sum()
+
+        # convert all axes in one list comprehension
+        axes = [
+            to_TAxis(
+                fName=getattr(axis, "name", default_name),
+                fTitle=getattr(axis, "label", getattr(obj, "name", "")),
+                fNbins=len(axis),
+                fXmin=axis.edges[0],
+                fXmax=axis.edges[-1],
+                fXbins=_fXbins_maybe_regular(axis, boost_histogram),
+            )
+            for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
+        ]
+
+        # make TH1, TH2, TH3 types independently
+        if len(axes) == 1:
+            fTsumw, fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
+                obj.values(flow=False), obj.axes[0].edges
+            )
+            return to_TH1x(
+                fName=None,
+                fTitle=title,
+                data=data,
+                fEntries=fEntries,
+                fTsumw=fTsumw,
+                fTsumw2=fTsumw2,
+                fTsumwx=fTsumwx,
+                fTsumwx2=fTsumwx2,
+                fSumw2=fSumw2,
+                fXaxis=axes[0],
+            )
+
+        elif len(axes) == 2:
+            (
+                fTsumw,
+                fTsumw2,
+                fTsumwx,
+                fTsumwx2,
+                fTsumwy,
+                fTsumwy2,
+                fTsumwxy,
+            ) = _root_stats_2d(
+                obj.values(flow=False), obj.axes[0].edges, obj.axes[1].edges
+            )
+            return to_TH2x(
+                fName=None,
+                fTitle=title,
+                data=data,
+                fEntries=fEntries,
+                fTsumw=fTsumw,
+                fTsumw2=fTsumw2,
+                fTsumwx=fTsumwx,
+                fTsumwx2=fTsumwx2,
+                fTsumwy=fTsumwy,
+                fTsumwy2=fTsumwy2,
+                fTsumwxy=fTsumwxy,
+                fSumw2=fSumw2,
+                fXaxis=axes[0],
+                fYaxis=axes[1],
+            )
+
+        elif len(axes) == 3:
+            (
+                fTsumw,
+                fTsumw2,
+                fTsumwx,
+                fTsumwx2,
+                fTsumwy,
+                fTsumwy2,
+                fTsumwxy,
+                fTsumwz,
+                fTsumwz2,
+                fTsumwxz,
+                fTsumwyz,
+            ) = _root_stats_3d(
+                obj.values(flow=False),
+                obj.axes[0].edges,
+                obj.axes[1].edges,
+                obj.axes[2].edges,
+            )
+            return to_TH3x(
+                fName=None,
+                fTitle=title,
+                data=data,
+                fEntries=fEntries,
+                fTsumw=fTsumw,
+                fTsumw2=fTsumw2,
+                fTsumwx=fTsumwx,
+                fTsumwx2=fTsumwx2,
+                fTsumwy=fTsumwy,
+                fTsumwy2=fTsumwy2,
+                fTsumwxy=fTsumwxy,
+                fTsumwz=fTsumwz,
+                fTsumwz2=fTsumwz2,
+                fTsumwxz=fTsumwxz,
+                fTsumwyz=fTsumwyz,
+                fSumw2=fSumw2,
+                fXaxis=axes[0],
+                fYaxis=axes[1],
+                fZaxis=axes[2],
+            )
+
+    elif (
         isinstance(obj, (tuple, list))
         and 2 <= len(obj) <= 5  # might have a histogram title as the last item
         and all(isinstance(x, numpy.ndarray) for x in obj[:-1])
@@ -241,20 +426,18 @@ def to_writable(obj):
 
         if len(obj) == 2:
             (entries, edges) = obj
-            centers = (edges[:-1] + edges[1:]) / 2.0
-
-            fEntries = fTsumw = fTsumw2 = entries.sum()
-            fTsumwx = (entries * centers).sum()
-            fTsumwx2 = (entries * centers ** 2).sum()
 
             with_flow = numpy.empty(len(entries) + 2, dtype=">f8")
             with_flow[1:-1] = entries
             with_flow[0] = 0
             with_flow[-1] = 0
 
+            fEntries = entries.sum()
+            fTsumw, fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(entries, edges)
+
             fNbins = len(edges) - 1
             fXmin, fXmax = edges[0], edges[-1]
-            if numpy.array_equal(
+            if numpy.allclose(
                 edges, numpy.linspace(fXmin, fXmax, len(edges), edges.dtype)
             ):
                 edges = numpy.array([], dtype=">f8")
@@ -283,15 +466,17 @@ def to_writable(obj):
 
         elif len(obj) == 3:
             (entries, xedges, yedges) = obj
-            xcenters = (xedges[:-1] + xedges[1:]) / 2.0
-            ycenters = (yedges[:-1] + yedges[1:]) / 2.0
 
-            fEntries = fTsumw = fTsumw2 = entries.sum()
-            fTsumwx = (entries.T * xcenters).sum()
-            fTsumwx2 = (entries.T * xcenters ** 2).sum()
-            fTsumwy = (entries * ycenters).sum()
-            fTsumwy2 = (entries * ycenters ** 2).sum()
-            fTsumwxy = ((entries * ycenters).T * xcenters).sum()
+            fEntries = entries.sum()
+            (
+                fTsumw,
+                fTsumw2,
+                fTsumwx,
+                fTsumwx2,
+                fTsumwy,
+                fTsumwy2,
+                fTsumwxy,
+            ) = _root_stats_2d(entries, xedges, yedges)
 
             with_flow = numpy.zeros(
                 (entries.shape[0] + 2, entries.shape[1] + 2), dtype=">f8"
@@ -301,7 +486,7 @@ def to_writable(obj):
 
             fXaxis_fNbins = len(xedges) - 1
             fXmin, fXmax = xedges[0], xedges[-1]
-            if numpy.array_equal(
+            if numpy.allclose(
                 xedges, numpy.linspace(fXmin, fXmax, len(xedges), xedges.dtype)
             ):
                 xedges = numpy.array([], dtype=">f8")
@@ -310,7 +495,7 @@ def to_writable(obj):
 
             fYaxis_fNbins = len(yedges) - 1
             fYmin, fYmax = yedges[0], yedges[-1]
-            if numpy.array_equal(
+            if numpy.allclose(
                 yedges, numpy.linspace(fYmin, fYmax, len(yedges), yedges.dtype)
             ):
                 yedges = numpy.array([], dtype=">f8")
@@ -350,25 +535,21 @@ def to_writable(obj):
 
         elif len(obj) == 4:
             (entries, xedges, yedges, zedges) = obj
-            xcenters = (xedges[:-1] + xedges[1:]) / 2.0
-            ycenters = (yedges[:-1] + yedges[1:]) / 2.0
-            zcenters = (zedges[:-1] + zedges[1:]) / 2.0
 
-            fEntries = fTsumw = fTsumw2 = entries.sum()
-            fTsumwx = (numpy.transpose(entries, (1, 2, 0)) * xcenters).sum()
-            fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters ** 2).sum()
-            fTsumwy = (numpy.transpose(entries, (2, 0, 1)) * ycenters).sum()
-            fTsumwy2 = (numpy.transpose(entries, (2, 0, 1)) * ycenters ** 2).sum()
-            fTsumwz = (entries * zcenters).sum()
-            fTsumwz2 = (entries * zcenters ** 2).sum()
-            fTsumwxy = (
-                numpy.transpose(
-                    numpy.transpose(entries, (2, 0, 1)) * ycenters, (2, 0, 1)
-                )
-                * xcenters
-            ).sum()
-            fTsumwxz = (numpy.transpose(entries * zcenters, (1, 2, 0)) * xcenters).sum()
-            fTsumwyz = (numpy.transpose(entries * zcenters, (2, 0, 1)) * ycenters).sum()
+            fEntries = entries.sum()
+            (
+                fTsumw,
+                fTsumw2,
+                fTsumwx,
+                fTsumwx2,
+                fTsumwy,
+                fTsumwy2,
+                fTsumwxy,
+                fTsumwz,
+                fTsumwz2,
+                fTsumwxz,
+                fTsumwyz,
+            ) = _root_stats_3d(entries, xedges, yedges, zedges)
 
             with_flow = numpy.zeros(
                 (entries.shape[0] + 2, entries.shape[1] + 2, entries.shape[2] + 2),
@@ -379,7 +560,7 @@ def to_writable(obj):
 
             fXaxis_fNbins = len(xedges) - 1
             fXmin, fXmax = xedges[0], xedges[-1]
-            if numpy.array_equal(
+            if numpy.allclose(
                 xedges, numpy.linspace(fXmin, fXmax, len(xedges), xedges.dtype)
             ):
                 xedges = numpy.array([], dtype=">f8")
@@ -388,7 +569,7 @@ def to_writable(obj):
 
             fYaxis_fNbins = len(yedges) - 1
             fYmin, fYmax = yedges[0], yedges[-1]
-            if numpy.array_equal(
+            if numpy.allclose(
                 yedges, numpy.linspace(fYmin, fYmax, len(yedges), yedges.dtype)
             ):
                 yedges = numpy.array([], dtype=">f8")
@@ -397,7 +578,7 @@ def to_writable(obj):
 
             fZaxis_fNbins = len(zedges) - 1
             fZmin, fZmax = zedges[0], zedges[-1]
-            if numpy.array_equal(
+            if numpy.allclose(
                 zedges, numpy.linspace(fZmin, fZmax, len(zedges), zedges.dtype)
             ):
                 zedges = numpy.array([], dtype=">f8")
@@ -451,6 +632,75 @@ def to_writable(obj):
         raise TypeError(
             "unrecognized type cannot be written to a ROOT file: " + type(obj).__name__
         )
+
+
+def _fXbins_maybe_regular(axis, boost_histogram):
+    if boost_histogram is None:
+        edges = axis.edges
+        fXmin, fXmax = edges[0], edges[-1]
+        if numpy.allclose(edges, numpy.linspace(fXmin, fXmax, len(edges), edges.dtype)):
+            return numpy.array([], dtype=">f8")
+        else:
+            return edges.astype(">f8")
+    else:
+        if isinstance(axis, boost_histogram.axis.Regular):
+            return numpy.array([], dtype=">f8")
+        else:
+            return axis.edges
+
+
+def _root_stats_1d(entries, edges):
+    centers = (edges[:-1] + edges[1:]) / 2.0
+
+    fTsumw = fTsumw2 = entries.sum()
+    fTsumwx = (entries * centers).sum()
+    fTsumwx2 = (entries * centers ** 2).sum()
+
+    return fTsumw, fTsumw2, fTsumwx, fTsumwx2
+
+
+def _root_stats_2d(entries, xedges, yedges):
+    xcenters = (xedges[:-1] + xedges[1:]) / 2.0
+    ycenters = (yedges[:-1] + yedges[1:]) / 2.0
+    fTsumw = fTsumw2 = entries.sum()
+    fTsumwx = (entries.T * xcenters).sum()
+    fTsumwx2 = (entries.T * xcenters ** 2).sum()
+    fTsumwy = (entries * ycenters).sum()
+    fTsumwy2 = (entries * ycenters ** 2).sum()
+    fTsumwxy = ((entries * ycenters).T * xcenters).sum()
+    return fTsumw, fTsumw2, fTsumwx, fTsumwx2, fTsumwy, fTsumwy2, fTsumwxy
+
+
+def _root_stats_3d(entries, xedges, yedges, zedges):
+    xcenters = (xedges[:-1] + xedges[1:]) / 2.0
+    ycenters = (yedges[:-1] + yedges[1:]) / 2.0
+    zcenters = (zedges[:-1] + zedges[1:]) / 2.0
+    fTsumw = fTsumw2 = entries.sum()
+    fTsumwx = (numpy.transpose(entries, (1, 2, 0)) * xcenters).sum()
+    fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters ** 2).sum()
+    fTsumwy = (numpy.transpose(entries, (2, 0, 1)) * ycenters).sum()
+    fTsumwy2 = (numpy.transpose(entries, (2, 0, 1)) * ycenters ** 2).sum()
+    fTsumwz = (entries * zcenters).sum()
+    fTsumwz2 = (entries * zcenters ** 2).sum()
+    fTsumwxy = (
+        numpy.transpose(numpy.transpose(entries, (2, 0, 1)) * ycenters, (2, 0, 1))
+        * xcenters
+    ).sum()
+    fTsumwxz = (numpy.transpose(entries * zcenters, (1, 2, 0)) * xcenters).sum()
+    fTsumwyz = (numpy.transpose(entries * zcenters, (2, 0, 1)) * ycenters).sum()
+    return (
+        fTsumw,
+        fTsumw2,
+        fTsumwx,
+        fTsumwx2,
+        fTsumwy,
+        fTsumwy2,
+        fTsumwxy,
+        fTsumwz,
+        fTsumwz2,
+        fTsumwxz,
+        fTsumwyz,
+    )
 
 
 def to_TString(string):

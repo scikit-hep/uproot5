@@ -212,11 +212,21 @@ Since Uproot is an I/O library, it intentionally does not have methods for plott
 
 If one of those libraries is not currently installed, a hint is provided for how to get it.
 
+After installing hist, we see
+
+.. code-block:: python
+
+    >>> file["hpxpy"].to_hist()
+    Hist(
+      Regular(40, -4, 4, name='xaxis', label='xaxis'),
+      Regular(40, -4, 4, name='yaxis', label='yaxis'),
+      storage=Double()) # Sum: 74985.0 (75000.0 with flow)
+
 For histogramming, I recommend
 
 - `mplhep <https://github.com/scikit-hep/mplhep>`__ for plotting NumPy-like histograms in Matplotlib.
-- `boost-histogram <https://boost-histogram.readthedocs.io/en/latest/>`__ for fast filling and manipulation.
-- `hist <https://hist.readthedocs.io/en/latest/>`__ for plotting, filling, manipulation, and fitting all in one package.
+- `boost-histogram <https://boost-histogram.readthedocs.io/>`__ for fast filling and manipulation.
+- `hist <https://hist.readthedocs.io/>`__ for plotting, filling, manipulation, and fitting all in one package.
 
 Inspecting a TBranches of a TTree
 ---------------------------------
@@ -1017,16 +1027,30 @@ To put data in a nested directory, just include slashes in the name.
 
 Empty directories can be made with the :ref:`uproot.writing.writable.WritableDirectory.mkdir` method.
 
-A small but growing list of data types can be written to files:
+.. note::
 
-* strings: TObjString
-* histograms: TH1*, TH2*, TH3*
-* profile plots: TProfile, TProfile2D, TProfile3D
-* NumPy histograms created with `np.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__, `np.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__, and `np.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__ for ``d <= 3``
-* `hist histograms <https://hist.readthedocs.io/>`__ (3 dimensions or fewer)
-* PyROOT objects
+    A small but growing list of data types can be written to files:
 
-Consider the following example of the latter:
+    * strings: TObjString
+    * histograms: TH1*, TH2*, TH3*
+    * profile plots: TProfile, TProfile2D, TProfile3D
+    * NumPy histograms created with `np.histogram <https://numpy.org/doc/stable/reference/generated/numpy.histogram.html>`__, `np.histogram2d <https://numpy.org/doc/stable/reference/generated/numpy.histogram2d.html>`__, and `np.histogramdd <https://numpy.org/doc/stable/reference/generated/numpy.histogramdd.html>`__ with 3 dimensions or fewer
+    * histograms that satisfy the `Universal Histogram Interface <https://uhi.readthedocs.io/>`__ (UHI) with 3 dimensions or fewer; this includes `boost-histogram <https://boost-histogram.readthedocs.io/>`__ and `hist <https://hist.readthedocs.io/>`__
+    * PyROOT objects
+
+Here is an example using hist:
+
+.. code-block:: python
+
+    >>> import hist
+    >>> h = hist.Hist.new.Reg(10, -5, 5, name="x").Weight()
+    >>> h.fill(np.random.normal(0, 1, 100000))
+    Hist(Regular(10, -5, 5, name='x', label='x'), storage=Weight()) # Sum: WeightedSum(value=100000, variance=100000)
+    >>> file["from_hist"] = h
+    >>> file["from_hist"]
+    <TH1D (version 3) at 0x7f5fb6e78970>
+
+And here's an example using PyROOT:
 
 .. code-block:: python
 
@@ -1077,8 +1101,9 @@ As usual with a `MutableMapping <https://docs.python.org/3/library/collections.a
 .. code-block:: python
 
     >>> file.keys()
-    ['hist;1', 'subdir;1', 'subdir/hist;1', 'subdir/README;1', 'from_pyroot;1']
+    ['hist;1', 'subdir;1', 'subdir/hist;1', 'subdir/README;1', 'from_hist;1', 'from_pyroot;1']
     >>> del file["from_pyroot"]
+    >>> del file["from_hist"]
     >>> del file["hist"]
     >>> file.keys()
     ['subdir;1', 'subdir/hist;1', 'subdir/README;1']
@@ -1163,12 +1188,14 @@ And Awkward record arrays, constructed with `ak.zip <https://awkward-array.readt
     Muon_eta             | double[]                 | AsJagged(AsDtype('>f8'))
     Muon_phi             | double[]                 | AsJagged(AsDtype('>f8'))
 
-The small but growing list of data types can be written as TTrees is:
+.. note::
 
-* dict of NumPy arrays (flat, multidimensional, and/or structured), Awkward Arrays containing one level of variable-length lists and/or one level of records, or a Pandas DataFrame with a numeric index
-* a single NumPy structured array (one level deep)
-* a single Awkward Array containing one level of variable-length lists and/or one level of records
-* a single Pandas DataFrame with a numeric index
+    The small but growing list of data types can be written as TTrees is:
+
+    * dict of NumPy arrays (flat, multidimensional, and/or structured), Awkward Arrays containing one level of variable-length lists and/or one level of records, or a Pandas DataFrame with a numeric index
+    * a single NumPy structured array (one level deep)
+    * a single Awkward Array containing one level of variable-length lists and/or one level of records
+    * a single Pandas DataFrame with a numeric index
 
 Just as empty directories can be made with the :ref:`uproot.writing.writable.WritableDirectory.mkdir` method, empty TTrees can be made with :ref:`uproot.writing.writable.WritableDirectory.mktree`.
 
