@@ -123,21 +123,14 @@ def test_boost():
         assert hpx.to_boost() == boost_histogram.Histogram(hpx)
 
         assert hpx.to_boost().name == "hpx"
-        assert hpx.to_boost().title == "This is the px distribution"
         assert hpx.to_boost().axes[0].name == "xaxis"
-        assert hpx.to_boost().axes[0].title == ""
 
         assert hpxpy.to_boost().name == "hpxpy"
-        assert hpxpy.to_boost().title == "py vs px"
         assert hpxpy.to_boost().axes[0].name == "xaxis"
-        assert hpxpy.to_boost().axes[0].title == ""
         assert hpxpy.to_boost().axes[1].name == "yaxis"
-        assert hpxpy.to_boost().axes[1].title == ""
 
         assert hprof.to_boost().name == "hprof"
-        assert hprof.to_boost().title == "Profile of pz versus px"
         assert hprof.to_boost().axes[0].name == "xaxis"
-        assert hprof.to_boost().axes[0].title == ""
 
 
 @pytest.mark.skip(
