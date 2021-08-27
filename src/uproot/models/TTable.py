@@ -226,7 +226,7 @@ in file {1}""".format(
             sum([col.fSize for col in ioDescriptor._columns]) == self._members["fSize"]
         )
 
-        row = cursor.bytes(
+        buf = cursor.bytes(
             chunk, self._members["fSize"] * self._members["fMaxIndex"], context
         )
 
@@ -244,7 +244,7 @@ in file {1}""".format(
                 itemsize=self._members["fSize"],
             )
         )
-        self._data = numpy.frombuffer(row, dtype=dtype)
+        self._data = numpy.frombuffer(buf, dtype=dtype)
 
     base_names_versions = []
     member_names = ["fN", "fMaxIndex", "fSize"]
