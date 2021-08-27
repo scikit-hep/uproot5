@@ -172,12 +172,13 @@ class _OpenDefaults(dict):
                     "XRootD {0} is not fully supported; ".format(dist.version)
                     + """either upgrade to 5.2.0+ or set
 
-                open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
-            """
+    open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
+"""
                 )
                 warnings.warn(message, FutureWarning)
-            else:
-                self["xrootd_handler"] = uproot.source.xrootd.XRootDSource
+
+            # The key should still be set, regardless of whether we see the warning.
+            self["xrootd_handler"] = uproot.source.xrootd.XRootDSource
 
         return dict.__getitem__(self, where)
 
