@@ -1170,6 +1170,15 @@ class DirectoryData(CascadeLeaf):
 
     def __init__(self, location, allocation, keys):
         super(DirectoryData, self).__init__(location, allocation)
+        self._dirty_keys = []
+        self._dirty_keys_start = None
+
+        self._keys_num_bytes = sum(x.allocation for x in keys)
+        self._keys_by_name = {}
+        for key in keys:
+            if key.name.string not in self._keys_by_name:
+                self._keys_by_name[key.name.string] = []
+            self._keys_by_name[key.name.string].append(key)
         self._keys = keys
 
     def __repr__(self):
@@ -1194,13 +1203,21 @@ class DirectoryData(CascadeLeaf):
 
     def next_cycle(self, name):
         cycle = 1
-        for key in self._keys:
-            if name == key.name.string:
-                cycle = max(cycle, key.cycle + 1)
+        for key in self._keys_by_name.get(name, []):
+            cycle = max(cycle, key.cycle + 1)
         return cycle
 
-    def add_key(self, key):
-        self._file_dirty = True
+    def add_key(self, key, incremental=False):
+        if incremental:
+            self._dirty_keys.append(key)
+        else:
+            self._file_dirty = True
+
+        self._keys_num_bytes += key.allocation
+        keys = self._keys_by_name.get(key.name.string)
+        if keys is None:
+            keys = self._keys_by_name[key.name.string] = []
+        keys.append(key)
         self._keys.append(key)
 
     def replace_key(self, key):
@@ -1208,6 +1225,12 @@ class DirectoryData(CascadeLeaf):
         for i in range(len(self._keys)):
             old = self._keys[i]
             if old.name.string == key.name.string and old.cycle == key.cycle:
+                self._keys_num_bytes += key.allocation - old.allocation
+                keys = self._keys_by_name[key.name.string]
+                for j in range(len(keys)):
+                    if keys[j].cycle == key.cycle:
+                        del keys[j]
+                keys.append(key)
                 self._keys[i] = key
                 return
         else:
@@ -1218,6 +1241,11 @@ class DirectoryData(CascadeLeaf):
         for i in range(len(self._keys)):
             old = self._keys[i]
             if old.name.string == key.name.string and old.cycle == key.cycle:
+                self._keys_num_bytes -= old.allocation
+                keys = self._keys_by_name[key.name.string]
+                for j in range(len(keys)):
+                    if keys[j].cycle == key.cycle:
+                        del keys[j]
                 del self._keys[i]
                 return
         else:
@@ -1228,20 +1256,21 @@ class DirectoryData(CascadeLeaf):
         return len(self._keys)
 
     def haskey(self, name):
-        for key in self._keys:
-            if key.name.string == name:
-                return True
-        return False
+        return name in self._keys_by_name
 
     def get_key(self, name, cycle=None):
-        out = None
-        for key in self._keys:
-            if key.name.string == name and cycle is None:
-                if out is None or key.cycle > out.cycle:
-                    out = key
-            elif key.name.string == name and key.cycle == cycle:
-                return key
-        return out  # None if a match wasn't found
+        keys = self._keys_by_name.get(name, [])
+        if cycle is None:
+            if len(keys) == 0:
+                return None
+            else:
+                return max(keys, key=lambda x: x.cycle)
+        else:
+            for key in keys:
+                if key.cycle == cycle:
+                    return key
+            else:
+                return None
 
     @property
     def key_names(self):
@@ -1256,24 +1285,50 @@ class DirectoryData(CascadeLeaf):
         return [
             x.name.string
             for x in self._keys
-            if x.classname.string in ("TDirectory", "TDirectoryFile")
+            if x.classname.string == "TDirectory"
+            or x.classname.string == "TDirectoryFile"
         ]
 
     def classname_of(self, name):
-        for key in self._keys:
-            if key.name.string == name:
-                return key.classname.string
-        return None
+        keys = self._keys_by_name.get(name, [])
+        if len(keys) == 0:
+            return None
+        else:
+            return max(keys, key=lambda x: x.cycle).classname.string
 
     @property
     def num_bytes(self):
-        return uproot.reading._directory_format_num_keys.size + sum(
-            x.allocation for x in self._keys
-        )
+        return uproot.reading._directory_format_num_keys.size + self._keys_num_bytes
 
     @property
     def next_location(self):
         return self._location + self.num_bytes
+
+    def write(self, sink):
+        if self._file_dirty:
+            if self._location is None:
+                raise RuntimeError(
+                    "can't write object because location is unknown:\n\n    "
+                    + repr(self)
+                )
+
+            tmp = self.serialize()
+            self._dirty_keys_start = self._location + len(tmp)
+
+            sink.write(self._location, tmp)
+            self._file_dirty = False
+
+        else:
+            num = uproot.reading._directory_format_num_keys.pack(len(self._keys))
+            sink.write(self._location, num)
+
+            for key in self._dirty_keys:
+                copied = key.copy_to(self._dirty_keys_start)
+                copied.location = self._dirty_keys_start
+                copied.write(sink)
+                self._dirty_keys_start += copied.num_bytes
+
+        self._dirty_keys = []
 
     def serialize(self):
         out = [uproot.reading._directory_format_num_keys.pack(len(self._keys))]
@@ -1603,15 +1658,12 @@ class Directory(CascadeNode):
         if replaces is None:
             next_key = key.copy_to(self._data.next_location)
             if self._data.num_bytes + next_key.num_bytes > self._data.allocation:
-                self._reallocate_data(
-                    int(
-                        math.ceil(
-                            1.5 * (self._data.allocation + next_key.num_bytes + 8)
-                        )
-                    )
+                requested_num_bytes = int(
+                    math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8))
                 )
+                self._reallocate_data(requested_num_bytes)
                 next_key = key.copy_to(self._data.next_location)
-            self._data.add_key(next_key)
+            self._data.add_key(next_key, incremental=True)
 
         else:
             original_key = self._data.get_key(replaces.name.string, replaces.cycle)
@@ -1621,11 +1673,10 @@ class Directory(CascadeNode):
                 self._data.num_bytes + new_key.num_bytes - original_key.num_bytes
                 > self._data.allocation
             ):
-                self._reallocate_data(
-                    int(
-                        math.ceil(1.5 * (self._data.allocation + new_key.num_bytes + 8))
-                    )
+                requested_num_bytes = int(
+                    math.ceil(1.5 * (self._data.allocation + new_key.num_bytes + 8))
                 )
+                self._reallocate_data(requested_num_bytes)
                 original_key = self._data.get_key(replaces.name.string, replaces.cycle)
                 assert original_key is not None
                 new_key = key.copy_to(original_key.location)
@@ -1713,7 +1764,7 @@ class Directory(CascadeNode):
                 int(math.ceil(1.5 * (self._data.allocation + next_key.num_bytes + 8)))
             )
             next_key = subdirectory_key.copy_to(self._data.next_location)
-        self._data.add_key(next_key)
+        self._data.add_key(next_key, incremental=True)
 
         self._header.modified_on = datetime.datetime.now()
 
