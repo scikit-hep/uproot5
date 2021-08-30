@@ -670,7 +670,7 @@ class Tree(object):
                 offsets = numpy.asarray(layout.offsets)
                 if offsets[0] != 0:
                     content = content[offsets[0] :]
-                    offsets -= offsets[0]
+                    offsets = offsets - offsets[0]
                 if len(content) > offsets[-1]:
                     content = content[: offsets[-1]]
 
