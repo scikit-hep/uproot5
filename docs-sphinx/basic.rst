@@ -1242,11 +1242,9 @@ The :ref:`uproot.writing.writable.WritableTree.extend` method always adds one TB
 
 The arrays also have to have the same lengths as each other, though only in the first dimension. Above, the ``"x"`` NumPy array has shape ``(5, 3)``: the first dimension has length 5. The ``"y"`` Awkward array has type ``5 * var * float64``: the first dimension has length 5. This is why they are compatible; the inner dimensions don't matter (except inasmuch as they have the right *type*).
 
-**As a word of warning,** be sure to make these extensions as large as is feasible within memory constraints. A ROOT file full of small TBaskets is both bloated (larger than it needs to be) and slow to read (especially for Uproot, but also for ROOT).
+.. warning::
 
-For instance, if you want to write a million events and have enough memory available to do that 100 thousand events at a time (i.e. a total of 10 TBaskets), then do so. Filling the TTree a hundred events at a time (i.e. a total of 10000 TBaskets) would be considerably slower for writing and reading, and the file would be much larger than it could otherwise be, even with compression.
-
-The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. You have been warned!
+    **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableTree.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, such as the examples with length ``5`` above, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot4/pull/428#issuecomment-908703486>`__.
 
 Specifying the compression
 --------------------------

@@ -1716,15 +1716,9 @@ class WritableTree(object):
             my_directory["tree6"].extend({"branch1": another_numpy_array,
                                           "branch2": another_awkward_array})
 
-        Be sure to make these extensions as large as is feasible within memory constraints,
-        because a ROOT file full of small TBaskets is bloated (larger than it needs to be)
-        and slow to read (especially for Uproot, but also for ROOT).
+        .. warning::
 
-        For instance, if you want to write a million events and have enough memory
-        available to do that 100 thousand events at a time (total of 10 TBaskets),
-        then do so. Filling the TTree a hundred events at a time (total of 10000 TBaskets)
-        would be considerably slower for writing and reading, and the file would be much
-        larger than it could otherwise be, even with compression.
+            **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableTree.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot4/pull/428#issuecomment-908703486>`__.
         """
         self._cascading.extend(self._file, self._file.sink, data)
 
