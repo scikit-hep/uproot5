@@ -168,7 +168,10 @@ def handle_class(classname, cls):
                 if inspect.ismethod(obj) or inspect.isfunction(obj):
                     module, name = obj.__module__, obj.__name__
                 elif isinstance(obj, property):
-                    module, name = obj.fget.__module__, obj.fget.__name__
+                    try:
+                        module, name = obj.fget.__module__, obj.fget.__name__
+                    except AttributeError:
+                        return False
                 else:
                     module, name = "", ""
                 if module.startswith("uproot."):
