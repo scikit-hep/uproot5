@@ -381,6 +381,8 @@ class Tree(object):
             "fBasketSeek": numpy.zeros(
                 self._basket_capacity, uproot.models.TBranch._tbranch13_dtype3
             ),
+            "arrays_write_start": 0,
+            "arrays_write_stop": 0,
             "metadata_start": None,
             "basket_metadata_start": None,
             "tleaf_reference_number": None,
@@ -674,6 +676,7 @@ class Tree(object):
 
                 content = layout.content
                 offsets = numpy.asarray(layout.offsets)
+
                 if offsets[0] != 0:
                     content = content[offsets[0] :]
                     offsets = offsets - offsets[0]
@@ -757,6 +760,8 @@ class Tree(object):
                 fBasketEntry[i + 1] = num_entries + fBasketEntry[i]
 
             datum["fBasketSeek"][self._num_baskets] = location
+
+            datum["arrays_write_stop"] = self._num_baskets + 1
 
         # update TTree metadata in file
         self._num_entries += num_entries
@@ -1145,7 +1150,6 @@ class Tree(object):
                 self._metadata["fEstimate"],
             ),
         )
-        sink.flush()
 
         for datum in self._branch_data:
             if datum["kind"] == "record":
@@ -1183,16 +1187,33 @@ class Tree(object):
                 ),
             )
 
-            fBasketBytes = uproot._util.tobytes(datum["fBasketBytes"])
-            fBasketEntry = uproot._util.tobytes(datum["fBasketEntry"])
-            fBasketSeek = uproot._util.tobytes(datum["fBasketSeek"])
+            start, stop = datum["arrays_write_start"], datum["arrays_write_stop"]
+
+            fBasketBytes_part = uproot._util.tobytes(datum["fBasketBytes"][start:stop])
+            fBasketEntry_part = uproot._util.tobytes(
+                datum["fBasketEntry"][start : stop + 1]
+            )
+            fBasketSeek_part = uproot._util.tobytes(datum["fBasketSeek"][start:stop])
 
             position = base + datum["basket_metadata_start"] + 1
-            sink.write(position, fBasketBytes)
-            position += len(fBasketBytes) + 1
-            sink.write(position, fBasketEntry)
-            position += len(fBasketEntry) + 1
-            sink.write(position, fBasketSeek)
+            position += datum["fBasketBytes"][:start].nbytes
+            sink.write(position, fBasketBytes_part)
+            position += len(fBasketBytes_part)
+            position += datum["fBasketBytes"][stop:].nbytes
+
+            position += 1
+            position += datum["fBasketEntry"][:start].nbytes
+            sink.write(position, fBasketEntry_part)
+            position += len(fBasketEntry_part)
+            position += datum["fBasketEntry"][stop + 1 :].nbytes
+
+            position += 1
+            position += datum["fBasketSeek"][:start].nbytes
+            sink.write(position, fBasketSeek_part)
+            position += len(fBasketSeek_part)
+            position += datum["fBasketSeek"][stop:].nbytes
+
+            datum["arrays_write_start"] = datum["arrays_write_stop"]
 
             if datum["kind"] == "counter":
                 position = (
@@ -1208,6 +1229,8 @@ class Tree(object):
                         datum["tleaf_maximum_value"],
                     ),
                 )
+
+        sink.flush()
 
     def write_np_basket(self, sink, branch_name, compression, array):
         fClassName = uproot.serialization.string("TBasket")
