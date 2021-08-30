@@ -507,7 +507,11 @@ class Tree(object):
 
             if isinstance(data, awkward.Array):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
-                    provided = {self._counter_name(""): awkward.num(data, axis=1)}
+                    provided = {
+                        self._counter_name(""): numpy.asarray(
+                            awkward.num(data, axis=1), dtype=">u4"
+                        )
+                    }
                 else:
                     provided = {}
                 for k, v in zip(awkward.fields(data), awkward.unzip(data)):
@@ -535,7 +539,9 @@ class Tree(object):
                         and v.ndim > 1
                         and not v.layout.purelist_isregular
                     ):
-                        provided[self._counter_name(k)] = awkward.num(v, axis=1)
+                        provided[self._counter_name(k)] = numpy.asarray(
+                            awkward.num(v, axis=1), dtype=">u4"
+                        )
 
                 provided[k] = v
 
