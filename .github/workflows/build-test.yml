@@ -48,6 +48,7 @@ jobs:
           conda list
 
       - name: "Install Awkward"
+        if: "matrix.python-version != 2.7  ||  runner.os != 'Windows'"
         run: |
           conda env list
           pip install --pre "awkward>=1.0.0"
