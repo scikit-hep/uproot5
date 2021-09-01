@@ -511,7 +511,9 @@ in file {5}""".format(
             sign = ((1 << (self.num_bits + 1)) & mantissa != 0) * -2 + 1
 
             output = exponent.view(numpy.float32) * sign
-            output = output.astype(self.to_dtype)
+
+            d, s = _dtype_shape(self.to_dtype)
+            output = output.astype(d).reshape((-1,) + s)
 
         else:
             d, s = _dtype_shape(self.to_dtype)
