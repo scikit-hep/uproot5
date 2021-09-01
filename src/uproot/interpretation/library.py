@@ -995,6 +995,32 @@ class Pandas(Library):
                                 flat_index = pandas.MultiIndex.from_arrays(
                                     [array.index]
                                 )
+                            # Old versions of Pandas handle the following line poorly:
+                            # should we support them?
+                            #
+                            # >>> pandas.__version__
+                            # '0.22.0'
+                            # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
+                            # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
+                            # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
+                            # 0  0   NaN
+                            #    1   NaN
+                            #    2   NaN
+                            # 1  0   NaN
+                            #    1   NaN
+                            # dtype: float64
+                            #
+                            # >>> pandas.__version__
+                            # '1.3.2'
+                            # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
+                            # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
+                            # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
+                            # 0  0    1.1
+                            #    1    1.1
+                            #    2    1.1
+                            # 1  0    4.4
+                            #    1    4.4
+                            # dtype: float64
                             df.append(
                                 pandas.Series(array.values, index=flat_index).reindex(
                                     index
@@ -1059,6 +1085,9 @@ class Pandas(Library):
             )
 
     def global_index(self, arrays, global_offset):
+        if isinstance(arrays, tuple):
+            return tuple(self.global_index(x, global_offset) for x in arrays)
+
         if type(arrays.index).__name__ == "MultiIndex":
             if hasattr(arrays.index.levels[0], "arrays"):
                 index = arrays.index.levels[0].arrays  # pandas>=0.24.0
