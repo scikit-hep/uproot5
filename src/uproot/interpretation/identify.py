@@ -317,9 +317,9 @@ def interpretation_of(branch, context, simplify=True):
     """
     if len(branch.branches) != 0:
         if branch.top_level and branch.has_member("fClassName"):
-            typename = branch.member("fClassName")
+            typename = str(branch.member("fClassName"))
         elif branch.streamer is not None:
-            typename = branch.streamer.typename
+            typename = str(branch.streamer.typename)
         else:
             typename = None
         subbranches = dict((x.name, x.interpretation) for x in branch.branches)
