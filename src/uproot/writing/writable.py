@@ -100,10 +100,8 @@ def recreate(file_path, **options):
     """
     file_path = uproot._util.regularize_path(file_path)
     if uproot._util.isstr(file_path):
-        if not os.path.exists(file_path):
-            with open(file_path, "a") as tmp:
-                tmp.seek(0)
-                tmp.truncate()
+        # Truncate file
+        open(file_path, "w").close()
         sink = uproot.sink.file.FileSink(file_path)
     else:
         sink = uproot.sink.file.FileSink.from_object(file_path)
