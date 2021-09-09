@@ -766,7 +766,9 @@ class Model_TStreamerBase(Model_TStreamerElement):
         streamer_versions = streamers.get(self.name)
         if streamer_versions is not None:
             base_version = self.base_version
-            if base_version == "max":
+            if len(streamer_versions) == 0:
+                pass
+            elif base_version == "max" or base_version not in streamer_versions:
                 streamer = streamer_versions[max(streamer_versions)]
             else:
                 streamer = streamer_versions[base_version]
