@@ -639,11 +639,9 @@ def lazy(
 
                 interpretation = branchid_interpretation[branch.cache_key]
                 form = interpretation.awkward_form(obj.file, index_format="i64")
-                if isinstance(interpretation, uproot.interpretation.objects.AsObjects):
-                    if not uproot.interpretation.objects.awkward_can_optimize(
-                        interpretation, form
-                    ):
-                        form = uproot._util.awkward_form_of_iter(awkward, form)
+                form = uproot._util.recursively_fix_awkward_form_of_iter(
+                    awkward, interpretation, form
+                )
 
                 generator = awkward.layout.ArrayGenerator(
                     branch.array,

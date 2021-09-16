@@ -193,8 +193,16 @@ in file {1}""".format(
         contents["fSize"] = uproot._util.awkward_form(
             numpy.dtype("i4"), file, index_format, header, tobject_header, breadcrumbs
         )
-        contents["refs"] = uproot._util.awkward_form(
-            numpy.dtype("i4"), file, index_format, header, tobject_header, breadcrumbs
+        contents["refs"] = awkward.forms.ListOffsetForm(
+            index_format,
+            uproot._util.awkward_form(
+                numpy.dtype("i4"),
+                file,
+                index_format,
+                header,
+                tobject_header,
+                breadcrumbs,
+            ),
         )
         return awkward.forms.RecordForm(
             contents, parameters={"__record__": "TRefArray"}
