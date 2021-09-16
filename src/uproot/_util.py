@@ -665,6 +665,11 @@ def awkward_form_remove_uproot(awkward, form):
 # going through ak.from_iter, the integer dtypes will be int64 and the
 # floating dtypes will be float64 because that's what ak.from_iter makes.
 def recursively_fix_awkward_form_of_iter(awkward, interpretation, form):
+    """
+    Given an interpretation of a TBranch, fixup any form corresponding to
+    a component that cannot be read directly by awkward and needs to go
+    through ak.from_iter
+    """
     import uproot.interpretation
 
     if isinstance(interpretation, uproot.interpretation.grouped.AsGrouped):
