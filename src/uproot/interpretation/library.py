@@ -205,9 +205,18 @@ class NumPy(Library):
         ):
             out = numpy.zeros(len(array), dtype=object)
             for i, x in enumerate(array):
-                out[i] = numpy.zeros(len(x), dtype=object)
-                for j, y in enumerate(x):
+                out[i] = numpy.zeros(x.shape, dtype=object)
+                for j, y in x.ndenumerate():
                     out[i][j] = y
+            return out
+
+        elif isinstance(
+            array,
+            uproot.interpretation.objects.StridedObjectArray,
+        ):
+            out = numpy.zeros(array.shape, dtype=object)
+            for i, x in array.ndenumerate():
+                out[i] = x
             return out
 
         elif isinstance(
@@ -216,7 +225,6 @@ class NumPy(Library):
                 uproot.interpretation.jagged.JaggedArray,
                 uproot.interpretation.strings.StringArray,
                 uproot.interpretation.objects.ObjectArray,
-                uproot.interpretation.objects.StridedObjectArray,
             ),
         ):
             out = numpy.zeros(len(array), dtype=object)
@@ -256,6 +264,7 @@ class NumPy(Library):
 def _strided_to_awkward(awkward, path, interpretation, data):
     contents = []
     names = []
+    data = data.flatten()
     for name, member in interpretation.members:
         if not name.startswith("@"):
             p = name
@@ -274,7 +283,10 @@ def _strided_to_awkward(awkward, path, interpretation, data):
         "__record__": uproot.model.classname_decode(interpretation.model.__name__)[0]
     }
     length = len(data) if len(contents) == 0 else None
-    return awkward.layout.RecordArray(contents, names, length, parameters=parameters)
+    out = awkward.layout.RecordArray(contents, names, length, parameters=parameters)
+    for dim in reversed(interpretation.inner_shape):
+        out = awkward.layout.RegularArray(out, dim)
+    return out
 
 
 # FIXME: _object_to_awkward_json and _awkward_json_to_array are slow functions

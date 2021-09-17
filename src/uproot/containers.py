@@ -580,15 +580,19 @@ class AsArray(AsContainer):
             data.
         values (:doc:`uproot.model.Model`, :doc:`uproot.containers.Container`, or ``numpy.dtype``): Data
             type for data nested in the array.
+        inner_shape (Optional[Tuple[int]]): Shape not counting first axis, if any
 
     A :doc:`uproot.containers.AsContainer` for simple arrays (not
     ``std::vector``).
     """
 
-    def __init__(self, header, speedbump, values):
+    def __init__(self, header, speedbump, values, inner_shape=()):
         self._header = header
         self._speedbump = speedbump
         self._values = values
+        self._inner_shape = inner_shape
+        if isinstance(values, numpy.dtype) and inner_shape:
+            raise RuntimeError("Logic error: the dtype should have contained the shape")
 
     @property
     def speedbump(self):
@@ -606,22 +610,35 @@ class AsArray(AsContainer):
         """
         return self._values
 
+    @property
+    def inner_shape(self):
+        """
+        The shape of possible extra dimensions in this array
+        """
+        return self._inner_shape
+
     def __repr__(self):
         if isinstance(self._values, type):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsArray({0}, {1}, {2})".format(self.header, self.speedbump, values)
+        return "AsArray({0}, {1}, {2}, {3})".format(
+            self.header, self.speedbump, values, self.inner_shape
+        )
 
     @property
     def cache_key(self):
-        return "AsArray({0},{1},{2})".format(
-            self.header, self.speedbump, _content_cache_key(self._values)
+        return "AsArray({0},{1},{2},{3})".format(
+            self.header,
+            self.speedbump,
+            _content_cache_key(self._values),
+            self.inner_shape,
         )
 
     @property
     def typename(self):
-        return _content_typename(self._values) + "*"
+        shape = "".join("[{0}]".format(d) for d in self.inner_shape)
+        return _content_typename(self._values) + "[]" + shape
 
     def awkward_form(
         self,
@@ -632,16 +649,20 @@ class AsArray(AsContainer):
         breadcrumbs=(),
     ):
         awkward = uproot.extras.awkward()
+        values_form = uproot._util.awkward_form(
+            self._values, file, index_format, header, tobject_header, breadcrumbs
+        )
+        for dim in reversed(self.inner_shape):
+            values_form = awkward.forms.RegularForm(values_form, dim)
         return awkward.forms.ListOffsetForm(
             index_format,
-            uproot._util.awkward_form(
-                self._values, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            values_form,
             parameters={
                 "uproot": {
                     "as": "array",
                     "header": self._header,
                     "speedbump": self._speedbump,
+                    "inner_shape": list(self._inner_shape),
                 }
             },
         )
@@ -667,7 +688,7 @@ in file {1}""".format(
                 remainder = chunk.get(
                     cursor.index, cursor.index + num_bytes, cursor, context
                 )
-                return remainder.view(self._values)
+                return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
                 out = []
@@ -688,7 +709,9 @@ in file {1}""".format(
                         context,
                         file.file_path,
                     )
-                return numpy.array(out, dtype=numpy.dtype(object))
+                return numpy.array(out, dtype=numpy.dtype(object)).reshape(
+                    -1, *self.inner_shape
+                )
 
         else:
             if self._speedbump:
@@ -696,7 +719,7 @@ in file {1}""".format(
 
             if isinstance(self._values, numpy.dtype):
                 remainder = chunk.remainder(cursor.index, cursor, context)
-                return remainder.view(self._values)
+                return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
                 out = []
@@ -706,7 +729,9 @@ in file {1}""".format(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
-                return numpy.array(out, dtype=numpy.dtype(object))
+                return numpy.array(out, dtype=numpy.dtype(object)).reshape(
+                    -1, *self.inner_shape
+                )
 
 
 class AsVector(AsContainer):

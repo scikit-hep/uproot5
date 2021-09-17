@@ -301,6 +301,15 @@ class AsObjects(uproot.interpretation.Interpretation):
                         breadcrumbs=(),
                         original=self._model.values,
                     )
+                    if (
+                        isinstance(self._model, uproot.containers.AsArray)
+                        and self._model.inner_shape
+                    ):
+                        if not isinstance(
+                            content, uproot.interpretation.numerical.AsDtype
+                        ):
+                            raise RuntimeError("I shouldn't be here")
+                        content.reshape(self._model.inner_shape)
                     return uproot.interpretation.jagged.AsJagged(
                         content,
                         header_bytes,
@@ -413,7 +422,12 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         return self._original
 
     def __repr__(self):
-        return "AsStridedObjects({0})".format(self._model.__name__)
+        if self.inner_shape:
+            return "AsStridedObjects({0}, {1})".format(
+                self._model.__name__, self.inner_shape
+            )
+        else:
+            return "AsStridedObjects({0})".format(self._model.__name__)
 
     def __eq__(self, other):
         return isinstance(other, AsStridedObjects) and self._model == other._model
@@ -432,7 +446,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     ):
         awkward = uproot.extras.awkward()
         cname = uproot.model.classname_decode(self._model.__name__)[0]
-        return _strided_awkward_form(
+        form = _strided_awkward_form(
             awkward,
             cname,
             self._members,
@@ -442,6 +456,9 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
             tobject_header,
             breadcrumbs,
         )
+        for dim in reversed(self.inner_shape):
+            form = awkward.forms.RegularForm(form, dim)
+        return form
 
     @property
     def cache_key(self):
@@ -657,6 +674,10 @@ class StridedObjectArray(object):
     def __init__(self, interpretation, array):
         self._interpretation = interpretation
         self._array = array
+        if not isinstance(self._array, numpy.ndarray):
+            raise NotImplementedError(
+                "non-numpy temporary arrays require changes in library interpretations"
+            )
 
     @property
     def interpretation(self):
@@ -672,6 +693,11 @@ class StridedObjectArray(object):
         """
         return self._array
 
+    @property
+    def shape(self):
+        assert self._array.shape == (len(self),) + self._interpretation.inner_shape
+        return self._array.shape
+
     def __repr__(self):
         return "StridedObjectArray({0}, {1})".format(self._interpretation, self._array)
 
@@ -679,13 +705,19 @@ class StridedObjectArray(object):
         return len(self._array)
 
     def __getitem__(self, where):
-        if uproot._util.isint(where):
-            return _strided_object("", self._interpretation, self._array[where])
-
+        out = self._array[where]
+        if isinstance(out, tuple):
+            return _strided_object("", self._interpretation, out)
         else:
-            return StridedObjectArray(self._interpretation, self._array[where])
+            return StridedObjectArray(self._interpretation, out)
 
     def __iter__(self):
-        interpretation = self._interpretation
         for x in self._array:
-            yield _strided_object("", interpretation, x)
+            if isinstance(x, tuple):
+                yield _strided_object("", self._interpretation, x)
+            else:
+                yield StridedObjectArray(self._interpretation, x)
+
+    def ndenumerate(self):
+        for i, x in numpy.ndenumerate(self._array):
+            yield i, _strided_object("", self._interpretation, x)

@@ -233,6 +233,11 @@ class AsDtype(Numerical):
         return self._from_dtype.itemsize
 
     @property
+    def inner_shape(self):
+        _, s = _dtype_shape(self._from_dtype)
+        return s
+
+    @property
     def numpy_dtype(self):
         return self._to_dtype
 
@@ -351,6 +356,12 @@ in file {4}""".format(
         )
 
         return output
+
+    def reshape(self, shape):
+        d, s = _dtype_shape(self._from_dtype)
+        self._from_dtype = numpy.dtype((d, shape))
+        d, s = _dtype_shape(self._to_dtype)
+        self._to_dtype = numpy.dtype((d, shape))
 
 
 class AsDtypeInPlace(AsDtype):
