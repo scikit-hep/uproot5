@@ -47,7 +47,7 @@ def make_connection(parsed_url, timeout):
     Creates a ``http.client.HTTPConnection`` or a ``http.client.HTTPSConnection``,
     depending on the URL scheme.
     """
-    if parsed_url.scheme == "https":
+    if parsed_url.scheme == "https" or parsed_url.scheme == "s3https":
         if uproot._util.py2:
             return HTTPSConnection(
                 parsed_url.hostname, parsed_url.port, None, None, False, timeout
@@ -57,7 +57,7 @@ def make_connection(parsed_url, timeout):
                 parsed_url.hostname, parsed_url.port, None, None, timeout
             )
 
-    elif parsed_url.scheme == "http":
+    elif parsed_url.scheme == "http" or parsed_url.scheme == "s3http":
         if uproot._util.py2:
             return HTTPConnection(parsed_url.hostname, parsed_url.port, False, timeout)
         else:
@@ -89,14 +89,28 @@ def basic_auth_headers(parsed_url):
     """
     if parsed_url.username is None or parsed_url.password is None:
         return {}
-    ret = {
-        "Authorization": "Basic "
-        + base64.b64encode(
-            (parsed_url.username + ":" + parsed_url.password).encode("utf-8")
-        ).decode("utf-8")
-    }
-    return ret
-
+    if parsed_url.scheme == "http" or parsed_url.scheme == "https":
+        ret = {
+            "Authorization": "Basic "
+            + base64.b64encode(
+                (parsed_url.username + ":" + parsed_url.password).encode("utf-8")
+            ).decode("utf-8")
+        }
+        return ret
+    elif parsed_url.scheme == "s3http" or parsed_url.scheme == "s3https":
+        ret = {
+            "Authorization": "AWS "
+            + base64.b64encode(
+                (parsed_url.username + ":" + parsed_url.password).encode("utf-8")
+            ).decode("utf-8")
+        }
+    elif parsed_url.scheme == "gshttp" or parsed_url.scheme == "gshttps":
+        ret = {
+            "Authorization": "GOOG1 "
+            + base64.b64encode(
+                (parsed_url.username + ":" + parsed_url.password).encode("utf-8")
+            ).decode("utf-8")
+        }
 
 def get_num_bytes(file_path, parsed_url, timeout):
     """
