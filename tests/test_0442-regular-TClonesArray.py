@@ -37,7 +37,4 @@ def test_read_delphes_ak(delphes_tree):
 
     branch = delphes_tree["GenJet04/GenJet04.Constituents"]
     array = branch.array(library="ak")
-    assert (
-        str(awkward.type(array))
-        == '25 * var * TRefArray["fName": string, "fSize": int64, "refs": var * int64]'
-    )
+    assert set(array.fields) == {"fName", "fSize", "refs"}
