@@ -709,9 +709,7 @@ in file {1}""".format(
                         context,
                         file.file_path,
                     )
-                return numpy.array(out, dtype=numpy.dtype(object)).reshape(
-                    -1, *self.inner_shape
-                )
+                return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
         else:
             if self._speedbump:
@@ -729,9 +727,7 @@ in file {1}""".format(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
-                return numpy.array(out, dtype=numpy.dtype(object)).reshape(
-                    -1, *self.inner_shape
-                )
+                return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 
 class AsVector(AsContainer):

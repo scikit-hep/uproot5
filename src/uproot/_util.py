@@ -856,3 +856,16 @@ def datetime_to_code(dt):
         | (dt.minute << 6)
         | (dt.second)
     )
+
+
+def objectarray1d(items):
+    """
+    Converts a sized iterable into a 1D object array
+
+    This avoids ``numpy.array``'s default behavior of turning nested iterables
+    into n-d arrays when the shape is rectangular
+    """
+    out = numpy.empty(len(items), dtype=numpy.dtype(object))
+    for i, x in enumerate(items):
+        out[i] = x
+    return out

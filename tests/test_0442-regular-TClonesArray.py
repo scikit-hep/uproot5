@@ -21,6 +21,11 @@ def test_read_delphes_np(delphes_tree):
     assert nparray[0].shape == (2, 5)
     assert nparray[0][0, 0].members["fE"] == 126.46277691787493
 
+    branch = delphes_tree["GenJet04/GenJet04.Constituents"]
+    array = branch.array(library="np")
+    assert array.shape == (25,)
+    assert isinstance(array[0][0], uproot.models.TRef.Model_TRefArray)
+
 
 def test_read_delphes_ak(delphes_tree):
     awkward = pytest.importorskip("awkward")
@@ -29,3 +34,10 @@ def test_read_delphes_ak(delphes_tree):
     array = branch.array(library="ak")
     assert array[0, 0, 0].fE == 126.46277691787493
     assert awkward.all(awkward.num(array, axis=2) == 5)
+
+    branch = delphes_tree["GenJet04/GenJet04.Constituents"]
+    array = branch.array(library="ak")
+    assert (
+        str(awkward.type(array))
+        == '25 * var * TRefArray["fName": string, "fSize": int64, "refs": var * int64]'
+    )
