@@ -970,9 +970,9 @@ class Pandas(Library):
                 newarrays, newnames = {}, []
                 for x in names:
                     if not isinstance(x, tuple):
-                        y = (x,) + (None,) * (longest - 1)
+                        y = (x,) + ("",) * (longest - 1)
                     else:
-                        y = x + (None,) * (longest - len(x))
+                        y = x + ("",) * (longest - len(x))
                     newarrays[y] = arrays[x]
                     newnames.append(y)
                 arrays = newarrays
