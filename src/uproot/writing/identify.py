@@ -257,6 +257,8 @@ def to_writable(obj):
             )
 
         title = getattr(obj, "title", getattr(obj, "name", ""))
+        if title is None:
+            title = ""
 
         try:
             # using flow=True if supported
