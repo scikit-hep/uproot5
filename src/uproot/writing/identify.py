@@ -113,14 +113,15 @@ def add_to_directory(obj, name, directory, streamers):
                 metadata[branch_name] = metadatum
 
             else:
-                try:
-                    branch_array = uproot._util.ensure_numpy(branch_array)
-                except TypeError:
-                    module_name = type(branch_array).__module__
-                    if module_name == "awkward" or module_name.startswith("awkward."):
-                        data[branch_name] = branch_array
-                        metadata[branch_name] = branch_array.type
-                    else:
+                module_name = type(branch_array).__module__
+                if module_name == "awkward" or module_name.startswith("awkward."):
+                    data[branch_name] = branch_array
+                    metadata[branch_name] = branch_array.type
+
+                else:
+                    try:
+                        branch_array = uproot._util.ensure_numpy(branch_array)
+                    except TypeError:
                         try:
                             import awkward
                         except ImportError:
@@ -132,13 +133,14 @@ def add_to_directory(obj, name, directory, streamers):
                         else:
                             data[branch_name] = branch_array
                             metadata[branch_name] = awkward.type(branch_array)
-                else:
-                    data[branch_name] = branch_array
-                    branch_dtype = branch_array.dtype
-                    branch_shape = branch_array.shape[1:]
-                    if branch_shape != ():
-                        branch_dtype = numpy.dtype((branch_dtype, branch_shape))
-                    metadata[branch_name] = branch_dtype
+
+                    else:
+                        data[branch_name] = branch_array
+                        branch_dtype = branch_array.dtype
+                        branch_shape = branch_array.shape[1:]
+                        if branch_shape != ():
+                            branch_dtype = numpy.dtype((branch_dtype, branch_shape))
+                        metadata[branch_name] = branch_dtype
 
         else:
             is_ttree = True
