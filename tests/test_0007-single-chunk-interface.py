@@ -110,6 +110,9 @@ def test_http_multipart():
                 tobytes(source.chunk(0, 100).raw_data)
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd():
@@ -128,6 +131,9 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_worker():
@@ -146,6 +152,9 @@ def test_xrootd_worker():
         assert one[:4] == b"root"
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_vectorread():
