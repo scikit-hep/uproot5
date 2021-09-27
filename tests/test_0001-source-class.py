@@ -254,6 +254,9 @@ def test_fallback():
             assert one[:4] == b"root"
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd():
@@ -272,6 +275,9 @@ def test_xrootd():
         assert one[:4] == b"root"
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_deadlock():
@@ -293,6 +299,9 @@ def test_xrootd_fail():
         )
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_vectorread():
@@ -312,6 +321,9 @@ def test_xrootd_vectorread():
         assert one[:4] == b"root"
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_vectorread_max_element_split():
@@ -329,6 +341,9 @@ def test_xrootd_vectorread_max_element_split():
         assert len(one) == max_element_size + 1
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_vectorread_max_element_split_consistency():
@@ -368,6 +383,9 @@ def test_xrootd_vectorread_fail():
         )
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_size():
@@ -392,6 +410,9 @@ def test_xrootd_size():
     assert size1 == 3469136394
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_xrootd_numpy_int():

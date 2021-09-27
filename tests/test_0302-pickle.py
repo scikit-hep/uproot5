@@ -55,6 +55,9 @@ def test_pickle_roundtrip_http():
     ]
 
 
+@pytest.mark.skip(
+    reason="RECHECK: Run2012B_DoubleMuParked.root is super-flaky right now"
+)
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_pickle_roundtrip_xrootd():
