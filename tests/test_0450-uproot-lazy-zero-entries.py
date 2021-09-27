@@ -11,7 +11,7 @@ pytest.importorskip("awkward")
 
 
 def test(tmp_path):
-    filename = os.path.join(tmp_path, "whatever.root")
+    filename = os.path.join(str(tmp_path), "whatever.root")
 
     with uproot.recreate(filename) as file_for_writing:
         file_for_writing["tree"] = {"branch": []}
