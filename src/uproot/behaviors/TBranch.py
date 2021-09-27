@@ -628,7 +628,7 @@ def lazy(
             obj, step_size, entry_start, entry_stop, branchid_interpretation
         )
 
-        for start in uproot._util.range(entry_start, entry_stop, entry_step):
+        def foreach(start):
             stop = min(start + entry_step, entry_stop)
             length = stop - start
 
@@ -677,6 +677,24 @@ def lazy(
             recordarray = awkward.layout.RecordArray(fields, names, length)
             partitions.append(recordarray)
             global_offsets.append(global_offsets[-1] + length)
+
+        for start in uproot._util.range(entry_start, entry_stop, entry_step):
+            foreach(start)
+
+    if len(partitions) == 0:
+        obj = hasbranches[0]
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            obj.tree.num_entries, None, None
+        )
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = obj[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        entry_step = _regularize_step_size(
+            obj, step_size, entry_start, entry_stop, branchid_interpretation
+        )
+
+        foreach(0)
 
     out = awkward.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
     return awkward.Array(out)
