@@ -289,7 +289,7 @@ def file_object_path_split(path):
         file_path = file_path.rstrip()
         object_path = object_path.lstrip()
 
-        if file_path.upper() in ("FILE", "HTTP", "HTTPS", "ROOT"):
+        if file_path.upper() in ("FILE", "HTTP", "HTTPS", "S3HTTP", "S3HTTPS", "ROOT"):
             return path, None
         elif win and _windows_drive_letter_ending.match(file_path) is not None:
             return path, None
@@ -297,7 +297,7 @@ def file_object_path_split(path):
             return file_path, object_path
 
 
-_remote_schemes = ["ROOT", "HTTP", "HTTPS"]
+_remote_schemes = ["ROOT", "HTTP", "HTTPS", "S3HTTP", "S3HTTPS"]
 _schemes = ["FILE"] + _remote_schemes
 
 
@@ -369,7 +369,8 @@ def file_path_to_source_class(file_path, options):
             )
         return out, file_path
 
-    elif parsed_url.scheme.upper() == "HTTP" or parsed_url.scheme.upper() == "HTTPS":
+    elif (parsed_url.scheme.upper() == "HTTP"   or parsed_url.scheme.upper() == "HTTPS" or
+          parsed_url.scheme.upper() == "S3HTTP" or parsed_url.scheme.upper() == "S3HTTPS"):
         out = options["http_handler"]
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
