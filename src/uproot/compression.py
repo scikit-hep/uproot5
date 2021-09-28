@@ -130,7 +130,7 @@ class ZLIB(Compression, _DecompressZLIB):
     def compress(self, data):
         import zlib
 
-        return zlib.compress(data, level=self._level)
+        return zlib.compress(data, self._level)
 
 
 class _DecompressLZMA(object):
