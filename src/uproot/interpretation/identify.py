@@ -323,9 +323,13 @@ def interpretation_of(branch, context, simplify=True):
         else:
             typename = None
         subbranches = dict((x.name, x.interpretation) for x in branch.branches)
-        return uproot.interpretation.grouped.AsGrouped(
-            branch, subbranches, typename=typename
-        )
+
+        if typename == "TClonesArray":
+            return uproot.interpretation.numerical.AsDtype(">i4")
+        else:
+            return uproot.interpretation.grouped.AsGrouped(
+                branch, subbranches, typename=typename
+            )
 
     if branch.classname == "TBranchObject":
         if branch.top_level and branch.has_member("fClassName"):
@@ -380,7 +384,13 @@ def interpretation_of(branch, context, simplify=True):
                 out = _float16_or_double32(branch, context, leaf, is_float16, dims)
 
             else:
-                from_dtype = _leaf_to_dtype(leaf, getdims=False).newbyteorder(">")
+                if (
+                    branch.member("fClassName", none_if_missing=True) == "TObject"
+                    and branch.name.split(".")[-1] == "fBits"
+                ):
+                    from_dtype = numpy.dtype(">u1")
+                else:
+                    from_dtype = _leaf_to_dtype(leaf, getdims=False).newbyteorder(">")
 
                 if context.get("swap_bytes", True):
                     to_dtype = from_dtype.newbyteorder("=")
