@@ -323,9 +323,13 @@ def interpretation_of(branch, context, simplify=True):
         else:
             typename = None
         subbranches = dict((x.name, x.interpretation) for x in branch.branches)
-        return uproot.interpretation.grouped.AsGrouped(
-            branch, subbranches, typename=typename
-        )
+
+        if typename == "TClonesArray":
+            return uproot.interpretation.numerical.AsDtype(">i4")
+        else:
+            return uproot.interpretation.grouped.AsGrouped(
+                branch, subbranches, typename=typename
+            )
 
     if branch.classname == "TBranchObject":
         if branch.top_level and branch.has_member("fClassName"):
