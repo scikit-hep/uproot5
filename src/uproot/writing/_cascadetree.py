@@ -947,6 +947,9 @@ class Tree(object):
             else:
                 dims = "".join("[" + str(x) + "]" for x in datum["shape"])
 
+            if datum["counter"] is not None:
+                dims = "[" + datum["counter"]["fName"] + "]" + dims
+
             # single TLeaf
             leaf_name = datum["fName"].encode(errors="surrogateescape")
             leaf_title = (datum["fName"] + dims).encode(errors="surrogateescape")
