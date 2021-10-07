@@ -210,6 +210,7 @@ must_be_attached = [
     "TNtuple",
     "TNtupleD",
     "TTreeSQL",
+    "ROOT::Experimental::RNTuple",
 ]
 
 
