@@ -44,6 +44,7 @@ bootstrap_classnames = [
     "TStreamerString",
     "TList",
     "TObjArray",
+    "TClonesArray",
     "TObjString",
 ]
 never_from_streamers = [
