@@ -131,6 +131,7 @@ import uproot.models.TNamed
 import uproot.models.TList
 import uproot.models.THashList
 import uproot.models.TObjArray
+import uproot.models.TClonesArray
 import uproot.models.TObjString
 import uproot.models.TAtt
 import uproot.models.TDatime

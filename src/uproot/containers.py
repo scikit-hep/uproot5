@@ -292,7 +292,7 @@ class AsDynamic(AsContainer):
         if self._model is None:
             return "void*"
         else:
-            return _content_typename(self._values) + "*"
+            return uproot.model.classname_decode(self._model.__name__)[0]
 
     def awkward_form(
         self,
