@@ -1280,6 +1280,32 @@ in file {2} in directory {3}""".format(
         )
         directory._file._new_tree(tree)
 
+        seen = set()
+        streamers = []
+        for model in (
+            uproot.models.TLeaf.Model_TLeafB_v1,
+            uproot.models.TLeaf.Model_TLeafS_v1,
+            uproot.models.TLeaf.Model_TLeafI_v1,
+            uproot.models.TLeaf.Model_TLeafL_v1,
+            uproot.models.TLeaf.Model_TLeafF_v1,
+            uproot.models.TLeaf.Model_TLeafD_v1,
+            uproot.models.TLeaf.Model_TLeafC_v1,
+            uproot.models.TLeaf.Model_TLeafO_v1,
+            uproot.models.TBranch.Model_TBranch_v13,
+            uproot.models.TTree.Model_TTree_v20,
+        ):
+            for rawstreamer in model.class_rawstreamers:
+                classname_version = rawstreamer[-2], rawstreamer[-1]
+                if classname_version not in seen:
+                    seen.add(classname_version)
+                    streamers.append(
+                        uproot.writing._cascade.RawStreamerInfo(*rawstreamer)
+                    )
+
+        directory._file._cascading.streamers.update_streamers(
+            directory._file.sink, streamers
+        )
+
         return tree
 
     def copy_from(
