@@ -1293,6 +1293,7 @@ class Tree(object):
         out.append(compressed_data)
 
         sink.write(location, b"".join(out))
+        self._freesegments.write(sink)
         sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
 
@@ -1367,6 +1368,7 @@ class Tree(object):
         out.append(compressed_data)
 
         sink.write(location, b"".join(out))
+        self._freesegments.write(sink)
         sink.set_file_length(self._freesegments.fileheader.end)
         sink.flush()
 
