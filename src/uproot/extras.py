@@ -33,8 +33,14 @@ Alternatively, you can use ``library="np"`` or globally set ``uproot.default_lib
 to output as NumPy arrays, rather than Awkward arrays.
 """
         )
-    else:
+    if LooseVersion("1") < LooseVersion(awkward.__version__) < LooseVersion("2"):
         return awkward
+    else:
+        raise ImportError(
+            "Uproot 4.x can only be used with Awkward 1.x; you have Awkward {0}".format(
+                awkward.__version__
+            )
+        )
 
 
 def pandas():
