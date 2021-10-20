@@ -235,7 +235,7 @@ in file {1}""".format(
             if status.error:
                 try:
                     self._xrd_error(status)
-                except Exception as e:
+                except:
                     excinfo = sys.exc_info()
                     for future in futures.values():
                         future._set_excinfo(excinfo)
