@@ -12,11 +12,11 @@ support vector-read requests; if not, it automatically falls back to
 
 from __future__ import absolute_import
 
+import sys
+
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
-
-import sys
 
 
 def get_server_config(file):
