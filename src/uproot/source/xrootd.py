@@ -16,6 +16,8 @@ import uproot
 import uproot.source.chunk
 import uproot.source.futures
 
+import sys
+
 
 def get_server_config(file):
     """
@@ -231,7 +233,13 @@ in file {1}""".format(
 
         def callback(status, response, hosts):
             if status.error:
-                self._xrd_error(status)
+                try:
+                    self._xrd_error(status)
+                except Exception as e:
+                    excinfo = sys.exc_info()
+                    for future in futures.values():
+                        future._set_excinfo(excinfo)
+                    raise e
 
             for chunk in response.chunks:
                 start, stop = chunk.offset, chunk.offset + chunk.length
