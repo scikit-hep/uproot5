@@ -12,6 +12,8 @@ support vector-read requests; if not, it automatically falls back to
 
 from __future__ import absolute_import
 
+import sys
+
 import uproot
 import uproot.source.chunk
 import uproot.source.futures
@@ -231,12 +233,17 @@ in file {1}""".format(
 
         def callback(status, response, hosts):
             if status.error:
-                self._xrd_error(status)
-
-            for chunk in response.chunks:
-                start, stop = chunk.offset, chunk.offset + chunk.length
-                results[start, stop] = chunk.buffer
-                futures[start, stop]._run(None)
+                try:
+                    self._xrd_error(status)
+                except Exception:
+                    excinfo = sys.exc_info()
+                    for future in futures.values():
+                        future._set_excinfo(excinfo)
+            else:
+                for chunk in response.chunks:
+                    start, stop = chunk.offset, chunk.offset + chunk.length
+                    results[start, stop] = chunk.buffer
+                    futures[start, stop]._run(None)
 
         return callback
 
