@@ -239,12 +239,11 @@ in file {1}""".format(
                     excinfo = sys.exc_info()
                     for future in futures.values():
                         future._set_excinfo(excinfo)
-                    raise e
-
-            for chunk in response.chunks:
-                start, stop = chunk.offset, chunk.offset + chunk.length
-                results[start, stop] = chunk.buffer
-                futures[start, stop]._run(None)
+            else:
+                for chunk in response.chunks:
+                    start, stop = chunk.offset, chunk.offset + chunk.length
+                    results[start, stop] = chunk.buffer
+                    futures[start, stop]._run(None)
 
         return callback
 
