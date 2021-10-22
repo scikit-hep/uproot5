@@ -16,6 +16,12 @@ import uproot.model
 
 
 class Model_TMatrixTSym_3c_double_3e__v5(uproot.model.VersionedModel):
+    """
+    A :doc:`uproot.model.VersionedModel` for ``TMatrixTSym<double>`` version 2,
+    which shows up as version 5 because it's reading the ``TMatrixTBase<double>``
+    header.
+    """
+
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
@@ -46,8 +52,9 @@ class Model_TMatrixTSym_3c_double_3e__v5(uproot.model.VersionedModel):
 
         num_elements = self.member("fNrows") * (self.member("fNcols") + 1) // 2
         self._members["fElements"] = cursor.array(
-            chunk, num_elements, self._dtype0, context, move=False
+            chunk, num_elements, self._dtype0, context
         )
+        self._num_bytes += self._members["fElements"].nbytes
 
     _format0 = struct.Struct(">iiiiiid")
     _format_memberwise0 = struct.Struct(">i")
