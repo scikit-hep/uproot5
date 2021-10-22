@@ -145,6 +145,7 @@ import uproot.models.TBasket
 import uproot.models.RNTuple
 import uproot.models.TH
 import uproot.models.TGraph
+import uproot.models.TMatrixT
 
 from uproot.containers import STLVector
 from uproot.containers import STLSet
