@@ -399,6 +399,9 @@ class AsDtypeInPlace(AsDtype):
         """
         Specialized version of _prepare_output : re-use our target array kept in self._to_fill.
         """
+        if library.name != 'np':
+            raise Exception(f"AsDtypeInPlace can only be used with library 'np', not '{library.name}'")
+        
         output = self._to_fill[:length].view(self.to_dtype)
         return output
 
