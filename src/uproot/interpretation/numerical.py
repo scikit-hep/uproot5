@@ -408,8 +408,15 @@ class AsDtypeInPlace(AsDtype):
                 )
             )
 
-        output = self._to_fill[:length].view(self.to_dtype)
-        return output
+        output = self._to_fill.view(self.to_dtype)
+
+        if length>len(output) :
+            raise Exception(
+                "Requesting to fill an array of size {} (type {}) with input of size {} (type {})".format(
+                    len(output), self._to_dtype, length, self._from_dtype
+                )
+            )
+        return output[:length]
 
 
 class AsSTLBits(Numerical):
