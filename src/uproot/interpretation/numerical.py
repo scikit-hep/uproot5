@@ -56,7 +56,7 @@ class Numerical(uproot.interpretation.Interpretation):
         )
 
         if entry_start >= entry_stop:
-            output = library.empty((0,), self.to_dtype)
+            output = self._prepare_output(library, length=0)
 
         else:
             length = 0
@@ -72,7 +72,7 @@ class Numerical(uproot.interpretation.Interpretation):
                     length += stop - start
                 start = stop
 
-            output = library.empty((length,), self.to_dtype)
+            output = self._prepare_output(library, length)
 
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
@@ -126,6 +126,14 @@ class Numerical(uproot.interpretation.Interpretation):
 
         return output
 
+
+    def _prepare_output(self, library, length):
+        """prepare the output array in which the data is stored. 
+        In this default implementation, just create an empty array from the library but specializations might re-use an existing array (ex: :doc:`uproot.interpretation.numerical.AsDtypeInPlace`:)
+        """
+        output = library.empty((length,), self.to_dtype)
+        return output
+    
 
 _numpy_byteorder_to_cache_key = {
     "!": "B",
@@ -363,6 +371,17 @@ in file {4}""".format(
         d, s = _dtype_shape(self._to_dtype)
         self._to_dtype = numpy.dtype((d, shape))
 
+    def fill_inplace(self,array):
+        """
+        Returns a AsDtypeInPlace version of self in order to fill the given array in place.
+        Example usage : 
+        ``` 
+        var = np.zeros(N, dtype=np.float32)
+        b = uproot.openn('afile.root')['treename']['varname']
+        b.array(library='np', interpretation=b.interpretation.fill_inplace(var) )
+        ```
+        """
+        return AsDtypeInPlace(array, self._from_dtype)
 
 class AsDtypeInPlace(AsDtype):
     """
@@ -370,8 +389,18 @@ class AsDtypeInPlace(AsDtype):
     filled in-place, rather than creating a new output array.
     """
 
-    def __init__(self):
-        raise NotImplementedError
+    def __init__(self, array, from_dtype):
+        self._to_fill = array
+        self._from_dtype = from_dtype
+        self._to_dtype = numpy.dtype(array.dtype)
+
+
+    def _prepare_output(self, library, length):
+        """
+        Specialized version of _prepare_output : re-use our target array kept in self._to_fill.
+        """
+        output = self._to_fill[:length].view(self.to_dtype)
+        return output
 
 
 class AsSTLBits(Numerical):
