@@ -127,7 +127,6 @@ class Numerical(uproot.interpretation.Interpretation):
         return output
 
     def _prepare_output(self, library, length):
-
         """
         Prepare the output array in which the data is stored. 
 
