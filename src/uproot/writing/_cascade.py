@@ -931,17 +931,20 @@ class TListOfStreamers(CascadeNode):
     (And sometimes a nested TList of TStrings, see :doc:`uproot.writing._cascade.RawTListOfStrings`.)
     """
 
-    def __init__(self, allocation, key, header, rawstreamers, rawstrings, freesegments):
-        super(TListOfStreamers, self).__init__(
-            freesegments, key, header, *(rawstreamers + rawstrings)
-        )
+    def __init__(self, allocation, key, header, rawstreamers, freesegments):
+        super(TListOfStreamers, self).__init__(freesegments, key, header, *rawstreamers)
         self._allocation = allocation
         self._key = key
         self._header = header
         self._rawstreamers = rawstreamers
-        self._rawstrings = rawstrings
         self._freesegments = freesegments
-        self._lookup = set([(x.name, x.class_version) for x in self._rawstreamers])
+        self._lookup = set(
+            [
+                (x.name, x.class_version)
+                for x in self._rawstreamers
+                if not isinstance(x, RawTListOfStrings)
+            ]
+        )
 
     def __repr__(self):
         return "{0}({1}, {2}, {3}, {4}, {5})".format(
@@ -1031,12 +1034,8 @@ class TListOfStreamers(CascadeNode):
             rawstreamer.location = position
             position += rawstreamer.num_bytes
 
-        for rawstring in self._rawstrings:
-            rawstring.location = position
-            position += rawstring.num_bytes
-
         self._header.data_bytes = position - afterkey
-        self._header.num_entries = len(self._rawstreamers) + len(self._rawstrings)
+        self._header.num_entries = len(self._rawstreamers)
 
         self._key.uncompressed_bytes = self._allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
@@ -1076,7 +1075,6 @@ class TListOfStreamers(CascadeNode):
         header = TListHeader(location, key.uncompressed_bytes, len(tlist))
 
         rawstreamers = []
-        rawstrings = []
 
         for (start, stop), streamer in zip(tlist.byte_ranges, tlist):
             if isinstance(streamer, uproot.streamers.Model_TStreamerInfo):
@@ -1090,7 +1088,7 @@ class TListOfStreamers(CascadeNode):
                 )
 
             elif isinstance(streamer, uproot.models.TList.Model_TList):
-                rawstrings.append(
+                rawstreamers.append(
                     RawTListOfStrings(
                         location + start,
                         uproot._util.tobytes(uncompressed.raw_data[start:stop]),
@@ -1103,7 +1101,6 @@ class TListOfStreamers(CascadeNode):
                 key,
                 header,
                 rawstreamers,
-                rawstrings,
                 freesegments,
             ),
             tlist,
@@ -2343,7 +2340,7 @@ def create_empty(
     )
     streamers_header = TListHeader(None, None, None)
     streamers = TListOfStreamers(
-        initial_streamers_bytes, streamers_key, streamers_header, [], [], freesegments
+        initial_streamers_bytes, streamers_key, streamers_header, [], freesegments
     )
 
     directory_key = Key(

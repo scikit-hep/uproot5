@@ -373,8 +373,6 @@ def test_multicompression_1(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression is None
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes == 874
         assert fin["tree/branch1"].uncompressed_bytes == 874
@@ -401,8 +399,6 @@ def test_multicompression_2(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression is None
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes == 874
         assert fin["tree/branch1"].uncompressed_bytes == 874
@@ -430,8 +426,6 @@ def test_multicompression_3(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression == uproot.ZLIB(5)
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes < 874
         assert fin["tree/branch1"].uncompressed_bytes == 874
@@ -457,8 +451,6 @@ def test_multicompression_4(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression == uproot.ZLIB(5)
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes < 874
         assert fin["tree/branch1"].uncompressed_bytes == 874

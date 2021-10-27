@@ -869,10 +869,11 @@ class Tree(object):
                 len(x) for x in out if x is not None
             )
 
-            if datum["compression"] is None:
-                fCompress = uproot.compression.ZLIB(0).code
-            else:
-                fCompress = datum["compression"].code
+            # Lie about the compression level so that ROOT checks and does the right thing.
+            # https://github.com/root-project/root/blob/87a998d48803bc207288d90038e60ff148827664/tree/tree/src/TBasket.cxx#L560-L578
+            # Without this, when small buffers are left uncompressed, ROOT complains about them not being compressed.
+            # (I don't know where the "no, really, this is uncompressed" bit is.)
+            fCompress = 0
 
             out.append(
                 uproot.models.TBranch._tbranch13_format1.pack(
@@ -1160,10 +1161,11 @@ class Tree(object):
 
             position = base + datum["metadata_start"]
 
-            if datum["compression"] is None:
-                fCompress = uproot.compression.ZLIB(0).code
-            else:
-                fCompress = datum["compression"].code
+            # Lie about the compression level so that ROOT checks and does the right thing.
+            # https://github.com/root-project/root/blob/87a998d48803bc207288d90038e60ff148827664/tree/tree/src/TBasket.cxx#L560-L578
+            # Without this, when small buffers are left uncompressed, ROOT complains about them not being compressed.
+            # (I don't know where the "no, really, this is uncompressed" bit is.)
+            fCompress = 0
 
             sink.write(
                 position,
