@@ -126,8 +126,8 @@ class Numerical(uproot.interpretation.Interpretation):
 
         return output
 
-
     def _prepare_output(self, library, length):
+
         """
         Prepare the output array in which the data is stored. 
 
@@ -135,7 +135,7 @@ class Numerical(uproot.interpretation.Interpretation):
         """
         output = library.empty((length,), self.to_dtype)
         return output
-    
+
 
 _numpy_byteorder_to_cache_key = {
     "!": "B",
@@ -386,6 +386,7 @@ in file {4}""".format(
         """
         return AsDtypeInPlace(array, self._from_dtype)
 
+
 class AsDtypeInPlace(AsDtype):
     """
     Like :doc:`uproot.interpretation.numerical.AsDtype`, but a given array is
@@ -396,7 +397,6 @@ class AsDtypeInPlace(AsDtype):
         self._to_fill = array
         self._from_dtype = from_dtype
         self._to_dtype = numpy.dtype(array.dtype)
-
 
     def _prepare_output(self, library, length):
         """
