@@ -373,7 +373,7 @@ in file {4}""".format(
         d, s = _dtype_shape(self._to_dtype)
         self._to_dtype = numpy.dtype((d, shape))
 
-    def fill_inplace(self,array):
+    def inplace(self,array):
         """
         Returns a AsDtypeInPlace version of self in order to fill the given array in place.
 
@@ -381,7 +381,7 @@ in file {4}""".format(
         ``` 
         var = np.zeros(N, dtype=np.float32)
         b = uproot.openn('afile.root')['treename']['varname']
-        b.array(library='np', interpretation=b.interpretation.fill_inplace(var) )
+        b.array(library='np', interpretation=b.interpretation.inplace(var) )
         ```
         """
         return AsDtypeInPlace(array, self._from_dtype)
