@@ -128,7 +128,7 @@ class Numerical(uproot.interpretation.Interpretation):
 
     def _prepare_output(self, library, length):
         """
-        Prepare the output array in which the data is stored. 
+        Prepare the output array in which the data is stored.
 
         In this default implementation, just create an empty array from the library but specializations might re-use an existing array (ex: :doc:`uproot.interpretation.numerical.AsDtypeInPlace`:)
         """
@@ -372,12 +372,12 @@ in file {4}""".format(
         d, s = _dtype_shape(self._to_dtype)
         self._to_dtype = numpy.dtype((d, shape))
 
-    def inplace(self,array):
+    def inplace(self, array):
         """
         Returns a AsDtypeInPlace version of self in order to fill the given array in place.
 
-        Example usage : 
-        ``` 
+        Example usage :
+        ```
         var = np.zeros(N, dtype=np.float32)
         b = uproot.openn('afile.root')['treename']['varname']
         b.array(library='np', interpretation=b.interpretation.inplace(var) )
@@ -401,9 +401,13 @@ class AsDtypeInPlace(AsDtype):
         """
         Specialized version of _prepare_output : re-use our target array kept in self._to_fill.
         """
-        if library.name != 'np':
-            raise Exception("AsDtypeInPlace can only be used with library 'np', not '{}'".format(library.name))
-        
+        if library.name != "np":
+            raise Exception(
+                "AsDtypeInPlace can only be used with library 'np', not '{}'".format(
+                    library.name
+                )
+            )
+
         output = self._to_fill[:length].view(self.to_dtype)
         return output
 
