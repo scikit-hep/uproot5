@@ -342,6 +342,15 @@
       "contributions": [
         "infra"
       ]
+    },
+    {
+      "login": "mpad",
+      "name": "mpad",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1219868?v=4",
+      "profile": "https://github.com/mpad",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
