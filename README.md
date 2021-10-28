@@ -143,6 +143,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     <td align="center"><a href="https://github.com/btovar"><img src="https://avatars.githubusercontent.com/u/3081826?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Benjamin Tovar</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=btovar" title="Code">💻</a></td>
   </tr>
   <tr>
+    <td align="center"><a href="https://duncanmmacleod.github.io"><img src="https://avatars.githubusercontent.com/u/1618530?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Duncan Macleod</b></sub></a><br /><a href="#infra-duncanmmacleod" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     <td align="center"><a href="https://github.com/mpad"><img src="https://avatars.githubusercontent.com/u/1219868?v=4?s=100" width="100px;" alt=""/><br /><sub><b>mpad</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=mpad" title="Code">💻</a></td>
   </tr>
 </table>
