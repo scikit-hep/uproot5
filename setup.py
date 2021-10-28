@@ -14,7 +14,7 @@ def get_version():
 
 extras = {
     "dev": [
-        "awkward>=1.0.0",
+        "awkward>=1.0.0,<2",
         "pandas",
         "boost_histogram>=0.13",
         "hist>=1.2",
