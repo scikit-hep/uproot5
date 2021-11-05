@@ -2965,7 +2965,7 @@ def _regularize_object_path(
             **options  # NOTE: a comma after **options breaks Python 2
         ).root_directory
         if object_path is None:
-            trees = [k for k, v in file.classnames().items() if v == "TTree"]
+            trees = file.keys(filter_classname="TTree", cycle=False)
             if len(trees) == 0:
                 if allow_missing:
                     return None
