@@ -168,7 +168,9 @@ class _OpenDefaults(dict):
             # See https://github.com/scikit-hep/uproot4/issues/294
             if uproot.extras.older_xrootd("5.2.0"):
                 message = (
-                    "XRootD {0} is not fully supported; ".format(uproot.extras.xrootd_version())
+                    "XRootD {0} is not fully supported; ".format(
+                        uproot.extras.xrootd_version()
+                    )
                     + """either upgrade to 5.2.0+ or set
 
     open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
