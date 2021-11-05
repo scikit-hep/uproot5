@@ -26,7 +26,7 @@ def test_inplace_tbranch_array():
             90.4691230355,
         ]
 
-        run_array = numpy.zeros(N, dtype=numpy.int)
+        run_array = numpy.zeros(N, dtype=numpy.int64)
         run_i = events["Run"].interpretation.inplace(run_array)
         run_res = events["Run"].array(interpretation=run_i, library="np")
 
@@ -41,7 +41,7 @@ def test_inplace_ttree_arrays():
         m_array = numpy.zeros(N, dtype=numpy.float64)
         m_i = events["M"].interpretation.inplace(m_array)
 
-        run_array = numpy.zeros(N, dtype=numpy.int)
+        run_array = numpy.zeros(N, dtype=numpy.int64)
         run_i = events["Run"].interpretation.inplace(run_array)
 
         events.arrays(dict(M=m_i, Run=run_i), library="np")
