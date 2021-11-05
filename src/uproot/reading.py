@@ -15,8 +15,6 @@ import sys
 import uuid
 import warnings
 
-import pkg_resources
-
 try:
     from collections.abc import Mapping, MutableMapping
 except ImportError:
