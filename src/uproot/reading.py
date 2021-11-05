@@ -1745,11 +1745,15 @@ class ReadOnlyDirectory(Mapping):
         """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_classname = uproot._util.regularize_filter(filter_classname)
+        seen = set()
         for key in self._keys:
             if (filter_name is no_filter or filter_name(key.fName)) and (
                 filter_classname is no_filter or filter_classname(key.fClassName)
             ):
-                yield key.name(cycle=cycle)
+                out = key.name(cycle=cycle)
+                if out not in seen:
+                    yield out
+                seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k1 in key.get().iterkeys(  # noqa: B301 (not a dict)
@@ -1761,7 +1765,9 @@ class ReadOnlyDirectory(Mapping):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
-                        yield k2
+                        if k2 not in seen:
+                            yield k2
+                        seen.add(k2)
 
     def itervalues(
         self,
@@ -1819,11 +1825,15 @@ class ReadOnlyDirectory(Mapping):
         """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_classname = uproot._util.regularize_filter(filter_classname)
+        seen = set()
         for key in self._keys:
             if (filter_name is no_filter or filter_name(key.fName)) and (
                 filter_classname is no_filter or filter_classname(key.fClassName)
             ):
-                yield key.name(cycle=cycle), key.get()
+                out = key.name(cycle=cycle)
+                if out not in seen:
+                    yield out, key.get()
+                seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k1, v in key.get().iteritems(  # noqa: B301 (not a dict)
@@ -1835,7 +1845,9 @@ class ReadOnlyDirectory(Mapping):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
-                        yield k2, v
+                        if k2 not in seen:
+                            yield k2, v
+                        seen.add(k2)
 
     def iterclassnames(
         self,
@@ -1862,11 +1874,15 @@ class ReadOnlyDirectory(Mapping):
         """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_classname = uproot._util.regularize_filter(filter_classname)
+        seen = set()
         for key in self._keys:
             if (filter_name is no_filter or filter_name(key.fName)) and (
                 filter_classname is no_filter or filter_classname(key.fClassName)
             ):
-                yield key.name(cycle=cycle), key.fClassName
+                out = key.name(cycle=cycle)
+                if out not in seen:
+                    yield out, key.fClassName
+                seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k1, v in key.get().iterclassnames(
@@ -1878,7 +1894,9 @@ class ReadOnlyDirectory(Mapping):
                     k2 = "{0}/{1}".format(key.name(cycle=False), k1)
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
-                        yield k2, v
+                        if k2 not in seen:
+                            yield k2, v
+                        seen.add(k2)
 
     def _ipython_key_completions_(self):
         """
