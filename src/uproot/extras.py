@@ -117,15 +117,29 @@ def older_xrootd(min_version):
     return False: that is, they're assumed to be new, so that no warnings
     are raised.
     """
-    try:
-        dist = pkg_resources.get_distribution("XRootD")
-    except pkg_resources.DistributionNotFound:
+    version = xrootd_version()
+    if version is None:
         return False
     else:
         try:
-            return LooseVersion(dist.version) < LooseVersion(min_version)
+            return LooseVersion(version) < LooseVersion(min_version)
         except TypeError:
             return False
+
+
+def xrootd_version():
+    """
+    Gets the XRootD version if installed, otherwise returns None.
+    """
+    try:
+        version = pkg_resources.get_distribution("XRootD").version
+    except pkg_resources.DistributionNotFound:
+        try:
+            # Versions before 4.11.1 used pyxrootd as the package name
+            version = pkg_resources.get_distribution("pyxrootd").version
+        except pkg_resources.DistributionNotFound:
+            version = None
+    return version
 
 
 def lzma():

@@ -167,9 +167,8 @@ class _OpenDefaults(dict):
         if where == "xrootd_handler" and where not in self:
             # See https://github.com/scikit-hep/uproot4/issues/294
             if uproot.extras.older_xrootd("5.2.0"):
-                dist = pkg_resources.get_distribution("XRootD")
                 message = (
-                    "XRootD {0} is not fully supported; ".format(dist.version)
+                    "XRootD {0} is not fully supported; ".format(uproot.extras.xrootd_version())
                     + """either upgrade to 5.2.0+ or set
 
     open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
