@@ -8,6 +8,7 @@ the lowest level of interpretation (numbers, strings, raw arrays, etc.).
 
 from __future__ import absolute_import
 
+import datetime
 import struct
 import sys
 
@@ -21,6 +22,10 @@ _printable_characters = (
 )
 _raw_double32 = struct.Struct(">f")
 _raw_float16 = struct.Struct(">BH")
+
+# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#basic-types
+_rntuple_string_length = struct.Struct("<I")
+_rntuple_datetime = struct.Struct("<Q")
 
 
 class Cursor(object):
@@ -460,6 +465,20 @@ of file path {2}""".format(
             return out
         else:
             return out.decode(errors="surrogateescape")
+
+    def rntuple_string(self, chunk, context, move=True):
+        if move:
+            length = self.field(chunk, _rntuple_string_length, context)
+            return self.string_with_length(chunk, context, length)
+        else:
+            index = self._index
+            out = self.rntuple_string(chunk, context, move=True)
+            self._index = index
+            return out
+
+    def rntuple_datetime(self, chunk, context, move=True):
+        raw = self.field(chunk, _rntuple_datetime, context, move=move)
+        return datetime.datetime.fromtimestamp(raw)
 
     def debug(
         self,
