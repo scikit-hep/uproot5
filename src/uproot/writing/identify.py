@@ -72,13 +72,17 @@ def add_to_directory(obj, name, directory, streamers):
     if isinstance(obj, Mapping) and all(uproot._util.isstr(x) for x in obj):
         data = {}
         metadata = {}
+
         for branch_name, branch_array in obj.items():
             module_name = type(branch_array).__module__
 
             if module_name == "pandas" or module_name.startswith("pandas."):
-                branch_array = uproot.writing._cascadetree.dataframe_to_dict(
-                    branch_array
-                )
+                import pandas
+
+                if isinstance(branch_array, pandas.DataFrame):
+                    branch_array = uproot.writing._cascadetree.dataframe_to_dict(
+                        branch_array
+                    )
 
             if (
                 isinstance(branch_array, numpy.ndarray)
