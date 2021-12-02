@@ -262,12 +262,13 @@ class Chunk(object):
         future = uproot.source.futures.TrivialFuture(data)
         return Chunk(source, start, start + len(data), future)
 
-    def __init__(self, source, start, stop, future):
+    def __init__(self, source, start, stop, future, is_memmap=False):
         self._source = source
         self._start = start
         self._stop = stop
         self._future = future
         self._raw_data = None
+        self._is_memmap = is_memmap
 
     def __repr__(self):
         return "<Chunk {0}-{1}>".format(self._start, self._stop)
@@ -301,6 +302,36 @@ class Chunk(object):
         when the ``future`` completes.
         """
         return self._future
+
+    @property
+    def is_memmap(self):
+        """
+        If True, the `raw_data` is or will be a view into a memmap file, which
+        must be handled carefully. Accessing that data after the file is closed
+        causes a segfault.
+        """
+        return self._is_memmap
+
+    def detach_memmap(self):
+        """
+        Returns a Chunk (possibly this one) that is not tied to live memmap data.
+        Such a Chunk can be accessed after the file is closed without segfaults.
+        """
+        if self._is_memmap:
+            if self._future is None:
+                assert self._raw_data is not None
+                future = uproot.source.futures.TrivialFuture(
+                    numpy.array(self._raw_data, copy=True)
+                )
+            else:
+                assert isinstance(self._future, uproot.source.futures.TrivialFuture)
+                future = uproot.source.futures.TrivialFuture(
+                    numpy.array(self._future._result, copy=True)
+                )
+            return Chunk(self._source, self._start, self._stop, future)
+
+        else:
+            return self
 
     def __contains__(self, range):
         start, stop = range

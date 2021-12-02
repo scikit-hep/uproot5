@@ -149,9 +149,9 @@ class MemmapSource(uproot.source.chunk.Source):
             self._num_requested_chunks += 1
             self._num_requested_bytes += stop - start
 
-            data = numpy.array(self._file[start:stop], copy=True)
+            data = self._file[start:stop]
             future = uproot.source.futures.TrivialFuture(data)
-            return uproot.source.chunk.Chunk(self, start, stop, future)
+            return uproot.source.chunk.Chunk(self, start, stop, future, is_memmap=True)
 
         else:
             return self._fallback.chunk(start, stop)
@@ -167,9 +167,11 @@ class MemmapSource(uproot.source.chunk.Source):
 
             chunks = []
             for start, stop in ranges:
-                data = numpy.array(self._file[start:stop], copy=True)
+                data = self._file[start:stop]
                 future = uproot.source.futures.TrivialFuture(data)
-                chunk = uproot.source.chunk.Chunk(self, start, stop, future)
+                chunk = uproot.source.chunk.Chunk(
+                    self, start, stop, future, is_memmap=True
+                )
                 notifications.put(chunk)
                 chunks.append(chunk)
             return chunks

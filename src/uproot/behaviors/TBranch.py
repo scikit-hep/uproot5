@@ -2540,6 +2540,12 @@ in file {3}""".format(
         Returns a :doc:`uproot.source.chunk.Chunk` and
         :doc:`uproot.source.cursor.Cursor` as a 2-tuple for a given
         ``basket_num``.
+
+        If the file source is :doc:`uproot.source.file.MemmapSource`
+        and the file gets closed, accessing the Chunk would cause
+        a segfault. If that's a possibility, be sure to call
+        :doc:`uproot.source.chunk.Chunk.detach_memmap` to ensure
+        that any memmap-derived data gets copied for safety.
         """
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
@@ -2616,16 +2622,21 @@ in file {3}""".format(
             start = self.member("fBasketSeek")[basket_num]
             stop = start + uproot.reading._key_format_big.size
             cursor = uproot.source.cursor.Cursor(start)
+
+            # Chunk will not be retained; we don't have to detach_memmap()
             chunk = self._file.source.chunk(start, stop)
+
             return uproot.reading.ReadOnlyKey(
                 chunk, cursor, {}, self._file, self, read_strings=False
             )
+
         elif 0 <= basket_num < self.num_baskets:
             raise ValueError(
                 "branch {0} basket {1} is an embedded basket, which has no TKey".format(
                     repr(self.name), basket_num
                 )
             )
+
         else:
             raise IndexError(
                 """branch {0} has {1} baskets; cannot get basket chunk {2}
