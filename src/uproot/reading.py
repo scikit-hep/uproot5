@@ -600,7 +600,9 @@ class ReadOnlyFile(CommonFileMethods):
                 )
             )
 
-        self._begin_chunk = self._source.chunk(0, self._options["begin_chunk_size"])
+        self._begin_chunk = self._source.chunk(
+            0, self._options["begin_chunk_size"]
+        ).detach_memmap()
 
         self.hook_before_interpret()
 
@@ -873,6 +875,8 @@ in file {1}""".format(
                 key_cursor = uproot.source.cursor.Cursor(self._fSeekInfo)
                 key_start = self._fSeekInfo
                 key_stop = min(self._fSeekInfo + _key_format_big.size, self._fEND)
+
+                # Chunk will not be retained; we don't have to detach_memmap()
                 key_chunk = self.chunk(key_start, key_stop)
 
                 self.hook_before_read_streamer_key(
@@ -1377,7 +1381,10 @@ class ReadOnlyDirectory(Mapping):
 
         directory_start = cursor.index
         directory_stop = min(directory_start + _directory_format_big.size, file.fEND)
+
+        # Chunk will not be retained; we don't have to detach_memmap()
         chunk = file.chunk(directory_start, directory_stop)
+
         self.hook_before_interpret(chunk=chunk, cursor=cursor)
 
         (
@@ -1422,6 +1429,7 @@ class ReadOnlyDirectory(Mapping):
             if (keys_start, keys_stop) in chunk:
                 keys_chunk = chunk
             else:
+                # Chunk will not be retained; we don't have to detach_memmap()
                 keys_chunk = file.chunk(keys_start, keys_stop)
 
             self.hook_before_header_key(
@@ -2548,6 +2556,7 @@ class ReadOnlyKey(object):
         chunk = self._file.chunk(data_start, data_stop)
 
         if self.is_compressed:
+            # Decompression creates a new buffer; no need to copy any memmap arrays.
             uncompressed_chunk = uproot.compression.decompress(
                 chunk,
                 self.data_cursor,
@@ -2555,7 +2564,11 @@ class ReadOnlyKey(object):
                 self.data_compressed_bytes,
                 self.data_uncompressed_bytes,
             )
+
         else:
+            # Don't return a memmap array; it might get accessed after the file is closed!
+            chunk = chunk.detach_memmap()
+
             uncompressed_chunk = uproot.source.chunk.Chunk.wrap(
                 chunk.source,
                 chunk.get(

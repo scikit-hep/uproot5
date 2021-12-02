@@ -252,6 +252,9 @@ class Model_TBasket(uproot.model.Model):
             num_entries = self._members["fNevBuf"]
             key_length = self._members["fKeylen"]
 
+            # Embedded TBaskets are always uncompressed; be sure to copy any memmap arrays
+            chunk = chunk.detach_memmap()
+
             if maybe_entry_size * num_entries + key_length != self._members["fLast"]:
                 raw_byte_offsets = cursor.bytes(
                     chunk, 8 + self.num_entries * 4, context
@@ -294,6 +297,9 @@ class Model_TBasket(uproot.model.Model):
                     context,
                 )
             else:
+                # Uncompressed; be sure to copy any memmap arrays
+                chunk = chunk.detach_memmap()
+
                 self._raw_data = cursor.bytes(chunk, uncompressed_bytes, context)
 
             if self.border != uncompressed_bytes:

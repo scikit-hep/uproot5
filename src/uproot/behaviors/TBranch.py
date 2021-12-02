@@ -2616,16 +2616,21 @@ in file {3}""".format(
             start = self.member("fBasketSeek")[basket_num]
             stop = start + uproot.reading._key_format_big.size
             cursor = uproot.source.cursor.Cursor(start)
+
+            # Chunk will not be retained; we don't have to detach_memmap()
             chunk = self._file.source.chunk(start, stop)
+
             return uproot.reading.ReadOnlyKey(
                 chunk, cursor, {}, self._file, self, read_strings=False
             )
+
         elif 0 <= basket_num < self.num_baskets:
             raise ValueError(
                 "branch {0} basket {1} is an embedded basket, which has no TKey".format(
                     repr(self.name), basket_num
                 )
             )
+
         else:
             raise IndexError(
                 """branch {0} has {1} baskets; cannot get basket chunk {2}

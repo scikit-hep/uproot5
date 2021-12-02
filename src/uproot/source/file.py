@@ -151,7 +151,7 @@ class MemmapSource(uproot.source.chunk.Source):
 
             data = self._file[start:stop]
             future = uproot.source.futures.TrivialFuture(data)
-            return uproot.source.chunk.Chunk(self, start, stop, future)
+            return uproot.source.chunk.Chunk(self, start, stop, future, is_memmap=True)
 
         else:
             return self._fallback.chunk(start, stop)
@@ -169,7 +169,9 @@ class MemmapSource(uproot.source.chunk.Source):
             for start, stop in ranges:
                 data = self._file[start:stop]
                 future = uproot.source.futures.TrivialFuture(data)
-                chunk = uproot.source.chunk.Chunk(self, start, stop, future)
+                chunk = uproot.source.chunk.Chunk(
+                    self, start, stop, future, is_memmap=True
+                )
                 notifications.put(chunk)
                 chunks.append(chunk)
             return chunks
