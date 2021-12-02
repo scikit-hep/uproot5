@@ -9,7 +9,10 @@ import uproot
 
 
 def test():
-    file = uproot.open(skhep_testdata.data_path("uproot-Zmumu-uncompressed.root"))
-    basket = file["events/px1"].basket(0)
-    file.close()
+    with uproot.open(
+        skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
+    ) as file:
+        basket = file["events/px1"].basket(0)
+
+    # without PR #519, this would be a segfault
     assert basket.data[0] == 192

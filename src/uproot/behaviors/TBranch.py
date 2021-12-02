@@ -2540,6 +2540,12 @@ in file {3}""".format(
         Returns a :doc:`uproot.source.chunk.Chunk` and
         :doc:`uproot.source.cursor.Cursor` as a 2-tuple for a given
         ``basket_num``.
+
+        If the file source is :doc:`uproot.source.file.MemmapSource`
+        and the file gets closed, accessing the Chunk would cause
+        a segfault. If that's a possibility, be sure to call
+        :doc:`uproot.source.chunk.Chunk.detach_memmap` to ensure
+        that any memmap-derived data gets copied for safety.
         """
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
