@@ -31,6 +31,7 @@ py2 = sys.version_info[0] <= 2
 py26 = py2 and sys.version_info[1] <= 6
 py27 = py2 and not py26
 py35 = not py2 and sys.version_info[1] <= 5
+py36 = not py2 and sys.version_info[1] <= 6
 win = platform.system().lower().startswith("win")
 
 

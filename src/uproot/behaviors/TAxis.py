@@ -6,11 +6,6 @@ This module defines the behaviors of ``TAxis``, an axis of a histogram or profil
 
 from __future__ import absolute_import
 
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
-
 import numpy
 
 
@@ -45,7 +40,7 @@ class AxisTraits(object):
         return fLabels is not None and len(fLabels) == fNbins
 
 
-class TAxis(Sequence):
+class TAxis(object):
     """
     Describes a histogram axis.
     """
@@ -91,6 +86,17 @@ class TAxis(Sequence):
         else:
             for low, high in self.intervals():
                 yield low, high
+
+    def __contains__(self, x):
+        """
+        Returns True if ``x`` is one of the labels or intervals for this axis;
+        False otherwise.
+        """
+        for y in self:
+            if x == y:
+                return True
+        else:
+            return False
 
     def __eq__(self, other):
         """
