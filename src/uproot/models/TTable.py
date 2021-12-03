@@ -246,6 +246,12 @@ in file {1}""".format(
         )
         self._data = numpy.frombuffer(buf, dtype=dtype)
 
+    @property
+    def data(self):
+        view = self._data.view()
+        view.flags.writeable = False
+        return view
+
     base_names_versions = []
     member_names = ["fN", "fMaxIndex", "fSize"]
     class_flags = {"has_read_object_any": True}

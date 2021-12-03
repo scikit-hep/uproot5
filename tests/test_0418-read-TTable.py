@@ -61,4 +61,4 @@ def test_geant_dot_root(geant_branch):
     items = dict(
         (obj.all_members["fName"], obj) for obj in geant_branch.members["fObj"]
     )
-    assert items["g2t_pythia"]._data["subprocess_id"] == 1
+    assert items["g2t_pythia"].data["subprocess_id"] == 1
