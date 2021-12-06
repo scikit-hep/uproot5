@@ -126,7 +126,6 @@ if uproot._util.py2:
         g = bad_characters.group(0)
         return b"_" + b"".join("{0:02x}".format(ord(x)).encode() for x in g) + b"_"
 
-
 else:
 
     def _classname_decode_convert(hex_characters):
