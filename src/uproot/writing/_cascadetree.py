@@ -20,11 +20,7 @@ import datetime
 import math
 import struct
 import warnings
-
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+from collections.abc import Mapping
 
 import numpy
 

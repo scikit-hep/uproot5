@@ -16,22 +16,12 @@ from __future__ import absolute_import
 import glob
 import itertools
 import os
+import queue
 import re
 import sys
 import threading
-
-try:
-    from collections.abc import Iterable, Mapping, MutableMapping
-except ImportError:
-    from collections import Iterable, Mapping, MutableMapping
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
+from collections.abc import Iterable, Mapping, MutableMapping
+from urllib.parse import urlparse
 
 import numpy
 
@@ -678,7 +668,7 @@ def lazy(
             partitions.append(recordarray)
             global_offsets.append(global_offsets[-1] + length)
 
-        for start in uproot._util.range(entry_start, entry_stop, entry_step):
+        for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
     if len(partitions) == 0:
@@ -1335,9 +1325,7 @@ class HasBranches(Mapping):
             )
 
             previous_baskets = {}
-            for sub_entry_start in uproot._util.range(
-                entry_start, entry_stop, entry_step
-            ):
+            for sub_entry_start in range(entry_start, entry_stop, entry_step):
                 sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
                 if sub_entry_stop - sub_entry_start == 0:
                     continue

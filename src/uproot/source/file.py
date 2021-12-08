@@ -200,15 +200,7 @@ class MemmapSource(uproot.source.chunk.Source):
     @property
     def closed(self):
         if self._fallback is None:
-            if uproot._util.py2:
-                try:
-                    self._file._mmap.tell()
-                except ValueError:
-                    return True
-                else:
-                    return False
-            else:
-                return self._file._mmap.closed
+            return self._file._mmap.closed
         else:
             return self._fallback.closed
 
@@ -260,10 +252,7 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
 
     def _open(self):
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [
-                FileResource(self._file_path)
-                for x in uproot._util.range(self._num_workers)
-            ]
+            [FileResource(self._file_path) for x in range(self._num_workers)]
         )
         self._num_bytes = os.path.getsize(self._file_path)
 

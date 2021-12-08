@@ -15,11 +15,7 @@ total number of bytes, as reported by ``nbytes``.
 from __future__ import absolute_import
 
 import threading
-
-try:
-    from collections.abc import MutableMapping
-except ImportError:
-    from collections import MutableMapping
+from collections.abc import MutableMapping
 
 import uproot
 

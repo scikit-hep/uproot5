@@ -176,9 +176,9 @@ class String(CascadeLeaf):
         if num_bytes == 255:
             (num_bytes,) = _string_size_format_4.unpack(raw_bytes[1:5])
             position = 5
-        out = raw_bytes[position : position + num_bytes]
-        if not uproot._util.py2:
-            out = out.decode(errors="surrogateescape")
+        out = raw_bytes[position : position + num_bytes].decode(
+            errors="surrogateescape"
+        )
         return String(location, out), location + position + num_bytes
 
 

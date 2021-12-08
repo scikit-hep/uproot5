@@ -11,14 +11,7 @@ from __future__ import absolute_import
 
 import struct
 import types
-
-try:
-    from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
-except ImportError:
-    from collections import Mapping, Sequence, Set
-
-    KeysView = None
-    ValuesView = None
+from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 
 import numpy
 
@@ -60,12 +53,12 @@ def _read_nested(
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
-            for i in uproot._util.range(length):
+            for i in range(length):
                 values[i] = model.read(
                     chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
-            for i in uproot._util.range(length):
+            for i in range(length):
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         return values
 
@@ -839,7 +832,7 @@ class AsVector(AsContainer):
 
             # only do anything if we have anything to read...
             if length > 0:
-                for i in uproot._util.range(length):
+                for i in range(length):
                     values[i] = model.read(
                         chunk,
                         cursor,
@@ -850,8 +843,8 @@ class AsVector(AsContainer):
                     )
 
                 # memberwise reading!
-                for member_index in uproot._util.range(len(values[0].member_names)):
-                    for i in uproot._util.range(length):
+                for member_index in range(len(values[0].member_names)):
+                    for i in range(length):
                         values[i].read_member_n(
                             chunk, cursor, context, file, member_index
                         )
@@ -1531,7 +1524,7 @@ class STLMap(Container, Mapping):
 
     def tolist(self):
         out = {}
-        for i in uproot._util.range(len(self)):
+        for i in range(len(self)):
             x = self._values[i]
             if isinstance(x, (Container, numpy.ndarray)):
                 out[self._keys[i]] = x.tolist()

@@ -21,17 +21,10 @@ from __future__ import absolute_import
 import datetime
 import itertools
 import os
+import queue
 import sys
 import uuid
-
-try:
-    from collections.abc import Mapping, MutableMapping
-except ImportError:
-    from collections import Mapping, MutableMapping
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from collections.abc import Mapping, MutableMapping
 
 import uproot._util
 import uproot.compression

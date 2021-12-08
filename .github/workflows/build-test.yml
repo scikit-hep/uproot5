@@ -11,10 +11,8 @@ jobs:
     strategy:
       matrix:
         platform: ["windows-latest", "macos-latest", "ubuntu-latest"]
-        python-version: ["2.7", "3.5", "3.6", "3.7", "3.8", "3.9"]
+        python-version: ["3.6", "3.7", "3.8", "3.9"]
         exclude:
-          - platform: "macos-latest"
-            python-version: "3.5"
           - platform: "macos-latest"
             python-version: "3.6"
           - platform: "windows-latest"
@@ -48,7 +46,7 @@ jobs:
           conda list
 
       - name: "Install Awkward"
-        if: "matrix.python-version != 2.7  ||  runner.os != 'Windows'"
+        if: "runner.os != 'Windows'"
         run: |
           conda env list
           pip install --pre "awkward>=1.0.0"
@@ -62,7 +60,7 @@ jobs:
           conda list
 
       - name: "Install XRootD"
-        if: "matrix.python-version != 2.7  &&  matrix.python-version != 3.5  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
+        if: "runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
           conda install xrootd
@@ -80,9 +78,7 @@ jobs:
 
       - name: "Run pytest"
         run: |
-          if [ "${{ matrix.python-version != 2.7 }}" = "true" ]; then
-            PYTEST_EXTRA_FLAGS="--only-rerun requests.exceptions.HTTPError"
-          fi
+          PYTEST_EXTRA_FLAGS="--only-rerun requests.exceptions.HTTPError"
           python -m pytest -vv tests \
             --reruns 3 --reruns-delay 30 \
             ${PYTEST_EXTRA_FLAGS:-}

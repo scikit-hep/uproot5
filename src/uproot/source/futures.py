@@ -24,26 +24,17 @@ These classes implement a *subset* of Python's Future and Executor interfaces.
 from __future__ import absolute_import
 
 import os
+import queue
 import sys
 import threading
 import time
-
-import uproot
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 
 def delayed_raise(exception_class, exception_value, traceback):
     """
     Raise an exception from a background thread on the main thread.
     """
-    if uproot._util.py2:
-        exec("raise exception_class, exception_value, traceback")
-    else:
-        raise exception_value.with_traceback(traceback)
+    raise exception_value.with_traceback(traceback)
 
 
 ##################### use-case 1: trivial Futures/Executor (satisfying formalities)
@@ -204,7 +195,7 @@ class ThreadPoolExecutor(object):
 
         self._work_queue = queue.Queue()
         self._workers = []
-        for _ in uproot._util.range(num_workers):
+        for _ in range(num_workers):
             self._workers.append(Worker(self._work_queue))
         for worker in self._workers:
             worker.start()
