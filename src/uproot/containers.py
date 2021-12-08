@@ -11,14 +11,7 @@ from __future__ import absolute_import
 
 import struct
 import types
-
-try:
-    from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
-except ImportError:
-    from collections import Mapping, Sequence, Set
-
-    KeysView = None
-    ValuesView = None
+from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 
 import numpy
 

@@ -16,22 +16,12 @@ from __future__ import absolute_import
 import glob
 import itertools
 import os
+import queue
 import re
 import sys
 import threading
-
-try:
-    from collections.abc import Iterable, Mapping, MutableMapping
-except ImportError:
-    from collections import Iterable, Mapping, MutableMapping
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
+from collections.abc import Iterable, Mapping, MutableMapping
+from urllib.parse import urlparse
 
 import numpy
 

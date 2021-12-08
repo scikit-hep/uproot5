@@ -7,11 +7,7 @@ This module defines versionless models for ``TArray`` and its subclasses.
 from __future__ import absolute_import
 
 import struct
-
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
+from collections.abc import Sequence
 
 import numpy
 

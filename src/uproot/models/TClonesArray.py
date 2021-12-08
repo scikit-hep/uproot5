@@ -6,10 +6,7 @@ This module defines a versionless model for ``TClonesArray``.
 
 from __future__ import absolute_import
 
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
+from collections.abc import Sequence
 
 import uproot.models.TObjArray
 

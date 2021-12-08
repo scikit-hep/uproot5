@@ -18,10 +18,7 @@ objects from Python builtins and other writable models.
 
 from __future__ import absolute_import
 
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+from collections.abc import Mapping
 
 import numpy
 

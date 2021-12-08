@@ -15,15 +15,8 @@ import platform
 import re
 import sys
 import warnings
-
-try:
-    from collections.abc import Iterable
-except ImportError:
-    from collections import Iterable
-try:
-    from urllib.parse import unquote, urlparse
-except ImportError:
-    from urlparse import urlparse, unquote
+from collections.abc import Iterable
+from urllib.parse import unquote, urlparse
 
 import numpy
 

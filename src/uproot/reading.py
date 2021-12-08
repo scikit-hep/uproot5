@@ -14,12 +14,7 @@ import struct
 import sys
 import uuid
 import warnings
-
-try:
-    from collections.abc import Mapping, MutableMapping
-except ImportError:
-    from collections import Mapping
-    from collections import MutableMapping
+from collections.abc import Mapping, MutableMapping
 
 import uproot
 import uproot.behaviors.TBranch

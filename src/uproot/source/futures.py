@@ -24,14 +24,10 @@ These classes implement a *subset* of Python's Future and Executor interfaces.
 from __future__ import absolute_import
 
 import os
+import queue
 import sys
 import threading
 import time
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 
 def delayed_raise(exception_class, exception_value, traceback):

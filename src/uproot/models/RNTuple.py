@@ -6,8 +6,8 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 
 from __future__ import absolute_import
 
-import struct
 import queue
+import struct
 
 import uproot
 

@@ -16,21 +16,12 @@ Despite the name, both sources support secure HTTPS (selected by URL scheme).
 
 from __future__ import absolute_import
 
+import base64
+import queue
 import re
 import sys
-
-try:
-    from http.client import HTTPConnection, HTTPSConnection
-    from urllib.parse import urlparse
-except ImportError:
-    from httplib import HTTPConnection, HTTPSConnection
-    from urlparse import urlparse
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-
-import base64
+from http.client import HTTPConnection, HTTPSConnection
+from urllib.parse import urlparse
 
 import uproot
 import uproot.source.chunk
