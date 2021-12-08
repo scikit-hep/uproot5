@@ -77,10 +77,7 @@ def reset_classes():
     Removes all classes from ``uproot.classes`` and ``uproot.unknown_classes``
     and refills ``uproot.classes`` with original versions of these classes.
     """
-    if uproot._util.py2:
-        reload = __builtins__["reload"]
-    else:
-        from importlib import reload
+    from importlib import reload
 
     uproot.classes = {}
     uproot.unknown_classes = {}
@@ -114,27 +111,15 @@ _classname_decode_antiversion = re.compile(br".*_([0-9a-f][0-9a-f])+_v([0-9]+)$"
 _classname_decode_version = re.compile(br".*_v([0-9]+)$")
 _classname_decode_pattern = re.compile(br"_(([0-9a-f][0-9a-f])+)_")
 
-if uproot._util.py2:
 
-    def _classname_decode_convert(hex_characters):
-        g = hex_characters.group(1)
-        return b"".join(
-            chr(int(g[i : i + 2], 16)) for i in uproot._util.range(0, len(g), 2)
-        )
+def _classname_decode_convert(hex_characters):
+    g = hex_characters.group(1)
+    return bytes(int(g[i : i + 2], 16) for i in range(0, len(g), 2))
 
-    def _classname_encode_convert(bad_characters):
-        g = bad_characters.group(0)
-        return b"_" + b"".join("{0:02x}".format(ord(x)).encode() for x in g) + b"_"
 
-else:
-
-    def _classname_decode_convert(hex_characters):
-        g = hex_characters.group(1)
-        return bytes(int(g[i : i + 2], 16) for i in uproot._util.range(0, len(g), 2))
-
-    def _classname_encode_convert(bad_characters):
-        g = bad_characters.group(0)
-        return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
+def _classname_encode_convert(bad_characters):
+    g = bad_characters.group(0)
+    return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
 
 
 def classname_regularize(classname):

@@ -382,11 +382,9 @@ class Cursor(object):
         it is equal to 255, in which case, the next 4 bytes are taken to be an
         ``numpy.int32`` length.
         """
-        out = self.bytestring(chunk, context, move=move)
-        if uproot._util.py2:
-            return out
-        else:
-            return out.decode(errors="surrogateescape")
+        return self.bytestring(chunk, context, move=move).decode(
+            errors="surrogateescape"
+        )
 
     def bytestring_with_length(self, chunk, context, length, move=True):
         """
@@ -423,11 +421,9 @@ class Cursor(object):
         Interpret data at this :ref:`uproot.source.cursor.Cursor.index` as a
         UTF-8 encoded string.
         """
-        out = self.bytestring_with_length(chunk, context, length, move=move)
-        if uproot._util.py2:
-            return out
-        else:
-            return out.decode(errors="surrogateescape")
+        return self.bytestring_with_length(chunk, context, length, move=move).decode(
+            errors="surrogateescape"
+        )
 
     def classname(self, chunk, context, move=True):
         """
@@ -459,12 +455,9 @@ of file path {2}""".format(
         if move:
             self._index += local_stop
 
-        out = uproot._util.tobytes(remainder[: local_stop - 1])
-
-        if uproot._util.py2:
-            return out
-        else:
-            return out.decode(errors="surrogateescape")
+        return uproot._util.tobytes(remainder[: local_stop - 1]).decode(
+            errors="surrogateescape"
+        )
 
     def rntuple_string(self, chunk, context, move=True):
         if move:
@@ -550,9 +543,7 @@ of file path {2}""".format(
 
             formatter = u"{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
 
-        for line_start in uproot._util.range(
-            0, int(numpy.ceil(len(data) / 20.0)) * 20, 20
-        ):
+        for line_start in range(0, int(numpy.ceil(len(data) / 20.0)) * 20, 20):
             line_data = data[line_start : line_start + 20]
 
             prefix = u""

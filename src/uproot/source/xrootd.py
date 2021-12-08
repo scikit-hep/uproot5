@@ -457,7 +457,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
             [
                 XRootDResource(self._file_path, self._timeout)
-                for x in uproot._util.range(self._num_workers)
+                for x in range(self._num_workers)
             ]
         )
 

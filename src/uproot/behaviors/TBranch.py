@@ -678,7 +678,7 @@ def lazy(
             partitions.append(recordarray)
             global_offsets.append(global_offsets[-1] + length)
 
-        for start in uproot._util.range(entry_start, entry_stop, entry_step):
+        for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
     if len(partitions) == 0:
@@ -1335,9 +1335,7 @@ class HasBranches(Mapping):
             )
 
             previous_baskets = {}
-            for sub_entry_start in uproot._util.range(
-                entry_start, entry_stop, entry_step
-            ):
+            for sub_entry_start in range(entry_start, entry_stop, entry_step):
                 sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
                 if sub_entry_stop - sub_entry_start == 0:
                     continue

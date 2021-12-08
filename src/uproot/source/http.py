@@ -48,20 +48,12 @@ def make_connection(parsed_url, timeout):
     depending on the URL scheme.
     """
     if parsed_url.scheme == "https":
-        if uproot._util.py2:
-            return HTTPSConnection(
-                parsed_url.hostname, parsed_url.port, None, None, False, timeout
-            )
-        else:
-            return HTTPSConnection(
-                parsed_url.hostname, parsed_url.port, None, None, timeout
-            )
+        return HTTPSConnection(
+            parsed_url.hostname, parsed_url.port, None, None, timeout
+        )
 
     elif parsed_url.scheme == "http":
-        if uproot._util.py2:
-            return HTTPConnection(parsed_url.hostname, parsed_url.port, False, timeout)
-        else:
-            return HTTPConnection(parsed_url.hostname, parsed_url.port, timeout)
+        return HTTPConnection(parsed_url.hostname, parsed_url.port, timeout)
 
     else:
         raise ValueError(
@@ -401,7 +393,7 @@ for URL {1}""".format(
         notifications = queue.Queue()
         source.fallback.chunks(ranges, notifications)
 
-        for _ in uproot._util.range(len(ranges)):
+        for _ in range(len(ranges)):
             chunk = notifications.get()
             results[chunk.start, chunk.stop] = chunk.raw_data
             futures[chunk.start, chunk.stop]._run(self)
@@ -740,7 +732,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         self._timeout = timeout
 
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(file_path, timeout) for x in uproot._util.range(num_workers)]
+            [HTTPResource(file_path, timeout) for x in range(num_workers)]
         )
 
     @property

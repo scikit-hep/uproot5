@@ -323,10 +323,7 @@ class CommonFileMethods(object):
         See :ref:`uproot.reading.CommonFileMethods.uuid` and
         :ref:`uproot.reading.CommonFileMethods.fUUID`.
         """
-        if uproot._util.py2:
-            out = "".join("{0:02x}".format(ord(x)) for x in self._fUUID)
-        else:
-            out = "".join("{0:02x}".format(x) for x in self._fUUID)
+        out = "".join("{0:02x}".format(x) for x in self._fUUID)
         return "-".join([out[0:8], out[8:12], out[12:16], out[16:20], out[20:32]])
 
     @property
@@ -1455,7 +1452,7 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._keys = []
-            for _ in uproot._util.range(num_keys):
+            for _ in range(num_keys):
                 key = ReadOnlyKey(
                     keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )

@@ -27,21 +27,8 @@ except ImportError:
 
 import numpy
 
-py2 = sys.version_info[0] <= 2
-py26 = py2 and sys.version_info[1] <= 6
-py27 = py2 and not py26
-py35 = not py2 and sys.version_info[1] <= 5
-py36 = not py2 and sys.version_info[1] <= 6
+py36 = sys.version_info[0] == 3 and sys.version_info[1] <= 6
 win = platform.system().lower().startswith("win")
-
-
-if py2:
-    # to silence flake8 F821 errors
-    unicode = eval("unicode")
-    range = eval("xrange")
-else:
-    unicode = None
-    range = eval("range")
 
 
 def tobytes(array):
@@ -79,20 +66,15 @@ def isstr(x):
     """
     Returns True if and only if ``x`` is a string (including Python 2 unicode).
     """
-    if py2:
-        return isinstance(x, (bytes, unicode))
-    else:
-        return isinstance(x, str)
+    return isinstance(x, str)
 
 
 def ensure_str(x):
     """
     Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
     """
-    if not py2 and isinstance(x, bytes):
+    if isinstance(x, bytes):
         return x.decode(errors="surrogateescape")
-    elif py2 and isinstance(x, unicode):
-        return x.encode()
     elif isinstance(x, str):
         return x
     else:

@@ -62,7 +62,7 @@ class Model_TClonesArray(uproot.model.VersionedModel, Sequence):
         )
 
         self._data = []
-        for _ in uproot._util.range(self._members["fSize"]):
+        for _ in range(self._members["fSize"]):
             if cursor.byte(chunk, context) != 0:
                 self._data.append(
                     cls.read(chunk, cursor, context, file, self._file, self._parent)

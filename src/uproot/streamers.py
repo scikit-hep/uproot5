@@ -262,7 +262,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         member_names = []
         class_flags = {}
 
-        for i in uproot._util.range(len(self._members["fElements"])):
+        for i in range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
                 self,
                 i,
@@ -1153,7 +1153,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         read_members.extend(
             [
                 "        cursor.skip(6)",
-                "        for tmp in uproot._util.range(self.member({0})):".format(
+                "        for tmp in range(self.member({0})):".format(
                     repr(self.count_name)
                 ),
                 "            self._members[{0}] = c({1}).read(chunk, cursor, "

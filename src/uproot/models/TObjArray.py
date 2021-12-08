@@ -58,7 +58,7 @@ in file {1}""".format(
         )
 
         self._data = []
-        for _ in uproot._util.range(self._members["fSize"]):
+        for _ in range(self._members["fSize"]):
             item = uproot.deserialization.read_object_any(
                 chunk, cursor, context, file, self._file, self._parent
             )
@@ -146,7 +146,7 @@ in file {1}""".format(
         )
 
         self._data = []
-        for _ in uproot._util.range(self._members["fSize"]):
+        for _ in range(self._members["fSize"]):
             item = uproot.deserialization.read_object_any(
                 chunk,
                 cursor,
