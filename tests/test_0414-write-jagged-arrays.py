@@ -200,15 +200,15 @@ def test_awkward_jagged_metadata(tmp_path):
 
     b1 = t1.GetBranch("b1")
     assert b1.GetLeaf("b1").GetName() == "b1"
-    assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert b1.GetLeaf("b1").GetLeafCount() is None
 
     nb2 = t1.GetBranch("nb2")
     assert nb2.GetLeaf("nb2").GetName() == "nb2"
-    assert nb2.GetLeaf("nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert nb2.GetLeaf("nb2").GetLeafCount() is None
 
     b2 = t1.GetBranch("b2")
     assert b2.GetLeaf("b2").GetName() == "b2"
-    assert b2.GetLeaf("b2").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2.GetLeaf("b2").GetLeafCount() is not None
     assert b2.GetLeaf("b2").GetLeafCount().GetName() == "nb2"
 
     f1.Close()
@@ -237,20 +237,20 @@ def test_awkward_jagged_record_metadata(tmp_path):
 
     b1 = t1.GetBranch("b1")
     assert b1.GetLeaf("b1").GetName() == "b1"
-    assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert b1.GetLeaf("b1").GetLeafCount() is None
 
     nb2 = t1.GetBranch("nb2")
     assert nb2.GetLeaf("nb2").GetName() == "nb2"
-    assert nb2.GetLeaf("nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert nb2.GetLeaf("nb2").GetLeafCount() is None
 
     b2_x = t1.GetBranch("b2_x")
     assert b2_x.GetLeaf("b2_x").GetName() == "b2_x"
-    assert b2_x.GetLeaf("b2_x").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2_x.GetLeaf("b2_x").GetLeafCount() is not None
     assert b2_x.GetLeaf("b2_x").GetLeafCount().GetName() == "nb2"
 
     b2_y = t1.GetBranch("b2_y")
     assert b2_y.GetLeaf("b2_y").GetName() == "b2_y"
-    assert b2_y.GetLeaf("b2_y").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2_y.GetLeaf("b2_y").GetLeafCount() is not None
     assert b2_y.GetLeaf("b2_y").GetLeafCount().GetName() == "nb2"
 
     f1.Close()
