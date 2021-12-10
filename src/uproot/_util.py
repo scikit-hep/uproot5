@@ -12,21 +12,19 @@ import numbers
 import os
 import platform
 import re
-import sys
 import warnings
 from collections.abc import Iterable
 from urllib.parse import unquote, urlparse
 
 import numpy
 
-py36 = sys.version_info[0] == 3 and sys.version_info[1] <= 6
 win = platform.system().lower().startswith("win")
 
 
 def tobytes(array):
     """
     Calls ``array.tobytes()`` or its older equivalent, ``array.tostring()``,
-    depending on what's available in this NumPy version.
+    depending on what's available in this NumPy version. (tobytes added in 1.9)
     """
     if hasattr(array, "tobytes"):
         return array.tobytes()
@@ -454,7 +452,7 @@ def memory_size(data, error_message=None):
     if error_message is None:
         raise TypeError(
             "number of bytes or memory size string with units "
-            "(such as '100 MB') required, not {}".format(repr(data))
+            f"(such as '100 MB') required, not {data!r}"
         )
     else:
         raise TypeError(error_message)
@@ -517,7 +515,7 @@ def awkward_form(
                     '"float64"'
                 )
             else:
-                raise AssertionError(f"{repr(model)}: {type(model)}")
+                raise AssertionError(f"{model!r}: {type(model)}")
 
         return _primitive_awkward_form[model]
 

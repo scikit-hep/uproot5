@@ -20,7 +20,7 @@ class AxisTraits:
         self._axis = axis
 
     def __repr__(self):
-        return f"AxisTraits({repr(self._axis)})"
+        return f"AxisTraits({self._axis!r})"
 
     @property
     def circular(self):

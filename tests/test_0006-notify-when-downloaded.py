@@ -2,16 +2,9 @@
 
 
 import os
+import queue
 import sys
-
-try:
-    from io import StringIO
-except ImportError:
-    from StringIO import StringIO
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from io import StringIO
 
 import numpy
 import pytest

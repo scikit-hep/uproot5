@@ -65,7 +65,7 @@ class AsGrouped(uproot.interpretation.Interpretation):
             type(self).__name__,
             self._branch.name,
             ",".join(
-                f"{repr(x)}:{y.cache_key}"
+                f"{x!r}:{y.cache_key}"
                 for x, y in self._subbranches.items()
                 if y is not None
             ),

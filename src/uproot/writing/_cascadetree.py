@@ -128,12 +128,10 @@ class Tree:
                 except TypeError:
                     try:
                         awkward = uproot.extras.awkward()
-                    except ImportError as err:
+                    except ModuleNotFoundError as err:
                         raise TypeError(
-                            "not a NumPy dtype and 'awkward' cannot be imported: {}\n\n{}".format(
-                                repr(branch_type), str(err)
-                            )
-                        )
+                            f"not a NumPy dtype and 'awkward' cannot be imported: {branch_type!r}"
+                        ) from err
                     if isinstance(branch_type, awkward.types.Type):
                         branch_datashape = branch_type
                     else:
@@ -141,9 +139,7 @@ class Tree:
                             branch_datashape = awkward.types.from_datashape(branch_type)
                         except Exception:
                             raise TypeError(
-                                "not a NumPy dtype or an Awkward datashape: {}".format(
-                                    repr(branch_type)
-                                )
+                                f"not a NumPy dtype or an Awkward datashape: {branch_type!r}"
                             )
                     # checking by class name to be Awkward v1/v2 insensitive
                     if type(branch_datashape).__name__ == "ArrayType":
@@ -521,12 +517,11 @@ class Tree:
         if module_name == "awkward" or module_name.startswith("awkward."):
             try:
                 awkward = uproot.extras.awkward()
-            except ImportError as err:
+            except ModuleNotFoundError as err:
                 raise TypeError(
-                    "an Awkward Array was provided, but 'awkward' cannot be imported: {}\n\n{}".format(
-                        repr(data), str(err)
-                    )
-                )
+                    f"an Awkward Array was provided, but 'awkward' cannot be imported: {data!r}"
+                ) from err
+
             if isinstance(data, awkward.Array):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
                     provided = {
@@ -570,35 +565,29 @@ class Tree:
                         except (numpy.VisibleDeprecationWarning, Exception):
                             try:
                                 awkward = uproot.extras.awkward()
-                            except ImportError as err:
+                            except ModuleNotFoundError as err:
                                 raise TypeError(
-                                    "NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {}: {}\n\n{}".format(
-                                        k, type(v), str(err)
-                                    )
-                                )
+                                    f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
+                                ) from err
                             v = awkward.from_iter(v)
 
                     if getattr(v, "dtype", None) == numpy.dtype("O"):
                         try:
                             awkward = uproot.extras.awkward()
-                        except ImportError as err:
+                        except ModuleNotFoundError as err:
                             raise TypeError(
-                                "NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {}: {}\n\n{}".format(
-                                    k, type(v), str(err)
-                                )
-                            )
+                                f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
+                            ) from err
                         v = awkward.from_iter(v)
 
                 module_name = type(v).__module__
                 if module_name == "awkward" or module_name.startswith("awkward."):
                     try:
                         awkward = uproot.extras.awkward()
-                    except ImportError as err:
+                    except ModuleNotFoundError as err:
                         raise TypeError(
-                            "an Awkward Array was provided, but 'awkward' cannot be imported: {}: {}\n\n{}".format(
-                                k, type(v), str(err)
-                            )
-                        )
+                            f"an Awkward Array was provided, but 'awkward' cannot be imported: {k}: {type(v)}"
+                        ) from err
                     if (
                         isinstance(v, awkward.Array)
                         and v.ndim > 1
@@ -711,12 +700,10 @@ class Tree:
             else:
                 try:
                     awkward = uproot.extras.awkward()
-                except ImportError as err:
+                except ModuleNotFoundError as err:
                     raise TypeError(
-                        "a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {}: {}\n\n{}".format(
-                            branch_name, repr(branch_array), str(err)
-                        )
-                    )
+                        f"a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {branch_name}: {branch_array!r}"
+                    ) from err
                 layout = branch_array.layout
                 while not isinstance(
                     layout,

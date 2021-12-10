@@ -503,7 +503,7 @@ class TruncatedNumerical(Numerical):
     def __repr__(self):
         args = [repr(self._low), repr(self._high), repr(self._num_bits)]
         if self._to_dims != ():
-            args.append(f"to_dims={repr(self._to_dims)}")
+            args.append(f"to_dims={self._to_dims!r}")
         return "{}({})".format(type(self).__name__, ", ".join(args))
 
     def __eq__(self, other):

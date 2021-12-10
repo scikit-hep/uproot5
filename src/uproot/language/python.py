@@ -109,9 +109,9 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
 
     elif isinstance(node, ast.Name):
         if node.id in keys or node.id in aliases:
-            return ast.parse(f"get({repr(node.id)})").body[0].value
+            return ast.parse(f"get({node.id!r})").body[0].value
         elif node.id in functions:
-            return ast.parse(f"function[{repr(node.id)}]").body[0].value
+            return ast.parse(f"function[{node.id!r}]").body[0].value
         else:
             raise KeyError(node.id)
 
@@ -126,7 +126,7 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
             new_node.col_offset = getattr(node, "col_offset", 0)
             return new_node
         elif name in keys or name in aliases:
-            return ast.parse(f"get({repr(name)})").body[0].value
+            return ast.parse(f"get({name!r})").body[0].value
         else:
             # implicitly means functions and getter can't have dots in their names
             raise KeyError(name)
@@ -352,7 +352,7 @@ class PythonLanguage(uproot.language.Language):
 
         For example, ``"get('something')"``.
         """
-        return f"{self._getter}({repr(name)})"
+        return f"{self._getter}({name!r})"
 
     def free_symbols(self, expression, keys, aliases, file_path, object_path):
         """

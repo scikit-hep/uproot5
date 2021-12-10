@@ -27,7 +27,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
 
     def __repr__(self):
         if len(self) == 0:
-            return f"<TTree {repr(self.name)} at 0x{id(self):012x}>"
+            return f"<TTree {self.name!r} at 0x{id(self):012x}>"
         else:
             return "<TTree {} ({} branches) at 0x{:012x}>".format(
                 repr(self.name), len(self), id(self)

@@ -363,9 +363,9 @@ class DeserializationError(Exception):
             )
             indent = indent + "    "
             for v in getattr(obj, "_bases", []):
-                lines.append(f"{indent}(base): {repr(v)}")
+                lines.append(f"{indent}(base): {v!r}")
             for k, v in getattr(obj, "_members", {}).items():
-                lines.append(f"{indent}{k}: {repr(v)}")
+                lines.append(f"{indent}{k}: {v!r}")
             last = obj
 
         if last is not None:

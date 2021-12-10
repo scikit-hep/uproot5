@@ -87,7 +87,7 @@ class AsJagged(uproot.interpretation.Interpretation):
 
     def __repr__(self):
         if self._header_bytes == 0:
-            return f"AsJagged({repr(self._content)})"
+            return f"AsJagged({self._content!r})"
         else:
             return "AsJagged({}, header_bytes={})".format(
                 repr(self._content), self._header_bytes

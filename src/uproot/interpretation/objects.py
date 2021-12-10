@@ -36,7 +36,7 @@ def awkward_can_optimize(interpretation, form):
     """
     try:
         import awkward._connect._uproot
-    except ImportError:
+    except ModuleNotFoundError:
         return False
     else:
         return awkward._connect._uproot.can_optimize(interpretation, form)

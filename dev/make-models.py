@@ -112,7 +112,7 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
                 f"""        uproot._writing.RawStreamerInfo(
             None,
             {full},
-            {repr(streamer_name)},
+            {streamer_name!r},
             {streamer_version},
         ),"""
             )
@@ -145,11 +145,11 @@ class {uproot.model.classname_encode(obj.classname)}(uproot.model.DispatchByVers
 
     for classname, _ in superclasses:
         print(  # noqa: T001
-            f"uproot.classes[{repr(classname)}] = {uproot.model.classname_encode(classname)}"
+            f"uproot.classes[{classname!r}] = {uproot.model.classname_encode(classname)}"
         )
 
     for key in keys:
         obj = f[key]
         print(  # noqa: T001
-            f"uproot.classes[{repr(obj.classname)}] = {uproot.model.classname_encode(obj.classname)}"
+            f"uproot.classes[{obj.classname!r}] = {uproot.model.classname_encode(obj.classname)}"
         )

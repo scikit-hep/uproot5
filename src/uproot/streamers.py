@@ -324,8 +324,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         class_data.append(
             "    base_names_versions = [{}]".format(
                 ", ".join(
-                    f"({repr(name)}, {version})"
-                    for name, version in base_names_versions
+                    f"({name!r}, {version})" for name, version in base_names_versions
                 )
             )
         )
@@ -958,7 +957,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 else:
                     read_members.append(
                         "        {} = cursor.fields(chunk, self._format{}, context)".format(
-                            ", ".join(f"self._members[{repr(x)}]" for x in fields[-1]),
+                            ", ".join(f"self._members[{x!r}]" for x in fields[-1]),
                             len(formats) - 1,
                         )
                     )

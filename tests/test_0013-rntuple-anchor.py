@@ -2,12 +2,8 @@
 
 
 import json
+import queue
 import sys
-
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 import numpy
 import pytest

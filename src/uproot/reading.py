@@ -647,7 +647,7 @@ in file {}""".format(
             )
 
     def __repr__(self):
-        return f"<ReadOnlyFile {repr(self._file_path)} at 0x{id(self):012x}>"
+        return f"<ReadOnlyFile {self._file_path!r} at 0x{id(self):012x}>"
 
     @property
     def detached(self):
@@ -1193,7 +1193,7 @@ in file {}""".format(
         ``start`` up to ``stop``.
         """
         if self.closed:
-            raise OSError(f"file {repr(self._file_path)} is closed")
+            raise OSError(f"file {self._file_path!r} is closed")
         elif (start, stop) in self._begin_chunk:
             return self._begin_chunk
         else:

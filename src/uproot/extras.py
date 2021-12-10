@@ -4,7 +4,7 @@
 This module defines functions that import external libraries used by Uproot, but not
 required by an Uproot installation. (Uproot only requires NumPy).
 
-If a library cannot be imported, these functions raise ``ImportError`` with
+If a library cannot be imported, these functions raise ``ModuleNotFoundError`` with
 error messages containing instructions on how to install the library.
 """
 
@@ -22,8 +22,8 @@ def awkward():
     """
     try:
         import awkward
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """install the 'awkward' package with:
 
     pip install awkward
@@ -35,7 +35,7 @@ to output as NumPy arrays, rather than Awkward arrays.
     if LooseVersion("1") < LooseVersion(awkward.__version__) < LooseVersion("2"):
         return awkward
     else:
-        raise ImportError(
+        raise ModuleNotFoundError(
             "Uproot 4.x can only be used with Awkward 1.x; you have Awkward {}".format(
                 awkward.__version__
             )
@@ -48,8 +48,8 @@ def pandas():
     """
     try:
         import pandas
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """install the 'pandas' package with:
 
     pip install pandas
@@ -73,8 +73,8 @@ def XRootD_client():
         import XRootD
         import XRootD.client
 
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """Install XRootD python bindings with:
 
     conda install -c conda-forge xrootd
@@ -146,27 +146,9 @@ def lzma():
     Imports and returns ``lzma`` (which is part of the Python 3 standard
     library, but not Python 2).
     """
-    try:
-        import lzma
-    except ImportError:
-        try:
-            import backports.lzma as lzma
-        except ImportError:
-            raise ImportError(
-                """install the 'lzma' package with:
+    import lzma
 
-    pip install backports.lzma
-
-or
-
-    conda install backports.lzma
-
-or use Python >= 3.3."""
-            )
-        else:
-            return lzma
-    else:
-        return lzma
+    return lzma
 
 
 def lz4_block():
@@ -178,8 +160,8 @@ def lz4_block():
     try:
         import lz4.block
         import xxhash  # noqa: F401
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """install the 'lz4' and `xxhash` packages with:
 
     pip install lz4 xxhash
@@ -201,8 +183,8 @@ def xxhash():
     try:
         import lz4.block  # noqa: F401
         import xxhash
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """install the 'lz4' and `xxhash` packages with:
 
     pip install lz4 xxhash
@@ -221,8 +203,8 @@ def zstandard():
     """
     try:
         import zstandard
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """install the 'zstandard' package with:
 
     pip install zstandard
@@ -241,8 +223,8 @@ def boost_histogram():
     """
     try:
         import boost_histogram
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """install the 'boost-histogram' package with:
 
     pip install boost-histogram
@@ -261,8 +243,8 @@ def hist():
     """
     try:
         import hist
-    except ImportError:
-        raise ImportError(
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
             """install the 'hist' package with:
 
     pip install hist"""

@@ -211,7 +211,7 @@ def _float16_double32_walk_ast(node, branch, source):
             )
         else:
             raise UnknownInterpretation(
-                f"cannot compute streamer title {repr(source)}",
+                f"cannot compute streamer title {source!r}",
                 branch.file.file_path,
                 branch.object_path,
             )
@@ -220,7 +220,7 @@ def _float16_double32_walk_ast(node, branch, source):
 
     else:
         raise UnknownInterpretation(
-            f"cannot compute streamer title {repr(source)}",
+            f"cannot compute streamer title {source!r}",
             branch.file.file_path,
             branch.object_path,
         )
@@ -247,7 +247,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             parsed = ast.parse(source).body[0].value
         except SyntaxError:
             raise UnknownInterpretation(
-                f"cannot parse streamer title {repr(source)} (as Python)",
+                f"cannot parse streamer title {source!r} (as Python)",
                 branch.file.file_path,
                 branch.object_path,
             )
@@ -1067,7 +1067,7 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             classname = classname[:-1]
 
         if quote:
-            cls = f"c({repr(classname)})"
+            cls = f"c({classname!r})"
             for _ in range(pointers):
                 cls = f"uproot.containers.AsPointer({cls})"
         elif file is None:
@@ -1161,7 +1161,7 @@ class UnknownInterpretation(Exception):
         self.object_path = object_path
 
     def __repr__(self):
-        return f"<UnknownInterpretation {repr(self.reason)}>"
+        return f"<UnknownInterpretation {self.reason!r}>"
 
     def __str__(self):
         return """{}

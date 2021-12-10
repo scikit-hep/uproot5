@@ -212,7 +212,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._trees = {}
 
     def __repr__(self):
-        return f"<WritableFile {repr(self.file_path)} at 0x{id(self):012x}>"
+        return f"<WritableFile {self.file_path!r} at 0x{id(self):012x}>"
 
     @property
     def sink(self):

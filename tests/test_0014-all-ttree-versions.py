@@ -3,11 +3,7 @@
 
 import json
 import sys
-
-try:
-    from io import StringIO
-except ImportError:
-    from StringIO import StringIO
+from io import StringIO
 
 import numpy
 import pytest

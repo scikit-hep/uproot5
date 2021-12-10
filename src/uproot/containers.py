@@ -331,11 +331,11 @@ class AsFIXME(AsContainer):
         return hash((AsFIXME, self.message))
 
     def __repr__(self):
-        return f"AsFIXME({repr(self.message)})"
+        return f"AsFIXME({self.message!r})"
 
     @property
     def cache_key(self):
-        return f"AsFIXME({repr(self.message)})"
+        return f"AsFIXME({self.message!r})"
 
     @property
     def typename(self):
@@ -412,12 +412,12 @@ class AsString(AsContainer):
     def __repr__(self):
         args = [repr(self._header)]
         if self._length_bytes != "1-5":
-            args.append(f"length_bytes={repr(self._length_bytes)}")
+            args.append(f"length_bytes={self._length_bytes!r}")
         return "AsString({})".format(", ".join(args))
 
     @property
     def cache_key(self):
-        return f"AsString({self._header},{repr(self._length_bytes)})"
+        return f"AsString({self._header},{self._length_bytes!r})"
 
     @property
     def typename(self):

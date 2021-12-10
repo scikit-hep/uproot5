@@ -98,7 +98,7 @@ class AsStrings(uproot.interpretation.Interpretation):
         if self._header_bytes != 0:
             args.append(f"header_bytes={self._header_bytes}")
         if self._length_bytes != "1-5":
-            args.append(f"length_bytes={repr(self._length_bytes)}")
+            args.append(f"length_bytes={self._length_bytes!r}")
         return "AsStrings({})".format(", ".join(args))
 
     def __eq__(self, other):

@@ -1877,7 +1877,7 @@ class HasBranches(Mapping):
         elif uproot._util.isstr(where):
             where = uproot._util.ensure_str(where)
         else:
-            raise TypeError(f"where must be an integer or a string, not {repr(where)}")
+            raise TypeError(f"where must be an integer or a string, not {where!r}")
 
         if where.startswith("/"):
             recursive = False
