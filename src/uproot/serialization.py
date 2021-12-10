@@ -7,7 +7,6 @@ the opposite of :doc:`uproot.deserialization.numbytes_version`, and :doc:`uproot
 the opposite of :doc:`uproot.deserialization.read_object_any`.
 """
 
-from __future__ import absolute_import
 
 import struct
 

@@ -9,7 +9,6 @@ The version number of Uproot's ``main`` branch in GitHub is usually one ahead
 of the latest release on PyPI.
 """
 
-from __future__ import absolute_import
 
 import re
 

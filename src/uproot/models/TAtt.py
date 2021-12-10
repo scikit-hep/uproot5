@@ -4,7 +4,6 @@
 This module defines versioned models for ``TAttLine``, ``TAttFill``, and ``TAttMarker``.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -23,8 +22,8 @@ class Model_TAttLine_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -97,8 +96,8 @@ class Model_TAttLine_v2(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -201,8 +200,8 @@ class Model_TAttFill_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -269,8 +268,8 @@ class Model_TAttFill_v2(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -365,8 +364,8 @@ class Model_TAttMarker_v2(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -467,8 +466,8 @@ class Model_TAttAxis_v4(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -695,8 +694,8 @@ class Model_TAtt3D_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )

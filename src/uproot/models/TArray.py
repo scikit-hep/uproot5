@@ -4,7 +4,6 @@
 This module defines versionless models for ``TArray`` and its subclasses.
 """
 
-from __future__ import absolute_import
 
 import struct
 from collections.abc import Sequence
@@ -29,8 +28,8 @@ class Model_TArray(uproot.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -57,8 +56,8 @@ in file {1}""".format(
         if self.class_version is None:
             version = ""
         else:
-            version = " (version {0})".format(self.class_version)
-        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            version = f" (version {self.class_version})"
+        return "<{}{} {} at 0x{:012x}>".format(
             self.classname,
             version,
             numpy.array2string(

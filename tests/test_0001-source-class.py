@@ -1,18 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import os
+import queue
 import sys
-
-try:
-    from io import StringIO
-except ImportError:
-    from StringIO import StringIO
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from io import StringIO
 
 import numpy
 import pytest
@@ -110,7 +102,7 @@ def test_http():
     with source as tmp:
         notifications = queue.Queue()
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
+        one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
@@ -147,7 +139,7 @@ def test_http_port():
     with source as tmp:
         notifications = queue.Queue()
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
+        one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
@@ -218,7 +210,7 @@ def test_no_multipart():
         ) as source:
             notifications = queue.Queue()
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-            one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
+            one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
             assert len(one) == 100
             assert len(two) == 5
             assert len(three) == 200
@@ -247,7 +239,7 @@ def test_fallback():
         ) as source:
             notifications = queue.Queue()
             chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-            one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
+            one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
             assert len(one) == 100
             assert len(two) == 5
             assert len(three) == 200
@@ -268,7 +260,7 @@ def test_xrootd():
     ) as source:
         notifications = queue.Queue()
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
+        one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
@@ -314,7 +306,7 @@ def test_xrootd_vectorread():
     ) as source:
         notifications = queue.Queue()
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-        one, two, three = [tobytes(chunk.raw_data) for chunk in chunks]
+        one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
@@ -337,7 +329,7 @@ def test_xrootd_vectorread_max_element_split():
         notifications = queue.Queue()
         max_element_size = 2097136
         chunks = source.chunks([(0, max_element_size + 1)], notifications)
-        (one,) = [tobytes(chunk.raw_data) for chunk in chunks]
+        (one,) = (tobytes(chunk.raw_data) for chunk in chunks)
         assert len(one) == max_element_size + 1
 
 
@@ -355,7 +347,7 @@ def test_xrootd_vectorread_max_element_split_consistency():
             notifications = queue.Queue()
             max_element_size = 2097136
             chunks = source.chunks([(0, max_element_size + 1)], notifications)
-            (one,) = [tobytes(chunk.raw_data) for chunk in chunks]
+            (one,) = (tobytes(chunk.raw_data) for chunk in chunks)
             return one
 
     chunk1 = get_chunk(

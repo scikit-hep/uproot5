@@ -6,7 +6,6 @@ a thread-local pointer into a :doc:`uproot.source.chunk.Chunk` and performs
 the lowest level of interpretation (numbers, strings, raw arrays, etc.).
 """
 
-from __future__ import absolute_import
 
 import datetime
 import struct
@@ -28,7 +27,7 @@ _rntuple_string_length = struct.Struct("<I")
 _rntuple_datetime = struct.Struct("<Q")
 
 
-class Cursor(object):
+class Cursor:
     """
     Args:
         index (int): Global seek position in the ROOT file or local position
@@ -54,20 +53,20 @@ class Cursor(object):
         if self._origin == 0:
             o = ""
         else:
-            o = ", origin={0}".format(self._origin)
+            o = f", origin={self._origin}"
 
         if self._refs is None or len(self._refs) == 0:
             r = ""
         elif self._refs is None or len(self._refs) < 3:
-            r = ", {0} refs: {1}".format(
+            r = ", {} refs: {}".format(
                 len(self._refs), ", ".join(str(x) for x in self._refs)
             )
         else:
-            r = ", {0} refs: {1}...".format(
+            r = ", {} refs: {}...".format(
                 len(self._refs), ", ".join(str(x) for x in list(self._refs)[:3])
             )
 
-        return "Cursor({0}{1}{2})".format(self._index, o, r)
+        return f"Cursor({self._index}{o}{r})"
 
     @property
     def index(self):
@@ -148,7 +147,7 @@ class Cursor(object):
         ):
             raise TypeError(
                 "Cursor.skip_after can only be used on an object with a "
-                "`cursor` and `num_bytes`, not {0}".format(type(obj))
+                "`cursor` and `num_bytes`, not {}".format(type(obj))
             )
         self._index = start_cursor.index + num_bytes
 
@@ -444,8 +443,8 @@ class Cursor(object):
         while char != 0:
             if local_stop > len(remainder):
                 raise OSError(
-                    """C-style string has no terminator (null byte) in Chunk {0}:{1}
-of file path {2}""".format(
+                    """C-style string has no terminator (null byte) in Chunk {}:{}
+of file path {}""".format(
                         self._start, self._stop, self._source.file_path
                     )
                 )
@@ -541,12 +540,12 @@ of file path {2}""".format(
                 i += dtype.itemsize
                 interpreted[i - 1] = x
 
-            formatter = u"{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
+            formatter = "{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
 
         for line_start in range(0, int(numpy.ceil(len(data) / 20.0)) * 20, 20):
             line_data = data[line_start : line_start + 20]
 
-            prefix = u""
+            prefix = ""
             if dtype is not None:
                 nones = 0
                 for x in interpreted[line_start:]:
@@ -558,31 +557,27 @@ of file path {2}""".format(
                 line_interpreted = [None] * fill + interpreted[
                     line_start : line_start + 20
                 ]
-                prefix = u"    " * fill
-                interpreted_prefix = u"    " * (fill + nones + 1 - dtype.itemsize)
+                prefix = "    " * fill
+                interpreted_prefix = "    " * (fill + nones + 1 - dtype.itemsize)
 
-            stream.write(prefix + (u"--+-" * 20) + u"\n")
-            stream.write(
-                prefix + u" ".join(u"{0:3d}".format(x) for x in line_data) + u"\n"
-            )
+            stream.write(prefix + ("--+-" * 20) + "\n")
+            stream.write(prefix + " ".join(f"{x:3d}" for x in line_data) + "\n")
             stream.write(
                 prefix
-                + u" ".join(
-                    u"{0:>3s}".format(chr(x))
-                    if chr(x) in _printable_characters
-                    else u"---"
+                + " ".join(
+                    f"{chr(x):>3s}" if chr(x) in _printable_characters else "---"
                     for x in line_data
                 )
-                + u"\n"
+                + "\n"
             )
 
             if dtype is not None:
                 stream.write(
                     interpreted_prefix
-                    + u" ".join(
+                    + " ".join(
                         formatter.format(str(x))
                         for x in line_interpreted
                         if x is not None
                     )
-                    + u"\n"
+                    + "\n"
                 )

@@ -10,7 +10,6 @@ interaction: :doc:`uproot.writing.writable.create`, :doc:`uproot.writing.writabl
 and :doc:`uproot.writing.writable.update`.
 """
 
-from __future__ import absolute_import
 
 from uproot.writing.identify import (
     to_TArray,

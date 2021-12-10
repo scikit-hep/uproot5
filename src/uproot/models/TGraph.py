@@ -4,7 +4,6 @@
 This module defines versioned models for ``TLeaf`` and its subclasses.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -38,7 +37,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -393,7 +392,7 @@ class Model_TGraphErrors_v3(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -593,7 +592,7 @@ class Model_TGraphAsymmErrors_v3(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )

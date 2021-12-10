@@ -20,7 +20,6 @@ This module also makes it possible for PyROOT objects to be added to ROOT files
 that Uproot is writing (regardless of whether Uproot could read such objects).
 """
 
-from __future__ import absolute_import
 
 import threading
 import uuid
@@ -143,7 +142,7 @@ pyroot_to_buffer.sizer = None
 pyroot_to_buffer.buffer = None
 
 
-class _GetStreamersOnce(object):
+class _GetStreamersOnce:
     _custom_classes = {}
     _streamers = {}
     _streamer_dependencies = {}
@@ -170,7 +169,7 @@ class _GetStreamersOnce(object):
     def file_path(self):
         return None
 
-    class ArrayFile(object):
+    class ArrayFile:
         def __init__(self, array):
             self.array = array
             self.current = 0
@@ -266,7 +265,7 @@ def from_pyroot(obj):
         )
 
 
-class _PyROOTWritable(object):
+class _PyROOTWritable:
     def __init__(self, obj):
         self._obj = obj
 

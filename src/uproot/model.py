@@ -17,7 +17,6 @@ not be modeled, either because the class has no streamer or no streamer for its
 version.
 """
 
-from __future__ import absolute_import
 
 import re
 import sys
@@ -119,7 +118,7 @@ def _classname_decode_convert(hex_characters):
 
 def _classname_encode_convert(bad_characters):
     g = bad_characters.group(0)
-    return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
+    return b"_" + b"".join(f"{x:02x}".encode() for x in g) + b"_"
 
 
 def classname_regularize(classname):
@@ -153,7 +152,7 @@ def classname_decode(encoded_classname):
     elif encoded_classname.startswith("Model_"):
         raw = encoded_classname[6:].encode()
     else:
-        raise ValueError("not an encoded classname: {0}".format(encoded_classname))
+        raise ValueError(f"not an encoded classname: {encoded_classname}")
 
     if _classname_decode_antiversion.match(raw) is not None:
         version = None
@@ -191,7 +190,7 @@ def classname_encode(classname, version=None, unknown=False):
     else:
         prefix = "Model_"
     if classname.startswith(prefix):
-        raise ValueError("classname is already encoded: {0}".format(classname))
+        raise ValueError(f"classname is already encoded: {classname}")
 
     if version is None:
         v = ""
@@ -254,7 +253,7 @@ def class_named(classname, version=None, custom_classes=None):
 
     cls = classes.get(classname)
     if cls is None:
-        raise ValueError("no class named {0} in {1}".format(classname, where))
+        raise ValueError(f"no class named {classname} in {where}")
 
     if version is not None and isinstance(cls, DispatchByVersion):
         versioned_cls = cls.class_of_version(version)
@@ -262,7 +261,7 @@ def class_named(classname, version=None, custom_classes=None):
             return versioned_cls
         else:
             raise ValueError(
-                "no class named {0} with version {1} in {2}".format(
+                "no class named {} with version {} in {}".format(
                     classname, version, where
                 )
             )
@@ -299,7 +298,7 @@ def maybe_custom_classes(classname, custom_classes):
         return custom_classes
 
 
-class Model(object):
+class Model:
     """
     Abstract class for all objects extracted from ROOT files (except for
     :doc:`uproot.reading.ReadOnlyFile`, :doc:`uproot.reading.ReadOnlyDirectory`,
@@ -364,8 +363,8 @@ class Model(object):
         if self.class_version is None:
             version = ""
         else:
-            version = " (version {0})".format(self.class_version)
-        return "<{0}{1} at 0x{2:012x}>".format(self.classname, version, id(self))
+            version = f" (version {self.class_version})"
+        return f"<{self.classname}{version} at 0x{id(self):012x}>"
 
     def __enter__(self):
         if isinstance(self._file, uproot.reading.ReadOnlyFile):
@@ -529,9 +528,9 @@ class Model(object):
         else:
             raise uproot.KeyInFileError(
                 name,
-                because="""{0}.{1} has only the following members:
+                because="""{}.{} has only the following members:
 
-    {2}
+    {}
 """.format(
                     type(self).__module__,
                     type(self).__name__,
@@ -974,7 +973,7 @@ class Model(object):
 
         if cls is None:
             raise NotImplementedError(
-                "this ROOT type is not writable: {0}".format(self.classname)
+                f"this ROOT type is not writable: {self.classname}"
             )
         else:
             out = cls.__new__(cls)
@@ -1019,7 +1018,7 @@ class Model(object):
 
     def _serialize(self, out, header, name, tobject_flags):
         raise NotImplementedError(
-            "can't write {0} instances yet ('serialize' method not implemented)".format(
+            "can't write {} instances yet ('serialize' method not implemented)".format(
                 type(self).__name__
             )
         )
@@ -1088,7 +1087,7 @@ class VersionedModel(Model):
         self.__dict__.update(instance_data)
 
 
-class DispatchByVersion(object):
+class DispatchByVersion:
     """
     A Python class that models all versions of a ROOT C++ class by maintaining
     a dict of :doc:`uproot.model.VersionedModel` classes.
@@ -1281,7 +1280,7 @@ class DispatchByVersion(object):
 
         else:
             raise ValueError(
-                """Unknown version {0} for class {1} that cannot be skipped """
+                """Unknown version {} for class {} that cannot be skipped """
                 """because its number of bytes is unknown.
 """.format(
                     version,
@@ -1366,7 +1365,7 @@ class UnknownClass(Model):
         return self._context
 
     def __repr__(self):
-        return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
+        return f"<Unknown {self.classname} at 0x{id(self):012x}>"
 
     def debug(
         self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
@@ -1458,9 +1457,9 @@ class UnknownClass(Model):
 
         else:
             raise ValueError(
-                """unknown class {0} that cannot be skipped because its """
+                """unknown class {} that cannot be skipped because its """
                 """number of bytes is unknown
-in file {1}""".format(
+in file {}""".format(
                     self.classname, file.file_path
                 )
             )
@@ -1591,15 +1590,15 @@ class UnknownClassVersion(VersionedModel):
 
         else:
             raise ValueError(
-                """class {0} with unknown version {1} cannot be skipped """
+                """class {} with unknown version {} cannot be skipped """
                 """because its number of bytes is unknown
-in file {2}""".format(
+in file {}""".format(
                     self.classname, self._instance_version, file.file_path
                 )
             )
 
     def __repr__(self):
-        return "<{0} with unknown version {1} at 0x{2:012x}>".format(
+        return "<{} with unknown version {} at 0x{:012x}>".format(
             self.classname, self._instance_version, id(self)
         )
 

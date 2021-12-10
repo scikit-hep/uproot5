@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import pytest
 import skhep_testdata
@@ -58,7 +57,5 @@ def geant_branch(datafile, custom_classes):
 
 
 def test_geant_dot_root(geant_branch):
-    items = dict(
-        (obj.all_members["fName"], obj) for obj in geant_branch.members["fObj"]
-    )
+    items = {obj.all_members["fName"]: obj for obj in geant_branch.members["fObj"]}
     assert items["g2t_pythia"].data["subprocess_id"] == 1

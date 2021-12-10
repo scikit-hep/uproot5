@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import numpy
 import pytest
@@ -25,7 +24,7 @@ def test_concatenate_awkward():
     )
     arrays = uproot.concatenate({files: "sample"}, ["i8", "f8"], library="ak")
     assert isinstance(arrays, awkward.Array)
-    assert set(awkward.fields(arrays)) == set(["i8", "f8"])
+    assert set(awkward.fields(arrays)) == {"i8", "f8"}
     assert len(arrays) == 420
 
 
@@ -36,5 +35,5 @@ def test_concatenate_pandas():
     )
     arrays = uproot.concatenate({files: "sample"}, ["i8", "f8"], library="pd")
     assert isinstance(arrays, pandas.DataFrame)
-    assert set(arrays.columns.tolist()) == set(["i8", "f8"])
+    assert set(arrays.columns.tolist()) == {"i8", "f8"}
     assert len(arrays) == 420

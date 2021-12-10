@@ -1,18 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import os
+import queue
 import sys
-
-try:
-    from io import StringIO
-except ImportError:
-    from StringIO import StringIO
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+from io import StringIO
 
 import numpy
 import pytest
@@ -31,7 +23,7 @@ def test_file(tmpdir):
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -48,7 +40,7 @@ def test_file_workers(tmpdir):
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -65,7 +57,7 @@ def test_memmap(tmpdir):
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -80,7 +72,7 @@ def test_http_multipart():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -95,7 +87,7 @@ def test_http():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -110,7 +102,7 @@ def test_http_workers():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -127,7 +119,7 @@ def test_http_fallback():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -144,7 +136,7 @@ def test_http_fallback_workers():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -166,7 +158,7 @@ def test_xrootd():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -188,7 +180,7 @@ def test_xrootd_workers():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
@@ -211,7 +203,7 @@ def test_xrootd_vectorread():
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        expected = dict(((chunk.start, chunk.stop), chunk) for chunk in chunks)
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))

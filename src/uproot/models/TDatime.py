@@ -4,7 +4,6 @@
 This module defines versioned models for ``TDatime``.
 """
 
-from __future__ import absolute_import
 
 import struct
 
