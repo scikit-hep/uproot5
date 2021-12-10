@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import numpy
 import pytest
@@ -150,8 +149,7 @@ def test_iterate_report_2():
 
 def test_function_iterate():
     files = [
-        skhep_testdata.data_path("uproot-sample-{0}-uncompressed.root".format(x))
-        + ":sample"
+        skhep_testdata.data_path(f"uproot-sample-{x}-uncompressed.root") + ":sample"
         for x in [
             "5.23.02",
             "5.24.00",
@@ -180,8 +178,7 @@ def test_function_iterate():
 def test_function_iterate_pandas():
     pandas = pytest.importorskip("pandas")
     files = [
-        skhep_testdata.data_path("uproot-sample-{0}-uncompressed.root".format(x))
-        + ":sample"
+        skhep_testdata.data_path(f"uproot-sample-{x}-uncompressed.root") + ":sample"
         for x in [
             "5.23.02",
             "5.24.00",

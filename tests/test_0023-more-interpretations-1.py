@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import json
 import sys
@@ -43,7 +42,7 @@ def test_strings1():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/str"] as branch:
         result = branch.array(library="np")
-        assert result.tolist() == ["hey-{0}".format(i) for i in range(30)]
+        assert result.tolist() == [f"hey-{i}" for i in range(30)]
 
 
 def test_strings4():
@@ -52,7 +51,7 @@ def test_strings4():
     ] as branch:
         result = branch.array(library="np")
         assert [result.tolist() for x in result] == [
-            ["vec-{0:03d}".format(i)] * (i % 10) for i in range(100)
+            [f"vec-{i:03d}"] * (i % 10) for i in range(100)
         ]
 
 
@@ -62,7 +61,7 @@ def test_strings4():
     ] as branch:
         result = branch.array(library="np")
         assert [result.member("StlVecStr").tolist() for x in result] == [
-            ["vec-{0:03d}".format(i)] * (i % 10) for i in range(100)
+            [f"vec-{i:03d}"] * (i % 10) for i in range(100)
         ]
 
 

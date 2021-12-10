@@ -10,7 +10,6 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 :doc:`uproot.source.chunk.Source`, the primary types of the "physical layer."
 """
 
-from __future__ import absolute_import
 
 import numbers
 
@@ -19,7 +18,7 @@ import numpy
 import uproot
 
 
-class Resource(object):
+class Resource:
     """
     Abstract class for a file handle whose lifetime may be linked to threads
     in a thread pool executor.
@@ -36,7 +35,7 @@ class Resource(object):
         return self._file_path
 
 
-class Source(object):
+class Source:
     """
     Abstract class for physically reading and writing data from a file, which
     might be remote.
@@ -150,7 +149,7 @@ class MultithreadedSource(Source):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
-        return "<{0} {1} ({2} workers) at 0x{3:012x}>".format(
+        return "<{} {} ({} workers) at 0x{:012x}>".format(
             type(self).__name__, path, self.num_workers, id(self)
         )
 
@@ -216,7 +215,7 @@ def notifier(chunk, notifications):  # noqa: D103
     return notify
 
 
-class Chunk(object):
+class Chunk:
     """
     Args:
         source (:doc:`uproot.source.chunk.Source`): Source from which the
@@ -271,7 +270,7 @@ class Chunk(object):
         self._is_memmap = is_memmap
 
     def __repr__(self):
-        return "<Chunk {0}-{1}>".format(self._start, self._stop)
+        return f"<Chunk {self._start}-{self._stop}>"
 
     @property
     def source(self):
@@ -362,17 +361,17 @@ class Chunk(object):
                 requirement = True
             else:
                 raise TypeError(
-                    """insist must be a bool or an int, not {0}
-for file path {1}""".format(
+                    """insist must be a bool or an int, not {}
+for file path {}""".format(
                         repr(insist), self._source.file_path
                     )
                 )
 
             if not requirement:
                 raise OSError(
-                    """expected Chunk of length {0},
-received {1} bytes from {2}
-for file path {3}""".format(
+                    """expected Chunk of length {},
+received {} bytes from {}
+for file path {}""".format(
                         self._stop - self._start,
                         len(self._raw_data),
                         type(self._source).__name__,
@@ -423,8 +422,8 @@ for file path {3}""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes {0}:{1}
-outside expected range {2}:{3} for this Chunk""".format(
+                """attempting to get bytes {}:{}
+outside expected range {}:{} for this Chunk""".format(
                     start, stop, self._start, self._stop
                 ),
                 self,
@@ -461,8 +460,8 @@ outside expected range {2}:{3} for this Chunk""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes after {0}
-outside expected range {1}:{2} for this Chunk""".format(
+                """attempting to get bytes after {}
+outside expected range {}:{} for this Chunk""".format(
                     start, self._start, self._stop
                 ),
                 self,

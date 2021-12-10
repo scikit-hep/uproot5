@@ -4,7 +4,6 @@
 This module defines the behaviors of ``RooHist``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 

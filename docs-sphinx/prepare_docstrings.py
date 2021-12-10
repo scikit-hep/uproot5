@@ -76,8 +76,8 @@ main.write(
     :caption: Main Interface
     :hidden:
 
-{0}""".format(
-        "".join("    {0}\n".format(x) for x in common)
+{}""".format(
+        "".join(f"    {x}\n" for x in common)
     )
 )
 toctree = open("uproot.toctree", "w")
@@ -94,7 +94,7 @@ toctree2 = None
 def ensure(filename, content):
     overwrite = not os.path.exists(filename)
     if not overwrite:
-        overwrite = open(filename, "r").read() != content
+        overwrite = open(filename).read() != content
     if overwrite:
         open(filename, "w").write(content)
         sys.stderr.write(filename + " (OVERWRITTEN)\n")
@@ -190,7 +190,7 @@ def handle_class(classname, cls):
                     fill.append("")
                     if basecls is not cls:
                         fill.append(
-                            "Inherited from :doc:`{0}`.".format(
+                            "Inherited from :doc:`{}`.".format(
                                 basecls.__module__ + "." + basecls.__name__
                             )
                         )
@@ -213,7 +213,7 @@ def handle_class(classname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}>`__".format(
+    link = "`{} <https://github.com/scikit-hep/uproot4/blob/{}/src/{}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
     try:
@@ -232,30 +232,30 @@ def handle_class(classname, cls):
         inheritance_header = """.. table::
     :class: note
 
-    +-{0}-+
-    | **Inheritance order:** {1}|
-    +={2}=+
+    +-{}-+
+    | **Inheritance order:** {}|
+    +={}=+
     | """.format(
             "-" * longest_cell, " " * (longest_cell - 22), "=" * longest_cell
         )
         inheritance_footer = """ |
-    +-{0}-+""".format(
+    +-{}-+""".format(
             "-" * longest_cell
         )
         inheritance = [x + " " * (longest_cell - len(x)) for x in inheritance]
         inheritance_sep = """ |
     | """
 
-    content = """{0}
-{1}
+    content = """{}
+{}
 
-Defined in {2} on {3}.
+Defined in {} on {}.
 
-{4}
+{}
 
-.. autoclass:: {5}
+.. autoclass:: {}
 
-{6}
+{}
 """.format(
         title,
         "=" * len(title),
@@ -285,19 +285,19 @@ def handle_function(functionname, cls):
 
     fullfilename = importlib.import_module(cls.__module__).__file__
     shortfilename = fullfilename[fullfilename.rindex("uproot/") :]
-    link = "`{0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}>`__".format(
+    link = "`{} <https://github.com/scikit-hep/uproot4/blob/{}/src/{}>`__".format(
         cls.__module__, latest_commit, shortfilename
     )
     linelink = "`line {0} <https://github.com/scikit-hep/uproot4/blob/{1}/src/{2}#L{0}>`__".format(
         inspect.getsourcelines(cls)[1], latest_commit, shortfilename
     )
 
-    content = """{0}
-{1}
+    content = """{}
+{}
 
-Defined in {2} on {3}.
+Defined in {} on {}.
 
-.. autofunction:: {4}
+.. autofunction:: {}
 """.format(
         title, "=" * len(title), link, linelink, functionname
     )
@@ -317,7 +317,7 @@ for modulename in order:
         toctree2 = open(modulename + ".toctree", "w")
         toctree2.write(
             """.. toctree::
-    :caption: {0}
+    :caption: {}
     :hidden:
 
 """.format(
@@ -328,10 +328,8 @@ for modulename in order:
     handle_module(modulename, module)
     if module.__file__.endswith("__init__.py") and modulename != "uproot":
         for submodulename in sorted(
-            [
-                modulename + "." + name
-                for loader, name, is_pkg in pkgutil.walk_packages(module.__path__)
-            ]
+            modulename + "." + name
+            for loader, name, is_pkg in pkgutil.walk_packages(module.__path__)
         ):
             submodule = importlib.import_module(submodulename)
             handle_module(submodulename, submodule)

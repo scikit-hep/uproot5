@@ -19,7 +19,6 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
-from __future__ import absolute_import
 
 import numpy
 
@@ -84,7 +83,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             model = self._model.__name__
         else:
             model = repr(self._model)
-        return "AsObjects({0})".format(model)
+        return f"AsObjects({model})"
 
     def __eq__(self, other):
         return isinstance(other, AsObjects) and self._model == other._model
@@ -96,7 +95,7 @@ class AsObjects(uproot.interpretation.Interpretation):
     @property
     def cache_key(self):
         content_key = uproot.containers._content_cache_key(self._model)
-        return "{0}({1})".format(type(self).__name__, content_key)
+        return f"{type(self).__name__}({content_key})"
 
     @property
     def typename(self):
@@ -392,7 +391,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         self._model = model
         self._members = members
         self._original = original
-        super(AsStridedObjects, self).__init__(_unravel_members(members))
+        super().__init__(_unravel_members(members))
 
     @property
     def model(self):
@@ -423,11 +422,11 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def __repr__(self):
         if self.inner_shape:
-            return "AsStridedObjects({0}, {1})".format(
+            return "AsStridedObjects({}, {})".format(
                 self._model.__name__, self.inner_shape
             )
         else:
-            return "AsStridedObjects({0})".format(self._model.__name__)
+            return f"AsStridedObjects({self._model.__name__})"
 
     def __eq__(self, other):
         return isinstance(other, AsStridedObjects) and self._model == other._model
@@ -462,7 +461,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     @property
     def cache_key(self):
-        return "{0}({1})".format(type(self).__name__, self._model.__name__)
+        return f"{type(self).__name__}({self._model.__name__})"
 
     @property
     def typename(self):
@@ -496,7 +495,7 @@ class CannotBeAwkward(Exception):
         self.because = because
 
 
-class ObjectArray(object):
+class ObjectArray:
     """
     Args:
         model (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`): The
@@ -531,7 +530,7 @@ class ObjectArray(object):
         self._detached_file = self._branch.file.detached
 
     def __repr__(self):
-        return "ObjectArray({0}, {1}, {2}, {3}, {4}, {5})".format(
+        return "ObjectArray({}, {}, {}, {}, {}, {})".format(
             self._model,
             self._branch,
             self._context,
@@ -657,7 +656,7 @@ def _strided_object(path, interpretation, data):
     return out
 
 
-class StridedObjectArray(object):
+class StridedObjectArray:
     """
     Args:
         interpretation (:doc:`uproot.interpretation.objects.AsStridedObjects`): The
@@ -699,7 +698,7 @@ class StridedObjectArray(object):
         return self._array.shape
 
     def __repr__(self):
-        return "StridedObjectArray({0}, {1})".format(self._interpretation, self._array)
+        return f"StridedObjectArray({self._interpretation}, {self._array})"
 
     def __len__(self):
         return len(self._array)

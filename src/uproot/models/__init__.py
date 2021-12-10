@@ -43,5 +43,3 @@ add them as behavior classes.
 
 See also :doc:`uproot.behaviors`.
 """
-
-from __future__ import absolute_import

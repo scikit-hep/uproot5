@@ -4,7 +4,6 @@
 This module defines the behavior of ``TProfile3D``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 

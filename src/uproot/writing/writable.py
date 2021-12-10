@@ -16,7 +16,6 @@ There is no feature parity between writable and readable versions of each of the
 types. Writing and reading are considered separate projects with different capabilities.
 """
 
-from __future__ import absolute_import
 
 import datetime
 import itertools
@@ -64,7 +63,7 @@ def create(file_path, **options):
         if os.path.exists(file_path):
             raise OSError(
                 "path exists and refusing to overwrite (use 'uproot.recreate' to "
-                "overwrite)\n\nfor path {0}".format(file_path)
+                "overwrite)\n\nfor path {}".format(file_path)
             )
     return recreate(file_path, **options)
 
@@ -213,7 +212,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._trees = {}
 
     def __repr__(self):
-        return "<WritableFile {0} at 0x{1:012x}>".format(repr(self.file_path), id(self))
+        return f"<WritableFile {repr(self.file_path)} at 0x{id(self):012x}>"
 
     @property
     def sink(self):
@@ -504,7 +503,7 @@ class WritableDirectory(MutableMapping):
         self._subdirs = {}
 
     def __repr__(self):
-        return "<WritableDirectory {0} at 0x{1:012x}>".format(
+        return "<WritableDirectory {} at 0x{:012x}>".format(
             repr("/" + "/".join(self._path)), id(self)
         )
 
@@ -614,7 +613,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names of objects directly accessible
@@ -645,7 +644,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return objects directly accessible in this
@@ -676,7 +675,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return (name, object) pairs directly accessible
@@ -709,7 +708,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names and classnames of objects
@@ -741,7 +740,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names of objects directly accessible
@@ -764,7 +763,7 @@ class WritableDirectory(MutableMapping):
                 filter_classname is no_filter or filter_classname(classname)
             ):
                 if cycle:
-                    yield "{0};{1}".format(keyname, cyclenum)
+                    yield f"{keyname};{cyclenum}"
                 else:
                     yield keyname
 
@@ -777,7 +776,7 @@ class WritableDirectory(MutableMapping):
                     filter_name=filter_name,
                     filter_classname=filter_classname,
                 ):
-                    k2 = "{0}/{1}".format(keyname, k1)
+                    k2 = f"{keyname}/{k1}"
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
                         yield k2
@@ -788,7 +787,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return objects directly accessible in this
@@ -819,7 +818,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return (name, object) pairs directly accessible
@@ -854,7 +853,7 @@ class WritableDirectory(MutableMapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names and classnames of objects
@@ -877,7 +876,7 @@ class WritableDirectory(MutableMapping):
                 filter_classname is no_filter or filter_classname(classname)
             ):
                 if cycle:
-                    yield "{0};{1}".format(keyname, cyclenum), classname
+                    yield f"{keyname};{cyclenum}", classname
                 else:
                     yield keyname, classname
 
@@ -890,7 +889,7 @@ class WritableDirectory(MutableMapping):
                     filter_name=filter_name,
                     filter_classname=filter_classname,
                 ):
-                    k2 = "{0}/{1}".format(keyname, k1)
+                    k2 = f"{keyname}/{k1}"
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
                         yield k2, c1
@@ -1190,8 +1189,8 @@ class WritableDirectory(MutableMapping):
 
         elif key.classname.string not in ("TDirectory", "TDirectoryFile"):
             raise TypeError(
-                """cannot make a directory named {0} because a {1} already has that name
-in file {2} in directory {3}""".format(
+                """cannot make a directory named {} because a {} already has that name
+in file {} in directory {}""".format(
                     repr(name), key.classname.string, self.file_path, self.path
                 )
             )
@@ -1215,7 +1214,7 @@ in file {2} in directory {3}""".format(
         initial_basket_capacity=10,
         resize_factor=10.0,
     ):
-        u"""
+        """
         Args:
             name (str): Name of the new TTree.
             branch_types (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
@@ -1309,7 +1308,7 @@ in file {2} in directory {3}""".format(
         rename=no_rename,
         require_matches=True,
     ):
-        u"""
+        """
         Args:
             source (:doc:`uproot.writing.writable.WritableDirectory` or :doc:`uproot.reading.ReadOnlyDirectory`): Directory from which to copy.
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
@@ -1343,8 +1342,8 @@ in file {2} in directory {3}""".format(
         if len(old_names) == 0:
             if require_matches:
                 raise ValueError(
-                    """no objects found with names matching {0}
-in file {1} in directory {2}""".format(
+                    """no objects found with names matching {}
+in file {} in directory {}""".format(
                         repr(filter_name), source.file_path, source.path
                     )
                 )
@@ -1356,7 +1355,7 @@ in file {1} in directory {2}""".format(
         for key in keys:
             if key.fClassName == "TTree" or key.fClassName.split("::")[-1] == "RNTuple":
                 raise NotImplementedError(
-                    "copy_from cannot copy {0} objects yet".format(key.fClassName)
+                    f"copy_from cannot copy {key.fClassName} objects yet"
                 )
 
         rename = uproot._util.regularize_rename(rename)
@@ -1373,7 +1372,7 @@ in file {1} in directory {2}""".format(
         source.file.source.chunks(list(ranges), notifications=notifications)
 
         classversion_pairs = set()
-        for classname in set(x.fClassName for x in keys):
+        for classname in {x.fClassName for x in keys}:
             for streamer in source.file.streamers_named(classname):
                 batch = []
                 streamer._dependencies(source.file.streamers, batch)
@@ -1427,7 +1426,7 @@ in file {1} in directory {2}""".format(
             )
 
     def update(self, pairs=None, **more_pairs):
-        u"""
+        """
         Args:
             pairs (dict or pairs of str \u2192 writable data): Names and data to write.
             more_pairs (dict or pairs of str \u2192 writable data): More names and data to write.
@@ -1463,7 +1462,7 @@ in file {1} in directory {2}""".format(
         self._file._cascading.streamers.update_streamers(self._file.sink, streamers)
 
 
-class WritableTree(object):
+class WritableTree:
     """
     Args:
         path (tuple of str): Path of directory names to this TTree.
@@ -1549,7 +1548,7 @@ class WritableTree(object):
         self._cascading = cascading
 
     def __repr__(self):
-        return "<WritableTree {0} at 0x{1:012x}>".format(
+        return "<WritableTree {} at 0x{:012x}>".format(
             repr("/" + "/".join(self._path)), id(self)
         )
 
@@ -1711,7 +1710,7 @@ class WritableTree(object):
         return self._cascading.num_baskets
 
     def extend(self, data):
-        u"""
+        """
         Args:
             data (dict of str \u2192 arrays): More array data to add to the TTree.
 
@@ -1768,7 +1767,7 @@ class WritableTree(object):
         )
 
 
-class WritableBranch(object):
+class WritableBranch:
     """
     Represents a TBranch from a :doc:`uproot.writing.writable.WritableTree`.
 
@@ -1794,7 +1793,7 @@ class WritableBranch(object):
         self._datum = datum
 
     def __repr__(self):
-        return "<WritableBranch {0} in {1} at 0x{2:012x}>".format(
+        return "<WritableBranch {} in {} at 0x{:012x}>".format(
             repr(self._datum["fName"]), repr("/" + "/".join(self._tree.path)), id(self)
         )
 

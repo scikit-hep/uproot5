@@ -21,7 +21,6 @@ This module defines a Python-like Future and Executor for Uproot in three levels
 These classes implement a *subset* of Python's Future and Executor interfaces.
 """
 
-from __future__ import absolute_import
 
 import os
 import queue
@@ -40,7 +39,7 @@ def delayed_raise(exception_class, exception_value, traceback):
 ##################### use-case 1: trivial Futures/Executor (satisfying formalities)
 
 
-class TrivialFuture(object):
+class TrivialFuture:
     """
     Formally satisfies the interface for a :doc:`uproot.source.futures.Future`
     object, but it is already complete at the time when it is constructed.
@@ -56,7 +55,7 @@ class TrivialFuture(object):
         return self._result
 
 
-class TrivialExecutor(object):
+class TrivialExecutor:
     """
     Formally satisfies the interface for a
     :doc:`uproot.source.futures.ThreadPoolExecutor`, but the
@@ -65,7 +64,7 @@ class TrivialExecutor(object):
     """
 
     def __repr__(self):
-        return "<TrivialExecutor at 0x{0:012x}>".format(id(self))
+        return f"<TrivialExecutor at 0x{id(self):012x}>"
 
     def submit(self, task, *args):
         """
@@ -83,7 +82,7 @@ class TrivialExecutor(object):
 ##################### use-case 2: Python-like Futures/Executor for compute
 
 
-class Future(object):
+class Future:
     """
     Args:
         task (function): The function to evaluate.
@@ -142,7 +141,7 @@ class Worker(threading.Thread):
     """
 
     def __init__(self, work_queue):
-        super(Worker, self).__init__()
+        super().__init__()
         self.daemon = True
         self._work_queue = work_queue
 
@@ -171,7 +170,7 @@ class Worker(threading.Thread):
             future._run()
 
 
-class ThreadPoolExecutor(object):
+class ThreadPoolExecutor:
     """
     Args:
         num_workers (None or int): The number of workers to start. If None,
@@ -201,7 +200,7 @@ class ThreadPoolExecutor(object):
             worker.start()
 
     def __repr__(self):
-        return "<ThreadPoolExecutor ({0} workers) at 0x{1:012x}>".format(
+        return "<ThreadPoolExecutor ({} workers) at 0x{:012x}>".format(
             len(self._workers), id(self)
         )
 
@@ -261,7 +260,7 @@ class ResourceFuture(Future):
     """
 
     def __init__(self, task):
-        super(ResourceFuture, self).__init__(task, None)
+        super().__init__(task, None)
         self._notify = None
 
     def _set_notify(self, notify):
@@ -302,7 +301,7 @@ class ResourceWorker(Worker):
     """
 
     def __init__(self, work_queue, resource):
-        super(ResourceWorker, self).__init__(work_queue)
+        super().__init__(work_queue)
         self._resource = resource
 
     @property
@@ -353,7 +352,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
             worker.start()
 
     def __repr__(self):
-        return "<ResourceThreadPoolExecutor ({0} workers) at 0x{1:012x}>".format(
+        return "<ResourceThreadPoolExecutor ({} workers) at 0x{:012x}>".format(
             len(self._workers), id(self)
         )
 
@@ -368,7 +367,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         assert isinstance(future, ResourceFuture)
         if self.closed:
             raise OSError(
-                "resource is closed for file {0}".format(
+                "resource is closed for file {}".format(
                     self._workers[0].resource.file_path
                 )
             )

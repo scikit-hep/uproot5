@@ -7,7 +7,6 @@ This module interpretations and models for standard containers, such as
 See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
-from __future__ import absolute_import
 
 import struct
 import types
@@ -37,7 +36,7 @@ def _content_cache_key(content):
         bo = uproot.interpretation.numerical._numpy_byteorder_to_cache_key[
             content.byteorder
         ]
-        return "{0}{1}{2}".format(bo, content.kind, content.itemsize)
+        return f"{bo}{content.kind}{content.itemsize}"
     elif isinstance(content, type):
         return content.__name__
     else:
@@ -103,14 +102,14 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
     elif done:
         return lbracket + "".join(left) + "".join(right) + rbracket
     elif len(left) == 0 and len(right) == 0:
-        return lbracket + "{0}, ...".format(tostring(0)) + rbracket
+        return lbracket + f"{tostring(0)}, ..." + rbracket
     elif len(right) == 0:
         return lbracket + "".join(left) + "..." + rbracket
     else:
         return lbracket + "".join(left) + "..., " + "".join(right) + rbracket
 
 
-class AsContainer(object):
+class AsContainer:
     """
     Abstract class for all descriptions of data as containers, such as
     ``std::vector``.
@@ -204,9 +203,7 @@ class AsContainer(object):
         if value is True or value is False:
             self._header = value
         else:
-            raise TypeError(
-                "{0}.header must be True or False".format(type(self).__name__)
-            )
+            raise TypeError(f"{type(self).__name__}.header must be True or False")
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         """
@@ -271,14 +268,14 @@ class AsDynamic(AsContainer):
             model = "model=" + self._model.__name__
         else:
             model = "model=" + repr(self._model)
-        return "AsDynamic({0})".format(model)
+        return f"AsDynamic({model})"
 
     @property
     def cache_key(self):
         if self._model is None:
             return "AsDynamic(None)"
         else:
-            return "AsDynamic({0})".format(_content_cache_key(self._model))
+            return f"AsDynamic({_content_cache_key(self._model)})"
 
     @property
     def typename(self):
@@ -334,11 +331,11 @@ class AsFIXME(AsContainer):
         return hash((AsFIXME, self.message))
 
     def __repr__(self):
-        return "AsFIXME({0})".format(repr(self.message))
+        return f"AsFIXME({repr(self.message)})"
 
     @property
     def cache_key(self):
-        return "AsFIXME({0})".format(repr(self.message))
+        return f"AsFIXME({repr(self.message)})"
 
     @property
     def typename(self):
@@ -415,12 +412,12 @@ class AsString(AsContainer):
     def __repr__(self):
         args = [repr(self._header)]
         if self._length_bytes != "1-5":
-            args.append("length_bytes={0}".format(repr(self._length_bytes)))
-        return "AsString({0})".format(", ".join(args))
+            args.append(f"length_bytes={repr(self._length_bytes)}")
+        return "AsString({})".format(", ".join(args))
 
     @property
     def cache_key(self):
-        return "AsString({0},{1})".format(self._header, repr(self._length_bytes))
+        return f"AsString({self._header},{repr(self._length_bytes)})"
 
     @property
     def typename(self):
@@ -527,14 +524,14 @@ class AsPointer(AsContainer):
             pointee = self._pointee.__name__
         else:
             pointee = repr(self._pointee)
-        return "AsPointer({0})".format(pointee)
+        return f"AsPointer({pointee})"
 
     @property
     def cache_key(self):
         if self._pointee is None:
             return "AsPointer(None)"
         else:
-            return "AsPointer({0})".format(_content_cache_key(self._pointee))
+            return f"AsPointer({_content_cache_key(self._pointee)})"
 
     @property
     def typename(self):
@@ -615,13 +612,13 @@ class AsArray(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsArray({0}, {1}, {2}, {3})".format(
+        return "AsArray({}, {}, {}, {})".format(
             self.header, self.speedbump, values, self.inner_shape
         )
 
     @property
     def cache_key(self):
-        return "AsArray({0},{1},{2},{3})".format(
+        return "AsArray({},{},{},{})".format(
             self.header,
             self.speedbump,
             _content_cache_key(self._values),
@@ -630,7 +627,7 @@ class AsArray(AsContainer):
 
     @property
     def typename(self):
-        shape = "".join("[{0}]".format(d) for d in self.inner_shape)
+        shape = "".join(f"[{d}]" for d in self.inner_shape)
         return _content_typename(self._values) + "[]" + shape
 
     def awkward_form(
@@ -671,8 +668,8 @@ class AsArray(AsContainer):
 
             if is_memberwise:
                 raise NotImplementedError(
-                    """memberwise serialization of {0}
-in file {1}""".format(
+                    """memberwise serialization of {}
+in file {}""".format(
                         type(self).__name__, selffile.file_path
                     )
                 )
@@ -759,17 +756,15 @@ class AsVector(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsVector({0}, {1})".format(self._header, values)
+        return f"AsVector({self._header}, {values})"
 
     @property
     def cache_key(self):
-        return "AsVector({0},{1})".format(
-            self._header, _content_cache_key(self._values)
-        )
+        return f"AsVector({self._header},{_content_cache_key(self._values)})"
 
     @property
     def typename(self):
-        return "std::vector<{0}>".format(_content_typename(self._values))
+        return f"std::vector<{_content_typename(self._values)}>"
 
     def awkward_form(
         self,
@@ -806,16 +801,16 @@ class AsVector(AsContainer):
             # let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
-                    """memberwise serialization of {0}({1})
-    in file {2}""".format(
+                    """memberwise serialization of {}({})
+    in file {}""".format(
                         type(self).__name__, _value_typename, selffile.file_path
                     )
                 )
 
             if not issubclass(self._values, uproot.model.DispatchByVersion):
                 raise NotImplementedError(
-                    """streamerless memberwise serialization of class {0}({1})
-    in file {2}""".format(
+                    """streamerless memberwise serialization of class {}({})
+    in file {}""".format(
                         type(self).__name__, _value_typename, selffile.file_path
                     )
                 )
@@ -925,15 +920,15 @@ class AsSet(AsContainer):
             keys = self._keys.__name__
         else:
             keys = repr(self._keys)
-        return "AsSet({0}, {1})".format(self._header, keys)
+        return f"AsSet({self._header}, {keys})"
 
     @property
     def cache_key(self):
-        return "AsSet({0},{1})".format(self._header, _content_cache_key(self._keys))
+        return f"AsSet({self._header},{_content_cache_key(self._keys)})"
 
     @property
     def typename(self):
-        return "std::set<{0}>".format(_content_typename(self._keys))
+        return f"std::set<{_content_typename(self._keys)}>"
 
     def awkward_form(
         self,
@@ -968,8 +963,8 @@ class AsSet(AsContainer):
 
         if is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, selffile.file_path
                 )
             )
@@ -1077,11 +1072,11 @@ class AsMap(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsMap({0}, {1}, {2})".format(self._header, keys, values)
+        return f"AsMap({self._header}, {keys}, {values})"
 
     @property
     def cache_key(self):
-        return "AsMap({0},{1},{2})".format(
+        return "AsMap({},{},{})".format(
             self._header,
             _content_cache_key(self._keys),
             _content_cache_key(self._values),
@@ -1089,7 +1084,7 @@ class AsMap(AsContainer):
 
     @property
     def typename(self):
-        return "std::map<{0}, {1}>".format(
+        return "std::map<{}, {}>".format(
             _content_typename(self._keys), _content_typename(self._values)
         )
 
@@ -1190,8 +1185,8 @@ class AsMap(AsContainer):
 
         else:
             raise NotImplementedError(
-                """non-memberwise serialization of {0}
-in file {1}""".format(
+                """non-memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, selffile.file_path
                 )
             )
@@ -1226,7 +1221,7 @@ in file {1}""".format(
             return False
 
 
-class Container(object):
+class Container:
     """
     Abstract class for Python representations of C++ STL collections.
     """
@@ -1267,7 +1262,7 @@ class STLVector(Container, Sequence):
         return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
 
     def __repr__(self, limit=85):
-        return "<STLVector {0} at 0x{1:012x}>".format(
+        return "<STLVector {} at 0x{:012x}>".format(
             self.__str__(limit=limit - 30), id(self)
         )
 
@@ -1325,7 +1320,7 @@ class STLSet(Container, Set):
         return _str_with_ellipsis(tostring, len(self), "{", "}", limit)
 
     def __repr__(self, limit=85):
-        return "<STLSet {0} at 0x{1:012x}>".format(
+        return "<STLSet {} at 0x{:012x}>".format(
             self.__str__(limit=limit - 30), id(self)
         )
 
@@ -1365,9 +1360,9 @@ class STLSet(Container, Set):
             return numpy.all(keys_same)
 
     def tolist(self):
-        return set(
+        return {
             x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
-        )
+        }
 
 
 class STLMap(Container, Mapping):
@@ -1422,7 +1417,7 @@ class STLMap(Container, Mapping):
         return _str_with_ellipsis(tostring, len(self), "{", "}", limit)
 
     def __repr__(self, limit=85):
-        return "<STLMap {0} at 0x{1:012x}>".format(
+        return "<STLMap {} at 0x{:012x}>".format(
             self.__str__(limit=limit - 30), id(self)
         )
 

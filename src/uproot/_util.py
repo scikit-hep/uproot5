@@ -5,7 +5,6 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
-from __future__ import absolute_import
 
 import datetime
 import glob
@@ -71,7 +70,7 @@ def ensure_str(x):
     elif isinstance(x, str):
         return x
     else:
-        raise TypeError("expected a string, not {0}".format(type(x)))
+        raise TypeError(f"expected a string, not {type(x)}")
 
 
 def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
@@ -86,9 +85,7 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         except (ValueError, numpy.VisibleDeprecationWarning):
             raise TypeError("cannot be converted to a NumPy array")
         if not issubclass(out.dtype.type, types):
-            raise TypeError(
-                "cannot be converted to a NumPy array of type {0}".format(types)
-            )
+            raise TypeError(f"cannot be converted to a NumPy array of type {types}")
         return out
 
 
@@ -145,7 +142,7 @@ def regularize_filter(filter):
     else:
         raise TypeError(
             "filter must be None, callable, a regex string between slashes, or a "
-            "glob pattern, not {0}".format(repr(filter))
+            "glob pattern, not {}".format(repr(filter))
         )
 
 
@@ -214,7 +211,7 @@ def regularize_rename(rename):
 
     raise TypeError(
         "rename must be None, callable, a '/from/to/' regex, an iterable of "
-        "regex rules, or a dict, not {0}".format(repr(rename))
+        "regex rules, or a dict, not {}".format(repr(rename))
     )
 
 
@@ -355,7 +352,7 @@ def file_path_to_source_class(file_path, options):
         return out, file_path
 
     else:
-        raise ValueError("URI scheme not recognized: {0}".format(file_path))
+        raise ValueError(f"URI scheme not recognized: {file_path}")
 
 
 if isinstance(__builtins__, dict):
@@ -457,7 +454,7 @@ def memory_size(data, error_message=None):
     if error_message is None:
         raise TypeError(
             "number of bytes or memory size string with units "
-            "(such as '100 MB') required, not {0}".format(repr(data))
+            "(such as '100 MB') required, not {}".format(repr(data))
         )
     else:
         raise TypeError(error_message)
@@ -520,7 +517,7 @@ def awkward_form(
                     '"float64"'
                 )
             else:
-                raise AssertionError("{0}: {1}".format(repr(model), type(model)))
+                raise AssertionError(f"{repr(model)}: {type(model)}")
 
         return _primitive_awkward_form[model]
 
@@ -597,11 +594,11 @@ def awkward_form_remove_uproot(awkward, form):
         )
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            dict(
-                (k, awkward_form_remove_uproot(awkward, v))
+            {
+                k: awkward_form_remove_uproot(awkward, v)
                 for k, v in form.contents.items()
                 if not k.startswith("@")
-            ),
+            },
             form.has_identities,
             parameters,
         )
@@ -634,7 +631,7 @@ def awkward_form_remove_uproot(awkward, form):
             parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {0}".format(type(form)))
+        raise RuntimeError(f"unrecognized form: {type(form)}")
 
 
 # FIXME: Until we get Awkward reading these bytes directly, rather than
@@ -745,9 +742,7 @@ def awkward_form_of_iter(awkward, form):
         return out
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            dict(
-                (k, awkward_form_of_iter(awkward, v)) for k, v in form.contents.items()
-            ),
+            {k: awkward_form_of_iter(awkward, v) for k, v in form.contents.items()},
             form.has_identities,
             form.parameters,
         )
@@ -780,7 +775,7 @@ def awkward_form_of_iter(awkward, form):
             form.parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {0}".format(type(form)))
+        raise RuntimeError(f"unrecognized form: {type(form)}")
 
 
 def damerau_levenshtein(a, b, ratio=False):
@@ -844,7 +839,7 @@ def code_to_datetime(code):
         ((code & 0b00000000001111100000000000000000) >> 17),
         ((code & 0b00000000000000011111000000000000) >> 12),
         ((code & 0b00000000000000000000111111000000) >> 6),
-        ((code & 0b00000000000000000000000000111111)),
+        (code & 0b00000000000000000000000000111111),
     )
 
 

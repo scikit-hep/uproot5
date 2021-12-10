@@ -6,7 +6,6 @@ Behaviors are defined by specially named classes in specially named modules
 that get auto-detected by :doc:`uproot.behavior.behavior_of`.
 """
 
-from __future__ import absolute_import
 
 import pkgutil
 
@@ -47,12 +46,10 @@ def behavior_of(classname):
     if name not in globals():
         if name in behavior_of._module_names:
             exec(
-                compile(
-                    "import uproot.behaviors.{0}".format(name), "<dynamic>", "exec"
-                ),
+                compile(f"import uproot.behaviors.{name}", "<dynamic>", "exec"),
                 globals(),
             )
-            module = eval("uproot.behaviors.{0}".format(name))
+            module = eval(f"uproot.behaviors.{name}")
             behavior_cls = getattr(module, name, None)
             if behavior_cls is not None:
                 globals()[name] = behavior_cls

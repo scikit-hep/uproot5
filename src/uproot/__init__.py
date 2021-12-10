@@ -72,7 +72,6 @@ The submodules of Uproot are:
 isort:skip_file
 """
 
-from __future__ import absolute_import
 
 from uproot.version import __version__
 import uproot.const

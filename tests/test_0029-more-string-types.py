@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import json
 import sys
@@ -89,10 +88,10 @@ def test_strings1():
         "tree"
     ] as tree:
         result = tree["Beg"].array(library="np")
-        assert result.tolist() == ["beg-{0:03d}".format(i) for i in range(100)]
+        assert result.tolist() == [f"beg-{i:03d}" for i in range(100)]
 
         result = tree["End"].array(library="np")
-        assert result.tolist() == ["end-{0:03d}".format(i) for i in range(100)]
+        assert result.tolist() == [f"end-{i:03d}" for i in range(100)]
 
 
 def test_map_string_string_in_object():
@@ -181,7 +180,7 @@ def test_strings2():
         "tree/Str"
     ] as branch:
         result = branch.array(library="np")
-        assert result.tolist() == ["evt-{0:03d}".format(i) for i in range(100)]
+        assert result.tolist() == [f"evt-{i:03d}" for i in range(100)]
 
 
 def test_strings3():
@@ -189,4 +188,4 @@ def test_strings3():
         "tree/StdStr"
     ] as branch:
         result = branch.array(library="np")
-        assert result.tolist() == ["std-{0:03d}".format(i) for i in range(100)]
+        assert result.tolist() == [f"std-{i:03d}" for i in range(100)]

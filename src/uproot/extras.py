@@ -8,7 +8,6 @@ If a library cannot be imported, these functions raise ``ImportError`` with
 error messages containing instructions on how to install the library.
 """
 
-from __future__ import absolute_import
 
 import atexit
 import os
@@ -37,7 +36,7 @@ to output as NumPy arrays, rather than Awkward arrays.
         return awkward
     else:
         raise ImportError(
-            "Uproot 4.x can only be used with Awkward 1.x; you have Awkward {0}".format(
+            "Uproot 4.x can only be used with Awkward 1.x; you have Awkward {}".format(
                 awkward.__version__
             )
         )

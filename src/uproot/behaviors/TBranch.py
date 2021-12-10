@@ -11,7 +11,6 @@ See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
 
-from __future__ import absolute_import
 
 import glob
 import itertools
@@ -32,7 +31,7 @@ from uproot._util import no_filter
 np_uint8 = numpy.dtype("u1")
 
 
-class _NoClose(object):
+class _NoClose:
     def __init__(self, hasbranches):
         self.hasbranches = hasbranches
 
@@ -66,9 +65,9 @@ def iterate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
+    **options,  # NOTE: a comma after **options breaks Python 2
 ):
-    u"""
+    """
     Args:
         files: See below.
         expressions (None, str, or list of str): Names of ``TBranches`` or
@@ -239,9 +238,9 @@ def concatenate(
     how=None,
     custom_classes=None,
     allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
+    **options,  # NOTE: a comma after **options breaks Python 2
 ):
-    u"""
+    """
     Args:
         files: See below.
         expressions (None, str, or list of str): Names of ``TBranches`` or
@@ -397,9 +396,9 @@ def lazy(
     library="ak",
     custom_classes=None,
     allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
+    **options,  # NOTE: a comma after **options breaks Python 2
 ):
-    u"""
+    """
     Args:
         files: See below.
         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
@@ -575,10 +574,10 @@ def lazy(
 
     if count == 0:
         raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {0}".format(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
                     "{"
-                    + "{0}: {1}".format(
+                    + "{}: {}".format(
                         repr(f.file_path if isinstance(f, HasBranches) else f),
                         repr(f.object_path if isinstance(f, HasBranches) else o),
                     )
@@ -590,10 +589,10 @@ def lazy(
 
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
-            "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
+            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     "{"
-                    + "{0}: {1}".format(
+                    + "{}: {}".format(
                         repr(f.file_path if isinstance(f, HasBranches) else f),
                         repr(f.object_path if isinstance(f, HasBranches) else o),
                     )
@@ -650,7 +649,7 @@ def lazy(
                     ),  # , interpretation
                     length,
                 )
-                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                cache_key = "{}:{}:{}-{}:{}".format(
                     branch.cache_key,
                     interpretation.cache_key,
                     start,
@@ -690,7 +689,7 @@ def lazy(
     return awkward.Array(out)
 
 
-class Report(object):
+class Report:
     """
     Args:
         source (:doc:`uproot.behaviors.TBranch.HasBranches`): The
@@ -729,7 +728,7 @@ class Report(object):
         self._global_offset = global_offset
 
     def __repr__(self):
-        return "<Report start={0} stop={1} source={2}>".format(
+        return "<Report start={} stop={} source={}>".format(
             self.global_entry_start,
             self.global_entry_stop,
             repr(self._source.file.file_path + ":" + self._source.object_path),
@@ -985,7 +984,7 @@ class HasBranches(Mapping):
         library="ak",
         how=None,
     ):
-        u"""
+        """
         Args:
             expressions (None, str, or list of str): Names of ``TBranches`` or
                 aliases to convert to arrays or mathematical expressions of them.
@@ -1085,7 +1084,7 @@ class HasBranches(Mapping):
 
         def get_from_cache(branchname, interpretation):
             if array_cache is not None:
-                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                cache_key = "{}:{}:{}:{}-{}:{}".format(
                     self.cache_key,
                     branchname,
                     interpretation.cache_key,
@@ -1151,7 +1150,7 @@ class HasBranches(Mapping):
                         checked.add(branch.cache_key)
                         interpretation = branchid_interpretation[branch.cache_key]
                         if branch is not None:
-                            cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                            cache_key = "{}:{}:{}:{}-{}:{}".format(
                                 self.cache_key,
                                 expression,
                                 interpretation.cache_key,
@@ -1198,7 +1197,7 @@ class HasBranches(Mapping):
         how=None,
         report=False,
     ):
-        u"""
+        """
         Args:
             expressions (None, str, or list of str): Names of ``TBranches`` or
                 aliases to convert to arrays or mathematical expressions of them.
@@ -1274,7 +1273,7 @@ class HasBranches(Mapping):
         keys = _keys_deep(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot._util.regularize_filter(filter_branch)
-            for x in self.parent.iterate(
+            yield from self.parent.iterate(
                 expressions=expressions,
                 cut=cut,
                 filter_name=filter_name,
@@ -1290,8 +1289,7 @@ class HasBranches(Mapping):
                 library=library,
                 how=how,
                 report=report,
-            ):
-                yield x
+            )
 
         else:
             entry_start, entry_stop = _regularize_entries_start_stop(
@@ -1414,7 +1412,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1450,7 +1448,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1487,7 +1485,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1525,7 +1523,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1563,7 +1561,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1598,7 +1596,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1635,7 +1633,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1663,7 +1661,7 @@ class HasBranches(Mapping):
             pass
         else:
             raise TypeError(
-                "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
+                "filter_branch must be None or a function: TBranch -> bool, not {}".format(
                     repr(filter_branch)
                 )
             )
@@ -1688,7 +1686,7 @@ class HasBranches(Mapping):
                     full_paths=full_paths,
                 ):
                     if full_paths:
-                        k2 = "{0}/{1}".format(branch.name, k1)
+                        k2 = f"{branch.name}/{k1}"
                     else:
                         k2 = k1
                     if filter_name is no_filter or _filter_name_deep(
@@ -1704,7 +1702,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1833,7 +1831,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1879,9 +1877,7 @@ class HasBranches(Mapping):
         elif uproot._util.isstr(where):
             where = uproot._util.ensure_str(where)
         else:
-            raise TypeError(
-                "where must be an integer or a string, not {0}".format(repr(where))
-            )
+            raise TypeError(f"where must be an integer or a string, not {repr(where)}")
 
         if where.startswith("/"):
             recursive = False
@@ -1932,8 +1928,7 @@ class HasBranches(Mapping):
                 )
 
     def __iter__(self):
-        for x in self.branches:
-            yield x
+        yield from self.branches
 
     def __len__(self):
         return len(self.branches)
@@ -1960,11 +1955,11 @@ class TBranch(HasBranches):
 
     def __repr__(self):
         if len(self) == 0:
-            return "<{0} {1} at 0x{2:012x}>".format(
+            return "<{} {} at 0x{:012x}>".format(
                 self.classname, repr(self.name), id(self)
             )
         else:
-            return "<{0} {1} ({2} subbranches) at 0x{3:012x}>".format(
+            return "<{} {} ({} subbranches) at 0x{:012x}>".format(
                 self.classname, repr(self.name), len(self), id(self)
             )
 
@@ -1978,7 +1973,7 @@ class TBranch(HasBranches):
         array_cache="inherit",
         library="ak",
     ):
-        u"""
+        """
         Args:
             interpretation (None or :doc:`uproot.interpretation.Interpretation`): An
                 interpretation of the ``TBranch`` data as an array. If None, the
@@ -2040,7 +2035,7 @@ class TBranch(HasBranches):
 
         def get_from_cache(branchname, interpretation):
             if array_cache is not None:
-                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                cache_key = "{}:{}:{}:{}-{}:{}".format(
                     self.cache_key,
                     branchname,
                     interpretation.cache_key,
@@ -2098,7 +2093,7 @@ class TBranch(HasBranches):
         )
 
         if array_cache is not None:
-            cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+            cache_key = "{}:{}:{}:{}-{}:{}".format(
                 self.cache_key,
                 self.name,
                 interpretation.cache_key,
@@ -2144,7 +2139,7 @@ class TBranch(HasBranches):
             sep = ":"
         else:
             sep = "/"
-        return "{0}{1}{2}".format(self.parent.object_path, sep, self.name)
+        return f"{self.parent.object_path}{sep}{self.name}"
 
     @property
     def cache_key(self):
@@ -2157,7 +2152,7 @@ class TBranch(HasBranches):
                 sep = ":"
             else:
                 sep = "/"
-            self._cache_key = "{0}{1}{2}({3})".format(
+            self._cache_key = "{}{}{}({})".format(
                 self.parent.cache_key, sep, self.name, self.index
             )
         return self._cache_key
@@ -2261,9 +2256,9 @@ class TBranch(HasBranches):
             )
         ):
             raise ValueError(
-                """entries in normal baskets ({0}) plus embedded baskets ({1}) """
-                """don't add up to expected number of entries ({2})
-in file {3}""".format(
+                """entries in normal baskets ({}) plus embedded baskets ({}) """
+                """don't add up to expected number of entries ({})
+in file {}""".format(
                     num_entries_normal,
                     sum(basket.num_entries for basket in self.embedded_baskets),
                     self.num_entries,
@@ -2298,9 +2293,9 @@ in file {3}""".format(
 
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get starting entry """
-                """for basket {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get starting entry """
+                """for basket {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2517,8 +2512,8 @@ in file {3}""".format(
             return self.embedded_baskets[basket_num - self._num_normal_baskets]
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get basket {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2543,9 +2538,9 @@ in file {3}""".format(
             return chunk, cursor
         elif 0 <= basket_num < self.num_baskets:
             raise IndexError(
-                """branch {0} has {1} normal baskets; cannot get chunk and """
-                """cursor for basket {2} because only normal baskets have cursors
-in file {3}""".format(
+                """branch {} has {} normal baskets; cannot get chunk and """
+                """cursor for basket {} because only normal baskets have cursors
+in file {}""".format(
                     repr(self.name),
                     self._num_normal_baskets,
                     basket_num,
@@ -2554,9 +2549,9 @@ in file {3}""".format(
             )
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get cursor and chunk """
-                """for basket {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get cursor and chunk """
+                """for basket {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2578,8 +2573,8 @@ in file {3}""".format(
             ].compressed_bytes
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket chunk {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get basket chunk {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2620,15 +2615,15 @@ in file {3}""".format(
 
         elif 0 <= basket_num < self.num_baskets:
             raise ValueError(
-                "branch {0} basket {1} is an embedded basket, which has no TKey".format(
+                "branch {} basket {} is an embedded basket, which has no TKey".format(
                     repr(self.name), basket_num
                 )
             )
 
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket chunk {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get basket chunk {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2961,7 +2956,7 @@ def _regularize_object_path(
             object_cache=None,
             array_cache=None,
             custom_classes=custom_classes,
-            **options  # NOTE: a comma after **options breaks Python 2
+            **options,  # NOTE: a comma after **options breaks Python 2
         ).root_directory
         if object_path is None:
             trees = file.keys(filter_classname="TTree", cycle=False)
@@ -2971,7 +2966,7 @@ def _regularize_object_path(
                 else:
                     raise ValueError(
                         """no TTrees found
-in file {0}""".format(
+in file {}""".format(
                             file_path
                         )
                     )
@@ -3121,7 +3116,7 @@ def _regularize_branchname(
         ):
             raise ValueError(
                 "a branch cannot be loaded with multiple interpretations: "
-                "{0} and {1}".format(
+                "{} and {}".format(
                     repr(branchid_interpretation[branch.cache_key]),
                     repr(interpretation),
                 )
@@ -3187,15 +3182,13 @@ def _regularize_expression(
         ):
             if symbol in symbol_path:
                 raise ValueError(
-                    """symbol {0} is recursively defined with aliases:
+                    """symbol {} is recursively defined with aliases:
 
-    {1}
+    {}
 
-in file {2} at {3}""".format(
+in file {} at {}""".format(
                         repr(symbol),
-                        "\n    ".join(
-                            "{0}: {1}".format(k, v) for k, v in aliases.items()
-                        ),
+                        "\n    ".join(f"{k}: {v}" for k, v in aliases.items()),
                         hasbranches.file.file_path,
                         hasbranches.object_path,
                     )
@@ -3347,7 +3340,7 @@ def _regularize_expressions(
             "expressions must be None (for all branches), a string (single "
             "branch or expression), a list of strings (multiple), or a dict "
             "or list of name, Interpretation pairs (branch names and their "
-            "new Interpretation), not {0}".format(repr(expressions))
+            "new Interpretation), not {}".format(repr(expressions))
         )
 
     if cut is None:
@@ -3461,9 +3454,9 @@ def _ranges_or_baskets_to_arrays(
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(
-                    """basket {0} in tree/branch {1} has the wrong number of entries """
-                    """(expected {2}, obtained {3}) when interpreted as {4}
-    in file {5}""".format(
+                    """basket {} in tree/branch {} has the wrong number of entries """
+                    """(expected {}, obtained {}) when interpreted as {}
+    in file {}""".format(
                         basket.basket_num,
                         branch.object_path,
                         basket.num_entries,
@@ -3569,7 +3562,7 @@ def _regularize_step_size(
     target_num_bytes = uproot._util.memory_size(
         step_size,
         "number of entries or memory size string with units "
-        "(such as '100 MB') required, not {0}".format(repr(step_size)),
+        "(such as '100 MB') required, not {}".format(repr(step_size)),
     )
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
@@ -3596,8 +3589,7 @@ class _WrapDict(MutableMapping):
         del self.dict[where]
 
     def __iter__(self, where):
-        for x in self.dict:
-            yield x
+        yield from self.dict
 
     def __len__(self):
         return len(self.dict)

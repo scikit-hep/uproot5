@@ -14,7 +14,6 @@ and sometimes freeing data.
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
 
-from __future__ import absolute_import
 
 import datetime
 import math
@@ -44,7 +43,7 @@ _dtype_to_char = {
 }
 
 
-class Tree(object):
+class Tree:
     """
     Writes a TTree, including all TBranches, TLeaves, and (upon ``extend``) TBaskets.
 
@@ -131,7 +130,7 @@ class Tree(object):
                         awkward = uproot.extras.awkward()
                     except ImportError as err:
                         raise TypeError(
-                            "not a NumPy dtype and 'awkward' cannot be imported: {0}\n\n{1}".format(
+                            "not a NumPy dtype and 'awkward' cannot be imported: {}\n\n{}".format(
                                 repr(branch_type), str(err)
                             )
                         )
@@ -142,7 +141,7 @@ class Tree(object):
                             branch_datashape = awkward.types.from_datashape(branch_type)
                         except Exception:
                             raise TypeError(
-                                "not a NumPy dtype or an Awkward datashape: {0}".format(
+                                "not a NumPy dtype or an Awkward datashape: {}".format(
                                     repr(branch_type)
                                 )
                             )
@@ -171,7 +170,7 @@ class Tree(object):
                             dtype = numpy.dtype(content)
                         except Exception:
                             raise TypeError(
-                                "values of a dict must be NumPy types\n\n    key {0} has type {1}".format(
+                                "values of a dict must be NumPy types\n\n    key {} has type {}".format(
                                     repr(key), repr(content)
                                 )
                             )
@@ -238,7 +237,7 @@ class Tree(object):
                                 dtype = self._branch_ak_to_np(cont)
                                 if dtype is None:
                                     raise TypeError(
-                                        "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
+                                        "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {} has type {}".format(
                                             repr(key), str(cont)
                                         )
                                     )
@@ -256,7 +255,7 @@ class Tree(object):
                         dt = self._branch_ak_to_np(content)
                         if dt is None:
                             raise TypeError(
-                                "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                                "cannot write Awkward Array type to ROOT file:\n\n    {}".format(
                                     str(branch_datashape)
                                 )
                             )
@@ -288,7 +287,7 @@ class Tree(object):
                             dtype = self._branch_ak_to_np(content)
                             if dtype is None:
                                 raise TypeError(
-                                    "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
+                                    "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {} has type {}".format(
                                         repr(key), str(content)
                                     )
                                 )
@@ -300,7 +299,7 @@ class Tree(object):
 
                 else:
                     raise TypeError(
-                        "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                        "cannot write Awkward Array type to ROOT file:\n\n    {}".format(
                             str(branch_datashape)
                         )
                     )
@@ -362,16 +361,14 @@ class Tree(object):
 
         letter = _dtype_to_char.get(branch_dtype)
         if letter is None:
-            raise TypeError(
-                "cannot write NumPy dtype {0} in TTree".format(branch_dtype)
-            )
+            raise TypeError(f"cannot write NumPy dtype {branch_dtype} in TTree")
 
         if branch_shape == ():
             dims = ""
         else:
             dims = "".join("[" + str(x) + "]" for x in branch_shape)
 
-        title = "{0}{1}/{2}".format(branch_name, dims, letter)
+        title = f"{branch_name}{dims}/{letter}"
 
         return {
             "fName": branch_name,
@@ -408,7 +405,7 @@ class Tree(object):
         }
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
+        return "{}({}, {}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._directory,
             self._name,
@@ -526,7 +523,7 @@ class Tree(object):
                 awkward = uproot.extras.awkward()
             except ImportError as err:
                 raise TypeError(
-                    "an Awkward Array was provided, but 'awkward' cannot be imported: {0}\n\n{1}".format(
+                    "an Awkward Array was provided, but 'awkward' cannot be imported: {}\n\n{}".format(
                         repr(data), str(err)
                     )
                 )
@@ -575,7 +572,7 @@ class Tree(object):
                                 awkward = uproot.extras.awkward()
                             except ImportError as err:
                                 raise TypeError(
-                                    "NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {0}: {1}\n\n{2}".format(
+                                    "NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {}: {}\n\n{}".format(
                                         k, type(v), str(err)
                                     )
                                 )
@@ -586,7 +583,7 @@ class Tree(object):
                             awkward = uproot.extras.awkward()
                         except ImportError as err:
                             raise TypeError(
-                                "NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {0}: {1}\n\n{2}".format(
+                                "NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {}: {}\n\n{}".format(
                                     k, type(v), str(err)
                                 )
                             )
@@ -598,7 +595,7 @@ class Tree(object):
                         awkward = uproot.extras.awkward()
                     except ImportError as err:
                         raise TypeError(
-                            "an Awkward Array was provided, but 'awkward' cannot be imported: {0}: {1}\n\n{2}".format(
+                            "an Awkward Array was provided, but 'awkward' cannot be imported: {}: {}\n\n{}".format(
                                 k, type(v), str(err)
                             )
                         )
@@ -612,7 +609,7 @@ class Tree(object):
                         if kk in provided:
                             if not numpy.array_equal(vv, provided[kk]):
                                 raise ValueError(
-                                    "branch {0} provided both as an explicit array and generated as a counter, and they disagree".format(
+                                    "branch {} provided both as an explicit array and generated as a counter, and they disagree".format(
                                         repr(kk)
                                     )
                                 )
@@ -621,7 +618,7 @@ class Tree(object):
                 if k in provided:
                     if not numpy.array_equal(v, provided[k]):
                         raise ValueError(
-                            "branch {0} provided both as an explicit array and generated as a counter, and they disagree".format(
+                            "branch {} provided both as an explicit array and generated as a counter, and they disagree".format(
                                 repr(kk)
                             )
                         )
@@ -656,7 +653,7 @@ class Tree(object):
 
                 else:
                     raise ValueError(
-                        "'extend' must be given an array for every branch; missing {0}".format(
+                        "'extend' must be given an array for every branch; missing {}".format(
                             repr(datum["name"])
                         )
                     )
@@ -666,14 +663,14 @@ class Tree(object):
                     actual_branches[datum["fName"]] = provided.pop(datum["fName"])
                 else:
                     raise ValueError(
-                        "'extend' must be given an array for every branch; missing {0}".format(
+                        "'extend' must be given an array for every branch; missing {}".format(
                             repr(datum["fName"])
                         )
                     )
 
         if len(provided) != 0:
             raise ValueError(
-                "'extend' was given data that do not correspond to any branch: {0}".format(
+                "'extend' was given data that do not correspond to any branch: {}".format(
                     ", ".join(repr(x) for x in provided)
                 )
             )
@@ -685,7 +682,7 @@ class Tree(object):
                 num_entries = len(branch_array)
             elif num_entries != len(branch_array):
                 raise ValueError(
-                    "'extend' must fill every branch with the same number of entries; {0} has {1} entries".format(
+                    "'extend' must fill every branch with the same number of entries; {} has {} entries".format(
                         repr(branch_name),
                         len(branch_array),
                     )
@@ -699,7 +696,7 @@ class Tree(object):
                 big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
                 if big_endian.shape != (len(branch_array),) + datum["shape"]:
                     raise ValueError(
-                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                        "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
                             datum["shape"],
                             big_endian.shape[1:],
                         )
@@ -716,7 +713,7 @@ class Tree(object):
                     awkward = uproot.extras.awkward()
                 except ImportError as err:
                     raise TypeError(
-                        "a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {0}: {1}\n\n{2}".format(
+                        "a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {}: {}\n\n{}".format(
                             branch_name, repr(branch_array), str(err)
                         )
                     )
@@ -801,7 +798,7 @@ class Tree(object):
 
                 if shape[1:] != datum["shape"]:
                     raise ValueError(
-                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                        "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
                             datum["shape"],
                             shape[1:],
                         )

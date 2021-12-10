@@ -4,7 +4,6 @@
 This module defines a versionless model for ``TClonesArray``.
 """
 
-from __future__ import absolute_import
 
 from collections.abc import Sequence
 
@@ -21,7 +20,7 @@ class Model_TClonesArray(uproot.model.VersionedModel, Sequence):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )

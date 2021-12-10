@@ -6,13 +6,12 @@ temporary array for grouped data; usually applied to a ``TBranch`` that does
 not contain data but has subbranches that do.
 """
 
-from __future__ import absolute_import
 
 import uproot
 
 
 class AsGrouped(uproot.interpretation.Interpretation):
-    u"""
+    """
     Args:
         branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch`` that
             represents the group.
@@ -51,7 +50,7 @@ class AsGrouped(uproot.interpretation.Interpretation):
         return self._subbranches
 
     def __repr__(self):
-        return "AsGroup({0}, {1})".format(self._branch, self._subbranches)
+        return f"AsGroup({self._branch}, {self._subbranches})"
 
     def __eq__(self, other):
         return (
@@ -62,11 +61,11 @@ class AsGrouped(uproot.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        return "{0}({1},[{2}])".format(
+        return "{}({},[{}])".format(
             type(self).__name__,
             self._branch.name,
             ",".join(
-                "{0}:{1}".format(repr(x), y.cache_key)
+                f"{repr(x)}:{y.cache_key}"
                 for x, y in self._subbranches.items()
                 if y is not None
             ),
@@ -77,9 +76,9 @@ class AsGrouped(uproot.interpretation.Interpretation):
         if self._typename is not None:
             return self._typename
         else:
-            return "(group of {0})".format(
+            return "(group of {})".format(
                 ", ".join(
-                    "{0}:{1}".format(x, y.typename)
+                    f"{x}:{y.typename}"
                     for x, y in self._subbranches.items()
                     if y is not None
                 )
@@ -110,12 +109,12 @@ class AsGrouped(uproot.interpretation.Interpretation):
         self, data, byte_offsets, basket, branch, context, cursor_offset, library
     ):
         raise ValueError(
-            """grouping branches like {0} should not be read directly; instead read the subbranches:
+            """grouping branches like {} should not be read directly; instead read the subbranches:
 
-    {1}
+    {}
 
-in file {2}
-in object {3}""".format(
+in file {}
+in object {}""".format(
                 repr(self._branch.name),
                 ", ".join(repr(x) for x in self._subbranches),
                 self._branch.file.file_path,
@@ -127,12 +126,12 @@ in object {3}""".format(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
         raise ValueError(
-            """grouping branches like {0} should not be read directly; instead read the subbranches:
+            """grouping branches like {} should not be read directly; instead read the subbranches:
 
-    {1}
+    {}
 
-in file {2}
-in object {3}""".format(
+in file {}
+in object {}""".format(
                 repr(self._branch.name),
                 ", ".join(repr(x) for x in self._subbranches),
                 self._branch.file.file_path,
