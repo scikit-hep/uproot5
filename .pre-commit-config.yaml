@@ -33,7 +33,6 @@ repos:
   rev: v1.20.1
   hooks:
   - id: setup-cfg-fmt
-    args: ["--min-py3-version", "3.5"]
 
 - repo: https://github.com/mgedmin/check-manifest
   rev: "0.48"
