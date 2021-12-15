@@ -442,6 +442,7 @@ class PythonLanguage(uproot.language.Language):
                     values[name] = array
 
         output = {}
+        is_pandas = False
         for expression, context in expression_context:
             if context["is_primary"] and not context["is_cut"]:
                 output[expression] = _expression_to_function(
@@ -454,6 +455,9 @@ class PythonLanguage(uproot.language.Language):
                     file_path,
                     object_path,
                 )()
+                module_name = type(output[expression]).__module__
+                if module_name == "pandas" or module_name.startswith("pandas."):
+                    is_pandas = True
 
         cut = None
         for expression, context in expression_context:
@@ -468,12 +472,35 @@ class PythonLanguage(uproot.language.Language):
                     file_path,
                     object_path,
                 )()
+                module_name = type(cut).__module__
+                if module_name == "pandas" or module_name.startswith("pandas."):
+                    is_pandas = True
                 break
 
         if cut is not None:
             cut = cut != 0
+
+            if is_pandas:
+                pandas = uproot.extras.pandas()
+
             for name in output:
-                output[name] = output[name][cut]
+                if (
+                    is_pandas
+                    and isinstance(cut.index, pandas.MultiIndex)
+                    and not isinstance(output[name].index, pandas.MultiIndex)
+                ):
+                    original = output[name]
+                    modified = pandas.DataFrame(
+                        {original.name: original.values},
+                        index=pandas.MultiIndex.from_arrays(
+                            [original.index], names=["entry"]
+                        ),
+                    ).reindex(cut.index)
+                    selected = modified[cut]
+                    output[name] = selected[original.name]
+
+                else:
+                    output[name] = output[name][cut]
 
         return output
 
