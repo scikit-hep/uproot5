@@ -1172,7 +1172,10 @@ class DispatchByVersion:
         If not, this classmethod returns None. No attempt is made to create a
         missing class.
         """
-        return cls.known_versions.get(version)
+        out = cls.known_versions.get(version)
+        if out is None and version == 0 and len(cls.known_versions) != 0:
+            out = cls.known_versions[max(cls.known_versions)]
+        return out
 
     @classmethod
     def has_version(cls, version):
@@ -1267,7 +1270,7 @@ class DispatchByVersion:
             is_memberwise,
         ) = uproot.deserialization.numbytes_version(chunk, cursor, context, move=False)
 
-        versioned_cls = cls.known_versions.get(version)
+        versioned_cls = cls.class_of_version(version)
 
         if versioned_cls is not None:
             pass
