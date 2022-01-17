@@ -57,6 +57,7 @@ class FileSink:
     * that has 'read', 'write', 'seek', and 'tell' methods
     * is 'readable() and writable() and seekable()'"""
             )
+        return self
 
     def __init__(self, file_path):
         self._file_path = file_path
