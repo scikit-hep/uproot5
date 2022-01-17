@@ -39,7 +39,8 @@ from uproot._util import no_filter, no_rename
 def create(file_path, **options):
     """
     Args:
-        file_path (str or ``pathlib.Path``): The filesystem path of the file to open.
+        file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
+            file to open or an open file.
         compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
             and level for new objects added to the file. Can be updated after creating
             the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
@@ -71,7 +72,8 @@ def create(file_path, **options):
 def recreate(file_path, **options):
     """
     Args:
-        file_path (str or ``pathlib.Path``): The filesystem path of the file to open.
+        file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
+            file to open or an open file.
         compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
             and level for new objects added to the file. Can be updated after creating
             the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
@@ -128,7 +130,8 @@ def recreate(file_path, **options):
 def update(file_path, **options):
     """
     Args:
-        file_path (str or ``pathlib.Path``): The filesystem path of the file to open.
+        file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
+            file to open or an open file.
         options: See below.
 
     Opens a local file for writing. Like ROOT's ``"UPDATE"`` option, this function
