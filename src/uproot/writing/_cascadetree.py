@@ -476,6 +476,9 @@ class Tree:
             )
 
             for datum in self._branch_data:
+                if datum["kind"] == "record":
+                    continue
+
                 fBasketBytes = datum["fBasketBytes"]
                 fBasketEntry = datum["fBasketEntry"]
                 fBasketSeek = datum["fBasketSeek"]
