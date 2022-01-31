@@ -28,7 +28,7 @@ for pageid in range(numpages):
     print(f"Requesting GitHub data, page {pageid + 1} of {numpages}")
     github_connection.request(
         "GET",
-        fr"/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30",
+        rf"/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30",
         headers={"User-Agent": "uproot4-changelog"},
     )
     github_releases_text = github_connection.getresponse().read()

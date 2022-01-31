@@ -658,7 +658,7 @@ def _root_stats_1d(entries, edges):
 
     fTsumw = fTsumw2 = entries.sum()
     fTsumwx = (entries * centers).sum()
-    fTsumwx2 = (entries * centers ** 2).sum()
+    fTsumwx2 = (entries * centers**2).sum()
 
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2
 
@@ -668,9 +668,9 @@ def _root_stats_2d(entries, xedges, yedges):
     ycenters = (yedges[:-1] + yedges[1:]) / 2.0
     fTsumw = fTsumw2 = entries.sum()
     fTsumwx = (entries.T * xcenters).sum()
-    fTsumwx2 = (entries.T * xcenters ** 2).sum()
+    fTsumwx2 = (entries.T * xcenters**2).sum()
     fTsumwy = (entries * ycenters).sum()
-    fTsumwy2 = (entries * ycenters ** 2).sum()
+    fTsumwy2 = (entries * ycenters**2).sum()
     fTsumwxy = ((entries * ycenters).T * xcenters).sum()
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2, fTsumwy, fTsumwy2, fTsumwxy
 
@@ -681,11 +681,11 @@ def _root_stats_3d(entries, xedges, yedges, zedges):
     zcenters = (zedges[:-1] + zedges[1:]) / 2.0
     fTsumw = fTsumw2 = entries.sum()
     fTsumwx = (numpy.transpose(entries, (1, 2, 0)) * xcenters).sum()
-    fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters ** 2).sum()
+    fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters**2).sum()
     fTsumwy = (numpy.transpose(entries, (2, 0, 1)) * ycenters).sum()
-    fTsumwy2 = (numpy.transpose(entries, (2, 0, 1)) * ycenters ** 2).sum()
+    fTsumwy2 = (numpy.transpose(entries, (2, 0, 1)) * ycenters**2).sum()
     fTsumwz = (entries * zcenters).sum()
-    fTsumwz2 = (entries * zcenters ** 2).sum()
+    fTsumwz2 = (entries * zcenters**2).sum()
     fTsumwxy = (
         numpy.transpose(numpy.transpose(entries, (2, 0, 1)) * ycenters, (2, 0, 1))
         * xcenters
