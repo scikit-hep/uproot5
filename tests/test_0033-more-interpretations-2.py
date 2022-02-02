@@ -97,24 +97,15 @@ def test_leaflist_pandas():
 
         else:
             assert list(result.columns) == [("x",), ("y",), ("z",)]
-            assert (
-                result[
-                    "x",
-                ].values.tolist()
-                == [1.1, 2.2, 3.3, 4.0, 5.5]
-            )
-            assert (
-                result[
-                    "y",
-                ].values.tolist()
-                == [1, 2, 3, 4, 5]
-            )
-            assert (
-                result[
-                    "z",
-                ].values.tolist()
-                == [97, 98, 99, 100, 101]
-            )
+            assert result[
+                "x",
+            ].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+            assert result[
+                "y",
+            ].values.tolist() == [1, 2, 3, 4, 5]
+            assert result[
+                "z",
+            ].values.tolist() == [97, 98, 99, 100, 101]
 
             result = tree.arrays("leaflist", library="pd")
             assert list(result.columns) == [

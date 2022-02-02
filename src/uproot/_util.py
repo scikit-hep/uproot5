@@ -415,35 +415,35 @@ def memory_size(data, error_message=None):
             if unit == "KB":
                 target *= 1000
             elif unit == "MB":
-                target *= 1000 ** 2
+                target *= 1000**2
             elif unit == "GB":
-                target *= 1000 ** 3
+                target *= 1000**3
             elif unit == "TB":
-                target *= 1000 ** 4
+                target *= 1000**4
             elif unit == "PB":
-                target *= 1000 ** 5
+                target *= 1000**5
             elif unit == "EB":
-                target *= 1000 ** 6
+                target *= 1000**6
             elif unit == "ZB":
-                target *= 1000 ** 7
+                target *= 1000**7
             elif unit == "YB":
-                target *= 1000 ** 8
+                target *= 1000**8
             elif unit == "KIB":
                 target *= 1024
             elif unit == "MIB":
-                target *= 1024 ** 2
+                target *= 1024**2
             elif unit == "GIB":
-                target *= 1024 ** 3
+                target *= 1024**3
             elif unit == "TIB":
-                target *= 1024 ** 4
+                target *= 1024**4
             elif unit == "PIB":
-                target *= 1024 ** 5
+                target *= 1024**5
             elif unit == "EIB":
-                target *= 1024 ** 6
+                target *= 1024**6
             elif unit == "ZIB":
-                target *= 1024 ** 7
+                target *= 1024**7
             elif unit == "YIB":
-                target *= 1024 ** 8
+                target *= 1024**8
             return int(target)
 
     if isint(data):

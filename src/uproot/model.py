@@ -105,10 +105,10 @@ def reset_classes():
 
 
 _classname_regularize = re.compile(r"\s*(<|>|::)\s*")
-_classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
-_classname_decode_antiversion = re.compile(br".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
-_classname_decode_version = re.compile(br".*_v([0-9]+)$")
-_classname_decode_pattern = re.compile(br"_(([0-9a-f][0-9a-f])+)_")
+_classname_encode_pattern = re.compile(rb"[^a-zA-Z0-9]+")
+_classname_decode_antiversion = re.compile(rb".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
+_classname_decode_version = re.compile(rb".*_v([0-9]+)$")
+_classname_decode_pattern = re.compile(rb"_(([0-9a-f][0-9a-f])+)_")
 
 
 def _classname_decode_convert(hex_characters):

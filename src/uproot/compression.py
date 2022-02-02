@@ -473,7 +473,7 @@ def hook_after_block(**kwargs):  # noqa: D103
 decompress.hook_before_block = hook_before_block
 decompress.hook_after_block = hook_after_block
 
-_3BYTE_MAX = 2 ** 24 - 1
+_3BYTE_MAX = 2**24 - 1
 _4byte = struct.Struct("<I")  # compressed sizes are 3-byte little endian!
 
 

@@ -77,7 +77,7 @@ def test_ZSTD():
 def test_histogram_ZLIB(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 21
+    SIZE = 2**21
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 
@@ -102,7 +102,7 @@ def test_histogram_LZMA(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 20
+    SIZE = 2**20
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 
@@ -127,7 +127,7 @@ def test_histogram_LZ4(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 21
+    SIZE = 2**21
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 
@@ -152,7 +152,7 @@ def test_histogram_ZSTD(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 21
+    SIZE = 2**21
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 

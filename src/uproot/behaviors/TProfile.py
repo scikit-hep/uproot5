@@ -318,7 +318,7 @@ class TProfile(Profile):
 
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
         with numpy.errstate(divide="ignore", invalid="ignore"):
-            sum_of_bin_weights_squared = (sum_of_bin_weights ** 2) / effective_counts
+            sum_of_bin_weights_squared = (sum_of_bin_weights**2) / effective_counts
 
         # TODO: Drop this when boost-histogram has a way to set using the constructor.
         # New version should look something like this:
