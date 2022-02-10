@@ -28,6 +28,7 @@ class Resource:
     :doc:`uproot.source.futures.ResourceFuture`.
     """
 
+    @property
     def file_path(self):
         """
         A path to the file (or URL).

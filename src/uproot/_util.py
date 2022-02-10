@@ -90,6 +90,27 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
 _regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
 
 
+def from_module(obj, module_name):
+    """
+    Returns True if ``obj`` is an instance of a class from a module
+    given by name.
+
+    This is like ``isinstance`` (in that it searches the whole ``mro``),
+    except that the module providing the type to check against doesn't
+    have to be imported and doesn't get imported (as a side effect) by
+    this function.
+    """
+    try:
+        mro = type(obj).mro()
+    except TypeError:
+        return False
+
+    for t in mro:
+        if t.__module__ == module_name or t.__module__.startswith(module_name + "."):
+            return True
+    return False
+
+
 def _regularize_filter_regex_flags(flags):
     flagsbyte = 0
     for flag in flags:

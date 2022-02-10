@@ -94,6 +94,7 @@ def test_memmap_fail(tmpdir):
         uproot.source.file.MultithreadedFileSource(filename + "-does-not-exist")
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
 def test_http():
     source = uproot.source.http.HTTPSource(
@@ -117,6 +118,7 @@ def test_http():
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 def colons_and_ports():
     assert uproot._util.file_object_path_split("https://example.com:443") == (
         "https://example.com:443",
@@ -131,6 +133,7 @@ def colons_and_ports():
     ) == ("https://example.com:443/something", "else")
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
 def test_http_port():
     source = uproot.source.http.HTTPSource(

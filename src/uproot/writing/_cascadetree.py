@@ -116,7 +116,7 @@ class Tree:
 
             else:
                 try:
-                    if type(branch_type).__module__.startswith("awkward."):
+                    if uproot._util.from_module(branch_type, "awkward"):
                         raise TypeError
                     if (
                         uproot._util.isstr(branch_type)
@@ -509,15 +509,14 @@ class Tree:
             sink.flush()
 
         provided = None
-        module_name = type(data).__module__
 
-        if module_name == "pandas" or module_name.startswith("pandas."):
+        if uproot._util.from_module(data, "pandas"):
             import pandas
 
             if isinstance(data, pandas.DataFrame) and data.index.is_numeric():
                 provided = dataframe_to_dict(data)
 
-        if module_name == "awkward" or module_name.startswith("awkward."):
+        if uproot._util.from_module(data, "awkward"):
             try:
                 awkward = uproot.extras.awkward()
             except ModuleNotFoundError as err:
@@ -550,12 +549,9 @@ class Tree:
 
             provided = {}
             for k, v in data.items():
-                module_name = type(v).__module__
-                if not (
-                    module_name == "pandas" or module_name.startswith("pandas.")
-                ) and not (
-                    module_name == "awkward" or module_name.startswith("awkward.")
-                ):
+                if not uproot._util.from_module(
+                    v, "pandas"
+                ) and not uproot._util.from_module(v, "awkward"):
                     if not hasattr(v, "dtype") and not isinstance(v, Mapping):
                         try:
                             with warnings.catch_warnings():
@@ -583,8 +579,7 @@ class Tree:
                             ) from err
                         v = awkward.from_iter(v)
 
-                module_name = type(v).__module__
-                if module_name == "awkward" or module_name.startswith("awkward."):
+                if uproot._util.from_module(v, "awkward"):
                     try:
                         awkward = uproot.extras.awkward()
                     except ModuleNotFoundError as err:
@@ -622,8 +617,7 @@ class Tree:
                 if datum["name"] in provided:
                     recordarray = provided.pop(datum["name"])
 
-                    module_name = type(recordarray).__module__
-                    if module_name == "pandas" or module_name.startswith("pandas."):
+                    if uproot._util.from_module(recordarray, "pandas"):
                         import pandas
 
                         if isinstance(recordarray, pandas.DataFrame):
