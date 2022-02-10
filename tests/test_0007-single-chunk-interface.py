@@ -108,6 +108,7 @@ def test_http_multipart():
             chunk = source.chunk(start, stop)
             assert len(tobytes(chunk.raw_data)) == stop - start
 
+
 @pytest.mark.network
 def test_http_multipart_fail():
     with pytest.raises(Exception):
