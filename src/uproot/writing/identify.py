@@ -48,15 +48,14 @@ def add_to_directory(obj, name, directory, streamers):
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
     is_ttree = False
-    module_name = type(obj).__module__
 
-    if module_name == "pandas" or module_name.startswith("pandas."):
+    if uproot._util.from_module(obj, "pandas"):
         import pandas
 
         if isinstance(obj, pandas.DataFrame) and obj.index.is_numeric():
             obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
 
-    if module_name == "awkward" or module_name.startswith("awkward."):
+    if uproot._util.from_module(obj, "awkward"):
         import awkward
 
         if isinstance(obj, awkward.Array):
@@ -70,9 +69,7 @@ def add_to_directory(obj, name, directory, streamers):
         metadata = {}
 
         for branch_name, branch_array in obj.items():
-            module_name = type(branch_array).__module__
-
-            if module_name == "pandas" or module_name.startswith("pandas."):
+            if uproot._util.from_module(branch_array, "pandas"):
                 import pandas
 
                 if isinstance(branch_array, pandas.DataFrame):
@@ -113,8 +110,7 @@ def add_to_directory(obj, name, directory, streamers):
                 metadata[branch_name] = metadatum
 
             else:
-                module_name = type(branch_array).__module__
-                if module_name == "awkward" or module_name.startswith("awkward."):
+                if uproot._util.from_module(branch_array, "awkward"):
                     data[branch_name] = branch_array
                     metadata[branch_name] = branch_array.type
 

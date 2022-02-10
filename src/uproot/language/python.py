@@ -455,8 +455,7 @@ class PythonLanguage(uproot.language.Language):
                     file_path,
                     object_path,
                 )()
-                module_name = type(output[expression]).__module__
-                if module_name == "pandas" or module_name.startswith("pandas."):
+                if uproot._util.from_module(output[expression], "pandas"):
                     is_pandas = True
 
         cut = None
@@ -472,8 +471,7 @@ class PythonLanguage(uproot.language.Language):
                     file_path,
                     object_path,
                 )()
-                module_name = type(cut).__module__
-                if module_name == "pandas" or module_name.startswith("pandas."):
+                if uproot._util.from_module(cut, "pandas"):
                     is_pandas = True
                 break
 
