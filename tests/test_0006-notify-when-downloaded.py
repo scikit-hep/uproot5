@@ -63,6 +63,7 @@ def test_memmap(tmpdir):
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
 def test_http_multipart():
     notifications = queue.Queue()
@@ -78,6 +79,7 @@ def test_http_multipart():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
 def test_http():
     notifications = queue.Queue()
@@ -93,6 +95,7 @@ def test_http():
             expected.pop((chunk.start, chunk.stop))
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
 def test_http_workers():
     notifications = queue.Queue()
