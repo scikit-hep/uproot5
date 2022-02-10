@@ -84,13 +84,13 @@ def test_http():
                 chunk = source.chunk(start, stop)
                 assert len(tobytes(chunk.raw_data)) == stop - start
 
-            with pytest.raises(Exception):
-                with uproot.source.http.MultithreadedHTTPSource(
-                    "https://wonky.cern/does-not-exist",
-                    num_workers=num_workers,
-                    timeout=0.1,
-                ) as source:
-                    source.chunk(0, 100)
+        with pytest.raises(Exception):
+            with uproot.source.http.MultithreadedHTTPSource(
+                "https://wonky.cern/does-not-exist",
+                num_workers=num_workers,
+                timeout=0.1,
+            ) as source:
+                source.chunk(0, 100)
 
 
 @pytest.mark.network
@@ -102,11 +102,11 @@ def test_http_multipart():
             chunk = source.chunk(start, stop)
             assert len(tobytes(chunk.raw_data)) == stop - start
 
-        with pytest.raises(Exception):
-            with uproot.source.http.HTTPSource(
-                "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=1
-            ) as source:
-                tobytes(source.chunk(0, 100).raw_data)
+    with pytest.raises(Exception):
+        with uproot.source.http.HTTPSource(
+            "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=1
+        ) as source:
+            tobytes(source.chunk(0, 100).raw_data)
 
 
 @pytest.mark.skip(
