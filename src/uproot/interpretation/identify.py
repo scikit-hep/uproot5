@@ -252,8 +252,14 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
                 branch.object_path,
             )
 
-        transformed = ast.Expression(_float16_double32_walk_ast(parsed, branch, source))
-        spec = eval(compile(transformed, repr(title), "eval"))
+        try:
+            transformed = ast.Expression(
+                _float16_double32_walk_ast(parsed, branch, source)
+            )
+            spec = eval(compile(transformed, repr(title), "eval"))
+        except (UnknownInterpretation, SyntaxError):
+            spec = ()
+
         if (
             len(spec) == 2
             and uproot._util.isnum(spec[0])
@@ -271,12 +277,7 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
             low, high, num_bits = spec
 
         else:
-            raise UnknownInterpretation(
-                "cannot interpret streamer title {} as (low, high) or "
-                "(low, high, num_bits)".format(repr(source)),
-                branch.file.file_path,
-                branch.object_path,
-            )
+            num_bits = "no brackets"
 
     if not is_float16:
         if num_bits == "no brackets":
@@ -379,6 +380,7 @@ def interpretation_of(branch, context, simplify=True):
             is_double32 = (
                 leaftype == uproot.const.kDouble32 or leaf.classname == "TLeafD32"
             )
+
             if is_float16 or is_double32:
                 out = _float16_or_double32(branch, context, leaf, is_float16, dims)
 
