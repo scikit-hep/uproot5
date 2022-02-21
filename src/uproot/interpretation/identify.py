@@ -243,16 +243,9 @@ def _float16_or_double32(branch, context, leaf, is_float16, dims):
 
     else:
         source = title[left : right + 1]
-        try:
-            parsed = ast.parse(source).body[0].value
-        except SyntaxError:
-            raise UnknownInterpretation(
-                f"cannot parse streamer title {source!r} (as Python)",
-                branch.file.file_path,
-                branch.object_path,
-            )
 
         try:
+            parsed = ast.parse(source).body[0].value
             transformed = ast.Expression(
                 _float16_double32_walk_ast(parsed, branch, source)
             )
