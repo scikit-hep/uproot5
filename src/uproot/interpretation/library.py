@@ -741,10 +741,17 @@ in object {}""".format(
             return concatenated
 
 
-def _pandas_rangeindex():
-    import pandas
+def _is_pandas_rangeindex(pandas, index):
+    if hasattr(pandas, "RangeIndex") and isinstance(index, pandas.RangeIndex):
+        return True
+    if hasattr(index, "is_integer") and index.is_integer():
+        return True
+    if uproot._util.parse_version(pandas.__version__) < uproot._util.parse_version(
+        "1.4.0"
+    ) and isinstance(index, pandas.Int64Index):
+        return True
 
-    return (getattr(pandas, "RangeIndex", pandas.Int64Index), pandas.Int64Index)
+    return False
 
 
 def _strided_to_pandas(path, interpretation, data, arrays, columns):
@@ -964,7 +971,7 @@ class Pandas(Library):
                 arrays = newarrays
                 names = pandas.MultiIndex.from_tuples(newnames)
 
-            if all(isinstance(x.index, _pandas_rangeindex()) for x in arrays.values()):
+            if all(_is_pandas_rangeindex(pandas, x.index) for x in arrays.values()):
                 return _pandas_memory_efficient(pandas, arrays, names)
 
             indexes = []
@@ -986,7 +993,7 @@ class Pandas(Library):
                 for index, group, df, gn in zip(indexes, groups, dfs, group_names):
                     for name in names:
                         array = arrays[name]
-                        if isinstance(array.index, _pandas_rangeindex()):
+                        if _is_pandas_rangeindex(pandas, array.index):
                             if flat_index is None or len(flat_index) != len(
                                 array.index
                             ):
@@ -1053,7 +1060,7 @@ class Pandas(Library):
                 flat_names = [
                     name
                     for name in names
-                    if isinstance(arrays[name].index, _pandas_rangeindex())
+                    if _is_pandas_rangeindex(pandas, arrays[name].index)
                 ]
                 if len(flat_names) > 0:
                     flat_index = pandas.MultiIndex.from_arrays(

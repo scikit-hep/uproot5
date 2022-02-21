@@ -11,9 +11,10 @@ error messages containing instructions on how to install the library.
 
 import atexit
 import os
-from distutils.version import LooseVersion
 
 import pkg_resources
+
+from uproot._util import parse_version
 
 
 def awkward():
@@ -32,7 +33,7 @@ Alternatively, you can use ``library="np"`` or globally set ``uproot.default_lib
 to output as NumPy arrays, rather than Awkward arrays.
 """
         )
-    if LooseVersion("1") < LooseVersion(awkward.__version__) < LooseVersion("2"):
+    if parse_version("1") < parse_version(awkward.__version__) < parse_version("2"):
         return awkward
     else:
         raise ModuleNotFoundError(
@@ -121,7 +122,7 @@ def older_xrootd(min_version):
         return False
     else:
         try:
-            return LooseVersion(version) < LooseVersion(min_version)
+            return parse_version(version) < parse_version(min_version)
         except TypeError:
             return False
 
