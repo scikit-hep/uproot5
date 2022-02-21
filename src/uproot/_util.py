@@ -5,7 +5,6 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
-
 import datetime
 import glob
 import numbers
@@ -17,6 +16,7 @@ from collections.abc import Iterable
 from urllib.parse import unquote, urlparse
 
 import numpy
+import setuptools
 
 win = platform.system().lower().startswith("win")
 
@@ -87,7 +87,15 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         return out
 
 
-_regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
+def parse_version(version):
+    """
+    Converts a semver string into a Version object that can be compared with
+    ``<``, ``>=``, etc.
+
+    Currently implemented using ``setuptools.extern.packaging.version.parse``
+    (exposing that library in the return type).
+    """
+    return setuptools.extern.packaging.version.parse(version)
 
 
 def from_module(obj, module_name):
@@ -134,6 +142,9 @@ def no_filter(x):
     A filter that accepts anything (always returns True).
     """
     return True
+
+
+_regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
 
 
 def regularize_filter(filter):
