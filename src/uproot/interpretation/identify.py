@@ -378,13 +378,7 @@ def interpretation_of(branch, context, simplify=True):
                 out = _float16_or_double32(branch, context, leaf, is_float16, dims)
 
             else:
-                if (
-                    branch.member("fClassName", none_if_missing=True) == "TObject"
-                    and branch.name.split(".")[-1] == "fBits"
-                ):
-                    from_dtype = numpy.dtype(">u1")
-                else:
-                    from_dtype = _leaf_to_dtype(leaf, getdims=False).newbyteorder(">")
+                from_dtype = _leaf_to_dtype(leaf, getdims=False).newbyteorder(">")
 
                 if context.get("swap_bytes", True):
                     to_dtype = from_dtype.newbyteorder("=")
