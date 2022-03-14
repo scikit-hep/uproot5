@@ -652,7 +652,6 @@ class AsArray(AsContainer):
                     "as": "array",
                     "header": self._header,
                     "speedbump": self._speedbump,
-                    "inner_shape": list(self._inner_shape),
                 }
             },
         )
