@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/asottile/pyupgrade
-  rev: v2.31.0
+  rev: v2.31.1
   hooks:
   - id: pyupgrade
     args: ["--py36-plus"]
@@ -36,7 +36,7 @@ repos:
     args: ["--min-py3-version", "3.5"]
 
 - repo: https://github.com/mgedmin/check-manifest
-  rev: "0.47"
+  rev: "0.48"
   hooks:
   - id: check-manifest
     stages: [manual]
