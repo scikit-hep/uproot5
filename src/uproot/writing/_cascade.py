@@ -1601,10 +1601,15 @@ class Directory(CascadeNode):
         else:
             cycle = replaces.cycle
 
+        classname_asbytes = classname.encode(errors="surrogateescape")
+        name_asbytes = name.encode(errors="surrogateescape")
+        title_asbytes = title.encode(errors="surrogateescape")
         strings_size = 0
-        strings_size += (1 if len(classname) < 255 else 5) + len(classname)
-        strings_size += (1 if len(name) < 255 else 5) + len(name)
-        strings_size += (1 if len(title) < 255 else 5) + len(title)
+        strings_size += (1 if len(classname_asbytes) < 255 else 5) + len(
+            classname_asbytes
+        )
+        strings_size += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
+        strings_size += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
 
         parent_location = self._key.location  # FIXME: is this correct?
 
