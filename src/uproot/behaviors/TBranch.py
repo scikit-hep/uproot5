@@ -701,13 +701,85 @@ def dask(
     allow_missing=False,
     **options,  # NOTE: a comma after **options breaks Python 2
 ):
+    """
+    Args:
+        files: See below.
+        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by name.
+        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by type.
+        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
+            filter to select ``TBranches`` using the full
+            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
+            returns False or None, the ``TBranch`` is excluded; if the function
+            returns True, it is included with its standard
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :doc:`uproot.interpretation.Interpretation`, this interpretation
+            overrules the standard one.
+        recursive (bool): If True, include all subbranches of branches as
+            separate fields; otherwise, only search one level deep.
+        full_paths (bool): If True, include the full path to each subbranch
+            with slashes (``/``); otherwise, use the descendant's name as
+            the field name.
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
+            that is used to represent arrays. For lazy arrays, only ``"ak"``
+            for Awkward Array is allowed.
+        custom_classes (None or dict): If a dict, override the classes from
+            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
+        allow_missing (bool): If True, skip over any files that do not contain
+            the specified ``TTree``.
+        options: See below.
+
+    Returns dask equivalents of the backends supported by uproot.
+
+    Allowed types for the ``files`` parameter:
+
+    * str/bytes: relative or absolute filesystem path or URL, without any colons
+      other than Windows drive letter or URL schema.
+      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
+    * str/bytes: same with an object-within-ROOT path, separated by a colon.
+      Example: ``"rel/file.root:tdirectory/ttree"``
+    * pathlib.Path: always interpreted as a filesystem path or URL only (no
+      object-within-ROOT path), regardless of whether there are any colons.
+      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+    * glob syntax in str/bytes and pathlib.Path.
+      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
+    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
+      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
+    * already-open TTree objects.
+    * iterables of the above.
+
+    Options (type; default):
+
+    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
+    * timeout (float for HTTP, int for XRootD; 30)
+    * max_num_elements (None or int; None)
+    * num_workers (int; 1)
+    * num_fallback_workers (int; 10)
+    * begin_chunk_size (memory_size; 512)
+    * minimal_ttree_metadata (bool; True)
+
+    Other file entry points:
+
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
+      contiguous entries in ``TTrees``.
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
+      concatenated array from ``TTrees``.
+    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
+      read array from ``TTrees``.
+    """
     import dask
     import dask.array as da
+
     files = _regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
-    if library.name != 'np':
+    if library.name != "np":
         raise NotImplementedError()
-    
+
     real_options = dict(options)
     if "num_workers" not in real_options:
         real_options["num_workers"] = 1
@@ -791,16 +863,17 @@ def dask(
     for key in common_keys:
         dask_arrays = []
         for ttree in hasbranches:
-            delayed_array = dask.delayed(ttree[key].array)(library='np')
+            delayed_array = dask.delayed(ttree[key].array)(library="np")
             dt = ttree[key].interpretation.numpy_dtype
             if dt.subdtype is None:
                 inner_shape = ()
             else:
                 dt, inner_shape = dt.subdtype
             shape = (ttree[key].num_entries,) + inner_shape
-            dask_arrays.append(da.from_delayed(delayed_array,shape=shape,dtype=dt))
+            dask_arrays.append(da.from_delayed(delayed_array, shape=shape, dtype=dt))
         dask_dict[key] = da.concatenate(dask_arrays)
     return dask_dict
+
 
 class Report:
     """
