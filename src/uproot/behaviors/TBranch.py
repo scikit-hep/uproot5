@@ -689,6 +689,119 @@ def lazy(
     return awkward.Array(out)
 
 
+def dask(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    library="np",
+    custom_classes=None,
+    allow_missing=False,
+    **options,  # NOTE: a comma after **options breaks Python 2
+):
+    import dask
+    import dask.array as da
+    files = _regularize_files(files)
+    library = uproot.interpretation.library._regularize_library(library)
+    if library.name != 'np':
+        raise NotImplementedError()
+    
+    real_options = dict(options)
+    if "num_workers" not in real_options:
+        real_options["num_workers"] = 1
+    if "num_fallback_workers" not in real_options:
+        real_options["num_fallback_workers"] = 1
+
+    filter_branch = uproot._util.regularize_filter(filter_branch)
+
+    hasbranches = []
+    common_keys = None
+    is_self = []
+
+    count = 0
+    for file_path, object_path in files:
+        obj = _regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+
+        if obj is not None:
+            count += 1
+
+            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+                original = obj
+                obj = obj.parent
+                is_self.append(True)
+
+                def real_filter_branch(branch):
+                    return branch is original and filter_branch(branch)
+
+            else:
+                is_self.append(False)
+                real_filter_branch = filter_branch
+
+            hasbranches.append(obj)
+
+            new_keys = obj.keys(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=real_filter_branch,
+                full_paths=full_paths,
+            )
+
+            if common_keys is None:
+                common_keys = new_keys
+            else:
+                new_keys = set(new_keys)
+                common_keys = [key for key in common_keys if key in new_keys]
+
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
+        raise ValueError(
+            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    dask_dict = {}
+    for key in common_keys:
+        dask_arrays = []
+        for ttree in hasbranches:
+            delayed_array = dask.delayed(ttree[key].array)(library='np')
+            dt = ttree[key].interpretation.numpy_dtype
+            if dt.subdtype is None:
+                inner_shape = ()
+            else:
+                dt, inner_shape = dt.subdtype
+            shape = (ttree[key].num_entries,) + inner_shape
+            dask_arrays.append(da.from_delayed(delayed_array,shape=shape,dtype=dt))
+        dask_dict[key] = da.concatenate(dask_arrays)
+    return dask_dict
+
 class Report:
     """
     Args:
