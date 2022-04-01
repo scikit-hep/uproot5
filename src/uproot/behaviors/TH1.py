@@ -19,8 +19,10 @@ def _remove_nan_dims(array):
         numpy.isnan(array).all(axis=tuple(numpy.delete(numpy.arange(array.ndim), i)))
         for i in range(array.ndim)
     ]
-    del_ixes = [[i for i, ix in enumerate(axis) if ix and i in [0, len(axis) - 1]]
-                for axis in nan_axes]
+    del_ixes = [
+        [i for i, ix in enumerate(axis) if ix and i in [0, len(axis) - 1]]
+        for axis in nan_axes
+    ]
     for i, ix in enumerate(del_ixes):
         array = numpy.delete(array, ix, i)
     return array
