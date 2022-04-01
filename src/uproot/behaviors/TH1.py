@@ -14,6 +14,15 @@ boost_metadata = {"name": "fName", "label": "fTitle"}
 boost_axis_metadata = {"name": "fName", "label": "fTitle"}
 
 
+def _remove_nan_dims(array):
+    mask_axes = [
+        numpy.isnan(array).all(axis=tuple(numpy.delete(numpy.arange(array.ndim), i)))
+        for i in range(array.ndim)
+    ]
+    reshape_dim = [len(axis) - numpy.sum(axis) for axis in mask_axes]
+    return numpy.ma.masked_invalid(array).compressed().reshape(reshape_dim)
+
+
 def _boost_axis(axis, metadata):
     boost_histogram = uproot.extras.boost_histogram()
 
@@ -245,7 +254,7 @@ class TH1(Histogram):
             self._values = values
 
         if flow:
-            return values
+            return _remove_nan_dims(values)
         else:
             return values[1:-1]
 
@@ -268,7 +277,7 @@ class TH1(Histogram):
             self._variances = variances
 
         if flow:
-            return values, variances
+            return _remove_nan_dims(values), _remove_nan_dims(variances)
         else:
             return values[1:-1], variances[1:-1]
 

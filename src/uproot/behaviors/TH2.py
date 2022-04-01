@@ -9,7 +9,7 @@ This module defines the behaviors of ``TH2`` and its subclasses (not including
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
+from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata, _remove_nan_dims
 
 
 class TH2(uproot.behaviors.TH1.Histogram):
@@ -53,7 +53,7 @@ class TH2(uproot.behaviors.TH1.Histogram):
             self._values = values
 
         if flow:
-            return values
+            return _remove_nan_dims(values)
         else:
             return values[1:-1, 1:-1]
 
@@ -76,7 +76,7 @@ class TH2(uproot.behaviors.TH1.Histogram):
             self._variances = variances
 
         if flow:
-            return values, variances
+            return _remove_nan_dims(values), _remove_nan_dims(variances)
         else:
             return values[1:-1, 1:-1], variances[1:-1, 1:-1]
 

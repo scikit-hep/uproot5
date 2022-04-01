@@ -262,6 +262,13 @@ def to_writable(obj):
             # using flow=True if supported
             data = obj.values(flow=True)
             fSumw2 = obj.variances(flow=True)
+            # pad flow bins
+            pad_dim = numpy.array([[1 - int(axis.traits.underflow) for axis in obj.axes],
+                                   [1 - int(axis.traits.overflow)
+                                    for axis in obj.axes]]).T
+            if numpy.sum(pad_dim) != 0:
+                data = numpy.pad(data, pad_dim, mode='constant', constant_values=numpy.nan)
+                fSumw2 = numpy.pad(fSumw2, pad_dim, mode='constant', constant_values=numpy.nan)
 
         except TypeError:
             # flow=True is not supported, fallback to allocate-and-fill
@@ -302,6 +309,12 @@ def to_writable(obj):
 
         # we're assuming the PlottableHistogram ensures data.shape == weights.shape
         assert data.shape == fSumw2.shape
+
+        # check values/bins dimensions
+        if ndim == 1:
+            assert len(data) == len(obj.axes[0].edges) + 1
+        else:
+            assert data.shape == tuple([len(axis.edges) + 1 for axis in obj.axes])
 
         # data are stored in transposed order for 2D and 3D
         data = data.T.reshape(-1)
