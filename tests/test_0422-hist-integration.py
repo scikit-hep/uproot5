@@ -163,11 +163,9 @@ def test_regular_3d(tmp_path):
 @pytest.mark.parametrize("underflow", [True, False])
 def test_flow_bin_writing(tmp_path, underflow, overflow):
     newfile = os.path.join(tmp_path, "newfile.root")
-    tmp = (
-        hist.new.Reg(3, 1, 4, name="x", underflow=underflow, overflow=overflow)
-        .Weight()
-        .fill([0, 1, 2, 3, 4])
-    )
+    tmp = hist.new.Reg(3, 1, 4, name='x', underflow=underflow,
+                       overflow=overflow).Weight().fill([0, 1, 2, 3, 4],
+                                                        weight=[1, 1, np.nan, 1, 1])
 
     with uproot.recreate(newfile) as fout:
         fout["h1"] = tmp
@@ -175,8 +173,8 @@ def test_flow_bin_writing(tmp_path, underflow, overflow):
     with uproot.open(newfile) as fin:
         h1 = fin["h1"]
 
-    assert np.allclose(tmp.values(), h1.values())
-    assert np.allclose(tmp.values(flow=True), h1.values(flow=True))
+    assert np.allclose(tmp.values(), h1.values(), equal_nan=True)
+    assert np.allclose(tmp.values(flow=True), h1.values(flow=True), equal_nan=True)
 
 
 @pytest.mark.parametrize("under1", [True, False])
@@ -188,9 +186,10 @@ def test_flow_bin_writing(tmp_path, underflow, overflow):
 def test_flow_bin_writing_3d(tmp_path, under1, under2, under3, over1, over2, over3):
     newfile = os.path.join(tmp_path, "newfile.root")
     tmp = (
-        hist.Hist.new.Reg(3, 1, 4, name="x", underflow=under1, overflow=over1)
-        .Reg(3, 1, 4, name="y", underflow=under2, overflow=over2)
-        .Reg(3, 1, 4, name="z", underflow=under3, overflow=over3)
+        hist.Hist.new
+        .Reg(3, 1, 4, name='x', underflow=under1, overflow=over1)
+        .Reg(3, 1, 4, name='y', underflow=under2, overflow=over2)
+        .Reg(3, 1, 4, name='z', underflow=under3, overflow=over3)
         .Weight()
         .fill(
             [0, 1, 2, 3, 4],

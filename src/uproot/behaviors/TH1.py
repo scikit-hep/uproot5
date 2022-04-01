@@ -15,12 +15,15 @@ boost_axis_metadata = {"name": "fName", "label": "fTitle"}
 
 
 def _remove_nan_dims(array):
-    mask_axes = [
+    nan_axes = [
         numpy.isnan(array).all(axis=tuple(numpy.delete(numpy.arange(array.ndim), i)))
         for i in range(array.ndim)
     ]
-    reshape_dim = [len(axis) - numpy.sum(axis) for axis in mask_axes]
-    return numpy.ma.masked_invalid(array).compressed().reshape(reshape_dim)
+    del_ixes = [[i for i, ix in enumerate(axis) if ix and i in [0, len(axis) - 1]]
+                for axis in nan_axes]
+    for i, ix in enumerate(del_ixes):
+        array = numpy.delete(array, ix, i)
+    return array
 
 
 def _boost_axis(axis, metadata):
