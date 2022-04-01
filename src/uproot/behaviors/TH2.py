@@ -9,7 +9,7 @@ This module defines the behaviors of ``TH2`` and its subclasses (not including
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata, _remove_nan_dims
+from uproot.behaviors.TH1 import _remove_nan_dims, boost_axis_metadata, boost_metadata
 
 
 class TH2(uproot.behaviors.TH1.Histogram):
