@@ -2,9 +2,9 @@ name: "Test build"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -42,7 +42,7 @@ jobs:
           conda env list
           conda info
           conda install numpy pandas pytest lz4 python-xxhash requests
-          pip install scikit-hep-testdata boost-histogram hist
+          pip install scikit-hep-testdata boost-histogram hist dask[array]
           conda list
 
       - name: "Install Awkward"

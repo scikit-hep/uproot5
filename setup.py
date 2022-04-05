@@ -27,6 +27,7 @@ extras = {
         "lz4",
         "xxhash",
         "requests",
+        "dask[array]",
     ],
 }
 extras["all"] = sum(extras.values(), [])
