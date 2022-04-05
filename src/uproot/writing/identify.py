@@ -263,6 +263,13 @@ def to_writable(obj):
             data = obj.values(flow=True)
             fSumw2 = obj.variances(flow=True)
 
+            # and flow=True is different from flow=False (obj actually has flow bins)
+            if (
+                data.shape == obj.values(flow=False).shape
+                and fSumw2.shape == obj.variances(flow=True).shape
+            ):
+                raise TypeError
+
         except TypeError:
             # flow=True is not supported, fallback to allocate-and-fill
 
