@@ -9,6 +9,8 @@ import uproot
 
 
 def test_single_dask_array():
+    dask = pytest.importorskip("dask")
+    da = pytest.importorskip("dask.array")
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     ttree = uproot.open(test_path)
 
@@ -25,6 +27,8 @@ def test_single_dask_array():
 
 
 def test_dask_concatenation():
+    dask = pytest.importorskip("dask")
+    da = pytest.importorskip("dask.array")
     test_path1 = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     test_path2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"
     test_path3 = skhep_testdata.data_path("uproot-Zmumu-zlib.root") + ":events"
@@ -45,6 +49,8 @@ def test_dask_concatenation():
 
 
 def test_multidim_array():
+    dask = pytest.importorskip("dask")
+    da = pytest.importorskip("dask.array")
     test_path = (
         skhep_testdata.data_path("uproot-sample-6.08.04-uncompressed.root") + ":sample"
     )
