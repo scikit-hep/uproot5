@@ -14,11 +14,10 @@ hist = pytest.importorskip("hist")
 def test_no_flow(tmp_path):
     filename = os.path.join(tmp_path, "whatever.root")
 
-    h = (
-        hist.new.Reg(20, 0, 20, name="msd", flow=False)
-        .Weight()
-        .fill(np.random.normal(10, 6, 1000))
+    h = hist.Hist(hist.axis.Regular(20, 0, 20, flow=False)).fill(
+        np.random.normal(10, 6, 1000)
     )
+
     with uproot.recreate(filename) as fout:
         fout["test"] = h
 
@@ -32,11 +31,10 @@ def test_no_flow(tmp_path):
 def test_yes_flow(tmp_path):
     filename = os.path.join(tmp_path, "whatever.root")
 
-    h = (
-        hist.new.Reg(20, 0, 20, name="msd", flow=True)
-        .Weight()
-        .fill(np.random.normal(10, 6, 1000))
+    h = hist.Hist(hist.axis.Regular(20, 0, 20, flow=True)).fill(
+        np.random.normal(10, 6, 1000)
     )
+
     with uproot.recreate(filename) as fout:
         fout["test"] = h
 
