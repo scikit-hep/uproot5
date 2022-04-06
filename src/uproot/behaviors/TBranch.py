@@ -696,6 +696,7 @@ def dask(
     filter_branch=no_filter,
     recursive=True,
     full_paths=False,
+    step_size="100 MB",
     library="np",
     custom_classes=None,
     allow_missing=False,
@@ -721,9 +722,12 @@ def dask(
         full_paths (bool): If True, include the full path to each subbranch
             with slashes (``/``); otherwise, use the descendant's name as
             the field name.
+        step_size (int or str): If an integer, the maximum number of entries to
+            include in each chunk; if a string, the maximum memory_size to include
+            in each chunk. The string must be a number followed by a memory unit,
+            such as "100 MB".
         library (str or :doc:`uproot.interpretation.library.Library`): The library
-            that is used to represent arrays. For lazy arrays, only ``"ak"``
-            for Awkward Array is allowed.
+            that is used to represent arrays.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
@@ -871,14 +875,39 @@ python -m pip install "dask[array]"       # Install requirements for dask array
     for key in common_keys:
         dask_arrays = []
         for ttree in hasbranches:
-            delayed_array = dask.delayed(ttree[key].array)(library="np")
+            entry_start, entry_stop = _regularize_entries_start_stop(
+                ttree.tree.num_entries, None, None
+            )
+            entry_step = 0
+            if uproot._util.isint(step_size):
+                entry_step = step_size
+            else:
+                entry_step = ttree[key].num_entries_for(step_size)
+
+            del_fn = dask.delayed(ttree[key].array)
+
             dt = ttree[key].interpretation.numpy_dtype
             if dt.subdtype is None:
                 inner_shape = ()
             else:
                 dt, inner_shape = dt.subdtype
-            shape = (ttree[key].num_entries,) + inner_shape
-            dask_arrays.append(da.from_delayed(delayed_array, shape=shape, dtype=dt))
+
+            def foreach(start):
+                stop = min(start + entry_step, entry_stop)
+                length = stop - start
+
+                delayed_array = del_fn(library="np", entry_start=start, entry_stop=stop)
+                shape = (length,) + inner_shape
+                dask_arrays.append(
+                    da.from_delayed(delayed_array, shape=shape, dtype=dt)
+                )
+
+            # delayed_array = dask.delayed(ttree[key].array)(library="np")
+            # shape = (ttree[key].num_entries,) + inner_shape
+            # dask_arrays.append(da.from_delayed(delayed_array, shape=shape, dtype=dt))
+            for start in range(entry_start, entry_stop, entry_step):
+                foreach(start)
+
         dask_dict[key] = da.concatenate(dask_arrays)
     return dask_dict
 
