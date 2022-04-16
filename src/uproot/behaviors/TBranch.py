@@ -22,6 +22,7 @@ import threading
 from collections.abc import Iterable, Mapping, MutableMapping
 from urllib.parse import urlparse
 
+import dask
 import dask.array as da
 import numpy
 from dask import delayed
