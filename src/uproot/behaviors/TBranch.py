@@ -25,7 +25,6 @@ from urllib.parse import urlparse
 import dask
 import dask.array as da
 import numpy
-from dask import delayed
 
 import uproot
 import uproot.language.python
@@ -882,7 +881,7 @@ def dask(
             shape = (branch[key].num_entries,)
             n_branch.append(branch)
             d_dtype = numpy.array(n_array[len(n_branch) - 1][key]).dtype
-            d_array = delayed(branch[key].array)(library="np")
+            d_array = dask.delayed(branch[key].array)(library="np")
             dasked_d = da.from_delayed(d_array, shape=shape, dtype=d_dtype)
             out_dask.append(dasked_d)
 
