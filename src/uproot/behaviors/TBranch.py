@@ -22,8 +22,6 @@ import threading
 from collections.abc import Iterable, Mapping, MutableMapping
 from urllib.parse import urlparse
 
-import dask
-import dask.array as da
 import numpy
 
 import uproot
@@ -780,6 +778,13 @@ def dask(
       concatenated array from ``TTrees``.
 
     """
+
+    try:
+        import dask
+        import dask.array as da
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError()
+    
     files = _regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "np":
