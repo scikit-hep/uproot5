@@ -778,7 +778,6 @@ def dask(
       concatenated array from ``TTrees``.
 
     """
-
     try:
         import dask
         import dask.array as da
