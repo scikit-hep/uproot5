@@ -784,7 +784,7 @@ def dask(
         import dask.array as da
     except ModuleNotFoundError:
         raise ModuleNotFoundError()
-    
+
     files = _regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "np":
