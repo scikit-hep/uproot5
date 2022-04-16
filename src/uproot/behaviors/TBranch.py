@@ -28,6 +28,10 @@ import uproot
 import uproot.language.python
 from uproot._util import no_filter
 
+
+from dask import delayed
+import dask.array as da
+
 np_uint8 = numpy.dtype("u1")
 
 
@@ -688,7 +692,198 @@ def lazy(
     out = awkward.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
     return awkward.Array(out)
 
+def dask(
+    files,
+    expressions=None,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    library="np",
+    custom_classes=None,
+    allow_missing=False,
+    **options,  # NOTE: a comma after **options breaks Python 2
+):
+    """
+    Args:
+        files: See below.
+        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by name.
+        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by type.
+        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
+            filter to select ``TBranches`` using the full
+            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
+            returns False or None, the ``TBranch`` is excluded; if the function
+            returns True, it is included with its standard
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :doc:`uproot.interpretation.Interpretation`, this interpretation
+            overrules the standard one.
+        recursive (bool): If True, include all subbranches of branches as
+            separate fields; otherwise, only search one level deep.
+        full_paths (bool): If True, include the full path to each subbranch
+            with slashes (``/``); otherwise, use the descendant's name as
+            the field name.     
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
+            that is used to represent arrays. For lazy arrays, only ``"ak"``
+            for Awkward Array is allowed.
+        custom_classes (None or dict): If a dict, override the classes from
+            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
+        allow_missing (bool): If True, skip over any files that do not contain
+            the specified ``TTree``.
+        options: See below.
 
+    Returns a dask array representing data from a set of files to be concatenated into one.
+
+    For example:
+
+    .. code-block:: python
+
+        >>> array = uproot.dask("files*.root:tree", ["x", "y"])
+   
+    Allowed types for the ``files`` parameter:
+
+    * str/bytes: relative or absolute filesystem path or URL, without any colons
+      other than Windows drive letter or URL schema.
+      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
+    * str/bytes: same with an object-within-ROOT path, separated by a colon.
+      Example: ``"rel/file.root:tdirectory/ttree"``
+    * pathlib.Path: always interpreted as a filesystem path or URL only (no
+      object-within-ROOT path), regardless of whether there are any colons.
+      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+    * glob syntax in str/bytes and pathlib.Path.
+      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
+    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
+      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
+    * already-open TTree objects.
+    * iterables of the above.
+
+    Options (type; default):
+
+    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
+    * timeout (float for HTTP, int for XRootD; 30)
+    * max_num_elements (None or int; None)
+    * num_workers (int; 1)
+    * num_fallback_workers (int; 10)
+    * begin_chunk_size (memory_size; 512)
+    * minimal_ttree_metadata (bool; True)
+
+    Other file entry points:
+
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
+      contiguous entries in ``TTrees``.
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
+      concatenated array from ``TTrees``.
+    
+    """
+    files = _regularize_files(files) 
+    library = uproot.interpretation.library._regularize_library(library)
+    if library.name != "np":
+        raise NotImplementedError()
+
+    real_options = dict(options)
+    if "num_workers" not in real_options:
+        real_options["num_workers"] = 1
+    if "num_fallback_workers" not in real_options:
+        real_options["num_fallback_workers"] = 1
+
+    filter_branch = uproot._util.regularize_filter(filter_branch)
+
+    all_arrays = []
+    file_all_keys = []
+    n_array = []
+    count = 0
+
+    for file_path, object_path in files:
+        hasbranches = _regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+        if hasbranches is not None:
+            count += 1
+            arrays = hasbranches.arrays(
+                    expressions=expressions,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    library=library,
+                )       
+            new_keys = hasbranches.keys(
+                    recursive=recursive,
+                    filter_name=filter_name,
+                    filter_typename=filter_typename,
+                    filter_branch=filter_branch,
+                    full_paths=full_paths,
+                )
+                                
+            n_array.append(arrays)               
+            all_arrays.append(hasbranches)
+            
+            if expressions is not None:
+                file_all_keys.append(expressions)
+            else:
+                file_all_keys.append(new_keys)
+
+    to_keys = list(set.intersection(*map(set, file_all_keys)))
+    common_keys = sorted(to_keys, key = lambda k : file_all_keys[0].index(k))
+
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    if len(common_keys) == 0:
+        raise ValueError(
+            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    arg_keys = [expressions] 
+    if expressions is not None:
+        common_keys = arg_keys[0] if len(arg_keys[0]) ==1 else arg_keys if len(str(arg_keys[0])) == len(arg_keys[0]) else expressions            
+    else:
+        common_keys = common_keys
+   
+    out_dict = {}
+    for key in common_keys:    
+        out_dask = []
+        n_branch=[]
+            
+        for branch in all_arrays:
+            shape = (branch[key].num_entries,) 
+            n_branch.append (branch)          
+            d_dtype = numpy.array(n_array[len(n_branch)-1][key]).dtype          
+            d_array = delayed(branch[key].array)(library="np")            
+            dasked_d = da.from_delayed(d_array, shape=shape, dtype=d_dtype)
+            out_dask.append(dasked_d)
+    
+        out_dict[key] = da.concatenate(out_dask)
+
+    return out_dict
+   
 class Report:
     """
     Args:
