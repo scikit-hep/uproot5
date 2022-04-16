@@ -22,15 +22,13 @@ import threading
 from collections.abc import Iterable, Mapping, MutableMapping
 from urllib.parse import urlparse
 
+import dask.array as da
 import numpy
+from dask import delayed
 
 import uproot
 import uproot.language.python
 from uproot._util import no_filter
-
-
-from dask import delayed
-import dask.array as da
 
 np_uint8 = numpy.dtype("u1")
 
@@ -692,6 +690,7 @@ def lazy(
     out = awkward.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
     return awkward.Array(out)
 
+
 def dask(
     files,
     expressions=None,
@@ -724,7 +723,7 @@ def dask(
             separate fields; otherwise, only search one level deep.
         full_paths (bool): If True, include the full path to each subbranch
             with slashes (``/``); otherwise, use the descendant's name as
-            the field name.     
+            the field name.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. For lazy arrays, only ``"ak"``
             for Awkward Array is allowed.
@@ -741,7 +740,7 @@ def dask(
     .. code-block:: python
 
         >>> array = uproot.dask("files*.root:tree", ["x", "y"])
-   
+
     Allowed types for the ``files`` parameter:
 
     * str/bytes: relative or absolute filesystem path or URL, without any colons
@@ -779,9 +778,9 @@ def dask(
       contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
       concatenated array from ``TTrees``.
-    
+
     """
-    files = _regularize_files(files) 
+    files = _regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "np":
         raise NotImplementedError()
@@ -806,30 +805,30 @@ def dask(
         if hasbranches is not None:
             count += 1
             arrays = hasbranches.arrays(
-                    expressions=expressions,
-                    filter_name=filter_name,
-                    filter_typename=filter_typename,
-                    filter_branch=filter_branch,
-                    library=library,
-                )       
+                expressions=expressions,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                library=library,
+            )
             new_keys = hasbranches.keys(
-                    recursive=recursive,
-                    filter_name=filter_name,
-                    filter_typename=filter_typename,
-                    filter_branch=filter_branch,
-                    full_paths=full_paths,
-                )
-                                
-            n_array.append(arrays)               
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=filter_branch,
+                full_paths=full_paths,
+            )
+
+            n_array.append(arrays)
             all_arrays.append(hasbranches)
-            
+
             if expressions is not None:
                 file_all_keys.append(expressions)
             else:
                 file_all_keys.append(new_keys)
 
     to_keys = list(set.intersection(*map(set, file_all_keys)))
-    common_keys = sorted(to_keys, key = lambda k : file_all_keys[0].index(k))
+    common_keys = sorted(to_keys, key=lambda k: file_all_keys[0].index(k))
 
     if count == 0:
         raise ValueError(
@@ -861,29 +860,36 @@ def dask(
             )
         )
 
-    arg_keys = [expressions] 
+    arg_keys = [expressions]
     if expressions is not None:
-        common_keys = arg_keys[0] if len(arg_keys[0]) ==1 else arg_keys if len(str(arg_keys[0])) == len(arg_keys[0]) else expressions            
+        common_keys = (
+            arg_keys[0]
+            if len(arg_keys[0]) == 1
+            else arg_keys
+            if len(str(arg_keys[0])) == len(arg_keys[0])
+            else expressions
+        )
     else:
         common_keys = common_keys
-   
+
     out_dict = {}
-    for key in common_keys:    
+    for key in common_keys:
         out_dask = []
-        n_branch=[]
-            
+        n_branch = []
+
         for branch in all_arrays:
-            shape = (branch[key].num_entries,) 
-            n_branch.append (branch)          
-            d_dtype = numpy.array(n_array[len(n_branch)-1][key]).dtype          
-            d_array = delayed(branch[key].array)(library="np")            
+            shape = (branch[key].num_entries,)
+            n_branch.append(branch)
+            d_dtype = numpy.array(n_array[len(n_branch) - 1][key]).dtype
+            d_array = delayed(branch[key].array)(library="np")
             dasked_d = da.from_delayed(d_array, shape=shape, dtype=d_dtype)
             out_dask.append(dasked_d)
-    
+
         out_dict[key] = da.concatenate(out_dask)
 
     return out_dict
-   
+
+
 class Report:
     """
     Args:
