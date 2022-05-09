@@ -67,8 +67,8 @@ with uproot.open("example-objects.root") as f:
 
     for classname, class_version in superclasses:
         cls = f.file.class_named(classname, class_version)
-        print(cls.class_code)  # noqa: T001
-        print(  # noqa: T001
+        print(cls.class_code)  # noqa: T201
+        print(  # noqa: T201
             f"""
     writable = True
 
@@ -93,8 +93,8 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
 
     for key in keys:
         obj = f[key]
-        print(type(obj).class_code)  # noqa: T001
-        print(  # noqa: T001
+        print(type(obj).class_code)  # noqa: T201
+        print(  # noqa: T201
             """
     class_rawstreamers = ("""
         )
@@ -108,7 +108,7 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
             ).tobytes()
             preamble = b"\xff\xff\xff\xffTStreamerInfo\x00"
             full = header + preamble + inner + b"\x00"
-            print(  # noqa: T001
+            print(  # noqa: T201
                 f"""        uproot._writing.RawStreamerInfo(
             None,
             {full},
@@ -116,7 +116,7 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
             {streamer_version},
         ),"""
             )
-        print(  # noqa: T001
+        print(  # noqa: T201
             f"""    )
     writable = True
 
@@ -132,7 +132,7 @@ class {uproot.model.classname_encode(classname)}(uproot.model.DispatchByVersion)
 """
         )
 
-        print(  # noqa: T001
+        print(  # noqa: T201
             f"""
 class {uproot.model.classname_encode(obj.classname)}(uproot.model.DispatchByVersion):
     \"\"\"
@@ -144,12 +144,12 @@ class {uproot.model.classname_encode(obj.classname)}(uproot.model.DispatchByVers
         )
 
     for classname, _ in superclasses:
-        print(  # noqa: T001
+        print(  # noqa: T201
             f"uproot.classes[{classname!r}] = {uproot.model.classname_encode(classname)}"
         )
 
     for key in keys:
         obj = f[key]
-        print(  # noqa: T001
+        print(  # noqa: T201
             f"uproot.classes[{obj.classname!r}] = {uproot.model.classname_encode(obj.classname)}"
         )
