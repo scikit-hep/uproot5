@@ -335,7 +335,9 @@ for URL {}""".format(
                 if not multipart_supported:
                     resource.handle_no_multipart(source, ranges, futures, results)
                 else:
-                    resource.handle_multipart(source, futures, results, response)
+                    resource.handle_multipart(
+                        source, futures, results, response, ranges
+                    )
 
             except Exception:
                 excinfo = sys.exc_info()
@@ -384,7 +386,7 @@ for URL {}""".format(
             results[chunk.start, chunk.stop] = chunk.raw_data
             futures[chunk.start, chunk.stop]._run(self)
 
-    def handle_multipart(self, source, futures, results, response):
+    def handle_multipart(self, source, futures, results, response, ranges):
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to handle the multipart GET response.
@@ -394,17 +396,15 @@ for URL {}""".format(
         else:
             response_buffer = _ResponseBuffer(response)
 
+        original_futures = dict(futures)
+
         num_found = 0
         while len(futures) > 0:
             range_string, size = self.next_header(response_buffer)
-            if range_string is None:
-                raise OSError(
-                    """found {} of {} expected headers in HTTP multipart
-for URL {}""".format(
-                        num_found, len(futures), self._file_path
-                    )
-                )
             num_found += 1
+            if range_string is None:
+                self.handle_no_multipart(source, ranges, original_futures, results)
+                return
 
             start, last = range_string.split(b"-")
             start, last = int(start), int(last)
