@@ -269,7 +269,11 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         if isinstance(
             self._model,
-            (uproot.containers.AsArray, uproot.containers.AsRVec, uproot.containers.AsVector),
+            (
+                uproot.containers.AsArray,
+                uproot.containers.AsRVec,
+                uproot.containers.AsVector,
+            ),
         ):
             header_bytes = 0
             if (
@@ -278,7 +282,9 @@ class AsObjects(uproot.interpretation.Interpretation):
             ):
                 header_bytes += 1
             if (
-                isinstance(self._model, (uproot.containers.AsRVec, uproot.containers.AsVector))
+                isinstance(
+                    self._model, (uproot.containers.AsRVec, uproot.containers.AsVector)
+                )
                 and self._model.header
             ):
                 header_bytes += 10
