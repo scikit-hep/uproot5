@@ -49,8 +49,13 @@ class KeyInFileError(KeyError):
         with_keys = ""
         if self.keys is not None:
             to_show = None
+            keys = self.keys
+            cut = 1
+            while len(keys) > 1000 and cut < len(self.key):
+                keys = [x for x in keys if x[:cut] == self.key[:cut]]
+                cut += 1
             sorted_keys = sorted(
-                self.keys, key=lambda x: uproot._util.damerau_levenshtein(self.key, x)
+                keys, key=lambda x: uproot._util.damerau_levenshtein(self.key, x)
             )
             for key in sorted_keys:
                 if to_show is None:
