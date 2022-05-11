@@ -166,6 +166,7 @@ from uproot.containers import AsString
 from uproot.containers import AsPointer
 from uproot.containers import AsArray
 from uproot.containers import AsDynamic
+from uproot.containers import AsRVec
 from uproot.containers import AsVector
 from uproot.containers import AsSet
 from uproot.containers import AsMap

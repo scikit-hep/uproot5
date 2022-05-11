@@ -102,8 +102,6 @@ def _leaf_to_dtype(leaf, getdims):
 _title_has_dims = re.compile(r"^([^\[\]]*)(\[[^\[\]]+\])+")
 _item_dim_pattern = re.compile(r"\[([1-9][0-9]*)\]")
 _item_any_pattern = re.compile(r"\[(.*)\]")
-_vector_pointer = re.compile(r"vector\<([^<>]*)\*\>")
-_pair_second = re.compile(r"pair\<[^<>]*,(.*) \>")
 
 
 def _from_leaves_one(leaf, title):
@@ -1001,6 +999,25 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             )
         else:
             return i + 1, uproot.containers.AsVector(header, values)
+
+    elif (
+        tokens[i].group(0) == "RVec"
+        or _simplify_token(tokens[i]) == "VecOps::RVec"
+        or _simplify_token(tokens[i]) == "ROOT::VecOps::RVec"
+    ):
+        _parse_expect("<", tokens, i + 1, typename, file)
+        i, values = _parse_node(
+            tokens, i + 2, typename, file, quote, inner_header, inner_header
+        )
+        i = _parse_ignore_extra_arguments(tokens, i, typename, file, 1)
+        _parse_expect(">", tokens, i, typename, file)
+        if quote:
+            return (
+                i + 1,
+                f"uproot.containers.AsRVec({header}, {values})",
+            )
+        else:
+            return i + 1, uproot.containers.AsRVec(header, values)
 
     elif tokens[i].group(0) == "set" or _simplify_token(tokens[i]) == "std::set":
         _parse_expect("<", tokens, i + 1, typename, file)

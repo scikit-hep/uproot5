@@ -719,6 +719,161 @@ in file {}""".format(
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 
+class AsRVec(AsContainer):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot.containers.AsContainer` for ``ROOT::VecOps::RVec``.
+    """
+
+    def __init__(self, header, values):
+        self.header = header
+        if isinstance(values, AsContainer):
+            self._values = values
+        elif isinstance(values, type) and issubclass(
+            values, (uproot.model.Model, uproot.model.DispatchByVersion)
+        ):
+            self._values = values
+        else:
+            self._values = numpy.dtype(values)
+
+    def __hash__(self):
+        return hash((AsRVec, self._header, self._values))
+
+    @property
+    def values(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._values
+
+    def __repr__(self):
+        if isinstance(self._values, type):
+            values = self._values.__name__
+        else:
+            values = repr(self._values)
+        return f"AsRVec({self._header}, {values})"
+
+    @property
+    def cache_key(self):
+        return f"AsRVec({self._header},{_content_cache_key(self._values)})"
+
+    @property
+    def typename(self):
+        return f"RVec<{_content_typename(self._values)}>"
+
+    def awkward_form(
+        self,
+        file,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
+        awkward = uproot.extras.awkward()
+        return awkward.forms.ListOffsetForm(
+            index_format,
+            uproot._util.awkward_form(
+                self._values, file, index_format, header, tobject_header, breadcrumbs
+            ),
+            parameters={"uproot": {"as": "RVec", "header": self._header}},
+        )
+
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        if self._header and header:
+            start_cursor = cursor.copy()
+            (
+                num_bytes,
+                instance_version,
+                is_memberwise,
+            ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+        else:
+            is_memberwise = False
+
+        # Note: self._values can also be a NumPy dtype, and not necessarily a class
+        # (e.g. type(self._values) == type)
+        _value_typename = _content_typename(self._values)
+        if is_memberwise:
+            if not issubclass(self._values, uproot.model.DispatchByVersion):
+                raise NotImplementedError(
+                    """streamerless memberwise serialization of class {}({})
+    in file {}""".format(
+                        type(self).__name__, _value_typename, selffile.file_path
+                    )
+                )
+
+            # uninterpreted header
+            cursor.skip(6)
+
+            length = cursor.field(chunk, _stl_container_size, context)
+
+            # no known class version number (maybe in that header? unclear...)
+            model = self._values.new_class(file, "max")
+
+            values = numpy.empty(length, dtype=_stl_object_type)
+
+            # only do anything if we have anything to read...
+            if length > 0:
+                for i in range(length):
+                    values[i] = model.read(
+                        chunk,
+                        cursor,
+                        dict(context, reading=False),
+                        file,
+                        selffile,
+                        parent,
+                    )
+
+                # memberwise reading!
+                for member_index in range(len(values[0].member_names)):
+                    for i in range(length):
+                        values[i].read_member_n(
+                            chunk, cursor, context, file, member_index
+                        )
+        else:
+            length = cursor.field(chunk, _stl_container_size, context)
+
+            values = _read_nested(
+                self._values, length, chunk, cursor, context, file, selffile, parent
+            )
+
+        out = ROOTRVec(values)
+
+        if self._header and header:
+            uproot.deserialization.numbytes_check(
+                chunk,
+                start_cursor,
+                cursor,
+                num_bytes,
+                self.typename,
+                context,
+                file.file_path,
+            )
+
+        return out
+
+    def __eq__(self, other):
+        if not isinstance(other, AsRVec):
+            return False
+
+        if self.header != other.header:
+            return False
+
+        if isinstance(self.values, numpy.dtype) and isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        elif not isinstance(self.values, numpy.dtype) and not isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        else:
+            return False
+
+
 class AsVector(AsContainer):
     """
     Args:
@@ -1234,6 +1389,64 @@ class Container:
         and dicts.
         """
         raise AssertionError
+
+
+class ROOTRVec(Container, Sequence):
+    """
+    Args:
+        values (``numpy.ndarray`` or iterable): Contents of the ``ROOT::VecOps::RVec``.
+
+    Representation of a C++ ``ROOT::VecOps::RVec`` as a Python ``Sequence``.
+    """
+
+    def __init__(self, values):
+        if isinstance(values, types.GeneratorType):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, Set):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, (list, tuple)):
+            values = numpy.asarray(values)
+
+        self._values = values
+
+    def __str__(self, limit=85):
+        def tostring(i):
+            return _tostring(self._values[i])
+
+        return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
+
+    def __repr__(self, limit=85):
+        return "<ROOTRVec {} at 0x{:012x}>".format(
+            self.__str__(limit=limit - 30), id(self)
+        )
+
+    def __getitem__(self, where):
+        return self._values[where]
+
+    def __len__(self):
+        return len(self._values)
+
+    def __contains__(self, what):
+        return what in self._values
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __reversed__(self):
+        return ROOTRVec(self._values[::-1])
+
+    def __eq__(self, other):
+        if isinstance(other, ROOTRVec):
+            return self._values == other._values
+        elif isinstance(other, Sequence):
+            return self._values == other
+        else:
+            return False
+
+    def tolist(self):
+        return [
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
+        ]
 
 
 class STLVector(Container, Sequence):
