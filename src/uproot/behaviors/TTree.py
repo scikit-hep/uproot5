@@ -159,3 +159,11 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         self._chunk = chunk
         self._lookup = {}
         return self
+
+    def to_dataframe(self):
+        pandas = uproot.extras.pandas()
+        dict = {}
+        for branch in (self.keys()):
+            dict[branch] = self[branch].array(library="np")
+        dataFrame = pandas.DataFrame(dict)
+        return dataFrame
