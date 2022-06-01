@@ -178,6 +178,7 @@ from uproot.behaviors.TBranch import TBranch
 from uproot.behaviors.TBranch import iterate
 from uproot.behaviors.TBranch import concatenate
 from uproot.behaviors.TBranch import lazy
+from uproot.behaviors.TBranch import dask
 
 from uproot.behavior import behavior_of
 

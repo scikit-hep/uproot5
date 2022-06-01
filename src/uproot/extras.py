@@ -252,3 +252,21 @@ def hist():
         )
     else:
         return hist
+
+
+def dask():
+    """
+    Imports and returns ``dask``.
+    """
+    try:
+        import dask
+        import dask.array as da
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            """for uproot.dask, install the (complete) 'dask' package with:
+    pip install "dask[complete]"
+or
+    conda install dask"""
+        )
+    else:
+        return dask, da
