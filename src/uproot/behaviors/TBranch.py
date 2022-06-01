@@ -882,7 +882,7 @@ python -m pip install "dask[array]"       # Install requirements for dask array
             if uproot._util.isint(step_size):
                 entry_step = step_size
             else:
-                entry_step = ttree[key].num_entries_for(step_size)
+                entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
 
             del_fn = dask.delayed(ttree[key].array)
 
