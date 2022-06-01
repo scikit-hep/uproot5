@@ -776,17 +776,7 @@ def dask(
     * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
       read array from ``TTrees``.
     """
-    try:
-        import dask
-        import dask.array as da
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError(
-            """The uproot.dask function requires dask as a dependancy. Please use one of the commands below, depending on your requirements.
-python -m pip install dask                # Install only core parts of dask
-python -m pip install "dask[complete]"    # Install everything
-python -m pip install "dask[array]"       # Install requirements for dask array
-                """
-        )
+    dask, da = uproot.extras.dask()
     files = _regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "np":
@@ -902,9 +892,6 @@ python -m pip install "dask[array]"       # Install requirements for dask array
                     da.from_delayed(delayed_array, shape=shape, dtype=dt)
                 )
 
-            # delayed_array = dask.delayed(ttree[key].array)(library="np")
-            # shape = (ttree[key].num_entries,) + inner_shape
-            # dask_arrays.append(da.from_delayed(delayed_array, shape=shape, dtype=dt))
             for start in range(entry_start, entry_stop, entry_step):
                 foreach(start)
 
