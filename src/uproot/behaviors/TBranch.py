@@ -916,13 +916,19 @@ def dask(
 
         dask_dict = {}
         delayed_open_fn = dask.delayed(_regularize_object_path)
+
+        @dask.delayed
+        def delayed_get_array(ttree,key):
+            return ttree[key].array(library="np")
+
+
         for key in common_keys:
             dask_arrays = []
             for file_path, object_path in files:
                 delayed_tree = delayed_open_fn(
                     file_path, object_path, custom_classes, allow_missing, real_options
                 )
-                delayed_array = delayed_tree[key].array(library="np")
+                delayed_array = delayed_get_array(delayed_tree,key)
                 dt = obj[key].interpretation.numpy_dtype
                 if dt.subdtype is not None:
                     dt, inner_shape = dt.subdtype
