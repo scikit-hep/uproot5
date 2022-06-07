@@ -864,6 +864,11 @@ def dask(
             )
 
         dask_dict = {}
+
+        @dask.delayed
+        def delayed_get_array(ttree, key, start, stop):
+            return ttree[key].array(library="np", entry_start=start, entry_stop=stop)
+
         for key in common_keys:
             dask_arrays = []
             for ttree in hasbranches:
@@ -876,8 +881,6 @@ def dask(
                 else:
                     entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
 
-                del_fn = dask.delayed(ttree[key].array)
-
                 dt = ttree[key].interpretation.numpy_dtype
                 if dt.subdtype is None:
                     inner_shape = ()
@@ -888,9 +891,7 @@ def dask(
                     stop = min(start + entry_step, entry_stop)
                     length = stop - start
 
-                    delayed_array = del_fn(
-                        library="np", entry_start=start, entry_stop=stop
-                    )
+                    delayed_array = delayed_get_array(ttree, key, start, stop)
                     shape = (length,) + inner_shape
                     dask_arrays.append(
                         da.from_delayed(delayed_array, shape=shape, dtype=dt)
@@ -918,9 +919,8 @@ def dask(
         delayed_open_fn = dask.delayed(_regularize_object_path)
 
         @dask.delayed
-        def delayed_get_array(ttree,key):
+        def delayed_get_array(ttree, key):
             return ttree[key].array(library="np")
-
 
         for key in common_keys:
             dask_arrays = []
@@ -928,7 +928,7 @@ def dask(
                 delayed_tree = delayed_open_fn(
                     file_path, object_path, custom_classes, allow_missing, real_options
                 )
-                delayed_array = delayed_get_array(delayed_tree,key)
+                delayed_array = delayed_get_array(delayed_tree, key)
                 dt = obj[key].interpretation.numpy_dtype
                 if dt.subdtype is not None:
                     dt, inner_shape = dt.subdtype
