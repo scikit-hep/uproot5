@@ -700,6 +700,7 @@ def dask(
     library="np",
     custom_classes=None,
     allow_missing=False,
+    open_files=True,
     **options,  # NOTE: a comma after **options breaks Python 2
 ):
     """
@@ -776,7 +777,6 @@ def dask(
     * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
       read array from ``TTrees``.
     """
-    dask, da = uproot.extras.dask()
     files = _regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "np":
@@ -790,113 +790,31 @@ def dask(
 
     filter_branch = uproot._util.regularize_filter(filter_branch)
 
-    hasbranches = []
-    common_keys = None
-    is_self = []
-
-    count = 0
-    for file_path, object_path in files:
-        obj = _regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, real_options
+    if open_files:
+        return _get_dask_array(
+            files,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            recursive,
+            full_paths,
+            step_size,
+            custom_classes,
+            allow_missing,
+            real_options,
         )
-
-        if obj is not None:
-            count += 1
-
-            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-                original = obj
-                obj = obj.parent
-                is_self.append(True)
-
-                def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)
-
-            else:
-                is_self.append(False)
-                real_filter_branch = filter_branch
-
-            hasbranches.append(obj)
-
-            new_keys = obj.keys(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=real_filter_branch,
-                full_paths=full_paths,
-            )
-
-            if common_keys is None:
-                common_keys = new_keys
-            else:
-                new_keys = set(new_keys)
-                common_keys = [key for key in common_keys if key in new_keys]
-
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {}".format(
-                "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
-                    for f, o in files
-                )
-            )
+    else:
+        return _get_dask_array_delay_open(
+            files,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            recursive,
+            full_paths,
+            custom_classes,
+            allow_missing,
+            real_options,
         )
-
-    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
-        raise ValueError(
-            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
-                "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
-                    for f, o in files
-                )
-            )
-        )
-
-    dask_dict = {}
-    for key in common_keys:
-        dask_arrays = []
-        for ttree in hasbranches:
-            entry_start, entry_stop = _regularize_entries_start_stop(
-                ttree.tree.num_entries, None, None
-            )
-            entry_step = 0
-            if uproot._util.isint(step_size):
-                entry_step = step_size
-            else:
-                entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
-
-            del_fn = dask.delayed(ttree[key].array)
-
-            dt = ttree[key].interpretation.numpy_dtype
-            if dt.subdtype is None:
-                inner_shape = ()
-            else:
-                dt, inner_shape = dt.subdtype
-
-            def foreach(start):
-                stop = min(start + entry_step, entry_stop)
-                length = stop - start
-
-                delayed_array = del_fn(library="np", entry_start=start, entry_stop=stop)
-                shape = (length,) + inner_shape
-                dask_arrays.append(
-                    da.from_delayed(delayed_array, shape=shape, dtype=dt)
-                )
-
-            for start in range(entry_start, entry_stop, entry_step):
-                foreach(start)
-
-        dask_dict[key] = da.concatenate(dask_arrays)
-    return dask_dict
 
 
 class Report:
@@ -3777,6 +3695,180 @@ def _regularize_step_size(
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     )
+
+
+def _get_dask_array(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    step_size="100 MB",
+    custom_classes=None,
+    allow_missing=False,
+    real_options=None,  # NOTE: a comma after **options breaks Python 2
+):
+    dask, da = uproot.extras.dask()
+    hasbranches = []
+    common_keys = None
+    is_self = []
+
+    count = 0
+    for file_path, object_path in files:
+        obj = _regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+
+        if obj is not None:
+            count += 1
+
+            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+                original = obj
+                obj = obj.parent
+                is_self.append(True)
+
+                def real_filter_branch(branch):
+                    return branch is original and filter_branch(branch)
+
+            else:
+                is_self.append(False)
+                real_filter_branch = filter_branch
+
+            hasbranches.append(obj)
+
+            new_keys = obj.keys(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=real_filter_branch,
+                full_paths=full_paths,
+            )
+
+            if common_keys is None:
+                common_keys = new_keys
+            else:
+                new_keys = set(new_keys)
+                common_keys = [key for key in common_keys if key in new_keys]
+
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
+        raise ValueError(
+            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    dask_dict = {}
+
+    @dask.delayed
+    def delayed_get_array(ttree, key, start, stop):
+        return ttree[key].array(library="np", entry_start=start, entry_stop=stop)
+
+    for key in common_keys:
+        dask_arrays = []
+        for ttree in hasbranches:
+            entry_start, entry_stop = _regularize_entries_start_stop(
+                ttree.tree.num_entries, None, None
+            )
+            entry_step = 0
+            if uproot._util.isint(step_size):
+                entry_step = step_size
+            else:
+                entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
+
+            dt = ttree[key].interpretation.numpy_dtype
+            if dt.subdtype is None:
+                inner_shape = ()
+            else:
+                dt, inner_shape = dt.subdtype
+
+            def foreach(start):
+                stop = min(start + entry_step, entry_stop)
+                length = stop - start
+
+                delayed_array = delayed_get_array(ttree, key, start, stop)
+                shape = (length,) + inner_shape
+                dask_arrays.append(
+                    da.from_delayed(delayed_array, shape=shape, dtype=dt)
+                )
+
+            for start in range(entry_start, entry_stop, entry_step):
+                foreach(start)
+
+        dask_dict[key] = da.concatenate(dask_arrays)
+    return dask_dict
+
+
+def _get_dask_array_delay_open(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    custom_classes=None,
+    allow_missing=False,
+    real_options=None,  # NOTE: a comma after **options breaks Python 2
+):
+    dask, da = uproot.extras.dask()
+    ffile_path, fobject_path = files[0]
+    obj = _regularize_object_path(
+        ffile_path, fobject_path, custom_classes, allow_missing, real_options
+    )
+    common_keys = obj.keys(
+        recursive=recursive,
+        filter_name=filter_name,
+        filter_typename=filter_typename,
+        filter_branch=filter_branch,
+        full_paths=full_paths,
+    )
+
+    dask_dict = {}
+    delayed_open_fn = dask.delayed(_regularize_object_path)
+
+    @dask.delayed
+    def delayed_get_array(ttree, key):
+        return ttree[key].array(library="np")
+
+    for key in common_keys:
+        dask_arrays = []
+        for file_path, object_path in files:
+            delayed_tree = delayed_open_fn(
+                file_path, object_path, custom_classes, allow_missing, real_options
+            )
+            delayed_array = delayed_get_array(delayed_tree, key)
+            dt = obj[key].interpretation.numpy_dtype
+            if dt.subdtype is not None:
+                dt, inner_shape = dt.subdtype
+
+            dask_arrays.append(
+                da.from_delayed(delayed_array, shape=(numpy.nan,), dtype=dt)
+            )
+        dask_dict[key] = da.concatenate(dask_arrays, allow_unknown_chunksizes=True)
+    return dask_dict
 
 
 class _WrapDict(MutableMapping):
