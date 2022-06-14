@@ -426,12 +426,21 @@ class AsString(AsContainer):
         else:
             return self._typename
 
-    def form_and_forth(self, file,
-                       chunk, cursor, context, selffile, parent, forth_code, forth_header,
-                       index_format="i64",
-                       tobject_header=True,
-                       breadcrumbs=(),  # header conflict between awkward_form and read
-                       header=True,):  # for strings
+    def form_and_forth(
+        self,
+        file,
+        chunk,
+        cursor,
+        context,
+        selffile,
+        parent,
+        forth_code,
+        forth_header,
+        index_format="i64",
+        tobject_header=True,
+        breadcrumbs=(),  # header conflict between awkward_form and read
+        header=True,
+    ):  # for strings
         awkward = uproot.extras.awkward()
         aform = awkward._v2.forms.ListOffsetForm(
             index_format,
