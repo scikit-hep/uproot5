@@ -174,6 +174,7 @@ from uproot.containers import AsMap
 default_library = "ak"
 
 from uproot.behaviors.TTree import TTree
+from uproot.behaviors.TTree import num_entries
 from uproot.behaviors.TBranch import TBranch
 from uproot.behaviors.TBranch import iterate
 from uproot.behaviors.TBranch import concatenate

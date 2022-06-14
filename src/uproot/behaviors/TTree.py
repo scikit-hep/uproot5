@@ -6,6 +6,8 @@ functions in :doc:`uproot.behaviors.TBranch`.
 """
 
 
+import struct
+
 import uproot
 
 
@@ -159,3 +161,78 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         self._chunk = chunk
         self._lookup = {}
         return self
+
+
+def num_entries(paths):
+    if not isinstance(paths, list):
+        paths = [paths]
+
+    fEntriesStruct = struct.Struct(">q")
+
+    class Model_Numentries(uproot.model.Model):
+        def read_members(self, chunk, cursor, context, file):
+            if self.is_memberwise:
+                raise NotImplementedError(
+                    """memberwise serialization of {}
+    in file {}""".format(
+                        type(self).__name__, self.file.file_path
+                    )
+                )
+            tnamed = file.class_named("TNamed", 1).read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self.concrete,
+            )
+            tattline = file.class_named("TAttLine", 1).read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self.concrete,
+            )
+            tattfill = file.class_named("TAttFill", 1).read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self.concrete,
+            )
+            tattmarker = file.class_named("TAttMarker", 2).read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self.concrete,
+            )
+            self._members["fEntries"] = cursor.fields(chunk, fEntriesStruct, context)
+            cursor.skip_after(self)
+
+        @property
+        def member_names(self):
+            return ["fEntries"]
+
+        base_names_versions = [
+            ("TNamed", 1),
+            ("TAttLine", 1),
+            ("TAttFill", 1),
+            ("TAttMarker", 2),
+        ]
+
+    uproot.classes.update({"TTree": Model_Numentries})
+
+    out = [None] * len(paths)
+    for i, path in enumerate(paths):
+        out[i] = uproot.open(path).all_members["fEntries"]
+    uproot.reset_classes()
+
+    return out
