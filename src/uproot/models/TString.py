@@ -52,11 +52,9 @@ in file {}""".format(
         return str(self)
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         return uproot.containers.AsString(False, typename="TString").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
 
     writable = True

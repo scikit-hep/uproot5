@@ -63,43 +63,21 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if tobject_header:
+        if context["tobject_header"]:
             contents["@pidf"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
             contents["ref"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@other1"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
             contents["@other2"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TRef"})
 
@@ -177,27 +155,16 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
         contents["fName"] = uproot.containers.AsString(
             False, typename="TString"
-        ).awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-        contents["fSize"] = uproot._util.awkward_form(
-            numpy.dtype("i4"), file, index_format, header, tobject_header, breadcrumbs
-        )
+        ).awkward_form(file, context)
+        contents["fSize"] = uproot._util.awkward_form(numpy.dtype("i4"), file, context)
         contents["refs"] = awkward.forms.ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                numpy.dtype("i4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(numpy.dtype("i4"), file, context),
         )
         return awkward.forms.RecordForm(
             contents, parameters={"__record__": "TRefArray"}

@@ -87,12 +87,10 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",

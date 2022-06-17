@@ -506,13 +506,7 @@ def new_class(name, bases, members):
 _primitive_awkward_form = {}
 
 
-def form_and_forth():
-    raise NotImplementedError
-
-
-def awkward_form(
-    model, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-):
+def awkward_form(model, file, context):
     """
     Utility function to get an ``ak.forms.Form`` for a :doc:`uproot.model.Model`.
     """
@@ -556,9 +550,7 @@ def awkward_form(
         return _primitive_awkward_form[model]
 
     else:
-        return model.awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
-        )
+        return model.awkward_form(file, context)
 
 
 def awkward_form_remove_uproot(awkward, form):

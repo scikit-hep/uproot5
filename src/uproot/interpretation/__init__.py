@@ -56,20 +56,16 @@ class Interpretation:
         """
         raise AssertionError
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         """
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot.model.Model` classes from its
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.

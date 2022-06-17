@@ -330,75 +330,48 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TNamed", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TNamed", 1).awkward_form(file, context).contents
         )
         contents.update(
-            file.class_named("TAttAxis", 4)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAttAxis", 4).awkward_form(file, context).contents
         )
         contents["fNbins"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
-        contents["fXmin"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
-        contents["fXmax"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
+        contents["fXmin"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
+        contents["fXmax"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
         contents["fXbins"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fFirst"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
-        contents["fLast"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
-        )
+        contents["fLast"] = uproot._util.awkward_form(numpy.dtype(">i4"), file, context)
         contents["fBits2"] = uproot._util.awkward_form(
-            numpy.dtype(">u2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">u2"), file, context
         )
         contents["fTimeDisplay"] = uproot._util.awkward_form(
-            numpy.dtype(numpy.bool_),
-            file,
-            index_format,
-            header,
-            tobject_header,
-            breadcrumbs,
+            numpy.dtype(numpy.bool_), file, context
         )
         contents["fTimeFormat"] = file.class_named("TString", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         return RecordForm(contents, parameters={"__record__": "TAxis"})
 
@@ -831,125 +804,103 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import ListOffsetForm, RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TNamed", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TNamed", 1).awkward_form(file, context).contents
         )
         contents.update(
-            file.class_named("TAttLine", 2)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAttLine", 2).awkward_form(file, context).contents
         )
         contents.update(
-            file.class_named("TAttFill", 2)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAttFill", 2).awkward_form(file, context).contents
         )
         contents.update(
-            file.class_named("TAttMarker", 2)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAttMarker", 2).awkward_form(file, context).contents
         )
         contents["fNcells"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
         contents["fXaxis"] = file.class_named("TAxis", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fYaxis"] = file.class_named("TAxis", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fZaxis"] = file.class_named("TAxis", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fBarOffset"] = uproot._util.awkward_form(
-            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i2"), file, context
         )
         contents["fBarWidth"] = uproot._util.awkward_form(
-            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i2"), file, context
         )
         contents["fEntries"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumw"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumw2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwx"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwx2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fMaximum"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fMinimum"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fNormFactor"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fContour"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fSumw2"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fOption"] = file.class_named("TString", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fFunctions"] = file.class_named("TList", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fBufferSize"] = uproot._util.awkward_form(
-            numpy.dtype(">u4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">u4"), file, context
         )
         contents["fBuffer"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype0, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype0, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fBufferSize"}
             },
         )
         contents["fBinStatErrOpt"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
         contents["fStatOverflows"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
         return RecordForm(contents, parameters={"__record__": "TH1"})
 
@@ -1161,50 +1112,34 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
-        contents.update(
-            file.class_named("TH1", 8)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
+        contents.update(file.class_named("TH1", 8).awkward_form(file, context).contents)
         contents["fScalefactor"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwy"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwy2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwxy"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         return RecordForm(contents, parameters={"__record__": "TH2"})
 
@@ -1381,64 +1316,46 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH1", 8).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH1", 8)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TAtt3D", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAtt3D", 1).awkward_form(file, context).contents
         )
         contents["fTsumwy"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwy2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwxy"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwz"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwz2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwxz"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwyz"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         return RecordForm(contents, parameters={"__record__": "TH3"})
 
@@ -1584,43 +1501,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH1", 8).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH1", 8)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayC", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayC", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH1C"})
 
@@ -1760,43 +1659,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH1", 8).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH1", 8)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayD", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayD", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH1D"})
 
@@ -1931,43 +1812,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH1", 8).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH1", 8)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayF", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayF", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH1F"})
 
@@ -2102,43 +1965,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH1", 8).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH1", 8)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayI", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayI", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH1I"})
 
@@ -2278,43 +2123,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH1", 8).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH1", 8)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayS", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayS", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH1S"})
 
@@ -2454,43 +2281,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH2", 5).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH2", 5)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayC", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayC", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH2C"})
 
@@ -2631,43 +2440,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH2", 5).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH2", 5)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayD", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayD", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH2D"})
 
@@ -2803,43 +2594,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH2", 5).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH2", 5)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayF", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayF", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH2F"})
 
@@ -2980,43 +2753,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH2", 5).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH2", 5)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayI", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayI", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH2I"})
 
@@ -3157,43 +2912,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH2", 5).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH2", 5)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayS", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayS", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH2S"})
 
@@ -3334,43 +3071,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH3", 6).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH3", 6)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayC", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayC", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH3C"})
 
@@ -3512,43 +3231,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH3", 6).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH3", 6)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayD", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayD", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH3D"})
 
@@ -3685,43 +3386,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH3", 6).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH3", 6)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayF", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayF", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH3F"})
 
@@ -3863,43 +3546,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH3", 6).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH3", 6)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayI", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayI", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH3I"})
 
@@ -4041,43 +3706,25 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
+        contents.update(file.class_named("TH3", 6).awkward_form(file, context).contents)
         contents.update(
-            file.class_named("TH3", 6)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
-        )
-        contents.update(
-            file.class_named("TArrayS", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TArrayS", 1).awkward_form(file, context).contents
         )
         return RecordForm(contents, parameters={"__record__": "TH3S"})
 
@@ -4255,59 +3902,41 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TH1D", 3)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TH1D", 3).awkward_form(file, context).contents
         )
         contents["fBinEntries"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fErrorMode"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
-        contents["fYmin"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
-        contents["fYmax"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
+        contents["fYmin"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
+        contents["fYmax"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
         contents["fTsumwy"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwy2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fBinSumw2"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         return RecordForm(contents, parameters={"__record__": "TProfile"})
 
@@ -4509,59 +4138,41 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TH2D", 4)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TH2D", 4).awkward_form(file, context).contents
         )
         contents["fBinEntries"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fErrorMode"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
-        contents["fZmin"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
-        contents["fZmax"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
+        contents["fZmin"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
+        contents["fZmax"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
         contents["fTsumwz"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwz2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fBinSumw2"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         return RecordForm(contents, parameters={"__record__": "TProfile2D"})
 
@@ -4765,59 +4376,41 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TH3D", 4)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TH3D", 4).awkward_form(file, context).contents
         )
         contents["fBinEntries"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         contents["fErrorMode"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
-        contents["fTmin"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
-        contents["fTmax"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
-        )
+        contents["fTmin"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
+        contents["fTmax"] = uproot._util.awkward_form(numpy.dtype(">f8"), file, context)
         contents["fTsumwt"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fTsumwt2"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fBinSumw2"] = file.class_named("TArrayD", "max").awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
+            file, context
         )
         return RecordForm(contents, parameters={"__record__": "TProfile3D"})
 

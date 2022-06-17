@@ -552,11 +552,17 @@ class Awkward(Library):
             return awkward.Array(layout)
 
         elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
+            context = {
+                "index_format": "i64",
+                "header": False,
+                "tobject_header": True,
+                "breadcrumbs": (),
+            }
             try:
                 form = json.loads(
-                    interpretation.awkward_form(interpretation.branch.file).tojson(
-                        verbose=True
-                    )
+                    interpretation.awkward_form(
+                        interpretation.branch.file, context
+                    ).tojson(verbose=True)
                 )
             except uproot.interpretation.objects.CannotBeAwkward as err:
                 raise ValueError(
