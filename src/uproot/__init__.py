@@ -144,6 +144,7 @@ import uproot.models.TBasket
 import uproot.models.RNTuple
 import uproot.models.TH
 import uproot.models.TGraph
+from uproot.models.TTree import num_entries
 
 from uproot.containers import STLVector
 from uproot.containers import STLSet
@@ -174,7 +175,6 @@ from uproot.containers import AsMap
 default_library = "ak"
 
 from uproot.behaviors.TTree import TTree
-from uproot.behaviors.TTree import num_entries
 from uproot.behaviors.TBranch import TBranch
 from uproot.behaviors.TBranch import iterate
 from uproot.behaviors.TBranch import concatenate

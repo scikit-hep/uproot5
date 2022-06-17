@@ -8,7 +8,13 @@ functions.
 """
 
 
+import glob
+import itertools
+import os
+import re
 import struct
+from collections.abc import Iterable
+from urllib.parse import urlparse
 
 import numpy
 
@@ -905,3 +911,154 @@ in file {}""".format(
 
 uproot.classes["TTree"] = Model_TTree
 uproot.classes["ROOT::TIOFeatures"] = Model_ROOT_3a3a_TIOFeatures
+
+
+fEntriesStruct = struct.Struct(">q")
+
+
+class Model_TTree_NumEntries(uproot.model.Model):
+    """
+    A helper :doc:`uproot.model.Model` for :doc:`uproot.num_entries`.
+    """
+
+    def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {}
+in file {}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
+        cursor.skip_over(chunk, context)
+        cursor.skip_over(chunk, context)
+        cursor.skip_over(chunk, context)
+        cursor.skip_over(chunk, context)
+        self._members["fEntries"] = cursor.fields(chunk, fEntriesStruct, context)
+        cursor.skip_after(self)
+
+    @property
+    def member_names(self):
+        return ["fEntries"]
+
+    base_names_versions = [
+        ("TNamed", 1),
+        ("TAttLine", 1),
+        ("TAttFill", 1),
+        ("TAttMarker", 2),
+    ]
+
+
+def num_entries(paths):
+    """
+    Args:
+        paths (str): The filesystem path or remote URL of
+            the TTree to find the number of entries in. It must have a file path
+            as well as an object path which points to the location of the TTree
+            inside the file. If the file names have colons in them, you can also
+            pass in a dictionary in the format of { file_path : object_path }.
+            Other examples: ``"rel/file.root:ttree"``, ``"C:\\abs\\file.root:ttree"``,
+            ``"http://where/what.root:ttree"``,
+            ``"https://username:password@where/secure.root:ttree"``,
+            ``"rel/file.root:tdirectory/ttree"``, iterables of the previous examples.
+
+    Returns an iterator over the number of entries over each TTree in the input.
+    This is a shortcut method and reads lesser data than normal file opening.
+    """
+    paths = _regularize_files(paths)
+
+    for file_path, object_path in paths.items():
+        yield uproot.open(
+            {file_path: object_path}, custom_classes={"TTree": Model_TTree_NumEntries}
+        ).all_members["fEntries"][0]
+
+
+_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
+_regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
+
+
+def _regularize_files_inner(files, parse_colon, counter):
+    files2 = uproot._util.regularize_path(files)
+
+    if uproot._util.isstr(files2) and not uproot._util.isstr(files):
+        parse_colon = False
+        files = files2
+
+    if uproot._util.isstr(files):
+        if parse_colon:
+            file_path, object_path = uproot._util.file_object_path_split(files)
+        else:
+            file_path, object_path = files, None
+
+        parsed_url = urlparse(file_path)
+
+        if parsed_url.scheme.upper() in uproot._util._remote_schemes:
+            yield file_path, object_path
+
+        else:
+            expanded = os.path.expanduser(file_path)
+            if _regularize_files_isglob.search(expanded) is None:
+                yield file_path, object_path
+
+            else:
+                matches = list(_regularize_files_braces.finditer(expanded))
+                if len(matches) == 0:
+                    results = [expanded]
+                else:
+                    results = []
+                    for combination in itertools.product(
+                        *[match.group(0)[1:-1].split(",") for match in matches]
+                    ):
+                        tmp = expanded
+                        for c, m in list(zip(combination, matches))[::-1]:
+                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
+                        results.append(tmp)
+
+                seen = set()
+                for result in results:
+                    for match in glob.glob(result):
+                        if match not in seen:
+                            yield match, object_path
+                            seen.add(match)
+
+    elif isinstance(files, uproot.behaviors.TBranch.HasBranches):
+        yield files, None
+
+    elif isinstance(files, dict):
+        for key, object_path in files.items():
+            for file_path, _ in _regularize_files_inner(key, False, counter):
+                yield file_path, object_path
+
+    elif isinstance(files, Iterable):
+        for file in files:
+            counter[0] += 1
+            for file_path, object_path in _regularize_files_inner(
+                file, parse_colon, counter
+            ):
+                yield file_path, object_path
+
+    else:
+        raise TypeError(
+            "'files' must be a file path/URL (string or Path), possibly with "
+            "a glob pattern (for local files), a dict of "
+            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
+            "an iterable of such things, not {0}".format(repr(files))
+        )
+
+
+def _regularize_files(files):
+    out = {}
+    seen = set()
+    counter = [0]
+    for file_path, object_path in _regularize_files_inner(files, True, counter):
+        if uproot._util.isstr(file_path):
+            key = (counter[0], file_path, object_path)
+            if key not in seen:
+                out[file_path] = object_path
+                seen.add(key)
+        else:
+            out[file_path] = object_path
+
+    if len(out) == 0:
+        raise uproot._util._file_not_found(files)
+
+    return out
