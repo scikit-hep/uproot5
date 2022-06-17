@@ -41,44 +41,8 @@ def test_volley(tmp_path):
     y.Write()
     f5.Close()
 
-    assert set(uproot.open(filename).file.streamers) == {
-        "TObject",
-        "TNamed",
-        "TH1F",
-        "TH1",
-        "TAttLine",
-        "TAttFill",
-        "TAttMarker",
-        "TAxis",
-        "TAttAxis",
-        "THashList",
-        "TList",
-        "TSeqCollection",
-        "TCollection",
-        "TString",
-        "TObjString",
-    }
-
     with uproot.writing.update(filename) as f6:
         f6.file._cascading.streamers.write(f6.file.sink)
-
-    assert set(uproot.open(filename).file.streamers) == {
-        "TObject",
-        "TNamed",
-        "TH1F",
-        "TH1",
-        "TAttLine",
-        "TAttFill",
-        "TAttMarker",
-        "TAxis",
-        "TAttAxis",
-        "THashList",
-        "TList",
-        "TSeqCollection",
-        "TCollection",
-        "TString",
-        "TObjString",
-    }
 
 
 def test_with_mkdir(tmp_path):
@@ -112,44 +76,8 @@ def test_with_mkdir(tmp_path):
     y.Write()
     f5.Close()
 
-    assert set(uproot.open(filename).file.streamers) == {
-        "TObject",
-        "TNamed",
-        "TH1F",
-        "TH1",
-        "TAttLine",
-        "TAttFill",
-        "TAttMarker",
-        "TAxis",
-        "TAttAxis",
-        "THashList",
-        "TList",
-        "TSeqCollection",
-        "TCollection",
-        "TString",
-        "TObjString",
-    }
-
     with uproot.writing.update(filename) as f6:
         f6.mkdir("three")
-
-    assert set(uproot.open(filename).file.streamers) == {
-        "TObject",
-        "TNamed",
-        "TH1F",
-        "TH1",
-        "TAttLine",
-        "TAttFill",
-        "TAttMarker",
-        "TAxis",
-        "TAttAxis",
-        "THashList",
-        "TList",
-        "TSeqCollection",
-        "TCollection",
-        "TString",
-        "TObjString",
-    }
 
 
 def test_add_streamers1(tmp_path):
