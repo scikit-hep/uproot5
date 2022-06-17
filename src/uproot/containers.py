@@ -8,11 +8,11 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
 
+from operator import index
+from re import L
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
-from operator import index
-from re import L
 
 import numpy
 
@@ -429,7 +429,6 @@ class AsString(AsContainer):
         else:
             return self._typename
 
-<<<<<<< HEAD
     def descent(self, context):
         forth_obj = context["forth"]
         forth_obj.forth_code[id(self)] = None
@@ -437,37 +436,6 @@ class AsString(AsContainer):
         forth_obj.init_keys(self, key + 1, key + 2)
         forth_obj.register_pre(self)
         forth_obj.register_post(self)
-=======
-    def form_and_forth(
-        self,
-        file,
-        chunk,
-        cursor,
-        context,
-        selffile,
-        parent,
-        forth_code,
-        forth_header,
-        index_format="i64",
-        tobject_header=True,
-        breadcrumbs=(),  # header conflict between awkward_form and read
-        header=True,
-    ):  # for strings
-        awkward = uproot.extras.awkward()
-        aform = awkward._v2.forms.ListOffsetForm(
-            index_format,
-            awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
-            parameters={
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": self._header,
-                    "length_bytes": self._length_bytes,
-                },
-            },
-        )
-        raise NotImplementedError
->>>>>>> 6e24997cdb2c473a7ddc356a41802540132ff9ab
 
     def awkward_form(
         self,
@@ -502,10 +470,9 @@ class AsString(AsContainer):
         if "forth" in context.keys():
             forth = True
             forth_obj = context["forth"]
-            isinstance(
-                forth_obj.aform,
-                (awkward.layout.NumpyArray,),
-            )
+            isinstance(forth_obj.aform, (
+                awkward.layout.NumpyArray,
+            ),)
             keys = forth_obj.get_keys(self)
             offsets_num = keys[0]
             data_num = keys[1]
@@ -526,23 +493,15 @@ class AsString(AsContainer):
             out = cursor.string(chunk, context)
             if forth:
                 finit.append(f"0 node{offsets_num}-offsets <- stack\n")
-                fheader.append(
-                    f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
-                )
-                fcode.append(
-                    f"stream !B-> stack 255 = if stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream !#B-> node{data_num}-data\n"
-                )
+                fheader.append(f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n")
+                fcode.append(f"stream !B-> stack 255 = if stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream !#B-> node{data_num}-data\n")
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
             if forth and self.write_code:
                 finit.append(f"0 node{offsets_num}-offsets <- stack\n")
-                fheader.append(
-                    f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
-                )
-                fcode.append(
-                    f"stream I-> stack dup node{offsets_num}-offsets <- stack stream #B-> node{data_num}-data\n"
-                )
+                fheader.append(f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n")
+                fcode.append(f"stream I-> stack dup node{offsets_num}-offsets <- stack stream #B-> node{data_num}-data\n")
         else:
             raise AssertionError(repr(self._length_bytes))
 
@@ -590,7 +549,7 @@ class AsPointer(AsContainer):
     def __init__(self, pointee=None):
         self._pointee = pointee
 
-    @property
+    @ property
     def pointee(self):
         """
         Optional description of the data, used in
@@ -611,14 +570,14 @@ class AsPointer(AsContainer):
             pointee = repr(self._pointee)
         return f"AsPointer({pointee})"
 
-    @property
+    @ property
     def cache_key(self):
         if self._pointee is None:
             return "AsPointer(None)"
         else:
             return f"AsPointer({_content_cache_key(self._pointee)})"
 
-    @property
+    @ property
     def typename(self):
         if self._pointee is None:
             return "void*"
@@ -1045,9 +1004,7 @@ class AsVector(AsContainer):
         if "forth" in context.keys():
             forth = True
             forth_obj = context["forth"]
-            assert isinstance(forth_obj.aform, awkward.forms.ListOffsetForm), type(
-                forth_obj.aform
-            )
+            assert isinstance(forth_obj.aform, awkward.forms.ListOffsetForm), type(forth_obj.aform)
             forth_obj.aform = forth_obj.aform.content
         if self._header and header:
             jump = False
@@ -1121,9 +1078,7 @@ class AsVector(AsContainer):
                 key = forth_obj.get_keys(self)[0]
                 finit.append(f"0 node{key}-offsets <- stack\n")
                 fheader.append(f"output node{key}-offsets int64\n")
-                fcode_pre.append(
-                    f"stream !I-> stack\ndup node{key}-offsets +<- stack\n0 do \n"
-                )
+                fcode_pre.append(f"stream !I-> stack\ndup node{key}-offsets +<- stack\n0 do \n")
                 forth_obj.count_obj += 1
                 fcode_post.append("loop")
             length = cursor.field(chunk, _stl_container_size, context)
@@ -1131,9 +1086,7 @@ class AsVector(AsContainer):
                 if id(self) not in forth_obj.forth_code.keys():
                     raise ValueError
                 else:
-                    forth_obj.add_forth_code(
-                        self, fheader, fcode_pre, fcode_post, finit
-                    )
+                    forth_obj.add_forth_code(self, fheader, fcode_pre, fcode_post, finit)
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
