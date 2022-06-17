@@ -16,6 +16,7 @@ class forth_obj:
         self.final_code = []
         self.final_header = []
         self.final_init = []
+        self.form_keys = []
         self.var_set = var_set
         self.count_obj = count_obj
         return
@@ -32,6 +33,9 @@ class forth_obj:
     def register_pre(self, ref):
         key = str(id(ref)) + "pre"
         self.forth_sequence.append(key)
+
+    def add_form_key(self, form_key):
+        self.form_keys.append(form_key)
 
     def register_post(self, ref):
         key = str(id(ref)) + "post"

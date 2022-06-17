@@ -467,6 +467,8 @@ class AsString(AsContainer):
             out = cursor.string(chunk, context)
             if forth:
                 finit.append(f"0 node{offsets_num}-offsets <- stack\n")
+                forth_obj.add_form_key(f"node{offsets_num}-offsets")
+                forth_obj.add_form_key(f"node{data_num}-data")
                 fheader.append(
                     f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
                 )
@@ -1027,6 +1029,7 @@ class AsVector(AsContainer):
             if forth:
                 key = forth_obj.get_keys(self)[0]
                 finit.append(f"0 node{key}-offsets <- stack\n")
+                forth_obj.add_form_key(f"node{key}-offsets")
                 fheader.append(f"output node{key}-offsets int64\n")
                 fcode_pre.append(
                     f"stream !I-> stack\ndup node{key}-offsets +<- stack\n0 do \n"

@@ -233,6 +233,13 @@ class AsObjects(uproot.interpretation.Interpretation):
             self._forth_vm.vm.begin({"stream": temp_data, "byteoffsets": byte_offsets})
             self._forth_vm.vm.stack_push(len(byte_offsets) - 1)
             self._forth_vm.vm.resume()
+            container = {}
+            for elem in context["forth"].form_keys():
+                if "offsets" in elem:
+                    container[elem] = self._forth_vm.vm.output_Index64(elem)
+                else:
+                    container[elem] = self._forth_vm.vm.NumpyArray(elem)
+            output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
         else:
             if not self._prereaddone:
                 if output is None:
