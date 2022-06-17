@@ -627,7 +627,15 @@ def lazy(
                 branch = obj[key]
 
                 interpretation = branchid_interpretation[branch.cache_key]
-                form = interpretation.awkward_form(obj.file, index_format="i64")
+                form = interpretation.awkward_form(
+                    obj.file,
+                    {
+                        "index_format": "i64",
+                        "header": False,
+                        "tobject_header": True,
+                        "breadcrumbs": (),
+                    },
+                )
                 form = uproot._util.recursively_fix_awkward_form_of_iter(
                     awkward, interpretation, form
                 )

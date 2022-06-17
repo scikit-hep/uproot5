@@ -104,22 +104,11 @@ class AsObjects(uproot.interpretation.Interpretation):
         else:
             return uproot.model.classname_decode(self._model.__name__)[0]
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         if isinstance(self._model, type):
-            return self._model.awkward_form(
-                self._branch.file, index_format, header, tobject_header, breadcrumbs
-            )
+            return self._model.awkward_form(self._branch.file, context)
         else:
-            return self._model.awkward_form(
-                self._branch.file, index_format, header, tobject_header, breadcrumbs
-            )
+            return self._model.awkward_form(self._branch.file, context)
 
     def basket_array(
         self, data, byte_offsets, basket, branch, context, cursor_offset, library
@@ -137,7 +126,15 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         output = None
         if isinstance(library, uproot.interpretation.library.Awkward):
-            form = self.awkward_form(branch.file, index_format="i64")
+            form = self.awkward_form(
+                branch.file,
+                {
+                    "index_format": "i64",
+                    "header": False,
+                    "tobject_header": True,
+                    "breadcrumbs": (),
+                },
+            )
 
             if awkward_can_optimize(self, form):
                 import awkward._connect._uproot
@@ -336,27 +333,16 @@ def _unravel_members(members):
     return out
 
 
-def _strided_awkward_form(
-    awkward, classname, members, file, index_format, header, tobject_header, breadcrumbs
-):
+def _strided_awkward_form(awkward, classname, members, file, context):
     contents = {}
     for name, member in members:
         if isinstance(member, AsStridedObjects):
             cname = uproot.model.classname_decode(member._model.__name__)[0]
             contents[name] = _strided_awkward_form(
-                awkward,
-                cname,
-                member._members,
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                awkward, cname, member._members, file, context
             )
         else:
-            contents[name] = uproot._util.awkward_form(
-                member, file, index_format, header, tobject_header, breadcrumbs
-            )
+            contents[name] = uproot._util.awkward_form(member, file, context)
     return awkward.forms.RecordForm(contents, parameters={"__record__": classname})
 
 
@@ -439,26 +425,10 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def numpy_dtype(self):
         return numpy.dtype(object)
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         cname = uproot.model.classname_decode(self._model.__name__)[0]
-        form = _strided_awkward_form(
-            awkward,
-            cname,
-            self._members,
-            file,
-            index_format,
-            header,
-            tobject_header,
-            breadcrumbs,
-        )
+        form = _strided_awkward_form(awkward, cname, self._members, file, context)
         for dim in reversed(self.inner_shape):
             form = awkward.forms.RegularForm(form, dim)
         return form

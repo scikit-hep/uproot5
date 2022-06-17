@@ -1188,14 +1188,7 @@ in object {}""".format(
     def numpy_dtype(self):
         raise self
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         raise self
 
     @property
