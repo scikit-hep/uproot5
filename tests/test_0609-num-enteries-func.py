@@ -11,7 +11,6 @@ def test_num_entries_single():
     ]
 
 
-
 def test_num_entries_multiple():
     file1 = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     file2 = skhep_testdata.data_path("uproot-HZZ.root") + ":events"
@@ -37,7 +36,6 @@ def test_num_entries_as_iterator():
         skhep_testdata.data_path("uproot-sample-6.08.04-uncompressed.root") + ":sample"
     )
 
-
     vals = [
         ("/home/kmk/.local/skhepdata/uproot-Zmumu.root", "events", 2304),
         ("/home/kmk/.local/skhepdata/uproot-HZZ.root", "events", 2421),
@@ -51,12 +49,10 @@ def test_num_entries_as_iterator():
         assert num == vals[i]
 
 
-
 def test_dict_input():
     file_name1 = skhep_testdata.data_path("uproot-Zmumu.root")
     file_name2 = skhep_testdata.data_path("uproot-HZZ.root")
     file_name3 = skhep_testdata.data_path("uproot-sample-6.08.04-uncompressed.root")
-
 
     vals = [
         ("/home/kmk/.local/skhepdata/uproot-Zmumu.root", "events", 2304),
