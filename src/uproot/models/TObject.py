@@ -65,56 +65,26 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if tobject_header:
+        if context["tobject_header"]:
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@fUniqueID"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@fBits"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@pidf"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
-        return awkward.forms.RecordForm(
-            contents,
-            parameters={"__record__": "TObject"},
-        )
+        return awkward.forms.RecordForm(contents, parameters={"__record__": "TObject"})
 
     def __repr__(self):
         return "<TObject {} {} at 0x{:012x}>".format(

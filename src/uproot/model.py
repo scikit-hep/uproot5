@@ -633,9 +633,7 @@ class Model:
         return self._is_memberwise
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         """
         Args:
             cls (subclass of :doc:`uproot.model.Model`): This class.
@@ -643,6 +641,9 @@ class Model:
                 :doc:`uproot.model.Model` classes from its
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -1108,9 +1109,7 @@ class DispatchByVersion:
     """
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         """
         Args:
             cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
@@ -1118,6 +1117,9 @@ class DispatchByVersion:
                 :doc:`uproot.model.Model` classes from its
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -1133,9 +1135,7 @@ class DispatchByVersion:
         Awkward Array.
         """
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
-        return versioned_cls.awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
-        )
+        return versioned_cls.awkward_form(file, context)
 
     @classmethod
     def strided_interpretation(

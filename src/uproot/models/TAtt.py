@@ -49,36 +49,24 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fLineColor"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fLineStyle"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fLineWidth"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
 
@@ -123,36 +111,24 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fLineColor"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fLineStyle"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fLineWidth"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
 
@@ -224,33 +200,21 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fFillColor"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fFillStyle"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
 
@@ -292,33 +256,21 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fFillColor"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fFillStyle"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
 
@@ -391,36 +343,24 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fMarkerColor"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fMarkerStyle"] = uproot._util.awkward_form(
-            numpy.dtype("i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("i2"), file, context
         )
         contents["fMarkerSize"] = uproot._util.awkward_form(
-            numpy.dtype("f4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype("f4"), file, context
         )
         return awkward.forms.RecordForm(
             contents, parameters={"__record__": "TAttMarker"}
@@ -560,66 +500,54 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fNdivisions"] = uproot._util.awkward_form(
-            numpy.dtype(">i4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i4"), file, context
         )
         contents["fAxisColor"] = uproot._util.awkward_form(
-            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i2"), file, context
         )
         contents["fLabelColor"] = uproot._util.awkward_form(
-            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i2"), file, context
         )
         contents["fLabelFont"] = uproot._util.awkward_form(
-            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i2"), file, context
         )
         contents["fLabelOffset"] = uproot._util.awkward_form(
-            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f4"), file, context
         )
         contents["fLabelSize"] = uproot._util.awkward_form(
-            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f4"), file, context
         )
         contents["fTickLength"] = uproot._util.awkward_form(
-            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f4"), file, context
         )
         contents["fTitleOffset"] = uproot._util.awkward_form(
-            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f4"), file, context
         )
         contents["fTitleSize"] = uproot._util.awkward_form(
-            numpy.dtype(">f4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f4"), file, context
         )
         contents["fTitleColor"] = uproot._util.awkward_form(
-            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i2"), file, context
         )
         contents["fTitleFont"] = uproot._util.awkward_form(
-            numpy.dtype(">i2"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">i2"), file, context
         )
         return RecordForm(contents, parameters={"__record__": "TAttAxis"})
 
@@ -721,33 +649,23 @@ in file {}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
                 numpy.dtype("u4"),
                 file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                context,
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         return RecordForm(contents, parameters={"__record__": "TAtt3D"})
 

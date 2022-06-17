@@ -141,18 +141,14 @@ class AsContainer:
         """
         raise AssertionError
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         """
         Args:
             file (:doc:`uproot.reading.CommonFileMethods`): The file associated
                 with this interpretation's ``TBranch``.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -284,23 +280,14 @@ class AsDynamic(AsContainer):
         else:
             return uproot.model.classname_decode(self._model.__name__)[0]
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
             return awkward.forms.ListOffsetForm(
-                index_format,
-                uproot._util.awkward_form(
-                    self._model, file, index_format, header, tobject_header, breadcrumbs
-                ),
+                context["index_format"],
+                uproot._util.awkward_form(self._model, file, context),
                 parameters={"uproot": {"as": "array", "header": self._header}},
             )
 
@@ -341,14 +328,7 @@ class AsFIXME(AsContainer):
     def typename(self):
         return "unknown"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         raise uproot.interpretation.objects.CannotBeAwkward(self.message)
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -426,17 +406,10 @@ class AsString(AsContainer):
         else:
             return self._typename
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
@@ -540,14 +513,7 @@ class AsPointer(AsContainer):
         else:
             return _content_typename(self._pointee) + "*"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         raise uproot.interpretation.objects.CannotBeAwkward("arbitrary pointer")
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -630,22 +596,13 @@ class AsArray(AsContainer):
         shape = "".join(f"[{d}]" for d in self.inner_shape)
         return _content_typename(self._values) + "[]" + shape
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        values_form = uproot._util.awkward_form(
-            self._values, file, index_format, header, tobject_header, breadcrumbs
-        )
+        values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
             values_form = awkward.forms.RegularForm(values_form, dim)
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             values_form,
             parameters={
                 "uproot": {
@@ -765,20 +722,11 @@ class AsRVec(AsContainer):
     def typename(self):
         return f"RVec<{_content_typename(self._values)}>"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                self._values, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "RVec", "header": self._header}},
         )
 
@@ -920,20 +868,11 @@ class AsVector(AsContainer):
     def typename(self):
         return f"std::vector<{_content_typename(self._values)}>"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                self._values, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
@@ -1084,20 +1023,11 @@ class AsSet(AsContainer):
     def typename(self):
         return f"std::set<{_content_typename(self._keys)}>"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                self._keys, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(self._keys, file, context),
             parameters={
                 "__array__": "set",
                 "uproot": {"as": "set", "header": self._header},
@@ -1242,35 +1172,14 @@ class AsMap(AsContainer):
             _content_typename(self._keys), _content_typename(self._values)
         )
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             awkward.forms.RecordForm(
                 (
-                    uproot._util.awkward_form(
-                        self._keys,
-                        file,
-                        index_format,
-                        header,
-                        tobject_header,
-                        breadcrumbs,
-                    ),
-                    uproot._util.awkward_form(
-                        self._values,
-                        file,
-                        index_format,
-                        header,
-                        tobject_header,
-                        breadcrumbs,
-                    ),
+                    uproot._util.awkward_form(self._keys, file, context),
+                    uproot._util.awkward_form(self._values, file, context),
                 )
             ),
             parameters={

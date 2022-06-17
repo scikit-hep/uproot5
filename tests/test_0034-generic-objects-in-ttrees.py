@@ -326,8 +326,16 @@ def test_general_awkward_form():
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root"))[
         "tree/evt"
     ] as branch:
+        context = {
+            "index_format": "i64",
+            "header": False,
+            "tobject_header": True,
+            "breadcrumbs": (),
+        }
         assert json.loads(
-            branch.interpretation.awkward_form(branch.file).tojson(verbose=False)
+            branch.interpretation.awkward_form(branch.file, context).tojson(
+                verbose=False
+            )
         ) == json.loads(
             """{
     "class": "RecordArray",
