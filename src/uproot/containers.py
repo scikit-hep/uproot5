@@ -11,10 +11,13 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
+from operator import index
+from re import L
 
 import numpy
 
 import uproot
+from uproot.deserialization import DeserializationError
 
 _stl_container_size = struct.Struct(">I")
 _stl_object_type = numpy.dtype(object)
@@ -426,26 +429,13 @@ class AsString(AsContainer):
         else:
             return self._typename
 
-    def form_and_forth(self, file,
-                       chunk, cursor, context, selffile, parent, forth_code, forth_header,
-                       index_format="i64",
-                       tobject_header=True,
-                       breadcrumbs=(),  # header conflict between awkward_form and read
-                       header=True,):  # for strings
-        awkward = uproot.extras.awkward()
-        aform = awkward._v2.forms.ListOffsetForm(
-            index_format,
-            awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
-            parameters={
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": self._header,
-                    "length_bytes": self._length_bytes,
-                },
-            },
-        )
-        raise NotImplementedError
+    def descent(self, context):
+        forth_obj = context["forth"]
+        forth_obj.forth_code[id(self)] = None
+        key = forth_obj.get_last_key()
+        forth_obj.init_keys(self, key + 1, key + 2)
+        forth_obj.register_pre(self)
+        forth_obj.register_post(self)
 
     def awkward_form(
         self,
@@ -470,19 +460,57 @@ class AsString(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        forth = False
+        forth_obj = None
+        jump = True
+        fcode = []
+        fheader = []
+        finit = []
+        awkward = uproot.extras.awkward()
+        if "forth" in context.keys():
+            forth = True
+            forth_obj = context["forth"]
+            isinstance(
+                forth_obj.aform,
+                (awkward.layout.NumpyArray,),
+            )
+            keys = forth_obj.get_keys(self)
+            offsets_num = keys[0]
+            data_num = keys[1]
         if self._header and header:
+            jump = False
             start_cursor = cursor.copy()
             (
                 num_bytes,
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+            temp_jump = cursor._index - start_cursor
+            if forth and temp_jump != 0:
+                jump = True
+                fcode.append(f"{temp_jump} stream skip")
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
+            if forth:
+                finit.append(f"0 node{offsets_num}-offsets <- stack\n")
+                fheader.append(
+                    f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
+                )
+                fcode.append(
+                    f"stream !B-> stack 255 = if stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream !#B-> node{data_num}-data\n"
+                )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
+            if forth and self.write_code:
+                finit.append(f"0 node{offsets_num}-offsets <- stack\n")
+                fheader.append(
+                    f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
+                )
+                fcode.append(
+                    f"stream I-> stack dup node{offsets_num}-offsets <- stack stream #B-> node{data_num}-data\n"
+                )
         else:
             raise AssertionError(repr(self._length_bytes))
 
@@ -496,7 +524,11 @@ class AsString(AsContainer):
                 context,
                 file.file_path,
             )
-
+        if jump and forth:
+            if id(self) not in forth_obj.forth_code.keys():
+                raise ValueError
+            else:
+                forth_obj.add_forth_code(self, fheader, fcode, [], finit)
         return out
 
     def __eq__(self, other):
@@ -941,6 +973,16 @@ class AsVector(AsContainer):
     def typename(self):
         return f"std::vector<{_content_typename(self._values)}>"
 
+    def descent(self, context):
+        forth_obj = context["forth"]
+        forth_obj.forth_code[id(self)] = None
+        key = forth_obj.get_last_key()
+        forth_obj.init_keys(self, key + 1, key + 1)
+        forth_obj.register_pre(self)
+        self._values.descent(context)
+        forth_obj.register_post(self)
+        return
+
     def awkward_form(
         self,
         file,
@@ -956,17 +998,39 @@ class AsVector(AsContainer):
                 self._values, file, index_format, header, tobject_header, breadcrumbs
             ),
             parameters={"uproot": {"as": "vector", "header": self._header}},
+            # form_key="node0"
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        forth = False
+        forth_obj = None
+        jump = True
+        fheader = []
+        finit = []
+        fcode_pre = []
+        fcode_post = []
+        awkward = uproot.extras.awkward()
+        if "forth" in context.keys():
+            forth = True
+            forth_obj = context["forth"]
+            assert isinstance(forth_obj.aform, awkward.forms.ListOffsetForm), type(
+                forth_obj.aform
+            )
+            forth_obj.aform = forth_obj.aform.content
         if self._header and header:
+            jump = False
             start_cursor = cursor.copy()
             (
                 num_bytes,
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+            temp_jump = cursor._index - start_cursor._index
+            if forth:
+                jump = True
+                fcode_pre.append(f"{temp_jump} stream skip\n")
         else:
+            jump = 0
             is_memberwise = False
 
         # Note: self._values can also be a NumPy dtype, and not necessarily a class
@@ -974,6 +1038,8 @@ class AsVector(AsContainer):
         _value_typename = _content_typename(self._values)
         if is_memberwise:
             # let's hard-code in logic for std::pair<T1,T2> for now
+            if forth:
+                raise NotImplementedError
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
                     """memberwise serialization of {}({})
@@ -1019,12 +1085,27 @@ class AsVector(AsContainer):
                             chunk, cursor, context, file, member_index
                         )
         else:
+            if forth:
+                key = forth_obj.get_keys(self)[0]
+                finit.append(f"0 node{key}-offsets <- stack\n")
+                fheader.append(f"output node{key}-offsets int64\n")
+                fcode_pre.append(
+                    f"stream !I-> stack\ndup node{key}-offsets +<- stack\n0 do \n"
+                )
+                forth_obj.count_obj += 1
+                fcode_post.append("loop")
             length = cursor.field(chunk, _stl_container_size, context)
+            if jump and forth:
+                if id(self) not in forth_obj.forth_code.keys():
+                    raise ValueError
+                else:
+                    forth_obj.add_forth_code(
+                        self, fheader, fcode_pre, fcode_post, finit
+                    )
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
-
         out = STLVector(values)
 
         if self._header and header:

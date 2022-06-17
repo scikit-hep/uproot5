@@ -3570,7 +3570,7 @@ def _ranges_or_baskets_to_arrays(
             branch = basket.parent
             interpretation = branchid_interpretation[branch.cache_key]
             basket_arrays = branchid_arrays[branch.cache_key]
-
+            # chain passes through here
             basket_arrays[basket.basket_num] = interpretation.basket_array(
                 basket.data,
                 basket.byte_offsets,

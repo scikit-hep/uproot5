@@ -506,6 +506,10 @@ def new_class(name, bases, members):
 _primitive_awkward_form = {}
 
 
+def form_and_forth():
+    raise NotImplementedError
+
+
 def awkward_form(
     model, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
 ):

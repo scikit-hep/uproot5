@@ -574,10 +574,8 @@ in object {}""".format(
                         interpretation.branch.object_path,
                     )
                 )
-
-            unlabeled = awkward.from_iter(
-                (_object_to_awkward_json(form, x) for x in array), highlevel=False
-            )
+            temp = [_object_to_awkward_json(form, x) for x in array]
+            unlabeled = awkward.from_iter(temp, highlevel=False)
             return awkward.Array(_awkward_json_to_array(awkward, form, unlabeled))
 
         elif array.dtype.names is not None:
