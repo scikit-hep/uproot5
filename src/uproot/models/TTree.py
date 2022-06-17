@@ -964,10 +964,17 @@ def num_entries(paths):
     Returns an iterator over the number of entries over each TTree in the input.
     This is a shortcut method and reads lesser data than normal file opening.
     """
-    paths = _regularize_files(paths)
+    paths2 = _regularize_files(paths)
 
-    for file_path, object_path in paths.items():
-        yield uproot.open(
+    if isinstance(paths, dict):
+        paths = list(paths.items())
+    elif not uproot._util.isstr(paths):
+        paths = [(uproot._util.file_object_path_split(path)) for path in paths]
+    else:
+        paths = [uproot._util.file_object_path_split(paths)]
+
+    for i, (file_path, object_path) in enumerate(paths2.items()):
+        yield paths[i][0], paths[i][1], uproot.open(
             {file_path: object_path}, custom_classes={"TTree": Model_TTree_NumEntries}
         ).all_members["fEntries"][0]
 
