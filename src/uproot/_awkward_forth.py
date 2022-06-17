@@ -7,9 +7,8 @@ This module defines utilities for adding components to the forth reader.
 import awkward as ak
 
 
-class forth_obj():
-
-    def __init__(self, aform, count_obj=0 , var_set=False):
+class forth_obj:
+    def __init__(self, aform, count_obj=0, var_set=False):
         self.aform = aform
         self.forth_sequence = []
         self.forth_code = {}
@@ -41,7 +40,9 @@ class forth_obj():
     def get_keys(self, ref):
         return self.forth_keys[ref]
 
-    def add_forth_code(self, ref , forth_header, forth_exec_pre, forth_exec_post, forth_init):
+    def add_forth_code(
+        self, ref, forth_header, forth_exec_pre, forth_exec_post, forth_init
+    ):
         if self.forth_code[id(ref)] is None:
             self.forth_code[id(ref)] = {}
         self.forth_code[id(ref)]["forth_header"] = forth_header
