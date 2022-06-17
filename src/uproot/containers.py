@@ -429,6 +429,7 @@ class AsString(AsContainer):
         else:
             return self._typename
 
+<<<<<<< HEAD
     def descent(self, context):
         forth_obj = context["forth"]
         forth_obj.forth_code[id(self)] = None
@@ -436,6 +437,37 @@ class AsString(AsContainer):
         forth_obj.init_keys(self, key + 1, key + 2)
         forth_obj.register_pre(self)
         forth_obj.register_post(self)
+=======
+    def form_and_forth(
+        self,
+        file,
+        chunk,
+        cursor,
+        context,
+        selffile,
+        parent,
+        forth_code,
+        forth_header,
+        index_format="i64",
+        tobject_header=True,
+        breadcrumbs=(),  # header conflict between awkward_form and read
+        header=True,
+    ):  # for strings
+        awkward = uproot.extras.awkward()
+        aform = awkward._v2.forms.ListOffsetForm(
+            index_format,
+            awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            parameters={
+                "__array__": "string",
+                "uproot": {
+                    "as": "string",
+                    "header": self._header,
+                    "length_bytes": self._length_bytes,
+                },
+            },
+        )
+        raise NotImplementedError
+>>>>>>> 6e24997cdb2c473a7ddc356a41802540132ff9ab
 
     def awkward_form(
         self,
