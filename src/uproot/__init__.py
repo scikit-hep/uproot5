@@ -144,6 +144,7 @@ import uproot.models.TBasket
 import uproot.models.RNTuple
 import uproot.models.TH
 import uproot.models.TGraph
+from uproot.models.TTree import num_entries
 
 from uproot.containers import STLVector
 from uproot.containers import STLSet
