@@ -8,7 +8,7 @@ import awkward as ak
 
 
 class forth_obj:
-    def __init__(self, aform, count_obj=0, var_set=False):
+    def __init__(self, aform=None, count_obj=0, var_set=False):
         self.aform = aform
         self.forth_sequence = []
         self.forth_code = {}

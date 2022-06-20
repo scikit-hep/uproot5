@@ -184,6 +184,8 @@ class AsObjects(uproot.interpretation.Interpretation):
         awkward = uproot.extras.awkward()
         import awkward.forth
 
+        mid_pass = False
+
         self.hook_before_basket_array(
             data=data,
             byte_offsets=byte_offsets,
@@ -196,6 +198,11 @@ class AsObjects(uproot.interpretation.Interpretation):
         assert basket.byte_offsets is not None
 
         output = None
+        if "forth" not in context.keys():
+            forth_obj = uproot._awkward_forth.forth_obj()
+
+            context["forth"] = forth_obj
+            # self._model.descent(context)
         if isinstance(library, uproot.interpretation.library.Awkward):
             self._form = self.awkward_form(
                 branch.file,
@@ -204,6 +211,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                     "header": False,
                     "tobject_header": True,
                     "breadcrumbs": (),
+                    "forth": forth_obj,
                 },
             )
 
@@ -220,27 +228,8 @@ class AsObjects(uproot.interpretation.Interpretation):
                 output = awkward._connect._uproot.basket_array(
                     self._form, data, byte_offsets, extra
                 )
-        if "forth" not in context.keys():
-            forth_obj = uproot._awkward_forth.forth_obj(self._form)
 
-            context["forth"] = forth_obj
-            self._model.descent(context)
-
-        if self._forth_vm_set:
-            byte_start = byte_offsets[0]
-            byte_stop = byte_offsets[-1]
-            temp_data = data[byte_start:byte_stop]
-            self._forth_vm.vm.begin({"stream": temp_data, "byteoffsets": byte_offsets})
-            self._forth_vm.vm.stack_push(len(byte_offsets) - 1)
-            self._forth_vm.vm.resume()
-            container = {}
-            for elem in context["forth"].form_keys():
-                if "offsets" in elem:
-                    container[elem] = self._forth_vm.vm.output_Index64(elem)
-                else:
-                    container[elem] = self._forth_vm.vm.NumpyArray(elem)
-            output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
-        else:
+        if not self._forth_vm_set:
             if not self._prereaddone:
                 if output is None:
                     output = numpy.empty(
@@ -266,31 +255,61 @@ class AsObjects(uproot.interpretation.Interpretation):
                             branch.file.detached,
                             branch,
                         )
-                if not context["forth"].var_set:
-                    self._prereaddone = True
-                    for key in forth_obj.forth_code.keys():
-                        code_list = forth_obj.forth_code[key]
-                        for key in code_list.keys():
-                            if key == "forth_header":
-                                forth_obj.add_to_header(code_list[key])
-                            if key == "forth_init":
-                                forth_obj.add_to_init(code_list[key])
-                    for elem in forth_obj.forth_sequence:
-                        if "post" in elem:
-                            forth_obj.add_to_final(
-                                forth_obj.forth_code[int(elem.rstrip("post"))][elem]
+                        if not context["forth"].var_set:
+                            self._prereaddone = True
+                            for key in forth_obj.forth_code.keys():
+                                code_list = forth_obj.forth_code[key]
+                                for key in code_list.keys():
+                                    if key == "forth_header":
+                                        forth_obj.add_to_header(code_list[key])
+                                    if key == "forth_init":
+                                        forth_obj.add_to_init(code_list[key])
+                            for elem in forth_obj.forth_sequence:
+                                if "post" in elem:
+                                    forth_obj.add_to_final(
+                                        forth_obj.forth_code[int(elem.rstrip("post"))][
+                                            elem
+                                        ]
+                                    )
+                                if "pre" in elem:
+                                    forth_obj.add_to_final(
+                                        forth_obj.forth_code[int(elem.rstrip("pre"))][
+                                            elem
+                                        ]
+                                    )
+                            self._complete_forth_code = f'input stream\ninput byteoffsets \n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek\n{"".join(context["forth"].final_code)}\nloop'
+                            print(self._complete_forth_code)
+                            self._forth_vm.vm = awkward.forth.ForthMachine64(
+                                self._complete_forth_code
                             )
-                        if "pre" in elem:
-                            forth_obj.add_to_final(
-                                forth_obj.forth_code[int(elem.rstrip("pre"))][elem]
-                            )
-                    self._complete_forth_code = f"""input stream\ninput byteoffsets \n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream skip\n{"".join(context["forth"].final_code)}\nloop"""
-                    print(self._complete_forth_code)
+                            self._forth_vm_set = True
+                            break
             else:
                 self._forth_vm.vm = awkward.forth.ForthMachine64(
                     self._complete_forth_code
                 )
                 self._forth_vm_set = True
+
+        if self._forth_vm_set:
+            byte_start = byte_offsets[0]
+            byte_stop = byte_offsets[-1]
+            temp_data = data[byte_start:byte_stop]
+            self._forth_vm.vm.begin(
+                {
+                    "stream": numpy.array(temp_data),
+                    "byteoffsets": numpy.array(byte_offsets[:-1]),
+                }
+            )
+            self._forth_vm.vm.stack_push(len(byte_offsets) - 1)
+            self._forth_vm.vm.resume()
+            container = {}
+            for elem in context["forth"].form_keys:
+                if "offsets" in elem:
+                    container[elem] = self._forth_vm.vm.output_Index64(elem)
+                else:
+                    container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
+            print(self._form)
+            output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
         self.hook_after_basket_array(
             data=data,
@@ -372,7 +391,7 @@ class AsObjects(uproot.interpretation.Interpretation):
 
     def simplify(self):
         """
-        Attempts to replace this :doc:`uproot.interpretation.objects.AsObjects`
+        Attempts to replace this : doc: `uproot.interpretation.objects.AsObjects`
         with an interpretation that can be executed more quickly.
 
         If there isn't a simpler interpretation, then this method returns
@@ -486,32 +505,33 @@ def _strided_awkward_form(awkward, classname, members, file, context):
 class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     """
     Args:
-        model (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`): The
-            full Uproot deserialization model for the data.
-        members (list of (str, :doc:`uproot.interpretation.Interpretation`) tuples): The
-            name and fixed-width interpretation for each member of the objects.
-        original (None, :doc:`uproot.model.Model`, or :doc:`uproot.containers.AsContainer`): If
-            this interpretation is derived from
-            :ref:`uproot.interpretation.objects.AsObjects.simplify`, this is a
-            reminder of the original
-            :ref:`uproot.interpretation.objects.AsObjects.model`.
+        model(: doc: `uproot.model.Model` or : doc: `uproot.containers.AsContainer`): The
+        full Uproot deserialization model for the data.
+        members(list of(str, : doc: `uproot.interpretation.Interpretation`) tuples): The
+        name and fixed - width interpretation for each member of the objects.
+        original(None, : doc: `uproot.model.Model`, or : doc: `uproot.containers.AsContainer`): If
+        this interpretation is derived from
+        : ref: `uproot.interpretation.objects.AsObjects.simplify`, this is a
+        reminder of the original
+        : ref: `uproot.interpretation.objects.AsObjects.model`.
 
-    Interpretation for an array (possibly
-    :doc:`uproot.interpretation.jagged.AsJagged`) of fixed-size objects. Since
+    Interpretation for an array(possibly
+                                : doc: `uproot.interpretation.jagged.AsJagged`) of fixed - size objects. Since
     the objects have a fixed number of fields with a fixed number of bytes each,
-    the whole array (or :ref:`uproot.interpretation.jagged.AsJagged.content`)
-    can be interpreted in one vectorized array-cast. Therefore, this
-    interpretation is faster than :doc:`uproot.interpretation.objects.AsObjects`
-    *when it is possible*.
+    the whole array (or : ref: `uproot.interpretation.jagged.AsJagged.content`)
+    can be interpreted in one vectorized array - cast. Therefore, this
+    interpretation is faster than : doc: `uproot.interpretation.objects.AsObjects`
+    *when it is possible * .
 
-    Unlike :doc:`uproot.interpretation.numerical.AsDtype` with a
-    `structured array <https://numpy.org/doc/stable/user/basics.rec.html>`__,
+    Unlike : doc: `uproot.interpretation.numerical.AsDtype` with a
+    `structured array < https: // numpy.org / doc / stable / user / basics.rec.html >`__,
     the objects in the final array have the methods required by its ``model``.
-    If the ``library`` is :doc:`uproot.interpretation.library.NumPy`, these
-    are instantiated as Python objects (slow); if
-    :doc:`uproot.interpretation.library.Awkward`, they are behaviors passed to
+    If the ``library`` is : doc: `uproot.interpretation.library.NumPy`, these
+    are instantiated as Python objects(slow)
+    if
+    : doc: `uproot.interpretation.library.Awkward`, they are behaviors passed to
     the Awkward Array's local
-    `behavior <https://awkward-array.readthedocs.io/en/latest/ak.behavior.html>`__.
+    `behavior < https: // awkward - array.readthedocs.io / en / latest / ak.behavior.html >`__.
     """
 
     def __init__(self, model, members, original=None):
@@ -524,16 +544,16 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def model(self):
         """
         The full Uproot deserialization model for the data
-        (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`).
+        (: doc: `uproot.model.Model` or : doc: `uproot.containers.AsContainer`).
         """
         return self._model
 
     @property
     def members(self):
         """
-        The name (str) and fixed-width
-        :doc:`uproot.interpretation.Interpretation` for each member of the
-        objects as a list of 2-tuple pairs.
+        The name(str) and fixed - width
+        : doc: `uproot.interpretation.Interpretation` for each member of the
+        objects as a list of 2 - tuple pairs.
         """
         return self._members
 
@@ -541,9 +561,9 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def original(self):
         """
         If not None, this was the original
-        :ref:`uproot.interpretation.objects.AsObjects.model` from an
-        :doc:`uproot.interpretation.objects.AsObjects` that was simplified
-        into this :doc:`uproot.interpretation.objects.AsStridedObjects`.
+        : ref: `uproot.interpretation.objects.AsObjects.model` from an
+        : doc: `uproot.interpretation.objects.AsObjects` that was simplified
+        into this : doc: `uproot.interpretation.objects.AsStridedObjects`.
         """
         return self._original
 
@@ -585,9 +605,9 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 class CannotBeStrided(Exception):
     """
     Exception used to stop recursion over
-    :ref:`uproot.model.Model.strided_interpretation` and
-    :ref:`uproot.containers.AsContainer.strided_interpretation` as soon as a
-    non-conforming type is found.
+    : ref: `uproot.model.Model.strided_interpretation` and
+    : ref: `uproot.containers.AsContainer.strided_interpretation` as soon as a
+    non - conforming type is found.
     """
 
     pass
@@ -596,10 +616,10 @@ class CannotBeStrided(Exception):
 class CannotBeAwkward(Exception):
     """
     Exception used to stop recursion over
-    :ref:`uproot.interpretation.Interpretation.awkward_form`,
-    :ref:`uproot.model.Model.awkward_form` and
-    :ref:`uproot.containers.AsContainer.awkward_form` as soon as a
-    non-conforming type is found.
+    : ref: `uproot.interpretation.Interpretation.awkward_form`,
+    : ref: `uproot.model.Model.awkward_form` and
+    : ref: `uproot.containers.AsContainer.awkward_form` as soon as a
+    non - conforming type is found.
     """
 
     def __init__(self, because):
@@ -609,24 +629,24 @@ class CannotBeAwkward(Exception):
 class ObjectArray:
     """
     Args:
-        model (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`): The
-            full Uproot deserialization model for the data.
-        branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch`` from
-            which the data are drawn.
-        context (dict): Auxiliary data used in deserialization.
-        byte_offsets (array of ``numpy.int32``): Index where each entry of the
-            ``byte_content`` starts and stops.
-        byte_content (array of ``numpy.uint8``): Raw but uncompressed data,
-            directly from
-            :ref:`uproot.interpretation.Interpretation.basket_array`.
-        cursor_offset (int): Correction to the integer keys used in
-            :ref:`uproot.source.cursor.Cursor.refs` for objects deserialized
-            by reference (:doc:`uproot.deserialization.read_object_any`).
+        model(: doc: `uproot.model.Model` or : doc: `uproot.containers.AsContainer`): The
+        full Uproot deserialization model for the data.
+        branch(: doc: `uproot.behaviors.TBranch.TBranch`): The ``TBranch`` from
+        which the data are drawn.
+        context(dict): Auxiliary data used in deserialization.
+        byte_offsets(array of ``numpy.int32``): Index where each entry of the
+        ``byte_content`` starts and stops.
+        byte_content(array of ``numpy.uint8``): Raw but uncompressed data,
+        directly from
+        : ref: `uproot.interpretation.Interpretation.basket_array`.
+        cursor_offset(int): Correction to the integer keys used in
+        : ref: `uproot.source.cursor.Cursor.refs` for objects deserialized
+        by reference(: doc: `uproot.deserialization.read_object_any`).
 
     Temporary array filled by
-    :ref:`uproot.interpretation.objects.AsObjects.basket_array`, which will be
+    : ref: `uproot.interpretation.objects.AsObjects.basket_array`, which will be
     turned into a NumPy, Awkward, or other array, depending on the specified
-    :doc:`uproot.interpretation.library.Library`.
+    : doc: `uproot.interpretation.library.Library`.
     """
 
     def __init__(
@@ -655,7 +675,7 @@ class ObjectArray:
     def model(self):
         """
         The full Uproot deserialization model for the data
-        (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`).
+        (: doc: `uproot.model.Model` or : doc: `uproot.containers.AsContainer`).
         """
         return self._model
 
@@ -669,7 +689,7 @@ class ObjectArray:
     @property
     def context(self):
         """
-        Auxiliary data used in deserialization (dict).
+        Auxiliary data used in deserialization(dict).
         """
         return self._context
 
@@ -684,7 +704,7 @@ class ObjectArray:
     def byte_content(self):
         """
         Raw but uncompressed data, directly from
-        :ref:`uproot.interpretation.Interpretation.basket_array`.
+        : ref: `uproot.interpretation.Interpretation.basket_array`.
         """
         return self._byte_content
 
@@ -692,8 +712,8 @@ class ObjectArray:
     def cursor_offset(self):
         """
         Correction to the integer keys used in
-        :ref:`uproot.source.cursor.Cursor.refs` for objects deserialized by
-        reference (:doc:`uproot.deserialization.read_object_any`).
+        : ref: `uproot.source.cursor.Cursor.refs` for objects deserialized by
+        reference(: doc: `uproot.deserialization.read_object_any`).
         """
         return self._cursor_offset
 
