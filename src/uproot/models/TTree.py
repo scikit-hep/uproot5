@@ -923,10 +923,10 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
-        cursor.skip_over(chunk, context)
-        cursor.skip_over(chunk, context)
-        cursor.skip_over(chunk, context)
-        cursor.skip_over(chunk, context)
+        cursor.skip_over(chunk, context)  # TNamed
+        cursor.skip_over(chunk, context)  # TAttLine
+        cursor.skip_over(chunk, context)  # TAttFill
+        cursor.skip_over(chunk, context)  # TAttMarker
         self._members["fEntries"] = cursor.fields(chunk, fEntriesStruct, context)
         cursor.skip_after(self)
 
