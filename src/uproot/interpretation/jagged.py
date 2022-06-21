@@ -14,6 +14,10 @@ import numpy
 
 import uproot
 
+import threading
+
+import time
+
 
 def fast_divide(array, divisor):
     """
@@ -58,6 +62,33 @@ class AsJagged(uproot.interpretation.Interpretation):
         self._header_bytes = header_bytes
         self._typename = typename
         self._original = original
+        self._vm = threading.local()
+        self._forth_code = f'''
+        input stream
+        input byteoffsets
+
+        output out-main uint8
+        output out-number int64
+
+        0 out-number <- stack
+
+        0 do
+            {self._header_bytes} + dup stream seek
+            byteoffsets i-> stack dup rot - dup
+            stream #!B-> out-main
+            {self.insert_forth_code()}
+            out-number +<- stack
+        loop'''
+
+    def insert_forth_code(self):
+        if self._content.to_dtype.itemsize == 1:
+            return ""
+        elif self._content.to_dtype.itemsize == 2:
+            return "1 rshift"
+        elif self._content.to_dtype.itemsize == 4:
+            return "2 rshift"
+        elif self._content.to_dtype.itemsize == 8:
+            return "3 rshift"
 
     @property
     def content(self):
@@ -142,7 +173,6 @@ class AsJagged(uproot.interpretation.Interpretation):
             cursor_offset=cursor_offset,
             library=library,
         )
-
         if byte_offsets is None:
             counts = basket.counts
             if counts is None:
@@ -167,28 +197,64 @@ class AsJagged(uproot.interpretation.Interpretation):
             )
             output = JaggedArray(offsets, content)
 
-        else:
-            byte_starts = byte_offsets[:-1] + self._header_bytes
-            byte_stops = byte_offsets[1:]
+        elif isinstance(library, uproot.interpretation.library.Awkward):
 
-            # mask out the headers
-            header_offsets = numpy.arange(self._header_bytes)
-            header_idxs = (byte_offsets[:-1] + header_offsets[:, numpy.newaxis]).ravel()
-            mask = numpy.full(len(data), True, dtype=numpy.bool_)
-            mask[header_idxs] = False
-            data = data[mask]
+            import awkward.forth
+            original_data = data
+            originalbyte = byte_offsets
+            self._vm.forth_vm = awkward.forth.ForthMachine64(self._forth_code)
+            start_time = time.time()
+            for i in range(100):
+                #byte_offsets = originalbyte.copy()
+                #data = original_data.copy()
+                #self._vm.forth_vm = awkward.forth.ForthMachine64(self._forth_code)
+                self._vm.forth_vm.begin({"stream": data, "byteoffsets": byte_offsets[1:]})
+                self._vm.forth_vm.stack_push(byte_offsets[0]
+                                             )
+                self._vm.forth_vm.stack_push(len(byte_offsets) - 1
+                                             )
+                self._vm.forth_vm.resume()
+                data1 = self._vm.forth_vm.output_NumpyArray("out-main")
+                offsets = self._vm.forth_vm.output_NumpyArray("out-number")
 
-            content = self._content.basket_array(
-                data, None, basket, branch, context, cursor_offset, library
-            )
+                data1 = awkward.to_numpy(data1)
 
-            byte_counts = byte_stops - byte_starts
-            counts = fast_divide(byte_counts, self._content.itemsize)
-
-            offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
-            offsets[0] = 0
-            numpy.cumsum(counts, out=offsets[1:])
+                content = self._content.basket_array(
+                    data1, None, basket, branch, context, cursor_offset, library
+                )
+            print("--- %s seconds ---" % (time.time() - start_time))
             output = JaggedArray(offsets, content)
+
+        else:
+            temp = None
+            originalbyte = byte_offsets
+            original_data = data
+            start_time = time.time()
+            for i in range(100):
+                byte_offsets = originalbyte.copy()
+                data = original_data.copy()
+                byte_starts = byte_offsets[:-1] + self._header_bytes
+                byte_stops = byte_offsets[1:]
+
+                # mask out the headers
+                header_offsets = numpy.arange(self._header_bytes)
+                header_idxs = (byte_offsets[:-1] + header_offsets[:, numpy.newaxis]).ravel()
+                mask = numpy.full(len(data), True, dtype=numpy.bool_)
+                mask[header_idxs] = False
+                data = data[mask]
+                content = self._content.basket_array(
+                    data, None, basket, branch, context, cursor_offset, library
+                )
+                if i == 0:
+                    temp = content
+                byte_counts = byte_stops - byte_starts
+                counts = fast_divide(byte_counts, self._content.itemsize)
+
+                offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
+                offsets[0] = 0
+                numpy.cumsum(counts, out=offsets[1:])
+            print("--- %s seconds ---" % (time.time() - start_time))
+            output = JaggedArray(offsets, temp)
 
         self.hook_after_basket_array(
             data=data,
@@ -343,7 +409,7 @@ class JaggedArray:
     def __repr__(self):
         return f"JaggedArray({self._offsets}, {self._content})"
 
-    @property
+    @ property
     def offsets(self):
         """
         Starting and stopping entries for each variable-length list. The length
@@ -351,7 +417,7 @@ class JaggedArray:
         """
         return self._offsets
 
-    @property
+    @ property
     def content(self):
         """
         Contiguous array for data in all nested lists of the jagged array.
