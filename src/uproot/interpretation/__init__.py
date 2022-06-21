@@ -56,6 +56,17 @@ class Interpretation:
         """
         raise AssertionError
 
+    @classmethod
+    def _make_context(self, context, index_format, header, tobject_header, breadcrumbs):
+        if context is None:
+            context = {}
+        context["index_format"] = "i64"
+        context["header"] = False
+        context["tobject_header"] = True
+        context["breadcrumbs"] = ()
+
+        return context
+
     def awkward_form(self, file, context):
         """
         Args:
