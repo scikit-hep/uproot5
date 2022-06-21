@@ -56,8 +56,8 @@ class Interpretation:
         """
         raise AssertionError
 
-    @classmethod
-    def _make_context(self, context, index_format, header, tobject_header, breadcrumbs):
+    @staticmethod
+    def _make_context(context, index_format, header, tobject_header, breadcrumbs):
         if context is None:
             context = {}
         context["index_format"] = "i64"

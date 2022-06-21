@@ -113,7 +113,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         tobject_header=True,
         breadcrumbs=(),
     ):
-        context = super()._make_context(
+        context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
         if isinstance(self._model, type):
@@ -445,7 +445,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         tobject_header=True,
         breadcrumbs=(),
     ):
-        context = super()._make_context(
+        context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()

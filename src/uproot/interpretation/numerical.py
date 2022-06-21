@@ -258,7 +258,7 @@ class AsDtype(Numerical):
         tobject_header=True,
         breadcrumbs=(),
     ):
-        context = super()._make_context(
+        context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
@@ -644,7 +644,7 @@ class AsDouble32(TruncatedNumerical):
         tobject_header=True,
         breadcrumbs=(),
     ):
-        context = super()._make_context(
+        context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
@@ -714,7 +714,7 @@ class AsFloat16(TruncatedNumerical):
         tobject_header=True,
         breadcrumbs=(),
     ):
-        context = super()._make_context(
+        context = self._make_context(
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
