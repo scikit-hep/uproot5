@@ -13,8 +13,8 @@ an array is being built from ``TBaskets``. Its final form is determined by the
 :doc:`uproot.interpretation.library.Library`.
 """
 
-
 import struct
+import threading
 
 import numpy
 
@@ -56,16 +56,47 @@ class AsStrings(uproot.interpretation.Interpretation):
     :doc:`uproot.interpretation.strings.AsStrings`.)
     """
 
+    _forth_codes = {
+        "1-5": """
+            input stream
+
+            output out-main uint8
+            output out-offsets int64
+
+            0 out-offsets <- stack
+
+            begin
+                stream !B-> stack dup 255 = if drop stream !I-> stack then dup out-offsets +<- stack stream #!B-> out-main
+            again
+        """,
+        "4": """
+            input stream
+
+            output out-main uint8
+            output out-offsets int64
+
+            0 out-offsets <- stack
+
+            begin
+                stream I-> stack dup out-offsets <- stack stream #B-> out-main
+            again
+        """,
+    }
+
     def __init__(
         self, header_bytes=0, length_bytes="1-5", typename=None, original=None
     ):
         self._header_bytes = header_bytes
+
         if length_bytes in ("1-5", "4"):
             self._length_bytes = length_bytes
         else:
             raise ValueError("length_bytes must be '1-5' or '4'")
+
         self._typename = typename
         self._original = original
+        self._forth_code = None
+        self._threadlocal = threading.local()
 
     @property
     def header_bytes(self):
@@ -163,74 +194,118 @@ class AsStrings(uproot.interpretation.Interpretation):
             cursor_offset=cursor_offset,
             library=library,
         )
+        if (
+            isinstance(library, uproot.interpretation.library.Awkward)
+            and byte_offsets is None
+        ):
+            uproot.extras.awkward()
+            import awkward.forth
 
-        if byte_offsets is None:
-            counts = numpy.empty(len(data), dtype=numpy.int32)
-            outdata = numpy.empty(len(data), dtype=data.dtype)
+            if self._length_bytes == "1-5" or self._length_bytes == "4":
+                if not hasattr(self._threadlocal, "forth_vm"):
+                    self._threadlocal.forth_vm = awkward.forth.ForthMachine64(
+                        self._forth_codes[self._length_bytes]
+                    )
 
-            pos = 0
-            entry_num = 0
-            len_outdata = 0
+                self._threadlocal.forth_vm.begin({"stream": numpy.array(data)})
+                self._threadlocal.forth_vm.resume(raise_read_beyond=False)
+                offsets = numpy.asarray(
+                    self._threadlocal.forth_vm.output_Index64("out-offsets")
+                )
+                data = numpy.asarray(
+                    self._threadlocal.forth_vm.output_NumpyArray("out-main")
+                )
+                self._threadlocal.forth_vm.reset()
 
-            if self._length_bytes == "1-5":
-                while True:
-                    if pos >= len(data):
-                        break
-                    size = data[pos]
-                    pos += 1
-                    if size == 255:
-                        (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
-                        pos += 4
-                    counts[entry_num] = size
-                    entry_num += 1
-                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
-                    len_outdata += size
-                    pos += size
-
-            elif self._length_bytes == "4":
-                while True:
-                    if pos >= len(data):
-                        break
-                    (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
-                    pos += 4
-                    counts[entry_num] = size
-                    entry_num += 1
-                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
-                    len_outdata += size
-                    pos += size
+                return awkward.Array(
+                    awkward.layout.ListOffsetArray64(
+                        awkward.layout.Index64(offsets),
+                        awkward.layout.NumpyArray(
+                            data, parameters={"__array__": "char"}
+                        ),
+                        parameters={"__array__": "string"},
+                    )
+                )
 
             else:
                 raise AssertionError(repr(self._length_bytes))
-
-            counts = counts[:entry_num]
-            data = outdata[:len_outdata]
 
         else:
-            byte_starts = byte_offsets[:-1] + self._header_bytes
-            byte_stops = byte_offsets[1:]
+            if byte_offsets is None:
+                counts = numpy.empty(len(data), dtype=numpy.int32)
+                outdata = numpy.empty(len(data), dtype=data.dtype)
 
-            if self._length_bytes == "1-5":
-                length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
-                length_header_size[data[byte_starts] == 255] += 4
-            elif self._length_bytes == "4":
-                length_header_size = numpy.full(len(byte_starts), 4, dtype=numpy.int32)
+                pos = 0
+                entry_num = 0
+                len_outdata = 0
+
+                if self._length_bytes == "1-5":
+                    while True:
+                        if pos >= len(data):
+                            break
+                        size = data[pos]
+                        pos += 1
+                        if size == 255:
+                            (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
+                            pos += 4
+                        counts[entry_num] = size
+                        entry_num += 1
+                        outdata[len_outdata : len_outdata + size] = data[
+                            pos : pos + size
+                        ]
+                        len_outdata += size
+                        pos += size
+
+                elif self._length_bytes == "4":
+                    while True:
+                        if pos >= len(data):
+                            break
+                        (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
+                        pos += 4
+                        counts[entry_num] = size
+                        entry_num += 1
+                        outdata[len_outdata : len_outdata + size] = data[
+                            pos : pos + size
+                        ]
+                        len_outdata += size
+                        pos += size
+
+                else:
+                    raise AssertionError(repr(self._length_bytes))
+
+                counts = counts[:entry_num]
+                data = outdata[:len_outdata]
+
             else:
-                raise AssertionError(repr(self._length_bytes))
-            byte_starts += length_header_size
+                byte_starts = byte_offsets[:-1] + self._header_bytes
+                byte_stops = byte_offsets[1:]
 
-            mask = numpy.zeros(len(data), dtype=numpy.int8)
-            mask[byte_starts[byte_starts < len(data)]] = 1
-            numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
-            numpy.cumsum(mask, out=mask)
-            data = data[mask.view(numpy.bool_)]
+                if self._length_bytes == "1-5":
+                    length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
+                    length_header_size[data[byte_starts] == 255] += 4
+                elif self._length_bytes == "4":
+                    length_header_size = numpy.full(
+                        len(byte_starts), 4, dtype=numpy.int32
+                    )
+                else:
+                    raise AssertionError(repr(self._length_bytes))
 
-            counts = byte_stops - byte_starts
+                byte_starts += length_header_size
 
-        offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
-        offsets[0] = 0
-        numpy.cumsum(counts, out=offsets[1:])
+                mask = numpy.zeros(len(data), dtype=numpy.int8)
+                mask[byte_starts[byte_starts < len(data)]] = 1
+                numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
+                numpy.cumsum(mask, out=mask)
+                data = data[mask.view(numpy.bool_)]
 
-        data = uproot._util.tobytes(data)
+                counts = byte_stops - byte_starts
+
+            offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
+            offsets[0] = 0
+            numpy.cumsum(counts, out=offsets[1:])
+
+            data = uproot._util.tobytes(data)
+
         output = StringArray(offsets, data)
 
         self.hook_after_basket_array(
@@ -258,88 +333,129 @@ class AsStrings(uproot.interpretation.Interpretation):
             branch=branch,
         )
 
-        basket_offsets = {}
-        basket_content = {}
-        for k, v in basket_arrays.items():
-            basket_offsets[k] = v.offsets
-            basket_content[k] = v.content
+        if any(not isinstance(x, StringArray) for x in basket_arrays.values()):
+            trimmed = uproot._util.trim_final(
+                basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+            )
+            if all(
+                uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+            ):
+                assert isinstance(library, uproot.interpretation.library.Awkward)
+                awkward = library.imported
+                output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
 
-        if entry_start >= entry_stop:
-            output = StringArray(library.zeros((1,), numpy.int64), b"")
+            self.hook_before_library_finalize(
+                basket_arrays=basket_arrays,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                entry_offsets=entry_offsets,
+                library=library,
+                branch=branch,
+                output=output,
+            )
+            output = library.finalize(output, branch, self, entry_start, entry_stop)
 
         else:
-            length = 0
-            start = entry_offsets[0]
-            for _, stop in enumerate(entry_offsets[1:]):
-                if start <= entry_start and entry_stop <= stop:
-                    length += entry_stop - entry_start
-                elif start <= entry_start < stop:
-                    length += stop - entry_start
-                elif start <= entry_stop <= stop:
-                    length += entry_stop - start
-                elif entry_start < stop and start <= entry_stop:
-                    length += stop - start
-                start = stop
+            basket_offsets = {}
+            basket_content = {}
+            for k, v in basket_arrays.items():
+                basket_offsets[k] = v.offsets
+                basket_content[k] = v.content
 
-            offsets = numpy.empty((length + 1,), numpy.int64)
+            if entry_start >= entry_stop:
+                output = StringArray(library.zeros((1,), numpy.int64), b"")
 
-            before = 0
-            start = entry_offsets[0]
-            contents = []
-            for basket_num, stop in enumerate(entry_offsets[1:]):
-                if start <= entry_start and entry_stop <= stop:
-                    local_start = entry_start - start
-                    local_stop = entry_stop - start
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[:] = (
-                        before - off[local_start] + off[local_start : local_stop + 1]
-                    )
-                    before += off[local_stop] - off[local_start]
-                    contents.append(cnt[off[local_start] : off[local_stop]])
+            else:
+                length = 0
+                start = entry_offsets[0]
+                for _, stop in enumerate(entry_offsets[1:]):
+                    if start <= entry_start and entry_stop <= stop:
+                        length += entry_stop - entry_start
+                    elif start <= entry_start < stop:
+                        length += stop - entry_start
+                    elif start <= entry_stop <= stop:
+                        length += entry_stop - start
+                    elif entry_start < stop and start <= entry_stop:
+                        length += stop - start
+                    start = stop
 
-                elif start <= entry_start < stop:
-                    local_start = entry_start - start
-                    local_stop = stop - start
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[: stop - entry_start + 1] = (
-                        before - off[local_start] + off[local_start : local_stop + 1]
-                    )
-                    before += off[local_stop] - off[local_start]
-                    contents.append(cnt[off[local_start] : off[local_stop]])
+                offsets = numpy.empty((length + 1,), numpy.int64)
 
-                elif start <= entry_stop <= stop:
-                    local_start = 0
-                    local_stop = entry_stop - start
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[start - entry_start :] = (
-                        before - off[local_start] + off[local_start : local_stop + 1]
-                    )
-                    before += off[local_stop] - off[local_start]
-                    contents.append(cnt[off[local_start] : off[local_stop]])
+                before = 0
+                start = entry_offsets[0]
+                contents = []
+                for basket_num, stop in enumerate(entry_offsets[1:]):
+                    if start <= entry_start and entry_stop <= stop:
+                        local_start = entry_start - start
+                        local_stop = entry_stop - start
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[:] = (
+                            before
+                            - off[local_start]
+                            + off[local_start : local_stop + 1]
+                        )
+                        before += off[local_stop] - off[local_start]
+                        contents.append(cnt[off[local_start] : off[local_stop]])
 
-                elif entry_start < stop and start <= entry_stop:
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[start - entry_start : stop - entry_start + 1] = (
-                        before - off[0] + off
-                    )
-                    before += off[-1] - off[0]
-                    contents.append(cnt[off[0] : off[-1]])
+                    elif start <= entry_start < stop:
+                        local_start = entry_start - start
+                        local_stop = stop - start
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[: stop - entry_start + 1] = (
+                            before
+                            - off[local_start]
+                            + off[local_start : local_stop + 1]
+                        )
+                        before += off[local_stop] - off[local_start]
+                        contents.append(cnt[off[local_start] : off[local_stop]])
 
-                start = stop
+                    elif start <= entry_stop <= stop:
+                        local_start = 0
+                        local_stop = entry_stop - start
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[start - entry_start :] = (
+                            before
+                            - off[local_start]
+                            + off[local_start : local_stop + 1]
+                        )
+                        before += off[local_stop] - off[local_start]
+                        contents.append(cnt[off[local_start] : off[local_stop]])
 
-            output = StringArray(offsets, b"".join(contents))
+                    elif entry_start < stop and start <= entry_stop:
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[start - entry_start : stop - entry_start + 1] = (
+                            before - off[0] + off
+                        )
+                        before += off[-1] - off[0]
+                        contents.append(cnt[off[0] : off[-1]])
 
-        self.hook_before_library_finalize(
-            basket_arrays=basket_arrays,
-            entry_start=entry_start,
-            entry_stop=entry_stop,
-            entry_offsets=entry_offsets,
-            library=library,
-            branch=branch,
-            output=output,
-        )
+                    start = stop
 
-        output = library.finalize(output, branch, self, entry_start, entry_stop)
+                output = StringArray(offsets, b"".join(contents))
+
+            self.hook_before_library_finalize(
+                basket_arrays=basket_arrays,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                entry_offsets=entry_offsets,
+                library=library,
+                branch=branch,
+                output=output,
+            )
+
+            output = library.finalize(output, branch, self, entry_start, entry_stop)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
