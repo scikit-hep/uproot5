@@ -68,9 +68,31 @@ class AsStrings(uproot.interpretation.Interpretation):
         self._original = original
         self._forth_code = None
         self._forth_vm = threading.local()
-        self._code_complete = False
         self._vm_made = False
-        self._special_case = False
+        self._forth_codes = {
+            "1-5": """
+                        input stream
+
+                        output out-main uint8
+                        output out-offsets int64
+
+                        0 out-offsets <- stack
+
+                        begin
+                            stream !B-> stack dup 255 = if drop stream !I-> stack then dup out-offsets +<- stack stream #!B-> out-main
+                        again""",
+            "4": """
+                    input stream
+
+                    output out-main uint8
+                    output out-offsets int64
+
+                    0 out-offsets <- stack
+
+                    begin
+                        stream I-> stack dup out-offsets <- stack stream #B-> out-main
+                    again""",
+        }
 
     @property
     def header_bytes(self):
@@ -161,26 +183,16 @@ class AsStrings(uproot.interpretation.Interpretation):
             isinstance(library, uproot.interpretation.library.Awkward)
             and byte_offsets is None
         ):
+            uproot.extras.awkward()
             import awkward.forth
 
             self._special_case = True
-            if self._length_bytes == "1-5":
-                if not self._code_complete:
-                    self._forth_code = """
-                        input stream
+            if self._length_bytes == "1-5" or self._length_bytes == "4":
 
-                        output out-main uint8
-                        output out-offsets int64
-
-                        0 out-offsets <- stack
-
-                        begin
-                            stream !B-> stack dup 255 = if drop stream !I-> stack then dup out-offsets +<- stack stream #!B-> out-main
-                        again"""
-
-                    self._code_complete = True
-                if not self._vm_made and self._code_complete:
-                    self._forth_vm.vm = awkward.forth.ForthMachine64(self._forth_code)
+                if not self._vm_made:
+                    self._forth_vm.vm = awkward.forth.ForthMachine64(
+                        self._forth_codes[self._length_bytes]
+                    )
                     self._vm_made = True
                 # print(len(data), byte_offsets, self._length_bytes)
                 self._forth_vm.vm.begin({"stream": numpy.array(data)})
@@ -195,33 +207,6 @@ class AsStrings(uproot.interpretation.Interpretation):
                         ),
                         parameters={"__array__": "string"},
                     )
-                )
-
-            elif self._length_bytes == "4":
-                if not self._code_complete:
-                    self._forth_code = """
-                    input stream
-
-                    output out-main uint8
-                    output out-offsets int64
-
-                    0 out-offsets <- stack
-
-                    begin
-                        stream I-> stack dup out-offsets <- stack stream #B-> out-main
-                    again"""
-
-                    self._code_complete = True
-                if not self._vm_made and self._code_complete:
-                    self._forth_vm.vm = awkward.forth.ForthMachine64(
-                        self._forth_code, raise_read_beyond=False
-                    )
-                    self._vm_made = True
-                self._forth_vm.vm.begin({"stream": numpy.array(data)})
-                offsets = self._forth_vm.vm.output_Index64("out-offsets")
-                data = self._forth_vm.vm.output_NumpyArray("out-main")
-                return awkward.layout.ListOffsetArray64(
-                    awkward.layout.Index64(offsets), awkward.layout.NumpyArray(data)
                 )
 
             else:
@@ -327,10 +312,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             library=library,
             branch=branch,
         )
-        if (
-            isinstance(library, uproot.interpretation.library.Awkward)
-            and self._special_case
-        ):
+        if any(not isinstance(x, StringArray) for x in basket_arrays.values()):
             trimmed = uproot._util.trim_final(
                 basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
             )
@@ -352,89 +334,107 @@ class AsStrings(uproot.interpretation.Interpretation):
             )
             output = library.finalize(output, branch, self, entry_start, entry_stop)
 
-            return output
-
-        basket_offsets = {}
-        basket_content = {}
-        for k, v in basket_arrays.items():
-            basket_offsets[k] = v.offsets
-            basket_content[k] = v.content
-
-        if entry_start >= entry_stop:
-            output = StringArray(library.zeros((1,), numpy.int64), b"")
-
         else:
-            length = 0
-            start = entry_offsets[0]
-            for _, stop in enumerate(entry_offsets[1:]):
-                if start <= entry_start and entry_stop <= stop:
-                    length += entry_stop - entry_start
-                elif start <= entry_start < stop:
-                    length += stop - entry_start
-                elif start <= entry_stop <= stop:
-                    length += entry_stop - start
-                elif entry_start < stop and start <= entry_stop:
-                    length += stop - start
-                start = stop
 
-            offsets = numpy.empty((length + 1,), numpy.int64)
+            basket_offsets = {}
+            basket_content = {}
+            for k, v in basket_arrays.items():
+                basket_offsets[k] = v.offsets
+                basket_content[k] = v.content
 
-            before = 0
-            start = entry_offsets[0]
-            contents = []
-            for basket_num, stop in enumerate(entry_offsets[1:]):
-                if start <= entry_start and entry_stop <= stop:
-                    local_start = entry_start - start
-                    local_stop = entry_stop - start
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[:] = (
-                        before - off[local_start] + off[local_start : local_stop + 1]
-                    )
-                    before += off[local_stop] - off[local_start]
-                    contents.append(cnt[off[local_start] : off[local_stop]])
+            if entry_start >= entry_stop:
+                output = StringArray(library.zeros((1,), numpy.int64), b"")
 
-                elif start <= entry_start < stop:
-                    local_start = entry_start - start
-                    local_stop = stop - start
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[: stop - entry_start + 1] = (
-                        before - off[local_start] + off[local_start : local_stop + 1]
-                    )
-                    before += off[local_stop] - off[local_start]
-                    contents.append(cnt[off[local_start] : off[local_stop]])
+            else:
+                length = 0
+                start = entry_offsets[0]
+                for _, stop in enumerate(entry_offsets[1:]):
+                    if start <= entry_start and entry_stop <= stop:
+                        length += entry_stop - entry_start
+                    elif start <= entry_start < stop:
+                        length += stop - entry_start
+                    elif start <= entry_stop <= stop:
+                        length += entry_stop - start
+                    elif entry_start < stop and start <= entry_stop:
+                        length += stop - start
+                    start = stop
 
-                elif start <= entry_stop <= stop:
-                    local_start = 0
-                    local_stop = entry_stop - start
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[start - entry_start :] = (
-                        before - off[local_start] + off[local_start : local_stop + 1]
-                    )
-                    before += off[local_stop] - off[local_start]
-                    contents.append(cnt[off[local_start] : off[local_stop]])
+                offsets = numpy.empty((length + 1,), numpy.int64)
 
-                elif entry_start < stop and start <= entry_stop:
-                    off, cnt = basket_offsets[basket_num], basket_content[basket_num]
-                    offsets[start - entry_start : stop - entry_start + 1] = (
-                        before - off[0] + off
-                    )
-                    before += off[-1] - off[0]
-                    contents.append(cnt[off[0] : off[-1]])
+                before = 0
+                start = entry_offsets[0]
+                contents = []
+                for basket_num, stop in enumerate(entry_offsets[1:]):
+                    if start <= entry_start and entry_stop <= stop:
+                        local_start = entry_start - start
+                        local_stop = entry_stop - start
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[:] = (
+                            before
+                            - off[local_start]
+                            + off[local_start : local_stop + 1]
+                        )
+                        before += off[local_stop] - off[local_start]
+                        contents.append(cnt[off[local_start] : off[local_stop]])
 
-                start = stop
+                    elif start <= entry_start < stop:
+                        local_start = entry_start - start
+                        local_stop = stop - start
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[: stop - entry_start + 1] = (
+                            before
+                            - off[local_start]
+                            + off[local_start : local_stop + 1]
+                        )
+                        before += off[local_stop] - off[local_start]
+                        contents.append(cnt[off[local_start] : off[local_stop]])
 
-            output = StringArray(offsets, b"".join(contents))
-        self.hook_before_library_finalize(
-            basket_arrays=basket_arrays,
-            entry_start=entry_start,
-            entry_stop=entry_stop,
-            entry_offsets=entry_offsets,
-            library=library,
-            branch=branch,
-            output=output,
-        )
+                    elif start <= entry_stop <= stop:
+                        local_start = 0
+                        local_stop = entry_stop - start
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[start - entry_start :] = (
+                            before
+                            - off[local_start]
+                            + off[local_start : local_stop + 1]
+                        )
+                        before += off[local_stop] - off[local_start]
+                        contents.append(cnt[off[local_start] : off[local_stop]])
 
-        output = library.finalize(output, branch, self, entry_start, entry_stop)
+                    elif entry_start < stop and start <= entry_stop:
+                        off, cnt = (
+                            basket_offsets[basket_num],
+                            basket_content[basket_num],
+                        )
+                        offsets[start - entry_start : stop - entry_start + 1] = (
+                            before - off[0] + off
+                        )
+                        before += off[-1] - off[0]
+                        contents.append(cnt[off[0] : off[-1]])
+
+                    start = stop
+
+                output = StringArray(offsets, b"".join(contents))
+            self.hook_before_library_finalize(
+                basket_arrays=basket_arrays,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                entry_offsets=entry_offsets,
+                library=library,
+                branch=branch,
+                output=output,
+            )
+
+            output = library.finalize(output, branch, self, entry_start, entry_stop)
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
