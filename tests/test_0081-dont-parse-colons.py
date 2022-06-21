@@ -25,33 +25,6 @@ def test_open():
         uproot.open([skhep_testdata.data_path("uproot-issue63.root")])
 
 
-def test_lazy():
-    with pytest.raises(ValueError):
-        uproot.lazy(skhep_testdata.data_path("uproot-issue63.root"))
-
-    with pytest.raises(ValueError):
-        uproot.lazy(
-            {skhep_testdata.data_path("uproot-issue63.root"): "blah"},
-            allow_missing=True,
-        )
-
-    uproot.lazy({skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_nominal"})
-    uproot.lazy(
-        {
-            skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_nominal",
-            skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_Fake_nominal",
-        }
-    )
-
-    uproot.lazy([{skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_nominal"}])
-    uproot.lazy(
-        {skhep_testdata.data_path("uproot-issue63.root") + "*": "WtLoop_nominal"}
-    )
-    uproot.lazy(
-        [{skhep_testdata.data_path("uproot-issue63.root") + "*": "WtLoop_nominal"}]
-    )
-
-
 def test_concatenate():
     with pytest.raises(ValueError):
         uproot.concatenate(skhep_testdata.data_path("uproot-issue63.root"))
@@ -129,13 +102,3 @@ def test_open_colon():
         uproot.open(
             {skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal": None}
         )
-
-
-def test_lazy_colon():
-    uproot.lazy(skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal")
-    uproot.lazy(
-        [
-            skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal",
-            skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_Fake_nominal",
-        ]
-    )
