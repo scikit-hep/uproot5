@@ -16,7 +16,6 @@ an array is being built from ``TBaskets``. Its final form is determined by the
 import struct
 import threading
 
-import awkward.forth
 import numpy
 
 import uproot
@@ -162,6 +161,8 @@ class AsStrings(uproot.interpretation.Interpretation):
             isinstance(library, uproot.interpretation.library.Awkward)
             and byte_offsets is None
         ):
+            import awkward.forth
+
             self._special_case = True
             if self._length_bytes == "1-5":
                 if not self._code_complete:
