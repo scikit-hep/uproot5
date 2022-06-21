@@ -396,7 +396,7 @@ def lazy(
 ):
     """
     .. warning::
-        uproot.lazy has been was removed from Uproot5. Users of Uproot4 can continue using it as is until EOL.
+        Deprecated. This function will be removed in Uproot 5 (target date: Dec 2022). Please use :doc:`uproot.behaviors.TBranch.dask` instead.
     Args:
         files: See below.
         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
