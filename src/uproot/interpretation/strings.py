@@ -56,43 +56,47 @@ class AsStrings(uproot.interpretation.Interpretation):
     :doc:`uproot.interpretation.strings.AsStrings`.)
     """
 
+    _forth_codes = {
+        "1-5": """
+            input stream
+
+            output out-main uint8
+            output out-offsets int64
+
+            0 out-offsets <- stack
+
+            begin
+                stream !B-> stack dup 255 = if drop stream !I-> stack then dup out-offsets +<- stack stream #!B-> out-main
+            again
+        """,
+        "4": """
+            input stream
+
+            output out-main uint8
+            output out-offsets int64
+
+            0 out-offsets <- stack
+
+            begin
+                stream I-> stack dup out-offsets <- stack stream #B-> out-main
+            again
+        """,
+    }
+
     def __init__(
         self, header_bytes=0, length_bytes="1-5", typename=None, original=None
     ):
         self._header_bytes = header_bytes
+
         if length_bytes in ("1-5", "4"):
             self._length_bytes = length_bytes
         else:
             raise ValueError("length_bytes must be '1-5' or '4'")
+
         self._typename = typename
         self._original = original
         self._forth_code = None
-        self._forth_vm = threading.local()
-        self._vm_made = False
-        self._forth_codes = {
-            "1-5": """
-                        input stream
-
-                        output out-main uint8
-                        output out-offsets int64
-
-                        0 out-offsets <- stack
-
-                        begin
-                            stream !B-> stack dup 255 = if drop stream !I-> stack then dup out-offsets +<- stack stream #!B-> out-main
-                        again""",
-            "4": """
-                    input stream
-
-                    output out-main uint8
-                    output out-offsets int64
-
-                    0 out-offsets <- stack
-
-                    begin
-                        stream I-> stack dup out-offsets <- stack stream #B-> out-main
-                    again""",
-        }
+        self._threadlocal = threading.local()
 
     @property
     def header_bytes(self):
@@ -186,19 +190,22 @@ class AsStrings(uproot.interpretation.Interpretation):
             uproot.extras.awkward()
             import awkward.forth
 
-            self._special_case = True
             if self._length_bytes == "1-5" or self._length_bytes == "4":
-
-                if not self._vm_made:
-                    self._forth_vm.vm = awkward.forth.ForthMachine64(
+                if not hasattr(self._threadlocal, "forth_vm"):
+                    self._threadlocal.forth_vm = awkward.forth.ForthMachine64(
                         self._forth_codes[self._length_bytes]
                     )
-                    self._vm_made = True
-                # print(len(data), byte_offsets, self._length_bytes)
-                self._forth_vm.vm.begin({"stream": numpy.array(data)})
-                self._forth_vm.vm.resume(raise_read_beyond=False)
-                offsets = self._forth_vm.vm.output_Index64("out-offsets")
-                data = self._forth_vm.vm.output_NumpyArray("out-main")
+
+                self._threadlocal.forth_vm.begin({"stream": numpy.array(data)})
+                self._threadlocal.forth_vm.resume(raise_read_beyond=False)
+                offsets = numpy.asarray(
+                    self._threadlocal.forth_vm.output_Index64("out-offsets")
+                )
+                data = numpy.asarray(
+                    self._threadlocal.forth_vm.output_NumpyArray("out-main")
+                )
+                self._threadlocal.forth_vm.reset()
+
                 return awkward.Array(
                     awkward.layout.ListOffsetArray64(
                         awkward.layout.Index64(offsets),
@@ -211,8 +218,8 @@ class AsStrings(uproot.interpretation.Interpretation):
 
             else:
                 raise AssertionError(repr(self._length_bytes))
-        else:
 
+        else:
             if byte_offsets is None:
                 counts = numpy.empty(len(data), dtype=numpy.int32)
                 outdata = numpy.empty(len(data), dtype=data.dtype)
@@ -271,6 +278,7 @@ class AsStrings(uproot.interpretation.Interpretation):
                     )
                 else:
                     raise AssertionError(repr(self._length_bytes))
+
                 byte_starts += length_header_size
 
                 mask = numpy.zeros(len(data), dtype=numpy.int8)
@@ -286,6 +294,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             numpy.cumsum(counts, out=offsets[1:])
 
             data = uproot._util.tobytes(data)
+
         output = StringArray(offsets, data)
 
         self.hook_after_basket_array(
@@ -312,6 +321,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             library=library,
             branch=branch,
         )
+
         if any(not isinstance(x, StringArray) for x in basket_arrays.values()):
             trimmed = uproot._util.trim_final(
                 basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
@@ -335,7 +345,6 @@ class AsStrings(uproot.interpretation.Interpretation):
             output = library.finalize(output, branch, self, entry_start, entry_stop)
 
         else:
-
             basket_offsets = {}
             basket_content = {}
             for k, v in basket_arrays.items():
@@ -424,6 +433,7 @@ class AsStrings(uproot.interpretation.Interpretation):
                     start = stop
 
                 output = StringArray(offsets, b"".join(contents))
+
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,
                 entry_start=entry_start,
