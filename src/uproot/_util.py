@@ -491,6 +491,36 @@ def memory_size(data, error_message=None):
         raise TypeError(error_message)
 
 
+def trim_final(basket_arrays, entry_start, entry_stop, entry_offsets, library, branch):
+    """
+    Trims the output from a basket_array function and outputs the un-concatenated list of elements.
+    """
+    trimmed = []
+    start = entry_offsets[0]
+    for basket_num, stop in enumerate(entry_offsets[1:]):
+        if start <= entry_start and entry_stop <= stop:
+            local_start = entry_start - start
+            local_stop = entry_stop - start
+            trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+
+        elif start <= entry_start < stop:
+            local_start = entry_start - start
+            local_stop = stop - start
+            trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+
+        elif start <= entry_stop <= stop:
+            local_start = 0
+            local_stop = entry_stop - start
+            trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+
+        elif entry_start < stop and start <= entry_stop:
+            trimmed.append(basket_arrays[basket_num])
+
+        start = stop
+
+    return trimmed
+
+
 def new_class(name, bases, members):
     """
     Create a new class object with ``type(name, bases, members)`` and put it in

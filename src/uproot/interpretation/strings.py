@@ -13,9 +13,10 @@ an array is being built from ``TBaskets``. Its final form is determined by the
 :doc:`uproot.interpretation.library.Library`.
 """
 
-
 import struct
+import threading
 
+import awkward.forth
 import numpy
 
 import uproot
@@ -66,6 +67,11 @@ class AsStrings(uproot.interpretation.Interpretation):
             raise ValueError("length_bytes must be '1-5' or '4'")
         self._typename = typename
         self._original = original
+        self._forth_code = None
+        self._forth_vm = threading.local()
+        self._code_complete = False
+        self._vm_made = False
+        self._special_case = False
 
     @property
     def header_bytes(self):
@@ -152,74 +158,148 @@ class AsStrings(uproot.interpretation.Interpretation):
             cursor_offset=cursor_offset,
             library=library,
         )
-
-        if byte_offsets is None:
-            counts = numpy.empty(len(data), dtype=numpy.int32)
-            outdata = numpy.empty(len(data), dtype=data.dtype)
-
-            pos = 0
-            entry_num = 0
-            len_outdata = 0
-
+        if (
+            isinstance(library, uproot.interpretation.library.Awkward)
+            and byte_offsets is None
+        ):
+            self._special_case = True
             if self._length_bytes == "1-5":
-                while True:
-                    if pos >= len(data):
-                        break
-                    size = data[pos]
-                    pos += 1
-                    if size == 255:
+                if not self._code_complete:
+                    self._forth_code = """
+                        input stream
+
+                        output out-main uint8
+                        output out-offsets int64
+
+                        0 out-offsets <- stack
+
+                        begin
+                            stream !B-> stack dup 255 = if drop stream !I-> stack then dup out-offsets +<- stack stream #!B-> out-main
+                        again"""
+
+                    self._code_complete = True
+                if not self._vm_made and self._code_complete:
+                    self._forth_vm.vm = awkward.forth.ForthMachine64(self._forth_code)
+                    self._vm_made = True
+                # print(len(data), byte_offsets, self._length_bytes)
+                self._forth_vm.vm.begin({"stream": numpy.array(data)})
+                self._forth_vm.vm.resume(raise_read_beyond=False)
+                offsets = self._forth_vm.vm.output_Index64("out-offsets")
+                data = self._forth_vm.vm.output_NumpyArray("out-main")
+                return awkward.Array(
+                    awkward.layout.ListOffsetArray64(
+                        awkward.layout.Index64(offsets),
+                        awkward.layout.NumpyArray(
+                            data, parameters={"__array__": "char"}
+                        ),
+                        parameters={"__array__": "string"},
+                    )
+                )
+
+            elif self._length_bytes == "4":
+                if not self._code_complete:
+                    self._forth_code = """
+                    input stream
+
+                    output out-main uint8
+                    output out-offsets int64
+
+                    0 out-offsets <- stack
+
+                    begin
+                        stream I-> stack dup out-offsets <- stack stream #B-> out-main
+                    again"""
+
+                    self._code_complete = True
+                if not self._vm_made and self._code_complete:
+                    self._forth_vm.vm = awkward.forth.ForthMachine64(
+                        self._forth_code, raise_read_beyond=False
+                    )
+                    self._vm_made = True
+                self._forth_vm.vm.begin({"stream": numpy.array(data)})
+                offsets = self._forth_vm.vm.output_Index64("out-offsets")
+                data = self._forth_vm.vm.output_NumpyArray("out-main")
+                return awkward.layout.ListOffsetArray64(
+                    awkward.layout.Index64(offsets), awkward.layout.NumpyArray(data)
+                )
+
+            else:
+                raise AssertionError(repr(self._length_bytes))
+        else:
+
+            if byte_offsets is None:
+                counts = numpy.empty(len(data), dtype=numpy.int32)
+                outdata = numpy.empty(len(data), dtype=data.dtype)
+
+                pos = 0
+                entry_num = 0
+                len_outdata = 0
+
+                if self._length_bytes == "1-5":
+                    while True:
+                        if pos >= len(data):
+                            break
+                        size = data[pos]
+                        pos += 1
+                        if size == 255:
+                            (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
+                            pos += 4
+                        counts[entry_num] = size
+                        entry_num += 1
+                        outdata[len_outdata : len_outdata + size] = data[
+                            pos : pos + size
+                        ]
+                        len_outdata += size
+                        pos += size
+
+                elif self._length_bytes == "4":
+                    while True:
+                        if pos >= len(data):
+                            break
                         (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
                         pos += 4
-                    counts[entry_num] = size
-                    entry_num += 1
-                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
-                    len_outdata += size
-                    pos += size
+                        counts[entry_num] = size
+                        entry_num += 1
+                        outdata[len_outdata : len_outdata + size] = data[
+                            pos : pos + size
+                        ]
+                        len_outdata += size
+                        pos += size
 
-            elif self._length_bytes == "4":
-                while True:
-                    if pos >= len(data):
-                        break
-                    (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
-                    pos += 4
-                    counts[entry_num] = size
-                    entry_num += 1
-                    outdata[len_outdata : len_outdata + size] = data[pos : pos + size]
-                    len_outdata += size
-                    pos += size
+                else:
+                    raise AssertionError(repr(self._length_bytes))
+
+                counts = counts[:entry_num]
+                data = outdata[:len_outdata]
 
             else:
-                raise AssertionError(repr(self._length_bytes))
+                byte_starts = byte_offsets[:-1] + self._header_bytes
+                byte_stops = byte_offsets[1:]
 
-            counts = counts[:entry_num]
-            data = outdata[:len_outdata]
+                if self._length_bytes == "1-5":
+                    length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
+                    length_header_size[data[byte_starts] == 255] += 4
+                elif self._length_bytes == "4":
+                    length_header_size = numpy.full(
+                        len(byte_starts), 4, dtype=numpy.int32
+                    )
+                else:
+                    raise AssertionError(repr(self._length_bytes))
+                byte_starts += length_header_size
 
-        else:
-            byte_starts = byte_offsets[:-1] + self._header_bytes
-            byte_stops = byte_offsets[1:]
+                mask = numpy.zeros(len(data), dtype=numpy.int8)
+                mask[byte_starts[byte_starts < len(data)]] = 1
+                numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
+                numpy.cumsum(mask, out=mask)
+                data = data[mask.view(numpy.bool_)]
 
-            if self._length_bytes == "1-5":
-                length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
-                length_header_size[data[byte_starts] == 255] += 4
-            elif self._length_bytes == "4":
-                length_header_size = numpy.full(len(byte_starts), 4, dtype=numpy.int32)
-            else:
-                raise AssertionError(repr(self._length_bytes))
-            byte_starts += length_header_size
+                counts = byte_stops - byte_starts
 
-            mask = numpy.zeros(len(data), dtype=numpy.int8)
-            mask[byte_starts[byte_starts < len(data)]] = 1
-            numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
-            numpy.cumsum(mask, out=mask)
-            data = data[mask.view(numpy.bool_)]
+            offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
+            offsets[0] = 0
+            numpy.cumsum(counts, out=offsets[1:])
 
-            counts = byte_stops - byte_starts
-
-        offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
-        offsets[0] = 0
-        numpy.cumsum(counts, out=offsets[1:])
-
-        data = uproot._util.tobytes(data)
+            data = uproot._util.tobytes(data)
         output = StringArray(offsets, data)
 
         self.hook_after_basket_array(
@@ -246,6 +326,32 @@ class AsStrings(uproot.interpretation.Interpretation):
             library=library,
             branch=branch,
         )
+        if (
+            isinstance(library, uproot.interpretation.library.Awkward)
+            and self._special_case
+        ):
+            trimmed = uproot._util.trim_final(
+                basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+            )
+            if all(
+                uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+            ):
+                assert isinstance(library, uproot.interpretation.library.Awkward)
+                awkward = library.imported
+                output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
+
+            self.hook_before_library_finalize(
+                basket_arrays=basket_arrays,
+                entry_start=entry_start,
+                entry_stop=entry_stop,
+                entry_offsets=entry_offsets,
+                library=library,
+                branch=branch,
+                output=output,
+            )
+            output = library.finalize(output, branch, self, entry_start, entry_stop)
+
+            return output
 
         basket_offsets = {}
         basket_content = {}
@@ -317,7 +423,6 @@ class AsStrings(uproot.interpretation.Interpretation):
                 start = stop
 
             output = StringArray(offsets, b"".join(contents))
-
         self.hook_before_library_finalize(
             basket_arrays=basket_arrays,
             entry_start=entry_start,
