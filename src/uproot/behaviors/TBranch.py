@@ -504,7 +504,7 @@ def lazy(
       read array from ``TTrees``.
     """
     raise NotImplementedError(
-        "uproot.lazy was deprecated in Uproot5 in favour of uproot.dask. If you still wish to use uproot.lazy please install Uproot4"
+        "uproot.lazy is removed in Uproot5 (only here for the deprecation message in the online docs)"
     )
 
 
