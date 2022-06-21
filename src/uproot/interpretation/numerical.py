@@ -16,7 +16,6 @@ several numerical types:
   for some ``N``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 
@@ -56,7 +55,7 @@ class Numerical(uproot.interpretation.Interpretation):
         )
 
         if entry_start >= entry_stop:
-            output = library.empty((0,), self.to_dtype)
+            output = self._prepare_output(library, length=0)
 
         else:
             length = 0
@@ -72,7 +71,7 @@ class Numerical(uproot.interpretation.Interpretation):
                     length += stop - start
                 start = stop
 
-            output = library.empty((length,), self.to_dtype)
+            output = self._prepare_output(library, length)
 
             start = entry_offsets[0]
             for basket_num, stop in enumerate(entry_offsets[1:]):
@@ -126,6 +125,15 @@ class Numerical(uproot.interpretation.Interpretation):
 
         return output
 
+    def _prepare_output(self, library, length):
+        """
+        Prepare the output array in which the data is stored.
+
+        In this default implementation, just create an empty array from the library but specializations might re-use an existing array (ex: :doc:`uproot.interpretation.numerical.AsDtypeInPlace`:)
+        """
+        output = library.empty((length,), self.to_dtype)
+        return output
+
 
 _numpy_byteorder_to_cache_key = {
     "!": "B",
@@ -174,9 +182,9 @@ class AsDtype(Numerical):
 
     def __repr__(self):
         if self._to_dtype == self._from_dtype.newbyteorder("="):
-            return "AsDtype({0})".format(repr(str(self._from_dtype)))
+            return f"AsDtype({repr(str(self._from_dtype))})"
         else:
-            return "AsDtype({0}, {1})".format(
+            return "AsDtype({}, {})".format(
                 repr(str(self._from_dtype)), repr(str(self._to_dtype))
             )
 
@@ -241,19 +249,10 @@ class AsDtype(Numerical):
     def numpy_dtype(self):
         return self._to_dtype
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         d, s = _dtype_shape(self._to_dtype)
-        out = uproot._util.awkward_form(
-            d, file, index_format, header, tobject_header, breadcrumbs
-        )
+        out = uproot._util.awkward_form(d, file, context)
         for size in s[::-1]:
             out = awkward.forms.RegularForm(out, size)
         return out
@@ -262,7 +261,7 @@ class AsDtype(Numerical):
     def cache_key(self):
         def form(dtype, name):
             d, s = _dtype_shape(dtype)
-            return "{0}{1}{2}({3}{4})".format(
+            return "{}{}{}({}{})".format(
                 _numpy_byteorder_to_cache_key[d.byteorder],
                 d.kind,
                 d.itemsize,
@@ -293,7 +292,7 @@ class AsDtype(Numerical):
                 + "]"
             )
 
-        return "{0}({1},{2})".format(type(self).__name__, from_dtype, to_dtype)
+        return f"{type(self).__name__}({from_dtype},{to_dtype})"
 
     @property
     def typename(self):
@@ -309,8 +308,7 @@ class AsDtype(Numerical):
             return (
                 "struct {"
                 + " ".join(
-                    "{0} {1};".format(form(self.from_dtype[n]), n)
-                    for n in self.from_dtype.names
+                    f"{form(self.from_dtype[n])} {n};" for n in self.from_dtype.names
                 )
                 + "}"
             )
@@ -333,9 +331,9 @@ class AsDtype(Numerical):
             output = data.view(dtype).reshape((-1,) + shape)
         except ValueError:
             raise ValueError(
-                """basket {0} in tree/branch {1} has the wrong number of bytes ({2}) """
-                """for interpretation {3}
-in file {4}""".format(
+                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
+                """for interpretation {}
+in file {}""".format(
                     basket.basket_num,
                     branch.object_path,
                     len(data),
@@ -363,6 +361,19 @@ in file {4}""".format(
         d, s = _dtype_shape(self._to_dtype)
         self._to_dtype = numpy.dtype((d, shape))
 
+    def inplace(self, array):
+        """
+        Returns a AsDtypeInPlace version of self in order to fill the given array in place.
+
+        Example usage :
+        ```
+        var = np.zeros(N, dtype=np.float32)
+        b = uproot.openn('afile.root')['treename']['varname']
+        b.array(library='np', interpretation=b.interpretation.inplace(var) )
+        ```
+        """
+        return AsDtypeInPlace(array, self._from_dtype)
+
 
 class AsDtypeInPlace(AsDtype):
     """
@@ -370,8 +381,31 @@ class AsDtypeInPlace(AsDtype):
     filled in-place, rather than creating a new output array.
     """
 
-    def __init__(self):
-        raise NotImplementedError
+    def __init__(self, array, from_dtype):
+        self._to_fill = array
+        self._from_dtype = from_dtype
+        self._to_dtype = numpy.dtype(array.dtype)
+
+    def _prepare_output(self, library, length):
+        """
+        Specialized version of _prepare_output : re-use our target array kept in self._to_fill.
+        """
+        if library.name != "np":
+            raise Exception(
+                "AsDtypeInPlace can only be used with library 'np', not '{}'".format(
+                    library.name
+                )
+            )
+
+        output = self._to_fill.view(self.to_dtype)
+
+        if length > len(output):
+            raise Exception(
+                "Requesting to fill an array of size {} (type {}) with input of size {} (type {})".format(
+                    len(output), self._to_dtype, length, self._from_dtype
+                )
+            )
+        return output[:length]
 
 
 class AsSTLBits(Numerical):
@@ -460,8 +494,8 @@ class TruncatedNumerical(Numerical):
     def __repr__(self):
         args = [repr(self._low), repr(self._high), repr(self._num_bits)]
         if self._to_dims != ():
-            args.append("to_dims={0}".format(repr(self._to_dims)))
-        return "{0}({1})".format(type(self).__name__, ", ".join(args))
+            args.append(f"to_dims={self._to_dims!r}")
+        return "{}({})".format(type(self).__name__, ", ".join(args))
 
     def __eq__(self, other):
         return (
@@ -478,7 +512,7 @@ class TruncatedNumerical(Numerical):
 
     @property
     def cache_key(self):
-        return "{0}({1},{2},{3},{4})".format(
+        return "{}({},{},{},{})".format(
             type(self).__name__, self._low, self._high, self._num_bits, self._to_dims
         )
 
@@ -499,9 +533,9 @@ class TruncatedNumerical(Numerical):
             raw = data.view(self.from_dtype)
         except ValueError:
             raise ValueError(
-                """basket {0} in tree/branch {1} has the wrong number of bytes ({2}) """
-                """for interpretation {3} (expecting raw array of {4})
-in file {5}""".format(
+                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
+                """for interpretation {} (expecting raw array of {})
+in file {}""".format(
                     basket.basket_num,
                     branch.object_path,
                     len(data),
@@ -572,9 +606,7 @@ class AsDouble32(TruncatedNumerical):
         if not uproot._util.isint(num_bits) or not 2 <= num_bits <= 32:
             raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
         if high <= low and not self.is_truncated:
-            raise ValueError(
-                "high ({0}) must be strictly greater than low ({1})".format(high, low)
-            )
+            raise ValueError(f"high ({high}) must be strictly greater than low ({low})")
 
     @property
     def to_dtype(self):
@@ -592,14 +624,7 @@ class AsDouble32(TruncatedNumerical):
     def typename(self):
         return "Double32_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         out = awkward.forms.NumpyForm(
             (),
@@ -640,9 +665,7 @@ class AsFloat16(TruncatedNumerical):
         if not uproot._util.isint(num_bits) or not 2 <= num_bits <= 32:
             raise TypeError("num_bits must be an integer between 2 and 32 (inclusive)")
         if high <= low and not self.is_truncated:
-            raise ValueError(
-                "high ({0}) must be strictly greater than low ({1})".format(high, low)
-            )
+            raise ValueError(f"high ({high}) must be strictly greater than low ({low})")
 
     @property
     def to_dtype(self):
@@ -660,14 +683,7 @@ class AsFloat16(TruncatedNumerical):
     def typename(self):
         return "Float16_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         out = awkward.forms.NumpyForm(
             (),

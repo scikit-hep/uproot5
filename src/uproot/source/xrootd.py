@@ -10,7 +10,6 @@ support vector-read requests; if not, it automatically falls back to
 :doc:`uproot.source.xrootd.MultithreadedXRootDSource`.
 """
 
-from __future__ import absolute_import
 
 import sys
 
@@ -53,7 +52,7 @@ def get_server_config(file):
         raise NotImplementedError
 
     data_server = XRootD_client.URL(data_server)
-    data_server = "{0}://{1}/".format(data_server.protocol, data_server.hostid)
+    data_server = f"{data_server.protocol}://{data_server.hostid}/"
 
     # Use a single query call to avoid doubling the latency
     fs = XRootD_client.FileSystem(data_server)
@@ -117,8 +116,8 @@ class XRootDResource(uproot.source.chunk.Resource):
 
         else:
             raise OSError(
-                """XRootD error: {0}
-in file {1}""".format(
+                """XRootD error: {}
+in file {}""".format(
                     status.message, self._file_path
                 )
             )
@@ -302,7 +301,7 @@ class XRootDSource(uproot.source.chunk.Source):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
-        return "<{0} {1} at 0x{2:012x}>".format(type(self).__name__, path, id(self))
+        return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
     def chunk(self, start, stop):
         self._num_requests += 1
@@ -457,7 +456,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
             [
                 XRootDResource(self._file_path, self._timeout)
-                for x in uproot._util.range(self._num_workers)
+                for x in range(self._num_workers)
             ]
         )
 

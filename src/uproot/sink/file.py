@@ -9,13 +9,12 @@ context manager (Python's ``with`` statement) to ensure that files are properly 
 (although files are flushed after every object-write).
 """
 
-from __future__ import absolute_import
 
 import numbers
 import os
 
 
-class FileSink(object):
+class FileSink:
     """
     Args:
         file_path (str): The filesystem path of the file to open.
@@ -58,6 +57,7 @@ class FileSink(object):
     * that has 'read', 'write', 'seek', and 'tell' methods
     * is 'readable() and writable() and seekable()'"""
             )
+        return self
 
     def __init__(self, file_path):
         self._file_path = file_path
@@ -176,7 +176,7 @@ class FileSink(object):
         if insist is True:
             if len(out) != num_bytes:
                 raise OSError(
-                    "could not read {0} bytes from the file at position {1}{2}".format(
+                    "could not read {} bytes from the file at position {}{}".format(
                         num_bytes,
                         location,
                         self.in_path,
@@ -185,7 +185,7 @@ class FileSink(object):
         elif isinstance(insist, numbers.Integral):
             if len(out) < insist:
                 raise OSError(
-                    "could not read {0} bytes from the file at position {1}{2}".format(
+                    "could not read {} bytes from the file at position {}{}".format(
                         insist,
                         location,
                         self.in_path,

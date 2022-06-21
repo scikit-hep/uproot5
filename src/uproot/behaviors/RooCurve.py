@@ -4,7 +4,6 @@
 This module defines the behaviors of ``RooCurve``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 

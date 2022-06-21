@@ -333,6 +333,33 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "duncanmmacleod",
+      "name": "Duncan Macleod",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1618530?v=4",
+      "profile": "https://duncanmmacleod.github.io",
+      "contributions": [
+        "infra"
+      ]
+    },
+    {
+      "login": "mpad",
+      "name": "mpad",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1219868?v=4",
+      "profile": "https://github.com/mpad",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "pfackeldey",
+      "name": "Peter Fackeldey",
+      "avatar_url": "https://avatars.githubusercontent.com/u/18463582?v=4",
+      "profile": "https://github.com/pfackeldey",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

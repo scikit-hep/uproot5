@@ -4,7 +4,6 @@
 This module defines a versionless model for ``TObject``.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -27,8 +26,8 @@ class Model_TObject(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -66,59 +65,29 @@ in file {1}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if tobject_header:
+        if context["tobject_header"]:
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@fUniqueID"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@fBits"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@pidf"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
-        return awkward.forms.RecordForm(
-            contents,
-            parameters={"__record__": "TObject"},
-        )
+        return awkward.forms.RecordForm(contents, parameters={"__record__": "TObject"})
 
     def __repr__(self):
-        return "<TObject {0} {1} at 0x{2:012x}>".format(
+        return "<TObject {} {} at 0x{:012x}>".format(
             self._members.get("fUniqueID"), self._members.get("fBits"), id(self)
         )
 

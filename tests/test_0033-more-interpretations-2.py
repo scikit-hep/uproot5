@@ -1,8 +1,6 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
-import distutils.version
 import json
 import sys
 
@@ -78,9 +76,9 @@ def test_leaflist_pandas():
     with uproot.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
         result = tree["leaflist"].array(library="pd")
 
-        if distutils.version.LooseVersion(
-            pandas.__version__
-        ) < distutils.version.LooseVersion("0.21"):
+        if uproot._util.parse_version(pandas.__version__) < uproot._util.parse_version(
+            "0.21"
+        ):
             assert list(result.columns) == ["x", "y", "z"]
             assert result["x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
             assert result["y"].values.tolist() == [1, 2, 3, 4, 5]
@@ -98,24 +96,15 @@ def test_leaflist_pandas():
 
         else:
             assert list(result.columns) == [("x",), ("y",), ("z",)]
-            assert (
-                result[
-                    "x",
-                ].values.tolist()
-                == [1.1, 2.2, 3.3, 4.0, 5.5]
-            )
-            assert (
-                result[
-                    "y",
-                ].values.tolist()
-                == [1, 2, 3, 4, 5]
-            )
-            assert (
-                result[
-                    "z",
-                ].values.tolist()
-                == [97, 98, 99, 100, 101]
-            )
+            assert result[
+                "x",
+            ].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+            assert result[
+                "y",
+            ].values.tolist() == [1, 2, 3, 4, 5]
+            assert result[
+                "z",
+            ].values.tolist() == [97, 98, 99, 100, 101]
 
             result = tree.arrays("leaflist", library="pd")
             assert list(result.columns) == [

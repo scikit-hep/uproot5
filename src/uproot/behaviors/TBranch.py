@@ -11,27 +11,12 @@ See :doc:`uproot.models.TBranch` for deserialization of the ``TBranch``
 objects themselves.
 """
 
-from __future__ import absolute_import
 
-import glob
-import itertools
-import os
+import queue
 import re
 import sys
 import threading
-
-try:
-    from collections.abc import Iterable, Mapping, MutableMapping
-except ImportError:
-    from collections import Iterable, Mapping, MutableMapping
-try:
-    import queue
-except ImportError:
-    import Queue as queue
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
+from collections.abc import Iterable, Mapping, MutableMapping
 
 import numpy
 
@@ -42,7 +27,7 @@ from uproot._util import no_filter
 np_uint8 = numpy.dtype("u1")
 
 
-class _NoClose(object):
+class _NoClose:
     def __init__(self, hasbranches):
         self.hasbranches = hasbranches
 
@@ -76,9 +61,9 @@ def iterate(
     report=False,
     custom_classes=None,
     allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
+    **options,  # NOTE: a comma after **options breaks Python 2
 ):
-    u"""
+    """
     Args:
         files: See below.
         expressions (None, str, or list of str): Names of ``TBranches`` or
@@ -187,7 +172,7 @@ def iterate(
     * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
-    files = _regularize_files(files)
+    files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -195,7 +180,7 @@ def iterate(
 
     global_offset = 0
     for file_path, object_path in files:
-        hasbranches = _regularize_object_path(
+        hasbranches = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
 
@@ -249,9 +234,9 @@ def concatenate(
     how=None,
     custom_classes=None,
     allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
+    **options,  # NOTE: a comma after **options breaks Python 2
 ):
-    u"""
+    """
     Args:
         files: See below.
         expressions (None, str, or list of str): Names of ``TBranches`` or
@@ -351,7 +336,7 @@ def concatenate(
     * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
-    files = _regularize_files(files)
+    files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -360,7 +345,7 @@ def concatenate(
     all_arrays = []
     global_start = 0
     for file_path, object_path in files:
-        hasbranches = _regularize_object_path(
+        hasbranches = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
         if hasbranches is not None:
@@ -407,9 +392,9 @@ def lazy(
     library="ak",
     custom_classes=None,
     allow_missing=False,
-    **options  # NOTE: a comma after **options breaks Python 2
+    **options,  # NOTE: a comma after **options breaks Python 2
 ):
-    u"""
+    """
     Args:
         files: See below.
         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
@@ -517,7 +502,7 @@ def lazy(
       read array from ``TTrees``.
     """
     awkward = uproot.extras.awkward()
-    files = _regularize_files(files)
+    files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -548,7 +533,7 @@ def lazy(
 
     count = 0
     for file_path, object_path in files:
-        obj = _regularize_object_path(
+        obj = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, real_options
         )
 
@@ -585,10 +570,10 @@ def lazy(
 
     if count == 0:
         raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {0}".format(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
                 "\n    ".join(
                     "{"
-                    + "{0}: {1}".format(
+                    + "{}: {}".format(
                         repr(f.file_path if isinstance(f, HasBranches) else f),
                         repr(f.object_path if isinstance(f, HasBranches) else o),
                     )
@@ -600,10 +585,10 @@ def lazy(
 
     if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
         raise ValueError(
-            "TTrees in\n\n    {0}\n\nhave no TBranches in common".format(
+            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
                 "\n    ".join(
                     "{"
-                    + "{0}: {1}".format(
+                    + "{}: {}".format(
                         repr(f.file_path if isinstance(f, HasBranches) else f),
                         repr(f.object_path if isinstance(f, HasBranches) else o),
                     )
@@ -638,7 +623,15 @@ def lazy(
                 branch = obj[key]
 
                 interpretation = branchid_interpretation[branch.cache_key]
-                form = interpretation.awkward_form(obj.file, index_format="i64")
+                form = interpretation.awkward_form(
+                    obj.file,
+                    {
+                        "index_format": "i64",
+                        "header": False,
+                        "tobject_header": True,
+                        "breadcrumbs": (),
+                    },
+                )
                 form = uproot._util.recursively_fix_awkward_form_of_iter(
                     awkward, interpretation, form
                 )
@@ -660,7 +653,7 @@ def lazy(
                     ),  # , interpretation
                     length,
                 )
-                cache_key = "{0}:{1}:{2}-{3}:{4}".format(
+                cache_key = "{}:{}:{}-{}:{}".format(
                     branch.cache_key,
                     interpretation.cache_key,
                     start,
@@ -678,7 +671,7 @@ def lazy(
             partitions.append(recordarray)
             global_offsets.append(global_offsets[-1] + length)
 
-        for start in uproot._util.range(entry_start, entry_stop, entry_step):
+        for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
     if len(partitions) == 0:
@@ -700,7 +693,135 @@ def lazy(
     return awkward.Array(out)
 
 
-class Report(object):
+def dask(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    step_size="100 MB",
+    library="np",
+    custom_classes=None,
+    allow_missing=False,
+    open_files=True,
+    **options,  # NOTE: a comma after **options breaks Python 2
+):
+    """
+    Args:
+        files: See below.
+        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by name.
+        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
+            filter to select ``TBranches`` by type.
+        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
+            filter to select ``TBranches`` using the full
+            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
+            returns False or None, the ``TBranch`` is excluded; if the function
+            returns True, it is included with its standard
+            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
+            :doc:`uproot.interpretation.Interpretation`, this interpretation
+            overrules the standard one.
+        recursive (bool): If True, include all subbranches of branches as
+            separate fields; otherwise, only search one level deep.
+        full_paths (bool): If True, include the full path to each subbranch
+            with slashes (``/``); otherwise, use the descendant's name as
+            the field name.
+        step_size (int or str): If an integer, the maximum number of entries to
+            include in each chunk; if a string, the maximum memory_size to include
+            in each chunk. The string must be a number followed by a memory unit,
+            such as "100 MB".
+        library (str or :doc:`uproot.interpretation.library.Library`): The library
+            that is used to represent arrays.
+        custom_classes (None or dict): If a dict, override the classes from
+            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
+        allow_missing (bool): If True, skip over any files that do not contain
+            the specified ``TTree``.
+        options: See below.
+
+    Returns dask equivalents of the backends supported by uproot.
+
+    Allowed types for the ``files`` parameter:
+
+    * str/bytes: relative or absolute filesystem path or URL, without any colons
+      other than Windows drive letter or URL schema.
+      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
+    * str/bytes: same with an object-within-ROOT path, separated by a colon.
+      Example: ``"rel/file.root:tdirectory/ttree"``
+    * pathlib.Path: always interpreted as a filesystem path or URL only (no
+      object-within-ROOT path), regardless of whether there are any colons.
+      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
+    * glob syntax in str/bytes and pathlib.Path.
+      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
+    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
+      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
+    * already-open TTree objects.
+    * iterables of the above.
+
+    Options (type; default):
+
+    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
+    * timeout (float for HTTP, int for XRootD; 30)
+    * max_num_elements (None or int; None)
+    * num_workers (int; 1)
+    * num_fallback_workers (int; 10)
+    * begin_chunk_size (memory_size; 512)
+    * minimal_ttree_metadata (bool; True)
+
+    Other file entry points:
+
+    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
+    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
+      contiguous entries in ``TTrees``.
+    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
+      concatenated array from ``TTrees``.
+    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
+      read array from ``TTrees``.
+    """
+    files = uproot._util.regularize_files(files)
+    library = uproot.interpretation.library._regularize_library(library)
+    if library.name != "np":
+        raise NotImplementedError()
+
+    real_options = dict(options)
+    if "num_workers" not in real_options:
+        real_options["num_workers"] = 1
+    if "num_fallback_workers" not in real_options:
+        real_options["num_fallback_workers"] = 1
+
+    filter_branch = uproot._util.regularize_filter(filter_branch)
+
+    if open_files:
+        return _get_dask_array(
+            files,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            recursive,
+            full_paths,
+            step_size,
+            custom_classes,
+            allow_missing,
+            real_options,
+        )
+    else:
+        return _get_dask_array_delay_open(
+            files,
+            filter_name,
+            filter_typename,
+            filter_branch,
+            recursive,
+            full_paths,
+            custom_classes,
+            allow_missing,
+            real_options,
+        )
+
+
+class Report:
     """
     Args:
         source (:doc:`uproot.behaviors.TBranch.HasBranches`): The
@@ -739,7 +860,7 @@ class Report(object):
         self._global_offset = global_offset
 
     def __repr__(self):
-        return "<Report start={0} stop={1} source={2}>".format(
+        return "<Report start={} stop={} source={}>".format(
             self.global_entry_start,
             self.global_entry_stop,
             repr(self._source.file.file_path + ":" + self._source.object_path),
@@ -995,7 +1116,7 @@ class HasBranches(Mapping):
         library="ak",
         how=None,
     ):
-        u"""
+        """
         Args:
             expressions (None, str, or list of str): Names of ``TBranches`` or
                 aliases to convert to arrays or mathematical expressions of them.
@@ -1095,7 +1216,7 @@ class HasBranches(Mapping):
 
         def get_from_cache(branchname, interpretation):
             if array_cache is not None:
-                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                cache_key = "{}:{}:{}:{}-{}:{}".format(
                     self.cache_key,
                     branchname,
                     interpretation.cache_key,
@@ -1161,7 +1282,7 @@ class HasBranches(Mapping):
                         checked.add(branch.cache_key)
                         interpretation = branchid_interpretation[branch.cache_key]
                         if branch is not None:
-                            cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                            cache_key = "{}:{}:{}:{}-{}:{}".format(
                                 self.cache_key,
                                 expression,
                                 interpretation.cache_key,
@@ -1208,7 +1329,7 @@ class HasBranches(Mapping):
         how=None,
         report=False,
     ):
-        u"""
+        """
         Args:
             expressions (None, str, or list of str): Names of ``TBranches`` or
                 aliases to convert to arrays or mathematical expressions of them.
@@ -1284,7 +1405,7 @@ class HasBranches(Mapping):
         keys = _keys_deep(self)
         if isinstance(self, TBranch) and expressions is None and len(keys) == 0:
             filter_branch = uproot._util.regularize_filter(filter_branch)
-            for x in self.parent.iterate(
+            yield from self.parent.iterate(
                 expressions=expressions,
                 cut=cut,
                 filter_name=filter_name,
@@ -1300,8 +1421,7 @@ class HasBranches(Mapping):
                 library=library,
                 how=how,
                 report=report,
-            ):
-                yield x
+            )
 
         else:
             entry_start, entry_stop = _regularize_entries_start_stop(
@@ -1335,9 +1455,7 @@ class HasBranches(Mapping):
             )
 
             previous_baskets = {}
-            for sub_entry_start in uproot._util.range(
-                entry_start, entry_stop, entry_step
-            ):
+            for sub_entry_start in range(entry_start, entry_stop, entry_step):
                 sub_entry_stop = min(sub_entry_start + entry_step, entry_stop)
                 if sub_entry_stop - sub_entry_start == 0:
                     continue
@@ -1426,7 +1544,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1462,7 +1580,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1499,7 +1617,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1537,7 +1655,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1575,7 +1693,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1610,7 +1728,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1647,7 +1765,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1675,7 +1793,7 @@ class HasBranches(Mapping):
             pass
         else:
             raise TypeError(
-                "filter_branch must be None or a function: TBranch -> bool, not {0}".format(
+                "filter_branch must be None or a function: TBranch -> bool, not {}".format(
                     repr(filter_branch)
                 )
             )
@@ -1700,7 +1818,7 @@ class HasBranches(Mapping):
                     full_paths=full_paths,
                 ):
                     if full_paths:
-                        k2 = "{0}/{1}".format(branch.name, k1)
+                        k2 = f"{branch.name}/{k1}"
                     else:
                         k2 = k1
                     if filter_name is no_filter or _filter_name_deep(
@@ -1716,7 +1834,7 @@ class HasBranches(Mapping):
         recursive=True,
         full_paths=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1845,7 +1963,7 @@ class HasBranches(Mapping):
         filter_branch=no_filter,
         recursive=True,
     ):
-        u"""
+        """
         Args:
             filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
                 filter to select ``TBranches`` by name.
@@ -1891,9 +2009,7 @@ class HasBranches(Mapping):
         elif uproot._util.isstr(where):
             where = uproot._util.ensure_str(where)
         else:
-            raise TypeError(
-                "where must be an integer or a string, not {0}".format(repr(where))
-            )
+            raise TypeError(f"where must be an integer or a string, not {where!r}")
 
         if where.startswith("/"):
             recursive = False
@@ -1944,8 +2060,7 @@ class HasBranches(Mapping):
                 )
 
     def __iter__(self):
-        for x in self.branches:
-            yield x
+        yield from self.branches
 
     def __len__(self):
         return len(self.branches)
@@ -1972,11 +2087,11 @@ class TBranch(HasBranches):
 
     def __repr__(self):
         if len(self) == 0:
-            return "<{0} {1} at 0x{2:012x}>".format(
+            return "<{} {} at 0x{:012x}>".format(
                 self.classname, repr(self.name), id(self)
             )
         else:
-            return "<{0} {1} ({2} subbranches) at 0x{3:012x}>".format(
+            return "<{} {} ({} subbranches) at 0x{:012x}>".format(
                 self.classname, repr(self.name), len(self), id(self)
             )
 
@@ -1990,7 +2105,7 @@ class TBranch(HasBranches):
         array_cache="inherit",
         library="ak",
     ):
-        u"""
+        """
         Args:
             interpretation (None or :doc:`uproot.interpretation.Interpretation`): An
                 interpretation of the ``TBranch`` data as an array. If None, the
@@ -2052,7 +2167,7 @@ class TBranch(HasBranches):
 
         def get_from_cache(branchname, interpretation):
             if array_cache is not None:
-                cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+                cache_key = "{}:{}:{}:{}-{}:{}".format(
                     self.cache_key,
                     branchname,
                     interpretation.cache_key,
@@ -2110,7 +2225,7 @@ class TBranch(HasBranches):
         )
 
         if array_cache is not None:
-            cache_key = "{0}:{1}:{2}:{3}-{4}:{5}".format(
+            cache_key = "{}:{}:{}:{}-{}:{}".format(
                 self.cache_key,
                 self.name,
                 interpretation.cache_key,
@@ -2156,7 +2271,7 @@ class TBranch(HasBranches):
             sep = ":"
         else:
             sep = "/"
-        return "{0}{1}{2}".format(self.parent.object_path, sep, self.name)
+        return f"{self.parent.object_path}{sep}{self.name}"
 
     @property
     def cache_key(self):
@@ -2169,7 +2284,7 @@ class TBranch(HasBranches):
                 sep = ":"
             else:
                 sep = "/"
-            self._cache_key = "{0}{1}{2}({3})".format(
+            self._cache_key = "{}{}{}({})".format(
                 self.parent.cache_key, sep, self.name, self.index
             )
         return self._cache_key
@@ -2273,9 +2388,9 @@ class TBranch(HasBranches):
             )
         ):
             raise ValueError(
-                """entries in normal baskets ({0}) plus embedded baskets ({1}) """
-                """don't add up to expected number of entries ({2})
-in file {3}""".format(
+                """entries in normal baskets ({}) plus embedded baskets ({}) """
+                """don't add up to expected number of entries ({})
+in file {}""".format(
                     num_entries_normal,
                     sum(basket.num_entries for basket in self.embedded_baskets),
                     self.num_entries,
@@ -2310,9 +2425,9 @@ in file {3}""".format(
 
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get starting entry """
-                """for basket {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get starting entry """
+                """for basket {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2529,8 +2644,8 @@ in file {3}""".format(
             return self.embedded_baskets[basket_num - self._num_normal_baskets]
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get basket {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2540,6 +2655,12 @@ in file {3}""".format(
         Returns a :doc:`uproot.source.chunk.Chunk` and
         :doc:`uproot.source.cursor.Cursor` as a 2-tuple for a given
         ``basket_num``.
+
+        If the file source is :doc:`uproot.source.file.MemmapSource`
+        and the file gets closed, accessing the Chunk would cause
+        a segfault. If that's a possibility, be sure to call
+        :doc:`uproot.source.chunk.Chunk.detach_memmap` to ensure
+        that any memmap-derived data gets copied for safety.
         """
         if 0 <= basket_num < self._num_normal_baskets:
             start = self.member("fBasketSeek")[basket_num]
@@ -2549,9 +2670,9 @@ in file {3}""".format(
             return chunk, cursor
         elif 0 <= basket_num < self.num_baskets:
             raise IndexError(
-                """branch {0} has {1} normal baskets; cannot get chunk and """
-                """cursor for basket {2} because only normal baskets have cursors
-in file {3}""".format(
+                """branch {} has {} normal baskets; cannot get chunk and """
+                """cursor for basket {} because only normal baskets have cursors
+in file {}""".format(
                     repr(self.name),
                     self._num_normal_baskets,
                     basket_num,
@@ -2560,9 +2681,9 @@ in file {3}""".format(
             )
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get cursor and chunk """
-                """for basket {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get cursor and chunk """
+                """for basket {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2584,8 +2705,8 @@ in file {3}""".format(
             ].compressed_bytes
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket chunk {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get basket chunk {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2616,20 +2737,25 @@ in file {3}""".format(
             start = self.member("fBasketSeek")[basket_num]
             stop = start + uproot.reading._key_format_big.size
             cursor = uproot.source.cursor.Cursor(start)
+
+            # Chunk will not be retained; we don't have to detach_memmap()
             chunk = self._file.source.chunk(start, stop)
+
             return uproot.reading.ReadOnlyKey(
                 chunk, cursor, {}, self._file, self, read_strings=False
             )
+
         elif 0 <= basket_num < self.num_baskets:
             raise ValueError(
-                "branch {0} basket {1} is an embedded basket, which has no TKey".format(
+                "branch {} basket {} is an embedded basket, which has no TKey".format(
                     repr(self.name), basket_num
                 )
             )
+
         else:
             raise IndexError(
-                """branch {0} has {1} baskets; cannot get basket chunk {2}
-in file {3}""".format(
+                """branch {} has {} baskets; cannot get basket chunk {}
+in file {}""".format(
                     repr(self.name), self.num_baskets, basket_num, self._file.file_path
                 )
             )
@@ -2858,145 +2984,6 @@ def _keys_deep(hasbranches):
     return out
 
 
-_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
-_regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
-
-
-def _regularize_files_inner(files, parse_colon, counter):
-    files2 = uproot._util.regularize_path(files)
-
-    if uproot._util.isstr(files2) and not uproot._util.isstr(files):
-        parse_colon = False
-        files = files2
-
-    if uproot._util.isstr(files):
-        if parse_colon:
-            file_path, object_path = uproot._util.file_object_path_split(files)
-        else:
-            file_path, object_path = files, None
-
-        parsed_url = urlparse(file_path)
-
-        if parsed_url.scheme.upper() in uproot._util._remote_schemes:
-            yield file_path, object_path
-
-        else:
-            expanded = os.path.expanduser(file_path)
-            if _regularize_files_isglob.search(expanded) is None:
-                yield file_path, object_path
-
-            else:
-                matches = list(_regularize_files_braces.finditer(expanded))
-                if len(matches) == 0:
-                    results = [expanded]
-                else:
-                    results = []
-                    for combination in itertools.product(
-                        *[match.group(0)[1:-1].split(",") for match in matches]
-                    ):
-                        tmp = expanded
-                        for c, m in list(zip(combination, matches))[::-1]:
-                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
-                        results.append(tmp)
-
-                seen = set()
-                for result in results:
-                    for match in glob.glob(result):
-                        if match not in seen:
-                            yield match, object_path
-                            seen.add(match)
-
-    elif isinstance(files, HasBranches):
-        yield files, None
-
-    elif isinstance(files, dict):
-        for key, object_path in files.items():
-            for file_path, _ in _regularize_files_inner(key, False, counter):
-                yield file_path, object_path
-
-    elif isinstance(files, Iterable):
-        for file in files:
-            counter[0] += 1
-            for file_path, object_path in _regularize_files_inner(
-                file, parse_colon, counter
-            ):
-                yield file_path, object_path
-
-    else:
-        raise TypeError(
-            "'files' must be a file path/URL (string or Path), possibly with "
-            "a glob pattern (for local files), a dict of "
-            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
-            "an iterable of such things, not {0}".format(repr(files))
-        )
-
-
-def _regularize_files(files):
-    out = []
-    seen = set()
-    counter = [0]
-    for file_path, object_path in _regularize_files_inner(files, True, counter):
-        if uproot._util.isstr(file_path):
-            key = (counter[0], file_path, object_path)
-            if key not in seen:
-                out.append((file_path, object_path))
-                seen.add(key)
-        else:
-            out.append((file_path, object_path))
-
-    if len(out) == 0:
-        raise uproot._util._file_not_found(files)
-
-    return out
-
-
-def _regularize_object_path(
-    file_path, object_path, custom_classes, allow_missing, options
-):
-    if isinstance(file_path, HasBranches):
-        return _NoClose(file_path)
-
-    else:
-        file = uproot.reading.ReadOnlyFile(
-            file_path,
-            object_cache=None,
-            array_cache=None,
-            custom_classes=custom_classes,
-            **options  # NOTE: a comma after **options breaks Python 2
-        ).root_directory
-        if object_path is None:
-            trees = [k for k, v in file.classnames().items() if v == "TTree"]
-            if len(trees) == 0:
-                if allow_missing:
-                    return None
-                else:
-                    raise ValueError(
-                        """no TTrees found
-in file {0}""".format(
-                            file_path
-                        )
-                    )
-            elif len(trees) == 1:
-                return file[trees[0]]
-            else:
-                raise ValueError(
-                    """TTree object paths must be specified in the 'files' """
-                    """as {{\"filenames*.root\": \"path\"}} if any files have """
-                    """more than one TTree
-
-    TTrees: {0}
-
-in file {1}""".format(
-                        ", ".join(repr(x) for x in trees), file_path
-                    )
-                )
-
-        else:
-            if allow_missing and object_path not in file:
-                return None
-            return file[object_path]
-
-
 def _get_recursive(hasbranches, where):
     for branch in hasbranches.branches:
         if branch.name == where:
@@ -3122,7 +3109,7 @@ def _regularize_branchname(
         ):
             raise ValueError(
                 "a branch cannot be loaded with multiple interpretations: "
-                "{0} and {1}".format(
+                "{} and {}".format(
                     repr(branchid_interpretation[branch.cache_key]),
                     repr(interpretation),
                 )
@@ -3188,15 +3175,13 @@ def _regularize_expression(
         ):
             if symbol in symbol_path:
                 raise ValueError(
-                    """symbol {0} is recursively defined with aliases:
+                    """symbol {} is recursively defined with aliases:
 
-    {1}
+    {}
 
-in file {2} at {3}""".format(
+in file {} at {}""".format(
                         repr(symbol),
-                        "\n    ".join(
-                            "{0}: {1}".format(k, v) for k, v in aliases.items()
-                        ),
+                        "\n    ".join(f"{k}: {v}" for k, v in aliases.items()),
                         hasbranches.file.file_path,
                         hasbranches.object_path,
                     )
@@ -3348,7 +3333,7 @@ def _regularize_expressions(
             "expressions must be None (for all branches), a string (single "
             "branch or expression), a list of strings (multiple), or a dict "
             "or list of name, Interpretation pairs (branch names and their "
-            "new Interpretation), not {0}".format(repr(expressions))
+            "new Interpretation), not {}".format(repr(expressions))
         )
 
     if cut is None:
@@ -3462,9 +3447,9 @@ def _ranges_or_baskets_to_arrays(
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(
-                    """basket {0} in tree/branch {1} has the wrong number of entries """
-                    """(expected {2}, obtained {3}) when interpreted as {4}
-    in file {5}""".format(
+                    """basket {} in tree/branch {} has the wrong number of entries """
+                    """(expected {}, obtained {}) when interpreted as {}
+    in file {}""".format(
                         basket.basket_num,
                         branch.object_path,
                         basket.num_entries,
@@ -3570,11 +3555,185 @@ def _regularize_step_size(
     target_num_bytes = uproot._util.memory_size(
         step_size,
         "number of entries or memory size string with units "
-        "(such as '100 MB') required, not {0}".format(repr(step_size)),
+        "(such as '100 MB') required, not {}".format(repr(step_size)),
     )
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
     )
+
+
+def _get_dask_array(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    step_size="100 MB",
+    custom_classes=None,
+    allow_missing=False,
+    real_options=None,  # NOTE: a comma after **options breaks Python 2
+):
+    dask, da = uproot.extras.dask()
+    hasbranches = []
+    common_keys = None
+    is_self = []
+
+    count = 0
+    for file_path, object_path in files:
+        obj = uproot._util.regularize_object_path(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+
+        if obj is not None:
+            count += 1
+
+            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
+                original = obj
+                obj = obj.parent
+                is_self.append(True)
+
+                def real_filter_branch(branch):
+                    return branch is original and filter_branch(branch)
+
+            else:
+                is_self.append(False)
+                real_filter_branch = filter_branch
+
+            hasbranches.append(obj)
+
+            new_keys = obj.keys(
+                recursive=recursive,
+                filter_name=filter_name,
+                filter_typename=filter_typename,
+                filter_branch=real_filter_branch,
+                full_paths=full_paths,
+            )
+
+            if common_keys is None:
+                common_keys = new_keys
+            else:
+                new_keys = set(new_keys)
+                common_keys = [key for key in common_keys if key in new_keys]
+
+    if count == 0:
+        raise ValueError(
+            "allow_missing=True and no TTrees found in\n\n    {}".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
+        raise ValueError(
+            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
+                "\n    ".join(
+                    "{"
+                    + "{}: {}".format(
+                        repr(f.file_path if isinstance(f, HasBranches) else f),
+                        repr(f.object_path if isinstance(f, HasBranches) else o),
+                    )
+                    + "}"
+                    for f, o in files
+                )
+            )
+        )
+
+    dask_dict = {}
+
+    @dask.delayed
+    def delayed_get_array(ttree, key, start, stop):
+        return ttree[key].array(library="np", entry_start=start, entry_stop=stop)
+
+    for key in common_keys:
+        dask_arrays = []
+        for ttree in hasbranches:
+            entry_start, entry_stop = _regularize_entries_start_stop(
+                ttree.tree.num_entries, None, None
+            )
+            entry_step = 0
+            if uproot._util.isint(step_size):
+                entry_step = step_size
+            else:
+                entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
+
+            dt = ttree[key].interpretation.numpy_dtype
+            if dt.subdtype is None:
+                inner_shape = ()
+            else:
+                dt, inner_shape = dt.subdtype
+
+            def foreach(start):
+                stop = min(start + entry_step, entry_stop)
+                length = stop - start
+
+                delayed_array = delayed_get_array(ttree, key, start, stop)
+                shape = (length,) + inner_shape
+                dask_arrays.append(
+                    da.from_delayed(delayed_array, shape=shape, dtype=dt)
+                )
+
+            for start in range(entry_start, entry_stop, entry_step):
+                foreach(start)
+
+        dask_dict[key] = da.concatenate(dask_arrays)
+    return dask_dict
+
+
+def _get_dask_array_delay_open(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    custom_classes=None,
+    allow_missing=False,
+    real_options=None,  # NOTE: a comma after **options breaks Python 2
+):
+    dask, da = uproot.extras.dask()
+    ffile_path, fobject_path = files[0]
+    obj = uproot._util.regularize_object_path(
+        ffile_path, fobject_path, custom_classes, allow_missing, real_options
+    )
+    common_keys = obj.keys(
+        recursive=recursive,
+        filter_name=filter_name,
+        filter_typename=filter_typename,
+        filter_branch=filter_branch,
+        full_paths=full_paths,
+    )
+
+    dask_dict = {}
+    delayed_open_fn = dask.delayed(uproot._util.regularize_object_path)
+
+    @dask.delayed
+    def delayed_get_array(ttree, key):
+        return ttree[key].array(library="np")
+
+    for key in common_keys:
+        dask_arrays = []
+        for file_path, object_path in files:
+            delayed_tree = delayed_open_fn(
+                file_path, object_path, custom_classes, allow_missing, real_options
+            )
+            delayed_array = delayed_get_array(delayed_tree, key)
+            dt = obj[key].interpretation.numpy_dtype
+            if dt.subdtype is not None:
+                dt, inner_shape = dt.subdtype
+
+            dask_arrays.append(
+                da.from_delayed(delayed_array, shape=(numpy.nan,), dtype=dt)
+            )
+        dask_dict[key] = da.concatenate(dask_arrays, allow_unknown_chunksizes=True)
+    return dask_dict
 
 
 class _WrapDict(MutableMapping):
@@ -3597,8 +3756,7 @@ class _WrapDict(MutableMapping):
         del self.dict[where]
 
     def __iter__(self, where):
-        for x in self.dict:
-            yield x
+        yield from self.dict
 
     def __len__(self):
         return len(self.dict)

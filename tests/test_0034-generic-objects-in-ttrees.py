@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import json
 import sys
@@ -238,11 +237,10 @@ def test_strided_awkward():
     ] as tree:
         result = tree["MET"].array(library="ak")
 
-        if not uproot._util.py35 and not uproot._util.py2:
-            assert (
-                repr(awkward.type(result))
-                == '2421 * TVector2["fX": float64, "fY": float64]'
-            )
+        assert (
+            repr(awkward.type(result))
+            == '2421 * TVector2["fX": float64, "fY": float64]'
+        )
 
         assert awkward.to_list(result["fX"][:10]) == [
             5.912771224975586,
@@ -277,12 +275,11 @@ def test_jagged_strided_awkward():
     ] as tree:
         result = tree["muonp4"].array(library="ak")
 
-        if not uproot._util.py35 and not uproot._util.py2:
-            assert (
-                repr(awkward.type(result))
-                == '2421 * var * TLorentzVector["fP": TVector3["fX": float64, '
-                '"fY": float64, "fZ": float64], "fE": float64]'
-            )
+        assert (
+            repr(awkward.type(result))
+            == '2421 * var * TLorentzVector["fP": TVector3["fX": float64, '
+            '"fY": float64, "fZ": float64], "fE": float64]'
+        )
 
         assert result[0, 0, "fE"] == 54.77949905395508
         assert result[0, 0, "fP", "fX"] == -52.89945602416992
@@ -329,8 +326,16 @@ def test_general_awkward_form():
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root"))[
         "tree/evt"
     ] as branch:
+        context = {
+            "index_format": "i64",
+            "header": False,
+            "tobject_header": True,
+            "breadcrumbs": (),
+        }
         assert json.loads(
-            branch.interpretation.awkward_form(branch.file).tojson(verbose=False)
+            branch.interpretation.awkward_form(branch.file, context).tojson(
+                verbose=False
+            )
         ) == json.loads(
             """{
     "class": "RecordArray",
@@ -1033,14 +1038,13 @@ def test_awkward_map_int_struct():
             "Model_BDSOutputROOTGeant4Data_3a3a_ParticleInfo))"
         )
         result = branch.array(library="ak")
-        if not uproot._util.py35 and not uproot._util.py2:
-            assert (
-                repr(awkward.type(result))
-                == '1 * [var * (int64, struct[["charge", "mass", "name"], '
-                '[int64, float64, string], parameters={"__record__": '
-                '"BDSOutputROOTGeant4Data::ParticleInfo"}]), '
-                'parameters={"__array__": "sorted_map"}]'
-            )
+        assert (
+            repr(awkward.type(result))
+            == '1 * [var * (int64, struct[["charge", "mass", "name"], '
+            '[int64, float64, string], parameters={"__record__": '
+            '"BDSOutputROOTGeant4Data::ParticleInfo"}]), '
+            'parameters={"__array__": "sorted_map"}]'
+        )
         assert awkward.to_list(result[0, "0"]) == [
             -1000020040,
             -1000020030,

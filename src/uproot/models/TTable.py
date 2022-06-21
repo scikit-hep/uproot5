@@ -7,7 +7,6 @@ See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
 
-from __future__ import absolute_import
 
 import struct
 from collections import namedtuple
@@ -28,8 +27,8 @@ class Model_TDataSet(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -134,8 +133,8 @@ class Model_TTableDescriptor_v4(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -194,8 +193,8 @@ class Model_TTable_v4(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -222,9 +221,7 @@ in file {1}""".format(
             self._members["fSize"],
         ) = cursor.fields(chunk, _ttable4_format1, context)
 
-        assert (
-            sum([col.fSize for col in ioDescriptor._columns]) == self._members["fSize"]
-        )
+        assert sum(col.fSize for col in ioDescriptor._columns) == self._members["fSize"]
 
         buf = cursor.bytes(
             chunk, self._members["fSize"] * self._members["fMaxIndex"], context
@@ -245,6 +242,12 @@ in file {1}""".format(
             )
         )
         self._data = numpy.frombuffer(buf, dtype=dtype)
+
+    @property
+    def data(self):
+        view = self._data.view()
+        view.flags.writeable = False
+        return view
 
     base_names_versions = []
     member_names = ["fN", "fMaxIndex", "fSize"]

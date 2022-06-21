@@ -17,7 +17,6 @@ not be modeled, either because the class has no streamer or no streamer for its
 version.
 """
 
-from __future__ import absolute_import
 
 import re
 import sys
@@ -77,10 +76,7 @@ def reset_classes():
     Removes all classes from ``uproot.classes`` and ``uproot.unknown_classes``
     and refills ``uproot.classes`` with original versions of these classes.
     """
-    if uproot._util.py2:
-        reload = __builtins__["reload"]
-    else:
-        from importlib import reload
+    from importlib import reload
 
     uproot.classes = {}
     uproot.unknown_classes = {}
@@ -110,33 +106,20 @@ def reset_classes():
 
 
 _classname_regularize = re.compile(r"\s*(<|>|::)\s*")
-_classname_encode_pattern = re.compile(br"[^a-zA-Z0-9]+")
-_classname_decode_antiversion = re.compile(br".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
-_classname_decode_version = re.compile(br".*_v([0-9]+)$")
-_classname_decode_pattern = re.compile(br"_(([0-9a-f][0-9a-f])+)_")
-
-if uproot._util.py2:
-
-    def _classname_decode_convert(hex_characters):
-        g = hex_characters.group(1)
-        return b"".join(
-            chr(int(g[i : i + 2], 16)) for i in uproot._util.range(0, len(g), 2)
-        )
-
-    def _classname_encode_convert(bad_characters):
-        g = bad_characters.group(0)
-        return b"_" + b"".join("{0:02x}".format(ord(x)).encode() for x in g) + b"_"
+_classname_encode_pattern = re.compile(rb"[^a-zA-Z0-9]+")
+_classname_decode_antiversion = re.compile(rb".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
+_classname_decode_version = re.compile(rb".*_v([0-9]+)$")
+_classname_decode_pattern = re.compile(rb"_(([0-9a-f][0-9a-f])+)_")
 
 
-else:
+def _classname_decode_convert(hex_characters):
+    g = hex_characters.group(1)
+    return bytes(int(g[i : i + 2], 16) for i in range(0, len(g), 2))
 
-    def _classname_decode_convert(hex_characters):
-        g = hex_characters.group(1)
-        return bytes(int(g[i : i + 2], 16) for i in uproot._util.range(0, len(g), 2))
 
-    def _classname_encode_convert(bad_characters):
-        g = bad_characters.group(0)
-        return b"_" + b"".join("{0:02x}".format(x).encode() for x in g) + b"_"
+def _classname_encode_convert(bad_characters):
+    g = bad_characters.group(0)
+    return b"_" + b"".join(f"{x:02x}".encode() for x in g) + b"_"
 
 
 def classname_regularize(classname):
@@ -170,7 +153,7 @@ def classname_decode(encoded_classname):
     elif encoded_classname.startswith("Model_"):
         raw = encoded_classname[6:].encode()
     else:
-        raise ValueError("not an encoded classname: {0}".format(encoded_classname))
+        raise ValueError(f"not an encoded classname: {encoded_classname}")
 
     if _classname_decode_antiversion.match(raw) is not None:
         version = None
@@ -208,7 +191,7 @@ def classname_encode(classname, version=None, unknown=False):
     else:
         prefix = "Model_"
     if classname.startswith(prefix):
-        raise ValueError("classname is already encoded: {0}".format(classname))
+        raise ValueError(f"classname is already encoded: {classname}")
 
     if version is None:
         v = ""
@@ -271,7 +254,7 @@ def class_named(classname, version=None, custom_classes=None):
 
     cls = classes.get(classname)
     if cls is None:
-        raise ValueError("no class named {0} in {1}".format(classname, where))
+        raise ValueError(f"no class named {classname} in {where}")
 
     if version is not None and isinstance(cls, DispatchByVersion):
         versioned_cls = cls.class_of_version(version)
@@ -279,7 +262,7 @@ def class_named(classname, version=None, custom_classes=None):
             return versioned_cls
         else:
             raise ValueError(
-                "no class named {0} with version {1} in {2}".format(
+                "no class named {} with version {} in {}".format(
                     classname, version, where
                 )
             )
@@ -316,7 +299,7 @@ def maybe_custom_classes(classname, custom_classes):
         return custom_classes
 
 
-class Model(object):
+class Model:
     """
     Abstract class for all objects extracted from ROOT files (except for
     :doc:`uproot.reading.ReadOnlyFile`, :doc:`uproot.reading.ReadOnlyDirectory`,
@@ -381,8 +364,8 @@ class Model(object):
         if self.class_version is None:
             version = ""
         else:
-            version = " (version {0})".format(self.class_version)
-        return "<{0}{1} at 0x{2:012x}>".format(self.classname, version, id(self))
+            version = f" (version {self.class_version})"
+        return f"<{self.classname}{version} at 0x{id(self):012x}>"
 
     def __enter__(self):
         if isinstance(self._file, uproot.reading.ReadOnlyFile):
@@ -546,9 +529,9 @@ class Model(object):
         else:
             raise uproot.KeyInFileError(
                 name,
-                because="""{0}.{1} has only the following members:
+                because="""{}.{} has only the following members:
 
-    {2}
+    {}
 """.format(
                     type(self).__module__,
                     type(self).__name__,
@@ -651,9 +634,7 @@ class Model(object):
         return self._is_memberwise
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         """
         Args:
             cls (subclass of :doc:`uproot.model.Model`): This class.
@@ -661,6 +642,9 @@ class Model(object):
                 :doc:`uproot.model.Model` classes from its
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -991,7 +975,7 @@ class Model(object):
 
         if cls is None:
             raise NotImplementedError(
-                "this ROOT type is not writable: {0}".format(self.classname)
+                f"this ROOT type is not writable: {self.classname}"
             )
         else:
             out = cls.__new__(cls)
@@ -1036,7 +1020,7 @@ class Model(object):
 
     def _serialize(self, out, header, name, tobject_flags):
         raise NotImplementedError(
-            "can't write {0} instances yet ('serialize' method not implemented)".format(
+            "can't write {} instances yet ('serialize' method not implemented)".format(
                 type(self).__name__
             )
         )
@@ -1105,7 +1089,7 @@ class VersionedModel(Model):
         self.__dict__.update(instance_data)
 
 
-class DispatchByVersion(object):
+class DispatchByVersion:
     """
     A Python class that models all versions of a ROOT C++ class by maintaining
     a dict of :doc:`uproot.model.VersionedModel` classes.
@@ -1126,9 +1110,7 @@ class DispatchByVersion(object):
     """
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         """
         Args:
             cls (subclass of :doc:`uproot.model.DispatchByVersion`): This class.
@@ -1136,6 +1118,9 @@ class DispatchByVersion(object):
                 :doc:`uproot.model.Model` classes from its
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -1151,9 +1136,7 @@ class DispatchByVersion(object):
         Awkward Array.
         """
         versioned_cls = file.class_named(classname_decode(cls.__name__)[0], "max")
-        return versioned_cls.awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
-        )
+        return versioned_cls.awkward_form(file, context)
 
     @classmethod
     def strided_interpretation(
@@ -1190,7 +1173,10 @@ class DispatchByVersion(object):
         If not, this classmethod returns None. No attempt is made to create a
         missing class.
         """
-        return cls.known_versions.get(version)
+        out = cls.known_versions.get(version)
+        if out is None and version == 0 and len(cls.known_versions) != 0:
+            out = cls.known_versions[max(cls.known_versions)]
+        return out
 
     @classmethod
     def has_version(cls, version):
@@ -1285,7 +1271,7 @@ class DispatchByVersion(object):
             is_memberwise,
         ) = uproot.deserialization.numbytes_version(chunk, cursor, context, move=False)
 
-        versioned_cls = cls.known_versions.get(version)
+        versioned_cls = cls.class_of_version(version)
 
         if versioned_cls is not None:
             pass
@@ -1298,7 +1284,7 @@ class DispatchByVersion(object):
 
         else:
             raise ValueError(
-                """Unknown version {0} for class {1} that cannot be skipped """
+                """Unknown version {} for class {} that cannot be skipped """
                 """because its number of bytes is unknown.
 """.format(
                     version,
@@ -1383,7 +1369,7 @@ class UnknownClass(Model):
         return self._context
 
     def __repr__(self):
-        return "<Unknown {0} at 0x{1:012x}>".format(self.classname, id(self))
+        return f"<Unknown {self.classname} at 0x{id(self):012x}>"
 
     def debug(
         self, skip_bytes=0, limit_bytes=None, dtype=None, offset=0, stream=sys.stdout
@@ -1475,9 +1461,9 @@ class UnknownClass(Model):
 
         else:
             raise ValueError(
-                """unknown class {0} that cannot be skipped because its """
+                """unknown class {} that cannot be skipped because its """
                 """number of bytes is unknown
-in file {1}""".format(
+in file {}""".format(
                     self.classname, file.file_path
                 )
             )
@@ -1608,15 +1594,15 @@ class UnknownClassVersion(VersionedModel):
 
         else:
             raise ValueError(
-                """class {0} with unknown version {1} cannot be skipped """
+                """class {} with unknown version {} cannot be skipped """
                 """because its number of bytes is unknown
-in file {2}""".format(
+in file {}""".format(
                     self.classname, self._instance_version, file.file_path
                 )
             )
 
     def __repr__(self):
-        return "<{0} with unknown version {1} at 0x{2:012x}>".format(
+        return "<{} with unknown version {} at 0x{:012x}>".format(
             self.classname, self._instance_version, id(self)
         )
 

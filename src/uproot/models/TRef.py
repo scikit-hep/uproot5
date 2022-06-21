@@ -4,14 +4,9 @@
 This module defines versionless models of ``TRef`` and ``TRefArray``.
 """
 
-from __future__ import absolute_import
 
 import struct
-
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
+from collections.abc import Sequence
 
 import numpy
 
@@ -43,15 +38,15 @@ class Model_TRef(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
         self._ref = cursor.field(chunk, _tref_format1, context)
 
     def __repr__(self):
-        return "<TRef {0}>".format(self._ref)
+        return f"<TRef {self._ref}>"
 
     @classmethod
     def strided_interpretation(
@@ -68,43 +63,21 @@ in file {1}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if tobject_header:
+        if context["tobject_header"]:
             contents["@pidf"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
             contents["ref"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@other1"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
             contents["@other2"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TRef"})
 
@@ -144,8 +117,8 @@ class Model_TRefArray(uproot.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -167,8 +140,8 @@ in file {1}""".format(
         if self.class_version is None:
             version = ""
         else:
-            version = " (version {0})".format(self.class_version)
-        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            version = f" (version {self.class_version})"
+        return "<{}{} {} at 0x{:012x}>".format(
             self.classname,
             version,
             numpy.array2string(
@@ -182,27 +155,16 @@ in file {1}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
         contents["fName"] = uproot.containers.AsString(
             False, typename="TString"
-        ).awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-        contents["fSize"] = uproot._util.awkward_form(
-            numpy.dtype("i4"), file, index_format, header, tobject_header, breadcrumbs
-        )
+        ).awkward_form(file, context)
+        contents["fSize"] = uproot._util.awkward_form(numpy.dtype("i4"), file, context)
         contents["refs"] = awkward.forms.ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                numpy.dtype("i4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(numpy.dtype("i4"), file, context),
         )
         return awkward.forms.RecordForm(
             contents, parameters={"__record__": "TRefArray"}

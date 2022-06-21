@@ -4,12 +4,11 @@
 This module defines the behaviors of ``TGraph``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 
 
-class TGraph(object):
+class TGraph:
     """
     Behaviors for TGraph: return values as a NumPy array
     """

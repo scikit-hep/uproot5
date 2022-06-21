@@ -4,7 +4,6 @@
 This module defines a versionless model for ``TObjString``.
 """
 
-from __future__ import absolute_import
 
 import uproot
 import uproot.serialization
@@ -30,8 +29,8 @@ class Model_TObjString(uproot.model.Model, str):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -79,8 +78,8 @@ in file {1}""".format(
         if self.class_version is None:
             version = ""
         else:
-            version = " (version {0})".format(self.class_version)
-        return "<{0}{1} {2} at 0x{3:012x}>".format(
+            version = f" (version {self.class_version})"
+        return "<{}{} {} at 0x{:012x}>".format(
             self.classname,
             version,
             str.__repr__(self),
@@ -88,12 +87,10 @@ in file {1}""".format(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",

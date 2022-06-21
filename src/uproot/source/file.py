@@ -12,7 +12,6 @@ If the filesystem or operating system does not support memory-mapped files, the
 :doc:`uproot.source.file.MultithreadedFileSource` is an automatic fallback.
 """
 
-from __future__ import absolute_import
 
 import os.path
 
@@ -112,7 +111,7 @@ class MemmapSource(uproot.source.chunk.Source):
         try:
             self._file = numpy.memmap(self._file_path, dtype=self._dtype, mode="r")
             self._fallback = None
-        except IOError:
+        except OSError:
             self._file = None
             opts = dict(self._fallback_opts)
             opts["num_workers"] = self._num_fallback_workers
@@ -136,22 +135,22 @@ class MemmapSource(uproot.source.chunk.Source):
         fallback = ""
         if self._fallback is not None:
             fallback = " with fallback"
-        return "<{0} {1}{2} at 0x{3:012x}>".format(
+        return "<{} {}{} at 0x{:012x}>".format(
             type(self).__name__, path, fallback, id(self)
         )
 
     def chunk(self, start, stop):
         if self._fallback is None:
             if self.closed:
-                raise OSError("memmap is closed for file {0}".format(self._file_path))
+                raise OSError(f"memmap is closed for file {self._file_path}")
 
             self._num_requests += 1
             self._num_requested_chunks += 1
             self._num_requested_bytes += stop - start
 
-            data = numpy.array(self._file[start:stop], copy=True)
+            data = self._file[start:stop]
             future = uproot.source.futures.TrivialFuture(data)
-            return uproot.source.chunk.Chunk(self, start, stop, future)
+            return uproot.source.chunk.Chunk(self, start, stop, future, is_memmap=True)
 
         else:
             return self._fallback.chunk(start, stop)
@@ -159,7 +158,7 @@ class MemmapSource(uproot.source.chunk.Source):
     def chunks(self, ranges, notifications):
         if self._fallback is None:
             if self.closed:
-                raise OSError("memmap is closed for file {0}".format(self._file_path))
+                raise OSError(f"memmap is closed for file {self._file_path}")
 
             self._num_requests += 1
             self._num_requested_chunks += len(ranges)
@@ -167,9 +166,11 @@ class MemmapSource(uproot.source.chunk.Source):
 
             chunks = []
             for start, stop in ranges:
-                data = numpy.array(self._file[start:stop], copy=True)
+                data = self._file[start:stop]
                 future = uproot.source.futures.TrivialFuture(data)
-                chunk = uproot.source.chunk.Chunk(self, start, stop, future)
+                chunk = uproot.source.chunk.Chunk(
+                    self, start, stop, future, is_memmap=True
+                )
                 notifications.put(chunk)
                 chunks.append(chunk)
             return chunks
@@ -198,15 +199,7 @@ class MemmapSource(uproot.source.chunk.Source):
     @property
     def closed(self):
         if self._fallback is None:
-            if uproot._util.py2:
-                try:
-                    self._file._mmap.tell()
-                except ValueError:
-                    return True
-                else:
-                    return False
-            else:
-                return self._file._mmap.closed
+            return self._file._mmap.closed
         else:
             return self._fallback.closed
 
@@ -258,10 +251,7 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
 
     def _open(self):
         self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [
-                FileResource(self._file_path)
-                for x in uproot._util.range(self._num_workers)
-            ]
+            [FileResource(self._file_path) for x in range(self._num_workers)]
         )
         self._num_bytes = os.path.getsize(self._file_path)
 

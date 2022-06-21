@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
-[![Python 2.7,3.5‒3.9](https://img.shields.io/badge/python-2.7%2C3.5%E2%80%923.9-blue)](https://www.python.org)
+[![Python 3.6‒3.10](https://img.shields.io/badge/python-3.6%E2%80%923.10-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Continuous integration tests](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=tests)](https://github.com/scikit-hep/uproot4/actions)
 
@@ -140,7 +140,12 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     <td align="center"><a href="https://christopherappold.netlify.app/index.html"><img src="https://avatars.githubusercontent.com/u/28101201?v=4?s=100" width="100px;" alt=""/><br /><sub><b>ChristopheRappold</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=ChristopheRappold" title="Documentation">📖</a></td>
     <td align="center"><a href="http://cozzyd.net"><img src="https://avatars.githubusercontent.com/u/9206569?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Cosmin Deaconu</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=cozzyd" title="Tests">⚠️</a> <a href="https://github.com/scikit-hep/uproot4/commits?author=cozzyd" title="Code">💻</a></td>
     <td align="center"><a href="https://peguerosdc.github.io/"><img src="https://avatars.githubusercontent.com/u/7889726?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Carlos Pegueros</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=peguerosdc" title="Documentation">📖</a> <a href="#example-peguerosdc" title="Examples">💡</a> <a href="https://github.com/scikit-hep/uproot4/commits?author=peguerosdc" title="Tests">⚠️</a> <a href="#tutorial-peguerosdc" title="Tutorials">✅</a></td>
-    <td align="center"><a href="https://github.com/btovar"><img src="https://avatars.githubusercontent.com/u/3081826?v=4" width="100px;" alt=""/><br /><sub><b>Benjamin Tovar</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=btovar" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/btovar"><img src="https://avatars.githubusercontent.com/u/3081826?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Benjamin Tovar</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=btovar" title="Code">💻</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://duncanmmacleod.github.io"><img src="https://avatars.githubusercontent.com/u/1618530?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Duncan Macleod</b></sub></a><br /><a href="#infra-duncanmmacleod" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/mpad"><img src="https://avatars.githubusercontent.com/u/1219868?v=4?s=100" width="100px;" alt=""/><br /><sub><b>mpad</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=mpad" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/pfackeldey"><img src="https://avatars.githubusercontent.com/u/18463582?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Peter Fackeldey</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot4/commits?author=pfackeldey" title="Code">💻</a></td>
   </tr>
 </table>
 

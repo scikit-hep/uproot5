@@ -7,18 +7,10 @@ This module interpretations and models for standard containers, such as
 See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
-from __future__ import absolute_import
 
 import struct
 import types
-
-try:
-    from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
-except ImportError:
-    from collections import Mapping, Sequence, Set
-
-    KeysView = None
-    ValuesView = None
+from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 
 import numpy
 
@@ -44,7 +36,7 @@ def _content_cache_key(content):
         bo = uproot.interpretation.numerical._numpy_byteorder_to_cache_key[
             content.byteorder
         ]
-        return "{0}{1}{2}".format(bo, content.kind, content.itemsize)
+        return f"{bo}{content.kind}{content.itemsize}"
     elif isinstance(content, type):
         return content.__name__
     else:
@@ -60,12 +52,12 @@ def _read_nested(
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
-            for i in uproot._util.range(length):
+            for i in range(length):
                 values[i] = model.read(
                     chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
-            for i in uproot._util.range(length):
+            for i in range(length):
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         return values
 
@@ -110,14 +102,14 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
     elif done:
         return lbracket + "".join(left) + "".join(right) + rbracket
     elif len(left) == 0 and len(right) == 0:
-        return lbracket + "{0}, ...".format(tostring(0)) + rbracket
+        return lbracket + f"{tostring(0)}, ..." + rbracket
     elif len(right) == 0:
         return lbracket + "".join(left) + "..." + rbracket
     else:
         return lbracket + "".join(left) + "..., " + "".join(right) + rbracket
 
 
-class AsContainer(object):
+class AsContainer:
     """
     Abstract class for all descriptions of data as containers, such as
     ``std::vector``.
@@ -149,18 +141,14 @@ class AsContainer(object):
         """
         raise AssertionError
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         """
         Args:
             file (:doc:`uproot.reading.CommonFileMethods`): The file associated
                 with this interpretation's ``TBranch``.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -211,9 +199,7 @@ class AsContainer(object):
         if value is True or value is False:
             self._header = value
         else:
-            raise TypeError(
-                "{0}.header must be True or False".format(type(self).__name__)
-            )
+            raise TypeError(f"{type(self).__name__}.header must be True or False")
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         """
@@ -278,14 +264,14 @@ class AsDynamic(AsContainer):
             model = "model=" + self._model.__name__
         else:
             model = "model=" + repr(self._model)
-        return "AsDynamic({0})".format(model)
+        return f"AsDynamic({model})"
 
     @property
     def cache_key(self):
         if self._model is None:
             return "AsDynamic(None)"
         else:
-            return "AsDynamic({0})".format(_content_cache_key(self._model))
+            return f"AsDynamic({_content_cache_key(self._model)})"
 
     @property
     def typename(self):
@@ -294,23 +280,14 @@ class AsDynamic(AsContainer):
         else:
             return uproot.model.classname_decode(self._model.__name__)[0]
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
             return awkward.forms.ListOffsetForm(
-                index_format,
-                uproot._util.awkward_form(
-                    self._model, file, index_format, header, tobject_header, breadcrumbs
-                ),
+                context["index_format"],
+                uproot._util.awkward_form(self._model, file, context),
                 parameters={"uproot": {"as": "array", "header": self._header}},
             )
 
@@ -341,24 +318,17 @@ class AsFIXME(AsContainer):
         return hash((AsFIXME, self.message))
 
     def __repr__(self):
-        return "AsFIXME({0})".format(repr(self.message))
+        return f"AsFIXME({self.message!r})"
 
     @property
     def cache_key(self):
-        return "AsFIXME({0})".format(repr(self.message))
+        return f"AsFIXME({self.message!r})"
 
     @property
     def typename(self):
         return "unknown"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         raise uproot.interpretation.objects.CannotBeAwkward(self.message)
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -422,12 +392,12 @@ class AsString(AsContainer):
     def __repr__(self):
         args = [repr(self._header)]
         if self._length_bytes != "1-5":
-            args.append("length_bytes={0}".format(repr(self._length_bytes)))
-        return "AsString({0})".format(", ".join(args))
+            args.append(f"length_bytes={self._length_bytes!r}")
+        return "AsString({})".format(", ".join(args))
 
     @property
     def cache_key(self):
-        return "AsString({0},{1})".format(self._header, repr(self._length_bytes))
+        return f"AsString({self._header},{self._length_bytes!r})"
 
     @property
     def typename(self):
@@ -436,17 +406,10 @@ class AsString(AsContainer):
         else:
             return self._typename
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
@@ -534,14 +497,14 @@ class AsPointer(AsContainer):
             pointee = self._pointee.__name__
         else:
             pointee = repr(self._pointee)
-        return "AsPointer({0})".format(pointee)
+        return f"AsPointer({pointee})"
 
     @property
     def cache_key(self):
         if self._pointee is None:
             return "AsPointer(None)"
         else:
-            return "AsPointer({0})".format(_content_cache_key(self._pointee))
+            return f"AsPointer({_content_cache_key(self._pointee)})"
 
     @property
     def typename(self):
@@ -550,14 +513,7 @@ class AsPointer(AsContainer):
         else:
             return _content_typename(self._pointee) + "*"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         raise uproot.interpretation.objects.CannotBeAwkward("arbitrary pointer")
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -622,13 +578,13 @@ class AsArray(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsArray({0}, {1}, {2}, {3})".format(
+        return "AsArray({}, {}, {}, {})".format(
             self.header, self.speedbump, values, self.inner_shape
         )
 
     @property
     def cache_key(self):
-        return "AsArray({0},{1},{2},{3})".format(
+        return "AsArray({},{},{},{})".format(
             self.header,
             self.speedbump,
             _content_cache_key(self._values),
@@ -637,32 +593,22 @@ class AsArray(AsContainer):
 
     @property
     def typename(self):
-        shape = "".join("[{0}]".format(d) for d in self.inner_shape)
+        shape = "".join(f"[{d}]" for d in self.inner_shape)
         return _content_typename(self._values) + "[]" + shape
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        values_form = uproot._util.awkward_form(
-            self._values, file, index_format, header, tobject_header, breadcrumbs
-        )
+        values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
             values_form = awkward.forms.RegularForm(values_form, dim)
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             values_form,
             parameters={
                 "uproot": {
                     "as": "array",
                     "header": self._header,
                     "speedbump": self._speedbump,
-                    "inner_shape": list(self._inner_shape),
                 }
             },
         )
@@ -678,8 +624,8 @@ class AsArray(AsContainer):
 
             if is_memberwise:
                 raise NotImplementedError(
-                    """memberwise serialization of {0}
-in file {1}""".format(
+                    """memberwise serialization of {}
+in file {}""".format(
                         type(self).__name__, selffile.file_path
                     )
                 )
@@ -730,6 +676,152 @@ in file {1}""".format(
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 
+class AsRVec(AsContainer):
+    """
+    Args:
+        header (bool): Sets the :ref:`uproot.containers.AsContainer.header`.
+        values (:doc:`uproot.model.Model` or :doc:`uproot.containers.Container`): Data
+            type for data nested in the container.
+
+    A :doc:`uproot.containers.AsContainer` for ``ROOT::VecOps::RVec``.
+    """
+
+    def __init__(self, header, values):
+        self.header = header
+        if isinstance(values, AsContainer):
+            self._values = values
+        elif isinstance(values, type) and issubclass(
+            values, (uproot.model.Model, uproot.model.DispatchByVersion)
+        ):
+            self._values = values
+        else:
+            self._values = numpy.dtype(values)
+
+    def __hash__(self):
+        return hash((AsRVec, self._header, self._values))
+
+    @property
+    def values(self):
+        """
+        Data type for data nested in the container.
+        """
+        return self._values
+
+    def __repr__(self):
+        if isinstance(self._values, type):
+            values = self._values.__name__
+        else:
+            values = repr(self._values)
+        return f"AsRVec({self._header}, {values})"
+
+    @property
+    def cache_key(self):
+        return f"AsRVec({self._header},{_content_cache_key(self._values)})"
+
+    @property
+    def typename(self):
+        return f"RVec<{_content_typename(self._values)}>"
+
+    def awkward_form(self, file, context):
+        awkward = uproot.extras.awkward()
+        return awkward.forms.ListOffsetForm(
+            context["index_format"],
+            uproot._util.awkward_form(self._values, file, context),
+            parameters={"uproot": {"as": "RVec", "header": self._header}},
+        )
+
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        if self._header and header:
+            start_cursor = cursor.copy()
+            (
+                num_bytes,
+                instance_version,
+                is_memberwise,
+            ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+        else:
+            is_memberwise = False
+
+        # Note: self._values can also be a NumPy dtype, and not necessarily a class
+        # (e.g. type(self._values) == type)
+        _value_typename = _content_typename(self._values)
+        if is_memberwise:
+            if not issubclass(self._values, uproot.model.DispatchByVersion):
+                raise NotImplementedError(
+                    """streamerless memberwise serialization of class {}({})
+    in file {}""".format(
+                        type(self).__name__, _value_typename, selffile.file_path
+                    )
+                )
+
+            # uninterpreted header
+            cursor.skip(6)
+
+            length = cursor.field(chunk, _stl_container_size, context)
+
+            # no known class version number (maybe in that header? unclear...)
+            model = self._values.new_class(file, "max")
+
+            values = numpy.empty(length, dtype=_stl_object_type)
+
+            # only do anything if we have anything to read...
+            if length > 0:
+                for i in range(length):
+                    values[i] = model.read(
+                        chunk,
+                        cursor,
+                        dict(context, reading=False),
+                        file,
+                        selffile,
+                        parent,
+                    )
+
+                # memberwise reading!
+                for member_index in range(len(values[0].member_names)):
+                    for i in range(length):
+                        values[i].read_member_n(
+                            chunk, cursor, context, file, member_index
+                        )
+        else:
+            length = cursor.field(chunk, _stl_container_size, context)
+
+            values = _read_nested(
+                self._values, length, chunk, cursor, context, file, selffile, parent
+            )
+
+        out = ROOTRVec(values)
+
+        if self._header and header:
+            uproot.deserialization.numbytes_check(
+                chunk,
+                start_cursor,
+                cursor,
+                num_bytes,
+                self.typename,
+                context,
+                file.file_path,
+            )
+
+        return out
+
+    def __eq__(self, other):
+        if not isinstance(other, AsRVec):
+            return False
+
+        if self.header != other.header:
+            return False
+
+        if isinstance(self.values, numpy.dtype) and isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        elif not isinstance(self.values, numpy.dtype) and not isinstance(
+            other.values, numpy.dtype
+        ):
+            return self.values == other.values
+        else:
+            return False
+
+
 class AsVector(AsContainer):
     """
     Args:
@@ -766,32 +858,21 @@ class AsVector(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsVector({0}, {1})".format(self._header, values)
+        return f"AsVector({self._header}, {values})"
 
     @property
     def cache_key(self):
-        return "AsVector({0},{1})".format(
-            self._header, _content_cache_key(self._values)
-        )
+        return f"AsVector({self._header},{_content_cache_key(self._values)})"
 
     @property
     def typename(self):
-        return "std::vector<{0}>".format(_content_typename(self._values))
+        return f"std::vector<{_content_typename(self._values)}>"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                self._values, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
@@ -813,16 +894,16 @@ class AsVector(AsContainer):
             # let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
-                    """memberwise serialization of {0}({1})
-    in file {2}""".format(
+                    """memberwise serialization of {}({})
+    in file {}""".format(
                         type(self).__name__, _value_typename, selffile.file_path
                     )
                 )
 
             if not issubclass(self._values, uproot.model.DispatchByVersion):
                 raise NotImplementedError(
-                    """streamerless memberwise serialization of class {0}({1})
-    in file {2}""".format(
+                    """streamerless memberwise serialization of class {}({})
+    in file {}""".format(
                         type(self).__name__, _value_typename, selffile.file_path
                     )
                 )
@@ -839,7 +920,7 @@ class AsVector(AsContainer):
 
             # only do anything if we have anything to read...
             if length > 0:
-                for i in uproot._util.range(length):
+                for i in range(length):
                     values[i] = model.read(
                         chunk,
                         cursor,
@@ -850,8 +931,8 @@ class AsVector(AsContainer):
                     )
 
                 # memberwise reading!
-                for member_index in uproot._util.range(len(values[0].member_names)):
-                    for i in uproot._util.range(length):
+                for member_index in range(len(values[0].member_names)):
+                    for i in range(length):
                         values[i].read_member_n(
                             chunk, cursor, context, file, member_index
                         )
@@ -932,30 +1013,21 @@ class AsSet(AsContainer):
             keys = self._keys.__name__
         else:
             keys = repr(self._keys)
-        return "AsSet({0}, {1})".format(self._header, keys)
+        return f"AsSet({self._header}, {keys})"
 
     @property
     def cache_key(self):
-        return "AsSet({0},{1})".format(self._header, _content_cache_key(self._keys))
+        return f"AsSet({self._header},{_content_cache_key(self._keys)})"
 
     @property
     def typename(self):
-        return "std::set<{0}>".format(_content_typename(self._keys))
+        return f"std::set<{_content_typename(self._keys)}>"
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                self._keys, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(self._keys, file, context),
             parameters={
                 "__array__": "set",
                 "uproot": {"as": "set", "header": self._header},
@@ -975,8 +1047,8 @@ class AsSet(AsContainer):
 
         if is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, selffile.file_path
                 )
             )
@@ -1084,11 +1156,11 @@ class AsMap(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsMap({0}, {1}, {2})".format(self._header, keys, values)
+        return f"AsMap({self._header}, {keys}, {values})"
 
     @property
     def cache_key(self):
-        return "AsMap({0},{1},{2})".format(
+        return "AsMap({},{},{})".format(
             self._header,
             _content_cache_key(self._keys),
             _content_cache_key(self._values),
@@ -1096,39 +1168,18 @@ class AsMap(AsContainer):
 
     @property
     def typename(self):
-        return "std::map<{0}, {1}>".format(
+        return "std::map<{}, {}>".format(
             _content_typename(self._keys), _content_typename(self._values)
         )
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             awkward.forms.RecordForm(
                 (
-                    uproot._util.awkward_form(
-                        self._keys,
-                        file,
-                        index_format,
-                        header,
-                        tobject_header,
-                        breadcrumbs,
-                    ),
-                    uproot._util.awkward_form(
-                        self._values,
-                        file,
-                        index_format,
-                        header,
-                        tobject_header,
-                        breadcrumbs,
-                    ),
+                    uproot._util.awkward_form(self._keys, file, context),
+                    uproot._util.awkward_form(self._values, file, context),
                 )
             ),
             parameters={
@@ -1197,8 +1248,8 @@ class AsMap(AsContainer):
 
         else:
             raise NotImplementedError(
-                """non-memberwise serialization of {0}
-in file {1}""".format(
+                """non-memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, selffile.file_path
                 )
             )
@@ -1233,7 +1284,7 @@ in file {1}""".format(
             return False
 
 
-class Container(object):
+class Container:
     """
     Abstract class for Python representations of C++ STL collections.
     """
@@ -1247,6 +1298,64 @@ class Container(object):
         and dicts.
         """
         raise AssertionError
+
+
+class ROOTRVec(Container, Sequence):
+    """
+    Args:
+        values (``numpy.ndarray`` or iterable): Contents of the ``ROOT::VecOps::RVec``.
+
+    Representation of a C++ ``ROOT::VecOps::RVec`` as a Python ``Sequence``.
+    """
+
+    def __init__(self, values):
+        if isinstance(values, types.GeneratorType):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, Set):
+            values = numpy.asarray(list(values))
+        elif isinstance(values, (list, tuple)):
+            values = numpy.asarray(values)
+
+        self._values = values
+
+    def __str__(self, limit=85):
+        def tostring(i):
+            return _tostring(self._values[i])
+
+        return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
+
+    def __repr__(self, limit=85):
+        return "<ROOTRVec {} at 0x{:012x}>".format(
+            self.__str__(limit=limit - 30), id(self)
+        )
+
+    def __getitem__(self, where):
+        return self._values[where]
+
+    def __len__(self):
+        return len(self._values)
+
+    def __contains__(self, what):
+        return what in self._values
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __reversed__(self):
+        return ROOTRVec(self._values[::-1])
+
+    def __eq__(self, other):
+        if isinstance(other, ROOTRVec):
+            return self._values == other._values
+        elif isinstance(other, Sequence):
+            return self._values == other
+        else:
+            return False
+
+    def tolist(self):
+        return [
+            x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
+        ]
 
 
 class STLVector(Container, Sequence):
@@ -1274,7 +1383,7 @@ class STLVector(Container, Sequence):
         return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
 
     def __repr__(self, limit=85):
-        return "<STLVector {0} at 0x{1:012x}>".format(
+        return "<STLVector {} at 0x{:012x}>".format(
             self.__str__(limit=limit - 30), id(self)
         )
 
@@ -1332,7 +1441,7 @@ class STLSet(Container, Set):
         return _str_with_ellipsis(tostring, len(self), "{", "}", limit)
 
     def __repr__(self, limit=85):
-        return "<STLSet {0} at 0x{1:012x}>".format(
+        return "<STLSet {} at 0x{:012x}>".format(
             self.__str__(limit=limit - 30), id(self)
         )
 
@@ -1372,9 +1481,9 @@ class STLSet(Container, Set):
             return numpy.all(keys_same)
 
     def tolist(self):
-        return set(
+        return {
             x.tolist() if isinstance(x, (Container, numpy.ndarray)) else x for x in self
-        )
+        }
 
 
 class STLMap(Container, Mapping):
@@ -1429,7 +1538,7 @@ class STLMap(Container, Mapping):
         return _str_with_ellipsis(tostring, len(self), "{", "}", limit)
 
     def __repr__(self, limit=85):
-        return "<STLMap {0} at 0x{1:012x}>".format(
+        return "<STLMap {} at 0x{:012x}>".format(
             self.__str__(limit=limit - 30), id(self)
         )
 
@@ -1531,7 +1640,7 @@ class STLMap(Container, Mapping):
 
     def tolist(self):
         out = {}
-        for i in uproot._util.range(len(self)):
+        for i in range(len(self)):
             x = self._values[i]
             if isinstance(x, (Container, numpy.ndarray)):
                 out[self._keys[i]] = x.tolist()

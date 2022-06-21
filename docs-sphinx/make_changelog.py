@@ -10,13 +10,11 @@ import subprocess
 tagslist_text = subprocess.run(
     ["git", "show-ref", "--tags"], stdout=subprocess.PIPE
 ).stdout
-tagslist = dict(
-    [
-        (k, v)
-        for k, v in re.findall(rb"([0-9a-f]{40}) refs/tags/([0-9\.rc]+)", tagslist_text)
-        if not v.startswith(b"0.")
-    ]
-)
+tagslist = {
+    k: v
+    for k, v in re.findall(rb"([0-9a-f]{40}) refs/tags/([0-9\.rc]+)", tagslist_text)
+    if not v.startswith(b"0.")
+}
 
 subjects_text = subprocess.run(
     ["git", "log", "--format='format:%H %s'"], stdout=subprocess.PIPE
@@ -27,10 +25,10 @@ github_connection = http.client.HTTPSConnection("api.github.com")
 github_releases = []
 numpages = int(math.ceil(len(tagslist) / 30.0))
 for pageid in range(numpages):
-    print("Requesting GitHub data, page {0} of {1}".format(pageid + 1, numpages))
+    print(f"Requesting GitHub data, page {pageid + 1} of {numpages}")
     github_connection.request(
         "GET",
-        r"/repos/scikit-hep/uproot4/releases?page={0}&per_page=30".format(pageid + 1),
+        rf"/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30",
         headers={"User-Agent": "uproot4-changelog"},
     )
     github_releases_text = github_connection.getresponse().read()
@@ -67,8 +65,8 @@ pypi_connection = http.client.HTTPSConnection("pypi.org")
 
 
 def pypi_exists(tag):
-    print("Looking for release {0} on PyPI...".format(tag))
-    pypi_connection.request("HEAD", "/project/uproot/{0}/".format(tag))
+    print(f"Looking for release {tag} on PyPI...")
+    pypi_connection.request("HEAD", f"/project/uproot/{tag}/")
     response = pypi_connection.getresponse()
     response.read()
     return response.status == 200
@@ -84,15 +82,13 @@ with open("changelog.rst", "w") as outfile:
     for taghash, subject in subjects:
         if taghash in tagslist:
             tag = tagslist[taghash].decode()
-            tagurl = "https://github.com/scikit-hep/uproot4/releases/tag/{0}".format(
-                tag
-            )
+            tagurl = f"https://github.com/scikit-hep/uproot4/releases/tag/{tag}"
 
             if numprs == 0:
                 outfile.write("*(no pull requests)*\n")
             numprs = 0
 
-            header_text = "\nRelease `{0} <{1}>`__\n".format(tag, tagurl)
+            header_text = f"\nRelease `{tag} <{tagurl}>`__\n"
             outfile.write(header_text)
             outfile.write("=" * len(header_text) + "\n\n")
 
@@ -103,20 +99,18 @@ with open("changelog.rst", "w") as outfile:
 
             assets = []
             if pypi_exists(tag):
-                assets.append(
-                    "`pip <https://pypi.org/project/uproot/{0}/>`__".format(tag)
-                )
+                assets.append(f"`pip <https://pypi.org/project/uproot/{tag}/>`__")
             if tag in tarballs:
-                assets.append("`tar <{0}>`__".format(tarballs[tag]))
+                assets.append(f"`tar <{tarballs[tag]}>`__")
             if tag in zipballs:
-                assets.append("`zip <{0}>`__".format(zipballs[tag]))
+                assets.append(f"`zip <{zipballs[tag]}>`__")
             if len(assets) == 0:
                 assets_text = ""
             else:
-                assets_text = " ({0})".format(", ".join(assets))
+                assets_text = " ({})".format(", ".join(assets))
 
             if len(date_text) + len(assets_text) > 0:
-                outfile.write("{0}{1}\n\n".format(date_text, assets_text))
+                outfile.write(f"{date_text}{assets_text}\n\n")
 
             if tag in releases:
                 text = (
@@ -154,7 +148,7 @@ with open("changelog.rst", "w") as outfile:
 
             text = m.group(1).decode().strip()
             prnum = m.group(2).decode()
-            prurl = "https://github.com/scikit-hep/uproot4/pull/{0}".format(prnum)
+            prurl = f"https://github.com/scikit-hep/uproot4/pull/{prnum}"
 
             known = [prnum]
             for issue in re.findall(
@@ -202,13 +196,9 @@ with open("changelog.rst", "w") as outfile:
             if len(addresses) == 0:
                 addresses_text = ""
             else:
-                addresses_text = " (**also:** {0})".format(", ".join(addresses))
+                addresses_text = " (**also:** {})".format(", ".join(addresses))
 
-            outfile.write(
-                "* PR `#{0} <{1}>`__: {2}{3}\n".format(
-                    prnum, prurl, text, addresses_text
-                )
-            )
+            outfile.write(f"* PR `#{prnum} <{prurl}>`__: {text}{addresses_text}\n")
 
             first = False
 

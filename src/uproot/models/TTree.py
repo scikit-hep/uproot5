@@ -7,7 +7,6 @@ See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -49,8 +48,8 @@ class Model_TTree_v16(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -201,8 +200,8 @@ class Model_TTree_v17(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -354,8 +353,8 @@ class Model_TTree_v18(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -513,8 +512,8 @@ class Model_TTree_v19(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -688,8 +687,8 @@ class Model_TTree_v20(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -895,8 +894,8 @@ class Model_ROOT_3a3a_TIOFeatures(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -906,3 +905,69 @@ in file {1}""".format(
 
 uproot.classes["TTree"] = Model_TTree
 uproot.classes["ROOT::TIOFeatures"] = Model_ROOT_3a3a_TIOFeatures
+
+
+fEntriesStruct = struct.Struct(">q")
+
+
+class Model_TTree_NumEntries(uproot.model.Model):
+    """
+    A helper :doc:`uproot.model.Model` for :doc:`uproot.num_entries`.
+    """
+
+    def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {}
+in file {}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
+        cursor.skip_over(chunk, context)  # TNamed
+        cursor.skip_over(chunk, context)  # TAttLine
+        cursor.skip_over(chunk, context)  # TAttFill
+        cursor.skip_over(chunk, context)  # TAttMarker
+        self._members["fEntries"] = cursor.fields(chunk, fEntriesStruct, context)
+        cursor.skip_after(self)
+
+    @property
+    def member_names(self):
+        return ["fEntries"]
+
+    base_names_versions = [
+        ("TNamed", 1),
+        ("TAttLine", 1),
+        ("TAttFill", 1),
+        ("TAttMarker", 2),
+    ]
+
+
+def num_entries(paths):
+    """
+    Args:
+        paths (str): The filesystem path or remote URL of
+            the TTree to find the number of entries in. It must have a file path
+            as well as an object path which points to the location of the TTree
+            inside the file. If the file names have colons in them, you can also
+            pass in a dictionary in the format of { file_path : object_path }.
+            Other examples: ``"rel/file.root:ttree"``, ``"C:\\abs\\file.root:ttree"``,
+            ``"http://where/what.root:ttree"``,
+            ``"https://username:password@where/secure.root:ttree"``,
+            ``"rel/file.root:tdirectory/ttree"``, iterables of the previous examples.
+
+    Returns an iterator over the number of entries over each TTree in the input.
+    This is a shortcut method and reads lesser data than normal file opening.
+    """
+    paths2 = uproot._util.regularize_files(paths)
+
+    if isinstance(paths, dict):
+        paths = list(paths.items())
+    elif not uproot._util.isstr(paths):
+        paths = [(uproot._util.file_object_path_split(path)) for path in paths]
+    else:
+        paths = [uproot._util.file_object_path_split(paths)]
+
+    for i, (file_path, object_path) in enumerate(paths2):
+        yield paths[i][0], paths[i][1], uproot.open(
+            {file_path: object_path}, custom_classes={"TTree": Model_TTree_NumEntries}
+        ).all_members["fEntries"][0]

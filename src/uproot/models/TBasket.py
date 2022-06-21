@@ -8,7 +8,6 @@ Includes both "embedded" ``TBaskets`` (as a member of TBranch) and "free"
 ``TBaskets`` (top-level objects, located by ``TKeys``).
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -32,7 +31,7 @@ class Model_TBasket(uproot.model.Model):
 
     def __repr__(self):
         basket_num = self._basket_num if self._basket_num is not None else "(unknown)"
-        return "<TBasket {0} of {1} at 0x{2:012x}>".format(
+        return "<TBasket {} of {} at 0x{:012x}>".format(
             basket_num, repr(self._parent.name), id(self)
         )
 
@@ -252,6 +251,9 @@ class Model_TBasket(uproot.model.Model):
             num_entries = self._members["fNevBuf"]
             key_length = self._members["fKeylen"]
 
+            # Embedded TBaskets are always uncompressed; be sure to copy any memmap arrays
+            chunk = chunk.detach_memmap()
+
             if maybe_entry_size * num_entries + key_length != self._members["fLast"]:
                 raw_byte_offsets = cursor.bytes(
                     chunk, 8 + self.num_entries * 4, context
@@ -294,6 +296,9 @@ class Model_TBasket(uproot.model.Model):
                     context,
                 )
             else:
+                # Uncompressed; be sure to copy any memmap arrays
+                chunk = chunk.detach_memmap()
+
                 self._raw_data = cursor.bytes(chunk, uncompressed_bytes, context)
 
             if self.border != uncompressed_bytes:

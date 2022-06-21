@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import os
 import sys
@@ -75,6 +74,7 @@ def test_memmap(tmpdir):
         )
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
 def test_http():
     for num_workers in [1, 2]:
@@ -85,15 +85,20 @@ def test_http():
                 chunk = source.chunk(start, stop)
                 assert len(tobytes(chunk.raw_data)) == stop - start
 
-            with pytest.raises(Exception):
-                with uproot.source.http.MultithreadedHTTPSource(
-                    "https://wonky.cern/does-not-exist",
-                    num_workers=num_workers,
-                    timeout=0.1,
-                ) as source:
-                    source.chunk(0, 100)
+
+@pytest.mark.network
+def test_http_fail():
+    for num_workers in [1, 2]:
+        with pytest.raises(Exception):
+            with uproot.source.http.MultithreadedHTTPSource(
+                "https://wonky.cern/does-not-exist",
+                num_workers=num_workers,
+                timeout=0.1,
+            ) as source:
+                source.chunk(0, 100)
 
 
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
 def test_http_multipart():
     with uproot.source.http.HTTPSource(
@@ -103,11 +108,14 @@ def test_http_multipart():
             chunk = source.chunk(start, stop)
             assert len(tobytes(chunk.raw_data)) == stop - start
 
-        with pytest.raises(Exception):
-            with uproot.source.http.HTTPSource(
-                "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=1
-            ) as source:
-                tobytes(source.chunk(0, 100).raw_data)
+
+@pytest.mark.network
+def test_http_multipart_fail():
+    with pytest.raises(Exception):
+        with uproot.source.http.HTTPSource(
+            "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=1
+        ) as source:
+            tobytes(source.chunk(0, 100).raw_data)
 
 
 @pytest.mark.skip(

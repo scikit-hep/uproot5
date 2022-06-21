@@ -4,17 +4,11 @@
 This module defines the behaviors of ``TAxis``, an axis of a histogram or profile plot.
 """
 
-from __future__ import absolute_import
-
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
 
 import numpy
 
 
-class AxisTraits(object):
+class AxisTraits:
     """
     Describes read-only properties of a histogram axis.
 
@@ -26,7 +20,7 @@ class AxisTraits(object):
         self._axis = axis
 
     def __repr__(self):
-        return "AxisTraits({0})".format(repr(self._axis))
+        return f"AxisTraits({self._axis!r})"
 
     @property
     def circular(self):
@@ -45,7 +39,7 @@ class AxisTraits(object):
         return fLabels is not None and len(fLabels) == fNbins
 
 
-class TAxis(Sequence):
+class TAxis:
     """
     Describes a histogram axis.
     """
@@ -89,8 +83,18 @@ class TAxis(Sequence):
             for x in fLabels:
                 yield str(x)
         else:
-            for low, high in self.intervals():
-                yield low, high
+            yield from self.intervals()
+
+    def __contains__(self, x):
+        """
+        Returns True if ``x`` is one of the labels or intervals for this axis;
+        False otherwise.
+        """
+        for y in self:
+            if x == y:
+                return True
+        else:
+            return False
 
     def __eq__(self, other):
         """

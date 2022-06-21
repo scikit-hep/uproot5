@@ -4,10 +4,8 @@
 This module defines the behaviors of ``TGraphErrors``.
 """
 
-from __future__ import absolute_import
 
-
-class TGraphErrors(object):
+class TGraphErrors:
     """
     Behaviors for TGraphErrors: get values and errors as NumPy arrays.
     """

@@ -16,12 +16,8 @@ The (many) other functions in this module construct writable :doc:`uproot.model.
 objects from Python builtins and other writable models.
 """
 
-from __future__ import absolute_import
 
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+from collections.abc import Mapping
 
 import numpy
 
@@ -52,15 +48,14 @@ def add_to_directory(obj, name, directory, streamers):
     Raises ``TypeError`` if ``obj`` is not recognized as writable data.
     """
     is_ttree = False
-    module_name = type(obj).__module__
 
-    if module_name == "pandas" or module_name.startswith("pandas."):
+    if uproot._util.from_module(obj, "pandas"):
         import pandas
 
         if isinstance(obj, pandas.DataFrame) and obj.index.is_numeric():
             obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
 
-    if module_name == "awkward" or module_name.startswith("awkward."):
+    if uproot._util.from_module(obj, "awkward"):
         import awkward
 
         if isinstance(obj, awkward.Array):
@@ -72,13 +67,15 @@ def add_to_directory(obj, name, directory, streamers):
     if isinstance(obj, Mapping) and all(uproot._util.isstr(x) for x in obj):
         data = {}
         metadata = {}
-        for branch_name, branch_array in obj.items():
-            module_name = type(branch_array).__module__
 
-            if module_name == "pandas" or module_name.startswith("pandas."):
-                branch_array = uproot.writing._cascadetree.dataframe_to_dict(
-                    branch_array
-                )
+        for branch_name, branch_array in obj.items():
+            if uproot._util.from_module(branch_array, "pandas"):
+                import pandas
+
+                if isinstance(branch_array, pandas.DataFrame):
+                    branch_array = uproot.writing._cascadetree.dataframe_to_dict(
+                        branch_array
+                    )
 
             if (
                 isinstance(branch_array, numpy.ndarray)
@@ -113,8 +110,7 @@ def add_to_directory(obj, name, directory, streamers):
                 metadata[branch_name] = metadatum
 
             else:
-                module_name = type(branch_array).__module__
-                if module_name == "awkward" or module_name.startswith("awkward."):
+                if uproot._util.from_module(branch_array, "awkward"):
                     data[branch_name] = branch_array
                     metadata[branch_name] = branch_array.type
 
@@ -218,7 +214,7 @@ def to_writable(obj):
             return uproot.pyroot._PyROOTWritable(obj)
         else:
             raise TypeError(
-                "only instances of TObject can be written to files, not {0}".format(
+                "only instances of TObject can be written to files, not {}".format(
                     type(obj).__name__
                 )
             )
@@ -266,6 +262,13 @@ def to_writable(obj):
             # using flow=True if supported
             data = obj.values(flow=True)
             fSumw2 = obj.variances(flow=True)
+
+            # and flow=True is different from flow=False (obj actually has flow bins)
+            if (
+                data.shape == obj.values(flow=False).shape
+                and fSumw2.shape == obj.variances(flow=True).shape
+            ):
+                raise TypeError
 
         except TypeError:
             # flow=True is not supported, fallback to allocate-and-fill
@@ -658,7 +661,7 @@ def _root_stats_1d(entries, edges):
 
     fTsumw = fTsumw2 = entries.sum()
     fTsumwx = (entries * centers).sum()
-    fTsumwx2 = (entries * centers ** 2).sum()
+    fTsumwx2 = (entries * centers**2).sum()
 
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2
 
@@ -668,9 +671,9 @@ def _root_stats_2d(entries, xedges, yedges):
     ycenters = (yedges[:-1] + yedges[1:]) / 2.0
     fTsumw = fTsumw2 = entries.sum()
     fTsumwx = (entries.T * xcenters).sum()
-    fTsumwx2 = (entries.T * xcenters ** 2).sum()
+    fTsumwx2 = (entries.T * xcenters**2).sum()
     fTsumwy = (entries * ycenters).sum()
-    fTsumwy2 = (entries * ycenters ** 2).sum()
+    fTsumwy2 = (entries * ycenters**2).sum()
     fTsumwxy = ((entries * ycenters).T * xcenters).sum()
     return fTsumw, fTsumw2, fTsumwx, fTsumwx2, fTsumwy, fTsumwy2, fTsumwxy
 
@@ -681,11 +684,11 @@ def _root_stats_3d(entries, xedges, yedges, zedges):
     zcenters = (zedges[:-1] + zedges[1:]) / 2.0
     fTsumw = fTsumw2 = entries.sum()
     fTsumwx = (numpy.transpose(entries, (1, 2, 0)) * xcenters).sum()
-    fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters ** 2).sum()
+    fTsumwx2 = (numpy.transpose(entries, (1, 2, 0)) * xcenters**2).sum()
     fTsumwy = (numpy.transpose(entries, (2, 0, 1)) * ycenters).sum()
-    fTsumwy2 = (numpy.transpose(entries, (2, 0, 1)) * ycenters ** 2).sum()
+    fTsumwy2 = (numpy.transpose(entries, (2, 0, 1)) * ycenters**2).sum()
     fTsumwz = (entries * zcenters).sum()
-    fTsumwz2 = (entries * zcenters ** 2).sum()
+    fTsumwz2 = (entries * zcenters**2).sum()
     fTsumwxy = (
         numpy.transpose(numpy.transpose(entries, (2, 0, 1)) * ycenters, (2, 0, 1))
         * xcenters
@@ -798,7 +801,7 @@ def to_TArray(data):
         cls = uproot.models.TArray.Model_TArrayD
     else:
         raise ValueError(
-            "data to convert to TArray must have signed integer or floating-point type, not {0}".format(
+            "data to convert to TArray must have signed integer or floating-point type, not {}".format(
                 repr(data.dtype)
             )
         )
@@ -1123,9 +1126,7 @@ def to_TH1x(
     elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayD):
         cls = uproot.models.TH.Model_TH1D_v3
     else:
-        raise TypeError(
-            "no TH1* subclasses correspond to {0}".format(tarray_data.classname)
-        )
+        raise TypeError(f"no TH1* subclasses correspond to {tarray_data.classname}")
 
     th1x = cls.empty()
     th1x._bases.append(th1)
@@ -1288,9 +1289,7 @@ def to_TH2x(
     elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayD):
         cls = uproot.models.TH.Model_TH2D_v4
     else:
-        raise TypeError(
-            "no TH2* subclasses correspond to {0}".format(tarray_data.classname)
-        )
+        raise TypeError(f"no TH2* subclasses correspond to {tarray_data.classname}")
 
     th2x = cls.empty()
     th2x._bases.append(th2)
@@ -1467,9 +1466,7 @@ def to_TH3x(
     elif isinstance(tarray_data, uproot.models.TArray.Model_TArrayD):
         cls = uproot.models.TH.Model_TH3D_v4
     else:
-        raise TypeError(
-            "no TH3* subclasses correspond to {0}".format(tarray_data.classname)
-        )
+        raise TypeError(f"no TH3* subclasses correspond to {tarray_data.classname}")
 
     th3x = cls.empty()
     th3x._bases.append(th3)

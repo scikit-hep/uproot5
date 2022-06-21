@@ -8,20 +8,12 @@ and the classes that are too fundamental to be models:
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 
-from __future__ import absolute_import
 
 import struct
 import sys
 import uuid
 import warnings
-
-import pkg_resources
-
-try:
-    from collections.abc import Mapping, MutableMapping
-except ImportError:
-    from collections import Mapping
-    from collections import MutableMapping
+from collections.abc import Mapping, MutableMapping
 
 import uproot
 import uproot.behaviors.TBranch
@@ -35,7 +27,7 @@ def open(
     custom_classes=None,
     decompression_executor=None,
     interpretation_executor=None,
-    **options  # NOTE: a comma after **options breaks Python 2
+    **options,  # NOTE: a comma after **options breaks Python 2
 ):
     """
     Args:
@@ -153,7 +145,7 @@ def open(
         custom_classes=custom_classes,
         decompression_executor=decompression_executor,
         interpretation_executor=interpretation_executor,
-        **options  # NOTE: a comma after **options breaks Python 2
+        **options,  # NOTE: a comma after **options breaks Python 2
     )
 
     if object_path is None:
@@ -167,9 +159,10 @@ class _OpenDefaults(dict):
         if where == "xrootd_handler" and where not in self:
             # See https://github.com/scikit-hep/uproot4/issues/294
             if uproot.extras.older_xrootd("5.2.0"):
-                dist = pkg_resources.get_distribution("XRootD")
                 message = (
-                    "XRootD {0} is not fully supported; ".format(dist.version)
+                    "XRootD {} is not fully supported; ".format(
+                        uproot.extras.xrootd_version()
+                    )
                     + """either upgrade to 5.2.0+ or set
 
     open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
@@ -214,7 +207,7 @@ must_be_attached = [
 ]
 
 
-class CommonFileMethods(object):
+class CommonFileMethods:
     """
     Abstract class for :doc:`uproot.reading.ReadOnlyFile` and
     :doc:`uproot.reading.DetachedFile`. The latter is a placeholder for file
@@ -260,7 +253,7 @@ class CommonFileMethods(object):
         See :ref:`uproot.reading.CommonFileMethods.root_version_tuple` and
         :ref:`uproot.reading.CommonFileMethods.fVersion`.
         """
-        return "{0}.{1:02d}/{2:02d}".format(*self.root_version_tuple)
+        return "{}.{:02d}/{:02d}".format(*self.root_version_tuple)
 
     @property
     def root_version_tuple(self):
@@ -324,10 +317,7 @@ class CommonFileMethods(object):
         See :ref:`uproot.reading.CommonFileMethods.uuid` and
         :ref:`uproot.reading.CommonFileMethods.fUUID`.
         """
-        if uproot._util.py2:
-            out = "".join("{0:02x}".format(ord(x)) for x in self._fUUID)
-        else:
-            out = "".join("{0:02x}".format(x) for x in self._fUUID)
+        out = "".join(f"{x:02x}" for x in self._fUUID)
         return "-".join([out[0:8], out[8:12], out[12:16], out[16:20], out[20:32]])
 
     @property
@@ -565,7 +555,7 @@ class ReadOnlyFile(CommonFileMethods):
         custom_classes=None,
         decompression_executor=None,
         interpretation_executor=None,
-        **options  # NOTE: a comma after **options breaks Python 2
+        **options,  # NOTE: a comma after **options breaks Python 2
     ):
         self._file_path = file_path
         self.object_cache = object_cache
@@ -595,13 +585,15 @@ class ReadOnlyFile(CommonFileMethods):
 
         if self._options["begin_chunk_size"] < _file_header_fields_big.size:
             raise ValueError(
-                "begin_chunk_size={0} is not enough to read the TFile header ({1})".format(
+                "begin_chunk_size={} is not enough to read the TFile header ({})".format(
                     self._options["begin_chunk_size"],
                     _file_header_fields_big.size,
                 )
             )
 
-        self._begin_chunk = self._source.chunk(0, self._options["begin_chunk_size"])
+        self._begin_chunk = self._source.chunk(
+            0, self._options["begin_chunk_size"]
+        ).detach_memmap()
 
         self.hook_before_interpret()
 
@@ -648,16 +640,14 @@ class ReadOnlyFile(CommonFileMethods):
 
         if magic != b"root":
             raise ValueError(
-                """not a ROOT file: first four bytes are {0}
-in file {1}""".format(
+                """not a ROOT file: first four bytes are {}
+in file {}""".format(
                     repr(magic), file_path
                 )
             )
 
     def __repr__(self):
-        return "<ReadOnlyFile {0} at 0x{1:012x}>".format(
-            repr(self._file_path), id(self)
-        )
+        return f"<ReadOnlyFile {self._file_path!r} at 0x{id(self):012x}>"
 
     @property
     def detached(self):
@@ -843,7 +833,7 @@ in file {1}""".format(
             for v, streamer in self.streamers[name].items():
                 if v == version:
                     if not first:
-                        stream.write(u"\n")
+                        stream.write("\n")
                     streamer.show(stream=stream)
                     first = False
 
@@ -874,6 +864,8 @@ in file {1}""".format(
                 key_cursor = uproot.source.cursor.Cursor(self._fSeekInfo)
                 key_start = self._fSeekInfo
                 key_stop = min(self._fSeekInfo + _key_format_big.size, self._fEND)
+
+                # Chunk will not be retained; we don't have to detach_memmap()
                 key_chunk = self.chunk(key_start, key_stop)
 
                 self.hook_before_read_streamer_key(
@@ -926,8 +918,8 @@ in file {1}""".format(
 
                     else:
                         raise ValueError(
-                            """unexpected type in TList of streamers and streamer rules: {0}
-in file {1}""".format(
+                            """unexpected type in TList of streamers and streamer rules: {}
+in file {}""".format(
                                 type(x), self._file_path
                             )
                         )
@@ -1201,7 +1193,7 @@ in file {1}""".format(
         ``start`` up to ``stop``.
         """
         if self.closed:
-            raise OSError("file {0} is closed".format(repr(self._file_path)))
+            raise OSError(f"file {self._file_path!r} is closed")
         elif (start, stop) in self._begin_chunk:
             return self._begin_chunk
         else:
@@ -1378,7 +1370,10 @@ class ReadOnlyDirectory(Mapping):
 
         directory_start = cursor.index
         directory_stop = min(directory_start + _directory_format_big.size, file.fEND)
+
+        # Chunk will not be retained; we don't have to detach_memmap()
         chunk = file.chunk(directory_start, directory_stop)
+
         self.hook_before_interpret(chunk=chunk, cursor=cursor)
 
         (
@@ -1423,6 +1418,7 @@ class ReadOnlyDirectory(Mapping):
             if (keys_start, keys_stop) in chunk:
                 keys_chunk = chunk
             else:
+                # Chunk will not be retained; we don't have to detach_memmap()
                 keys_chunk = file.chunk(keys_start, keys_stop)
 
             self.hook_before_header_key(
@@ -1448,7 +1444,7 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._keys = []
-            for _ in uproot._util.range(num_keys):
+            for _ in range(num_keys):
                 key = ReadOnlyKey(
                     keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )
@@ -1463,7 +1459,7 @@ class ReadOnlyDirectory(Mapping):
             )
 
     def __repr__(self):
-        return "<ReadOnlyDirectory {0} at 0x{1:012x}>".format(
+        return "<ReadOnlyDirectory {} at 0x{:012x}>".format(
             repr("/" + "/".join(self._path)), id(self)
         )
 
@@ -1600,7 +1596,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names of objects directly accessible
@@ -1631,7 +1627,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return objects directly accessible in this
@@ -1662,7 +1658,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return (name, object) pairs directly accessible
@@ -1695,7 +1691,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names and classnames of objects
@@ -1727,7 +1723,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names of objects directly accessible
@@ -1745,11 +1741,15 @@ class ReadOnlyDirectory(Mapping):
         """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_classname = uproot._util.regularize_filter(filter_classname)
+        seen = set()
         for key in self._keys:
             if (filter_name is no_filter or filter_name(key.fName)) and (
                 filter_classname is no_filter or filter_classname(key.fClassName)
             ):
-                yield key.name(cycle=cycle)
+                out = key.name(cycle=cycle)
+                if out not in seen:
+                    yield out
+                seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k1 in key.get().iterkeys(  # noqa: B301 (not a dict)
@@ -1758,10 +1758,12 @@ class ReadOnlyDirectory(Mapping):
                     filter_name=no_filter,
                     filter_classname=filter_classname,
                 ):
-                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k2 = f"{key.name(cycle=False)}/{k1}"
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
-                        yield k2
+                        if k2 not in seen:
+                            yield k2
+                        seen.add(k2)
 
     def itervalues(
         self,
@@ -1769,7 +1771,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return objects directly accessible in this
@@ -1800,7 +1802,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return (name, object) pairs directly accessible
@@ -1819,11 +1821,15 @@ class ReadOnlyDirectory(Mapping):
         """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_classname = uproot._util.regularize_filter(filter_classname)
+        seen = set()
         for key in self._keys:
             if (filter_name is no_filter or filter_name(key.fName)) and (
                 filter_classname is no_filter or filter_classname(key.fClassName)
             ):
-                yield key.name(cycle=cycle), key.get()
+                out = key.name(cycle=cycle)
+                if out not in seen:
+                    yield out, key.get()
+                seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k1, v in key.get().iteritems(  # noqa: B301 (not a dict)
@@ -1832,10 +1838,12 @@ class ReadOnlyDirectory(Mapping):
                     filter_name=no_filter,
                     filter_classname=filter_classname,
                 ):
-                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k2 = f"{key.name(cycle=False)}/{k1}"
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
-                        yield k2, v
+                        if k2 not in seen:
+                            yield k2, v
+                        seen.add(k2)
 
     def iterclassnames(
         self,
@@ -1844,7 +1852,7 @@ class ReadOnlyDirectory(Mapping):
         filter_name=no_filter,
         filter_classname=no_filter,
     ):
-        u"""
+        """
         Args:
             recursive (bool): If True, descend into any nested subdirectories.
                 If False, only return the names and classnames of objects
@@ -1862,11 +1870,15 @@ class ReadOnlyDirectory(Mapping):
         """
         filter_name = uproot._util.regularize_filter(filter_name)
         filter_classname = uproot._util.regularize_filter(filter_classname)
+        seen = set()
         for key in self._keys:
             if (filter_name is no_filter or filter_name(key.fName)) and (
                 filter_classname is no_filter or filter_classname(key.fClassName)
             ):
-                yield key.name(cycle=cycle), key.fClassName
+                out = key.name(cycle=cycle)
+                if out not in seen:
+                    yield out, key.fClassName
+                seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
                 for k1, v in key.get().iterclassnames(
@@ -1875,10 +1887,12 @@ class ReadOnlyDirectory(Mapping):
                     filter_name=no_filter,
                     filter_classname=filter_classname,
                 ):
-                    k2 = "{0}/{1}".format(key.name(cycle=False), k1)
+                    k2 = f"{key.name(cycle=False)}/{k1}"
                     k3 = k2[: k2.index(";")] if ";" in k2 else k2
                     if filter_name is no_filter or filter_name(k3):
-                        yield k2, v
+                        if k2 not in seen:
+                            yield k2, v
+                        seen.add(k2)
 
     def _ipython_key_completions_(self):
         """
@@ -2200,7 +2214,7 @@ _key_format_small = struct.Struct(">ihiIhhii")
 _key_format_big = struct.Struct(">ihiIhhqq")
 
 
-class ReadOnlyKey(object):
+class ReadOnlyKey:
     """
     Args:
         chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -2292,8 +2306,8 @@ class ReadOnlyKey(object):
         if self._fName is None or self._fClassName is None:
             nameclass = ""
         else:
-            nameclass = " {0}: {1}".format(self.name(cycle=True), self.classname())
-        return "<ReadOnlyKey{0} (seek pos {1}) at 0x{2:012x}>".format(
+            nameclass = f" {self.name(cycle=True)}: {self.classname()}"
+        return "<ReadOnlyKey{} (seek pos {}) at 0x{:012x}>".format(
             nameclass, self.data_cursor.index, id(self)
         )
 
@@ -2335,7 +2349,7 @@ class ReadOnlyKey(object):
         and cycle number if ``cycle`` is True.
         """
         if cycle:
-            return "{0};{1}".format(self.fName, self.fCycle)
+            return f"{self.fName};{self.fCycle}"
         else:
             return self.fName
 
@@ -2368,11 +2382,11 @@ class ReadOnlyKey(object):
         ``TDirectory``), this returns a message with the raw seek position.
         """
         if isinstance(self._parent, ReadOnlyDirectory):
-            return "{0}{1};{2}".format(
+            return "{}{};{}".format(
                 self._parent.object_path, self.name(False), self._fCycle
             )
         else:
-            return "(seek pos {0})/{1}".format(self.data_cursor.index, self.name(False))
+            return f"(seek pos {self.data_cursor.index})/{self.name(False)}"
 
     @property
     def cache_key(self):
@@ -2380,7 +2394,7 @@ class ReadOnlyKey(object):
         String that uniquely specifies this ``TKey``, to use as part
         of object and array cache keys.
         """
-        return "{0}:{1}".format(self._file.hex_uuid, self._fSeekKey)
+        return f"{self._file.hex_uuid}:{self._fSeekKey}"
 
     @property
     def is_64bit(self):
@@ -2531,6 +2545,7 @@ class ReadOnlyKey(object):
         chunk = self._file.chunk(data_start, data_stop)
 
         if self.is_compressed:
+            # Decompression creates a new buffer; no need to copy any memmap arrays.
             uncompressed_chunk = uproot.compression.decompress(
                 chunk,
                 self.data_cursor,
@@ -2538,7 +2553,11 @@ class ReadOnlyKey(object):
                 self.data_compressed_bytes,
                 self.data_uncompressed_bytes,
             )
+
         else:
+            # Don't return a memmap array; it might get accessed after the file is closed!
+            chunk = chunk.detach_memmap()
+
             uncompressed_chunk = uproot.source.chunk.Chunk.wrap(
                 chunk.source,
                 chunk.get(

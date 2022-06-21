@@ -10,7 +10,6 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 :doc:`uproot.source.chunk.Source`, the primary types of the "physical layer."
 """
 
-from __future__ import absolute_import
 
 import numbers
 
@@ -19,7 +18,7 @@ import numpy
 import uproot
 
 
-class Resource(object):
+class Resource:
     """
     Abstract class for a file handle whose lifetime may be linked to threads
     in a thread pool executor.
@@ -29,6 +28,7 @@ class Resource(object):
     :doc:`uproot.source.futures.ResourceFuture`.
     """
 
+    @property
     def file_path(self):
         """
         A path to the file (or URL).
@@ -36,7 +36,7 @@ class Resource(object):
         return self._file_path
 
 
-class Source(object):
+class Source:
     """
     Abstract class for physically reading and writing data from a file, which
     might be remote.
@@ -150,7 +150,7 @@ class MultithreadedSource(Source):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
             path = repr("..." + self._file_path[-10:])
-        return "<{0} {1} ({2} workers) at 0x{3:012x}>".format(
+        return "<{} {} ({} workers) at 0x{:012x}>".format(
             type(self).__name__, path, self.num_workers, id(self)
         )
 
@@ -216,7 +216,7 @@ def notifier(chunk, notifications):  # noqa: D103
     return notify
 
 
-class Chunk(object):
+class Chunk:
     """
     Args:
         source (:doc:`uproot.source.chunk.Source`): Source from which the
@@ -262,15 +262,16 @@ class Chunk(object):
         future = uproot.source.futures.TrivialFuture(data)
         return Chunk(source, start, start + len(data), future)
 
-    def __init__(self, source, start, stop, future):
+    def __init__(self, source, start, stop, future, is_memmap=False):
         self._source = source
         self._start = start
         self._stop = stop
         self._future = future
         self._raw_data = None
+        self._is_memmap = is_memmap
 
     def __repr__(self):
-        return "<Chunk {0}-{1}>".format(self._start, self._stop)
+        return f"<Chunk {self._start}-{self._stop}>"
 
     @property
     def source(self):
@@ -302,6 +303,36 @@ class Chunk(object):
         """
         return self._future
 
+    @property
+    def is_memmap(self):
+        """
+        If True, the `raw_data` is or will be a view into a memmap file, which
+        must be handled carefully. Accessing that data after the file is closed
+        causes a segfault.
+        """
+        return self._is_memmap
+
+    def detach_memmap(self):
+        """
+        Returns a Chunk (possibly this one) that is not tied to live memmap data.
+        Such a Chunk can be accessed after the file is closed without segfaults.
+        """
+        if self._is_memmap:
+            if self._future is None:
+                assert self._raw_data is not None
+                future = uproot.source.futures.TrivialFuture(
+                    numpy.array(self._raw_data, copy=True)
+                )
+            else:
+                assert isinstance(self._future, uproot.source.futures.TrivialFuture)
+                future = uproot.source.futures.TrivialFuture(
+                    numpy.array(self._future._result, copy=True)
+                )
+            return Chunk(self._source, self._start, self._stop, future)
+
+        else:
+            return self
+
     def __contains__(self, range):
         start, stop = range
         if isinstance(start, uproot.source.cursor.Cursor):
@@ -331,17 +362,17 @@ class Chunk(object):
                 requirement = True
             else:
                 raise TypeError(
-                    """insist must be a bool or an int, not {0}
-for file path {1}""".format(
+                    """insist must be a bool or an int, not {}
+for file path {}""".format(
                         repr(insist), self._source.file_path
                     )
                 )
 
             if not requirement:
                 raise OSError(
-                    """expected Chunk of length {0},
-received {1} bytes from {2}
-for file path {3}""".format(
+                    """expected Chunk of length {},
+received {} bytes from {}
+for file path {}""".format(
                         self._stop - self._start,
                         len(self._raw_data),
                         type(self._source).__name__,
@@ -392,8 +423,8 @@ for file path {3}""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes {0}:{1}
-outside expected range {2}:{3} for this Chunk""".format(
+                """attempting to get bytes {}:{}
+outside expected range {}:{} for this Chunk""".format(
                     start, stop, self._start, self._stop
                 ),
                 self,
@@ -430,8 +461,8 @@ outside expected range {2}:{3} for this Chunk""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes after {0}
-outside expected range {1}:{2} for this Chunk""".format(
+                """attempting to get bytes after {}
+outside expected range {}:{} for this Chunk""".format(
                     start, self._start, self._stop
                 ),
                 self,

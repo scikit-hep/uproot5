@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import os
 
@@ -78,7 +77,7 @@ def test_ZSTD():
 def test_histogram_ZLIB(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 21
+    SIZE = 2**21
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 
@@ -103,7 +102,7 @@ def test_histogram_LZMA(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 20
+    SIZE = 2**20
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 
@@ -128,7 +127,7 @@ def test_histogram_LZ4(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 21
+    SIZE = 2**21
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 
@@ -153,7 +152,7 @@ def test_histogram_ZSTD(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    SIZE = 2 ** 21
+    SIZE = 2**21
     histogram = (np.random.randint(0, 10, SIZE), np.linspace(0, 1, SIZE + 1))
     last = histogram[0][-1]
 
@@ -373,8 +372,6 @@ def test_multicompression_1(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression is None
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes == 874
         assert fin["tree/branch1"].uncompressed_bytes == 874
@@ -401,8 +398,6 @@ def test_multicompression_2(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression is None
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes == 874
         assert fin["tree/branch1"].uncompressed_bytes == 874
@@ -430,8 +425,6 @@ def test_multicompression_3(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression == uproot.ZLIB(5)
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes < 874
         assert fin["tree/branch1"].uncompressed_bytes == 874
@@ -457,8 +450,6 @@ def test_multicompression_4(tmp_path):
     with uproot.open(newfile) as fin:
         assert fin["tree/branch1"].array(library="np").tolist() == branch1.tolist()
         assert fin["tree/branch2"].array(library="np").tolist() == branch2.tolist()
-        assert fin["tree/branch1"].compression == uproot.ZLIB(5)
-        assert fin["tree/branch2"].compression == uproot.ZLIB(5)
         assert fin["tree/branch1"].compressed_bytes < 874
         assert fin["tree/branch2"].compressed_bytes < 874
         assert fin["tree/branch1"].uncompressed_bytes == 874

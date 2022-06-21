@@ -14,16 +14,12 @@ and sometimes freeing data.
 See :doc:`uproot.writing._cascade` for a general overview of the cascading writer concept.
 """
 
-from __future__ import absolute_import
 
 import datetime
 import math
 import struct
-
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+import warnings
+from collections.abc import Mapping
 
 import numpy
 
@@ -47,7 +43,7 @@ _dtype_to_char = {
 }
 
 
-class Tree(object):
+class Tree:
     """
     Writes a TTree, including all TBranches, TLeaves, and (upon ``extend``) TBaskets.
 
@@ -120,7 +116,7 @@ class Tree(object):
 
             else:
                 try:
-                    if type(branch_type).__module__.startswith("awkward."):
+                    if uproot._util.from_module(branch_type, "awkward"):
                         raise TypeError
                     if (
                         uproot._util.isstr(branch_type)
@@ -131,13 +127,11 @@ class Tree(object):
 
                 except TypeError:
                     try:
-                        import awkward
-                    except ImportError:
+                        awkward = uproot.extras.awkward()
+                    except ModuleNotFoundError as err:
                         raise TypeError(
-                            "not a NumPy dtype and 'awkward' cannot be imported: {0}".format(
-                                repr(branch_type)
-                            )
-                        )
+                            f"not a NumPy dtype and 'awkward' cannot be imported: {branch_type!r}"
+                        ) from err
                     if isinstance(branch_type, awkward.types.Type):
                         branch_datashape = branch_type
                     else:
@@ -145,9 +139,7 @@ class Tree(object):
                             branch_datashape = awkward.types.from_datashape(branch_type)
                         except Exception:
                             raise TypeError(
-                                "not a NumPy dtype or an Awkward datashape: {0}".format(
-                                    repr(branch_type)
-                                )
+                                f"not a NumPy dtype or an Awkward datashape: {branch_type!r}"
                             )
                     # checking by class name to be Awkward v1/v2 insensitive
                     if type(branch_datashape).__name__ == "ArrayType":
@@ -158,29 +150,37 @@ class Tree(object):
                     branch_dtype = self._branch_ak_to_np(branch_datashape)
 
             if branch_dict is not None:
-                self._branch_lookup[branch_name] = len(self._branch_data)
-                self._branch_data.append(
-                    {"kind": "record", "name": branch_name, "keys": list(branch_dict)}
-                )
+                if branch_name not in self._branch_lookup:
+                    self._branch_lookup[branch_name] = len(self._branch_data)
+                    self._branch_data.append(
+                        {
+                            "kind": "record",
+                            "name": branch_name,
+                            "keys": list(branch_dict),
+                        }
+                    )
 
-                for key, content in branch_dict.items():
-                    subname = self._field_name(branch_name, key)
-                    try:
-                        dtype = numpy.dtype(content)
-                    except Exception:
-                        raise TypeError(
-                            "values of a dict must be NumPy types\n\n    key {0} has type {1}".format(
-                                repr(key), repr(content)
+                    for key, content in branch_dict.items():
+                        subname = self._field_name(branch_name, key)
+                        try:
+                            dtype = numpy.dtype(content)
+                        except Exception:
+                            raise TypeError(
+                                "values of a dict must be NumPy types\n\n    key {} has type {}".format(
+                                    repr(key), repr(content)
+                                )
                             )
+                        self._branch_lookup[subname] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(subname, content, dtype)
                         )
-                    self._branch_lookup[subname] = len(self._branch_data)
-                    self._branch_data.append(self._branch_np(subname, content, dtype))
 
             elif branch_dtype is not None:
-                self._branch_lookup[branch_name] = len(self._branch_data)
-                self._branch_data.append(
-                    self._branch_np(branch_name, branch_type, branch_dtype)
-                )
+                if branch_name not in self._branch_lookup:
+                    self._branch_lookup[branch_name] = len(self._branch_data)
+                    self._branch_data.append(
+                        self._branch_np(branch_name, branch_type, branch_dtype)
+                    )
 
             else:
                 parameters = branch_datashape.parameters
@@ -205,6 +205,9 @@ class Tree(object):
                     counter = self._branch_np(
                         counter_name, counter_dtype, counter_dtype, kind="counter"
                     )
+                    if counter_name in self._branch_lookup:
+                        # counters always replace non-counters
+                        del self._branch_data[self._branch_lookup[counter_name]]
                     self._branch_lookup[counter_name] = len(self._branch_data)
                     self._branch_data.append(counter)
 
@@ -219,37 +222,44 @@ class Tree(object):
                         if keys is None:
                             keys = [str(x) for x in range(len(contents))]
 
-                        self._branch_lookup[branch_name] = len(self._branch_data)
-                        self._branch_data.append(
-                            {"kind": "record", "name": branch_name, "keys": keys}
-                        )
-
-                        for key, cont in zip(keys, contents):
-                            subname = self._field_name(branch_name, key)
-                            dtype = self._branch_ak_to_np(cont)
-                            if dtype is None:
-                                raise TypeError(
-                                    "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
-                                        repr(key), str(cont)
-                                    )
-                                )
-                            self._branch_lookup[subname] = len(self._branch_data)
+                        if branch_name not in self._branch_lookup:
+                            self._branch_lookup[branch_name] = len(self._branch_data)
                             self._branch_data.append(
-                                self._branch_np(subname, cont, dtype, counter=counter)
+                                {"kind": "record", "name": branch_name, "keys": keys}
                             )
+
+                            for key, cont in zip(keys, contents):
+                                subname = self._field_name(branch_name, key)
+                                dtype = self._branch_ak_to_np(cont)
+                                if dtype is None:
+                                    raise TypeError(
+                                        "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {} has type {}".format(
+                                            repr(key), str(cont)
+                                        )
+                                    )
+                                if subname not in self._branch_lookup:
+                                    self._branch_lookup[subname] = len(
+                                        self._branch_data
+                                    )
+                                    self._branch_data.append(
+                                        self._branch_np(
+                                            subname, cont, dtype, counter=counter
+                                        )
+                                    )
 
                     else:
                         dt = self._branch_ak_to_np(content)
                         if dt is None:
                             raise TypeError(
-                                "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                                "cannot write Awkward Array type to ROOT file:\n\n    {}".format(
                                     str(branch_datashape)
                                 )
                             )
-                        self._branch_lookup[branch_name] = len(self._branch_data)
-                        self._branch_data.append(
-                            self._branch_np(branch_name, dt, dt, counter=counter)
-                        )
+                        if branch_name not in self._branch_lookup:
+                            self._branch_lookup[branch_name] = len(self._branch_data)
+                            self._branch_data.append(
+                                self._branch_np(branch_name, dt, dt, counter=counter)
+                            )
 
                 elif type(branch_datashape).__name__ == "RecordType":
                     if hasattr(branch_datashape, "contents"):
@@ -262,28 +272,30 @@ class Tree(object):
                     if keys is None:
                         keys = [str(x) for x in range(len(contents))]
 
-                    self._branch_lookup[branch_name] = len(self._branch_data)
-                    self._branch_data.append(
-                        {"kind": "record", "name": branch_name, "keys": keys}
-                    )
-
-                    for key, content in zip(keys, contents):
-                        subname = self._field_name(branch_name, key)
-                        dtype = self._branch_ak_to_np(content)
-                        if dtype is None:
-                            raise TypeError(
-                                "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {0} has type {1}".format(
-                                    repr(key), str(content)
-                                )
-                            )
-                        self._branch_lookup[subname] = len(self._branch_data)
+                    if branch_name not in self._branch_lookup:
+                        self._branch_lookup[branch_name] = len(self._branch_data)
                         self._branch_data.append(
-                            self._branch_np(subname, content, dtype)
+                            {"kind": "record", "name": branch_name, "keys": keys}
                         )
+
+                        for key, content in zip(keys, contents):
+                            subname = self._field_name(branch_name, key)
+                            dtype = self._branch_ak_to_np(content)
+                            if dtype is None:
+                                raise TypeError(
+                                    "fields of a record must be NumPy types, though the record itself may be in a jagged array\n\n    field {} has type {}".format(
+                                        repr(key), str(content)
+                                    )
+                                )
+                            if subname not in self._branch_lookup:
+                                self._branch_lookup[subname] = len(self._branch_data)
+                                self._branch_data.append(
+                                    self._branch_np(subname, content, dtype)
+                                )
 
                 else:
                     raise TypeError(
-                        "cannot write Awkward Array type to ROOT file:\n\n    {0}".format(
+                        "cannot write Awkward Array type to ROOT file:\n\n    {}".format(
                             str(branch_datashape)
                         )
                     )
@@ -345,16 +357,14 @@ class Tree(object):
 
         letter = _dtype_to_char.get(branch_dtype)
         if letter is None:
-            raise TypeError(
-                "cannot write NumPy dtype {0} in TTree".format(branch_dtype)
-            )
+            raise TypeError(f"cannot write NumPy dtype {branch_dtype} in TTree")
 
         if branch_shape == ():
             dims = ""
         else:
             dims = "".join("[" + str(x) + "]" for x in branch_shape)
 
-        title = "{0}{1}/{2}".format(branch_name, dims, letter)
+        title = f"{branch_name}{dims}/{letter}"
 
         return {
             "fName": branch_name,
@@ -391,7 +401,7 @@ class Tree(object):
         }
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
+        return "{}({}, {}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._directory,
             self._name,
@@ -466,6 +476,9 @@ class Tree(object):
             )
 
             for datum in self._branch_data:
+                if datum["kind"] == "record":
+                    continue
+
                 fBasketBytes = datum["fBasketBytes"]
                 fBasketEntry = datum["fBasketEntry"]
                 fBasketSeek = datum["fBasketSeek"]
@@ -496,16 +509,20 @@ class Tree(object):
             sink.flush()
 
         provided = None
-        module_name = type(data).__module__
 
-        if module_name == "pandas" or module_name.startswith("pandas."):
+        if uproot._util.from_module(data, "pandas"):
             import pandas
 
             if isinstance(data, pandas.DataFrame) and data.index.is_numeric():
                 provided = dataframe_to_dict(data)
 
-        if module_name == "awkward" or module_name.startswith("awkward."):
-            import awkward
+        if uproot._util.from_module(data, "awkward"):
+            try:
+                awkward = uproot.extras.awkward()
+            except ModuleNotFoundError as err:
+                raise TypeError(
+                    f"an Awkward Array was provided, but 'awkward' cannot be imported: {data!r}"
+                ) from err
 
             if isinstance(data, awkward.Array):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
@@ -532,19 +549,66 @@ class Tree(object):
 
             provided = {}
             for k, v in data.items():
-                module_name = type(v).__module__
-                if module_name == "awkward" or module_name.startswith("awkward."):
-                    import awkward
+                if not uproot._util.from_module(
+                    v, "pandas"
+                ) and not uproot._util.from_module(v, "awkward"):
+                    if not hasattr(v, "dtype") and not isinstance(v, Mapping):
+                        try:
+                            with warnings.catch_warnings():
+                                warnings.simplefilter(
+                                    "error", category=numpy.VisibleDeprecationWarning
+                                )
+                                v = numpy.array(v)
+                            if v.dtype == numpy.dtype("O"):
+                                raise Exception
+                        except (numpy.VisibleDeprecationWarning, Exception):
+                            try:
+                                awkward = uproot.extras.awkward()
+                            except ModuleNotFoundError as err:
+                                raise TypeError(
+                                    f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
+                                ) from err
+                            v = awkward.from_iter(v)
 
+                    if getattr(v, "dtype", None) == numpy.dtype("O"):
+                        try:
+                            awkward = uproot.extras.awkward()
+                        except ModuleNotFoundError as err:
+                            raise TypeError(
+                                f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
+                            ) from err
+                        v = awkward.from_iter(v)
+
+                if uproot._util.from_module(v, "awkward"):
+                    try:
+                        awkward = uproot.extras.awkward()
+                    except ModuleNotFoundError as err:
+                        raise TypeError(
+                            f"an Awkward Array was provided, but 'awkward' cannot be imported: {k}: {type(v)}"
+                        ) from err
                     if (
                         isinstance(v, awkward.Array)
                         and v.ndim > 1
                         and not v.layout.purelist_isregular
                     ):
-                        provided[self._counter_name(k)] = numpy.asarray(
-                            awkward.num(v, axis=1), dtype=">u4"
-                        )
+                        kk = self._counter_name(k)
+                        vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
+                        if kk in provided:
+                            if not numpy.array_equal(vv, provided[kk]):
+                                raise ValueError(
+                                    "branch {} provided both as an explicit array and generated as a counter, and they disagree".format(
+                                        repr(kk)
+                                    )
+                                )
+                        provided[kk] = vv
 
+                if k in provided:
+                    if not numpy.array_equal(v, provided[k]):
+                        raise ValueError(
+                            "branch {} provided both as an explicit array and generated as a counter, and they disagree".format(
+                                repr(kk)
+                            )
+                        )
                 provided[k] = v
 
         actual_branches = {}
@@ -553,8 +617,7 @@ class Tree(object):
                 if datum["name"] in provided:
                     recordarray = provided.pop(datum["name"])
 
-                    module_name = type(recordarray).__module__
-                    if module_name == "pandas" or module_name.startswith("pandas."):
+                    if uproot._util.from_module(recordarray, "pandas"):
                         import pandas
 
                         if isinstance(recordarray, pandas.DataFrame):
@@ -576,7 +639,7 @@ class Tree(object):
 
                 else:
                     raise ValueError(
-                        "'extend' must be given an array for every branch; missing {0}".format(
+                        "'extend' must be given an array for every branch; missing {}".format(
                             repr(datum["name"])
                         )
                     )
@@ -586,14 +649,14 @@ class Tree(object):
                     actual_branches[datum["fName"]] = provided.pop(datum["fName"])
                 else:
                     raise ValueError(
-                        "'extend' must be given an array for every branch; missing {0}".format(
+                        "'extend' must be given an array for every branch; missing {}".format(
                             repr(datum["fName"])
                         )
                     )
 
         if len(provided) != 0:
             raise ValueError(
-                "'extend' was given data that do not correspond to any branch: {0}".format(
+                "'extend' was given data that do not correspond to any branch: {}".format(
                     ", ".join(repr(x) for x in provided)
                 )
             )
@@ -605,7 +668,7 @@ class Tree(object):
                 num_entries = len(branch_array)
             elif num_entries != len(branch_array):
                 raise ValueError(
-                    "'extend' must fill every branch with the same number of entries; {0} has {1} entries".format(
+                    "'extend' must fill every branch with the same number of entries; {} has {} entries".format(
                         repr(branch_name),
                         len(branch_array),
                     )
@@ -619,7 +682,7 @@ class Tree(object):
                 big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
                 if big_endian.shape != (len(branch_array),) + datum["shape"]:
                     raise ValueError(
-                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                        "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
                             datum["shape"],
                             big_endian.shape[1:],
                         )
@@ -632,8 +695,12 @@ class Tree(object):
                     )
 
             else:
-                import awkward
-
+                try:
+                    awkward = uproot.extras.awkward()
+                except ModuleNotFoundError as err:
+                    raise TypeError(
+                        f"a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {branch_name}: {branch_array!r}"
+                    ) from err
                 layout = branch_array.layout
                 while not isinstance(
                     layout,
@@ -715,7 +782,7 @@ class Tree(object):
 
                 if shape[1:] != datum["shape"]:
                     raise ValueError(
-                        "'extend' must fill branches with a consistent shape: has {0}, trying to fill with {1}".format(
+                        "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
                             datum["shape"],
                             shape[1:],
                         )
@@ -869,10 +936,11 @@ class Tree(object):
                 len(x) for x in out if x is not None
             )
 
-            if datum["compression"] is None:
-                fCompress = uproot.compression.ZLIB(0).code
-            else:
-                fCompress = datum["compression"].code
+            # Lie about the compression level so that ROOT checks and does the right thing.
+            # https://github.com/root-project/root/blob/87a998d48803bc207288d90038e60ff148827664/tree/tree/src/TBasket.cxx#L560-L578
+            # Without this, when small buffers are left uncompressed, ROOT complains about them not being compressed.
+            # (I don't know where the "no, really, this is uncompressed" bit is.)
+            fCompress = 0
 
             out.append(
                 uproot.models.TBranch._tbranch13_format1.pack(
@@ -1160,10 +1228,11 @@ class Tree(object):
 
             position = base + datum["metadata_start"]
 
-            if datum["compression"] is None:
-                fCompress = uproot.compression.ZLIB(0).code
-            else:
-                fCompress = datum["compression"].code
+            # Lie about the compression level so that ROOT checks and does the right thing.
+            # https://github.com/root-project/root/blob/87a998d48803bc207288d90038e60ff148827664/tree/tree/src/TBasket.cxx#L560-L578
+            # Without this, when small buffers are left uncompressed, ROOT complains about them not being compressed.
+            # (I don't know where the "no, really, this is uncompressed" bit is.)
+            fCompress = 0
 
             sink.write(
                 position,

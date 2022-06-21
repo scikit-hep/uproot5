@@ -5,7 +5,6 @@ This module defines the behaviors of ``TH1`` and its subclasses (not including `
 ``TH3``, or ``TProfile``).
 """
 
-from __future__ import absolute_import
 
 import numpy
 
@@ -41,7 +40,7 @@ def _boost_axis(axis, metadata):
     return out
 
 
-class Histogram(object):
+class Histogram:
     """
     Abstract class for histograms.
     """
@@ -182,7 +181,7 @@ class Histogram(object):
         return self.values(flow=flow)
 
     def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        u"""
+        """
         Args:
             metadata (dict of str \u2192 str): Metadata to collect (keys) and
                 their C++ class member names (values).
@@ -194,7 +193,7 @@ class Histogram(object):
         raise NotImplementedError(repr(self))
 
     def to_hist(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        u"""
+        """
         Args:
             metadata (dict of str \u2192 str): Metadata to collect (keys) and
                 their C++ class member names (values).

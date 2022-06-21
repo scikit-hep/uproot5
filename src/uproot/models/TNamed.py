@@ -4,7 +4,6 @@
 This module defines a versionless model for ``TNamed``.
 """
 
-from __future__ import absolute_import
 
 import numpy
 
@@ -19,8 +18,8 @@ class Model_TNamed(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -43,39 +42,27 @@ in file {1}""".format(
         title = ""
         if self._members["fTitle"] != "":
             title = " title=" + repr(self._members["fTitle"])
-        return "<TNamed {0}{1} at 0x{2:012x}>".format(
+        return "<TNamed {}{} at 0x{:012x}>".format(
             repr(self._members["fName"]), title, id(self)
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fName"] = uproot.containers.AsString(
             False, typename="TString"
-        ).awkward_form(file, index_format, header, tobject_header, breadcrumbs)
+        ).awkward_form(file, context)
         contents["fTitle"] = uproot.containers.AsString(
             False, typename="TString"
-        ).awkward_form(file, index_format, header, tobject_header, breadcrumbs)
+        ).awkward_form(file, context)
         return awkward.forms.RecordForm(
             contents,
             parameters={"__record__": "TNamed"},
@@ -99,7 +86,7 @@ in file {1}""".format(
         if name is None:
             name = self._members["fName"]
         if name is None:
-            name = "untitled_{0}".format(Model_TNamed._untitled_count)
+            name = f"untitled_{Model_TNamed._untitled_count}"
             Model_TNamed._untitled_count += 1
         out.append(uproot.serialization.string(name))
 

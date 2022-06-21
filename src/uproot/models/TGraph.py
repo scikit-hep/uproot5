@@ -4,7 +4,6 @@
 This module defines versioned models for ``TLeaf`` and its subclasses.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -38,7 +37,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -242,80 +241,56 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import ListOffsetForm, RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TNamed", 1)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TNamed", 1).awkward_form(file, context).contents
         )
         contents.update(
-            file.class_named("TAttLine", 2)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAttLine", 2).awkward_form(file, context).contents
         )
         contents.update(
-            file.class_named("TAttFill", 2)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAttFill", 2).awkward_form(file, context).contents
         )
         contents.update(
-            file.class_named("TAttMarker", 2)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TAttMarker", 2).awkward_form(file, context).contents
         )
         contents["fNpoints"] = uproot._util.awkward_form(
-            numpy.dtype(">u4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">u4"), file, context
         )
         contents["fX"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype0, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype0, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
         contents["fY"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype1, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype1, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
         contents["fMinimum"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         contents["fMaximum"] = uproot._util.awkward_form(
-            numpy.dtype(">f8"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">f8"), file, context
         )
         return RecordForm(contents, parameters={"__record__": "TGraph"})
 
@@ -393,7 +368,7 @@ class Model_TGraphErrors_v3(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -478,53 +453,35 @@ class Model_TGraphErrors_v3(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import ListOffsetForm, RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TGraph", 4)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TGraph", 4).awkward_form(file, context).contents
         )
         contents["fEX"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype0, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype0, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
         contents["fEY"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype1, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype1, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
@@ -593,7 +550,7 @@ class Model_TGraphAsymmErrors_v3(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -710,71 +667,49 @@ class Model_TGraphAsymmErrors_v3(
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         from awkward.forms import ListOffsetForm, RecordForm
 
-        if cls in breadcrumbs:
+        if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents.update(
-            file.class_named("TGraph", 4)
-            .awkward_form(file, index_format, header, tobject_header, breadcrumbs)
-            .contents
+            file.class_named("TGraph", 4).awkward_form(file, context).contents
         )
         contents["fEXlow"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype0, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype0, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
         contents["fEXhigh"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype1, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype1, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
         contents["fEYlow"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype2, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype2, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
         contents["fEYhigh"] = ListOffsetForm(
-            index_format,
-            uproot._util.awkward_form(
-                cls._dtype3, file, index_format, header, tobject_header, breadcrumbs
-            ),
+            context["index_format"],
+            uproot._util.awkward_form(cls._dtype3, file, context),
             parameters={
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },

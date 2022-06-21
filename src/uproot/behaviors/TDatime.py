@@ -4,12 +4,11 @@
 This module defines the behaviors of ``TDatime``.
 """
 
-from __future__ import absolute_import
 
 import uproot
 
 
-class TDatime(object):
+class TDatime:
     """
     Behaviors for TDatime: return values as py:class:`datetime.datetime`
     """

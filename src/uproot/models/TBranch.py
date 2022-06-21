@@ -7,7 +7,6 @@ See :doc:`uproot.behaviors.TBranch` for definitions of ``TTree``-reading
 functions.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -24,7 +23,7 @@ _tbranch10_dtype3 = numpy.dtype(">i8")
 _rawstreamer_ROOT_3a3a_TIOFeatures_v1 = (
     None,
     b"@\x00\x00\xe0\xff\xff\xff\xffTStreamerInfo\x00@\x00\x00\xca\x00\t@\x00\x00\x1f\x00\x01\x00\x01\x00\x00\x00\x00\x03\x01\x00\x00\x11ROOT::TIOFeatures\x00\x1a\xa1/\x10\x00\x00\x00\x01@\x00\x00\x99\xff\xff\xff\xffTObjArray\x00@\x00\x00\x87\x00\x03\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00@\x00\x00n\xff\xff\xff\xffTStreamerBasicType\x00@\x00\x00S\x00\x02@\x00\x00M\x00\x04@\x00\x00\x15\x00\x01\x00\x01\x00\x00\x00\x00\x03\x00\x00\x00\x07fIOBits\x00\x00\x00\x00\x0b\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\runsigned char\x00",
-    "ROOT_3a3a_TIOFeatures",
+    "ROOT::TIOFeatures",
     1,
 )
 _rawstreamer_TBranch_v13 = (
@@ -45,8 +44,8 @@ class Model_TBranch_v10(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -175,8 +174,8 @@ class Model_TBranch_v11(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -307,8 +306,8 @@ class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -440,8 +439,8 @@ class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -602,8 +601,8 @@ class Model_TBranchElement_v8(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -676,8 +675,8 @@ class Model_TBranchElement_v9(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -750,8 +749,8 @@ class Model_TBranchElement_v10(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -833,8 +832,8 @@ class Model_TBranchObject_v1(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {0}
-in file {1}""".format(
+                """memberwise serialization of {}
+in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )

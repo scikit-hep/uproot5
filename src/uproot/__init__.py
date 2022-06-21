@@ -72,7 +72,6 @@ The submodules of Uproot are:
 isort:skip_file
 """
 
-from __future__ import absolute_import
 
 from uproot.version import __version__
 import uproot.const
@@ -147,6 +146,8 @@ import uproot.models.TH
 import uproot.models.TGraph
 import uproot.models.TMatrixT
 
+from uproot.models.TTree import num_entries
+
 from uproot.containers import STLVector
 from uproot.containers import STLSet
 from uproot.containers import STLMap
@@ -168,6 +169,7 @@ from uproot.containers import AsString
 from uproot.containers import AsPointer
 from uproot.containers import AsArray
 from uproot.containers import AsDynamic
+from uproot.containers import AsRVec
 from uproot.containers import AsVector
 from uproot.containers import AsSet
 from uproot.containers import AsMap
@@ -179,6 +181,7 @@ from uproot.behaviors.TBranch import TBranch
 from uproot.behaviors.TBranch import iterate
 from uproot.behaviors.TBranch import concatenate
 from uproot.behaviors.TBranch import lazy
+from uproot.behaviors.TBranch import dask
 
 from uproot.behavior import behavior_of
 

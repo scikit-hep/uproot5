@@ -11,5 +11,3 @@ Unlike reading, writing has no threads and the file sink can be any object with
 context manager (Python's ``with`` statement) ensures that files are properly closed
 (although files are flushed after every object-write).
 """
-
-from __future__ import absolute_import

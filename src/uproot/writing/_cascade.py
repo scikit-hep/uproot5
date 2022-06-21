@@ -19,7 +19,6 @@ updates were not organized, redundant overwrites or even infinite cycles could o
 Thus, the structure of the cascade tree must be carefully laid out.
 """
 
-from __future__ import absolute_import
 
 import datetime
 import math
@@ -40,7 +39,7 @@ import uproot.streamers
 import uproot.writing._cascadetree
 
 
-class CascadeLeaf(object):
+class CascadeLeaf:
     """
     A leaf node in the tree of cascading, low-level writables.
 
@@ -107,7 +106,7 @@ class CascadeLeaf(object):
             self._file_dirty = False
 
 
-class CascadeNode(object):
+class CascadeNode:
     """
     A non-leaf node in the tree of cascading, low-level writables.
 
@@ -148,12 +147,12 @@ class String(CascadeLeaf):
     """
 
     def __init__(self, location, string):
-        super(String, self).__init__(location, None)
+        super().__init__(location, None)
         self._string = string
         self._serialization = uproot.serialization.string(self._string)
 
     def __repr__(self):
-        return "{0}({1}, {2})".format(
+        return "{}({}, {})".format(
             type(self).__name__,
             self._location,
             repr(self._string),
@@ -176,9 +175,9 @@ class String(CascadeLeaf):
         if num_bytes == 255:
             (num_bytes,) = _string_size_format_4.unpack(raw_bytes[1:5])
             position = 5
-        out = raw_bytes[position : position + num_bytes]
-        if not uproot._util.py2:
-            out = out.decode(errors="surrogateescape")
+        out = raw_bytes[position : position + num_bytes].decode(
+            errors="surrogateescape"
+        )
         return String(location, out), location + position + num_bytes
 
 
@@ -211,7 +210,7 @@ class Key(CascadeLeaf):
         created_on=None,
         big=None,
     ):
-        super(Key, self).__init__(location, None)
+        super().__init__(location, None)
         self._uncompressed_bytes = uncompressed_bytes
         self._compressed_bytes = compressed_bytes
         self._classname = classname
@@ -224,7 +223,7 @@ class Key(CascadeLeaf):
         self._big = big
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})".format(
+        return "{}({}, {}, {}, {}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._location,
             self._uncompressed_bytes,
@@ -431,7 +430,7 @@ class Key(CascadeLeaf):
 
         if version != cls.class_version:
             raise ValueError(
-                "Uproot can't read TKey version {0} for writing, only version {1}{2}".format(
+                "Uproot can't read TKey version {} for writing, only version {}{}".format(
                     version,
                     cls.class_version,
                     in_path,
@@ -441,7 +440,7 @@ class Key(CascadeLeaf):
         assert 0 < fNbytes <= fKeylen + fObjlen
         assert fCycle > 0
         if not is_directory_key:
-            assert fSeekKey == location, "fSeekKey {0} location {1}".format(
+            assert fSeekKey == location, "fSeekKey {} location {}".format(
                 fSeekKey, location
             )
             fSeekKey = None
@@ -481,12 +480,12 @@ class FreeSegmentsData(CascadeLeaf):
     class_version = 1
 
     def __init__(self, location, slices, end):
-        super(FreeSegmentsData, self).__init__(location, None)
+        super().__init__(location, None)
         self._slices = slices
         self._end = end
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3})".format(
+        return "{}({}, {}, {})".format(
             type(self).__name__,
             self._location,
             self._slices,
@@ -594,7 +593,7 @@ class FreeSegmentsData(CascadeLeaf):
 
             if version != cls.class_version:
                 raise ValueError(
-                    "Uproot can't read TFree version {0} for writing, only version {1}{2}".format(
+                    "Uproot can't read TFree version {} for writing, only version {}{}".format(
                         version,
                         cls.class_version,
                         in_path,
@@ -636,13 +635,13 @@ class FreeSegments(CascadeNode):
     """
 
     def __init__(self, key, data, fileheader):
-        super(FreeSegments, self).__init__(key, data, fileheader)
+        super().__init__(key, data, fileheader)
         self._key = key
         self._data = data
         self._fileheader = fileheader
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3})".format(
+        return "{}({}, {}, {})".format(
             type(self).__name__,
             self._key,
             self._data,
@@ -713,7 +712,7 @@ class FreeSegments(CascadeNode):
             if start <= original_start < stop or start < original_stop <= stop:
                 raise RuntimeError(
                     "segment of data to release overlaps one already marked as free: "
-                    "releasing [{0}, {1}) but [{2}, {3}) is free".format(
+                    "releasing [{}, {}) but [{}, {}) is free".format(
                         original_start, original_stop, start, stop
                     )
                 )
@@ -797,7 +796,7 @@ class FreeSegments(CascadeNode):
         self._fileheader.free_num_bytes = self._key.allocation + self._data.allocation
         self._fileheader.free_num_slices = len(self._data.slices)
         self._fileheader.end = self._data.end
-        super(FreeSegments, self).write(sink)
+        super().write(sink)
 
 
 _tlistheader_format = struct.Struct(">IHHIIBI")
@@ -813,12 +812,12 @@ class TListHeader(CascadeLeaf):
     class_version = 5
 
     def __init__(self, location, data_bytes, num_entries):
-        super(TListHeader, self).__init__(location, _tlistheader_format.size)
+        super().__init__(location, _tlistheader_format.size)
         self._data_bytes = data_bytes
         self._num_entries = num_entries
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3})".format(
+        return "{}({}, {}, {})".format(
             type(self).__name__, self._location, self._data_bytes, self._num_entries
         )
 
@@ -866,7 +865,7 @@ class RawStreamerInfo(CascadeLeaf):
     """
 
     def __init__(self, location, serialization, name, class_version):
-        super(RawStreamerInfo, self).__init__(location, len(serialization))
+        super().__init__(location, len(serialization))
         self._serialization = serialization
         self._name = name
         self._class_version = class_version
@@ -880,7 +879,7 @@ class RawStreamerInfo(CascadeLeaf):
         return self._class_version
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4})".format(
+        return "{}({}, {}, {}, {})".format(
             type(self).__name__,
             self._location,
             self._serialization,
@@ -907,11 +906,11 @@ class RawTListOfStrings(CascadeLeaf):
     """
 
     def __init__(self, location, serialization):
-        super(RawTListOfStrings, self).__init__(location, len(serialization))
+        super().__init__(location, len(serialization))
         self._serialization = serialization
 
     def __repr__(self):
-        return "{0}({1}, {2})".format(
+        return "{}({}, {})".format(
             type(self).__name__,
             self._location,
             self._serialization,
@@ -931,20 +930,21 @@ class TListOfStreamers(CascadeNode):
     (And sometimes a nested TList of TStrings, see :doc:`uproot.writing._cascade.RawTListOfStrings`.)
     """
 
-    def __init__(self, allocation, key, header, rawstreamers, rawstrings, freesegments):
-        super(TListOfStreamers, self).__init__(
-            freesegments, key, header, *(rawstreamers + rawstrings)
-        )
+    def __init__(self, allocation, key, header, rawstreamers, freesegments):
+        super().__init__(freesegments, key, header, *rawstreamers)
         self._allocation = allocation
         self._key = key
         self._header = header
         self._rawstreamers = rawstreamers
-        self._rawstrings = rawstrings
         self._freesegments = freesegments
-        self._lookup = set([(x.name, x.class_version) for x in self._rawstreamers])
+        self._lookup = {
+            (x.name, x.class_version)
+            for x in self._rawstreamers
+            if not isinstance(x, RawTListOfStrings)
+        }
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5})".format(
+        return "{}({}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._allocation,
             self._key,
@@ -1031,12 +1031,8 @@ class TListOfStreamers(CascadeNode):
             rawstreamer.location = position
             position += rawstreamer.num_bytes
 
-        for rawstring in self._rawstrings:
-            rawstring.location = position
-            position += rawstring.num_bytes
-
         self._header.data_bytes = position - afterkey
-        self._header.num_entries = len(self._rawstreamers) + len(self._rawstrings)
+        self._header.num_entries = len(self._rawstreamers)
 
         self._key.uncompressed_bytes = self._allocation
         self._key.compressed_bytes = self._key.uncompressed_bytes
@@ -1045,7 +1041,7 @@ class TListOfStreamers(CascadeNode):
             self._key.allocation + self._allocation
         )
 
-        super(TListOfStreamers, self).write(sink)
+        super().write(sink)
 
     @classmethod
     def deserialize(cls, raw_bytes, location, key, freesegments, file_path, uuid):
@@ -1076,7 +1072,6 @@ class TListOfStreamers(CascadeNode):
         header = TListHeader(location, key.uncompressed_bytes, len(tlist))
 
         rawstreamers = []
-        rawstrings = []
 
         for (start, stop), streamer in zip(tlist.byte_ranges, tlist):
             if isinstance(streamer, uproot.streamers.Model_TStreamerInfo):
@@ -1090,7 +1085,7 @@ class TListOfStreamers(CascadeNode):
                 )
 
             elif isinstance(streamer, uproot.models.TList.Model_TList):
-                rawstrings.append(
+                rawstreamers.append(
                     RawTListOfStrings(
                         location + start,
                         uproot._util.tobytes(uncompressed.raw_data[start:stop]),
@@ -1103,14 +1098,13 @@ class TListOfStreamers(CascadeNode):
                 key,
                 header,
                 rawstreamers,
-                rawstrings,
                 freesegments,
             ),
             tlist,
         )
 
 
-class _ReadForUpdate(object):
+class _ReadForUpdate:
     def __init__(self, file_path, uuid, get_chunk=None, tlist_of_streamers=None):
         self.file_path = file_path
         self.uuid = uuid
@@ -1169,7 +1163,7 @@ class DirectoryData(CascadeLeaf):
     """
 
     def __init__(self, location, allocation, keys):
-        super(DirectoryData, self).__init__(location, allocation)
+        super().__init__(location, allocation)
         self._dirty_keys = []
         self._dirty_keys_start = None
 
@@ -1182,7 +1176,7 @@ class DirectoryData(CascadeLeaf):
         self._keys = keys
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3})".format(
+        return "{}({}, {}, {})".format(
             type(self).__name__,
             self._location,
             self._allocation,
@@ -1381,7 +1375,7 @@ class DirectoryHeader(CascadeLeaf):
         parent_location,
         uuid,
     ):
-        super(DirectoryHeader, self).__init__(
+        super().__init__(
             location, uproot.reading._directory_format_big.size + 2 + len(uuid.bytes)
         )
         self._begin_location = begin_location
@@ -1394,7 +1388,7 @@ class DirectoryHeader(CascadeLeaf):
         self._modified_on = self._created_on
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
+        return "{}({}, {}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._location,
             self._begin_location,
@@ -1537,7 +1531,7 @@ class DirectoryHeader(CascadeLeaf):
 
         if version != cls.class_version:
             raise ValueError(
-                "Uproot can't read TDirectory version {0} for writing, only version {1}{2}".format(
+                "Uproot can't read TDirectory version {} for writing, only version {}{}".format(
                     version,
                     cls.class_version,
                     in_path,
@@ -1607,10 +1601,15 @@ class Directory(CascadeNode):
         else:
             cycle = replaces.cycle
 
+        classname_asbytes = classname.encode(errors="surrogateescape")
+        name_asbytes = name.encode(errors="surrogateescape")
+        title_asbytes = title.encode(errors="surrogateescape")
         strings_size = 0
-        strings_size += (1 if len(classname) < 255 else 5) + len(classname)
-        strings_size += (1 if len(name) < 255 else 5) + len(name)
-        strings_size += (1 if len(title) < 255 else 5) + len(title)
+        strings_size += (1 if len(classname_asbytes) < 255 else 5) + len(
+            classname_asbytes
+        )
+        strings_size += (1 if len(name_asbytes) < 255 else 5) + len(name_asbytes)
+        strings_size += (1 if len(title_asbytes) < 255 else 5) + len(title_asbytes)
 
         parent_location = self._key.location  # FIXME: is this correct?
 
@@ -1811,9 +1810,7 @@ class RootDirectory(Directory):
     """
 
     def __init__(self, key, name, title, header, datakey, data, freesegments):
-        super(RootDirectory, self).__init__(
-            freesegments, datakey, data, key, name, title, header
-        )
+        super().__init__(freesegments, datakey, data, key, name, title, header)
         self._key = key
         self._name = name
         self._title = title
@@ -1823,7 +1820,7 @@ class RootDirectory(Directory):
         self._freesegments = freesegments
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7})".format(
+        return "{}({}, {}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._key,
             self._name,
@@ -1886,7 +1883,7 @@ class RootDirectory(Directory):
         self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
         self._data.location = self._datakey.location + self._datakey.allocation
         self._freesegments.fileheader.begin_num_bytes = self.begin_num_bytes
-        super(RootDirectory, self).write(sink)
+        super().write(sink)
 
 
 class SubDirectory(Directory):
@@ -1898,9 +1895,7 @@ class SubDirectory(Directory):
     """
 
     def __init__(self, key, header, datakey, data, parent, freesegments):
-        super(SubDirectory, self).__init__(
-            freesegments, datakey, data, key, header, parent
-        )
+        super().__init__(freesegments, datakey, data, key, header, parent)
         self._key = key
         self._header = header
         self._datakey = datakey
@@ -1909,7 +1904,7 @@ class SubDirectory(Directory):
         self._freesegments = freesegments
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6})".format(
+        return "{}({}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._key,
             self._header,
@@ -1958,7 +1953,7 @@ class SubDirectory(Directory):
         self._datakey.uncompressed_bytes = self._data.allocation
         self._datakey.compressed_bytes = self._datakey.uncompressed_bytes
         self._data.location = self._datakey.location + self._datakey.allocation
-        super(SubDirectory, self).write(sink)
+        super().write(sink)
 
 
 class FileHeader(CascadeLeaf):
@@ -1992,7 +1987,7 @@ class FileHeader(CascadeLeaf):
         info_num_bytes,
         uuid,
     ):
-        super(FileHeader, self).__init__(0, 100)
+        super().__init__(0, 100)
         self._end = end
         self._free_location = free_location
         self._free_num_bytes = free_num_bytes
@@ -2006,7 +2001,7 @@ class FileHeader(CascadeLeaf):
         self._begin = 100
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9})".format(
+        return "{}({}, {}, {}, {}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._end,
             self._free_location,
@@ -2235,7 +2230,7 @@ class FileHeader(CascadeLeaf):
         return out
 
 
-class CascadingFile(object):
+class CascadingFile:
     """
     An object that represents an entire file, the root of the cascading-node tree.
 
@@ -2257,7 +2252,7 @@ class CascadingFile(object):
         self._tlist_of_streamers = tlist_of_streamers
 
     def __repr__(self):
-        return "{0}({1}, {2}, {3}, {4})".format(
+        return "{}({}, {}, {}, {})".format(
             type(self).__name__,
             self._fileheader,
             self._streamers,
@@ -2343,7 +2338,7 @@ def create_empty(
     )
     streamers_header = TListHeader(None, None, None)
     streamers = TListOfStreamers(
-        initial_streamers_bytes, streamers_key, streamers_header, [], [], freesegments
+        initial_streamers_bytes, streamers_key, streamers_header, [], freesegments
     )
 
     directory_key = Key(
@@ -2425,7 +2420,7 @@ def update_existing(sink, initial_directory_bytes, uuid_function):
     )
     if raw_bytes[:4] != b"root":
         raise ValueError(
-            "not a ROOT file: first four bytes are {0}{1}".format(
+            "not a ROOT file: first four bytes are {}{}".format(
                 repr(raw_bytes[:4]), sink.in_path
             )
         )

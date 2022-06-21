@@ -19,7 +19,6 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
-from __future__ import absolute_import
 
 import numpy
 
@@ -37,7 +36,7 @@ def awkward_can_optimize(interpretation, form):
     """
     try:
         import awkward._connect._uproot
-    except ImportError:
+    except ModuleNotFoundError:
         return False
     else:
         return awkward._connect._uproot.can_optimize(interpretation, form)
@@ -84,7 +83,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             model = self._model.__name__
         else:
             model = repr(self._model)
-        return "AsObjects({0})".format(model)
+        return f"AsObjects({model})"
 
     def __eq__(self, other):
         return isinstance(other, AsObjects) and self._model == other._model
@@ -96,7 +95,7 @@ class AsObjects(uproot.interpretation.Interpretation):
     @property
     def cache_key(self):
         content_key = uproot.containers._content_cache_key(self._model)
-        return "{0}({1})".format(type(self).__name__, content_key)
+        return f"{type(self).__name__}({content_key})"
 
     @property
     def typename(self):
@@ -105,22 +104,11 @@ class AsObjects(uproot.interpretation.Interpretation):
         else:
             return uproot.model.classname_decode(self._model.__name__)[0]
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         if isinstance(self._model, type):
-            return self._model.awkward_form(
-                self._branch.file, index_format, header, tobject_header, breadcrumbs
-            )
+            return self._model.awkward_form(self._branch.file, context)
         else:
-            return self._model.awkward_form(
-                self._branch.file, index_format, header, tobject_header, breadcrumbs
-            )
+            return self._model.awkward_form(self._branch.file, context)
 
     def basket_array(
         self, data, byte_offsets, basket, branch, context, cursor_offset, library
@@ -138,7 +126,15 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         output = None
         if isinstance(library, uproot.interpretation.library.Awkward):
-            form = self.awkward_form(branch.file, index_format="i64")
+            form = self.awkward_form(
+                branch.file,
+                {
+                    "index_format": "i64",
+                    "header": False,
+                    "tobject_header": True,
+                    "breadcrumbs": (),
+                },
+            )
 
             if awkward_can_optimize(self, form):
                 import awkward._connect._uproot
@@ -206,9 +202,7 @@ class AsObjects(uproot.interpretation.Interpretation):
 
             start = stop
 
-        if all(
-            type(x).__module__.startswith("awkward") for x in basket_arrays.values()
-        ):
+        if all(uproot._util.from_module(x, "awkward") for x in basket_arrays.values()):
             assert isinstance(library, uproot.interpretation.library.Awkward)
             awkward = library.imported
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
@@ -272,7 +266,11 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         if isinstance(
             self._model,
-            (uproot.containers.AsArray, uproot.containers.AsVector),
+            (
+                uproot.containers.AsArray,
+                uproot.containers.AsRVec,
+                uproot.containers.AsVector,
+            ),
         ):
             header_bytes = 0
             if (
@@ -281,7 +279,9 @@ class AsObjects(uproot.interpretation.Interpretation):
             ):
                 header_bytes += 1
             if (
-                isinstance(self._model, uproot.containers.AsVector)
+                isinstance(
+                    self._model, (uproot.containers.AsRVec, uproot.containers.AsVector)
+                )
                 and self._model.header
             ):
                 header_bytes += 10
@@ -333,27 +333,16 @@ def _unravel_members(members):
     return out
 
 
-def _strided_awkward_form(
-    awkward, classname, members, file, index_format, header, tobject_header, breadcrumbs
-):
+def _strided_awkward_form(awkward, classname, members, file, context):
     contents = {}
     for name, member in members:
         if isinstance(member, AsStridedObjects):
             cname = uproot.model.classname_decode(member._model.__name__)[0]
             contents[name] = _strided_awkward_form(
-                awkward,
-                cname,
-                member._members,
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                awkward, cname, member._members, file, context
             )
         else:
-            contents[name] = uproot._util.awkward_form(
-                member, file, index_format, header, tobject_header, breadcrumbs
-            )
+            contents[name] = uproot._util.awkward_form(member, file, context)
     return awkward.forms.RecordForm(contents, parameters={"__record__": classname})
 
 
@@ -392,7 +381,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         self._model = model
         self._members = members
         self._original = original
-        super(AsStridedObjects, self).__init__(_unravel_members(members))
+        super().__init__(_unravel_members(members))
 
     @property
     def model(self):
@@ -423,11 +412,11 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def __repr__(self):
         if self.inner_shape:
-            return "AsStridedObjects({0}, {1})".format(
+            return "AsStridedObjects({}, {})".format(
                 self._model.__name__, self.inner_shape
             )
         else:
-            return "AsStridedObjects({0})".format(self._model.__name__)
+            return f"AsStridedObjects({self._model.__name__})"
 
     def __eq__(self, other):
         return isinstance(other, AsStridedObjects) and self._model == other._model
@@ -436,33 +425,17 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def numpy_dtype(self):
         return numpy.dtype(object)
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         cname = uproot.model.classname_decode(self._model.__name__)[0]
-        form = _strided_awkward_form(
-            awkward,
-            cname,
-            self._members,
-            file,
-            index_format,
-            header,
-            tobject_header,
-            breadcrumbs,
-        )
+        form = _strided_awkward_form(awkward, cname, self._members, file, context)
         for dim in reversed(self.inner_shape):
             form = awkward.forms.RegularForm(form, dim)
         return form
 
     @property
     def cache_key(self):
-        return "{0}({1})".format(type(self).__name__, self._model.__name__)
+        return f"{type(self).__name__}({self._model.__name__})"
 
     @property
     def typename(self):
@@ -496,7 +469,7 @@ class CannotBeAwkward(Exception):
         self.because = because
 
 
-class ObjectArray(object):
+class ObjectArray:
     """
     Args:
         model (:doc:`uproot.model.Model` or :doc:`uproot.containers.AsContainer`): The
@@ -531,7 +504,7 @@ class ObjectArray(object):
         self._detached_file = self._branch.file.detached
 
     def __repr__(self):
-        return "ObjectArray({0}, {1}, {2}, {3}, {4}, {5})".format(
+        return "ObjectArray({}, {}, {}, {}, {}, {})".format(
             self._model,
             self._branch,
             self._context,
@@ -657,7 +630,7 @@ def _strided_object(path, interpretation, data):
     return out
 
 
-class StridedObjectArray(object):
+class StridedObjectArray:
     """
     Args:
         interpretation (:doc:`uproot.interpretation.objects.AsStridedObjects`): The
@@ -699,7 +672,7 @@ class StridedObjectArray(object):
         return self._array.shape
 
     def __repr__(self):
-        return "StridedObjectArray({0}, {1})".format(self._interpretation, self._array)
+        return f"StridedObjectArray({self._interpretation}, {self._array})"
 
     def __len__(self):
         return len(self._array)

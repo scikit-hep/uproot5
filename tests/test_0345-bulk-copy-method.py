@@ -52,6 +52,8 @@ def test_bulk_copy(tmp_path):
     y.Write()
     f2.Close()
 
-    assert set(uproot.open(dest_filename).keys()) == set(
-        ["subdir;1", "subdir/hist;1", "hello;1"]
-    )
+    assert set(uproot.open(dest_filename).keys()) == {
+        "subdir;1",
+        "subdir/hist;1",
+        "hello;1",
+    }

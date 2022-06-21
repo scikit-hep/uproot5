@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import json
 import sys
@@ -1110,7 +1109,7 @@ from_ROOT["TString"] = json.loads(
 
 def drop_fbits(x):
     if isinstance(x, dict):
-        return dict((k, drop_fbits(v)) for k, v in x.items() if k != "fBits")
+        return {k: drop_fbits(v) for k, v in x.items() if k != "fBits"}
     elif isinstance(x, list):
         return list(drop_fbits(v) for v in x)
     else:

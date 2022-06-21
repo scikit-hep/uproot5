@@ -4,12 +4,8 @@
 This module defines a versionless model for ``TClonesArray``.
 """
 
-from __future__ import absolute_import
 
-try:
-    from collections.abc import Sequence
-except ImportError:
-    from collections import Sequence
+from collections.abc import Sequence
 
 import uproot.models.TObjArray
 
@@ -24,7 +20,7 @@ class Model_TClonesArray(uproot.model.VersionedModel, Sequence):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                "memberwise serialization of {0}\nin file {1}".format(
+                "memberwise serialization of {}\nin file {}".format(
                     type(self).__name__, self.file.file_path
                 )
             )
@@ -62,7 +58,7 @@ class Model_TClonesArray(uproot.model.VersionedModel, Sequence):
         )
 
         self._data = []
-        for _ in uproot._util.range(self._members["fSize"]):
+        for _ in range(self._members["fSize"]):
             if cursor.byte(chunk, context) != 0:
                 self._data.append(
                     cls.read(chunk, cursor, context, file, self._file, self._parent)

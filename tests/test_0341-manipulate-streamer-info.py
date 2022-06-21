@@ -17,72 +17,32 @@ def test_volley(tmp_path):
     f1 = ROOT.TFile(filename, "recreate")
     f1.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set([])
+    assert set(uproot.open(filename).file.streamers) == set()
 
     with uproot.writing.update(filename) as f2:
         f2.file._cascading.streamers.write(f2.file.sink)
 
-    assert set(uproot.open(filename).file.streamers) == set([])
+    assert set(uproot.open(filename).file.streamers) == set()
 
     f3 = ROOT.TFile(filename, "update")
     x = ROOT.TObjString("hello")
     x.Write()
     f3.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+    assert set(uproot.open(filename).file.streamers) == {"TObjString"}
 
     with uproot.writing.update(filename) as f4:
         f4.file._cascading.streamers.write(f4.file.sink)
 
-    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+    assert set(uproot.open(filename).file.streamers) == {"TObjString"}
 
     f5 = ROOT.TFile(filename, "update")
     y = ROOT.TH1F("hey", "there", 100, -5, 5)
     y.Write()
     f5.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
-
     with uproot.writing.update(filename) as f6:
         f6.file._cascading.streamers.write(f6.file.sink)
-
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
 
 
 def test_with_mkdir(tmp_path):
@@ -91,12 +51,12 @@ def test_with_mkdir(tmp_path):
     f1 = ROOT.TFile(filename, "recreate")
     f1.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set([])
+    assert set(uproot.open(filename).file.streamers) == set()
 
     with uproot.writing.update(filename) as f2:
         f2.mkdir("one")
 
-    assert set(uproot.open(filename).file.streamers) == set([])
+    assert set(uproot.open(filename).file.streamers) == set()
 
     f3 = ROOT.TFile(filename, "update")
     f3.cd("one")
@@ -104,60 +64,20 @@ def test_with_mkdir(tmp_path):
     x.Write()
     f3.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+    assert set(uproot.open(filename).file.streamers) == {"TObjString"}
 
     with uproot.writing.update(filename) as f4:
         f4.mkdir("two")
 
-    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+    assert set(uproot.open(filename).file.streamers) == {"TObjString"}
 
     f5 = ROOT.TFile(filename, "update")
     y = ROOT.TH1F("hey", "there", 100, -5, 5)
     y.Write()
     f5.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
-
     with uproot.writing.update(filename) as f6:
         f6.mkdir("three")
-
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
 
 
 def test_add_streamers1(tmp_path):
@@ -175,24 +95,24 @@ def test_add_streamers1(tmp_path):
     f1 = ROOT.TFile(filename, "recreate")
     f1.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set([])
+    assert set(uproot.open(filename).file.streamers) == set()
 
     with uproot.writing.update(filename) as f2:
         f2.file.update_streamers(streamers)
 
-    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+    assert set(uproot.open(filename).file.streamers) == {"TObjString"}
 
     f3 = ROOT.TFile(filename, "update")
     y = ROOT.TObjString("there")
     y.Write()
     f3.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+    assert set(uproot.open(filename).file.streamers) == {"TObjString"}
 
     with uproot.writing.update(filename) as f3:
         pass
 
-    assert set(uproot.open(filename).file.streamers) == set(["TObjString"])
+    assert set(uproot.open(filename).file.streamers) == {"TObjString"}
 
     f4 = ROOT.TFile(filename, "update")
     z = ROOT.TH1F("histogram", "", 100, -5, 5)
@@ -219,74 +139,68 @@ def test_add_streamers2(tmp_path):
     f1 = ROOT.TFile(filename, "recreate")
     f1.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set([])
+    assert set(uproot.open(filename).file.streamers) == set()
 
     with uproot.writing.update(filename) as f2:
         f2.file.update_streamers(streamers)
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-        ]
-    )
+    assert set(uproot.open(filename).file.streamers) == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+    }
 
     f3 = ROOT.TFile(filename, "update")
     y = ROOT.TH1F("margotsih", "", 100, -5, 5)
     f3.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-        ]
-    )
+    assert set(uproot.open(filename).file.streamers) == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+    }
 
     with uproot.writing.update(filename) as f3:
         pass
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-        ]
-    )
+    assert set(uproot.open(filename).file.streamers) == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+    }
 
     f3 = ROOT.TFile(filename, "update")
     z = ROOT.TObjString("there")
@@ -311,110 +225,100 @@ def test_add_streamers3(tmp_path):
     y.Write()
     f1.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-        ]
-    )
+    assert set(uproot.open(filename).file.streamers) == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+    }
 
     with uproot.writing.update(filename) as f2:
         f2.file.update_streamers(streamers)
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
+    assert set(uproot.open(filename).file.streamers) == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+        "TObjString",
+    }
 
     f2 = ROOT.TFile(filename, "update")
-    assert set([z.GetName() for z in f2.GetStreamerInfoList()]) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
+    assert {z.GetName() for z in f2.GetStreamerInfoList()} == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+        "TObjString",
+    }
     w = ROOT.TObjString("wow")
     w.Write()
     f2.Close()
 
-    assert set(uproot.open(filename).file.streamers) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
+    assert set(uproot.open(filename).file.streamers) == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+        "TObjString",
+    }
 
     f3 = ROOT.TFile(filename, "update")
-    assert set([z.GetName() for z in f3.GetStreamerInfoList()]) == set(
-        [
-            "TObject",
-            "TNamed",
-            "TH1F",
-            "TH1",
-            "TAttLine",
-            "TAttFill",
-            "TAttMarker",
-            "TAxis",
-            "TAttAxis",
-            "THashList",
-            "TList",
-            "TSeqCollection",
-            "TCollection",
-            "TString",
-            "TObjString",
-        ]
-    )
+    assert {z.GetName() for z in f3.GetStreamerInfoList()} == {
+        "TObject",
+        "TNamed",
+        "TH1F",
+        "TH1",
+        "TAttLine",
+        "TAttFill",
+        "TAttMarker",
+        "TAxis",
+        "TAttAxis",
+        "THashList",
+        "TList",
+        "TSeqCollection",
+        "TCollection",
+        "TString",
+        "TObjString",
+    }
     f3.Close()

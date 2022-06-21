@@ -4,7 +4,6 @@
 This module defines versioned models for ``TDatime``.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -41,30 +40,18 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
         )
 
     @classmethod
-    def awkward_form(
-        cls, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-    ):
+    def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}
-        if header:
+        if context["header"]:
             contents["@num_bytes"] = uproot._util.awkward_form(
-                numpy.dtype("u4"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u4"), file, context
             )
             contents["@instance_version"] = uproot._util.awkward_form(
-                numpy.dtype("u2"),
-                file,
-                index_format,
-                header,
-                tobject_header,
-                breadcrumbs,
+                numpy.dtype("u2"), file, context
             )
         contents["fDatime"] = uproot._util.awkward_form(
-            numpy.dtype(">u4"), file, index_format, header, tobject_header, breadcrumbs
+            numpy.dtype(">u4"), file, context
         )
         return awkward.forms.RecordForm(contents, parameters={"__record__": "TDatime"})
 

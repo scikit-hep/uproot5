@@ -5,48 +5,27 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
-from __future__ import absolute_import
-
 import datetime
 import glob
+import itertools
 import numbers
 import os
 import platform
 import re
-import sys
 import warnings
-
-try:
-    from collections.abc import Iterable
-except ImportError:
-    from collections import Iterable
-try:
-    from urllib.parse import unquote, urlparse
-except ImportError:
-    from urlparse import urlparse, unquote
+from collections.abc import Iterable
+from urllib.parse import unquote, urlparse
 
 import numpy
+import setuptools
 
-py2 = sys.version_info[0] <= 2
-py26 = py2 and sys.version_info[1] <= 6
-py27 = py2 and not py26
-py35 = not py2 and sys.version_info[1] <= 5
 win = platform.system().lower().startswith("win")
-
-
-if py2:
-    # to silence flake8 F821 errors
-    unicode = eval("unicode")
-    range = eval("xrange")
-else:
-    unicode = None
-    range = eval("range")
 
 
 def tobytes(array):
     """
     Calls ``array.tobytes()`` or its older equivalent, ``array.tostring()``,
-    depending on what's available in this NumPy version.
+    depending on what's available in this NumPy version. (tobytes added in 1.9)
     """
     if hasattr(array, "tobytes"):
         return array.tobytes()
@@ -78,24 +57,19 @@ def isstr(x):
     """
     Returns True if and only if ``x`` is a string (including Python 2 unicode).
     """
-    if py2:
-        return isinstance(x, (bytes, unicode))
-    else:
-        return isinstance(x, str)
+    return isinstance(x, str)
 
 
 def ensure_str(x):
     """
     Ensures that ``x`` is a string (decoding with 'surrogateescape' if necessary).
     """
-    if not py2 and isinstance(x, bytes):
+    if isinstance(x, bytes):
         return x.decode(errors="surrogateescape")
-    elif py2 and isinstance(x, unicode):
-        return x.encode()
     elif isinstance(x, str):
         return x
     else:
-        raise TypeError("expected a string, not {0}".format(type(x)))
+        raise TypeError(f"expected a string, not {type(x)}")
 
 
 def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
@@ -110,13 +84,40 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         except (ValueError, numpy.VisibleDeprecationWarning):
             raise TypeError("cannot be converted to a NumPy array")
         if not issubclass(out.dtype.type, types):
-            raise TypeError(
-                "cannot be converted to a NumPy array of type {0}".format(types)
-            )
+            raise TypeError(f"cannot be converted to a NumPy array of type {types}")
         return out
 
 
-_regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
+def parse_version(version):
+    """
+    Converts a semver string into a Version object that can be compared with
+    ``<``, ``>=``, etc.
+
+    Currently implemented using ``setuptools.extern.packaging.version.parse``
+    (exposing that library in the return type).
+    """
+    return setuptools.extern.packaging.version.parse(version)
+
+
+def from_module(obj, module_name):
+    """
+    Returns True if ``obj`` is an instance of a class from a module
+    given by name.
+
+    This is like ``isinstance`` (in that it searches the whole ``mro``),
+    except that the module providing the type to check against doesn't
+    have to be imported and doesn't get imported (as a side effect) by
+    this function.
+    """
+    try:
+        mro = type(obj).mro()
+    except TypeError:
+        return False
+
+    for t in mro:
+        if t.__module__ == module_name or t.__module__.startswith(module_name + "."):
+            return True
+    return False
 
 
 def _regularize_filter_regex_flags(flags):
@@ -144,6 +145,9 @@ def no_filter(x):
     return True
 
 
+_regularize_filter_regex = re.compile("^/(.*)/([iLmsux]*)$")
+
+
 def regularize_filter(filter):
     """
     Convert None, str, iterable of str, wildcards, and regular expressions into
@@ -169,7 +173,7 @@ def regularize_filter(filter):
     else:
         raise TypeError(
             "filter must be None, callable, a regex string between slashes, or a "
-            "glob pattern, not {0}".format(repr(filter))
+            "glob pattern, not {}".format(repr(filter))
         )
 
 
@@ -238,7 +242,7 @@ def regularize_rename(rename):
 
     raise TypeError(
         "rename must be None, callable, a '/from/to/' regex, an iterable of "
-        "regex rules, or a dict, not {0}".format(repr(rename))
+        "regex rules, or a dict, not {}".format(repr(rename))
     )
 
 
@@ -379,7 +383,7 @@ def file_path_to_source_class(file_path, options):
         return out, file_path
 
     else:
-        raise ValueError("URI scheme not recognized: {0}".format(file_path))
+        raise ValueError(f"URI scheme not recognized: {file_path}")
 
 
 if isinstance(__builtins__, dict):
@@ -444,35 +448,35 @@ def memory_size(data, error_message=None):
             if unit == "KB":
                 target *= 1000
             elif unit == "MB":
-                target *= 1000 ** 2
+                target *= 1000**2
             elif unit == "GB":
-                target *= 1000 ** 3
+                target *= 1000**3
             elif unit == "TB":
-                target *= 1000 ** 4
+                target *= 1000**4
             elif unit == "PB":
-                target *= 1000 ** 5
+                target *= 1000**5
             elif unit == "EB":
-                target *= 1000 ** 6
+                target *= 1000**6
             elif unit == "ZB":
-                target *= 1000 ** 7
+                target *= 1000**7
             elif unit == "YB":
-                target *= 1000 ** 8
+                target *= 1000**8
             elif unit == "KIB":
                 target *= 1024
             elif unit == "MIB":
-                target *= 1024 ** 2
+                target *= 1024**2
             elif unit == "GIB":
-                target *= 1024 ** 3
+                target *= 1024**3
             elif unit == "TIB":
-                target *= 1024 ** 4
+                target *= 1024**4
             elif unit == "PIB":
-                target *= 1024 ** 5
+                target *= 1024**5
             elif unit == "EIB":
-                target *= 1024 ** 6
+                target *= 1024**6
             elif unit == "ZIB":
-                target *= 1024 ** 7
+                target *= 1024**7
             elif unit == "YIB":
-                target *= 1024 ** 8
+                target *= 1024**8
             return int(target)
 
     if isint(data):
@@ -481,7 +485,7 @@ def memory_size(data, error_message=None):
     if error_message is None:
         raise TypeError(
             "number of bytes or memory size string with units "
-            "(such as '100 MB') required, not {0}".format(repr(data))
+            f"(such as '100 MB') required, not {data!r}"
         )
     else:
         raise TypeError(error_message)
@@ -503,9 +507,7 @@ def new_class(name, bases, members):
 _primitive_awkward_form = {}
 
 
-def awkward_form(
-    model, file, index_format="i64", header=False, tobject_header=True, breadcrumbs=()
-):
+def awkward_form(model, file, context):
     """
     Utility function to get an ``ak.forms.Form`` for a :doc:`uproot.model.Model`.
     """
@@ -544,14 +546,12 @@ def awkward_form(
                     '"float64"'
                 )
             else:
-                raise AssertionError("{0}: {1}".format(repr(model), type(model)))
+                raise AssertionError(f"{model!r}: {type(model)}")
 
         return _primitive_awkward_form[model]
 
     else:
-        return model.awkward_form(
-            file, index_format, header, tobject_header, breadcrumbs
-        )
+        return model.awkward_form(file, context)
 
 
 def awkward_form_remove_uproot(awkward, form):
@@ -621,11 +621,11 @@ def awkward_form_remove_uproot(awkward, form):
         )
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            dict(
-                (k, awkward_form_remove_uproot(awkward, v))
+            {
+                k: awkward_form_remove_uproot(awkward, v)
                 for k, v in form.contents.items()
                 if not k.startswith("@")
-            ),
+            },
             form.has_identities,
             parameters,
         )
@@ -658,7 +658,7 @@ def awkward_form_remove_uproot(awkward, form):
             parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {0}".format(type(form)))
+        raise RuntimeError(f"unrecognized form: {type(form)}")
 
 
 # FIXME: Until we get Awkward reading these bytes directly, rather than
@@ -769,9 +769,7 @@ def awkward_form_of_iter(awkward, form):
         return out
     elif isinstance(form, awkward.forms.RecordForm):
         return awkward.forms.RecordForm(
-            dict(
-                (k, awkward_form_of_iter(awkward, v)) for k, v in form.contents.items()
-            ),
+            {k: awkward_form_of_iter(awkward, v) for k, v in form.contents.items()},
             form.has_identities,
             form.parameters,
         )
@@ -804,7 +802,7 @@ def awkward_form_of_iter(awkward, form):
             form.parameters,
         )
     else:
-        raise RuntimeError("unrecognized form: {0}".format(type(form)))
+        raise RuntimeError(f"unrecognized form: {type(form)}")
 
 
 def damerau_levenshtein(a, b, ratio=False):
@@ -868,7 +866,7 @@ def code_to_datetime(code):
         ((code & 0b00000000001111100000000000000000) >> 17),
         ((code & 0b00000000000000011111000000000000) >> 12),
         ((code & 0b00000000000000000000111111000000) >> 6),
-        ((code & 0b00000000000000000000000000111111)),
+        (code & 0b00000000000000000000000000111111),
     )
 
 
@@ -897,3 +895,157 @@ def objectarray1d(items):
     for i, x in enumerate(items):
         out[i] = x
     return out
+
+
+_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
+_regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
+
+
+def _regularize_files_inner(files, parse_colon, counter, HasBranches):
+    files2 = regularize_path(files)
+
+    if isstr(files2) and not isstr(files):
+        parse_colon = False
+        files = files2
+
+    if isstr(files):
+        if parse_colon:
+            file_path, object_path = file_object_path_split(files)
+        else:
+            file_path, object_path = files, None
+
+        parsed_url = urlparse(file_path)
+
+        if parsed_url.scheme.upper() in _remote_schemes:
+            yield file_path, object_path
+
+        else:
+            expanded = os.path.expanduser(file_path)
+            if _regularize_files_isglob.search(expanded) is None:
+                yield file_path, object_path
+
+            else:
+                matches = list(_regularize_files_braces.finditer(expanded))
+                if len(matches) == 0:
+                    results = [expanded]
+                else:
+                    results = []
+                    for combination in itertools.product(
+                        *[match.group(0)[1:-1].split(",") for match in matches]
+                    ):
+                        tmp = expanded
+                        for c, m in list(zip(combination, matches))[::-1]:
+                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
+                        results.append(tmp)
+
+                seen = set()
+                for result in results:
+                    for match in glob.glob(result):
+                        if match not in seen:
+                            yield match, object_path
+                            seen.add(match)
+
+    elif isinstance(files, HasBranches):
+        yield files, None
+
+    elif isinstance(files, dict):
+        for key, object_path in files.items():
+            for file_path, _ in _regularize_files_inner(
+                key, False, counter, HasBranches
+            ):
+                yield file_path, object_path
+
+    elif isinstance(files, Iterable):
+        for file in files:
+            counter[0] += 1
+            for file_path, object_path in _regularize_files_inner(
+                file, parse_colon, counter, HasBranches
+            ):
+                yield file_path, object_path
+
+    else:
+        raise TypeError(
+            "'files' must be a file path/URL (string or Path), possibly with "
+            "a glob pattern (for local files), a dict of "
+            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
+            "an iterable of such things, not {0}".format(repr(files))
+        )
+
+
+def regularize_files(files):
+    """
+    Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
+    """
+    from uproot.behaviors.TBranch import HasBranches
+
+    out = []
+    seen = set()
+    counter = [0]
+    for file_path, object_path in _regularize_files_inner(
+        files, True, counter, HasBranches
+    ):
+        if isstr(file_path):
+            key = (counter[0], file_path, object_path)
+            if key not in seen:
+                out.append((file_path, object_path))
+                seen.add(key)
+        else:
+            out.append((file_path, object_path))
+
+    if len(out) == 0:
+        raise _file_not_found(files)
+
+    return out
+
+
+def regularize_object_path(
+    file_path, object_path, custom_classes, allow_missing, options
+):
+    """
+    Returns the TTree object from given object and file paths.
+    """
+    from uproot.behaviors.TBranch import HasBranches, _NoClose
+    from uproot.reading import ReadOnlyFile
+
+    if isinstance(file_path, HasBranches):
+        return _NoClose(file_path)
+
+    else:
+        file = ReadOnlyFile(
+            file_path,
+            object_cache=None,
+            array_cache=None,
+            custom_classes=custom_classes,
+            **options,  # NOTE: a comma after **options breaks Python 2
+        ).root_directory
+        if object_path is None:
+            trees = file.keys(filter_classname="TTree", cycle=False)
+            if len(trees) == 0:
+                if allow_missing:
+                    return None
+                else:
+                    raise ValueError(
+                        """no TTrees found
+in file {}""".format(
+                            file_path
+                        )
+                    )
+            elif len(trees) == 1:
+                return file[trees[0]]
+            else:
+                raise ValueError(
+                    """TTree object paths must be specified in the 'files' """
+                    """as {{\"filenames*.root\": \"path\"}} if any files have """
+                    """more than one TTree
+
+    TTrees: {0}
+
+in file {1}""".format(
+                        ", ".join(repr(x) for x in trees), file_path
+                    )
+                )
+
+        else:
+            if allow_missing and object_path not in file:
+                return None
+            return file[object_path]

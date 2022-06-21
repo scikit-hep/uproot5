@@ -11,10 +11,8 @@ that determine the default interpretation of a
 :doc:`uproot.behaviors.TBranch.TBranch`.
 """
 
-from __future__ import absolute_import
 
-
-class Interpretation(object):
+class Interpretation:
     """
     Abstract class for all interpretations of ``TBranch`` data as arrays.
 
@@ -58,20 +56,16 @@ class Interpretation(object):
         """
         raise AssertionError
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         """
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
                 :doc:`uproot.model.Model` classes from its
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
+            context (dict): Context for the Form-generation; defaults are
+                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
+                See below for context argument descriptions.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -117,7 +111,7 @@ class Interpretation(object):
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
     ):
-        u"""
+        """
         Args:
             basket_arrays (dict of int \u2192 array): Mapping from ``TBasket``
                 number to the temporary array returned by

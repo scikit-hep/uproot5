@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-from __future__ import absolute_import
 
 import copy
 import os
@@ -60,10 +59,6 @@ def test_pickle():
         assert original_file_path == reconstituted_file_path
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 0),
-    reason="boost_histogram is wrapped with pybind11, which can't be pickled in Python 2.7.",
-)
 def test_pickle_boost():
     boost_histogram = pytest.importorskip("boost_histogram")
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:

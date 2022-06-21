@@ -9,11 +9,10 @@ The version number of Uproot's ``main`` branch in GitHub is usually one ahead
 of the latest release on PyPI.
 """
 
-from __future__ import absolute_import
 
 import re
 
-__version__ = "4.1.5"
+__version__ = "4.2.4"
 version = __version__
 version_info = tuple(re.split(r"[-\.]", __version__))
 

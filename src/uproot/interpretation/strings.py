@@ -13,7 +13,6 @@ an array is being built from ``TBaskets``. Its final form is determined by the
 :doc:`uproot.interpretation.library.Library`.
 """
 
-from __future__ import absolute_import
 
 import struct
 
@@ -97,10 +96,10 @@ class AsStrings(uproot.interpretation.Interpretation):
     def __repr__(self):
         args = []
         if self._header_bytes != 0:
-            args.append("header_bytes={0}".format(self._header_bytes))
+            args.append(f"header_bytes={self._header_bytes}")
         if self._length_bytes != "1-5":
-            args.append("length_bytes={0}".format(repr(self._length_bytes)))
-        return "AsStrings({0})".format(", ".join(args))
+            args.append(f"length_bytes={self._length_bytes!r}")
+        return "AsStrings({})".format(", ".join(args))
 
     def __eq__(self, other):
         return (
@@ -120,17 +119,10 @@ class AsStrings(uproot.interpretation.Interpretation):
     def numpy_dtype(self):
         return numpy.dtype(object)
 
-    def awkward_form(
-        self,
-        file,
-        index_format="i64",
-        header=False,
-        tobject_header=True,
-        breadcrumbs=(),
-    ):
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
         return awkward.forms.ListOffsetForm(
-            index_format,
+            context["index_format"],
             awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
@@ -144,7 +136,7 @@ class AsStrings(uproot.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        return "{0}({1},{2})".format(
+        return "{}({},{})".format(
             type(self).__name__, self._header_bytes, repr(self._length_bytes)
         )
 
@@ -351,7 +343,7 @@ class AsStrings(uproot.interpretation.Interpretation):
         return output
 
 
-class StringArray(object):
+class StringArray:
     """
     Args:
         offsets (array of ``numpy.int32``): Starting and stopping indexes for
@@ -376,7 +368,7 @@ class StringArray(object):
             content = repr(left) + " ... " + repr(right)
         else:
             content = repr(self._content)
-        return "StringArray({0}, {1})".format(self._offsets, content)
+        return f"StringArray({self._offsets}, {content})"
 
     @property
     def offsets(self):
