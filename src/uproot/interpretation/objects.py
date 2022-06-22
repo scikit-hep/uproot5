@@ -137,15 +137,7 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         output = None
         if isinstance(library, uproot.interpretation.library.Awkward):
-            form = self.awkward_form(
-                branch.file,
-                {
-                    "index_format": "i64",
-                    "header": False,
-                    "tobject_header": True,
-                    "breadcrumbs": (),
-                },
-            )
+            form = self.awkward_form(branch.file)
 
             if awkward_can_optimize(self, form):
                 import awkward._connect._uproot
