@@ -11,12 +11,10 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
-from re import L  # noqa : F401
 
 import numpy
 
 import uproot
-from uproot.deserialization import DeserializationError  # noqa : F401
 
 _stl_container_size = struct.Struct(">I")
 _stl_object_type = numpy.dtype(object)
@@ -408,8 +406,6 @@ class AsString(AsContainer):
         else:
             return self._typename
 
-    # def descent(self, context):
-
     def awkward_form(self, file, context):
         keys = context.keys()
         awkward = uproot.extras.awkward()
@@ -458,19 +454,24 @@ class AsString(AsContainer):
         forth_obj = None
         jump = True
         fcode = []
-        fheader = []
-        finit = []
         if "forth" in context.keys():
             awkward = uproot.extras.awkward()
             forth = True
             forth_obj = context["forth"]
-            isinstance(
-                forth_obj.aform,
-                (awkward.layout.NumpyArray,),
-            )
+            # assert isinstance(
+            #     forth_obj.aform,
+            #     (awkward.forms.NumpyForm,
+            #      ))
             keys = forth_obj.get_keys(self)
             offsets_num = keys[0]
             data_num = keys[1]
+            forth_obj.add_meta(
+                self,
+                [f"part0-node{data_num}-data", f"part0-node{offsets_num}-offsets"],
+                f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n",
+                f"0 part0-node{offsets_num}-offsets <- stack\n",
+            )
+
         if self._header and header:
             jump = False
             start_cursor = cursor.copy()
@@ -488,23 +489,13 @@ class AsString(AsContainer):
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
             if forth:
-                finit.append(f"0 part0-node{offsets_num}-offsets <- stack\n")
-                forth_obj.add_form_key(f"part0-node{offsets_num}-offsets")
-                forth_obj.add_form_key(f"part0-node{data_num}-data")
-                fheader.append(
-                    f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
-                )
                 fcode.append(
                     f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data \n"
                 )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
-            if forth and self.write_code:
-                finit.append(f"0 part0-node{offsets_num}-offsets <- stack\n")
-                fheader.append(
-                    f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
-                )
+            if forth:
                 fcode.append(
                     f"stream I-> stack dup part0-node{offsets_num}-offsets <- stack stream #B-> part0-node{data_num}-data\n"
                 )
@@ -525,7 +516,7 @@ class AsString(AsContainer):
             if id(self) not in forth_obj.forth_code.keys():
                 raise ValueError
             else:
-                forth_obj.add_forth_code(self, fheader, fcode, [], finit)
+                forth_obj.add_forth_code(self, fcode, [])
         return out
 
     def __eq__(self, other):
@@ -974,8 +965,6 @@ class AsVector(AsContainer):
         forth = False
         forth_obj = None
         jump = True
-        fheader = []
-        finit = []
         fcode_pre = []
         fcode_post = []
         if "forth" in context.keys():
@@ -985,7 +974,7 @@ class AsVector(AsContainer):
             assert isinstance(forth_obj.aform, awkward.forms.ListOffsetForm), type(
                 forth_obj.aform
             )
-            forth_obj.aform = forth_obj.aform.content
+            forth_obj.traverse_aform()
         if self._header and header:
             jump = False
             start_cursor = cursor.copy()
@@ -998,7 +987,7 @@ class AsVector(AsContainer):
                 temp_jump = cursor._index - start_cursor._index
                 if temp_jump != 0:
                     jump = True
-                    fcode_pre.append(f"{temp_jump} stream skip")
+                    fcode_pre.append(f"{temp_jump} stream skip\n")
         else:
             jump = 0
             is_memberwise = False
@@ -1057,22 +1046,22 @@ class AsVector(AsContainer):
         else:
             if forth:
                 key = forth_obj.get_keys(self)[0]
-                finit.append(f"0 part0-node{key}-offsets <- stack\n")
-                forth_obj.add_form_key(f"part0-node{key}-offsets")
-                fheader.append(f"output part0-node{key}-offsets int64\n")
+                forth_obj.add_meta(
+                    self,
+                    [f"part0-node{key}-offsets"],
+                    f"output part0-node{key}-offsets int64\n",
+                    f"0 part0-node{key}-offsets <- stack\n",
+                )
                 fcode_pre.append(
                     f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n0 do \n"
                 )
-                forth_obj.count_obj += 1
                 fcode_post.append("loop\n")
             length = cursor.field(chunk, _stl_container_size, context)
             if jump and forth:
                 if id(self) not in forth_obj.forth_code.keys():
                     raise ValueError
                 else:
-                    forth_obj.add_forth_code(
-                        self, fheader, fcode_pre, fcode_post, finit
-                    )
+                    forth_obj.add_forth_code(self, fcode_pre, fcode_post)
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent

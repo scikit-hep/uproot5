@@ -5,9 +5,9 @@ This module defines utilities for adding components to the forth reader.
 """
 
 
-class forth_obj:
+class ForthObj:
     """
-    Util class for holding information related to Forth code generation.
+    This class is passed through the Forth code generation, collecting Forth snippets and concatenating them at the end.
     """
 
     def __init__(self, aform=None, count_obj=0, var_set=False):
@@ -24,7 +24,10 @@ class forth_obj:
         return
 
     def init_keys(self, ref, start, stop):
-        self.forth_keys[ref] = [start, stop]
+        self.forth_keys[id(ref)] = [start, stop]
+
+    def traverse_aform(self):
+        self.aform = self.aform.content
 
     def get_last_key(self):
         if len(self.forth_keys.keys()) > 0:
@@ -36,25 +39,26 @@ class forth_obj:
         key = str(id(ref)) + "pre"
         self.forth_sequence.append(key)
 
-    def add_form_key(self, form_key):
-        self.form_keys.append(form_key)
+    def add_meta(self, ref, form_key, header, init):
+        if self.forth_code[id(ref)] is None:
+            self.forth_code[id(ref)] = {}
+        for elem in form_key:
+            self.form_keys.append(elem)
+        self.forth_code[id(ref)]["forth_header"] = header
+        self.forth_code[id(ref)]["forth_init"] = init
 
     def register_post(self, ref):
         key = str(id(ref)) + "post"
         self.forth_sequence.append(key)
 
     def get_keys(self, ref):
-        return self.forth_keys[ref]
+        return self.forth_keys[id(ref)]
 
-    def add_forth_code(
-        self, ref, forth_header, forth_exec_pre, forth_exec_post, forth_init
-    ):
+    def add_forth_code(self, ref, forth_exec_pre, forth_exec_post):
         if self.forth_code[id(ref)] is None:
             self.forth_code[id(ref)] = {}
-        self.forth_code[id(ref)]["forth_header"] = forth_header
         self.forth_code[id(ref)][str(id(ref)) + "pre"] = forth_exec_pre
         self.forth_code[id(ref)][str(id(ref)) + "post"] = forth_exec_post
-        self.forth_code[id(ref)]["forth_init"] = forth_init
         return
 
     def add_to_final(self, code):
@@ -64,17 +68,9 @@ class forth_obj:
         return
 
     def add_to_header(self, code):
-        if not isinstance(code, list):
-            raise TypeError
-        self.final_header.extend(code)
+        self.final_header.append(code)
         return
 
     def add_to_init(self, code):
-        if not isinstance(code, list):
-            raise TypeError
-        self.final_init.extend(code)
+        self.final_init.append(code)
         return
-
-
-class _PreReadDoneError(Exception):
-    pass

@@ -204,7 +204,7 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         output = None
         if "forth" not in context.keys():
-            forth_obj = uproot._awkward_forth.forth_obj()
+            forth_obj = uproot._awkward_forth.ForthObj()
 
             context["forth"] = forth_obj
             # self._model.descent(context)
