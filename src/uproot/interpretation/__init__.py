@@ -60,10 +60,10 @@ class Interpretation:
     def _make_context(context, index_format, header, tobject_header, breadcrumbs):
         if context is None:
             context = {}
-        context["index_format"] = "i64"
-        context["header"] = False
-        context["tobject_header"] = True
-        context["breadcrumbs"] = ()
+        context["index_format"] = index_format
+        context["header"] = header
+        context["tobject_header"] = tobject_header
+        context["breadcrumbs"] = breadcrumbs
 
         return context
 
