@@ -411,8 +411,8 @@ class AsString(AsContainer):
     # def descent(self, context):
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
         keys = context.keys()
+        awkward = uproot.extras.awkward()
         if "forth" in keys:
             forth_obj = context["forth"]
             forth_obj.forth_code[id(self)] = None
@@ -460,8 +460,8 @@ class AsString(AsContainer):
         fcode = []
         fheader = []
         finit = []
-        awkward = uproot.extras.awkward()
         if "forth" in context.keys():
+            awkward = uproot.extras.awkward()
             forth = True
             forth_obj = context["forth"]
             isinstance(
@@ -978,8 +978,8 @@ class AsVector(AsContainer):
         finit = []
         fcode_pre = []
         fcode_post = []
-        awkward = uproot.extras.awkward()
         if "forth" in context.keys():
+            awkward = uproot.extras.awkward()
             forth = True
             forth_obj = context["forth"]
             assert isinstance(forth_obj.aform, awkward.forms.ListOffsetForm), type(
