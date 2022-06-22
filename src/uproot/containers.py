@@ -517,6 +517,8 @@ class AsString(AsContainer):
                 raise ValueError
             else:
                 forth_obj.add_forth_code(self, fcode, [])
+        else:
+            forth_obj.var_set = True
         return out
 
     def __eq__(self, other):
@@ -1062,6 +1064,8 @@ class AsVector(AsContainer):
                     raise ValueError
                 else:
                     forth_obj.add_forth_code(self, fcode_pre, fcode_post)
+            else:
+                forth_obj.var_set = True
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
