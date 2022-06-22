@@ -4,10 +4,12 @@
 This module defines utilities for adding components to the forth reader.
 """
 
-import awkward as ak
-
 
 class forth_obj:
+    """
+    Util class for holding information related to Forth code generation.
+    """
+
     def __init__(self, aform=None, count_obj=0, var_set=False):
         self.aform = aform
         self.forth_sequence = []
@@ -57,7 +59,6 @@ class forth_obj:
 
     def add_to_final(self, code):
         if not isinstance(code, list):
-            print(code)
             raise TypeError
         self.final_code.extend(code)
         return

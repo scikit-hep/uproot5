@@ -139,7 +139,15 @@ class AsObjects(uproot.interpretation.Interpretation):
         else:
             output = None
             if isinstance(library, uproot.interpretation.library.Awkward):
-                self._form = self.awkward_form(branch.file, index_format="i64")
+                self._form = self.awkward_form(
+                    branch.file,
+                    {
+                        "index_format": "i64",
+                        "header": False,
+                        "tobject_header": True,
+                        "breadcrumbs": (),
+                    },
+                )
                 if awkward_can_optimize(self, self._form):
                     import awkward._connect._uproot
 
@@ -162,7 +170,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                     byte_offsets,
                     data,
                     cursor_offset,
-                    self._form,
                 ).to_numpy()
 
             self.hook_after_basket_array(
@@ -183,8 +190,6 @@ class AsObjects(uproot.interpretation.Interpretation):
     ):
         awkward = uproot.extras.awkward()
         import awkward.forth
-
-        mid_pass = False
 
         self.hook_before_basket_array(
             data=data,
@@ -278,7 +283,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                                         ]
                                     )
                             self._complete_forth_code = f'input stream\ninput byteoffsets \n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek\n{"".join(context["forth"].final_code)}\nloop'
-                            print(self._complete_forth_code)
                             self._forth_vm.vm = awkward.forth.ForthMachine64(
                                 self._complete_forth_code
                             )
@@ -308,7 +312,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                     container[elem] = self._forth_vm.vm.output_Index64(elem)
                 else:
                     container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
-            print(self._form)
+
             output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
         self.hook_after_basket_array(
@@ -650,7 +654,7 @@ class ObjectArray:
     """
 
     def __init__(
-        self, model, branch, context, byte_offsets, byte_content, cursor_offset, form
+        self, model, branch, context, byte_offsets, byte_content, cursor_offset
     ):
         self._model = model
         self._branch = branch
@@ -658,7 +662,6 @@ class ObjectArray:
         self._byte_offsets = byte_offsets
         self._byte_content = byte_content
         self._cursor_offset = cursor_offset
-        self._form = form
         self._detached_file = self._branch.file.detached
 
     def __repr__(self):
@@ -716,45 +719,6 @@ class ObjectArray:
         reference(: doc: `uproot.deserialization.read_object_any`).
         """
         return self._cursor_offset
-
-    # def to_numpy_forth(self):
-    #     """
-    #     Convert this ObjectArray into a NumPy ``dtype="O"`` (object) array.
-    #     """
-    #     output = numpy.empty(len(self), dtype=numpy.dtype(object))
-    #     self._context["forth"].aform = self._form
-    #     self._context["forth"].count_obj = 0
-    #     for i in range(len(self)):
-    #         if uproot._util.isint(i):
-    #             byte_start = self._byte_offsets[i]
-    #             byte_stop = self._byte_offsets[i + 1]
-    #             data = self._byte_content[byte_start:byte_stop]
-    #             chunk = uproot.source.chunk.Chunk.wrap(self._branch.file.source, data)
-    #             cursor = uproot.source.cursor.Cursor(
-    #                 0, origin=-(byte_start + self._cursor_offset)
-    #             )
-    #             return self._model.read(
-    #                 chunk,
-    #                 cursor,
-    #                 self._context,
-    #                 self._branch.file,
-    #                 self._detached_file,
-    #                 self._branch,
-    #             )
-
-    #         elif isinstance(i, slice):
-    #             return ObjectArray(
-    #                 self._model,
-    #                 self._branch,
-    #                 self._context,
-    #                 self._byte_offsets[i],
-    #                 self._byte_content,
-    #                 self._cursor_offset,
-    #             )
-
-    #         else:
-    #             raise NotImplementedError(repr(i))
-    #     return output
 
     def to_numpy(self):
         """

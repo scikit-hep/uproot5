@@ -64,6 +64,22 @@ def test_awkward_vector_string():
         ]
 
 
+def test_awkward_vector_string_forth():
+    awkward = pytest.importorskip("awkward")
+    with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
+        "tree"
+    ] as tree:
+        temp_branch = tree["vector_string"]
+        temp_branch._forth = True
+        assert awkward.to_list(temp_branch.array(library="ak")) == [
+            ["one"],
+            ["one", "two"],
+            ["one", "two", "three"],
+            ["one", "two", "three", "four"],
+            ["one", "two", "three", "four", "five"],
+        ]
+
+
 def test_awkward_vector_tstring():
     awkward = pytest.importorskip("awkward")
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[

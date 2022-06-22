@@ -550,7 +550,7 @@ def awkward_form(model, file, context):
         return _primitive_awkward_form[model]
 
     else:
-        return model.awkward_form(context)
+        return model.awkward_form(file, context)
 
 
 def awkward_form_remove_uproot(awkward, form):

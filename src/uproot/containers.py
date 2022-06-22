@@ -11,13 +11,12 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
-from operator import index
-from re import L
+from re import L  # noqa : F401
 
 import numpy
 
 import uproot
-from uproot.deserialization import DeserializationError
+from uproot.deserialization import DeserializationError  # noqa : F401
 
 _stl_container_size = struct.Struct(">I")
 _stl_object_type = numpy.dtype(object)
@@ -411,30 +410,48 @@ class AsString(AsContainer):
 
     # def descent(self, context):
 
-    def awkward_form(self, context):
-
-        forth_obj = context["forth"]
-        forth_obj.forth_code[id(self)] = None
-        key = forth_obj.get_last_key()
-        forth_obj.init_keys(self, key + 1, key + 2)
-        forth_obj.register_pre(self)
-        forth_obj.register_post(self)
+    def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
-            context["index_format"],
-            awkward.forms.NumpyForm(
-                (), 1, "B", parameters={"__array__": "char"}, form_key=f"node{key + 2}"
-            ),
-            parameters={
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": self._header,
-                    "length_bytes": self._length_bytes,
+        keys = context.keys()
+        if "forth" in keys:
+            forth_obj = context["forth"]
+            forth_obj.forth_code[id(self)] = None
+            key = forth_obj.get_last_key()
+            forth_obj.init_keys(self, key + 1, key + 2)
+            forth_obj.register_pre(self)
+            forth_obj.register_post(self)
+            return awkward.forms.ListOffsetForm(
+                context["index_format"],
+                awkward.forms.NumpyForm(
+                    (),
+                    1,
+                    "B",
+                    parameters={"__array__": "char"},
+                    form_key=f"node{key + 2}",
+                ),
+                parameters={
+                    "__array__": "string",
+                    "uproot": {
+                        "as": "string",
+                        "header": self._header,
+                        "length_bytes": self._length_bytes,
+                    },
                 },
-            },
-            form_key=f"node{key + 1}",
-        )
+                form_key=f"node{key + 1}",
+            )
+        else:
+            return awkward.forms.ListOffsetForm(
+                context["index_format"],
+                awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+                parameters={
+                    "__array__": "string",
+                    "uproot": {
+                        "as": "string",
+                        "header": self._header,
+                        "length_bytes": self._length_bytes,
+                    },
+                },
+            )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         forth = False
@@ -462,10 +479,11 @@ class AsString(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            temp_jump = cursor._index - start_cursor
-            if forth and temp_jump != 0:
-                jump = True
-                fcode.append(f"{temp_jump} stream skip")
+            if forth:
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    jump = True
+                    fcode.append(f"{temp_jump} stream skip")
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
@@ -928,20 +946,28 @@ class AsVector(AsContainer):
         return f"std::vector<{_content_typename(self._values)}>"
 
     def awkward_form(self, file, context):
-
-        forth_obj = context["forth"]
-        forth_obj.forth_code[id(self)] = None
-        key = forth_obj.get_last_key()
-        forth_obj.init_keys(self, key + 1, key + 1)
-        forth_obj.register_pre(self)
         awkward = uproot.extras.awkward()
-        temp_aform = awkward.forms.ListOffsetForm(
-            context["index_format"],
-            uproot._util.awkward_form(self._values, file, context),
-            parameters={"uproot": {"as": "vector", "header": self._header}},
-            form_key=f"node{key+1}",
-        )
-        forth_obj.register_post(self)
+        keys = context.keys()
+        if "forth" in keys:
+            forth_obj = context["forth"]
+            forth_obj.forth_code[id(self)] = None
+            key = forth_obj.get_last_key()
+            forth_obj.init_keys(self, key + 1, key + 1)
+            forth_obj.register_pre(self)
+
+            temp_aform = awkward.forms.ListOffsetForm(
+                context["index_format"],
+                uproot._util.awkward_form(self._values, file, context),
+                parameters={"uproot": {"as": "vector", "header": self._header}},
+                form_key=f"node{key+1}",
+            )
+            forth_obj.register_post(self)
+        else:
+            temp_aform = awkward.forms.ListOffsetForm(
+                context["index_format"],
+                uproot._util.awkward_form(self._values, file, context),
+                parameters={"uproot": {"as": "vector", "header": self._header}},
+            )
         return temp_aform
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -968,10 +994,11 @@ class AsVector(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            temp_jump = cursor._index - start_cursor._index
             if forth:
-                jump = True
-                fcode_pre.append(f"{temp_jump} stream skip\n")
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    jump = True
+                    fcode_pre.append(f"{temp_jump} stream skip")
         else:
             jump = 0
             is_memberwise = False
@@ -1670,7 +1697,6 @@ class STLMap(Container, Mapping):
     def __getitem__(self, where):
         where = numpy.asarray(where)
         index = numpy.searchsorted(self._keys.astype(where.dtype), where, side="left")
-
         if uproot._util.isint(index):
             if index < len(self._keys) and self._keys[index] == where:
                 return self._values[index]
