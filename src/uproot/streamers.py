@@ -278,15 +278,12 @@ class Model_TStreamerInfo(uproot.model.Model):
         read_member_n.append("")
 
         strided_interpretation.append(
-            "        return uproot.interpretation.objects.AsStridedObjects"
-            "(cls, members, original=original)"
+            "        return uproot.interpretation.objects.AsStridedObjects(cls, members, original=original)"
         )
         strided_interpretation.append("")
 
         awkward_form.append(
-            "        return RecordForm(contents, parameters={'__record__': "
-            + repr(self.name)
-            + "})"
+            f"        return RecordForm(contents, parameters={{'__record__': {repr(self.name)} }})"
         )
         awkward_form.append("")
 
@@ -299,9 +296,7 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         for i, format in enumerate(formats_memberwise):
             class_data.append(
-                "    _format_memberwise{} = struct.Struct('>{}')".format(
-                    i, "".join(format)
-                )
+                f"    _format_memberwise{i} = struct.Struct('>{''.join(format)}')"
             )
 
         for i, dt in enumerate(dtypes):
@@ -311,11 +306,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             class_data.append(f"    _stl_container{i} = {stl}")
 
         class_data.append(
-            "    base_names_versions = [{}]".format(
-                ", ".join(
-                    f"({name!r}, {version})" for name, version in base_names_versions
-                )
-            )
+            f"    base_names_versions=[{', '.join(f'({name!r}, {version})' for name, version in base_names_versions)}]"
         )
 
         class_data.append(
@@ -323,9 +314,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         )
 
         class_data.append(
-            "    class_flags = {{{0}}}".format(
-                ", ".join(repr(k) + ": " + repr(v) for k, v in class_flags.items())
-            )
+            f"    class_flags = {{{', '.join(repr(k) + ': ' + repr(v) for k, v in class_flags.items())}}}"
         )
 
         classname = uproot.model.classname_encode(self.name, self.class_version)
