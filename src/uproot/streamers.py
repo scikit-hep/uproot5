@@ -925,26 +925,18 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
         else:
             strided_interpretation.append(
-                "        raise uproot.interpretation.objects.CannotBeStrided("
-                "'class members defined by {} of type {} in member "
-                "{} of class {}')".format(
-                    type(self).__name__, self.typename, self.name, streamerinfo.name
-                )
+                f"        raise uproot.interpretation.objects.CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
             )
 
         if self.array_length == 0:
             if self.typename == "Double32_t":
                 awkward_form.append(
-                    "        contents["
-                    + repr(self.name)
-                    + "] = NumpyForm((), 8, 'd', parameters={'uproot': {'as': 'Double32'}})"
+                    f"        contents[{repr(self.name)}] = NumpyForm((), 8, 'd', parameters={{'uproot': {{'as': 'Double32'}}}})"
                 )
 
             elif self.typename == "Float16_t":
                 awkward_form.append(
-                    "        contents["
-                    + repr(self.name)
-                    + "] = NumpyForm((), 4, 'f', parameters={'uproot': {'as': 'Float16'}})"
+                    f"        contents[{repr(self.name)}] = NumpyForm((), 4, 'f', parameters={{'uproot': {{'as': 'Float16'}}}})"
                 )
 
             else:
@@ -1079,11 +1071,8 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         read_members.extend(
             [
                 "        cursor.skip(6)",
-                "        for tmp in range(self.member({})):".format(
-                    repr(self.count_name)
-                ),
-                "            self._members[{}] = c({}).read(chunk, cursor, "
-                "context, file, self._file, self.concrete)".format(
+                f"        for tmp in range(self.member({repr(self.count_name)})):",
+                "            self._members[{}] = c({}).read(chunk, cursor, context, file, self._file, self.concrete)".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 ),
             ]
@@ -1098,11 +1087,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
                 "        tmp = file.class_named({}, 'max').awkward_form(file, context)".format(
                     repr(self.typename.rstrip("*"))
                 ),
-                "        contents["
-                + repr(self.name)
-                + "] = ListOffsetForm(context['index_format'], tmp, parameters={'uproot': {'as': TStreamerLoop, 'count_name': "
-                + repr(self.count_name)
-                + "}})",
+                f"        contents[{ repr(self.name)}] = ListOffsetForm(context['index_format'], tmp, parameters={{'uproot': {{'as': TStreamerLoop, 'count_name': {repr(self.count_name)}}}}})",
             ]
         )
 
@@ -1308,14 +1293,14 @@ class TStreamerPointerTypes:
                 )
             )
             awkward_form.append(
-                "        contents[{}] = file.class_named({}, 'max').awkward_form(file, "
-                "context)".format(repr(self.name), repr(self.typename.rstrip("*")))
+                "        contents[{}] = file.class_named({}, 'max').awkward_form(file, context)".format(
+                    repr(self.name), repr(self.typename.rstrip("*"))
+                )
             )
 
         elif self.fType == uproot.const.kObjectP or self.fType == uproot.const.kAnyP:
             read_members.append(
-                "        self._members[{}] = read_object_any(chunk, cursor, "
-                "context, file, self._file, self)".format(repr(self.name))
+                f"        self._members[{repr(self.name)}] = read_object_any(chunk, cursor, context, file, self._file, self)"
             )
             read_member_n.append("    " + read_members[-1])
             strided_interpretation.append(
