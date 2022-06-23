@@ -220,12 +220,9 @@ class Model_TStreamerInfo(uproot.model.Model):
         ]
         strided_interpretation = [
             "    @classmethod",
-            "    def strided_interpretation(cls, file, header=False, "
-            "tobject_header=True, breadcrumbs=(), original=None):",
+            "    def strided_interpretation(cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None):",
             "        if cls in breadcrumbs:",
-            "            raise uproot.interpretation.objects.CannotBeStrided("
-            "'classes that can contain members of the same type cannot be strided "
-            "because the depth of instances is unbounded')",
+            "            raise uproot.interpretation.objects.CannotBeStrided('classes that can contain members of the same type cannot be strided because the depth of instances is unbounded')",
             "        breadcrumbs = breadcrumbs + (cls,)",
             "        members = []",
             "        if header:",
@@ -235,19 +232,14 @@ class Model_TStreamerInfo(uproot.model.Model):
         awkward_form = [
             "    @classmethod",
             "    def awkward_form(cls, file, context):",
-            "        from awkward.forms import NumpyForm, ListOffsetForm, "
-            "RegularForm, RecordForm",
+            "        from awkward.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
             "        if cls in context['breadcrumbs']:",
-            "            raise uproot.interpretation.objects.CannotBeAwkward("
-            "'classes that can contain members of the same type cannot be Awkward "
-            "Arrays because the depth of instances is unbounded')",
+            "            raise uproot.interpretation.objects.CannotBeAwkward('classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded')",
             "        context['breadcrumbs'] = context['breadcrumbs'] + (cls,)",
             "        contents = {}",
             "        if context['header']:",
-            "            contents['@num_bytes'] = "
-            "uproot._util.awkward_form(numpy.dtype('u4'), file, context)",
-            "            contents['@instance_version'] = "
-            "uproot._util.awkward_form(numpy.dtype('u2'), file, context)",
+            "            contents['@num_bytes'] = uproot._util.awkward_form(numpy.dtype('u4'), file, context)",
+            "            contents['@instance_version'] = uproot._util.awkward_form(numpy.dtype('u2'), file, context)",
         ]
         fields = []
         formats = []
