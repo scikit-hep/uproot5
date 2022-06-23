@@ -1211,22 +1211,16 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             string_header=True,
         )
         read_members.append(
-            "        self._members[{}] = self._stl_container{}.read("
-            "chunk, cursor, context, file, self._file, self.concrete)"
-            "".format(repr(self.name), len(containers))
+            f"        self._members[{repr(self.name)}] = self._stl_container{len(containers)}.read(chunk, cursor, context, file, self._file, self.concrete)"
         )
         read_member_n.append("    " + read_members[-1])
 
         strided_interpretation.append(
-            "        members.append(({}, cls._stl_container{}."
-            "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
-                repr(self.name), len(containers)
-            )
+            f"        members.append(({repr(self.name)}, cls._stl_container{len(containers)}.strided_interpretation(file, header, tobject_header, breadcrumbs)))"
         )
 
         awkward_form.append(
-            "        contents[{}] = cls._stl_container{}.awkward_form(file, "
-            "context)".format(repr(self.name), len(containers))
+            f"        contents[{repr(self.name)}] = cls._stl_container{len(containers)}.awkward_form(file, context)"
         )
 
         containers.append(stl_container)
@@ -1323,15 +1317,12 @@ class TStreamerPointerTypes:
 
         if self.fType == uproot.const.kObjectp or self.fType == uproot.const.kAnyp:
             read_members.append(
-                "        self._members[{}] = c({}).read(chunk, cursor, context, "
-                "file, self._file, self.concrete)".format(
-                    repr(self.name), repr(self.typename.rstrip("*"))
-                )
+                f"        self._members[{repr(self.name)}] = c({repr(self.typename.rstrip('*'))}).read(chunk, cursor, context, file, self._file, self.concrete)"
             )
+
             read_member_n.append("    " + read_members[-1])
             strided_interpretation.append(
-                "        members.append(({}, file.class_named({}, 'max')."
-                "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
+                "        members.append(({}, file.class_named({}, 'max').strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                     repr(self.name), repr(self.typename.rstrip("*"))
                 )
             )
@@ -1347,22 +1338,13 @@ class TStreamerPointerTypes:
             )
             read_member_n.append("    " + read_members[-1])
             strided_interpretation.append(
-                "        raise uproot.interpretation.objects.CannotBeStrided("
-                "'class members defined by {} of type {} in member "
-                "{} of class {}')".format(
-                    type(self).__name__, self.typename, self.name, streamerinfo.name
-                )
+                f"        raise uproot.interpretation.objects.CannotBeStrided('class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
             )
             class_flags["has_read_object_any"] = True
 
         else:
             read_members.append(
-                "        raise uproot.deserialization.DeserializationError("
-                "'not implemented: class members defined by {} with fType {}', "
-                "chunk, cursor, context, file.file_path)".format(
-                    type(self).__name__,
-                    self.fType,
-                )
+                f"        raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
             )
             read_member_n.append("    " + read_members[-1])
 
@@ -1459,22 +1441,21 @@ class TStreamerObjectTypes:
         read_member_n.append(f"        if member_index == {i}:")
 
         read_members.append(
-            "        self._members[{}] = c({}).read(chunk, cursor, context, "
-            "file, self._file, self.concrete)".format(
+            "        self._members[{}] = c({}).read(chunk, cursor, context, file, self._file, self.concrete)".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )
         read_member_n.append("    " + read_members[-1])
 
         strided_interpretation.append(
-            "        members.append(({}, file.class_named({}, 'max')."
-            "strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
+            "        members.append(({}, file.class_named({}, 'max').strided_interpretation(file, header, tobject_header, breadcrumbs)))".format(
                 repr(self.name), repr(self.typename.rstrip("*"))
             )
         )
         awkward_form.append(
-            "        contents[{}] = file.class_named({}, 'max').awkward_form(file, "
-            "context)".format(repr(self.name), repr(self.typename.rstrip("*")))
+            "        contents[{}] = file.class_named({}, 'max').awkward_form(file, context)".format(
+                repr(self.name), repr(self.typename.rstrip("*"))
+            )
         )
 
         member_names.append(self.name)
