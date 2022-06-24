@@ -613,7 +613,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         read_member_n.append("    " + read_members[-1])
 
         strided_interpretation.append(
-            f"        raise uproot.interpretation.objects.CannotBeStrided('not implemented: class members defined by {type(self).__name__} of type {self.typename,} in member {self.name} of class {streamerinfo.name}')"
+            f"        raise uproot.interpretation.objects.CannotBeStrided('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}')"
         )
 
         awkward_form.append(
@@ -773,8 +773,9 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             read_members.append(
                 """
         if context.get('speedbump', True):
-                if cursor.bytes(chunk, 1, context)[0] == 2:
-                    tmp = numpy.dtype('>i8')""".lstrip(
+            if cursor.bytes(chunk, 1, context)[0] == 2:
+                tmp = numpy.dtype('>i8')
+""".strip(
                     "\n"
                 )
             )
@@ -784,7 +785,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             read_members.append(
                 """
         if context.get('speedbump', True):
-                cursor.skip(1)""".lstrip(
+            cursor.skip(1)
+""".strip(
                     "\n"
                 )
             )
