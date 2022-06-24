@@ -777,16 +777,22 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
 
         if streamerinfo.name == "TBranch" and self.name == "fBasketSeek":
             read_members.append(
-                """        if context.get('speedbump', True):
-                            if cursor.bytes(chunk, 1, context)[0] == 2:
-                                tmp = numpy.dtype('>i8')"""
+                """
+        if context.get('speedbump', True):
+                if cursor.bytes(chunk, 1, context)[0] == 2:
+                    tmp = numpy.dtype('>i8')""".lstrip(
+                    "\n"
+                )
             )
             read_member_n.append("    " + read_members[-1].replace("\n", "\n    "))
 
         else:
             read_members.append(
-                """        if context.get('speedbump', True):
-                               cursor.skip(1)"""
+                """
+        if context.get('speedbump', True):
+                cursor.skip(1)""".lstrip(
+                    "\n"
+                )
             )
             read_member_n.append("    " + read_members[-1].replace("\n", "\n    "))
 
@@ -802,9 +808,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         awkward_form.extend(
             [
                 f"        contents[{repr(self.name)}] = ListOffsetForm(context['index_format'], uproot._util.awkward_form(cls._dtype{len(dtypes)}, file, context),",
-                "            parameters={'uproot': {'as': 'TStreamerBasicPointer', 'count_name': "
-                + repr(self.count_name)
-                + "}},)",
+                f"            parameters={{'uproot': {{'as': 'TStreamerBasicPointer', 'count_name': {repr(self.count_name)}}}}},)",
             ]
         )
 
