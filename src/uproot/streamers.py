@@ -267,6 +267,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             )
 
         if len(read_members) == 1:
+            # untested as of PR #629
             read_members.append("        pass")
         if len(read_member_n) == 1:
             read_member_n.append("        pass")
@@ -605,6 +606,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
+        # untested as of PR #629
         read_members.append(
             f"        raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)"
         )
@@ -767,6 +769,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         read_member_n.append("    " + read_members[-1])
 
         if streamerinfo.name == "TBranch" and self.name == "fBasketSeek":
+            # untested as of PR #629
             read_members.append(
                 """
         if context.get('speedbump', True):
@@ -859,12 +862,14 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         read_member_n.append(f"        if member_index == {i}:")
 
         if self.typename == "Double32_t":
+            # untested as of PR #629
             read_members.append(
                 f"        self._members[{self.name!r}] = cursor.double32(chunk, context)"
             )
             read_member_n.append("    " + read_members[-1])
 
         elif self.typename == "Float16_t":
+            # untested as of PR #629
             read_members.append(
                 f"        self._members[{self.name!r}] = cursor.float16(chunk, 12, context)"
             )
@@ -1063,6 +1068,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
+        # untested as of PR #629
         read_members.append("        cursor.skip(6)")
         read_members.append(
             f"        for tmp in range(self.member({self.count_name!r})):"
@@ -1167,6 +1173,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             inner_header=False,
             string_header=True,
         )
+
         read_members.append(
             f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, context, file, self._file, self.concrete)"
         )
@@ -1296,6 +1303,7 @@ class TStreamerPointerTypes:
             class_flags["has_read_object_any"] = True
 
         else:
+            # untested as of PR #629
             read_members.append(
                 f"        raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} with fType {self.fType}', chunk, cursor, context, file.file_path)"
             )
