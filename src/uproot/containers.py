@@ -686,7 +686,8 @@ class AsArray(AsContainer):
                         "header": self._header,
                         "speedbump": self._speedbump,
                     }
-                }, form_key=f"node{key+1}"
+                },
+                form_key=f"node{key+1}",
             )
         else:
             return awkward.forms.ListOffsetForm(
@@ -698,7 +699,7 @@ class AsArray(AsContainer):
                         "header": self._header,
                         "speedbump": self._speedbump,
                     }
-                }
+                },
             )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):

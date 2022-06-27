@@ -208,16 +208,20 @@ in file {}""".format(
                 form_key=f"node{key + 2}",
             )
             context["prev-key"] = f"node{key + 4}"
-            contents["fSize"] = uproot._util.awkward_form_forth(numpy.dtype("i4"), file, context)
+            contents["fSize"] = uproot._util.awkward_form_forth(
+                numpy.dtype("i4"), file, context
+            )
             context["prev-key"] = f"node{key + 6}"
             contents["refs"] = awkward.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form_forth(numpy.dtype("i4"), file, context),
-                form_key=f"node{key + 5}"
+                form_key=f"node{key + 5}",
             )
             del context["prev-key"]
             return awkward.forms.RecordForm(
-                contents, parameters={"__record__": "TRefArray"}, form_key=f"node{key + 1}"
+                contents,
+                parameters={"__record__": "TRefArray"},
+                form_key=f"node{key + 1}",
             )
         else:
             contents = {}
@@ -225,7 +229,9 @@ in file {}""".format(
             contents["fName"] = uproot.containers.AsString(
                 False, typename="TString"
             ).awkward_form(file, context)
-            contents["fSize"] = uproot._util.awkward_form(numpy.dtype("i4"), file, context)
+            contents["fSize"] = uproot._util.awkward_form(
+                numpy.dtype("i4"), file, context
+            )
             contents["refs"] = awkward.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(numpy.dtype("i4"), file, context),
