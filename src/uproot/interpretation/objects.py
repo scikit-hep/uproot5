@@ -112,7 +112,18 @@ class AsObjects(uproot.interpretation.Interpretation):
         else:
             return uproot.model.classname_decode(self._model.__name__)[0]
 
-    def awkward_form(self, file, context):
+    def awkward_form(
+        self,
+        file,
+        context=None,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
+        context = self._make_context(
+            context, index_format, header, tobject_header, breadcrumbs
+        )
         if isinstance(self._model, type):
             return self._model.awkward_form(self._branch.file, context)
         else:
@@ -586,7 +597,18 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def numpy_dtype(self):
         return numpy.dtype(object)
 
-    def awkward_form(self, file, context):
+    def awkward_form(
+        self,
+        file,
+        context=None,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
+        context = self._make_context(
+            context, index_format, header, tobject_header, breadcrumbs
+        )
         awkward = uproot.extras.awkward()
         cname = uproot.model.classname_decode(self._model.__name__)[0]
         form = _strided_awkward_form(awkward, cname, self._members, file, context)
