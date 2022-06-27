@@ -416,6 +416,12 @@ class AsString(AsContainer):
             forth_obj.init_keys(self, key + 1, key + 2)
             forth_obj.register_pre(self)
             forth_obj.register_post(self)
+            forth_obj.add_meta(
+                self,
+                [f"part0-node{key + 2}-data", f"part0-node{key + 1}-offsets"],
+                f"output part0-node{key + 1}-offsets int64\noutput part0-node{key + 2}-data uint8\n",
+                f"0 part0-node{key + 1}-offsets <- stack\n",
+            )
             return awkward.forms.ListOffsetForm(
                 context["index_format"],
                 awkward.forms.NumpyForm(
@@ -435,6 +441,7 @@ class AsString(AsContainer):
                 },
                 form_key=f"node{key + 1}",
             )
+
         else:
             return awkward.forms.ListOffsetForm(
                 context["index_format"],
@@ -458,19 +465,9 @@ class AsString(AsContainer):
             awkward = uproot.extras.awkward()
             forth = True
             forth_obj = context["forth"]
-            # assert isinstance(
-            #     forth_obj.aform,
-            #     (awkward.forms.NumpyForm,
-            #      ))
             keys = forth_obj.get_keys(self)
             offsets_num = keys[0]
             data_num = keys[1]
-            forth_obj.add_meta(
-                self,
-                [f"part0-node{data_num}-data", f"part0-node{offsets_num}-offsets"],
-                f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n",
-                f"0 part0-node{offsets_num}-offsets <- stack\n",
-            )
 
         if self._header and header:
             jump = False
@@ -669,30 +666,65 @@ class AsArray(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
+        keys = context.keys()
+        awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
             values_form = awkward.forms.RegularForm(values_form, dim)
-        return awkward.forms.ListOffsetForm(
-            context["index_format"],
-            values_form,
-            parameters={
-                "uproot": {
-                    "as": "array",
-                    "header": self._header,
-                    "speedbump": self._speedbump,
+        if "forth" in keys:
+            forth_obj = context["forth"]
+            forth_obj.forth_code[id(self)] = None
+            key = forth_obj.get_last_key()
+            forth_obj.init_keys(self, key + 1, key + 2)
+            forth_obj.register_pre(self)
+            forth_obj.register_post(self)
+            return awkward.forms.ListOffsetForm(
+                context["index_format"],
+                values_form,
+                parameters={
+                    "uproot": {
+                        "as": "array",
+                        "header": self._header,
+                        "speedbump": self._speedbump,
+                    }
+                }, form_key=f"node{key+1}"
+            )
+        else:
+            return awkward.forms.ListOffsetForm(
+                context["index_format"],
+                values_form,
+                parameters={
+                    "uproot": {
+                        "as": "array",
+                        "header": self._header,
+                        "speedbump": self._speedbump,
+                    }
                 }
-            },
-        )
+            )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        forth = False
+        forth_obj = None
+        jump = True
+        fcode_pre = []
+        if "forth" in context.keys():
+            awkward = uproot.extras.awkward()
+            forth = True
+            forth_obj = context["forth"]
+            forth_obj.traverse_aform()
         if self._header and header:
+            jump = False
             start_cursor = cursor.copy()
             (
                 num_bytes,
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-
+            if forth:
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    jump = True
+                    fcode_pre.append(f"{temp_jump} stream skip\n")
             if is_memberwise:
                 raise NotImplementedError(
                     """memberwise serialization of {}
@@ -705,6 +737,7 @@ in file {}""".format(
                 remainder = chunk.get(
                     cursor.index, cursor.index + num_bytes, cursor, context
                 )
+                fcode_pre.append()
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
@@ -729,6 +762,7 @@ in file {}""".format(
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
         else:
+
             if self._speedbump:
                 cursor.skip(1)
 
@@ -737,6 +771,7 @@ in file {}""".format(
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
+
                 out = []
                 while cursor.index < chunk.stop:
                     out.append(
@@ -956,6 +991,12 @@ class AsVector(AsContainer):
                 form_key=f"node{key+1}",
             )
             forth_obj.register_post(self)
+            forth_obj.add_meta(
+                self,
+                [f"part0-node{key+1}-offsets"],
+                f"output part0-node{key+1}-offsets int64\n",
+                f"0 part0-node{key+1}-offsets <- stack\n",
+            )
         else:
             temp_aform = awkward.forms.ListOffsetForm(
                 context["index_format"],
@@ -974,10 +1015,7 @@ class AsVector(AsContainer):
             awkward = uproot.extras.awkward()
             forth = True
             forth_obj = context["forth"]
-            assert isinstance(forth_obj.aform, awkward.forms.ListOffsetForm), type(
-                forth_obj.aform
-            )
-            forth_obj.traverse_aform()
+            forth_obj.traverse_aform()  # Try it directly on context["forth"]
         if self._header and header:
             jump = False
             start_cursor = cursor.copy()
@@ -1047,25 +1085,15 @@ class AsVector(AsContainer):
                             chunk, cursor, context, file, member_index
                         )
         else:
-            if forth:
-                key = forth_obj.get_keys(self)[0]
-                forth_obj.add_meta(
-                    self,
-                    [f"part0-node{key}-offsets"],
-                    f"output part0-node{key}-offsets int64\n",
-                    f"0 part0-node{key}-offsets <- stack\n",
-                )
-                fcode_pre.append(
-                    f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n0 do \n"
-                )
-                fcode_post.append("loop\n")
             length = cursor.field(chunk, _stl_container_size, context)
             if forth:
                 if jump:
-                    if id(self) not in forth_obj.forth_code.keys():
-                        raise ValueError
-                    else:
-                        forth_obj.add_forth_code(self, fcode_pre, fcode_post)
+                    key = forth_obj.get_keys(self)[0]
+                    fcode_pre.append(
+                        f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n0 do \n"
+                    )
+                    fcode_post.append("loop\n")
+                    forth_obj.add_forth_code(self, fcode_pre, fcode_post)
                 else:
                     forth_obj.var_set = True
 

@@ -148,6 +148,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                         "breadcrumbs": (),
                     },
                 )
+                print(self._form)
                 if awkward_can_optimize(self, self._form):
                     import awkward._connect._uproot
 
@@ -219,7 +220,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                     "forth": forth_obj,
                 },
             )
-
             if awkward_can_optimize(self, self._form):
                 import awkward._connect._uproot
 

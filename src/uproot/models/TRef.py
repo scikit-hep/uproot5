@@ -115,6 +115,15 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         return self._members["fName"]
 
     def read_members(self, chunk, cursor, context, file):
+        forth = False
+        forth_obj = None
+        jump = True
+        fcode_pre = []
+        if "forth" in context.keys():
+            awkward = uproot.extras.awkward()
+            forth = True
+            forth_obj = context["forth"]
+            forth_obj.traverse_aform()
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -157,18 +166,60 @@ in file {}""".format(
     @classmethod
     def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
-        contents = {}
-        contents["fName"] = uproot.containers.AsString(
-            False, typename="TString"
-        ).awkward_form(file, context)
-        contents["fSize"] = uproot._util.awkward_form(numpy.dtype("i4"), file, context)
-        contents["refs"] = awkward.forms.ListOffsetForm(
-            context["index_format"],
-            uproot._util.awkward_form(numpy.dtype("i4"), file, context),
-        )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TRefArray"}
-        )
+        keys = context.keys()
+        if "forth" in keys:
+            forth_obj = context["forth"]
+            forth_obj.forth_code[id(cls)] = None
+            key = forth_obj.get_last_key()
+            forth_obj.init_keys(cls, key + 1, key + 6)
+            forth_obj.register_pre(cls)
+            contents = {}
+            contents["fName"] = awkward.forms.ListOffsetForm(
+                context["index_format"],
+                awkward.forms.NumpyForm(
+                    (),
+                    1,
+                    "B",
+                    parameters={"__array__": "char"},
+                    form_key=f"node{key + 3}",
+                ),
+                parameters={
+                    "__array__": "string",
+                    "uproot": {
+                        "as": "string",
+                        "header": False,
+                        "length_bytes": "1-5",
+                    },
+                },
+                form_key=f"node{key + 2}",
+            )
+            context["prev-key"] = f"node{key + 4}"
+            contents["fSize"] = uproot._util.awkward_form_forth(numpy.dtype("i4"), file, context)
+            context["prev-key"] = f"node{key + 6}"
+            contents["refs"] = awkward.forms.ListOffsetForm(
+                context["index_format"],
+                uproot._util.awkward_form_forth(numpy.dtype("i4"), file, context),
+                form_key=f"node{key + 5}"
+            )
+            forth_obj.register_post(cls)
+            del context["prev-key"]
+            return awkward.forms.RecordForm(
+                contents, parameters={"__record__": "TRefArray"}, form_key=f"node{key + 1}"
+            )
+        else:
+            contents = {}
+
+            contents["fName"] = uproot.containers.AsString(
+                False, typename="TString"
+            ).awkward_form(file, context)
+            contents["fSize"] = uproot._util.awkward_form(numpy.dtype("i4"), file, context)
+            contents["refs"] = awkward.forms.ListOffsetForm(
+                context["index_format"],
+                uproot._util.awkward_form(numpy.dtype("i4"), file, context),
+            )
+            return awkward.forms.RecordForm(
+                contents, parameters={"__record__": "TRefArray"}
+            )
 
 
 uproot.classes["TRef"] = Model_TRef

@@ -503,6 +503,87 @@ def new_class(name, bases, members):
     return out
 
 
+def awkward_form_forth(model, file, context):
+    """
+    Utility function to get an ``ak.forms.Form`` for a :doc:`uproot.model.Model`.
+    """
+    import uproot
+
+    awkward = uproot.extras.awkward()
+
+    if isinstance(model, numpy.dtype):
+        model = model.newbyteorder("=")
+
+        if model not in _primitive_awkward_form:
+            if model == numpy.dtype(numpy.bool_) or model == numpy.dtype(bool):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"bool"')
+            elif model == numpy.dtype(numpy.int8):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int8"')
+            elif model == numpy.dtype(numpy.uint8):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint8"')
+            elif model == numpy.dtype(numpy.int16):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int16"')
+            elif model == numpy.dtype(numpy.uint16):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint16"')
+            elif model == numpy.dtype(numpy.int32):
+                if "forth" in context.keys():
+                    temp_key = context["prev-key"]
+                    return awkward.forms.Form.fromjson(f'{{"class":"NumpyArray","primitive": "int32", "form_key": "{temp_key}"}}')
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int32"')
+            elif model == numpy.dtype(numpy.uint32):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint32"')
+            elif model == numpy.dtype(numpy.int64):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int64"')
+            elif model == numpy.dtype(numpy.uint64):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint64"')
+            elif model == numpy.dtype(numpy.float32):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
+                        '"float32"'
+                    )
+            elif model == numpy.dtype(numpy.float64):
+                if "forth" in context.keys():
+                    pass
+                else:
+                    _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
+                        '"float64"'
+                    )
+            else:
+                raise AssertionError(f"{model!r}: {type(model)}")
+
+        return _primitive_awkward_form[model]
+
+    else:
+        return model.awkward_form(file, context)
+
+
 _primitive_awkward_form = {}
 
 
