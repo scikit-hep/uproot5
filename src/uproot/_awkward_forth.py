@@ -24,7 +24,7 @@ class ForthObj:
         return
 
     def init_keys(self, ref, start, stop):
-        self.forth_keys[id(ref)] = [start, stop]
+        self.forth_keys[ref] = [start, stop]
 
     def traverse_aform(self):
         self.aform = self.aform.content
@@ -36,7 +36,7 @@ class ForthObj:
             return -1
 
     def register_pre(self, ref):
-        key = str(id(ref)) + "pre"
+        key = str(ref) + "pre"
         self.forth_sequence.append(key)
 
     def add_meta(self, ref, form_key, header, init):
@@ -48,17 +48,17 @@ class ForthObj:
         self.forth_code[id(ref)]["forth_init"] = init
 
     def register_post(self, ref):
-        key = str(id(ref)) + "post"
+        key = str(ref) + "post"
         self.forth_sequence.append(key)
 
     def get_keys(self, ref):
-        return self.forth_keys[id(ref)]
+        return self.forth_keys[ref]
 
     def add_forth_code(self, ref, forth_exec_pre, forth_exec_post):
-        if self.forth_code[id(ref)] is None:
-            self.forth_code[id(ref)] = {}
-        self.forth_code[id(ref)][str(id(ref)) + "pre"] = forth_exec_pre
-        self.forth_code[id(ref)][str(id(ref)) + "post"] = forth_exec_post
+        if self.forth_code[ref] is None:
+            self.forth_code[ref] = {}
+        self.forth_code[ref][str(ref) + "pre"] = forth_exec_pre
+        self.forth_code[ref][str(ref) + "post"] = forth_exec_post
         return
 
     def add_to_final(self, code):
