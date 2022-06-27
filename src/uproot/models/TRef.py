@@ -133,14 +133,15 @@ in file {}""".format(
             )
         fcode_pre.append("10 stream skip")
         cursor.skip(10)
-        fcode_pre.append(f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data \n"
-                         )
+        fcode_pre.append(
+            f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data \n"
+        )
         self._members["fName"] = cursor.string(chunk, context)
         fcode_pre.append("stream !I -> stack dup output <- stack")
         self._members["fSize"] = cursor.field(chunk, _trefarray_format1, context)
         fcode_pre.append("6 stream skip")
         cursor.skip(6)
-        #print(self._members["fSize"], _trefarray_dtype)
+        # print(self._members["fSize"], _trefarray_dtype)
         fcode_pre.append("stream !#-> output")
         self._data = cursor.array(
             chunk, self._members["fSize"], _trefarray_dtype, context
@@ -183,7 +184,13 @@ in file {}""".format(
             forth_obj.register_post(cls)
             forth_obj.add_meta(
                 cls,
-                [f"part0-node{key + 3}-data", f"part0-node{key + 2}-offsets", f"part0-node{key + 4}-data", f"part0-node{key + 5}-offsets", f"part0-node{key + 4}-data"],
+                [
+                    f"part0-node{key + 3}-data",
+                    f"part0-node{key + 2}-offsets",
+                    f"part0-node{key + 4}-data",
+                    f"part0-node{key + 5}-offsets",
+                    f"part0-node{key + 4}-data",
+                ],
                 f"output part0-node{key + 1}-offsets int64\noutput part0-node{key + 2}-data uint8\n",
                 f"0 part0-node{key + 1}-offsets <- stack\n",
             )
