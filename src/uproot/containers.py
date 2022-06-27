@@ -512,13 +512,14 @@ class AsString(AsContainer):
                 context,
                 file.file_path,
             )
-        if jump and forth:
-            if id(self) not in forth_obj.forth_code.keys():
-                raise ValueError
+        if forth:
+            if jump:
+                if id(self) not in forth_obj.forth_code.keys():
+                    raise ValueError
+                else:
+                    forth_obj.add_forth_code(self, fcode, [])
             else:
-                forth_obj.add_forth_code(self, fcode, [])
-        else:
-            forth_obj.var_set = True
+                forth_obj.var_set = True
         return out
 
     def __eq__(self, other):
@@ -1059,13 +1060,14 @@ class AsVector(AsContainer):
                 )
                 fcode_post.append("loop\n")
             length = cursor.field(chunk, _stl_container_size, context)
-            if jump and forth:
-                if id(self) not in forth_obj.forth_code.keys():
-                    raise ValueError
+            if forth:
+                if jump:
+                    if id(self) not in forth_obj.forth_code.keys():
+                        raise ValueError
+                    else:
+                        forth_obj.add_forth_code(self, fcode_pre, fcode_post)
                 else:
-                    forth_obj.add_forth_code(self, fcode_pre, fcode_post)
-            else:
-                forth_obj.var_set = True
+                    forth_obj.var_set = True
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
