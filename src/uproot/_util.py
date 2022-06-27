@@ -7,6 +7,7 @@ and may be changed without notice.
 
 import datetime
 import glob
+import itertools
 import numbers
 import os
 import platform
@@ -488,6 +489,36 @@ def memory_size(data, error_message=None):
         )
     else:
         raise TypeError(error_message)
+
+
+def trim_final(basket_arrays, entry_start, entry_stop, entry_offsets, library, branch):
+    """
+    Trims the output from a basket_array function and outputs the un-concatenated list of elements.
+    """
+    trimmed = []
+    start = entry_offsets[0]
+    for basket_num, stop in enumerate(entry_offsets[1:]):
+        if start <= entry_start and entry_stop <= stop:
+            local_start = entry_start - start
+            local_stop = entry_stop - start
+            trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+
+        elif start <= entry_start < stop:
+            local_start = entry_start - start
+            local_stop = stop - start
+            trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+
+        elif start <= entry_stop <= stop:
+            local_start = 0
+            local_stop = entry_stop - start
+            trimmed.append(basket_arrays[basket_num][local_start:local_stop])
+
+        elif entry_start < stop and start <= entry_stop:
+            trimmed.append(basket_arrays[basket_num])
+
+        start = stop
+
+    return trimmed
 
 
 def new_class(name, bases, members):
@@ -975,3 +1006,157 @@ def objectarray1d(items):
     for i, x in enumerate(items):
         out[i] = x
     return out
+
+
+_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
+_regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
+
+
+def _regularize_files_inner(files, parse_colon, counter, HasBranches):
+    files2 = regularize_path(files)
+
+    if isstr(files2) and not isstr(files):
+        parse_colon = False
+        files = files2
+
+    if isstr(files):
+        if parse_colon:
+            file_path, object_path = file_object_path_split(files)
+        else:
+            file_path, object_path = files, None
+
+        parsed_url = urlparse(file_path)
+
+        if parsed_url.scheme.upper() in _remote_schemes:
+            yield file_path, object_path
+
+        else:
+            expanded = os.path.expanduser(file_path)
+            if _regularize_files_isglob.search(expanded) is None:
+                yield file_path, object_path
+
+            else:
+                matches = list(_regularize_files_braces.finditer(expanded))
+                if len(matches) == 0:
+                    results = [expanded]
+                else:
+                    results = []
+                    for combination in itertools.product(
+                        *[match.group(0)[1:-1].split(",") for match in matches]
+                    ):
+                        tmp = expanded
+                        for c, m in list(zip(combination, matches))[::-1]:
+                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
+                        results.append(tmp)
+
+                seen = set()
+                for result in results:
+                    for match in glob.glob(result):
+                        if match not in seen:
+                            yield match, object_path
+                            seen.add(match)
+
+    elif isinstance(files, HasBranches):
+        yield files, None
+
+    elif isinstance(files, dict):
+        for key, object_path in files.items():
+            for file_path, _ in _regularize_files_inner(
+                key, False, counter, HasBranches
+            ):
+                yield file_path, object_path
+
+    elif isinstance(files, Iterable):
+        for file in files:
+            counter[0] += 1
+            for file_path, object_path in _regularize_files_inner(
+                file, parse_colon, counter, HasBranches
+            ):
+                yield file_path, object_path
+
+    else:
+        raise TypeError(
+            "'files' must be a file path/URL (string or Path), possibly with "
+            "a glob pattern (for local files), a dict of "
+            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
+            "an iterable of such things, not {0}".format(repr(files))
+        )
+
+
+def regularize_files(files):
+    """
+    Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
+    """
+    from uproot.behaviors.TBranch import HasBranches
+
+    out = []
+    seen = set()
+    counter = [0]
+    for file_path, object_path in _regularize_files_inner(
+        files, True, counter, HasBranches
+    ):
+        if isstr(file_path):
+            key = (counter[0], file_path, object_path)
+            if key not in seen:
+                out.append((file_path, object_path))
+                seen.add(key)
+        else:
+            out.append((file_path, object_path))
+
+    if len(out) == 0:
+        raise _file_not_found(files)
+
+    return out
+
+
+def regularize_object_path(
+    file_path, object_path, custom_classes, allow_missing, options
+):
+    """
+    Returns the TTree object from given object and file paths.
+    """
+    from uproot.behaviors.TBranch import HasBranches, _NoClose
+    from uproot.reading import ReadOnlyFile
+
+    if isinstance(file_path, HasBranches):
+        return _NoClose(file_path)
+
+    else:
+        file = ReadOnlyFile(
+            file_path,
+            object_cache=None,
+            array_cache=None,
+            custom_classes=custom_classes,
+            **options,  # NOTE: a comma after **options breaks Python 2
+        ).root_directory
+        if object_path is None:
+            trees = file.keys(filter_classname="TTree", cycle=False)
+            if len(trees) == 0:
+                if allow_missing:
+                    return None
+                else:
+                    raise ValueError(
+                        """no TTrees found
+in file {}""".format(
+                            file_path
+                        )
+                    )
+            elif len(trees) == 1:
+                return file[trees[0]]
+            else:
+                raise ValueError(
+                    """TTree object paths must be specified in the 'files' """
+                    """as {{\"filenames*.root\": \"path\"}} if any files have """
+                    """more than one TTree
+
+    TTrees: {0}
+
+in file {1}""".format(
+                        ", ".join(repr(x) for x in trees), file_path
+                    )
+                )
+
+        else:
+            if allow_missing and object_path not in file:
+                return None
+            return file[object_path]

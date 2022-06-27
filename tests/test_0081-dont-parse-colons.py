@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-
 import pytest
 import skhep_testdata
 
@@ -23,33 +22,6 @@ def test_open():
 
     with pytest.raises(ValueError):
         uproot.open([skhep_testdata.data_path("uproot-issue63.root")])
-
-
-def test_lazy():
-    with pytest.raises(ValueError):
-        uproot.lazy(skhep_testdata.data_path("uproot-issue63.root"))
-
-    with pytest.raises(ValueError):
-        uproot.lazy(
-            {skhep_testdata.data_path("uproot-issue63.root"): "blah"},
-            allow_missing=True,
-        )
-
-    uproot.lazy({skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_nominal"})
-    uproot.lazy(
-        {
-            skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_nominal",
-            skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_Fake_nominal",
-        }
-    )
-
-    uproot.lazy([{skhep_testdata.data_path("uproot-issue63.root"): "WtLoop_nominal"}])
-    uproot.lazy(
-        {skhep_testdata.data_path("uproot-issue63.root") + "*": "WtLoop_nominal"}
-    )
-    uproot.lazy(
-        [{skhep_testdata.data_path("uproot-issue63.root") + "*": "WtLoop_nominal"}]
-    )
 
 
 def test_concatenate():
@@ -129,13 +101,3 @@ def test_open_colon():
         uproot.open(
             {skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal": None}
         )
-
-
-def test_lazy_colon():
-    uproot.lazy(skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal")
-    uproot.lazy(
-        [
-            skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_nominal",
-            skhep_testdata.data_path("uproot-issue63.root") + ":WtLoop_Fake_nominal",
-        ]
-    )

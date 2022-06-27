@@ -84,7 +84,18 @@ class AsGrouped(uproot.interpretation.Interpretation):
                 )
             )
 
-    def awkward_form(self, file, context):
+    def awkward_form(
+        self,
+        file,
+        context=None,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
+        context = self._make_context(
+            context, index_format, header, tobject_header, breadcrumbs
+        )
         awkward = uproot.extras.awkward()
         names = []
         fields = []

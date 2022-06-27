@@ -12,15 +12,11 @@ objects themselves.
 """
 
 
-import glob
-import itertools
-import os
 import queue
 import re
 import sys
 import threading
 from collections.abc import Iterable, Mapping, MutableMapping
-from urllib.parse import urlparse
 
 import numpy
 
@@ -176,7 +172,7 @@ def iterate(
     * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
-    files = _regularize_files(files)
+    files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -184,7 +180,7 @@ def iterate(
 
     global_offset = 0
     for file_path, object_path in files:
-        hasbranches = _regularize_object_path(
+        hasbranches = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
 
@@ -340,7 +336,7 @@ def concatenate(
     * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
       ``TTrees``.
     """
-    files = _regularize_files(files)
+    files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -349,7 +345,7 @@ def concatenate(
     all_arrays = []
     global_start = 0
     for file_path, object_path in files:
-        hasbranches = _regularize_object_path(
+        hasbranches = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, options
         )
         if hasbranches is not None:
@@ -399,6 +395,8 @@ def lazy(
     **options,  # NOTE: a comma after **options breaks Python 2
 ):
     """
+    .. warning::
+        Deprecated. This function will be removed in Uproot 5 (target date: Dec 2022). Please use :doc:`uproot.behaviors.TBranch.dask` instead.
     Args:
         files: See below.
         filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
@@ -505,196 +503,9 @@ def lazy(
     * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
       read array from ``TTrees``.
     """
-    awkward = uproot.extras.awkward()
-    files = _regularize_files(files)
-    decompression_executor, interpretation_executor = _regularize_executors(
-        decompression_executor, interpretation_executor, None
+    raise NotImplementedError(
+        "uproot.lazy is removed in Uproot5 (only here for the deprecation message in the online docs)"
     )
-    array_cache = _regularize_array_cache(array_cache, None)
-    library = uproot.interpretation.library._regularize_library_lazy(library)
-
-    hold_cache = array_cache
-    if array_cache is not None and not isinstance(
-        array_cache, awkward.layout.ArrayCache
-    ):
-        if type(array_cache) is dict:
-            hold_cache = _WrapDict(array_cache)
-        if not isinstance(hold_cache, MutableMapping):
-            raise TypeError("array_cache must be None or a MutableMapping")
-        array_cache = awkward.layout.ArrayCache(hold_cache)
-
-    real_options = dict(options)
-    if "num_workers" not in real_options:
-        real_options["num_workers"] = 1
-    if "num_fallback_workers" not in real_options:
-        real_options["num_fallback_workers"] = 1
-
-    filter_branch = uproot._util.regularize_filter(filter_branch)
-
-    hasbranches = []
-    common_keys = None
-    is_self = []
-
-    count = 0
-    for file_path, object_path in files:
-        obj = _regularize_object_path(
-            file_path, object_path, custom_classes, allow_missing, real_options
-        )
-
-        if obj is not None:
-            count += 1
-
-            if isinstance(obj, TBranch) and len(obj.keys(recursive=True)) == 0:
-                original = obj
-                obj = obj.parent
-                is_self.append(True)
-
-                def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)
-
-            else:
-                is_self.append(False)
-                real_filter_branch = filter_branch
-
-            hasbranches.append(obj)
-
-            new_keys = obj.keys(
-                recursive=recursive,
-                filter_name=filter_name,
-                filter_typename=filter_typename,
-                filter_branch=real_filter_branch,
-                full_paths=full_paths,
-            )
-
-            if common_keys is None:
-                common_keys = new_keys
-            else:
-                new_keys = set(new_keys)
-                common_keys = [key for key in common_keys if key in new_keys]
-
-    if count == 0:
-        raise ValueError(
-            "allow_missing=True and no TTrees found in\n\n    {}".format(
-                "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
-                    for f, o in files
-                )
-            )
-        )
-
-    if len(common_keys) == 0 or not (all(is_self) or not any(is_self)):
-        raise ValueError(
-            "TTrees in\n\n    {}\n\nhave no TBranches in common".format(
-                "\n    ".join(
-                    "{"
-                    + "{}: {}".format(
-                        repr(f.file_path if isinstance(f, HasBranches) else f),
-                        repr(f.object_path if isinstance(f, HasBranches) else o),
-                    )
-                    + "}"
-                    for f, o in files
-                )
-            )
-        )
-
-    partitions = []
-    global_offsets = [0]
-    global_cache_key = []
-    for obj in hasbranches:
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            obj.tree.num_entries, None, None
-        )
-        branchid_interpretation = {}
-        for key in common_keys:
-            branch = obj[key]
-            branchid_interpretation[branch.cache_key] = branch.interpretation
-        entry_step = _regularize_step_size(
-            obj, step_size, entry_start, entry_stop, branchid_interpretation
-        )
-
-        def foreach(start):
-            stop = min(start + entry_step, entry_stop)
-            length = stop - start
-
-            fields = []
-            names = []
-            for key in common_keys:
-                branch = obj[key]
-
-                interpretation = branchid_interpretation[branch.cache_key]
-                form = interpretation.awkward_form(
-                    obj.file,
-                    {
-                        "index_format": "i64",
-                        "header": False,
-                        "tobject_header": True,
-                        "breadcrumbs": (),
-                    },
-                )
-                form = uproot._util.recursively_fix_awkward_form_of_iter(
-                    awkward, interpretation, form
-                )
-
-                generator = awkward.layout.ArrayGenerator(
-                    branch.array,
-                    (
-                        None,
-                        start,
-                        stop,
-                        decompression_executor,
-                        interpretation_executor,
-                        None,
-                        "ak",
-                    ),
-                    {},
-                    uproot._util.awkward_form_remove_uproot(
-                        awkward, form
-                    ),  # , interpretation
-                    length,
-                )
-                cache_key = "{}:{}:{}-{}:{}".format(
-                    branch.cache_key,
-                    interpretation.cache_key,
-                    start,
-                    stop,
-                    library.name,
-                )
-                global_cache_key.append(cache_key)
-                virtualarray = awkward.layout.VirtualArray(
-                    generator, cache=array_cache, cache_key=cache_key
-                )
-                fields.append(virtualarray)
-                names.append(key)
-
-            recordarray = awkward.layout.RecordArray(fields, names, length)
-            partitions.append(recordarray)
-            global_offsets.append(global_offsets[-1] + length)
-
-        for start in range(entry_start, entry_stop, entry_step):
-            foreach(start)
-
-    if len(partitions) == 0:
-        obj = hasbranches[0]
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            obj.tree.num_entries, None, None
-        )
-        branchid_interpretation = {}
-        for key in common_keys:
-            branch = obj[key]
-            branchid_interpretation[branch.cache_key] = branch.interpretation
-        entry_step = _regularize_step_size(
-            obj, step_size, entry_start, entry_stop, branchid_interpretation
-        )
-
-        foreach(0)
-
-    out = awkward.partition.IrregularlyPartitionedArray(partitions, global_offsets[1:])
-    return awkward.Array(out)
 
 
 def dask(
@@ -785,7 +596,7 @@ def dask(
     * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
       read array from ``TTrees``.
     """
-    files = _regularize_files(files)
+    files = uproot._util.regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
     if library.name != "np":
         raise NotImplementedError()
@@ -2988,145 +2799,6 @@ def _keys_deep(hasbranches):
     return out
 
 
-_regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
-_regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
-
-
-def _regularize_files_inner(files, parse_colon, counter):
-    files2 = uproot._util.regularize_path(files)
-
-    if uproot._util.isstr(files2) and not uproot._util.isstr(files):
-        parse_colon = False
-        files = files2
-
-    if uproot._util.isstr(files):
-        if parse_colon:
-            file_path, object_path = uproot._util.file_object_path_split(files)
-        else:
-            file_path, object_path = files, None
-
-        parsed_url = urlparse(file_path)
-
-        if parsed_url.scheme.upper() in uproot._util._remote_schemes:
-            yield file_path, object_path
-
-        else:
-            expanded = os.path.expanduser(file_path)
-            if _regularize_files_isglob.search(expanded) is None:
-                yield file_path, object_path
-
-            else:
-                matches = list(_regularize_files_braces.finditer(expanded))
-                if len(matches) == 0:
-                    results = [expanded]
-                else:
-                    results = []
-                    for combination in itertools.product(
-                        *[match.group(0)[1:-1].split(",") for match in matches]
-                    ):
-                        tmp = expanded
-                        for c, m in list(zip(combination, matches))[::-1]:
-                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
-                        results.append(tmp)
-
-                seen = set()
-                for result in results:
-                    for match in glob.glob(result):
-                        if match not in seen:
-                            yield match, object_path
-                            seen.add(match)
-
-    elif isinstance(files, HasBranches):
-        yield files, None
-
-    elif isinstance(files, dict):
-        for key, object_path in files.items():
-            for file_path, _ in _regularize_files_inner(key, False, counter):
-                yield file_path, object_path
-
-    elif isinstance(files, Iterable):
-        for file in files:
-            counter[0] += 1
-            for file_path, object_path in _regularize_files_inner(
-                file, parse_colon, counter
-            ):
-                yield file_path, object_path
-
-    else:
-        raise TypeError(
-            "'files' must be a file path/URL (string or Path), possibly with "
-            "a glob pattern (for local files), a dict of "
-            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
-            "an iterable of such things, not {0}".format(repr(files))
-        )
-
-
-def _regularize_files(files):
-    out = []
-    seen = set()
-    counter = [0]
-    for file_path, object_path in _regularize_files_inner(files, True, counter):
-        if uproot._util.isstr(file_path):
-            key = (counter[0], file_path, object_path)
-            if key not in seen:
-                out.append((file_path, object_path))
-                seen.add(key)
-        else:
-            out.append((file_path, object_path))
-
-    if len(out) == 0:
-        raise uproot._util._file_not_found(files)
-
-    return out
-
-
-def _regularize_object_path(
-    file_path, object_path, custom_classes, allow_missing, options
-):
-    if isinstance(file_path, HasBranches):
-        return _NoClose(file_path)
-
-    else:
-        file = uproot.reading.ReadOnlyFile(
-            file_path,
-            object_cache=None,
-            array_cache=None,
-            custom_classes=custom_classes,
-            **options,  # NOTE: a comma after **options breaks Python 2
-        ).root_directory
-        if object_path is None:
-            trees = file.keys(filter_classname="TTree", cycle=False)
-            if len(trees) == 0:
-                if allow_missing:
-                    return None
-                else:
-                    raise ValueError(
-                        """no TTrees found
-in file {}""".format(
-                            file_path
-                        )
-                    )
-            elif len(trees) == 1:
-                return file[trees[0]]
-            else:
-                raise ValueError(
-                    """TTree object paths must be specified in the 'files' """
-                    """as {{\"filenames*.root\": \"path\"}} if any files have """
-                    """more than one TTree
-
-    TTrees: {0}
-
-in file {1}""".format(
-                        ", ".join(repr(x) for x in trees), file_path
-                    )
-                )
-
-        else:
-            if allow_missing and object_path not in file:
-                return None
-            return file[object_path]
-
-
 def _get_recursive(hasbranches, where):
     for branch in hasbranches.branches:
         if branch.name == where:
@@ -3724,7 +3396,7 @@ def _get_dask_array(
 
     count = 0
     for file_path, object_path in files:
-        obj = _regularize_object_path(
+        obj = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, real_options
         )
 
@@ -3843,7 +3515,7 @@ def _get_dask_array_delay_open(
 ):
     dask, da = uproot.extras.dask()
     ffile_path, fobject_path = files[0]
-    obj = _regularize_object_path(
+    obj = uproot._util.regularize_object_path(
         ffile_path, fobject_path, custom_classes, allow_missing, real_options
     )
     common_keys = obj.keys(
@@ -3855,7 +3527,7 @@ def _get_dask_array_delay_open(
     )
 
     dask_dict = {}
-    delayed_open_fn = dask.delayed(_regularize_object_path)
+    delayed_open_fn = dask.delayed(uproot._util.regularize_object_path)
 
     @dask.delayed
     def delayed_get_array(ttree, key):

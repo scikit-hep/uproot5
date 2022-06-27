@@ -102,6 +102,7 @@ def reset_classes():
     reload(uproot.models.RNTuple)
     reload(uproot.models.TH)
     reload(uproot.models.TGraph)
+    reload(uproot.models.TMatrixT)
 
 
 _classname_regularize = re.compile(r"\s*(<|>|::)\s*")
@@ -642,8 +643,7 @@ class Model:
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             context (dict): Context for the Form-generation; defaults are
-                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
-                See below for context argument descriptions.
+                the remaining arguments below.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
