@@ -17,3 +17,4 @@ def test():
         obj = f["ntuple"]
         assert obj.keys == ['one_integers', 'two_floats']
         assert obj.header.field_type_names ==  ['std::int32_t', 'float']
+        assert obj.header.crc32 ==  obj.footer.crc32

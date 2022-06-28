@@ -14,15 +14,15 @@ import uproot
 _rntuple_format1 = struct.Struct(">iIIQIIQIIQ")
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#envelopes
-_rntuple_frame_format = struct.Struct("<HHI")
+_rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 
 def _renamemeA(chunk, cursor, context):
-    version, min_version, num_bytes = cursor.fields(
+    env_version, min_version = cursor.fields(
         chunk, _rntuple_frame_format, context
     )
-    return {"version": version, "min_version": min_version, "num_bytes": num_bytes}
+    return {"env_version": env_version, "min_version": min_version}
 
 class ListFrameReader:
     _frame_header = struct.Struct("<ii")
@@ -143,20 +143,25 @@ class HeaderReader:
         feature_flag = cursor.field(
             chunk, _rntuple_feature_flag_format, context
         )
+        rc_tag = cursor.field(
+            chunk, struct.Struct("I"), context
+        )
         name, ntuple_description, writer_identifier = [cursor.rntuple_string(chunk, context) for _ in range(3)]
 
         list_field_record_frames = self.list_field_record_frames_reader.read(chunk, cursor, context)
         list_column_record_frames = self.list_column_record_frames_reader.read(chunk, cursor, context)
         list_alias_columns = self.list_alias_columns_reader.read(chunk, cursor, context)
         list_extra_type_info = self.list_extra_type_info_reader.read(chunk, cursor, context)
+        crc32 = cursor.field(chunk, struct.Struct("<i"), context)
 
-        return Header(header_frame, feature_flag, name, ntuple_description, writer_identifier, list_field_record_frames,
-                list_column_record_frames, list_alias_columns, list_extra_type_info)
+        return Header(header_frame, rc_tag, feature_flag, name, ntuple_description, writer_identifier, list_field_record_frames,
+                list_column_record_frames, list_alias_columns, list_extra_type_info, crc32)
 
 class Header:
-    def __init__(self, header_frame, feature_flag, ntuple_name, ntuple_description, writer_identifier, list_field_record_frames,
-            list_column_record_frames, list_alias_columns, list_extra_type_info):
+    def __init__(self, header_frame, rc_tag, feature_flag, ntuple_name, ntuple_description, writer_identifier, list_field_record_frames,
+            list_column_record_frames, list_alias_columns, list_extra_type_info, crc32):
         self.header_frame = header_frame
+        self.rc_tag = rc_tag
         self.feature_flag = feature_flag
         self.ntuple_name = ntuple_name
         self.ntuple_description = ntuple_description
@@ -165,6 +170,10 @@ class Header:
         self.list_column_record_frames = list_column_record_frames
         self.list_alias_columns = list_alias_columns
         self.list_extra_type_info = list_extra_type_info
+        self.crc32 = crc32
+
+    def __repr__(self):
+        return f"RNTuple Header: {self.rc_tag=}, {self.feature_flag=}, {self.ntuple_name=}, {self.crc32=}"
 
     @property
     def field_names(self):
@@ -191,17 +200,18 @@ class FooterReader:
         list_cluster_records = self.cluster_reader.read()
         list_meta_block_links = self.meta_reader.read()
         return Footer(self, footer_frame, feature_flag, list_extension_links, 
-                list_col_group_records, list_cluster_records, list_meta_block_links)
+                list_col_group_records, list_cluster_records, list_meta_block_links, crc32)
 
 class Footer:
     def __init__(self, header_frame, feature_flag, list_extension_links, list_col_group_records,
-            list_cluster_records, list_meta_block_links):
+            list_cluster_records, list_meta_block_links, crc32):
         self.header_frame = header_frame
         self.feature_flag = feature_flag
         self.list_extension_links = list_extension_links
         self.list_col_group_records = list_col_group_records
         self.list_cluster_records = list_cluster_records
         self.list_meta_block_links = list_meta_block_links
+        self.crc32 = crc32
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
@@ -293,12 +303,8 @@ in file {}""".format(
             cursor = self._footer_cursor.copy()
             context = {}
 
-            self._footer = {}
-            self._footer["frame"] = _renamemeA(self._footer_chunk, cursor, context)
-            self._footer["feature_flag"] = cursor.field(
-                self._footer_chunk, _rntuple_feature_flag_format, context
-            )
-            self._footer["CRC32"] = cursor.field(self._footer_chunk, struct.Struct('<i'), context)
+            f = FooterReader().read(self._header_chunk, cursor, context)
+            self._footer = f
             # self.read_list_of_extension_header_envelope_links(self._footer_chunk, cursor, context)
             # self.read_list_of_column_record_frames(self._header_chunk, cursor, context)
             # self.read_list_of_alias_column_record_frames(self._header_chunk, cursor, context)
