@@ -1006,7 +1006,7 @@ class AsVector(AsContainer):
                 temp = forth_obj.add_node(
                     f"node{key}", fcode_pre, fcode_post, init, header, "i64", 1, {}
                 )
-            if length == 0:
+            if length == 0 and forth:
                 forth_obj.var_set = True
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
