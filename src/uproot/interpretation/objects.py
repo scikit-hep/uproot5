@@ -263,6 +263,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                                 context["forth"], context["forth"].awkward_model
                             )
                             self._complete_forth_code = f'input stream\ninput byteoffsets \n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek\n{"".join(context["forth"].final_code)}\nloop'
+                            print(self._complete_forth_code)
                             self._forth_vm.vm = awkward.forth.ForthMachine64(
                                 self._complete_forth_code
                             )
@@ -316,8 +317,10 @@ class AsObjects(uproot.interpretation.Interpretation):
             if isinstance(temp_content, list):
                 for elem in temp_content:
                     self.assemble_forth(forth_obj, elem)
-            if isinstance(temp_content, dict):
+            elif isinstance(temp_content, dict):
                 self.assemble_forth(forth_obj, awkward_model["content"])
+            else:
+                pass
         forth_obj.add_to_final(awkward_model["post_code"])
 
     def final_array(

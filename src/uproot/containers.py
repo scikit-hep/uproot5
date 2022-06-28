@@ -655,6 +655,13 @@ class AsArray(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        forth = False
+        forth_obj = None
+        fcode_pre = []
+        if "forth" in context.keys():
+            awkward = uproot.extras.awkward()
+            forth_obj = context["forth"]
+            offsets_num = forth_obj.get_key()
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -662,7 +669,10 @@ class AsArray(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-
+            if forth:
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    fcode_pre.append(f"{temp_jump} stream skip\n")
             if is_memberwise:
                 raise NotImplementedError(
                     """memberwise serialization of {}

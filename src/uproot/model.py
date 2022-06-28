@@ -768,7 +768,7 @@ class Model:
 
         if context.get("reading", True):
             self.read_numbytes_version(chunk, cursor, context)
-
+            # find the bytes skipped
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
