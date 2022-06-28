@@ -8,7 +8,7 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 import queue
 import struct
 
-import uproot
+import uproot, numpy
 
 # https://github.com/root-project/root/blob/e9fa243af91217e9b108d828009c81ccba7666b5/tree/ntuple/v7/inc/ROOT/RMiniFile.hxx#L65
 _rntuple_format1 = struct.Struct(">iIIQIIQIIQ")
@@ -24,6 +24,45 @@ def _renamemeA(chunk, cursor, context):
     )
     return {"env_version": env_version, "min_version": min_version}
 
+
+class LocatorReader:
+    _locator_format = struct.Struct("<iQ")
+    def read(self, chunk, cursor, context):
+        out = MetaData("Locator")
+        out.size, out.offset = cursor.fields(
+            chunk, self._locator_format, context
+        )
+        return out
+
+class EnvLinkReader:
+    def read(self, chunk, cursor, context):
+        out = MetaData("EnvLink")
+        out.env_size = cursor.field(
+            chunk, struct.Struct("<I"), context
+        )
+        out.locator = LocatorReader().read(chunk, cursor, context)
+        return out
+    
+class MetaData:
+    def __init__(self, name, **kwargs):
+        self.__dict__["_name"] = name
+        self.__dict__["_fields"] = kwargs
+
+    @property
+    def name(self):
+        return self.__dict__["_name"]
+
+    def __repr__(self):
+        kwargs = ", ".join(f"{k}={v!r}" for k, v in self.__dict__["_fields"].items())
+        return f"MetaData({self.name!r}, {kwargs})"
+    def __getattr__(self, name):
+        if not name.startswith("_"):
+            return self.__dict__["_fields"][name]
+        else:
+            return self.__dict__[name]
+    def __setattr__(self, name, val):
+        self.__dict__["_fields"][name] = val
+        
 class ListFrameReader:
     _frame_header = struct.Struct("<ii")
 
@@ -44,6 +83,7 @@ class FieldRecordFrameReader():
     _field_description = struct.Struct("<IIIHH")
 
     def read(self, chunk, cursor, context):
+        out = MetaData("FieldRecordFrame")
         local_cursor = cursor.copy()
         num_bytes = local_cursor.field(
             chunk, struct.Struct('<i'), context
@@ -51,25 +91,18 @@ class FieldRecordFrameReader():
         assert num_bytes > 0, f"{num_bytes= !r}"
         cursor.skip(num_bytes)
 
-        field_record_frame = local_cursor.fields(
+        out.field_record_frame = local_cursor.fields(
             chunk, self._field_description, context
         )
-        f_name, t_name, t_alias, f_desc = [local_cursor.rntuple_string(chunk, context) for i in range(4)]
-        return FieldRecordFrame(field_record_frame, f_name, t_name, t_alias, f_desc)
-
-class FieldRecordFrame:
-    def __init__(self, header, field_name, type_name, type_alias, field_description):
-        self.header = header
-        self.field_name = field_name
-        self.type_name = type_name
-        self.type_alias = type_alias
-        self.field_description = field_description
+        out.f_name, out.t_name, out.t_alias, out.f_desc = [local_cursor.rntuple_string(chunk, context) for i in range(4)]
+        return out
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#column-description
-class ColumnRecordFrameReader():
+class ColumnRecordFrameReader:
     _column_description = struct.Struct("<HHII")
 
     def read(self, chunk, cursor, context):
+        out = MetaData("ColumnRecordFrame")
         local_cursor = cursor.copy()
         num_bytes = local_cursor.field(
             chunk, struct.Struct('<i'), context
@@ -77,19 +110,20 @@ class ColumnRecordFrameReader():
         assert num_bytes > 0, f"{num_bytes= !r}"
         cursor.skip(num_bytes)
 
-        column_header = local_cursor.fields(
+        out.column_header = local_cursor.fields(
             chunk, self._column_description, context
         )
-        return ColumnRecordFrame(column_header)
+        return out
 
-class ColumnRecordFrame:
-    def __init__(self, header):
-        self.header = header
+# class ColumnRecordFrame:
+#     def __init__(self, header):
+#         self.header = header
 
-class AliasColumnReader():
+class AliasColumnReader:
     _alias_column_= struct.Struct("<II")
 
     def read(self, chunk, cursor, context):
+        out = MetaData("AliasColumn")
         local_cursor = cursor.copy()
         num_bytes = local_cursor.field(
             chunk, struct.Struct('<i'), context
@@ -97,20 +131,16 @@ class AliasColumnReader():
         assert num_bytes > 0, f"{num_bytes= !r}"
         cursor.skip(num_bytes)
 
-        physical_id, field_id = local_cursor.fields(
+        out.physical_id, out.field_id = local_cursor.fields(
             chunk, self._alias_column, context
         )
-        return AliasColumn(physical_id, field_id)
+        return out
 
-class AliasColumn:
-    def __init__(self, physical_id, field_id):
-        self.physical_id = physical_id
-        self.field_id = field_id
-
-class ExtraTypeInfoReader():
+class ExtraTypeInfoReader:
     _extra_type_info = struct.Struct("<III")
 
     def read(self, chunk, cursor, context):
+        out = MetaData("ExtraTypeInfoReader")
         local_cursor = cursor.copy()
         num_bytes = local_cursor.field(
             chunk, struct.Struct('<i'), context
@@ -118,100 +148,114 @@ class ExtraTypeInfoReader():
         assert num_bytes > 0, f"{num_bytes= !r}"
         cursor.skip(num_bytes)
 
-        type_ver_from, type_ver_to, content_id = local_cursor.fields(
+        out.type_ver_from, out.type_ver_to, out.content_id = local_cursor.fields(
             chunk, self._extra_type_info, context
         )
-        type_name, = local_cursor.rntuple_string(chunk, context)
-        return ExtraTypeInfo(type_ver_from, type_ver_to, content_id, type_name)
-
-class ExtraTypeInfo:
-    def __init__(fr, to, tid, tname):
-        self.type_ver_from = fr
-        self.type_ver_to = to
-        self.type_id = tid
-        self.type_name = tname
+        out.type_name = local_cursor.rntuple_string(chunk, context)
+        return out
 
 class HeaderReader:
     def __init__(self):
-        self.list_field_record_frames_reader = ListFrameReader(FieldRecordFrameReader())
-        self.list_column_record_frames_reader = ListFrameReader(ColumnRecordFrameReader())
-        self.list_alias_columns_reader = ListFrameReader(AliasColumnReader())
+        self.list_field_record_frames = ListFrameReader(FieldRecordFrameReader())
+        self.list_column_record_frames = ListFrameReader(ColumnRecordFrameReader())
+        self.list_alias_column_frames = ListFrameReader(AliasColumnReader())
         self.list_extra_type_info_reader = ListFrameReader(ExtraTypeInfoReader())
         
     def read(self, chunk, cursor, context):
-        header_frame = _renamemeA(chunk, cursor, context)
-        feature_flag = cursor.field(
+        out = MetaData("Header")
+        out.header_frame = _renamemeA(chunk, cursor, context)
+        out.feature_flag = cursor.field(
             chunk, _rntuple_feature_flag_format, context
         )
-        rc_tag = cursor.field(
+        out.rc_tag = cursor.field(
             chunk, struct.Struct("I"), context
         )
-        name, ntuple_description, writer_identifier = [cursor.rntuple_string(chunk, context) for _ in range(3)]
+        out.name, out.ntuple_description, out.writer_identifier = [cursor.rntuple_string(chunk, context) for _ in range(3)]
 
-        list_field_record_frames = self.list_field_record_frames_reader.read(chunk, cursor, context)
-        list_column_record_frames = self.list_column_record_frames_reader.read(chunk, cursor, context)
-        list_alias_columns = self.list_alias_columns_reader.read(chunk, cursor, context)
-        list_extra_type_info = self.list_extra_type_info_reader.read(chunk, cursor, context)
-        crc32 = cursor.field(chunk, struct.Struct("<i"), context)
+        out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
+        out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
+        out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
+        out.extra_type_infos = self.list_extra_type_info_reader.read(chunk, cursor, context)
+        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
-        return Header(header_frame, rc_tag, feature_flag, name, ntuple_description, writer_identifier, list_field_record_frames,
-                list_column_record_frames, list_alias_columns, list_extra_type_info, crc32)
+        return out
 
-class Header:
-    def __init__(self, header_frame, rc_tag, feature_flag, ntuple_name, ntuple_description, writer_identifier, list_field_record_frames,
-            list_column_record_frames, list_alias_columns, list_extra_type_info, crc32):
-        self.header_frame = header_frame
-        self.rc_tag = rc_tag
-        self.feature_flag = feature_flag
-        self.ntuple_name = ntuple_name
-        self.ntuple_description = ntuple_description
-        self.writer_identifier = writer_identifier
-        self.list_field_record_frames = list_field_record_frames
-        self.list_column_record_frames = list_column_record_frames
-        self.list_alias_columns = list_alias_columns
-        self.list_extra_type_info = list_extra_type_info
-        self.crc32 = crc32
+# class Header:
+#     def __init__(self, header_frame, rc_tag, feature_flag, ntuple_name, ntuple_description, writer_identifier, list_field_record_frames,
+#             list_column_record_frames, list_alias_columns, list_extra_type_info, crc32):
+#         self.header_frame = header_frame
+#         self.rc_tag = rc_tag
+#         self.feature_flag = feature_flag
+#         self.ntuple_name = ntuple_name
+#         self.ntuple_description = ntuple_description
+#         self.writer_identifier = writer_identifier
+#         self.list_field_record_frames = list_field_record_frames
+#         self.list_column_record_frames = list_column_record_frames
+#         self.list_alias_columns = list_alias_columns
+#         self.list_extra_type_info = list_extra_type_info
+#         self.crc32 = crc32
 
-    def __repr__(self):
-        return f"RNTuple Header: {self.rc_tag=}, {self.feature_flag=}, {self.ntuple_name=}, {self.crc32=}"
+#     def __repr__(self):
+#         return f"RNTuple Header: {self.rc_tag=}, {self.feature_flag=}, {self.ntuple_name=}, {self.crc32=}"
 
-    @property
-    def field_names(self):
-        return [x.field_name for x in self.list_field_record_frames]
-    @property
-    def field_type_names(self):
-        return [x.type_name for x in self.list_field_record_frames]
+#     @property
+#     def field_names(self):
+#         return [x.field_name for x in self.list_field_record_frames]
+#     @property
+#     def field_type_names(self):
+#         return [x.type_name for x in self.list_field_record_frames]
 
+class ColumnGroupRecordReader:
+    def read(self, chunk, cursor, context):
+        out = MetaData("ClusterSummaryRecord")
+        out.num_first_entry, out.num_entries = cursor.fields(
+            chunk, self._cluster_summary_format, context
+        )
+        return out
+
+
+class ClusterSummaryRecordReader:
+    _cluster_summary_format = struct.Struct("<QQ")
+
+    def read(self, chunk, cursor, context):
+        out = MetaData("ClusterSummaryRecord")
+        out.num_first_entry, out.num_entries = cursor.fields(
+            chunk, self._cluster_summary_format, context
+        )
+        return out
+
+class ClusterGroupRecordReader:
+    _cluster_group_format = struct.Struct("<I")
+
+    def read(self, chunk, cursor, context):
+        out = MetaData("ClusterGroupRecord")
+        out.num_clusters = cursor.field(
+            chunk, self._cluster_group_format, context
+        )
+        out.page_list_link = EnvLinkReader().read(chunk, cursor, context)
+        return out
 
 class FooterReader:
     def __init__(self):
-        self.extension_reader = ListFrameReader(LinkExtensionReader())
-        self.col_group_reader = ListFrameReader(ColumnGroupReader())
-        self.cluster_reader = ListFrameReader(ClusterReader())
-        self.meta_reader = ListFrameReader(MetaBlockReader())
-        
+        self.extension_header_links = ListFrameReader(EnvLinkReader())
+        self.column_group_record_frames = ListFrameReader(ColumnGroupRecordReader())
+        self.cluster_summary_frames = ListFrameReader(ClusterSummaryRecordReader())
+        self.cluster_group_record_frames = ListFrameReader(ClusterGroupRecordReader())
+        self.meta_data_links = ListFrameReader(EnvLinkReader())
+
     def read(self, chunk, cursor, context):
-        footer_frame = _renamemeA(chunk, cursor, context)
-        feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
-        crc32 = cursor.field(chunk, struct.Struct("<i"), context)
+        out = MetaData("Footer")
+        out.footer_frame = _renamemeA(chunk, cursor, context)
+        out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
+        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
-        list_extension_links = self.extension_reader.read()
-        list_col_group_records = self.col_group_reader.read()
-        list_cluster_records = self.cluster_reader.read()
-        list_meta_block_links = self.meta_reader.read()
-        return Footer(self, footer_frame, feature_flag, list_extension_links, 
-                list_col_group_records, list_cluster_records, list_meta_block_links, crc32)
+        out.list_extension_links = self.extension_header_links.read(chunk, cursor, context)
+        out.list_col_group_records = self.column_group_record_frames.read(chunk, cursor, context)
+        out.list_cluster_records = self.cluster_summary_frames.read(chunk, cursor, context)
+        out.list_cluster_records = self.cluster_group_record_frames.read(chunk, cursor, context)
+        out.list_meta_block_links = self.meta_data_links.read(chunk, cursor, context)
+        return out
 
-class Footer:
-    def __init__(self, header_frame, feature_flag, list_extension_links, list_col_group_records,
-            list_cluster_records, list_meta_block_links, crc32):
-        self.header_frame = header_frame
-        self.feature_flag = feature_flag
-        self.list_extension_links = list_extension_links
-        self.list_col_group_records = list_col_group_records
-        self.list_cluster_records = list_cluster_records
-        self.list_meta_block_links = list_meta_block_links
-        self.crc32 = crc32
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
@@ -303,12 +347,9 @@ in file {}""".format(
             cursor = self._footer_cursor.copy()
             context = {}
 
-            f = FooterReader().read(self._header_chunk, cursor, context)
+            f = FooterReader().read(self._footer_chunk, cursor, context)
+            assert f.crc32 == self.header.crc32, f"{self.header.crc32=}, {f.crc32=}"
             self._footer = f
-            # self.read_list_of_extension_header_envelope_links(self._footer_chunk, cursor, context)
-            # self.read_list_of_column_record_frames(self._header_chunk, cursor, context)
-            # self.read_list_of_alias_column_record_frames(self._header_chunk, cursor, context)
-            # self.read_list_of_extra_type_info(self._header_chunk, cursor, context)
 
         return self._footer
 
