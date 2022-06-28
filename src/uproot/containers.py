@@ -8,6 +8,7 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
 
+import json
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
@@ -50,6 +51,7 @@ def _read_nested(
         return cursor.array(chunk, length, model, context)
 
     else:
+
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             for i in range(length):
@@ -421,6 +423,15 @@ class AsString(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        forth = False
+        forth_obj = None
+        fcode = []
+        if "forth" in context.keys():
+            forth = True
+            forth_obj = context["forth"]
+            keys = forth_obj.get_key()
+            offsets_num = keys
+            data_num = keys + 1
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -428,12 +439,23 @@ class AsString(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-
+            if forth:
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    fcode.append(f"{temp_jump} stream skip")
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
+            if forth:
+                fcode.append(
+                    f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data \n"
+                )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
+            if forth:
+                fcode.append(
+                    f"stream I-> stack dup part0-node{offsets_num}-offsets <- stack stream #B-> part0-node{data_num}-data\n"
+                )
         else:
             raise AssertionError(repr(self._length_bytes))
 
@@ -447,7 +469,27 @@ class AsString(AsContainer):
                 context,
                 file.file_path,
             )
+        if forth:
+            if forth_obj.should_add_form():
+                if self._header:
+                    temp_header = "true"
+                else:
+                    temp_header = "false"
+                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_header}}}}}, "form_key": "node{offsets_num}"}}'
+                forth_obj.add_form(json.loads(temp_aform))
 
+            form_keys = [
+                f"part0-node{data_num}-data",
+                f"part0-node{offsets_num}-offsets",
+            ]
+            header = f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
+            init = f"0 part0-node{offsets_num}-offsets <- stack\n"
+            for elem in form_keys:
+                forth_obj.add_form_key(elem)
+            temp_form = forth_obj.add_node(
+                f"node{offsets_num}", fcode, [], init, header, "i64", 0, None
+            )
+            forth_obj.go_to(temp_form)
         return out
 
     def __eq__(self, other):
@@ -876,6 +918,13 @@ class AsVector(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        forth = False
+        forth_obj = None
+        fcode_pre = []
+        fcode_post = []
+        if "forth" in context.keys():
+            forth = True
+            forth_obj = context["forth"]
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -883,6 +932,10 @@ class AsVector(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+            if forth:
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    fcode_pre.append(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
 
@@ -890,6 +943,8 @@ class AsVector(AsContainer):
         # (e.g. type(self._values) == type)
         _value_typename = _content_typename(self._values)
         if is_memberwise:
+            if forth:
+                raise NotImplementedError
             # let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
@@ -937,11 +992,34 @@ class AsVector(AsContainer):
                         )
         else:
             length = cursor.field(chunk, _stl_container_size, context)
+            if forth:
+                key = forth_obj.get_key()
 
+                form_key = f"part0-node{key}-offsets"
+                header = f"output part0-node{key}-offsets int64\n"
+                init = f"0 part0-node{key}-offsets <- stack\n"
+                fcode_pre.append(
+                    f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n0 do \n"
+                )
+                fcode_post.append("loop\n")
+                forth_obj.add_form_key(form_key)
+                temp = forth_obj.add_node(
+                    f"node{key}", fcode_pre, fcode_post, init, header, "i64", 1, {}
+                )
+            if length == 0:
+                forth_obj.var_set = True
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
-
+        if forth:
+            forth_obj.go_to(temp)
+            if forth_obj.should_add_form():
+                if self._header:
+                    temp_bool = "true"
+                else:
+                    temp_bool = "false"
+                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                forth_obj.add_form(json.loads(temp_aform))
         out = STLVector(values)
 
         if self._header and header:

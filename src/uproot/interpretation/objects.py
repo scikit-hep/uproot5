@@ -25,6 +25,7 @@ import threading
 import numpy
 
 import uproot
+import uproot._awkward_forth
 
 
 def awkward_can_optimize(interpretation, form):
@@ -215,7 +216,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                     "header": False,
                     "tobject_header": True,
                     "breadcrumbs": (),
-                    "forth": forth_obj,
                 },
             )
             if awkward_can_optimize(self, self._form):
@@ -248,7 +248,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                         cursor = uproot.source.cursor.Cursor(
                             0, origin=-(byte_start + cursor_offset)
                         )
-                        context["forth"].aform = self._form
                         context["forth"].var_set = False
                         output[i] = self._model.read(
                             chunk,
@@ -260,30 +259,14 @@ class AsObjects(uproot.interpretation.Interpretation):
                         )
                         if not context["forth"].var_set:
                             self._prereaddone = True
-                            for key in forth_obj.forth_code.keys():
-                                code_list = forth_obj.forth_code[key]
-                                for key in code_list.keys():
-                                    if key == "forth_header":
-                                        forth_obj.add_to_header(code_list[key])
-                                    if key == "forth_init":
-                                        forth_obj.add_to_init(code_list[key])
-                            for elem in forth_obj.forth_sequence:
-                                if "post" in elem:
-                                    forth_obj.add_to_final(
-                                        forth_obj.forth_code[int(elem.rstrip("post"))][
-                                            elem
-                                        ]
-                                    )
-                                if "pre" in elem:
-                                    forth_obj.add_to_final(
-                                        forth_obj.forth_code[int(elem.rstrip("pre"))][
-                                            elem
-                                        ]
-                                    )
+                            self.assemble_forth(
+                                context["forth"], context["forth"].awkward_model
+                            )
                             self._complete_forth_code = f'input stream\ninput byteoffsets \n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek\n{"".join(context["forth"].final_code)}\nloop'
                             self._forth_vm.vm = awkward.forth.ForthMachine64(
                                 self._complete_forth_code
                             )
+                            self._form = context["forth"].aform
                             self._forth_vm_set = True
                             break
             else:
@@ -310,9 +293,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                     container[elem] = self._forth_vm.vm.output_Index64(elem)
                 else:
                     container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
-
             output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
-
         self.hook_after_basket_array(
             data=data,
             byte_offsets=byte_offsets,
@@ -325,6 +306,19 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
 
         return output
+
+    def assemble_forth(self, forth_obj, awkward_model):
+        forth_obj.add_to_header(awkward_model["header_code"])
+        forth_obj.add_to_init(awkward_model["init_code"])
+        forth_obj.add_to_final(awkward_model["pre_code"])
+        if "content" in awkward_model.keys():
+            temp_content = awkward_model["content"]
+            if isinstance(temp_content, list):
+                for elem in temp_content:
+                    self.assemble_forth(forth_obj, elem)
+            if isinstance(temp_content, dict):
+                self.assemble_forth(forth_obj, awkward_model["content"])
+        forth_obj.add_to_final(awkward_model["post_code"])
 
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
