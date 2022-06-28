@@ -8,7 +8,9 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 import queue
 import struct
 
-import uproot, numpy
+import numpy
+
+import uproot
 
 # https://github.com/root-project/root/blob/e9fa243af91217e9b108d828009c81ccba7666b5/tree/ntuple/v7/inc/ROOT/RMiniFile.hxx#L65
 _rntuple_format1 = struct.Struct(">iIIQIIQIIQ")
@@ -18,31 +20,29 @@ _rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 
+
 def _renamemeA(chunk, cursor, context):
-    env_version, min_version = cursor.fields(
-        chunk, _rntuple_frame_format, context
-    )
+    env_version, min_version = cursor.fields(chunk, _rntuple_frame_format, context)
     return {"env_version": env_version, "min_version": min_version}
 
 
 class LocatorReader:
     _locator_format = struct.Struct("<iQ")
+
     def read(self, chunk, cursor, context):
         out = MetaData("Locator")
-        out.size, out.offset = cursor.fields(
-            chunk, self._locator_format, context
-        )
+        out.size, out.offset = cursor.fields(chunk, self._locator_format, context)
         return out
+
 
 class EnvLinkReader:
     def read(self, chunk, cursor, context):
         out = MetaData("EnvLink")
-        out.env_size = cursor.field(
-            chunk, struct.Struct("<I"), context
-        )
+        out.env_size = cursor.field(chunk, struct.Struct("<I"), context)
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
-    
+
+
 class MetaData:
     def __init__(self, name, **kwargs):
         self.__dict__["_name"] = name
@@ -55,14 +55,17 @@ class MetaData:
     def __repr__(self):
         kwargs = ", ".join(f"{k}={v!r}" for k, v in self.__dict__["_fields"].items())
         return f"MetaData({self.name!r}, {kwargs})"
+
     def __getattr__(self, name):
         if not name.startswith("_"):
             return self.__dict__["_fields"][name]
         else:
             return self.__dict__[name]
+
     def __setattr__(self, name, val):
         self.__dict__["_fields"][name] = val
-        
+
+
 class RecordFrameReader:
     _record_size_format = struct.Struct("<I")
 
@@ -71,10 +74,9 @@ class RecordFrameReader:
 
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        num_bytes = local_cursor.field(
-            chunk, self._record_size_format, context
-        )
+        num_bytes = local_cursor.field(chunk, self._record_size_format, context)
         return self.payload.read(chunk, local_cursor, context)
+
 
 class ListFrameReader:
     _frame_header = struct.Struct("<ii")
@@ -84,25 +86,27 @@ class ListFrameReader:
 
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        num_bytes, num_items = local_cursor.fields(
-            chunk, self._frame_header, context
-        )
+        num_bytes, num_items = local_cursor.fields(chunk, self._frame_header, context)
         assert num_bytes < 0, f"{num_bytes= !r}"
         cursor.skip(-num_bytes)
-        return [self.payload.read(chunk, local_cursor, context) for _ in range(num_items)]
+        return [
+            self.payload.read(chunk, local_cursor, context) for _ in range(num_items)
+        ]
+
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#field-description
-class FieldRecordReader():
+class FieldRecordReader:
     _field_description = struct.Struct("<IIIHH")
 
     def read(self, chunk, cursor, context):
         out = MetaData("FieldRecordFrame")
 
-        out.field_record_frame = cursor.fields(
-            chunk, self._field_description, context
+        out.field_record_frame = cursor.fields(chunk, self._field_description, context)
+        out.f_name, out.t_name, out.t_alias, out.f_desc = (
+            cursor.rntuple_string(chunk, context) for i in range(4)
         )
-        out.f_name, out.t_name, out.t_alias, out.f_desc = [cursor.rntuple_string(chunk, context) for i in range(4)]
         return out
+
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#column-description
 class ColumnRecordReader:
@@ -110,13 +114,12 @@ class ColumnRecordReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData("ColumnRecordFrame")
-        out.column_header = cursor.fields(
-            chunk, self._column_description, context
-        )
+        out.column_header = cursor.fields(chunk, self._column_description, context)
         return out
 
+
 class AliasColumnReader:
-    _alias_column_= struct.Struct("<II")
+    _alias_column_ = struct.Struct("<II")
 
     def read(self, chunk, cursor, context):
         out = MetaData("AliasColumn")
@@ -125,6 +128,7 @@ class AliasColumnReader:
             chunk, self._alias_column, context
         )
         return out
+
 
 class ExtraTypeInfoReader:
     _extra_type_info = struct.Struct("<III")
@@ -138,31 +142,41 @@ class ExtraTypeInfoReader:
         out.type_name = cursor.rntuple_string(chunk, context)
         return out
 
+
 class HeaderReader:
     def __init__(self):
-        self.list_field_record_frames = ListFrameReader(RecordFrameReader(FieldRecordReader()))
-        self.list_column_record_frames = ListFrameReader(RecordFrameReader(ColumnRecordReader()))
-        self.list_alias_column_frames = ListFrameReader(RecordFrameReader(AliasColumnReader()))
-        self.list_extra_type_info_reader = ListFrameReader(RecordFrameReader(ExtraTypeInfoReader()))
-        
+        self.list_field_record_frames = ListFrameReader(
+            RecordFrameReader(FieldRecordReader())
+        )
+        self.list_column_record_frames = ListFrameReader(
+            RecordFrameReader(ColumnRecordReader())
+        )
+        self.list_alias_column_frames = ListFrameReader(
+            RecordFrameReader(AliasColumnReader())
+        )
+        self.list_extra_type_info_reader = ListFrameReader(
+            RecordFrameReader(ExtraTypeInfoReader())
+        )
+
     def read(self, chunk, cursor, context):
         out = MetaData("Header")
         out.header_frame = _renamemeA(chunk, cursor, context)
-        out.feature_flag = cursor.field(
-            chunk, _rntuple_feature_flag_format, context
+        out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
+        out.rc_tag = cursor.field(chunk, struct.Struct("I"), context)
+        out.name, out.ntuple_description, out.writer_identifier = (
+            cursor.rntuple_string(chunk, context) for _ in range(3)
         )
-        out.rc_tag = cursor.field(
-            chunk, struct.Struct("I"), context
-        )
-        out.name, out.ntuple_description, out.writer_identifier = [cursor.rntuple_string(chunk, context) for _ in range(3)]
 
         out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
         out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
         out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
-        out.extra_type_infos = self.list_extra_type_info_reader.read(chunk, cursor, context)
+        out.extra_type_infos = self.list_extra_type_info_reader.read(
+            chunk, cursor, context
+        )
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
         return out
+
 
 # class Header:
 #     def __init__(self, header_frame, rc_tag, feature_flag, ntuple_name, ntuple_description, writer_identifier, list_field_record_frames,
@@ -189,6 +203,7 @@ class HeaderReader:
 #     def field_type_names(self):
 #         return [x.type_name for x in self.list_field_record_frames]
 
+
 class ColumnGroupRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterSummaryRecord")
@@ -208,23 +223,29 @@ class ClusterSummaryReader:
         )
         return out
 
+
 class ClusterGroupRecordReader:
     _cluster_group_format = struct.Struct("<I")
 
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterGroupRecord")
-        out.num_clusters = cursor.field(
-            chunk, self._cluster_group_format, context
-        )
+        out.num_clusters = cursor.field(chunk, self._cluster_group_format, context)
         out.page_list_link = EnvLinkReader().read(chunk, cursor, context)
         return out
+
 
 class FooterReader:
     def __init__(self):
         self.extension_header_links = ListFrameReader(EnvLinkReader())
-        self.column_group_record_frames = ListFrameReader(RecordFrameReader(ColumnGroupRecordReader()))
-        self.cluster_summary_frames = ListFrameReader(RecordFrameReader(ClusterSummaryReader()))
-        self.cluster_group_record_frames = ListFrameReader(RecordFrameReader(ClusterGroupRecordReader()))
+        self.column_group_record_frames = ListFrameReader(
+            RecordFrameReader(ColumnGroupRecordReader())
+        )
+        self.cluster_summary_frames = ListFrameReader(
+            RecordFrameReader(ClusterSummaryReader())
+        )
+        self.cluster_group_record_frames = ListFrameReader(
+            RecordFrameReader(ClusterGroupRecordReader())
+        )
         self.meta_data_links = ListFrameReader(EnvLinkReader())
 
     def read(self, chunk, cursor, context):
@@ -233,10 +254,18 @@ class FooterReader:
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
-        out.list_extension_links = self.extension_header_links.read(chunk, cursor, context)
-        out.list_col_group_records = self.column_group_record_frames.read(chunk, cursor, context)
-        out.list_cluster_records = self.cluster_summary_frames.read(chunk, cursor, context)
-        out.list_cluster_records = self.cluster_group_record_frames.read(chunk, cursor, context)
+        out.list_extension_links = self.extension_header_links.read(
+            chunk, cursor, context
+        )
+        out.list_col_group_records = self.column_group_record_frames.read(
+            chunk, cursor, context
+        )
+        out.list_cluster_records = self.cluster_summary_frames.read(
+            chunk, cursor, context
+        )
+        out.list_cluster_records = self.cluster_group_record_frames.read(
+            chunk, cursor, context
+        )
         out.list_meta_block_links = self.meta_data_links.read(chunk, cursor, context)
         return out
 
@@ -245,6 +274,7 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
+
     @property
     def keys(self):
         return self.header.field_names
@@ -336,7 +366,6 @@ in file {}""".format(
             self._footer = f
 
         return self._footer
-
 
 
 uproot.classes[
