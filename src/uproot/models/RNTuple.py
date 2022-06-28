@@ -31,14 +31,14 @@ class LocatorReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData("Locator")
-        out.size, out.offset = cursor.fields(chunk, self._locator_format, context)
+        out.num_bytes, out.offset = cursor.fields(chunk, self._locator_format, context)
         return out
 
 
 class EnvLinkReader:
     def read(self, chunk, cursor, context):
         out = MetaData("EnvLink")
-        out.env_size = cursor.field(chunk, struct.Struct("<I"), context)
+        out.env_uncomp_size = cursor.field(chunk, struct.Struct("<I"), context)
         out.locator = LocatorReader().read(chunk, cursor, context)
         return out
 
@@ -85,8 +85,13 @@ class ListFrameReader:
         self.payload = payload
 
     def read(self, chunk, cursor, context):
+        # print(f"ListFrame: {cursor}")
+        # print(f"ListFrame: {cursor.bytes(chunk, 4, context=context, move=False)}")
+
         local_cursor = cursor.copy()
         num_bytes, num_items = local_cursor.fields(chunk, self._frame_header, context)
+        # print(f"ListFrame: {num_items=}")
+        # print(f"ListFrame: {num_bytes=}")
         assert num_bytes < 0, f"{num_bytes= !r}"
         cursor.skip(-num_bytes)
         return [
@@ -160,7 +165,7 @@ class HeaderReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData("Header")
-        out.header_frame = _renamemeA(chunk, cursor, context)
+        out.env_header = _renamemeA(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.rc_tag = cursor.field(chunk, struct.Struct("I"), context)
         out.name, out.ntuple_description, out.writer_identifier = (
@@ -250,23 +255,23 @@ class FooterReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
-        out.footer_frame = _renamemeA(chunk, cursor, context)
+        out.env_header = _renamemeA(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
-        out.list_extension_links = self.extension_header_links.read(
+        out.extension_links = self.extension_header_links.read(
             chunk, cursor, context
         )
-        out.list_col_group_records = self.column_group_record_frames.read(
+        out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
-        out.list_cluster_records = self.cluster_summary_frames.read(
+        out.cluster_summaries = self.cluster_summary_frames.read(
             chunk, cursor, context
         )
-        out.list_cluster_records = self.cluster_group_record_frames.read(
+        out.cluster_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
-        out.list_meta_block_links = self.meta_data_links.read(chunk, cursor, context)
+        out.meta_block_links = self.meta_data_links.read(chunk, cursor, context)
         return out
 
 
@@ -366,6 +371,78 @@ in file {}""".format(
             self._footer = f
 
         return self._footer
+
+    def page_list_envelope(self, index):
+        record = self.footer.cluster_records[index]
+        link = record.page_list_link
+        loc = link.locator
+        cursor = uproot.source.cursor.Cursor(loc.offset)
+        chunk = self.file.source.chunk(loc.offset, loc.offset+loc.num_bytes)
+        context = {}
+        if loc.num_bytes < link.env_uncomp_size:
+            decomp_chunk = uproot.compression.decompress(chunk, cursor, context, loc.num_bytes, link.env_uncomp_size, block_info=None)
+            cursor.move_to(0)
+        else:
+            decomp_chunk = chunk
+
+        return PageLink().read(decomp_chunk, cursor, context)
+
+    # @property
+    # def cluster_records(self):
+    #     record = self.footer.cluster_records[0]
+    #     link = record.page_list_link
+    #     loc = link.locator
+    #     cursor = uproot.source.cursor.Cursor(loc.offset)
+    #     chunk = self.file.source.chunk(loc.offset, loc.offset+loc.num_bytes)
+    #     context = {}
+    #     if loc.num_bytes < link.env_uncomp_size:
+    #         decomp_chunk = uproot.compression.decompress(chunk, cursor, context, loc.num_bytes, link.env_uncomp_size, block_info=None)
+    #         cursor.move_to(0)
+    #     else:
+    #         decomp_chunk = chunk
+    #     cursor.debug(decomp_chunk, dtype=numpy.int32)
+
+# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
+class PageDescription:
+    def read(self, chunk, cursor, context):
+        out = MetaData(type(self).__name__)
+        # print(f"PageDescription: {cursor}")
+        # print(f"PageDescription: {cursor.bytes(chunk, 4, context=context, move=False)}")
+        out.num_elements = cursor.field(chunk, struct.Struct("<I"), context)
+        out.locator = LocatorReader().read(chunk, cursor, context)
+        return out
+
+
+class PageLinkInner:
+    def read(self, chunk, cursor, context):
+        out = MetaData(type(self).__name__)
+        # print(f"PageLinkInner: {cursor}")
+        # print(f"PageLinkInner: {cursor.bytes(chunk, 4, context=context, move=False)}")
+        out.page_description_list = ListFrameReader(PageDescription()).read(chunk, cursor, context)
+        # n.b the size of the inner list frame includes the element offset and compression settings
+        cursor.skip(-12)
+        out.ele_offset = cursor.field(chunk, struct.Struct("<Q"), context)
+        out.flags = cursor.field(chunk, struct.Struct("<I"), context)
+        return out
+
+
+class PageLink:
+    def __init__(self):
+        self.top_most_list = ListFrameReader(
+                ListFrameReader( #outer list
+                    PageLinkInner() #inner list
+                    )
+                )
+
+    def read(self, chunk, cursor, context):
+        out = MetaData(type(self).__name__)
+        # print(f"PageLink: {cursor}")
+        # print(f"PageLink: {cursor.bytes(chunk, 4, context=context, move=False)}")
+        out.env_header = _renamemeA(chunk, cursor, context)
+        out.cluster_list_frame = self.top_most_list.read(chunk, cursor, context)
+        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
+        return out
+
 
 
 uproot.classes[
