@@ -8,8 +8,6 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 import queue
 import struct
 
-import numpy
-
 import uproot
 
 # https://github.com/root-project/root/blob/e9fa243af91217e9b108d828009c81ccba7666b5/tree/ntuple/v7/inc/ROOT/RMiniFile.hxx#L65
@@ -333,7 +331,7 @@ in file {}""".format(
 
     @property
     def column_names(self):
-        if self._column_names == None:
+        if self._column_names is None:
             self._column_names = [r.f_name for r in self.header.field_records]
         return self._column_names
 
@@ -361,7 +359,7 @@ in file {}""".format(
 
     # read_pages at i-th cluster group, j-th cluster, k-th column
     def pages_read(self, i, j, k):
-        page_locs = self.cluster_group_cluster(i, j)
+        return self.cluster_group_cluster(i, j)[k]
 
     def read_locator(self, loc, uncomp_size, cursor, context):
         chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
