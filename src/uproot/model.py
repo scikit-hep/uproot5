@@ -766,9 +766,18 @@ class Model:
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
 
+        forth = False
+        forth_obj = None
+        fcode_pre = []
+        if "forth" in context.keys():
+            forth_obj = context["forth"]
+            forth = True
+
         if context.get("reading", True):
+            temp_index = cursor._index
             self.read_numbytes_version(chunk, cursor, context)
-            # find the bytes skipped
+            length = cursor._index - temp_index
+            fcode_pre.append(f"{length} stream skip\n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -796,15 +805,20 @@ class Model:
                 cursor = self._cursor
 
             elif self._instance_version == 0:
+                fcode_pre.append("4 stream skip\n")
                 cursor.skip(4)
 
         if context.get("reading", True):
             self.hook_before_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
-
+            if forth:
+                temp = forth_obj.add_node(
+                    "pass", fcode_pre, [], [], [], "i64", 1, {}
+                )
             self.read_members(chunk, cursor, context, file)
-
+            if forth:
+                forth_obj.go_to(temp)
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )

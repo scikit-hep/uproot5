@@ -309,6 +309,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         return output
 
     def assemble_forth(self, forth_obj, awkward_model):
+        print(awkward_model)
         forth_obj.add_to_header(awkward_model["header_code"])
         forth_obj.add_to_init(awkward_model["init_code"])
         forth_obj.add_to_final(awkward_model["pre_code"])

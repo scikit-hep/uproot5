@@ -469,7 +469,7 @@ class AsString(AsContainer):
                 context,
                 file.file_path,
             )
-        if forth:
+        if forth and not forth_obj.check_model():
             if forth_obj.should_add_form():
                 if self._header:
                     temp_header = "true"
@@ -711,7 +711,6 @@ in file {}""".format(
         else:
             if self._speedbump:
                 cursor.skip(1)
-
             if isinstance(self._values, numpy.dtype):
                 remainder = chunk.remainder(cursor.index, cursor, context)
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
@@ -1013,16 +1012,18 @@ class AsVector(AsContainer):
                 )
                 fcode_post.append("loop\n")
                 forth_obj.add_form_key(form_key)
-                temp = forth_obj.add_node(
-                    f"node{key}", fcode_pre, fcode_post, init, header, "i64", 1, {}
-                )
+                if not forth_obj.check_model():
+                    temp = forth_obj.add_node(
+                        f"node{key}", fcode_pre, fcode_post, init, header, "i64", 1, {}
+                    )
             if length == 0 and forth:
                 forth_obj.var_set = True
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
         if forth:
-            forth_obj.go_to(temp)
+            if not forth_obj.check_model():
+                forth_obj.go_to(temp)
             if forth_obj.should_add_form():
                 if self._header:
                     temp_bool = "true"

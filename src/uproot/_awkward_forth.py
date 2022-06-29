@@ -53,13 +53,14 @@ class ForthObj:
         aform["content"] = self.awkward_model
         self.awkward_model = aform
 
+    def check_model(self):
+        return bool(self.awkward_model)
+
     def add_node(
         self, name, precode, postcode, initcode, headercode, dtype, num_child, content
     ):
         if isinstance(self.awkward_model, dict):
-            if name in self.awkward_model.values():
-                return self.awkward_model
-            else:
+            if not bool(self.awkward_model):
                 self.awkward_model = {
                     "name": name,
                     "type": dtype,
@@ -70,6 +71,10 @@ class ForthObj:
                     "num_child": num_child,
                     "content": content,
                 }
+                temp_node = self.awkward_model
+                self.awkward_model = self.awkward_model["content"]
+                return temp_node
+            else:
                 temp_node = self.awkward_model
                 self.awkward_model = self.awkward_model["content"]
                 return temp_node
