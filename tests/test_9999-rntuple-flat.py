@@ -15,6 +15,6 @@ def test():
     filename = skhep_testdata.data_path("test_ntuple_int_float.root")
     with uproot.open(filename) as f:
         obj = f["ntuple"]
-        assert obj.keys == ["one_integers", "two_floats"]
-        assert obj.header.field_type_names == ["std::int32_t", "float"]
-        assert obj.header.crc32 == obj.footer.crc32
+        assert obj.column_names == ["one_integers", "two_floats"]
+        assert [r.t_name for r in obj.header.field_records] == ["std::int32_t", "float"]
+        assert obj.header.crc32 == obj.footer.header_crc32

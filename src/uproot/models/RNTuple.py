@@ -75,6 +75,7 @@ class RecordFrameReader:
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
         num_bytes = local_cursor.field(chunk, self._record_size_format, context)
+        cursor.skip(num_bytes)
         return self.payload.read(chunk, local_cursor, context)
 
 
@@ -85,18 +86,11 @@ class ListFrameReader:
         self.payload = payload
 
     def read(self, chunk, cursor, context):
-        # print(f"ListFrame: {cursor}")
-        # print(f"ListFrame: {cursor.bytes(chunk, 4, context=context, move=False)}")
-
         local_cursor = cursor.copy()
         num_bytes, num_items = local_cursor.fields(chunk, self._frame_header, context)
-        # print(f"ListFrame: {num_items=}")
-        # print(f"ListFrame: {num_bytes=}")
         assert num_bytes < 0, f"{num_bytes= !r}"
         cursor.skip(-num_bytes)
-        return [
-            self.payload.read(chunk, local_cursor, context) for _ in range(num_items)
-        ]
+        return [self.payload.read(chunk, local_cursor, context) for _ in range(num_items)]
 
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#field-description
@@ -183,32 +177,6 @@ class HeaderReader:
         return out
 
 
-# class Header:
-#     def __init__(self, header_frame, rc_tag, feature_flag, ntuple_name, ntuple_description, writer_identifier, list_field_record_frames,
-#             list_column_record_frames, list_alias_columns, list_extra_type_info, crc32):
-#         self.header_frame = header_frame
-#         self.rc_tag = rc_tag
-#         self.feature_flag = feature_flag
-#         self.ntuple_name = ntuple_name
-#         self.ntuple_description = ntuple_description
-#         self.writer_identifier = writer_identifier
-#         self.list_field_record_frames = list_field_record_frames
-#         self.list_column_record_frames = list_column_record_frames
-#         self.list_alias_columns = list_alias_columns
-#         self.list_extra_type_info = list_extra_type_info
-#         self.crc32 = crc32
-
-#     def __repr__(self):
-#         return f"RNTuple Header: {self.rc_tag=}, {self.feature_flag=}, {self.ntuple_name=}, {self.crc32=}"
-
-#     @property
-#     def field_names(self):
-#         return [x.field_name for x in self.list_field_record_frames]
-#     @property
-#     def field_type_names(self):
-#         return [x.type_name for x in self.list_field_record_frames]
-
-
 class ColumnGroupRecordReader:
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterSummaryRecord")
@@ -257,7 +225,7 @@ class FooterReader:
         out = MetaData("Footer")
         out.env_header = _renamemeA(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
-        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
+        out.header_crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
         out.extension_links = self.extension_header_links.read(
             chunk, cursor, context
@@ -282,7 +250,7 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
 
     @property
     def keys(self):
-        return self.header.field_names
+        return self.header.column_names
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -349,6 +317,11 @@ in file {}""".format(
 
         self._header, self._footer = None, None
 
+        self._column_names = None
+
+        # back link from column name to page inner list
+        self.column_innerlist_dict = {}
+
     @property
     def header(self):
         if self._header is None:
@@ -361,31 +334,59 @@ in file {}""".format(
         return self._header
 
     @property
+    def column_names(self):
+        if self._column_names == None:
+            self._column_names = [r.f_name for r in self.header.field_records]
+        return self._column_names
+
+    @property
     def footer(self):
         if self._footer is None:
             cursor = self._footer_cursor.copy()
             context = {}
 
             f = FooterReader().read(self._footer_chunk, cursor, context)
-            assert f.crc32 == self.header.crc32, f"{self.header.crc32=}, {f.crc32=}"
+            assert f.header_crc32 == self.header.crc32, f"{self.header.crc32=}, {f.header_crc32=}"
             self._footer = f
 
         return self._footer
 
-    def page_list_envelope(self, index):
-        record = self.footer.cluster_records[index]
-        link = record.page_list_link
-        loc = link.locator
-        cursor = uproot.source.cursor.Cursor(loc.offset)
+    # i-th cluster group
+    def cluster_group(self, i):
+        return self.page_list_envelopes[i]
+
+    # i-th cluster group, j-th cluster
+    def cluster_group_cluster(self, i, j):
+        return self.cluster_group(i).top_list[j]
+
+    # read_pages at i-th cluster group, j-th cluster, k-th column
+    def pages_read(self, i, j, k):
+        page_locs = self.cluster_group_cluster(i, j)
+
+    def read_locator(self, loc, uncomp_size, cursor, context):
         chunk = self.file.source.chunk(loc.offset, loc.offset+loc.num_bytes)
-        context = {}
-        if loc.num_bytes < link.env_uncomp_size:
-            decomp_chunk = uproot.compression.decompress(chunk, cursor, context, loc.num_bytes, link.env_uncomp_size, block_info=None)
+        if loc.num_bytes < uncomp_size:
+            decomp_chunk = uproot.compression.decompress(chunk, cursor, context, loc.num_bytes, uncomp_size, block_info=None)
             cursor.move_to(0)
         else:
             decomp_chunk = chunk
+        return decomp_chunk
 
-        return PageLink().read(decomp_chunk, cursor, context)
+    @property
+    def page_list_envelopes(self):
+        context = {}
+        context["column_innerlist_dict"] = self.column_innerlist_dict
+        context["column_names"] = self.column_names 
+        context["cluster_summaries"] = self.footer.cluster_summaries
+
+        if not self.column_innerlist_dict:
+            for record in self.footer.cluster_records:
+                link = record.page_list_link
+                loc = link.locator
+                cursor = uproot.source.cursor.Cursor(loc.offset)
+                decomp_chunk = self.read_locator(loc, link.env_uncomp_size, cursor, context)
+                PageLink().read(decomp_chunk, cursor, context)
+        return self.column_innerlist_dict
 
     # @property
     # def cluster_records(self):
@@ -413,22 +414,52 @@ class PageDescription:
         return out
 
 
+# class PageLinkInnerEager:
+#     def read(self, chunk, cursor, context):
+#         out = MetaData(type(self).__name__)
+#         out.page_descriptions = ListFrameReader(PageDescription()).read(chunk, cursor, context, skip = True)
+#         # n.b the size of the inner list frame includes the element offset and compression settings
+#         cursor.skip(-12)
+#         out.ele_offset = cursor.field(chunk, struct.Struct("<Q"), context)
+#         out.flags = cursor.field(chunk, struct.Struct("<I"), context)
+#         return out
+
+class InnerListLocator:
+    def __init__(self, chunk, cursor, context, num_pages, cluster_summary):
+        self.chunk = chunk
+        self.cursor = cursor
+        self.context = context
+        self.num_pages = num_pages
+        self.cluster_summary = cluster_summary
+        self.reader = ListFrameReader(PageDescription())
+    def __repr__(self):
+        return f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages}, {self.cluster_summary})"
+    def read(self):
+        return self.reader.read(self.chunk, self.cursor, self.context)
+
 class PageLinkInner:
+    _frame_header = struct.Struct("<ii")
+
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        # print(f"PageLinkInner: {cursor}")
-        # print(f"PageLinkInner: {cursor.bytes(chunk, 4, context=context, move=False)}")
-        out.page_description_list = ListFrameReader(PageDescription()).read(chunk, cursor, context)
-        # n.b the size of the inner list frame includes the element offset and compression settings
-        cursor.skip(-12)
-        out.ele_offset = cursor.field(chunk, struct.Struct("<Q"), context)
-        out.flags = cursor.field(chunk, struct.Struct("<I"), context)
-        return out
+        local_cursor = cursor.copy()
+        out.local_cursor = local_cursor
+        num_bytes, out.num_pages = local_cursor.fields(chunk, self._frame_header, context)
+        out.num_bytes = -num_bytes
+        assert out.num_bytes >= 0, f"{num_bytes= !r}"
+        cursor.skip(out.num_bytes)
+        d = context["column_innerlist_dict"]
+        for col_name, summary in zip(context["column_names"], context["cluster_summaries"]):
+            locator = InnerListLocator(chunk, cursor, context, out.num_pages, summary)
+            if col_name in d.keys():
+                d[col_name].append(locator)
+            else:
+                d[col_name] = [locator]
 
 
 class PageLink:
     def __init__(self):
-        self.top_most_list = ListFrameReader(
+        self.top_most_list = ListFrameReader( #top-most list
                 ListFrameReader( #outer list
                     PageLinkInner() #inner list
                     )
@@ -439,10 +470,11 @@ class PageLink:
         # print(f"PageLink: {cursor}")
         # print(f"PageLink: {cursor.bytes(chunk, 4, context=context, move=False)}")
         out.env_header = _renamemeA(chunk, cursor, context)
-        out.cluster_list_frame = self.top_most_list.read(chunk, cursor, context)
+
+        # the follwoing mutates `RNTuple.column_innerlist_dict`
+        self.top_most_list.read(chunk, cursor, context)
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
         return out
-
 
 
 uproot.classes[
