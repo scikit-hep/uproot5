@@ -90,7 +90,9 @@ class ListFrameReader:
         num_bytes, num_items = local_cursor.fields(chunk, self._frame_header, context)
         assert num_bytes < 0, f"{num_bytes= !r}"
         cursor.skip(-num_bytes)
-        return [self.payload.read(chunk, local_cursor, context) for _ in range(num_items)]
+        return [
+            self.payload.read(chunk, local_cursor, context) for _ in range(num_items)
+        ]
 
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#field-description
@@ -227,15 +229,11 @@ class FooterReader:
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
-        out.extension_links = self.extension_header_links.read(
-            chunk, cursor, context
-        )
+        out.extension_links = self.extension_header_links.read(chunk, cursor, context)
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
-        out.cluster_summaries = self.cluster_summary_frames.read(
-            chunk, cursor, context
-        )
+        out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
         out.cluster_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
@@ -346,7 +344,9 @@ in file {}""".format(
             context = {}
 
             f = FooterReader().read(self._footer_chunk, cursor, context)
-            assert f.header_crc32 == self.header.crc32, f"{self.header.crc32=}, {f.header_crc32=}"
+            assert (
+                f.header_crc32 == self.header.crc32
+            ), f"{self.header.crc32=}, {f.header_crc32=}"
             self._footer = f
 
         return self._footer
@@ -364,9 +364,11 @@ in file {}""".format(
         page_locs = self.cluster_group_cluster(i, j)
 
     def read_locator(self, loc, uncomp_size, cursor, context):
-        chunk = self.file.source.chunk(loc.offset, loc.offset+loc.num_bytes)
+        chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
         if loc.num_bytes < uncomp_size:
-            decomp_chunk = uproot.compression.decompress(chunk, cursor, context, loc.num_bytes, uncomp_size, block_info=None)
+            decomp_chunk = uproot.compression.decompress(
+                chunk, cursor, context, loc.num_bytes, uncomp_size, block_info=None
+            )
             cursor.move_to(0)
         else:
             decomp_chunk = chunk
@@ -376,7 +378,7 @@ in file {}""".format(
     def page_list_envelopes(self):
         context = {}
         context["column_innerlist_dict"] = self.column_innerlist_dict
-        context["column_names"] = self.column_names 
+        context["column_names"] = self.column_names
         context["cluster_summaries"] = self.footer.cluster_summaries
 
         if not self.column_innerlist_dict:
@@ -384,7 +386,9 @@ in file {}""".format(
                 link = record.page_list_link
                 loc = link.locator
                 cursor = uproot.source.cursor.Cursor(loc.offset)
-                decomp_chunk = self.read_locator(loc, link.env_uncomp_size, cursor, context)
+                decomp_chunk = self.read_locator(
+                    loc, link.env_uncomp_size, cursor, context
+                )
                 PageLink().read(decomp_chunk, cursor, context)
         return self.column_innerlist_dict
 
@@ -402,6 +406,7 @@ in file {}""".format(
     #     else:
     #         decomp_chunk = chunk
     #     cursor.debug(decomp_chunk, dtype=numpy.int32)
+
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
 class PageDescription:
@@ -424,6 +429,7 @@ class PageDescription:
 #         out.flags = cursor.field(chunk, struct.Struct("<I"), context)
 #         return out
 
+
 class InnerListLocator:
     def __init__(self, chunk, cursor, context, num_pages, cluster_summary):
         self.chunk = chunk
@@ -432,10 +438,13 @@ class InnerListLocator:
         self.num_pages = num_pages
         self.cluster_summary = cluster_summary
         self.reader = ListFrameReader(PageDescription())
+
     def __repr__(self):
         return f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages}, {self.cluster_summary})"
+
     def read(self):
         return self.reader.read(self.chunk, self.cursor, self.context)
+
 
 class PageLinkInner:
     _frame_header = struct.Struct("<ii")
@@ -444,12 +453,16 @@ class PageLinkInner:
         out = MetaData(type(self).__name__)
         local_cursor = cursor.copy()
         out.local_cursor = local_cursor
-        num_bytes, out.num_pages = local_cursor.fields(chunk, self._frame_header, context)
+        num_bytes, out.num_pages = local_cursor.fields(
+            chunk, self._frame_header, context
+        )
         out.num_bytes = -num_bytes
         assert out.num_bytes >= 0, f"{num_bytes= !r}"
         cursor.skip(out.num_bytes)
         d = context["column_innerlist_dict"]
-        for col_name, summary in zip(context["column_names"], context["cluster_summaries"]):
+        for col_name, summary in zip(
+            context["column_names"], context["cluster_summaries"]
+        ):
             locator = InnerListLocator(chunk, cursor, context, out.num_pages, summary)
             if col_name in d.keys():
                 d[col_name].append(locator)
@@ -459,11 +472,9 @@ class PageLinkInner:
 
 class PageLink:
     def __init__(self):
-        self.top_most_list = ListFrameReader( #top-most list
-                ListFrameReader( #outer list
-                    PageLinkInner() #inner list
-                    )
-                )
+        self.top_most_list = ListFrameReader(  # top-most list
+            ListFrameReader(PageLinkInner())  # outer list  # inner list
+        )
 
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
