@@ -813,9 +813,7 @@ class Model:
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
             if forth:
-                temp = forth_obj.add_node(
-                    "pass", fcode_pre, [], [], [], "i64", 1, {}
-                )
+                temp = forth_obj.add_node("pass", fcode_pre, [], "", "", "i64", 1, {})
             self.read_members(chunk, cursor, context, file)
             if forth:
                 forth_obj.go_to(temp)

@@ -12,6 +12,7 @@ class ForthObj:
 
     def __init__(self, aform=None, count_obj=0, var_set=False):
         self.aform = aform
+        self.top_form = None
         self.awkward_model = {}
         self.forth_code = {}
         self.forth_keys = {}
@@ -27,17 +28,18 @@ class ForthObj:
         self.aform = self.aform.content
 
     def should_add_form(self):
-        return True
+        return not bool(self.awkward_model)
 
     def add_form(self, aform):
         if self.aform is None:
             self.aform = aform
+            self.top_form = self.aform
 
         else:
             if "content" in self.aform.keys():
-                if aform["content"] == "NULL":
-                    aform["content"] = self.aform
-                    self.aform = aform
+                if self.aform["content"] == "NULL":
+                    self.aform["content"] = aform
+                    self.aform = self.aform["content"]
                 else:
                     raise ValueError
 

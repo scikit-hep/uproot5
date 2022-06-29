@@ -130,7 +130,7 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
-        if forth and not forth_obj.check_model():
+        if forth:
             key1 = forth_obj.get_key()
             key2 = forth_obj.get_key()
             key3 = forth_obj.get_key()
@@ -155,18 +155,19 @@ in file {}""".format(
                 f"part0-node{key3}-data",
                 f"part0-node{key6}-data",
             ]
-            for elem in keys:
-                forth_obj.add_form_key(elem)
+            if forth_obj.should_add_form():
+                for elem in keys:
+                    forth_obj.add_form_key(elem)
+                temp_bool = "false"
+                temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{key3}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key2}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key4}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key6}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key5}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key1}"}}}}'
+                forth_obj.add_form(json.loads(temp_aform))
             header = f"output part0-node{key2}-offsets int64\noutput part0-node{key3}-data uint8\noutput part0-node{key4}-data int64\noutput part0-node{key5}-offsets int64\noutput part0-node{key6}-data int64\n"
             init = f"0 part0-node{key2}-offsets <- stack\n0 part0-node{key5}-offsets <- stack\n"
             temp = forth_obj.add_node(
                 f"node{key1}", fcode_pre, [], init, header, "i64", 1, None
             )
             forth_obj.go_to(temp)
-            if forth_obj.should_add_form():
-                temp_bool = "false"
-                temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{key3}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key2}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key4}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key6}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key5}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key1}"}}}}'
-                forth_obj.add_form(json.loads(temp_aform))
+
         cursor.skip(10)
         self._members["fName"] = cursor.string(chunk, context)
         self._members["fSize"] = cursor.field(chunk, _trefarray_format1, context)
@@ -199,7 +200,7 @@ in file {}""".format(
             id(self),
         )
 
-    @ classmethod
+    @classmethod
     def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
         contents = {}

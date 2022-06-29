@@ -469,7 +469,7 @@ class AsString(AsContainer):
                 context,
                 file.file_path,
             )
-        if forth and not forth_obj.check_model():
+        if forth:
             if forth_obj.should_add_form():
                 if self._header:
                     temp_header = "true"
@@ -478,14 +478,14 @@ class AsString(AsContainer):
                 temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_header}}}}}, "form_key": "node{offsets_num}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
 
-            form_keys = [
-                f"part0-node{data_num}-data",
-                f"part0-node{offsets_num}-offsets",
-            ]
+                form_keys = [
+                    f"part0-node{data_num}-data",
+                    f"part0-node{offsets_num}-offsets",
+                ]
+                for elem in form_keys:
+                    forth_obj.add_form_key(elem)
             header = f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
             init = f"0 part0-node{offsets_num}-offsets <- stack\n"
-            for elem in form_keys:
-                forth_obj.add_form_key(elem)
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}", fcode, [], init, header, "i64", 0, None
             )
@@ -710,6 +710,8 @@ in file {}""".format(
 
         else:
             if self._speedbump:
+                if forth:
+                    fcode_pre.append("1 stream skip\n")
                 cursor.skip(1)
             if isinstance(self._values, numpy.dtype):
                 remainder = chunk.remainder(cursor.index, cursor, context)
@@ -931,6 +933,7 @@ class AsVector(AsContainer):
         forth_obj = None
         fcode_pre = []
         fcode_post = []
+        temp = None
         if "forth" in context.keys():
             forth = True
             forth_obj = context["forth"]
@@ -1011,26 +1014,25 @@ class AsVector(AsContainer):
                     f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n0 do \n"
                 )
                 fcode_post.append("loop\n")
-                forth_obj.add_form_key(form_key)
-                if not forth_obj.check_model():
-                    temp = forth_obj.add_node(
-                        f"node{key}", fcode_pre, fcode_post, init, header, "i64", 1, {}
-                    )
+                if forth_obj.should_add_form():
+                    forth_obj.add_form_key(form_key)
+                    if self._header:
+                        temp_bool = "true"
+                    else:
+                        temp_bool = "false"
+                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                    forth_obj.add_form(json.loads(temp_aform))
+                temp = forth_obj.add_node(
+                    f"node{key}", fcode_pre, fcode_post, init, header, "i64", 1, {}
+                )
             if length == 0 and forth:
                 forth_obj.var_set = True
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
         if forth:
-            if not forth_obj.check_model():
-                forth_obj.go_to(temp)
-            if forth_obj.should_add_form():
-                if self._header:
-                    temp_bool = "true"
-                else:
-                    temp_bool = "false"
-                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
-                forth_obj.add_form(json.loads(temp_aform))
+            forth_obj.go_to(temp)
+
         out = STLVector(values)
 
         if self._header and header:

@@ -263,11 +263,10 @@ class AsObjects(uproot.interpretation.Interpretation):
                                 context["forth"], context["forth"].awkward_model
                             )
                             self._complete_forth_code = f'input stream\ninput byteoffsets \n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek\n{"".join(context["forth"].final_code)}\nloop'
-                            print(self._complete_forth_code)
                             self._forth_vm.vm = awkward.forth.ForthMachine64(
                                 self._complete_forth_code
                             )
-                            self._form = context["forth"].aform
+                            self._form = context["forth"].top_form
                             self._forth_vm_set = True
                             break
             else:
@@ -294,6 +293,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                     container[elem] = self._forth_vm.vm.output_Index64(elem)
                 else:
                     container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
+            print(self._form)
             output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
         self.hook_after_basket_array(
             data=data,
@@ -309,7 +309,6 @@ class AsObjects(uproot.interpretation.Interpretation):
         return output
 
     def assemble_forth(self, forth_obj, awkward_model):
-        print(awkward_model)
         forth_obj.add_to_header(awkward_model["header_code"])
         forth_obj.add_to_init(awkward_model["init_code"])
         forth_obj.add_to_final(awkward_model["pre_code"])
