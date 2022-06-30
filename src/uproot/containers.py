@@ -661,7 +661,7 @@ class AsArray(AsContainer):
         fcode_post = []
         temp = None
         if "forth" in context.keys():
-            awkward = uproot.extras.awkward()
+            awkward = uproot.extras.awkward()  # noqa:F841
             forth_obj = context["forth"]
             offsets_num = forth_obj.get_key()
             forth = True
@@ -725,8 +725,12 @@ in file {}""".format(
                     header = f"output part0-node{offsets_num}-offsets int64\n"
                     form_key = f"part0-node{offsets_num}-offsets"
                     init = f"0 part0-node{offsets_num}-offsets <- stack\n"
-                    fcode_pre.append("0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n")
-                    fcode_post.append(f"repeat\nswap part0-node{offsets_num}-offsets +<- stack drop\n")
+                    fcode_pre.append(
+                        "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
+                    )
+                    fcode_post.append(
+                        f"repeat\nswap part0-node{offsets_num}-offsets +<- stack drop\n"
+                    )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
                         if self._header:
@@ -736,7 +740,14 @@ in file {}""".format(
                         temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
                         forth_obj.add_form(json.loads(temp_aform))
                         temp = forth_obj.add_node(
-                            f"node{offsets_num}", fcode_pre, fcode_post, init, header, "i64", 1, {}
+                            f"node{offsets_num}",
+                            fcode_pre,
+                            fcode_post,
+                            init,
+                            header,
+                            "i64",
+                            1,
+                            {},
                         )
                 if cursor.index >= chunk.stop and forth:
                     forth_obj.var_set = True

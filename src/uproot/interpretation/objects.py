@@ -19,15 +19,12 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
-
 import threading
 
 import numpy
 
 import uproot
 import uproot._awkward_forth
-
-import json
 
 
 def awkward_can_optimize(interpretation, form):
@@ -285,7 +282,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 {
                     "stream": numpy.array(temp_data),
                     "byteoffsets": numpy.array(byte_offsets[:-1]),
-                    "bytestops": numpy.array(byte_offsets[1:])
+                    "bytestops": numpy.array(byte_offsets[1:]),
                 }
             )
             self._forth_vm.vm.stack_push(len(byte_offsets) - 1)

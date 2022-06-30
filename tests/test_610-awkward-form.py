@@ -1,10 +1,10 @@
 import json
 import sys
-from matplotlib.style import library
 
 import numpy
 import pytest
 import skhep_testdata
+from matplotlib.style import library
 
 import uproot
 
@@ -90,15 +90,11 @@ def test_awkward_array_tref_array_forth():
     ] as tree:
         temp_branch = tree["GenJet04/GenJet04.Constituents"]
         temp_branch.interpretation._forth = True
-        awk_data = temp_branch.array(library='ak')
-        print(awk_data.layout)
+        awk_data = temp_branch.array(library="ak")
 
-    with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root"))[
-        "Delphes"
-    ] as tree:
-        temp_branch = tree["GenJet04/GenJet04.Constituents"]
-        np_data = temp_branch.array(library='np').tolist()
-    assert numpy.all(awk_data == np_data)
+    assert awk_data[0][0]["refs"][-1] == 2579
+    assert awk_data[4][1]["refs"][-1] == 3391
+    assert awk_data[6][2]["refs"][-1] == 676
 
 
 def test_awkward_vector_tstring():
