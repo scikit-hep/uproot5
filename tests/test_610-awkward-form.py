@@ -4,7 +4,6 @@ import sys
 import numpy
 import pytest
 import skhep_testdata
-from matplotlib.style import library
 
 import uproot
 
