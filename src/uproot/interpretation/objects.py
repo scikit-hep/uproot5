@@ -27,6 +27,8 @@ import numpy
 import uproot
 import uproot._awkward_forth
 
+import json
+
 
 def awkward_can_optimize(interpretation, form):
     """
@@ -262,7 +264,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                             self.assemble_forth(
                                 context["forth"], context["forth"].awkward_model
                             )
-                            self._complete_forth_code = f'input stream\ninput byteoffsets \n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek\n{"".join(context["forth"].final_code)}\nloop'
+                            self._complete_forth_code = f'input stream\ninput byteoffsets\ninput bytestops\n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek \n{"".join(context["forth"].final_code)}\nloop'
                             self._forth_vm.vm = awkward.forth.ForthMachine64(
                                 self._complete_forth_code
                             )
@@ -283,6 +285,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 {
                     "stream": numpy.array(temp_data),
                     "byteoffsets": numpy.array(byte_offsets[:-1]),
+                    "bytestops": numpy.array(byte_offsets[1:])
                 }
             )
             self._forth_vm.vm.stack_push(len(byte_offsets) - 1)
@@ -293,7 +296,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                     container[elem] = self._forth_vm.vm.output_Index64(elem)
                 else:
                     container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
-            print(self._form)
             output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
         self.hook_after_basket_array(
             data=data,

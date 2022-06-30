@@ -1,5 +1,6 @@
 import json
 import sys
+from matplotlib.style import library
 
 import numpy
 import pytest
@@ -70,7 +71,7 @@ def test_awkward_vector_string_forth():
         "tree"
     ] as tree:
         temp_branch = tree["vector_string"]
-        temp_branch._forth = True
+        temp_branch.interpretation._forth = True
         assert awkward.to_list(temp_branch.array(library="ak")) == [
             ["one"],
             ["one", "two"],
@@ -78,6 +79,26 @@ def test_awkward_vector_string_forth():
             ["one", "two", "three", "four"],
             ["one", "two", "three", "four", "five"],
         ]
+
+
+def test_awkward_array_tref_array_forth():
+    awkward = pytest.importorskip("awkward")
+    awk_data = None
+    np_data = None
+    with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root"))[
+        "Delphes"
+    ] as tree:
+        temp_branch = tree["GenJet04/GenJet04.Constituents"]
+        temp_branch.interpretation._forth = True
+        awk_data = temp_branch.array(library='ak')
+        print(awk_data.layout)
+
+    with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root"))[
+        "Delphes"
+    ] as tree:
+        temp_branch = tree["GenJet04/GenJet04.Constituents"]
+        np_data = temp_branch.array(library='np').tolist()
+    assert numpy.all(awk_data == np_data)
 
 
 def test_awkward_vector_tstring():

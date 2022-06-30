@@ -658,10 +658,13 @@ class AsArray(AsContainer):
         forth = False
         forth_obj = None
         fcode_pre = []
+        fcode_post = []
+        temp = None
         if "forth" in context.keys():
             awkward = uproot.extras.awkward()
             forth_obj = context["forth"]
             offsets_num = forth_obj.get_key()
+            forth = True
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -718,6 +721,25 @@ in file {}""".format(
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
+                if forth:
+                    header = f"output part0-node{offsets_num}-offsets int64\n"
+                    form_key = f"part0-node{offsets_num}-offsets"
+                    init = f"0 part0-node{offsets_num}-offsets <- stack\n"
+                    fcode_pre.append("0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n")
+                    fcode_post.append(f"repeat\nswap part0-node{offsets_num}-offsets +<- stack drop\n")
+                    if forth_obj.should_add_form():
+                        forth_obj.add_form_key(form_key)
+                        if self._header:
+                            temp_bool = "true"
+                        else:
+                            temp_bool = "false"
+                        temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                        forth_obj.add_form(json.loads(temp_aform))
+                        temp = forth_obj.add_node(
+                            f"node{offsets_num}", fcode_pre, fcode_post, init, header, "i64", 1, {}
+                        )
+                if cursor.index >= chunk.stop and forth:
+                    forth_obj.var_set = True
                 out = []
                 while cursor.index < chunk.stop:
                     out.append(
@@ -725,6 +747,8 @@ in file {}""".format(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
+                if forth:
+                    forth_obj.go_to(temp)
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 

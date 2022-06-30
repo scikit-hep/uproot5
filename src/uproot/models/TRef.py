@@ -142,11 +142,11 @@ in file {}""".format(
                 f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{key2}-offsets +<- stack stream #!B-> part0-node{key3}-data\n"
             )
             fcode_pre.append(
-                f"pause stream !I-> stack dup part0-node{key4}-data <- stack\n"
+                f"stream !I-> stack dup part0-node{key4}-data <- stack\n"
             )
             fcode_pre.append("6 stream skip\n")
             fcode_pre.append(
-                f"dup part0-node{key5}-offsets +<- stack stream #!I-> part0-node{key6}-data"
+                f"dup part0-node{key5}-offsets +<- stack stream #!I-> part0-node{key6}-data\n"
             )
             keys = [
                 f"part0-node{key2}-offsets",
@@ -159,7 +159,7 @@ in file {}""".format(
                 for elem in keys:
                     forth_obj.add_form_key(elem)
                 temp_bool = "false"
-                temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{key3}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key2}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key4}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key6}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key5}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key1}"}}}}'
+                temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{key3}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key2}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key4}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key6}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key5}"}}}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key1}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             header = f"output part0-node{key2}-offsets int64\noutput part0-node{key3}-data uint8\noutput part0-node{key4}-data int64\noutput part0-node{key5}-offsets int64\noutput part0-node{key6}-data int64\n"
             init = f"0 part0-node{key2}-offsets <- stack\n0 part0-node{key5}-offsets <- stack\n"

@@ -777,7 +777,7 @@ class Model:
             temp_index = cursor._index
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
-            fcode_pre.append(f"{length} stream skip\n")
+            fcode_pre.append(f"{length} stream skip \n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
