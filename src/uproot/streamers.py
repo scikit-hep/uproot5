@@ -265,7 +265,6 @@ class Model_TStreamerInfo(uproot.model.Model):
                 member_names,
                 class_flags,
             )
-
         if len(read_members) == 1:
             # untested as of PR #629
             read_members.append("        pass")
@@ -685,7 +684,6 @@ class Model_TStreamerBase(Model_TStreamerElement):
             key = forth_obj.get_key()\n"""
         )
         read_member_n.append(f"        if member_index == {i}:")
-        print("".join(read_member_n))
         read_members.append(
             f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))"
         )
