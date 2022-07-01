@@ -23,6 +23,21 @@ def test_nonmemberwise_asmap():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         py = branch.array(library="np", entry_stop=2)
 
+    with uproot.open(skhep_testdata.data_path("uproot-issue-268.root")) as file:
+        branch = file["aTree/VtxTracks/channels_"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        py = branch.array(library="np", entry_stop=2)
+
+    with uproot.open(skhep_testdata.data_path("uproot-issue-268.root")) as file:
+        branch = file["aTree/VtxTracks2TofHits/match_"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        py = branch.array(library="np", entry_stop=2)
+
+    with uproot.open(skhep_testdata.data_path("uproot-issue-268.root")) as file:
+        branch = file["aTree/VtxTracks2TofHits/match_inverted_"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        py = branch.array(library="np", entry_stop=2)
+
 
 def test_typename():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
