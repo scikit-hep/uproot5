@@ -205,8 +205,9 @@ class AsObjects(uproot.interpretation.Interpretation):
 
             start = stop
 
-        if all(uproot._util.from_module(x, "awkward") for x in basket_arrays.values()):
-            assert isinstance(library, uproot.interpretation.library.Awkward)
+        if isinstance(library, uproot.interpretation.library.Awkward) and all(
+            uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        ):
             awkward = library.imported
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
