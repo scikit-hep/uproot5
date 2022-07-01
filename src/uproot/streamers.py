@@ -671,17 +671,12 @@ class Model_TStreamerBase(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
-        read_member_n.append(
+        read_members.append(
             """
-        forth = False
-        forth_obj = None
-        fcode_pre = []
-        fcode_post = []
-        temp = None
-        if "forth" in context.keys():
-            forth = True
-            forth_obj = context["forth"]
-            key = forth_obj.get_key()\n"""
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
+            key = forth_obj.get_keys()\n"""
         )
         read_member_n.append(f"        if member_index == {i}:")
         read_members.append(
@@ -1444,6 +1439,12 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
+
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
+
         start = cursor.index
 
         self._bases.append(
@@ -1457,7 +1458,6 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
                 concrete=self.concrete,
             )
         )
-
         self._serialization = _copy_bytes(chunk, start, cursor.index, cursor, context)
 
 
