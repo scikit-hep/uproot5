@@ -674,6 +674,8 @@ class Model_TStreamerBase(Model_TStreamerElement):
     ):
         read_member_n.append(f"        if member_index == {i}:")
 
+        # @aryan26roy: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
+
         read_members.append(
             f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))"
         )
@@ -792,6 +794,8 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             )
             read_member_n.append("    " + read_members[-1].replace("\n", "\n    "))
 
+        # @aryan26roy: test_0637's 29,44,56
+
         read_members.append(
             f"        self._members[{self.name!r}] = cursor.array(chunk, self.member({self.count_name!r}), tmp, context)"
         )
@@ -898,13 +902,19 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 or elements[i + 1].array_length != 0
             ):
                 if len(fields[-1]) == 1:
+                    # @aryan26roy: test_0637's 01,02,29,38,44,56
+
                     read_members.append(
                         f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)"
                     )
+
                 else:
                     assign_members = ", ".join(
                         f"self._members[{x!r}]" for x in fields[-1]
                     )
+
+                    # @aryan26roy: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,39,45,46,47,49,50,56
+
                     read_members.append(
                         f"        {assign_members} = cursor.fields(chunk, self._format{len(formats) - 1}, context)"
                     )
@@ -914,6 +924,8 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
 
         else:
+            # @aryan26roy: test_0637's 44,56
+
             read_members.append(
                 f"        self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)"
             )
@@ -1176,6 +1188,8 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             string_header=True,
         )
 
+        # @aryan26roy: test_0637's 35,38,39,44,45,47,50,56
+
         read_members.append(
             f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, context, file, self._file, self.concrete)"
         )
@@ -1282,6 +1296,8 @@ class TStreamerPointerTypes:
         read_member_n.append(f"        if member_index == {i}:")
 
         if self.fType == uproot.const.kObjectp or self.fType == uproot.const.kAnyp:
+            # @aryan26roy: test_0637's (none! untested!)
+
             read_members.append(
                 f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)"
             )
@@ -1295,6 +1311,8 @@ class TStreamerPointerTypes:
             )
 
         elif self.fType == uproot.const.kObjectP or self.fType == uproot.const.kAnyP:
+            # @aryan26roy: test_0637's (none! untested!)
+
             read_members.append(
                 f"        self._members[{self.name!r}] = read_object_any(chunk, cursor, context, file, self._file, self)"
             )
@@ -1402,6 +1420,8 @@ class TStreamerObjectTypes:
         class_flags,
     ):
         read_member_n.append(f"        if member_index == {i}:")
+
+        # @aryan26roy: test_0637's 01,02,29,45,46,49,50,56
 
         read_members.append(
             f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)"
