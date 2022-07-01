@@ -19,10 +19,12 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
+import threading
 
 import numpy
 
 import uproot
+import uproot._awkward_forth
 
 
 def awkward_can_optimize(interpretation, form):
@@ -62,6 +64,11 @@ class AsObjects(uproot.interpretation.Interpretation):
     def __init__(self, model, branch=None):
         self._model = model
         self._branch = branch
+        self._prereaddone = False
+        self._forth = False
+        self._forth_vm = threading.local()
+        self._complete_forth_code = []
+        self._forth_vm_set = False
 
     @property
     def model(self):
@@ -135,28 +142,34 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
         assert basket.byte_offsets is not None
 
-        output = None
-        if isinstance(library, uproot.interpretation.library.Awkward):
-            form = self.awkward_form(branch.file)
+        if self._forth and isinstance(library, uproot.interpretation.library.Awkward):
+            output = self.basket_array_forth(
+                data, byte_offsets, basket, branch, context, cursor_offset, library
+            )
+        else:
 
-            if awkward_can_optimize(self, form):
-                import awkward._connect._uproot
+            output = None
+            if isinstance(library, uproot.interpretation.library.Awkward):
+                form = self.awkward_form(branch.file)
 
-                extra = {
-                    "interpretation": self,
-                    "basket": basket,
-                    "branch": branch,
-                    "context": context,
-                    "cursor_offset": cursor_offset,
-                }
-                output = awkward._connect._uproot.basket_array(
-                    form, data, byte_offsets, extra
-                )
+                if awkward_can_optimize(self, form):
+                    import awkward._connect._uproot
 
-        if output is None:
-            output = ObjectArray(
-                self._model, branch, context, byte_offsets, data, cursor_offset
-            ).to_numpy()
+                    extra = {
+                        "interpretation": self,
+                        "basket": basket,
+                        "branch": branch,
+                        "context": context,
+                        "cursor_offset": cursor_offset,
+                    }
+                    output = awkward._connect._uproot.basket_array(
+                        form, data, byte_offsets, extra
+                    )
+
+            if output is None:
+                output = ObjectArray(
+                    self._model, branch, context, byte_offsets, data, cursor_offset
+                ).to_numpy()
 
         self.hook_after_basket_array(
             data=data,
@@ -170,6 +183,143 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
 
         return output
+
+    def basket_array_forth(
+        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+    ):
+        awkward = uproot.extras.awkward()
+        import awkward.forth
+
+        self.hook_before_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            cursor_offset=cursor_offset,
+            library=library,
+        )
+        assert basket.byte_offsets is not None
+
+        output = None
+        if "forth" not in context.keys():
+            forth_gen = uproot._awkward_forth.ForthGenerator()
+            context["forth"] = forth_gen
+
+        if isinstance(library, uproot.interpretation.library.Awkward):
+            self._form = self.awkward_form(
+                branch.file,
+                {
+                    "index_format": "i64",
+                    "header": False,
+                    "tobject_header": True,
+                    "breadcrumbs": (),
+                },
+            )
+            if awkward_can_optimize(self, self._form):
+                import awkward._connect._uproot
+
+                extra = {
+                    "interpretation": self,
+                    "basket": basket,
+                    "branch": branch,
+                    "context": context,
+                    "cursor_offset": cursor_offset,
+                }
+                output = awkward._connect._uproot.basket_array(
+                    self._form, data, byte_offsets, extra
+                )
+
+        if not self._forth_vm_set:
+            if not self._prereaddone:
+                if output is None:
+                    output = numpy.empty(
+                        len(byte_offsets) - 1, dtype=numpy.dtype(object)
+                    )
+                    for i in range(len(byte_offsets) - 1):
+                        byte_start = byte_offsets[i]
+                        byte_stop = byte_offsets[i + 1]
+                        temp_data = data[byte_start:byte_stop]
+                        chunk = uproot.source.chunk.Chunk.wrap(
+                            branch.file.source, temp_data
+                        )
+                        cursor = uproot.source.cursor.Cursor(
+                            0, origin=-(byte_start + cursor_offset)
+                        )
+                        context["forth"].var_set = False
+                        output[i] = self._model.read(
+                            chunk,
+                            cursor,
+                            context,
+                            branch.file,
+                            branch.file.detached,
+                            branch,
+                        )
+                        if not context["forth"].var_set:
+                            self._prereaddone = True
+                            self.assemble_forth(
+                                context["forth"], context["forth"].awkward_model
+                            )
+                            self._complete_forth_code = f'input stream\ninput byteoffsets\ninput bytestops\n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek \n{"".join(context["forth"].final_code)}\nloop'
+                            self._forth_vm.vm = awkward.forth.ForthMachine64(
+                                self._complete_forth_code
+                            )
+                            self._form = context["forth"].top_form
+                            self._forth_vm_set = True
+                            break
+            else:
+                self._forth_vm.vm = awkward.forth.ForthMachine64(
+                    self._complete_forth_code
+                )
+                self._forth_vm_set = True
+
+        if self._forth_vm_set:
+            byte_start = byte_offsets[0]
+            byte_stop = byte_offsets[-1]
+            temp_data = data[byte_start:byte_stop]
+            self._forth_vm.vm.begin(
+                {
+                    "stream": numpy.array(temp_data),
+                    "byteoffsets": numpy.array(byte_offsets[:-1]),
+                    "bytestops": numpy.array(byte_offsets[1:]),
+                }
+            )
+            self._forth_vm.vm.stack_push(len(byte_offsets) - 1)
+            self._forth_vm.vm.resume()
+            container = {}
+            for elem in context["forth"].form_keys:
+                if "offsets" in elem:
+                    container[elem] = self._forth_vm.vm.output_Index64(elem)
+                else:
+                    container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
+            output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
+        self.hook_after_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            output=output,
+            cursor_offset=cursor_offset,
+            library=library,
+        )
+
+        return output
+
+    def assemble_forth(self, forth_obj, awkward_model):
+        forth_obj.add_to_header(awkward_model["header_code"])
+        forth_obj.add_to_init(awkward_model["init_code"])
+        forth_obj.add_to_final(awkward_model["pre_code"])
+        if "content" in awkward_model.keys():
+            temp_content = awkward_model["content"]
+            if isinstance(temp_content, list):
+                for elem in temp_content:
+                    self.assemble_forth(forth_obj, elem)
+            elif isinstance(temp_content, dict):
+                self.assemble_forth(forth_obj, awkward_model["content"])
+            else:
+                pass
+        forth_obj.add_to_final(awkward_model["post_code"])
 
     def final_array(
         self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch

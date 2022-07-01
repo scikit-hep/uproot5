@@ -765,10 +765,15 @@ class Model:
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+        if helper_obj.is_forth():
+            forth_obj = context["forth"]
 
         if context.get("reading", True):
+            temp_index = cursor._index
             self.read_numbytes_version(chunk, cursor, context)
-
+            length = cursor._index - temp_index
+            helper_obj.add_to_pre(f"{length} stream skip \n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -796,15 +801,27 @@ class Model:
                 cursor = self._cursor
 
             elif self._instance_version == 0:
+                helper_obj.add_to_pre("4 stream skip\n")
                 cursor.skip(4)
 
         if context.get("reading", True):
             self.hook_before_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
-
+            if helper_obj.is_forth():
+                temp = forth_obj.add_node(
+                    "pass",
+                    helper_obj.get_pre(),
+                    helper_obj.get_post(),
+                    helper_obj.get_init(),
+                    helper_obj.get_header(),
+                    "i64",
+                    1,
+                    {},
+                )
             self.read_members(chunk, cursor, context, file)
-
+            if helper_obj.is_forth():
+                forth_obj.go_to(temp)
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
