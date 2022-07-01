@@ -203,10 +203,9 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         output = None
         if "forth" not in context.keys():
-            forth_obj = uproot._awkward_forth.ForthObj()
+            forth_gen = uproot._awkward_forth.ForthGenerator()
+            context["forth"] = forth_gen
 
-            context["forth"] = forth_obj
-            # self._model.descent(context)
         if isinstance(library, uproot.interpretation.library.Awkward):
             self._form = self.awkward_form(
                 branch.file,

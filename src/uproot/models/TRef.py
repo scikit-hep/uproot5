@@ -116,13 +116,10 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         return self._members["fName"]
 
     def read_members(self, chunk, cursor, context, file):
-        forth = False
-        forth_obj = None
-        fcode_pre = []
-        if "forth" in context.keys():
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+        if helper_obj.is_forth():
             awkward = uproot.extras.awkward()  # noqa:F841
-            forth = True
-            forth_obj = context["forth"]
+            forth_obj = helper_obj.get_gen_obj()
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -130,39 +127,48 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
-        if forth:
-            key1 = forth_obj.get_key()
-            key2 = forth_obj.get_key()
-            key3 = forth_obj.get_key()
-            key4 = forth_obj.get_key()
-            key5 = forth_obj.get_key()
-            key6 = forth_obj.get_key()
-            fcode_pre.append("10 stream skip\n")
-            fcode_pre.append(
-                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{key2}-offsets +<- stack stream #!B-> part0-node{key3}-data\n"
+        if helper_obj.is_forth():
+            form_keys = forth_obj.get_keys(6)
+
+            helper_obj.add_to_pre("10 stream skip\n")
+            helper_obj.add_to_pre(
+                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{form_keys[1]}-offsets +<- stack stream #!B-> part0-node{form_keys[2]}-data\n"
             )
-            fcode_pre.append(f"stream !I-> stack dup part0-node{key4}-data <- stack\n")
-            fcode_pre.append("6 stream skip\n")
-            fcode_pre.append(
-                f"dup part0-node{key5}-offsets +<- stack stream #!I-> part0-node{key6}-data\n"
+            helper_obj.add_to_pre(
+                f"stream !I-> stack dup part0-node{form_keys[3]}-data <- stack\n"
+            )
+            helper_obj.add_to_pre("6 stream skip\n")
+            helper_obj.add_to_pre(
+                f"dup part0-node{form_keys[4]}-offsets +<- stack stream #!I-> part0-node{form_keys[5]}-data\n"
             )
             keys = [
-                f"part0-node{key2}-offsets",
-                f"part0-node{key4}-data",
-                f"part0-node{key5}-offsets",
-                f"part0-node{key3}-data",
-                f"part0-node{key6}-data",
+                f"part0-node{form_keys[1]}-offsets",
+                f"part0-node{form_keys[3]}-data",
+                f"part0-node{form_keys[4]}-offsets",
+                f"part0-node{form_keys[2]}-data",
+                f"part0-node{form_keys[5]}-data",
             ]
             if forth_obj.should_add_form():
                 for elem in keys:
                     forth_obj.add_form_key(elem)
                 temp_bool = "false"
-                temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{key3}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key2}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key4}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{key6}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key5}"}}}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{key1}"}}'
+                temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[0]}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
-            header = f"output part0-node{key2}-offsets int64\noutput part0-node{key3}-data uint8\noutput part0-node{key4}-data int64\noutput part0-node{key5}-offsets int64\noutput part0-node{key6}-data int64\n"
-            init = f"0 part0-node{key2}-offsets <- stack\n0 part0-node{key5}-offsets <- stack\n"
+            helper_obj.add_to_header(
+                f"output part0-node{form_keys[1]}-offsets int64\noutput part0-node{form_keys[2]}-data uint8\noutput part0-node{form_keys[3]}-data int64\noutput part0-node{form_keys[4]}-offsets int64\noutput part0-node{form_keys[5]}-data int64\n"
+            )
+            helper_obj.add_to_init(
+                f"0 part0-node{form_keys[1]}-offsets <- stack\n0 part0-node{form_keys[4]}-offsets <- stack\n"
+            )
             temp = forth_obj.add_node(
-                f"node{key1}", fcode_pre, [], init, header, "i64", 1, None
+                f"node{form_keys[0]}",
+                helper_obj.get_pre(),
+                helper_obj.get_post(),
+                helper_obj.get_init(),
+                helper_obj.get_header(),
+                "i64",
+                1,
+                None,
             )
             forth_obj.go_to(temp)
 

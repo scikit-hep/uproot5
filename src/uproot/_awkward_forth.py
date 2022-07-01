@@ -5,7 +5,7 @@ This module defines utilities for adding components to the forth reader.
 """
 
 
-class ForthObj:
+class ForthGenerator:
     """
     This class is passed through the Forth code generation, collecting Forth snippets and concatenating them at the end.
     """
@@ -43,10 +43,19 @@ class ForthObj:
                 else:
                     raise ValueError
 
-    def get_key(self):
-        key = self.count_obj
-        self.count_obj += 1
-        return key
+    def get_keys(self, num_keys):
+        if num_keys == 1:
+            key = self.count_obj
+            self.count_obj += 1
+            return key
+        elif num_keys > 1:
+            out = []
+            for _i in range(num_keys):
+                out.append(self.count_obj)
+                self.count_obj += 1
+            return out
+        else:
+            raise ValueError("Number of keys cannot be less than 1")
 
     def add_form_key(self, key):
         self.form_keys.append(key)
@@ -100,24 +109,6 @@ class ForthObj:
             self.awkward_model = self.awkward_model[-1]["content"]
             return temp_node
 
-    # def add_node_dict(self, name, precode, postcode, initcode, headercode, dtype, num_child, content):
-    #     if isinstance(self.awkward_model, dict):
-    #         if name in self.awkward_model.values():
-    #             return self.awkward_model
-    #         else:
-    #             self.awkward_model["node"] = {"name": name, "type": dtype, "pre_code": precode, "post_code": postcode, "init_code": initcode, "header_code": headercode, "num_child": num_child, "content": content}
-    #             temp_node = self.awkward_model["node"]
-    #             self.awkward_model = self.awkward_model["node"]["content"]
-    #             return temp_node
-    #     if isinstance(self.awkward_model, list):
-    #         for elem in self.awkward_model:
-    #             if name in elem.values():
-    #                 return elem
-    #         self.awkward_model.append({"name": name, "type": dtype, "pre_code": precode, "post_code": postcode, "init_code": initcode, "header_code": headercode, "num_child": num_child, "content": content})
-    #         temp_node = self.awkward_model[-1]
-    #         self.awkward_model = self.awkward_model[-1]["node"]["content"]
-    #         return temp_node
-
     def register_pre(self, ref):
         key = str(ref) + "pre"
         self.forth_sequence.append(key)
@@ -133,9 +124,6 @@ class ForthObj:
     def register_post(self, ref):
         key = str(ref) + "post"
         self.forth_sequence.append(key)
-
-    def get_keys(self, ref):
-        return self.forth_keys[ref]
 
     def add_forth_code(self, ref, forth_exec_pre, forth_exec_post):
         if self.forth_code[ref] is None:
@@ -157,3 +145,50 @@ class ForthObj:
     def add_to_init(self, code):
         self.final_init.append(code)
         return
+
+
+class GenHelper:
+    """
+    Helper class to aid Forth code generation within one read/read_members function call.
+    """
+
+    def __init__(self, context):
+        self.forth_present = False
+        self._pre_code = []
+        self._post_code = []
+        self._header = ""
+        self._init = ""
+        self._form_key = []
+        if "forth" in context.keys():
+            self.forth_present = True
+            self._gen_obj = context["forth"]
+
+    def is_forth(self):
+        return self.forth_present
+
+    def get_gen_obj(self):
+        return self._gen_obj
+
+    def add_to_pre(self, code):
+        self._pre_code.append(code)
+
+    def get_pre(self):
+        return self._pre_code
+
+    def add_to_post(self, code):
+        self._post_code.append(code)
+
+    def get_post(self):
+        return self._post_code
+
+    def add_to_header(self, code):
+        self._header += code
+
+    def get_header(self):
+        return self._header
+
+    def add_to_init(self, code):
+        self._init += code
+
+    def get_init(self):
+        return self._init
