@@ -1100,7 +1100,6 @@ class AsVector(AsContainer):
 
             if length == 0 and helper_obj.is_forth():
                 forth_obj.var_set = True
-
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )

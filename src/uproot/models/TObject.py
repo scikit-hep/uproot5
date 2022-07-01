@@ -24,6 +24,7 @@ class Model_TObject(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        #raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}

@@ -257,6 +257,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                         )
                         if not context["forth"].var_set:
                             self._prereaddone = True
+                            print(context["forth"].awkward_model)
                             self.assemble_forth(
                                 context["forth"], context["forth"].awkward_model
                             )

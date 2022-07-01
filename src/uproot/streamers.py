@@ -14,6 +14,8 @@ import numpy
 
 import uproot
 
+import uproot._awkward_forth
+
 _canonical_typename_patterns = [
     (re.compile(r"\bChar_t\b"), "char"),
     (re.compile(r"\bUChar_t\b"), "unsigned char"),
@@ -246,7 +248,8 @@ class Model_TStreamerInfo(uproot.model.Model):
         base_names_versions = []
         member_names = []
         class_flags = {}
-
+        for i in range(len(self._members["fElements"])):
+            print(self._members["fElements"][i])
         for i in range(len(self._members["fElements"])):
             self._members["fElements"][i].class_code(
                 self,
@@ -676,7 +679,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         helper_obj = uproot._awkward_forth.GenHelper(context)
         if helper_obj.is_forth():
             forth_obj = helper_obj.get_gen_obj()
-            key = forth_obj.get_keys()\n"""
+            key = forth_obj.get_keys(1)\n"""
         )
         read_member_n.append(f"        if member_index == {i}:")
 
@@ -871,7 +874,6 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         class_flags,
     ):
         read_member_n.append(f"        if member_index == {i}:")
-
         if self.typename == "Double32_t":
             # untested as of PR #629
             read_members.append(
@@ -887,6 +889,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             read_member_n.append("    " + read_members[-1])
 
         elif self.array_length == 0:
+            #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
             if (
                 i == 0
                 or not isinstance(elements[i - 1], Model_TStreamerBasicType)
@@ -898,7 +901,6 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
             fields[-1].append(self.name)
             formats[-1].append(_ftype_to_struct(self.fType))
-
             formats_memberwise.append(_ftype_to_struct(self.fType))
 
             if (
@@ -906,6 +908,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 or not isinstance(elements[i + 1], Model_TStreamerBasicType)
                 or elements[i + 1].array_length != 0
             ):
+
                 if len(fields[-1]) == 1:
                     # @aryan26roy: test_0637's 01,02,29,38,44,56
 
@@ -914,6 +917,15 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     )
 
                 else:
+                    read_members.append('        if helper_obj.is_forth():')
+                    for elem in formats[0]:
+                        read_members.append('           key = forth_obj.get_keys(1)')
+                        read_members.append('           form_key = f"part0-node{key}-data"')
+                        read_members.append(f'           helper_obj.add_to_header(f"output part0-node{{key}}-data {uproot._awkward_forth.convert_dtype(elem)}\\n")')
+                        read_members.append('           helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\\n")')
+                        read_members.append(f'           helper_obj.add_to_pre("stream !{elem}-> output")')
+                        read_members.append('           if forth_obj.should_add_form():')
+                        read_members.append('               forth_obj.add_form_key(form_key)')
                     assign_members = ", ".join(
                         f"self._members[{x!r}]" for x in fields[-1]
                     )

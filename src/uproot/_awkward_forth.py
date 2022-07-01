@@ -34,12 +34,17 @@ class ForthGenerator:
         if self.aform is None:
             self.aform = aform
             self.top_form = self.aform
-
         else:
             if "content" in self.aform.keys():
                 if self.aform["content"] == "NULL":
                     self.aform["content"] = aform
                     self.aform = self.aform["content"]
+                else:
+                    raise ValueError
+            elif "contents" in self.aform.keys():
+                if len(self.aform["content"]) < self.aform["parameters"]["lencon"]:
+                    self.aform["contents"].append(aform)
+                    self.aform = self.aform["contents"][-1]
                 else:
                     raise ValueError
 
@@ -192,3 +197,8 @@ class GenHelper:
 
     def get_init(self):
         return self._init
+
+
+def convert_dtype(format):
+    if format == 'd':
+        return "float64"

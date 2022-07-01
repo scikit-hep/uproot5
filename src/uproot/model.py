@@ -760,7 +760,6 @@ class Model:
         self._num_bytes = None
         self._instance_version = None
         self._is_memberwise = False
-
         old_breadcrumbs = context.get("breadcrumbs", ())
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
@@ -773,7 +772,8 @@ class Model:
             temp_index = cursor._index
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
-            helper_obj.add_to_pre(f"{length} stream skip \n")
+            if length != 0:
+                helper_obj.add_to_pre(f"{length} stream skip \n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -783,9 +783,20 @@ class Model:
                 if classname_version(correct_cls.__name__) != classname_version(
                     cls.__name__
                 ):
+                    if helper_obj.is_forth():
+                        temp = forth_obj.add_node(
+                            "pass",
+                            helper_obj.get_pre(),
+                            helper_obj.get_post(),
+                            helper_obj.get_init(),
+                            helper_obj.get_header(),
+                            "i64",
+                            1,
+                            {},
+                        )
                     cursor.move_to(self._cursor.index)
                     context["breadcrumbs"] = old_breadcrumbs
-                    return correct_cls.read(
+                    temp_var = correct_cls.read(
                         chunk,
                         cursor,
                         context,
@@ -794,10 +805,12 @@ class Model:
                         parent,
                         concrete=concrete,
                     )
+                    if helper_obj.is_forth():
+                        forth_obj.go_to(temp)
+                    return temp_var
 
         if context.get("in_TBranch", False):
             # @aryan26roy: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,38,39,44,45,46,47,49,50,52,56
-
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
@@ -824,6 +837,7 @@ class Model:
             self.read_members(chunk, cursor, context, file)
             if helper_obj.is_forth():
                 forth_obj.go_to(temp)
+                raise NotImplementedError
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
@@ -1281,6 +1295,8 @@ class DispatchByVersion:
         """
         import uproot.deserialization
 
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+
         # Ignores context["reading"], because otherwise, there would be nothing to do.
 
         (
@@ -1311,6 +1327,8 @@ class DispatchByVersion:
             )
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
+        if helper_obj.is_forth():
+            print(versioned_cls)
         return cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete
