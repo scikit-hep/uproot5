@@ -265,7 +265,6 @@ class Model_TStreamerInfo(uproot.model.Model):
                 member_names,
                 class_flags,
             )
-
         if len(read_members) == 1:
             # untested as of PR #629
             read_members.append("        pass")
@@ -672,6 +671,18 @@ class Model_TStreamerBase(Model_TStreamerElement):
         member_names,
         class_flags,
     ):
+        read_member_n.append(
+            """
+        forth = False
+        forth_obj = None
+        fcode_pre = []
+        fcode_post = []
+        temp = None
+        if "forth" in context.keys():
+            forth = True
+            forth_obj = context["forth"]
+            key = forth_obj.get_key()\n"""
+        )
         read_member_n.append(f"        if member_index == {i}:")
 
         # @aryan26roy: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
@@ -680,7 +691,6 @@ class Model_TStreamerBase(Model_TStreamerElement):
             f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))"
         )
         read_member_n.append("    " + read_members[-1])
-
         strided_interpretation.append(
             f"        members.extend(file.class_named({self.name!r}, {self.base_version!r}).strided_interpretation(file, header, tobject_header, breadcrumbs).members)"
         )
