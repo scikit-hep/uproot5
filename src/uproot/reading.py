@@ -19,8 +19,6 @@ import uproot
 import uproot.behaviors.TBranch
 from uproot._util import no_filter
 
-debug_counter = [0]
-
 
 def open(
     path,
