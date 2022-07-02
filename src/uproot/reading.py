@@ -19,6 +19,8 @@ import uproot
 import uproot.behaviors.TBranch
 from uproot._util import no_filter
 
+debug_counter = [0]
+
 
 def open(
     path,
@@ -1444,11 +1446,18 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._keys = []
+            self._keys_lookup = {}
             for _ in range(num_keys):
                 key = ReadOnlyKey(
                     keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )
+                name = key.fName
+                if name not in self._keys_lookup:
+                    self._keys_lookup[name] = []
+                self._keys_lookup[name].append(len(self._keys))
                 self._keys.append(key)
+
+            self._len = None
 
             self.hook_after_keys(
                 chunk=chunk,
@@ -1901,11 +1910,13 @@ class ReadOnlyDirectory(Mapping):
         return self.iterkeys()  # noqa: B301 (not a dict)
 
     def __len__(self):
-        return len(self._keys) + sum(
-            len(x.get())
-            for x in self._keys
-            if x.fClassName in ("TDirectory", "TDirectoryFile")
-        )
+        if self._len is None:
+            self._len = len(self._keys) + sum(
+                len(x.get())
+                for x in self._keys
+                if x.fClassName in ("TDirectory", "TDirectoryFile")
+            )
+        return self._len
 
     def __contains__(self, where):
         try:
@@ -2031,14 +2042,14 @@ class ReadOnlyDirectory(Mapping):
             item, cycle = where, None
 
         last = None
-        for key in self._keys:
-            if key.fName == item:
-                if cycle == key.fCycle:
-                    return key
-                elif cycle is None and last is None:
-                    last = key
-                elif cycle is None and last.fCycle < key.fCycle:
-                    last = key
+        for index in self._keys_lookup.get(item, []):
+            key = self._keys[index]
+            if cycle == key.fCycle:
+                return key
+            elif cycle is None and last is None:
+                last = key
+            elif cycle is None and last.fCycle < key.fCycle:
+                last = key
 
         if last is not None:
             return last
