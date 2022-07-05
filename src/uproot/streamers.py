@@ -695,7 +695,10 @@ class Model_TStreamerBase(Model_TStreamerElement):
             f"        members.extend(file.class_named({self.name!r}, {self.base_version!r}).strided_interpretation(file, header, tobject_header, breadcrumbs).members)"
         )
         awkward_form.append(
-            f"        contents.update(file.class_named({self.name!r}, {self.base_version!r}).awkward_form(file,context).contents)"
+            f"        tmp_awkward_form = file.class_named({self.name!r}, {self.base_version!r}).awkward_form(file, context)"
+        )
+        awkward_form.append(
+            "        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))"
         )
 
         base_names_versions.append((self.name, self.base_version))

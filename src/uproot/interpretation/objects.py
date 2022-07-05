@@ -27,23 +27,6 @@ import uproot
 import uproot._awkward_forth
 
 
-def awkward_can_optimize(interpretation, form):
-    """
-    If True, the Awkward Array library can convert data of a given
-    :doc:`uproot.interpretation.Interpretation` and ``ak.forms.Form`` into
-    arrays without resorting to ``ak.from_iter`` (i.e. rapidly).
-
-    If ``awkward._connect._uproot`` cannot be imported, this function always
-    returns False.
-    """
-    try:
-        import awkward._connect._uproot
-    except ModuleNotFoundError:
-        return False
-    else:
-        return awkward._connect._uproot.can_optimize(interpretation, form)
-
-
 class AsObjects(uproot.interpretation.Interpretation):
     """
     Args:
@@ -147,29 +130,9 @@ class AsObjects(uproot.interpretation.Interpretation):
                 data, byte_offsets, basket, branch, context, cursor_offset, library
             )
         else:
-
-            output = None
-            if isinstance(library, uproot.interpretation.library.Awkward):
-                form = self.awkward_form(branch.file)
-
-                if awkward_can_optimize(self, form):
-                    import awkward._connect._uproot
-
-                    extra = {
-                        "interpretation": self,
-                        "basket": basket,
-                        "branch": branch,
-                        "context": context,
-                        "cursor_offset": cursor_offset,
-                    }
-                    output = awkward._connect._uproot.basket_array(
-                        form, data, byte_offsets, extra
-                    )
-
-            if output is None:
-                output = ObjectArray(
-                    self._model, branch, context, byte_offsets, data, cursor_offset
-                ).to_numpy()
+            output = ObjectArray(
+                self._model, branch, context, byte_offsets, data, cursor_offset
+            ).to_numpy()
 
         self.hook_after_basket_array(
             data=data,
@@ -216,19 +179,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                     "breadcrumbs": (),
                 },
             )
-            if awkward_can_optimize(self, self._form):
-                import awkward._connect._uproot
-
-                extra = {
-                    "interpretation": self,
-                    "basket": basket,
-                    "branch": branch,
-                    "context": context,
-                    "cursor_offset": cursor_offset,
-                }
-                output = awkward._connect._uproot.basket_array(
-                    self._form, data, byte_offsets, extra
-                )
 
         if not self._forth_vm_set:
             if not self._prereaddone:

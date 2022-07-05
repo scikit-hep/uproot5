@@ -280,9 +280,11 @@ def _strided_to_awkward(awkward, path, interpretation, data):
         "__record__": uproot.model.classname_decode(interpretation.model.__name__)[0]
     }
     length = len(data) if len(contents) == 0 else None
-    out = awkward._v2.layout.RecordArray(contents, names, length, parameters=parameters)
+    out = awkward._v2.contents.RecordArray(
+        contents, names, length, parameters=parameters
+    )
     for dim in reversed(interpretation.inner_shape):
-        out = awkward._v2.layout.RegularArray(out, dim)
+        out = awkward._v2.contents.RegularArray(out, dim)
     return out
 
 
@@ -555,9 +557,7 @@ class Awkward(Library):
         elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
             try:
                 form = json.loads(
-                    interpretation.awkward_form(interpretation.branch.file).tojson(
-                        verbose=True
-                    )
+                    interpretation.awkward_form(interpretation.branch.file).to_json()
                 )
             except uproot.interpretation.objects.CannotBeAwkward as err:
                 raise ValueError(
@@ -612,7 +612,9 @@ in object {}""".format(
             return {_rename(name, c): arrays[name] for name, c in expression_context}
         elif how is None:
             if len(expression_context) == 0:
-                return awkward._v2.Array(awkward._v2.contents.RecordArray([], keys=[]))
+                return awkward._v2.Array(
+                    awkward._v2.contents.RecordArray([], fields=[], length=0)
+                )
             else:
                 return awkward._v2.Array(
                     {_rename(name, c): arrays[name] for name, c in expression_context}
@@ -650,7 +652,7 @@ in object {}""".format(
             if len(nonjagged) != 0:
                 if len(nonjagged) == 0:
                     out = awkward._v2.Array(
-                        awkward._v2.contents.RecordArray([], keys=[])
+                        awkward._v2.contents.RecordArray([], fields=[], length=0)
                     )
                 else:
                     out = awkward._v2.Array(
@@ -677,7 +679,7 @@ in object {}""".format(
                     common = f"jagged{number}"
                     if len(jagged) == 0:
                         subarray = awkward._v2.Array(
-                            awkward._v2.contents.RecordArray([], keys=[])
+                            awkward._v2.contents.RecordArray([], fields=[], length=0)
                         )
                     else:
                         subarray = awkward._v2.zip(
@@ -687,7 +689,7 @@ in object {}""".format(
                     common = jagged[0][:cut].strip("_./")
                     if len(jagged) == 0:
                         subarray = awkward._v2.Array(
-                            awkward._v2.layout.RecordArray([], keys=[])
+                            awkward._v2.contents.RecordArray([], fields=[], length=0)
                         )
                     else:
                         subarray = awkward._v2.zip(

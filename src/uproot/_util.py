@@ -550,47 +550,29 @@ def awkward_form(model, file, context):
 
         if model not in _primitive_awkward_form:
             if model == numpy.dtype(numpy.bool_) or model == numpy.dtype(bool):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"bool"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"bool"')
             elif model == numpy.dtype(numpy.int8):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"int8"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int8"')
             elif model == numpy.dtype(numpy.uint8):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"uint8"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint8"')
             elif model == numpy.dtype(numpy.int16):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"int16"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int16"')
             elif model == numpy.dtype(numpy.uint16):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"uint16"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint16"')
             elif model == numpy.dtype(numpy.int32):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"int32"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int32"')
             elif model == numpy.dtype(numpy.uint32):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"uint32"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint32"')
             elif model == numpy.dtype(numpy.int64):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"int64"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int64"')
             elif model == numpy.dtype(numpy.uint64):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
-                    '"uint64"'
-                )
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint64"')
             elif model == numpy.dtype(numpy.float32):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json(
                     '"float32"'
                 )
             elif model == numpy.dtype(numpy.float64):
-                _primitive_awkward_form[model] = awkward._v2.forms.Form.fromjson(
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json(
                     '"float64"'
                 )
             else:
@@ -1099,4 +1081,4 @@ def _content_cls_from_name(awkward, name):
         name = name[-4:]
     elif name.endswith("8_U32"):
         name = name[-5:]
-    return getattr(awkward.contents, name)
+    return getattr(awkward._v2.contents, name)

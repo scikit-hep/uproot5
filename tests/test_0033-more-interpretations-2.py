@@ -60,9 +60,7 @@ def test_leaflist_awkward():
         "tree/leaflist"
     ] as branch:
         result = branch.array(library="ak")
-        assert (
-            str(awkward._v2.type(result)) == '5 * {"x": float64, "y": int32, "z": int8}'
-        )
+        assert str(awkward._v2.type(result)) == "5 * {x: float64, y: int32, z: int8}"
         assert awkward._v2.to_list(result) == [
             {"x": 1.1, "y": 1, "z": 97},
             {"x": 2.2, "y": 2, "z": 98},

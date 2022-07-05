@@ -132,7 +132,10 @@ class Tree:
                         raise TypeError(
                             f"not a NumPy dtype and 'awkward' cannot be imported: {branch_type!r}"
                         ) from err
-                    if isinstance(branch_type, awkward._v2.types.Type):
+                    if isinstance(
+                        branch_type,
+                        (awkward._v2.types.Type, awkward._v2.types.ArrayType),
+                    ):
                         branch_datashape = branch_type
                     else:
                         try:
@@ -218,7 +221,7 @@ class Tree:
                             contents = content.contents
                         else:
                             contents = content.fields()
-                        keys = content.keys
+                        keys = content.fields
                         if callable(keys):
                             keys = keys()
                         if keys is None:
@@ -268,7 +271,7 @@ class Tree:
                         contents = branch_datashape.contents
                     else:
                         contents = branch_datashape.fields()
-                    keys = branch_datashape.keys
+                    keys = branch_datashape.fields
                     if callable(keys):
                         keys = keys()
                     if keys is None:
