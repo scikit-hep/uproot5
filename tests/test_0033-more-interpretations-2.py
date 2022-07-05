@@ -15,7 +15,7 @@ def test_awkward_strings():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["string"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["string"].array(library="ak")) == [
             "one",
             "two",
             "three",
@@ -60,8 +60,10 @@ def test_leaflist_awkward():
         "tree/leaflist"
     ] as branch:
         result = branch.array(library="ak")
-        assert str(awkward.type(result)) == '5 * {"x": float64, "y": int32, "z": int8}'
-        assert awkward.to_list(result) == [
+        assert (
+            str(awkward._v2.type(result)) == '5 * {"x": float64, "y": int32, "z": int8}'
+        )
+        assert awkward._v2.to_list(result) == [
             {"x": 1.1, "y": 1, "z": 97},
             {"x": 2.2, "y": 2, "z": 98},
             {"x": 3.3, "y": 3, "z": 99},
@@ -131,7 +133,7 @@ def test_fixed_width_awkward():
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:
-        assert awkward.to_list(tree["ai4"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["ai4"].array(library="ak")) == [
             [i, i + 1, i + 2] for i in range(-14, 16)
         ]
 

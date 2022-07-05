@@ -68,7 +68,11 @@ in file {}""".format(
         contents["fLineWidth"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAttLine"},
+        )
 
     base_names_versions = []
     member_names = ["fLineColor", "fLineStyle", "fLineWidth"]
@@ -130,7 +134,11 @@ in file {}""".format(
         contents["fLineWidth"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttLine"})
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAttLine"},
+        )
 
     writable = True
 
@@ -216,7 +224,11 @@ in file {}""".format(
         contents["fFillStyle"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAttFill"},
+        )
 
     base_names_versions = []
     member_names = ["fFillColor", "fFillStyle"]
@@ -272,7 +284,11 @@ in file {}""".format(
         contents["fFillStyle"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward.forms.RecordForm(contents, parameters={"__record__": "TAttFill"})
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAttFill"},
+        )
 
     writable = True
 
@@ -362,8 +378,10 @@ in file {}""".format(
         contents["fMarkerSize"] = uproot._util.awkward_form(
             numpy.dtype("f4"), file, context
         )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TAttMarker"}
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAttMarker"},
         )
 
     writable = True
@@ -501,7 +519,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -549,7 +567,11 @@ in file {}""".format(
         contents["fTitleFont"] = uproot._util.awkward_form(
             numpy.dtype(">i2"), file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TAttAxis"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAttAxis"},
+        )
 
     _format0 = struct.Struct(">ihhhfffffhh")
     _format_memberwise0 = struct.Struct(">i")
@@ -650,7 +672,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -667,7 +689,11 @@ in file {}""".format(
             contents["@instance_version"] = uproot._util.awkward_form(
                 numpy.dtype("u2"), file, context
             )
-        return RecordForm(contents, parameters={"__record__": "TAtt3D"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAtt3D"},
+        )
 
     base_names_versions = []
     member_names = []

@@ -292,7 +292,9 @@ class AsObjects(uproot.interpretation.Interpretation):
                     container[elem] = self._forth_vm.vm.output_Index64(elem)
                 else:
                     container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
-            output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
+            output = awkward._v2.from_buffers(
+                self._form, len(byte_offsets) - 1, container
+            )
         self.hook_after_basket_array(
             data=data,
             byte_offsets=byte_offsets,
@@ -362,7 +364,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         ):
             assert isinstance(library, uproot.interpretation.library.Awkward)
             awkward = library.imported
-            output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
+            output = awkward._v2.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
             output = numpy.concatenate(trimmed)
 
@@ -500,7 +502,11 @@ def _strided_awkward_form(awkward, classname, members, file, context):
             )
         else:
             contents[name] = uproot._util.awkward_form(member, file, context)
-    return awkward.forms.RecordForm(contents, parameters={"__record__": classname})
+    return awkward._v2.forms.RecordForm(
+        list(contents.values()),
+        list(contents.keys()),
+        parameters={"__record__": classname},
+    )
 
 
 class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
@@ -598,7 +604,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         cname = uproot.model.classname_decode(self._model.__name__)[0]
         form = _strided_awkward_form(awkward, cname, self._members, file, context)
         for dim in reversed(self.inner_shape):
-            form = awkward.forms.RegularForm(form, dim)
+            form = awkward._v2.forms.RegularForm(form, dim)
         return form
 
     @property

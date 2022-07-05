@@ -331,7 +331,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -373,7 +373,11 @@ in file {}""".format(
         contents["fTimeFormat"] = file.class_named("TString", "max").awkward_form(
             file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TAxis"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TAxis"},
+        )
 
     _format0 = struct.Struct(">idd")
     _format1 = struct.Struct(">iiH?")
@@ -805,7 +809,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import ListOffsetForm, RecordForm
+        from awkward._v2.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -902,7 +906,11 @@ in file {}""".format(
         contents["fStatOverflows"] = uproot._util.awkward_form(
             numpy.dtype(">i4"), file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TH1"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH1"},
+        )
 
     _format0 = struct.Struct(">i")
     _format1 = struct.Struct(">hhdddddddd")
@@ -1113,7 +1121,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1141,7 +1149,11 @@ in file {}""".format(
         contents["fTsumwxy"] = uproot._util.awkward_form(
             numpy.dtype(">f8"), file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TH2"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH2"},
+        )
 
     _format0 = struct.Struct(">dddd")
     _format_memberwise0 = struct.Struct(">d")
@@ -1317,7 +1329,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1357,7 +1369,11 @@ in file {}""".format(
         contents["fTsumwyz"] = uproot._util.awkward_form(
             numpy.dtype(">f8"), file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TH3"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH3"},
+        )
 
     _format0 = struct.Struct(">ddddddd")
     _format_memberwise0 = struct.Struct(">d")
@@ -1502,7 +1518,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1521,7 +1537,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayC", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH1C"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH1C"},
+        )
 
     base_names_versions = [("TH1", 8), ("TArrayC", 1)]
     member_names = []
@@ -1660,7 +1680,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1679,7 +1699,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayD", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH1D"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH1D"},
+        )
 
     base_names_versions = [("TH1", 8), ("TArrayD", 1)]
     member_names = []
@@ -1813,7 +1837,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1832,7 +1856,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayF", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH1F"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH1F"},
+        )
 
     base_names_versions = [("TH1", 8), ("TArrayF", 1)]
     member_names = []
@@ -1966,7 +1994,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1985,7 +2013,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayI", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH1I"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH1I"},
+        )
 
     base_names_versions = [("TH1", 8), ("TArrayI", 1)]
     member_names = []
@@ -2124,7 +2156,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2143,7 +2175,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayS", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH1S"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH1S"},
+        )
 
     base_names_versions = [("TH1", 8), ("TArrayS", 1)]
     member_names = []
@@ -2282,7 +2318,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2301,7 +2337,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayC", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH2C"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH2C"},
+        )
 
     base_names_versions = [("TH2", 5), ("TArrayC", 1)]
     member_names = []
@@ -2441,7 +2481,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2460,7 +2500,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayD", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH2D"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH2D"},
+        )
 
     base_names_versions = [("TH2", 5), ("TArrayD", 1)]
     member_names = []
@@ -2595,7 +2639,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2614,7 +2658,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayF", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH2F"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH2F"},
+        )
 
     base_names_versions = [("TH2", 5), ("TArrayF", 1)]
     member_names = []
@@ -2754,7 +2802,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2773,7 +2821,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayI", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH2I"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH2I"},
+        )
 
     base_names_versions = [("TH2", 5), ("TArrayI", 1)]
     member_names = []
@@ -2913,7 +2965,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2932,7 +2984,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayS", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH2S"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH2S"},
+        )
 
     base_names_versions = [("TH2", 5), ("TArrayS", 1)]
     member_names = []
@@ -3072,7 +3128,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3091,7 +3147,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayC", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH3C"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH3C"},
+        )
 
     base_names_versions = [("TH3", 6), ("TArrayC", 1)]
     member_names = []
@@ -3232,7 +3292,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3251,7 +3311,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayD", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH3D"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH3D"},
+        )
 
     base_names_versions = [("TH3", 6), ("TArrayD", 1)]
     member_names = []
@@ -3387,7 +3451,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3406,7 +3470,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayF", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH3F"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH3F"},
+        )
 
     base_names_versions = [("TH3", 6), ("TArrayF", 1)]
     member_names = []
@@ -3547,7 +3615,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3566,7 +3634,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayI", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH3I"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH3I"},
+        )
 
     base_names_versions = [("TH3", 6), ("TArrayI", 1)]
     member_names = []
@@ -3707,7 +3779,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3726,7 +3798,11 @@ in file {}""".format(
         contents.update(
             file.class_named("TArrayS", 1).awkward_form(file, context).contents
         )
-        return RecordForm(contents, parameters={"__record__": "TH3S"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TH3S"},
+        )
 
     base_names_versions = [("TH3", 6), ("TArrayS", 1)]
     member_names = []
@@ -3903,7 +3979,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3938,7 +4014,11 @@ in file {}""".format(
         contents["fBinSumw2"] = file.class_named("TArrayD", "max").awkward_form(
             file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TProfile"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TProfile"},
+        )
 
     _format0 = struct.Struct(">idddd")
     _format_memberwise0 = struct.Struct(">i")
@@ -4139,7 +4219,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -4174,7 +4254,11 @@ in file {}""".format(
         contents["fBinSumw2"] = file.class_named("TArrayD", "max").awkward_form(
             file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TProfile2D"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TProfile2D"},
+        )
 
     _format0 = struct.Struct(">idddd")
     _format_memberwise0 = struct.Struct(">i")
@@ -4377,7 +4461,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import RecordForm
+        from awkward._v2.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -4412,7 +4496,11 @@ in file {}""".format(
         contents["fBinSumw2"] = file.class_named("TArrayD", "max").awkward_form(
             file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TProfile3D"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TProfile3D"},
+        )
 
     _format0 = struct.Struct(">idddd")
     _format_memberwise0 = struct.Struct(">i")
