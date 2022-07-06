@@ -5,15 +5,23 @@ This module defines utilities for adding components to the forth reader.
 """
 
 
+from pytz import NonExistentTimeError
+
+
 class ForthGenerator:
     """
     This class is passed through the Forth code generation, collecting Forth snippets and concatenating them at the end.
     """
 
     def __init__(self, aform=None, count_obj=0, var_set=False):
+        self.dummy_form = False
+        self.top_dummy = None
+        self.dummy_aform = None
         self.aform = aform
         self.top_form = None
-        self.awkward_model = {}
+        self.awkward_model = {"name": "TOP", "content": {}}
+        self._prev_node = self.awkward_model
+        self.ref_list = []
         self.forth_code = {}
         self.forth_keys = {}
         self.final_code = []
@@ -28,25 +36,53 @@ class ForthGenerator:
         self.aform = self.aform.content
 
     def should_add_form(self):
-        return not bool(self.awkward_model)
+        if "content" in self.awkward_model.keys():
+            if self.awkward_model["content"] is None:
+                return False
+            else:
+                return not bool(self.awkward_model["content"])
 
-    def add_form(self, aform):
-        if self.aform is None:
-            self.aform = aform
-            self.top_form = self.aform
+    def get_temp_form_top(self):
+        return self.top_dummy
+
+    def set_dummy_none(self):
+        self.top_dummy = None
+        self.dummy_aform = None
+        self.dummy_form = False
+
+    def add_form(self, aform, conlen=0):
+        if self.dummy_form:
+            if self.dummy_aform is None:
+                self.dummy_aform = aform
+                self.top_dummy = aform
+            else:
+                if "content" in self.dummy_aform.keys():
+                    if self.dummy_aform["content"] == "NULL":
+                        self.dummy_aform["content"] = aform
+                        self.dummy_aform = self.dummy_aform["content"]
+                    else:
+                        raise ValueError
+                elif "contents" in self.dummy_aform.keys():
+                    if len(self.dummy_aform["content"]) < self.dummy_aform["parameters"]["lencon"]:
+                        self.dummy_aform["contents"].append(aform)
+                    else:
+                        raise ValueError
         else:
-            if "content" in self.aform.keys():
-                if self.aform["content"] == "NULL":
-                    self.aform["content"] = aform
-                    self.aform = self.aform["content"]
-                else:
-                    raise ValueError
-            elif "contents" in self.aform.keys():
-                if len(self.aform["content"]) < self.aform["parameters"]["lencon"]:
-                    self.aform["contents"].append(aform)
-                    self.aform = self.aform["contents"][-1]
-                else:
-                    raise ValueError
+            if self.aform is None:
+                self.aform = aform
+                self.top_form = self.aform
+            else:
+                if "content" in self.aform.keys():
+                    if self.aform["content"] == "NULL":
+                        self.aform["content"] = aform
+                        self.aform = self.aform["content"]
+                    else:
+                        raise ValueError
+                elif "contents" in self.aform.keys():
+                    if len(self.aform["content"]) == conlen:
+                        return
+                    else:
+                        raise ValueError
 
     def get_keys(self, num_keys):
         if num_keys == 1:
@@ -66,18 +102,28 @@ class ForthGenerator:
         self.form_keys.append(key)
 
     def go_to(self, aform):
-        aform["content"] = self.awkward_model
+        #aform["content"] = self.awkward_model
+        self.awkward_model = aform
+
+    def become(self, aform):
         self.awkward_model = aform
 
     def check_model(self):
         return bool(self.awkward_model)
 
+    def get_current_node(self):
+        self.ref_list.append(self._prev_node)
+        return len(self.ref_list) - 1
+
+    def get_ref(self, index):
+        return self.ref_list[index]
+
     def add_node(
         self, name, precode, postcode, initcode, headercode, dtype, num_child, content
     ):
         if isinstance(self.awkward_model, dict):
-            if not bool(self.awkward_model):
-                self.awkward_model = {
+            if not bool(self.awkward_model["content"]) and self.awkward_model["content"] is not None:
+                temp_obj = {
                     "name": name,
                     "type": dtype,
                     "pre_code": precode,
@@ -87,9 +133,9 @@ class ForthGenerator:
                     "num_child": num_child,
                     "content": content,
                 }
-                temp_node = self.awkward_model
+                self.awkward_model["content"] = temp_obj
                 self.awkward_model = self.awkward_model["content"]
-                return temp_node
+                return temp_obj
             else:
                 temp_node = self.awkward_model
                 self.awkward_model = self.awkward_model["content"]

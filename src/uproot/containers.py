@@ -761,16 +761,16 @@ in file {}""".format(
                             temp_bool = "false"
                         temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
                         forth_obj.add_form(json.loads(temp_aform))
-                        temp = forth_obj.add_node(
-                            f"node{offsets_num}",
-                            helper_obj.get_pre(),
-                            helper_obj.get_post(),
-                            helper_obj.get_init(),
-                            helper_obj.get_header(),
-                            "i64",
-                            1,
-                            {},
-                        )
+                    temp = forth_obj.add_node(
+                        f"node{offsets_num}",
+                        helper_obj.get_pre(),
+                        helper_obj.get_post(),
+                        helper_obj.get_init(),
+                        helper_obj.get_header(),
+                        "i64",
+                        1,
+                        {},
+                    )
 
                 if cursor.index >= chunk.stop and helper_obj.is_forth():
                     forth_obj.var_set = True
@@ -782,9 +782,12 @@ in file {}""".format(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
+                    if helper_obj.is_forth():
+                        forth_obj.go_to(temp['content'])
+                        #print(forth_obj._prev_node, "UOUOUO")
 
-                if helper_obj.is_forth():
-                    forth_obj.go_to(temp)
+                # if helper_obj.is_forth():
+                #    forth_obj.go_to(temp)
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 

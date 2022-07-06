@@ -2,6 +2,7 @@
 
 import json
 import sys
+from matplotlib.style import library
 
 import numpy
 import pytest
@@ -98,6 +99,21 @@ def test_awkward_array_tref_array_forth():
     assert awk_data[0][0]["refs"][-1] == 2579
     assert awk_data[4][1]["refs"][-1] == 3391
     assert awk_data[6][2]["refs"][-1] == 676
+
+
+def test_awkward_array_tvector2_array_forth():
+
+    awk_data = None
+
+    with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
+        "events/MET"
+    ] as tree:
+        interp = uproot.interpretation.identify.interpretation_of(tree, {}, False)
+        interp._forth = True
+        awk_data = tree.array(interp, library="ak")
+    assert awk_data[0]["fX"] == 5.912771224975586
+    assert awk_data[4]["fY"] == -1.3100523948669434
+    assert awk_data[1200]["fX"] == 1.9457910060882568
 
 
 def test_awkward_vector_tstring():

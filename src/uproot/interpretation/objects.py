@@ -69,6 +69,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         self._forth_vm = threading.local()
         self._complete_forth_code = []
         self._forth_vm_set = False
+        self._form = None
 
     @property
     def model(self):
@@ -207,7 +208,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             context["forth"] = forth_gen
 
         if isinstance(library, uproot.interpretation.library.Awkward):
-            self._form = self.awkward_form(
+            form = self.awkward_form(
                 branch.file,
                 {
                     "index_format": "i64",
@@ -216,7 +217,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                     "breadcrumbs": (),
                 },
             )
-            if awkward_can_optimize(self, self._form):
+            if awkward_can_optimize(self, form):
                 import awkward._connect._uproot
 
                 extra = {
@@ -227,9 +228,8 @@ class AsObjects(uproot.interpretation.Interpretation):
                     "cursor_offset": cursor_offset,
                 }
                 output = awkward._connect._uproot.basket_array(
-                    self._form, data, byte_offsets, extra
+                    form, data, byte_offsets, extra
                 )
-
         if not self._forth_vm_set:
             if not self._prereaddone:
                 if output is None:
@@ -257,9 +257,8 @@ class AsObjects(uproot.interpretation.Interpretation):
                         )
                         if not context["forth"].var_set:
                             self._prereaddone = True
-                            print(context["forth"].awkward_model)
                             self.assemble_forth(
-                                context["forth"], context["forth"].awkward_model
+                                context["forth"], context["forth"]._prev_node["content"]
                             )
                             self._complete_forth_code = f'input stream\ninput byteoffsets\ninput bytestops\n{"".join(context["forth"].final_header)}\n{"".join(context["forth"].final_init)}\n0 do\nbyteoffsets I-> stack\nstream seek \n{"".join(context["forth"].final_code)}\nloop'
                             self._forth_vm.vm = awkward.forth.ForthMachine64(
@@ -273,7 +272,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                     self._complete_forth_code
                 )
                 self._forth_vm_set = True
-
         if self._forth_vm_set:
             byte_start = byte_offsets[0]
             byte_stop = byte_offsets[-1]

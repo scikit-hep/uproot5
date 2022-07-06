@@ -805,8 +805,8 @@ class Model:
                         parent,
                         concrete=concrete,
                     )
-                    if helper_obj.is_forth():
-                        forth_obj.go_to(temp)
+                    # if helper_obj.is_forth():
+                    #    forth_obj.go_to(temp)
                     return temp_var
 
         if context.get("in_TBranch", False):
@@ -825,7 +825,7 @@ class Model:
             )
             if helper_obj.is_forth():
                 temp = forth_obj.add_node(
-                    "pass",
+                    "model828",
                     helper_obj.get_pre(),
                     helper_obj.get_post(),
                     helper_obj.get_init(),
@@ -834,10 +834,8 @@ class Model:
                     1,
                     {},
                 )
+
             self.read_members(chunk, cursor, context, file)
-            if helper_obj.is_forth():
-                forth_obj.go_to(temp)
-                raise NotImplementedError
             self.hook_after_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
@@ -1294,11 +1292,14 @@ class DispatchByVersion:
         :doc:`uproot.model.UnknownClassVersion` is created instead.
         """
         import uproot.deserialization
+        temp_node = None
 
         helper_obj = uproot._awkward_forth.GenHelper(context)
 
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
         # Ignores context["reading"], because otherwise, there would be nothing to do.
-
+        start_index = cursor._index
         (
             num_bytes,
             version,
@@ -1306,6 +1307,19 @@ class DispatchByVersion:
         ) = uproot.deserialization.numbytes_version(chunk, cursor, context, move=False)
 
         versioned_cls = cls.class_of_version(version)
+        bytes_skipped = cursor._index - start_index
+        if helper_obj.is_forth():
+            helper_obj.add_to_pre(f"{bytes_skipped} stream skip \n")
+            temp_node = forth_obj.add_node(
+                "Model1319",
+                helper_obj.get_pre(),
+                helper_obj.get_post(),
+                helper_obj.get_init(),
+                helper_obj.get_header(),
+                "i64",
+                1,
+                {},
+            )
 
         if versioned_cls is not None:
             pass
@@ -1327,9 +1341,9 @@ class DispatchByVersion:
             )
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
-        if helper_obj.is_forth():
-            print(versioned_cls)
-        return cls.postprocess(
+        # if helper_obj.is_forth():
+            # print(versioned_cls)
+        temp_var = cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete
             ),
@@ -1338,6 +1352,11 @@ class DispatchByVersion:
             context,
             file,
         )
+        # if helper_obj.is_forth():
+        #    if "no_go_to" not in context.keys():
+        #raise NotImplementedError
+        # forth_obj.go_to(temp_node)
+        return temp_var
 
     @classmethod
     def postprocess(cls, self, chunk, cursor, context, file):
