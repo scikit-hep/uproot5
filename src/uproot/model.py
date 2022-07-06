@@ -1292,6 +1292,7 @@ class DispatchByVersion:
         :doc:`uproot.model.UnknownClassVersion` is created instead.
         """
         import uproot.deserialization
+
         temp_node = None
 
         helper_obj = uproot._awkward_forth.GenHelper(context)
@@ -1342,7 +1343,7 @@ class DispatchByVersion:
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
         # if helper_obj.is_forth():
-            # print(versioned_cls)
+        # print(versioned_cls)
         temp_var = cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete
@@ -1354,7 +1355,7 @@ class DispatchByVersion:
         )
         # if helper_obj.is_forth():
         #    if "no_go_to" not in context.keys():
-        #raise NotImplementedError
+        # raise NotImplementedError
         # forth_obj.go_to(temp_node)
         return temp_var
 

@@ -666,9 +666,7 @@ def test_80():
 
 
 def test_81():
-    with uproot.open(
-        skhep_testdata.data_path("uproot-HZZ-objects.root")
-    ) as file:
+    with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root")) as file:
         branch = file["events/MET"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         py = branch.array(interp, library="np", entry_stop=2)

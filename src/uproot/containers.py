@@ -783,8 +783,8 @@ in file {}""".format(
                         )
                     )
                     if helper_obj.is_forth():
-                        forth_obj.go_to(temp['content'])
-                        #print(forth_obj._prev_node, "UOUOUO")
+                        forth_obj.go_to(temp["content"])
+                        # print(forth_obj._prev_node, "UOUOUO")
 
                 # if helper_obj.is_forth():
                 #    forth_obj.go_to(temp)
