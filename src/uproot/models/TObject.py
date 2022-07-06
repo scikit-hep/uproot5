@@ -5,13 +5,12 @@ This module defines a versionless model for ``TObject``.
 """
 
 
+import json
 import struct
 
 import numpy
 
 import uproot
-
-import json
 
 _tobject_format1 = struct.Struct(">h")
 _tobject_format2 = struct.Struct(">II")
@@ -31,7 +30,7 @@ class Model_TObject(uproot.model.Model):
         start_index = cursor._index
         if helper_obj.is_forth():
             forth_obj = helper_obj.get_gen_obj()
-            #raise NotImplementedError
+            # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -67,12 +66,13 @@ in file {}""".format(
                 0,
                 {},
             )
+
     writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
         out.append(b"\x00\x01" + _tobject_format2.pack(0, tobject_flags))
 
-    @ classmethod
+    @classmethod
     def strided_interpretation(
         cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):

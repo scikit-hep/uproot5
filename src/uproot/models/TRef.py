@@ -120,7 +120,7 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         if helper_obj.is_forth():
             awkward = uproot.extras.awkward()  # noqa:F841
             forth_obj = helper_obj.get_gen_obj()
-            #raise NotImplementedError
+            # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}

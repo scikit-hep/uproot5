@@ -63,7 +63,10 @@ class ForthGenerator:
                     else:
                         raise ValueError
                 elif "contents" in self.dummy_aform.keys():
-                    if len(self.dummy_aform["content"]) < self.dummy_aform["parameters"]["lencon"]:
+                    if (
+                        len(self.dummy_aform["content"])
+                        < self.dummy_aform["parameters"]["lencon"]
+                    ):
                         self.dummy_aform["contents"].append(aform)
                     else:
                         raise ValueError
@@ -102,7 +105,7 @@ class ForthGenerator:
         self.form_keys.append(key)
 
     def go_to(self, aform):
-        #aform["content"] = self.awkward_model
+        # aform["content"] = self.awkward_model
         self.awkward_model = aform
 
     def become(self, aform):
@@ -122,7 +125,10 @@ class ForthGenerator:
         self, name, precode, postcode, initcode, headercode, dtype, num_child, content
     ):
         if isinstance(self.awkward_model, dict):
-            if not bool(self.awkward_model["content"]) and self.awkward_model["content"] is not None:
+            if (
+                not bool(self.awkward_model["content"])
+                and self.awkward_model["content"] is not None
+            ):
                 temp_obj = {
                     "name": name,
                     "type": dtype,
@@ -246,5 +252,5 @@ class GenHelper:
 
 
 def convert_dtype(format):
-    if format == 'd':
+    if format == "d":
         return "float64"
