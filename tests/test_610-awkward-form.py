@@ -111,9 +111,9 @@ def test_awkward_array_tvector2_array_forth():
         interp = uproot.interpretation.identify.interpretation_of(tree, {}, False)
         interp._forth = True
         awk_data = tree.array(interp, library="ak")
-    assert awk_data[0]["fX"] == 5.912771224975586
-    assert awk_data[4]["fY"] == -1.3100523948669434
-    assert awk_data[1200]["fX"] == 1.9457910060882568
+    assert awk_data[0]["fX"] == pytest.approx(5.912771224975586)
+    assert awk_data[4]["fY"] == pytest.approx(-1.3100523948669434)
+    assert awk_data[1200]["fX"] == pytest.approx(1.9457910060882568)
 
 
 def test_awkward_vector_tstring():
