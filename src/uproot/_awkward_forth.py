@@ -5,9 +5,6 @@ This module defines utilities for adding components to the forth reader.
 """
 
 
-from pytz import NonExistentTimeError
-
-
 class ForthGenerator:
     """
     This class is passed through the Forth code generation, collecting Forth snippets and concatenating them at the end.
@@ -252,5 +249,13 @@ class GenHelper:
 
 
 def convert_dtype(format):
+    """Takes datatype codes from classses and returns the full datatype name.
+
+    Args:
+        format (string): The datatype in the dynamic class
+
+    Returns:
+        string: The datatype in words.
+    """
     if format == "d":
         return "float64"

@@ -56,7 +56,7 @@ in file {}""".format(
             if forth_obj.should_add_form():
                 temp_aform = '{"class": "RecordArray", "contents":{}, "parameters": {"__record__": "TObject"}}'
                 forth_obj.add_form(json.loads(temp_aform))
-            temp = forth_obj.add_node(
+            forth_obj.add_node(
                 "TObjext",
                 helper_obj.get_pre(),
                 helper_obj.get_post(),

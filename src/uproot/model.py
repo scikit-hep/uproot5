@@ -784,7 +784,7 @@ class Model:
                     cls.__name__
                 ):
                     if helper_obj.is_forth():
-                        temp = forth_obj.add_node(
+                        forth_obj.add_node(
                             "pass",
                             helper_obj.get_pre(),
                             helper_obj.get_post(),
@@ -824,7 +824,7 @@ class Model:
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
             if helper_obj.is_forth():
-                temp = forth_obj.add_node(
+                forth_obj.add_node(
                     "model828",
                     helper_obj.get_pre(),
                     helper_obj.get_post(),
@@ -1293,8 +1293,6 @@ class DispatchByVersion:
         """
         import uproot.deserialization
 
-        temp_node = None
-
         helper_obj = uproot._awkward_forth.GenHelper(context)
 
         if helper_obj.is_forth():
@@ -1311,7 +1309,7 @@ class DispatchByVersion:
         bytes_skipped = cursor._index - start_index
         if helper_obj.is_forth():
             helper_obj.add_to_pre(f"{bytes_skipped} stream skip \n")
-            temp_node = forth_obj.add_node(
+            forth_obj.add_node(
                 "Model1319",
                 helper_obj.get_pre(),
                 helper_obj.get_post(),

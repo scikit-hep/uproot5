@@ -164,7 +164,7 @@ in file {}""".format(
                 helper_obj.add_to_init(
                     f"0 part0-node{form_keys[1]}-offsets <- stack\n0 part0-node{form_keys[4]}-offsets <- stack\n"
                 )
-            temp = forth_obj.add_node(
+            forth_obj.add_node(
                 f"node{form_keys[0]}",
                 helper_obj.get_pre(),
                 helper_obj.get_post(),

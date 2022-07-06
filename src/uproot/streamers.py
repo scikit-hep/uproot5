@@ -1491,11 +1491,6 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
 
     def read_members(self, chunk, cursor, context, file):
 
-        helper_obj = uproot._awkward_forth.GenHelper(context)
-
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
-
         start = cursor.index
 
         self._bases.append(
