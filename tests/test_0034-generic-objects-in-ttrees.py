@@ -1379,7 +1379,7 @@ def test_awkward_map_int_struct():
         result = branch.array(library="ak")
         assert (
             str(awkward._v2.type(result))
-            == '1 * [var * (int64, BDSOutputROOTGeant4Data::ParticleInfo[name: string, charge: int64, mass: float64]), parameters={"__array__": "sorted_map"}]'
+            == '1 * [var * (int64, struct[{name: string, charge: int64, mass: float64}, parameters={"__record__": "BDSOutputROOTGeant4Data::ParticleInfo"}]), parameters={"__array__": "sorted_map"}]'
         )
         assert awkward._v2.to_list(result[0, "0"]) == [
             -1000020040,
