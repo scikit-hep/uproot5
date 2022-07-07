@@ -146,12 +146,9 @@ class Tree:
                             raise TypeError(
                                 f"not a NumPy dtype or an Awkward datashape: {branch_type!r}"
                             )
-                    # checking by class name to be Awkward v1/v2 insensitive
-                    if type(branch_datashape).__name__ == "ArrayType":
-                        if hasattr(branch_datashape, "content"):
-                            branch_datashape = branch_datashape.content
-                        else:
-                            branch_datashape = branch_datashape.type
+                    if isinstance(branch_datashape, awkward._v2.types.ArrayType):
+                        branch_datashape = branch_datashape.content
+
                     branch_dtype = self._branch_ak_to_np(branch_datashape)
 
             if branch_dict is not None:
@@ -198,12 +195,9 @@ class Tree:
                 elif parameters.get("__array__") == "bytes":
                     raise NotImplementedError("array of bytes")
 
-                # checking by class name to be Awkward v1/v2 insensitive
+                # 'awkward' is not in namespace
                 elif type(branch_datashape).__name__ == "ListType":
-                    if hasattr(branch_datashape, "content"):
-                        content = branch_datashape.content
-                    else:
-                        content = branch_datashape.type
+                    content = branch_datashape.content
 
                     counter_name = self._counter_name(branch_name)
                     counter_dtype = numpy.dtype(numpy.int32)
@@ -330,16 +324,12 @@ class Tree:
         self._key = None
 
     def _branch_ak_to_np(self, branch_datashape):
-        # checking by class name to be Awkward v1/v2 insensitive
         if type(branch_datashape).__name__ == "NumpyType":
             return numpy.dtype(branch_datashape.primitive)
         elif type(branch_datashape).__name__ == "PrimitiveType":
             return numpy.dtype(branch_datashape.dtype)
         elif type(branch_datashape).__name__ == "RegularType":
-            if hasattr(branch_datashape, "content"):
-                content = self._branch_ak_to_np(branch_datashape.content)
-            else:
-                content = self._branch_ak_to_np(branch_datashape.type)
+            content = self._branch_ak_to_np(branch_datashape.content)
             if content is None:
                 return None
             elif content.subdtype is None:
