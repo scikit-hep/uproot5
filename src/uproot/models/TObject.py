@@ -25,7 +25,6 @@ class Model_TObject(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        # raise NotImplementedError
         helper_obj = uproot._awkward_forth.GenHelper(context)
         start_index = cursor._index
         if helper_obj.is_forth():

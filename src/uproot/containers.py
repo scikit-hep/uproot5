@@ -48,11 +48,45 @@ def _content_cache_key(content):
 def _read_nested(
     model, length, chunk, cursor, context, file, selffile, parent, header=True
 ):
+    helper_obj = uproot._awkward_forth.GenHelper(context)
+
+    if helper_obj.is_forth():
+        forth_obj = helper_obj.get_gen_obj()
+
     if isinstance(model, numpy.dtype):
+        symbol = uproot._awkward_forth.symbol_dict.get(model)
+        if symbol is None and helper_obj.is_forth():
+            raise TypeError("Cannot be awkward")
+        if helper_obj.is_forth():
+            key = forth_obj.get_keys(1)
+            form_key = f"part0-node{key}-data"
+            helper_obj.add_to_header(
+                f"output part0-node{key}-data {uproot._awkward_forth.convert_dtype(symbol)}\n"
+            )
+            helper_obj.add_to_pre(f"stream #!{symbol}-> part0-node{key}-data\n")
+            if forth_obj.should_add_form():
+                forth_obj.add_form_key(form_key)
+                forth_obj.add_form(
+                    {
+                        "class": "NumpyArray",
+                        "primitive": f"{uproot._awkward_forth.convert_dtype(symbol)}",
+                        "form_key": f"node{key}",
+                    }
+                )
+            temp = forth_obj.add_node(
+                f"node{key}",
+                helper_obj.get_pre(),
+                helper_obj.get_post(),
+                helper_obj.get_init(),
+                helper_obj.get_header(),
+                "i64",
+                1,
+                None,
+            )
+            forth_obj.go_to(temp)
         return cursor.array(chunk, length, model, context)
 
     else:
-
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             for i in range(length):
@@ -1079,9 +1113,9 @@ class AsVector(AsContainer):
                 helper_obj.add_to_header(f"output part0-node{key}-offsets int64\n")
                 helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\n")
                 helper_obj.add_to_pre(
-                    f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n0 do \n"
+                    f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n"
                 )
-                helper_obj.add_to_post("loop\n")
+                # helper_obj.add_to_post("loop\n")
                 if forth_obj.should_add_form():
                     forth_obj.add_form_key(form_key)
                     if self._header:
@@ -1090,6 +1124,9 @@ class AsVector(AsContainer):
                         temp_bool = "false"
                     temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
                     forth_obj.add_form(json.loads(temp_aform))
+                if not isinstance(self._values, numpy.dtype):
+                    helper_obj.add_to_pre("0 do\n")
+                    helper_obj.add_to_post("loop\n")
                 temp = forth_obj.add_node(
                     f"node{key}",
                     helper_obj.get_pre(),
@@ -1359,7 +1396,10 @@ class AsMap(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # @aryan26roy: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
+        # helper_obj = uproot._awkward_forth.GenHelper(context)
 
+        # if helper_obj.is_forth():
+        #     forth_obj = helper_obj.get_gen_obj()
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1368,6 +1408,9 @@ class AsMap(AsContainer):
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             cursor.skip(6)
+            # if helper_obj.is_forth():
+            #     temp_jump = cursor._index - start_cursor._index
+            #     helper_obj.add_to_pre(f"{temp_jump+6} stream skip\n")
         else:
             is_memberwise = False
 
@@ -1375,7 +1418,10 @@ class AsMap(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
 
             if _has_nested_header(self._keys) and header:
+                # helper_obj.add_to_pre(f"6 stream skip\n")
                 cursor.skip(6)
+            # if helper_obj.is_forth():
+            #     temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
             keys = _read_nested(
                 self._keys,
                 length,
@@ -1387,8 +1433,13 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-
+            # if helper_obj.is_forth():
+            #     keys_form = forth_obj.top_form
+            #     keys_model = forth_obj._prev_node
+            #     print(keys_form, keys_model, "OOKKOKOKOk")
+            #     temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
             if _has_nested_header(self._values) and header:
+                # keys_model["content"]["pre_code"].append(f"6 stream skip\n")
                 cursor.skip(6)
             values = _read_nested(
                 self._values,
@@ -1401,7 +1452,26 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-
+            # if helper_obj.is_forth():
+            #     values_form = forth_obj.top_form
+            #     values_model = forth_obj._prev_node
+            #     forth_obj.awkward_model = temp_node
+            #     forth_obj._prev_node = temp_node_top
+            #     forth_obj.aform = temp_form
+            #     forth_obj.top_form = temp_form_top
+            #     aform = {"class": "RecordArray", "contents": {"key": keys_form, "value": values_form}}
+            #     if forth_obj.should_add_form():
+            #         forth_obj.add_form(aform)
+            #     temp = forth_obj.add_node(
+            #         f"nodeMap",
+            #         helper_obj.get_pre(),
+            #         helper_obj.get_post(),
+            #         helper_obj.get_init(),
+            #         helper_obj.get_header(),
+            #         "i64",
+            #         1,
+            #         [keys_model, values_model],
+            #     )
             out = STLMap(keys, values)
 
             if self._header and header:

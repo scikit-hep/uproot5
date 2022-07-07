@@ -4,6 +4,15 @@
 This module defines utilities for adding components to the forth reader.
 """
 
+import numpy as np
+
+symbol_dict = {
+    np.dtype(">f4"): "f",
+    np.dtype(">f8"): "d",
+    np.dtype(">i8"): "q",
+    np.dtype(">i4"): "i",
+}
+
 
 class ForthGenerator:
     """
@@ -31,6 +40,17 @@ class ForthGenerator:
 
     def traverse_aform(self):
         self.aform = self.aform.content
+
+    def replace_form_and_model(self, form, model):
+        temp_node = self.awkward_model
+        temp_node_top = self._prev_node
+        self.awkward_model = model
+        self._prev_node = self.awkward_model
+        temp_form = self.aform
+        temp_form_top = self.top_form
+        self.top_form = None
+        self.aform = form
+        return temp_node, temp_node_top, temp_form, temp_form_top
 
     def should_add_form(self):
         if "content" in self.awkward_model.keys():
@@ -259,3 +279,9 @@ def convert_dtype(format):
     """
     if format == "d":
         return "float64"
+    elif format == "f":
+        return "float32"
+    elif format == "q":
+        return "int64"
+    elif format == "i":
+        return "int32"
