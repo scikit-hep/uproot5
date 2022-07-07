@@ -19,6 +19,7 @@ jobs:
             python-version: "3.6"
           - platform: "windows-latest"
             python-version: "3.7"
+      fail-fast: false
 
     runs-on: "${{ matrix.platform }}"
 
