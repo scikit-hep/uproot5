@@ -140,7 +140,7 @@ class Tree:
                     else:
                         try:
                             branch_datashape = awkward._v2.types.from_datashape(
-                                branch_type
+                                branch_type, highlevel=False
                             )
                         except Exception:
                             raise TypeError(

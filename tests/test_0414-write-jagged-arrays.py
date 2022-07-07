@@ -21,9 +21,11 @@ def test_awkward_as_numpy(tmp_path):
         fout.mktree(
             "tree",
             {
-                "b1": awkward._v2.types.from_datashape("int32"),
-                "b2": awkward._v2.types.from_datashape("2 * float64"),
-                "b3": awkward._v2.types.from_datashape("2 * 3 * float64"),
+                "b1": awkward._v2.types.from_datashape("int32", highlevel=False),
+                "b2": awkward._v2.types.from_datashape("2 * float64", highlevel=False),
+                "b3": awkward._v2.types.from_datashape(
+                    "2 * 3 * float64", highlevel=False
+                ),
                 "b4": awkward._v2.Array([1.1, 2.2, 3.3]).type,
             },
         )
@@ -44,7 +46,7 @@ def test_awkward_record(tmp_path):
             {
                 "b1": "int32",
                 "b2": awkward._v2.types.from_datashape(
-                    '{"x": float64, "y": 3 * float64}'
+                    '{"x": float64, "y": 3 * float64}', highlevel=False
                 ),
             },
         )
@@ -190,7 +192,9 @@ def test_awkward_jagged_metadata(tmp_path):
             "tree",
             {
                 "b1": "int64",
-                "b2": awkward._v2.types.from_datashape("var * float64"),
+                "b2": awkward._v2.types.from_datashape(
+                    "var * float64", highlevel=False
+                ),
             },
         )
 
@@ -227,7 +231,7 @@ def test_awkward_jagged_record_metadata(tmp_path):
             {
                 "b1": "int64",
                 "b2": awkward._v2.types.from_datashape(
-                    'var * {"x": float64, "y": int8}'
+                    'var * {"x": float64, "y": int8}', highlevel=False
                 ),
             },
         )
