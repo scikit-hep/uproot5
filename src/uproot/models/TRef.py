@@ -80,7 +80,11 @@ in file {}""".format(
             contents["@other2"] = uproot._util.awkward_form(
                 numpy.dtype("u4"), file, context
             )
-        return awkward.forms.RecordForm(contents, parameters={"__record__": "TRef"})
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TRef"},
+        )
 
 
 _trefarray_format1 = struct.Struct(">i")
@@ -132,21 +136,21 @@ in file {}""".format(
 
             helper_obj.add_to_pre("10 stream skip\n")
             helper_obj.add_to_pre(
-                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{form_keys[1]}-offsets +<- stack stream #!B-> part0-node{form_keys[2]}-data\n"
+                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{form_keys[1]}-offsets +<- stack stream #!B-> node{form_keys[2]}-data\n"
             )
             helper_obj.add_to_pre(
-                f"stream !I-> stack dup part0-node{form_keys[3]}-data <- stack\n"
+                f"stream !I-> stack dup node{form_keys[3]}-data <- stack\n"
             )
             helper_obj.add_to_pre("6 stream skip\n")
             helper_obj.add_to_pre(
-                f"dup part0-node{form_keys[4]}-offsets +<- stack stream #!I-> part0-node{form_keys[5]}-data\n"
+                f"dup node{form_keys[4]}-offsets +<- stack stream #!I-> node{form_keys[5]}-data\n"
             )
             keys = [
-                f"part0-node{form_keys[1]}-offsets",
-                f"part0-node{form_keys[3]}-data",
-                f"part0-node{form_keys[4]}-offsets",
-                f"part0-node{form_keys[2]}-data",
-                f"part0-node{form_keys[5]}-data",
+                f"node{form_keys[1]}-offsets",
+                f"node{form_keys[3]}-data",
+                f"node{form_keys[4]}-offsets",
+                f"node{form_keys[2]}-data",
+                f"node{form_keys[5]}-data",
             ]
             if forth_obj.should_add_form():
                 for elem in keys:
@@ -155,10 +159,10 @@ in file {}""".format(
                 temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[0]}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             helper_obj.add_to_header(
-                f"output part0-node{form_keys[1]}-offsets int64\noutput part0-node{form_keys[2]}-data uint8\noutput part0-node{form_keys[3]}-data int64\noutput part0-node{form_keys[4]}-offsets int64\noutput part0-node{form_keys[5]}-data int64\n"
+                f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int64\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int64\n"
             )
             helper_obj.add_to_init(
-                f"0 part0-node{form_keys[1]}-offsets <- stack\n0 part0-node{form_keys[4]}-offsets <- stack\n"
+                f"0 node{form_keys[1]}-offsets <- stack\n0 node{form_keys[4]}-offsets <- stack\n"
             )
             temp = forth_obj.add_node(
                 f"node{form_keys[0]}",
@@ -212,12 +216,14 @@ in file {}""".format(
             False, typename="TString"
         ).awkward_form(file, context)
         contents["fSize"] = uproot._util.awkward_form(numpy.dtype("i4"), file, context)
-        contents["refs"] = awkward.forms.ListOffsetForm(
+        contents["refs"] = awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(numpy.dtype("i4"), file, context),
         )
-        return awkward.forms.RecordForm(
-            contents, parameters={"__record__": "TRefArray"}
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TRefArray"},
         )
 
 

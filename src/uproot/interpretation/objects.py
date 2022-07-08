@@ -27,23 +27,6 @@ import uproot
 import uproot._awkward_forth
 
 
-def awkward_can_optimize(interpretation, form):
-    """
-    If True, the Awkward Array library can convert data of a given
-    :doc:`uproot.interpretation.Interpretation` and ``ak.forms.Form`` into
-    arrays without resorting to ``ak.from_iter`` (i.e. rapidly).
-
-    If ``awkward._connect._uproot`` cannot be imported, this function always
-    returns False.
-    """
-    try:
-        import awkward._connect._uproot
-    except ModuleNotFoundError:
-        return False
-    else:
-        return awkward._connect._uproot.can_optimize(interpretation, form)
-
-
 class AsObjects(uproot.interpretation.Interpretation):
     """
     Args:
@@ -147,29 +130,9 @@ class AsObjects(uproot.interpretation.Interpretation):
                 data, byte_offsets, basket, branch, context, cursor_offset, library
             )
         else:
-
-            output = None
-            if isinstance(library, uproot.interpretation.library.Awkward):
-                form = self.awkward_form(branch.file)
-
-                if awkward_can_optimize(self, form):
-                    import awkward._connect._uproot
-
-                    extra = {
-                        "interpretation": self,
-                        "basket": basket,
-                        "branch": branch,
-                        "context": context,
-                        "cursor_offset": cursor_offset,
-                    }
-                    output = awkward._connect._uproot.basket_array(
-                        form, data, byte_offsets, extra
-                    )
-
-            if output is None:
-                output = ObjectArray(
-                    self._model, branch, context, byte_offsets, data, cursor_offset
-                ).to_numpy()
+            output = ObjectArray(
+                self._model, branch, context, byte_offsets, data, cursor_offset
+            ).to_numpy()
 
         self.hook_after_basket_array(
             data=data,
@@ -216,19 +179,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                     "breadcrumbs": (),
                 },
             )
-            if awkward_can_optimize(self, self._form):
-                import awkward._connect._uproot
-
-                extra = {
-                    "interpretation": self,
-                    "basket": basket,
-                    "branch": branch,
-                    "context": context,
-                    "cursor_offset": cursor_offset,
-                }
-                output = awkward._connect._uproot.basket_array(
-                    self._form, data, byte_offsets, extra
-                )
 
         if not self._forth_vm_set:
             if not self._prereaddone:
@@ -292,7 +242,9 @@ class AsObjects(uproot.interpretation.Interpretation):
                     container[elem] = self._forth_vm.vm.output_Index64(elem)
                 else:
                     container[elem] = self._forth_vm.vm.output_NumpyArray(elem)
-            output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
+            output = awkward._v2.from_buffers(
+                self._form, len(byte_offsets) - 1, container
+            )
         self.hook_after_basket_array(
             data=data,
             byte_offsets=byte_offsets,
@@ -362,7 +314,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         ):
             assert isinstance(library, uproot.interpretation.library.Awkward)
             awkward = library.imported
-            output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
+            output = awkward._v2.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
             output = numpy.concatenate(trimmed)
 
@@ -500,7 +452,11 @@ def _strided_awkward_form(awkward, classname, members, file, context):
             )
         else:
             contents[name] = uproot._util.awkward_form(member, file, context)
-    return awkward.forms.RecordForm(contents, parameters={"__record__": classname})
+    return awkward._v2.forms.RecordForm(
+        list(contents.values()),
+        list(contents.keys()),
+        parameters={"__record__": classname},
+    )
 
 
 class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
@@ -598,7 +554,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         cname = uproot.model.classname_decode(self._model.__name__)[0]
         form = _strided_awkward_form(awkward, cname, self._members, file, context)
         for dim in reversed(self.inner_shape):
-            form = awkward.forms.RegularForm(form, dim)
+            form = awkward._v2.forms.RegularForm(form, dim)
         return form
 
     @property

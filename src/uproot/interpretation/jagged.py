@@ -117,7 +117,7 @@ class AsJagged(uproot.interpretation.Interpretation):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._content, file, context),
             parameters={"uproot": {"as": "jagged", "header_bytes": self._header_bytes}},

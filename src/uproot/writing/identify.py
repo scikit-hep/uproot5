@@ -58,7 +58,7 @@ def add_to_directory(obj, name, directory, streamers):
     if uproot._util.from_module(obj, "awkward"):
         import awkward
 
-        if isinstance(obj, awkward.Array):
+        if isinstance(obj, awkward._v2.Array):
             obj = {"": obj}
 
     if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
@@ -123,12 +123,12 @@ def add_to_directory(obj, name, directory, streamers):
                         except ImportError:
                             break
                         try:
-                            branch_array = awkward.from_iter(branch_array)
+                            branch_array = awkward._v2.from_iter(branch_array)
                         except Exception:
                             break
                         else:
                             data[branch_name] = branch_array
-                            metadata[branch_name] = awkward.type(branch_array)
+                            metadata[branch_name] = awkward._v2.type(branch_array)
 
                     else:
                         data[branch_name] = branch_array

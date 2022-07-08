@@ -229,7 +229,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         awkward_form = [
             "    @classmethod",
             "    def awkward_form(cls, file, context):",
-            "        from awkward.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
+            "        from awkward._v2.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
             "        if cls in context['breadcrumbs']:",
             "            raise uproot.interpretation.objects.CannotBeAwkward('classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded')",
             "        context['breadcrumbs'] = context['breadcrumbs'] + (cls,)",
@@ -280,7 +280,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         strided_interpretation.append("")
 
         awkward_form.append(
-            f"        return RecordForm(contents, parameters={{'__record__': {self.name!r} }})"
+            f"        return RecordForm(list(contents.values()), list(contents.keys()), parameters={{'__record__': {self.name!r} }})"
         )
         awkward_form.append("")
 
@@ -695,7 +695,10 @@ class Model_TStreamerBase(Model_TStreamerElement):
             f"        members.extend(file.class_named({self.name!r}, {self.base_version!r}).strided_interpretation(file, header, tobject_header, breadcrumbs).members)"
         )
         awkward_form.append(
-            f"        contents.update(file.class_named({self.name!r}, {self.base_version!r}).awkward_form(file,context).contents)"
+            f"        tmp_awkward_form = file.class_named({self.name!r}, {self.base_version!r}).awkward_form(file, context)"
+        )
+        awkward_form.append(
+            "        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))"
         )
 
         base_names_versions.append((self.name, self.base_version))
@@ -955,12 +958,12 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         if self.array_length == 0:
             if self.typename == "Double32_t":
                 awkward_form.append(
-                    f"        contents[{self.name!r}] = NumpyForm((), 8, 'd', parameters={{'uproot': {{'as': 'Double32'}}}})"
+                    f"        contents[{self.name!r}] = NumpyForm('float64', parameters={{'uproot': {{'as': 'Double32'}}}})"
                 )
 
             elif self.typename == "Float16_t":
                 awkward_form.append(
-                    f"        contents[{self.name!r}] = NumpyForm((), 4, 'f', parameters={{'uproot': {{'as': 'Float16'}}}})"
+                    f"        contents[{self.name!r}] = NumpyForm('float32', parameters={{'uproot': {{'as': 'Float16'}}}})"
                 )
 
             else:
