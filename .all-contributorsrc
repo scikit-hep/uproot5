@@ -360,10 +360,19 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Moelf",
+      "name": "Jerry Ling",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5306213?v=4",
+      "profile": "http://blog.jling.dev",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
-  "projectName": "uproot4",
+  "projectName": "uproot5",
   "projectOwner": "scikit-hep",
   "repoType": "github",
   "repoHost": "https://github.com",
