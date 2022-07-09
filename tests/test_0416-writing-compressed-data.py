@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-
 import os
 
 import numpy as np
@@ -267,8 +266,8 @@ def test_jaggedtree_ZLIB(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = ak.Array([[1, 2, 3], [], [4, 5]] * 10)
-    branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
+    branch1 = ak._v2.Array([[1, 2, 3], [], [4, 5]] * 10)
+    branch2 = ak._v2.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.ZLIB(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
@@ -291,8 +290,8 @@ def test_jaggedtree_LZMA(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = ak.Array([[1, 2, 3], [], [4, 5]] * 10)
-    branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
+    branch1 = ak._v2.Array([[1, 2, 3], [], [4, 5]] * 10)
+    branch2 = ak._v2.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.LZMA(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
@@ -315,8 +314,8 @@ def test_jaggedtree_LZ4(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = ak.Array([[1, 2, 3], [], [4, 5]] * 10)
-    branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
+    branch1 = ak._v2.Array([[1, 2, 3], [], [4, 5]] * 10)
+    branch2 = ak._v2.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.LZ4(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}
@@ -339,8 +338,8 @@ def test_jaggedtree_ZSTD(tmp_path):
 
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    branch1 = ak.Array([[1, 2, 3], [], [4, 5]] * 10)
-    branch2 = ak.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
+    branch1 = ak._v2.Array([[1, 2, 3], [], [4, 5]] * 10)
+    branch2 = ak._v2.Array([[1.1, 2.2, 3.3], [], [4.4, 5.5]] * 10)
 
     with uproot.recreate(newfile, compression=uproot.ZSTD(5)) as fout:
         fout["tree"] = {"branch1": branch1, "branch2": branch2}

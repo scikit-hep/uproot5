@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-
 import json
 import sys
 
@@ -710,7 +709,7 @@ def test_jagged_awkward():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/Ai2"] as branch:
         result = branch.array(interpretation)
-        assert awkward.to_list(result) == [
+        assert awkward._v2.to_list(result) == [
             [],
             [-15],
             [-15, -13],

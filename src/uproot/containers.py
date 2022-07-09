@@ -8,6 +8,7 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
 
+import json
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
@@ -15,6 +16,7 @@ from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 import numpy
 
 import uproot
+import uproot._awkward_forth
 
 _stl_container_size = struct.Struct(">I")
 _stl_object_type = numpy.dtype(object)
@@ -50,6 +52,7 @@ def _read_nested(
         return cursor.array(chunk, length, model, context)
 
     else:
+
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             for i in range(length):
@@ -147,8 +150,7 @@ class AsContainer:
             file (:doc:`uproot.reading.CommonFileMethods`): The file associated
                 with this interpretation's ``TBranch``.
             context (dict): Context for the Form-generation; defaults are
-                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
-                See below for context argument descriptions.
+                the remaining arguments below.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
@@ -285,13 +287,15 @@ class AsDynamic(AsContainer):
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
-            return awkward.forms.ListOffsetForm(
+            return awkward._v2.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
                 parameters={"uproot": {"as": "array", "header": self._header}},
             )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's tests aren't expected to enter here
+
         classname = cursor.string(chunk, context)
         cursor.skip(1)
         cls = file.class_named(classname)
@@ -408,9 +412,9 @@ class AsString(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
-            awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {
@@ -422,6 +426,16 @@ class AsString(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
+
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
+            keys = forth_obj.get_keys(2)
+            offsets_num = keys[0]
+            data_num = keys[1]
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -429,12 +443,24 @@ class AsString(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+            if helper_obj.is_forth():
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    helper_obj.add_to_pre(f"{temp_jump} stream skip")
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
+            if helper_obj.is_forth():
+                helper_obj.add_to_pre(
+                    f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data \n"
+                )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
+            if helper_obj.is_forth():
+                helper_obj.add_to_pre(
+                    f"stream I-> stack dup node{offsets_num}-offsets <- stack stream #B-> node{data_num}-data\n"
+                )
         else:
             raise AssertionError(repr(self._length_bytes))
 
@@ -449,6 +475,36 @@ class AsString(AsContainer):
                 file.file_path,
             )
 
+        if helper_obj.is_forth():
+            if forth_obj.should_add_form():
+                if self._header:
+                    temp_header = "true"
+                else:
+                    temp_header = "false"
+                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_header}}}}}, "form_key": "node{offsets_num}"}}'
+                forth_obj.add_form(json.loads(temp_aform))
+
+                form_keys = [
+                    f"node{data_num}-data",
+                    f"node{offsets_num}-offsets",
+                ]
+                for elem in form_keys:
+                    forth_obj.add_form_key(elem)
+            helper_obj.add_to_header(
+                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
+            )
+            helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            temp_form = forth_obj.add_node(
+                f"node{offsets_num}",
+                helper_obj.get_pre(),
+                helper_obj.get_post(),
+                helper_obj.get_init(),
+                helper_obj.get_header(),
+                "i64",
+                0,
+                None,
+            )
+            forth_obj.go_to(temp_form)
         return out
 
     def __eq__(self, other):
@@ -517,6 +573,8 @@ class AsPointer(AsContainer):
         raise uproot.interpretation.objects.CannotBeAwkward("arbitrary pointer")
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's 29,45,46,49,50 (Awkward Form discovered at read-time)
+
         return uproot.deserialization.read_object_any(
             chunk, cursor, context, file, selffile, parent
         )
@@ -600,8 +658,8 @@ class AsArray(AsContainer):
         awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
-            values_form = awkward.forms.RegularForm(values_form, dim)
-        return awkward.forms.ListOffsetForm(
+            values_form = awkward._v2.forms.RegularForm(values_form, dim)
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             values_form,
             parameters={
@@ -614,6 +672,14 @@ class AsArray(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's 01,02,23,24,25,26,27,28,30,51,52
+
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
+            offsets_num = forth_obj.get_keys(1)
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -621,7 +687,10 @@ class AsArray(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-
+            if helper_obj.is_forth():
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
             if is_memberwise:
                 raise NotImplementedError(
                     """memberwise serialization of {}
@@ -658,7 +727,10 @@ in file {}""".format(
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
         else:
+
             if self._speedbump:
+                if helper_obj.is_forth():
+                    helper_obj.add_to_pre("1 stream skip\n")
                 cursor.skip(1)
 
             if isinstance(self._values, numpy.dtype):
@@ -666,13 +738,51 @@ in file {}""".format(
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
+
+                if helper_obj.is_forth():
+                    helper_obj.add_to_header(
+                        f"output node{offsets_num}-offsets int64\n"
+                    )
+                    form_key = f"node{offsets_num}-offsets"
+                    helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+                    helper_obj.add_to_pre(
+                        "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
+                    )
+                    helper_obj.add_to_post(
+                        f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
+                    )
+                    if forth_obj.should_add_form():
+                        forth_obj.add_form_key(form_key)
+                        if self._header:
+                            temp_bool = "true"
+                        else:
+                            temp_bool = "false"
+                        temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                        forth_obj.add_form(json.loads(temp_aform))
+                        temp = forth_obj.add_node(
+                            f"node{offsets_num}",
+                            helper_obj.get_pre(),
+                            helper_obj.get_post(),
+                            helper_obj.get_init(),
+                            helper_obj.get_header(),
+                            "i64",
+                            1,
+                            {},
+                        )
+
+                if cursor.index >= chunk.stop and helper_obj.is_forth():
+                    forth_obj.var_set = True
                 out = []
+
                 while cursor.index < chunk.stop:
                     out.append(
                         self._values.read(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
+
+                if helper_obj.is_forth():
+                    forth_obj.go_to(temp)
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
 
@@ -724,13 +834,15 @@ class AsRVec(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "RVec", "header": self._header}},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's (none! untested! but it's just like AsVector)
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -870,13 +982,20 @@ class AsVector(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
+
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -884,13 +1003,22 @@ class AsVector(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+            if helper_obj.is_forth():
+                temp_jump = cursor._index - start_cursor._index
+                if temp_jump != 0:
+                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
 
         # Note: self._values can also be a NumPy dtype, and not necessarily a class
         # (e.g. type(self._values) == type)
         _value_typename = _content_typename(self._values)
+
         if is_memberwise:
+            if helper_obj.is_forth():
+                raise NotImplementedError(
+                    "Forth Reader does not support memberwise serialization."
+                )
             # let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
@@ -939,9 +1067,44 @@ class AsVector(AsContainer):
         else:
             length = cursor.field(chunk, _stl_container_size, context)
 
+            if helper_obj.is_forth():
+                key = forth_obj.get_keys(1)
+
+                form_key = f"node{key}-offsets"
+                helper_obj.add_to_header(f"output node{key}-offsets int64\n")
+                helper_obj.add_to_init(f"0 node{key}-offsets <- stack\n")
+                helper_obj.add_to_pre(
+                    f"stream !I-> stack\ndup node{key}-offsets +<- stack\n0 do \n"
+                )
+                helper_obj.add_to_post("loop\n")
+                if forth_obj.should_add_form():
+                    forth_obj.add_form_key(form_key)
+                    if self._header:
+                        temp_bool = "true"
+                    else:
+                        temp_bool = "false"
+                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                    forth_obj.add_form(json.loads(temp_aform))
+                temp = forth_obj.add_node(
+                    f"node{key}",
+                    helper_obj.get_pre(),
+                    helper_obj.get_post(),
+                    helper_obj.get_init(),
+                    helper_obj.get_header(),
+                    "i64",
+                    1,
+                    {},
+                )
+
+            if length == 0 and helper_obj.is_forth():
+                forth_obj.var_set = True
+
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
+
+        if helper_obj.is_forth():
+            forth_obj.go_to(temp)
 
         out = STLVector(values)
 
@@ -1025,7 +1188,7 @@ class AsSet(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._keys, file, context),
             parameters={
@@ -1035,6 +1198,8 @@ class AsSet(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's 62,63,64,65,69,70,74,75,77
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1174,13 +1339,14 @@ class AsMap(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
-            awkward.forms.RecordForm(
+            awkward._v2.forms.RecordForm(
                 (
                     uproot._util.awkward_form(self._keys, file, context),
                     uproot._util.awkward_form(self._values, file, context),
-                )
+                ),
+                None,
             ),
             parameters={
                 "__array__": "sorted_map",
@@ -1189,6 +1355,8 @@ class AsMap(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+        # @aryan26roy: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
+
         if self._header and header:
             start_cursor = cursor.copy()
             (

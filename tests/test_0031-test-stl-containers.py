@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-
 import json
 import sys
 
@@ -13,6 +12,31 @@ from uproot.containers import AsMap, AsSet, AsString, AsVector
 from uproot.interpretation.jagged import AsJagged
 from uproot.interpretation.numerical import AsDtype
 from uproot.interpretation.objects import AsObjects
+
+
+@pytest.mark.skip(
+    reason="Implement non-memberwise std::map; we have a sample (map<string,double>)"
+)
+def test_nonmemberwise_asmap():
+    with uproot.open(skhep_testdata.data_path("uproot-issue243.root")) as file:
+        branch = file["triggerList/triggerMap"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        py = branch.array(library="np", entry_stop=2)
+
+    with uproot.open(skhep_testdata.data_path("uproot-issue-268.root")) as file:
+        branch = file["aTree/VtxTracks/channels_"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        py = branch.array(library="np", entry_stop=2)
+
+    with uproot.open(skhep_testdata.data_path("uproot-issue-268.root")) as file:
+        branch = file["aTree/VtxTracks2TofHits/match_"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        py = branch.array(library="np", entry_stop=2)
+
+    with uproot.open(skhep_testdata.data_path("uproot-issue-268.root")) as file:
+        branch = file["aTree/VtxTracks2TofHits/match_inverted_"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        py = branch.array(library="np", entry_stop=2)
 
 
 def test_typename():

@@ -56,7 +56,26 @@ class Interpretation:
         """
         raise AssertionError
 
-    def awkward_form(self, file, context):
+    @staticmethod
+    def _make_context(context, index_format, header, tobject_header, breadcrumbs):
+        if context is None:
+            context = {}
+        context["index_format"] = index_format
+        context["header"] = header
+        context["tobject_header"] = tobject_header
+        context["breadcrumbs"] = breadcrumbs
+
+        return context
+
+    def awkward_form(
+        self,
+        file,
+        context=None,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
         """
         Args:
             file (:doc:`uproot.reading.ReadOnlyFile`): File to use to generate
@@ -64,8 +83,7 @@ class Interpretation:
                 :ref:`uproot.reading.ReadOnlyFile.streamers` and ``file_path``
                 for error messages.
             context (dict): Context for the Form-generation; defaults are
-                ``{"index_format": "i64", "header": False, "tobject_header": True, "breadcrumbs": ()}``.
-                See below for context argument descriptions.
+                the remaining arguments below.
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.

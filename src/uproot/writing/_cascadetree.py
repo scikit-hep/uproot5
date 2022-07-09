@@ -132,21 +132,23 @@ class Tree:
                         raise TypeError(
                             f"not a NumPy dtype and 'awkward' cannot be imported: {branch_type!r}"
                         ) from err
-                    if isinstance(branch_type, awkward.types.Type):
+                    if isinstance(
+                        branch_type,
+                        (awkward._v2.types.Type, awkward._v2.types.ArrayType),
+                    ):
                         branch_datashape = branch_type
                     else:
                         try:
-                            branch_datashape = awkward.types.from_datashape(branch_type)
+                            branch_datashape = awkward._v2.types.from_datashape(
+                                branch_type, highlevel=False
+                            )
                         except Exception:
                             raise TypeError(
                                 f"not a NumPy dtype or an Awkward datashape: {branch_type!r}"
                             )
-                    # checking by class name to be Awkward v1/v2 insensitive
-                    if type(branch_datashape).__name__ == "ArrayType":
-                        if hasattr(branch_datashape, "content"):
-                            branch_datashape = branch_datashape.content
-                        else:
-                            branch_datashape = branch_datashape.type
+                    if isinstance(branch_datashape, awkward._v2.types.ArrayType):
+                        branch_datashape = branch_datashape.content
+
                     branch_dtype = self._branch_ak_to_np(branch_datashape)
 
             if branch_dict is not None:
@@ -193,12 +195,9 @@ class Tree:
                 elif parameters.get("__array__") == "bytes":
                     raise NotImplementedError("array of bytes")
 
-                # checking by class name to be Awkward v1/v2 insensitive
+                # 'awkward' is not in namespace
                 elif type(branch_datashape).__name__ == "ListType":
-                    if hasattr(branch_datashape, "content"):
-                        content = branch_datashape.content
-                    else:
-                        content = branch_datashape.type
+                    content = branch_datashape.content
 
                     counter_name = self._counter_name(branch_name)
                     counter_dtype = numpy.dtype(numpy.int32)
@@ -216,7 +215,7 @@ class Tree:
                             contents = content.contents
                         else:
                             contents = content.fields()
-                        keys = content.keys
+                        keys = content.fields
                         if callable(keys):
                             keys = keys()
                         if keys is None:
@@ -266,7 +265,7 @@ class Tree:
                         contents = branch_datashape.contents
                     else:
                         contents = branch_datashape.fields()
-                    keys = branch_datashape.keys
+                    keys = branch_datashape.fields
                     if callable(keys):
                         keys = keys()
                     if keys is None:
@@ -325,16 +324,12 @@ class Tree:
         self._key = None
 
     def _branch_ak_to_np(self, branch_datashape):
-        # checking by class name to be Awkward v1/v2 insensitive
         if type(branch_datashape).__name__ == "NumpyType":
             return numpy.dtype(branch_datashape.primitive)
         elif type(branch_datashape).__name__ == "PrimitiveType":
             return numpy.dtype(branch_datashape.dtype)
         elif type(branch_datashape).__name__ == "RegularType":
-            if hasattr(branch_datashape, "content"):
-                content = self._branch_ak_to_np(branch_datashape.content)
-            else:
-                content = self._branch_ak_to_np(branch_datashape.type)
+            content = self._branch_ak_to_np(branch_datashape.content)
             if content is None:
                 return None
             elif content.subdtype is None:
@@ -524,16 +519,16 @@ class Tree:
                     f"an Awkward Array was provided, but 'awkward' cannot be imported: {data!r}"
                 ) from err
 
-            if isinstance(data, awkward.Array):
+            if isinstance(data, awkward._v2.Array):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
                     provided = {
                         self._counter_name(""): numpy.asarray(
-                            awkward.num(data, axis=1), dtype=">u4"
+                            awkward._v2.num(data, axis=1), dtype=">u4"
                         )
                     }
                 else:
                     provided = {}
-                for k, v in zip(awkward.fields(data), awkward.unzip(data)):
+                for k, v in zip(awkward._v2.fields(data), awkward._v2.unzip(data)):
                     provided[k] = v
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
@@ -568,7 +563,7 @@ class Tree:
                                 raise TypeError(
                                     f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
                                 ) from err
-                            v = awkward.from_iter(v)
+                            v = awkward._v2.from_iter(v)
 
                     if getattr(v, "dtype", None) == numpy.dtype("O"):
                         try:
@@ -577,7 +572,7 @@ class Tree:
                             raise TypeError(
                                 f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
                             ) from err
-                        v = awkward.from_iter(v)
+                        v = awkward._v2.from_iter(v)
 
                 if uproot._util.from_module(v, "awkward"):
                     try:
@@ -587,12 +582,12 @@ class Tree:
                             f"an Awkward Array was provided, but 'awkward' cannot be imported: {k}: {type(v)}"
                         ) from err
                     if (
-                        isinstance(v, awkward.Array)
+                        isinstance(v, awkward._v2.Array)
                         and v.ndim > 1
                         and not v.layout.purelist_isregular
                     ):
                         kk = self._counter_name(k)
-                        vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
+                        vv = numpy.asarray(awkward._v2.num(v, axis=1), dtype=">u4")
                         if kk in provided:
                             if not numpy.array_equal(vv, provided[kk]):
                                 raise ValueError(
@@ -702,39 +697,12 @@ class Tree:
                         f"a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {branch_name}: {branch_array!r}"
                     ) from err
                 layout = branch_array.layout
-                while not isinstance(
-                    layout,
-                    (
-                        awkward.layout.ListOffsetArray32,
-                        awkward.layout.ListOffsetArrayU32,
-                        awkward.layout.ListOffsetArray64,
-                    ),
-                ):
-                    if isinstance(layout, awkward.partition.PartitionedArray):
-                        layout = awkward.concatenate(layout.partitions, highlevel=False)
-
-                    elif isinstance(
-                        layout,
-                        (
-                            awkward.layout.IndexedArray32,
-                            awkward.layout.IndexedArrayU32,
-                            awkward.layout.IndexedArray64,
-                        ),
-                    ):
+                while not isinstance(layout, awkward._v2.contents.ListOffsetArray):
+                    if isinstance(layout, awkward._v2.contents.IndexedArray):
                         layout = layout.project()
 
-                    elif isinstance(
-                        layout,
-                        (
-                            awkward.layout.ListArray32,
-                            awkward.layout.ListArrayU32,
-                            awkward.layout.ListArray64,
-                        ),
-                    ):
+                    elif isinstance(layout, awkward._v2.contents.ListArray):
                         layout = layout.toListOffsetArray64(False)
-
-                    elif isinstance(layout, awkward.layout.VirtualArray):
-                        layout = layout.array
 
                     else:
                         raise AssertionError(
@@ -751,26 +719,16 @@ class Tree:
                     content = content[: offsets[-1]]
 
                 shape = [len(content)]
-                while not isinstance(content, awkward.layout.NumpyArray):
-                    if isinstance(
-                        content,
-                        (
-                            awkward.layout.IndexedArray32,
-                            awkward.layout.IndexedArrayU32,
-                            awkward.layout.IndexedArray64,
-                        ),
-                    ):
+                while not isinstance(content, awkward._v2.contents.NumpyArray):
+                    if isinstance(content, awkward._v2.contents.IndexedArray):
                         content = content.project()
 
-                    elif isinstance(content, awkward.layout.EmptyArray):
+                    elif isinstance(content, awkward._v2.contents.EmptyArray):
                         content = content.toNumpyArray()
 
-                    elif isinstance(content, awkward.layout.RegularArray):
+                    elif isinstance(content, awkward._v2.contents.RegularArray):
                         shape.append(content.size)
                         content = content.content
-
-                    elif isinstance(layout, awkward.layout.VirtualArray):
-                        content = content.array
 
                     else:
                         raise AssertionError(

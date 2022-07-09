@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-
 import numpy
 import pytest
 import skhep_testdata
@@ -23,8 +22,8 @@ def test_concatenate_awkward():
         "6.20.04", "*"
     )
     arrays = uproot.concatenate({files: "sample"}, ["i8", "f8"], library="ak")
-    assert isinstance(arrays, awkward.Array)
-    assert set(awkward.fields(arrays)) == {"i8", "f8"}
+    assert isinstance(arrays, awkward._v2.Array)
+    assert set(awkward._v2.fields(arrays)) == {"i8", "f8"}
     assert len(arrays) == 420
 
 

@@ -249,12 +249,23 @@ class AsDtype(Numerical):
     def numpy_dtype(self):
         return self._to_dtype
 
-    def awkward_form(self, file, context):
+    def awkward_form(
+        self,
+        file,
+        context=None,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
+        context = self._make_context(
+            context, index_format, header, tobject_header, breadcrumbs
+        )
         awkward = uproot.extras.awkward()
         d, s = _dtype_shape(self._to_dtype)
         out = uproot._util.awkward_form(d, file, context)
         for size in s[::-1]:
-            out = awkward.forms.RegularForm(out, size)
+            out = awkward._v2.forms.RegularForm(out, size)
         return out
 
     @property
@@ -624,12 +635,21 @@ class AsDouble32(TruncatedNumerical):
     def typename(self):
         return "Double32_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
-    def awkward_form(self, file, context):
+    def awkward_form(
+        self,
+        file,
+        context=None,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
+        context = self._make_context(
+            context, index_format, header, tobject_header, breadcrumbs
+        )
         awkward = uproot.extras.awkward()
-        out = awkward.forms.NumpyForm(
-            (),
-            8,
-            "d",
+        out = awkward._v2.forms.NumpyForm(
+            "float64",
             parameters={
                 "uproot": {
                     "as": "Double32",
@@ -640,7 +660,7 @@ class AsDouble32(TruncatedNumerical):
             },
         )
         for size in self._to_dims[::-1]:
-            out = awkward.forms.RegularForm(out, size)
+            out = awkward._v2.forms.RegularForm(out, size)
         return out
 
 
@@ -683,12 +703,21 @@ class AsFloat16(TruncatedNumerical):
     def typename(self):
         return "Float16_t" + "".join("[" + str(dim) + "]" for dim in self._to_dims)
 
-    def awkward_form(self, file, context):
+    def awkward_form(
+        self,
+        file,
+        context=None,
+        index_format="i64",
+        header=False,
+        tobject_header=True,
+        breadcrumbs=(),
+    ):
+        context = self._make_context(
+            context, index_format, header, tobject_header, breadcrumbs
+        )
         awkward = uproot.extras.awkward()
-        out = awkward.forms.NumpyForm(
-            (),
-            4,
-            "f",
+        out = awkward._v2.forms.NumpyForm(
+            "float32",
             parameters={
                 "uproot": {
                     "as": "Float16",
@@ -699,5 +728,5 @@ class AsFloat16(TruncatedNumerical):
             },
         )
         for size in self._to_dims[::-1]:
-            out = awkward.forms.RegularForm(out, size)
+            out = awkward._v2.forms.RegularForm(out, size)
         return out
