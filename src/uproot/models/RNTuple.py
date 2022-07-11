@@ -8,10 +8,11 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 import queue
 import struct
 
+import awkward as ak
+import numpy
+
 import uproot
 
-import numpy
-import awkward as ak
 # https://github.com/root-project/root/blob/e9fa243af91217e9b108d828009c81ccba7666b5/tree/ntuple/v7/inc/ROOT/RMiniFile.hxx#L65
 _rntuple_format1 = struct.Struct(">iIIQIIQIIQ")
 
@@ -20,8 +21,20 @@ _rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 
-_rntuple_col_types = {1:"u64", 2:"u32", 4:"uint8", 5:"char", 7:"float64",
-        8: "float32", 9:"float16", 10:"int64", 11:"int32", 12:"int16", 13:"int8"}
+_rntuple_col_types = {
+    1: "u64",
+    2: "u32",
+    4: "uint8",
+    5: "char",
+    7: "float64",
+    8: "float32",
+    9: "float16",
+    10: "int64",
+    11: "int32",
+    12: "int16",
+    13: "int8",
+}
+
 
 def _renamemeA(chunk, cursor, context):
     env_version, min_version = cursor.fields(chunk, _rntuple_frame_format, context)
@@ -103,8 +116,13 @@ class FieldRecordReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData("FieldRecordFrame")
-        out.field_version, out.type_version, out.parent_field_id, \
-        out.struct_role, out.flags = cursor.fields(chunk, self._field_description, context)
+        (
+            out.field_version,
+            out.type_version,
+            out.parent_field_id,
+            out.struct_role,
+            out.flags,
+        ) = cursor.fields(chunk, self._field_description, context)
 
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for i in range(4)
@@ -118,7 +136,9 @@ class ColumnRecordReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData("ColumnRecordFrame")
-        out.type, out.nbits, out.field_id, out.flags = cursor.fields(chunk, self._column_record_format, context)
+        out.type, out.nbits, out.field_id, out.flags = cursor.fields(
+            chunk, self._column_record_format, context
+        )
         return out
 
 
@@ -404,14 +424,16 @@ in file {}""".format(
                 )
                 PageLink().read(decomp_chunk, cursor, context)
         return self.column_innerlist_dict
-    
+
     def col_form(self, field_id):
         for cr in self.header.column_records:
             if cr.field_id == field_id:
                 form_key = f"col-{cr.field_id}"
-                if cr.type > 2: # data column
-                    return ak._v2.forms.NumpyForm(_rntuple_col_types[cr.type], form_key=form_key)
-                else: # offset index column
+                if cr.type > 2:  # data column
+                    return ak._v2.forms.NumpyForm(
+                        _rntuple_col_types[cr.type], form_key=form_key
+                    )
+                else:  # offset index column
                     return form_key
 
     def field_form(self, this_id, seen):
@@ -425,9 +447,14 @@ in file {}""".format(
             return self.col_form(this_id)
         elif fr.struct_role == 1:
             keyname = self.col_form(this_id)
-            child_id = next(filter(lambda i: frs[i].parent_field_id == this_id, range(this_id+1, len(frs))))
+            child_id = next(
+                filter(
+                    lambda i: frs[i].parent_field_id == this_id,
+                    range(this_id + 1, len(frs)),
+                )
+            )
             inner = self.field_form(child_id, seen)
-            return ak._v2.forms.ListOffsetForm("u32", inner, form_key = keyname)
+            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=keyname)
         elif fr.struct_role == 2:
             # struct field
             newids = []
@@ -453,11 +480,7 @@ in file {}""".format(
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
         # return recordlist
-        form = ak._v2.forms.RecordForm(
-                recordlist,
-                topnames,
-                form_key = "toplevel"
-                )
+        form = ak._v2.forms.RecordForm(recordlist, topnames, form_key="toplevel")
         return form
 
 
@@ -494,7 +517,6 @@ class InnerListLocator:
         return self.page_descs[idx]
 
 
-
 class PageLinkInner:
     _frame_header = struct.Struct("<ii")
 
@@ -502,17 +524,22 @@ class PageLinkInner:
         out = MetaData(type(self).__name__)
         local_cursor = cursor.copy()
         # delay reading inner list of page descriptions
-        future_cursor = cursor.copy() 
-        num_bytes, num_pages = local_cursor.fields(
-            chunk, self._frame_header, context
-        )
+        future_cursor = cursor.copy()
+        num_bytes, num_pages = local_cursor.fields(chunk, self._frame_header, context)
         assert num_bytes < 0, f"{num_bytes= !r}"
         cursor.skip(-num_bytes)
         d = context["column_innerlist_dict"]
         for col_record, summary in zip(
             context["column_records"], context["cluster_summaries"]
         ):
-            locator = InnerListLocator(chunk, future_cursor, context, num_pages, summary, nbits = col_record.nbits)
+            locator = InnerListLocator(
+                chunk,
+                future_cursor,
+                context,
+                num_pages,
+                summary,
+                nbits=col_record.nbits,
+            )
 
 
 class PageLink:
