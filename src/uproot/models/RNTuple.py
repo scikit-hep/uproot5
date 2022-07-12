@@ -379,12 +379,12 @@ in file {}""".format(
 
         return self._footer
 
-    #FIXME make it non-eager
+    # FIXME make it non-eager
     def col_container(self):
         return Container(self)
 
     def which_colgroup(self, ncol):
-        return 0 #FIXME haven't seen file with column group yet
+        return 0  # FIXME haven't seen file with column group yet
 
     def read_col_page(self, ncol, npage):
         ngroup = self.which_colgroup(ncol)
@@ -394,7 +394,7 @@ in file {}""".format(
         dt_str = _rntuple_col_types[dtype_byte]
         res = self.read_pagedesc(desc, numpy.dtype(dt_str))
         if dtype_byte <= 2:
-            res = numpy.insert(res, 0, 0) # for offsets
+            res = numpy.insert(res, 0, 0)  # for offsets
         return res
 
     def read_pagelist(self, listdesc, npage):
@@ -447,7 +447,7 @@ in file {}""".format(
                     return ak._v2.forms.NumpyForm(
                         _rntuple_col_types[cr.type], form_key=form_key
                     )
-                else: # offset index column
+                else:  # offset index column
                     return form_key
 
     def field_form(self, this_id, seen):
@@ -499,7 +499,6 @@ in file {}""".format(
         return form
 
 
-
 class Container:
     def __init__(self, rntuple):
         self._dict = {}
@@ -508,7 +507,7 @@ class Container:
             self._dict[f"field-{n}"] = rntuple.read_col_page(i, 0)
 
     def __getitem__(self, name):
-        l = name.rfind('-')
+        l = name.rfind("-")
         internal_name = name[:l]
         return self._dict[internal_name]
 
