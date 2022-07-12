@@ -380,7 +380,9 @@ in file {}""".format(
         return self._footer
 
     def read_pagelist(self, listdesc, nthpage):
-        return listdesc.reader.read(listdesc.chunk, listdesc.cursor, listdesc.context)[nthpage]
+        return listdesc.reader.read(listdesc.chunk, listdesc.cursor, listdesc.context)[
+            nthpage
+        ]
 
     def read_pagedesc(self, desc, dtype):
         num_elements = desc.num_elements
@@ -413,7 +415,9 @@ in file {}""".format(
                 decomp_chunk = self.read_locator(
                     loc, link.env_uncomp_size, cursor, context
                 )
-                self.column_innerlist_dict = PageLink().read(decomp_chunk, cursor, context)
+                self.column_innerlist_dict = PageLink().read(
+                    decomp_chunk, cursor, context
+                )
         return self.column_innerlist_dict
 
     def col_form(self, field_id):
@@ -470,9 +474,12 @@ in file {}""".format(
                 topnames.append(fr.field_name)
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
-        form = ak._v2.forms.RecordForm(recordlist, topnames, form_key="toplevel-whatever")
+        form = ak._v2.forms.RecordForm(
+            recordlist, topnames, form_key="toplevel-whatever"
+        )
         return form
-    def col_container(self): 
+
+    def col_container(self):
         return Container()
 
 
@@ -506,6 +513,7 @@ class Container:
             print(name)
             print("==============")
 
+
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
 class PageDescription:
     def read(self, chunk, cursor, context):
@@ -525,7 +533,9 @@ class InnerListLocator:
         self._page_descs = None
 
     def __repr__(self):
-        return f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages})"
+        return (
+            f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages})"
+        )
 
 
 class PageLinkInner:
