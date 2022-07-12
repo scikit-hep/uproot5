@@ -358,7 +358,7 @@ in file {}""".format(
     @property
     def field_names(self):
         if self._field_names is None:
-            self._field_names = [r.f_name for r in self.header.field_records]
+            self._field_names = [r.field_name for r in self.header.field_records]
         return self._field_names
 
     @property
@@ -379,21 +379,16 @@ in file {}""".format(
 
         return self._footer
 
-    def cluster_list(self, col_name):
-        return self.page_list_envelopes[col_name]
+    def read_pagelist(self, listdesc, nthpage):
+        return listdesc.reader.read(listdesc.chunk, listdesc.cursor, listdesc.context)[nthpage]
 
-    def page_description(self, col_name, cluster_num, page_num):
-        inner = self.cluster_list(col_name)[cluster_num]
-        return inner[page_num]
-
-    def read_page(self, desc):
+    def read_pagedesc(self, desc, dtype):
         num_elements = desc.num_elements
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
-        decomp_chunk = self.read_locator(loc, 40, cursor, context)
-        cursor.debug(decomp_chunk)
-        return loc
+        decomp_chunk = self.read_locator(loc, loc.num_bytes, cursor, context)
+        return cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
 
     def read_locator(self, loc, uncomp_size, cursor, context):
         chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
@@ -409,10 +404,6 @@ in file {}""".format(
     @property
     def page_list_envelopes(self):
         context = {}
-        context["column_innerlist_dict"] = self.column_innerlist_dict
-        context["field_names"] = self.field_names
-        context["column_records"] = self.column_records
-        context["cluster_summaries"] = self.footer.cluster_summaries
 
         if not self.column_innerlist_dict:
             for record in self.footer.cluster_records:
@@ -422,7 +413,7 @@ in file {}""".format(
                 decomp_chunk = self.read_locator(
                     loc, link.env_uncomp_size, cursor, context
                 )
-                PageLink().read(decomp_chunk, cursor, context)
+                self.column_innerlist_dict = PageLink().read(decomp_chunk, cursor, context)
         return self.column_innerlist_dict
 
     def col_form(self, field_id):
@@ -479,10 +470,41 @@ in file {}""".format(
                 topnames.append(fr.field_name)
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
-        # return recordlist
-        form = ak._v2.forms.RecordForm(recordlist, topnames, form_key="toplevel")
+        form = ak._v2.forms.RecordForm(recordlist, topnames, form_key="toplevel-whatever")
         return form
+    def col_container(self): 
+        return Container()
 
+
+class Container:
+    def __getitem__(self, name):
+        if name == "col-0-data":
+            return numpy.array([3, 2, 1, 0], numpy.int32)
+        elif name == "col-1-offsets":
+            return numpy.array([0, 1, 2, 3, 4], numpy.uint32)
+        elif name == "col-4-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-5-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-6-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-7-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-8-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-3-offsets":
+            return numpy.array([0, 1, 2, 3, 4], numpy.uint32)
+        elif name == "col-10-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-11-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-12-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        elif name == "col-13-data":
+            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
+        else:
+            print(name)
+            print("==============")
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
 class PageDescription:
@@ -494,27 +516,16 @@ class PageDescription:
 
 
 class InnerListLocator:
-    def __init__(self, chunk, cursor, context, num_pages, cluster_summary, nbits):
+    def __init__(self, chunk, cursor, context, num_pages):
         self.chunk = chunk
         self.cursor = cursor
         self.context = context
         self.num_pages = num_pages
-        self.cluster_summary = cluster_summary
-        self.nbits = nbits
         self.reader = ListFrameReader(PageDescription())
         self._page_descs = None
 
     def __repr__(self):
-        return f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages}, {self.cluster_summary}, nbits={self.nbits})"
-
-    @property
-    def page_descs(self):
-        if self._page_descs is None:
-            self._page_descs = self.reader.read(self.chunk, self.cursor, self.context)
-        return self._page_descs
-
-    def __getitem__(self, idx):
-        return self.page_descs[idx]
+        return f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages})"
 
 
 class PageLinkInner:
@@ -528,18 +539,7 @@ class PageLinkInner:
         num_bytes, num_pages = local_cursor.fields(chunk, self._frame_header, context)
         assert num_bytes < 0, f"{num_bytes= !r}"
         cursor.skip(-num_bytes)
-        d = context["column_innerlist_dict"]
-        for col_record, summary in zip(
-            context["column_records"], context["cluster_summaries"]
-        ):
-            locator = InnerListLocator(
-                chunk,
-                future_cursor,
-                context,
-                num_pages,
-                summary,
-                nbits=col_record.nbits,
-            )
+        return InnerListLocator(chunk, future_cursor, context, num_pages)
 
 
 class PageLink:
@@ -552,8 +552,7 @@ class PageLink:
         out = MetaData(type(self).__name__)
         out.env_header = _renamemeA(chunk, cursor, context)
 
-        # the follwoing mutates `RNTuple.column_innerlist_dict`
-        self.top_most_list.read(chunk, cursor, context)
+        out.pagelinklist = self.top_most_list.read(chunk, cursor, context)
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
         return out
 
