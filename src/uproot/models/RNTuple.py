@@ -23,7 +23,7 @@ _rntuple_num_bytes_fields = struct.Struct("<II")
 
 _rntuple_col_types = {
     1: "u64",
-    2: "u32",
+    2: "uint32",
     4: "uint8",
     5: "char",
     7: "float64",
@@ -379,9 +379,27 @@ in file {}""".format(
 
         return self._footer
 
-    def read_pagelist(self, listdesc, nthpage):
+    #FIXME make it non-eager
+    def col_container(self):
+        return Container(self)
+
+    def which_colgroup(self, ncol):
+        return 0 #FIXME haven't seen file with column group yet
+
+    def read_col_page(self, ncol, npage):
+        ngroup = self.which_colgroup(ncol)
+        l = self.page_list_envelopes.pagelinklist[ngroup][ncol]
+        desc = self.read_pagelist(l, npage)
+        dtype_byte = self.column_records[ncol].type
+        dt_str = _rntuple_col_types[dtype_byte]
+        res = self.read_pagedesc(desc, numpy.dtype(dt_str))
+        if dtype_byte <= 2:
+            res = numpy.insert(res, 0, 0) # for offsets
+        return res
+
+    def read_pagelist(self, listdesc, npage):
         return listdesc.reader.read(listdesc.chunk, listdesc.cursor, listdesc.context)[
-            nthpage
+            npage
         ]
 
     def read_pagedesc(self, desc, dtype):
@@ -389,7 +407,8 @@ in file {}""".format(
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
-        decomp_chunk = self.read_locator(loc, loc.num_bytes, cursor, context)
+        uncomp_size = num_elements * dtype.itemsize
+        decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
         return cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
 
     def read_locator(self, loc, uncomp_size, cursor, context):
@@ -423,18 +442,17 @@ in file {}""".format(
     def col_form(self, field_id):
         for cr in self.header.column_records:
             if cr.field_id == field_id:
-                form_key = f"col-{cr.field_id}"
+                form_key = f"field-{cr.field_id}"
                 if cr.type > 2:  # data column
                     return ak._v2.forms.NumpyForm(
                         _rntuple_col_types[cr.type], form_key=form_key
                     )
-                else:  # offset index column
+                else: # offset index column
                     return form_key
 
     def field_form(self, this_id, seen):
         frs = self.header.field_records
         fr = frs[this_id]
-        parent_field_id = fr.parent_field_id
         seen.append(this_id)
         if fr.struct_role == 0:
             # base case of recursive
@@ -474,44 +492,25 @@ in file {}""".format(
                 topnames.append(fr.field_name)
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
+
         form = ak._v2.forms.RecordForm(
             recordlist, topnames, form_key="toplevel-whatever"
         )
         return form
 
-    def col_container(self):
-        return Container()
 
 
 class Container:
+    def __init__(self, rntuple):
+        self._dict = {}
+        for i, cr in enumerate(rntuple.column_records):
+            n = cr.field_id
+            self._dict[f"field-{n}"] = rntuple.read_col_page(i, 0)
+
     def __getitem__(self, name):
-        if name == "col-0-data":
-            return numpy.array([3, 2, 1, 0], numpy.int32)
-        elif name == "col-1-offsets":
-            return numpy.array([0, 1, 2, 3, 4], numpy.uint32)
-        elif name == "col-4-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-5-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-6-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-7-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-8-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-3-offsets":
-            return numpy.array([0, 1, 2, 3, 4], numpy.uint32)
-        elif name == "col-10-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-11-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-12-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        elif name == "col-13-data":
-            return numpy.array([1.2, 2.2, 3.2, 5.2], numpy.float32)
-        else:
-            print(name)
-            print("==============")
+        l = name.rfind('-')
+        internal_name = name[:l]
+        return self._dict[internal_name]
 
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
