@@ -609,7 +609,7 @@ def dask(
 
     filter_branch = uproot._util.regularize_filter(filter_branch)
 
-    if library.name == 'np':
+    if library.name == "np":
         if open_files:
             return _get_dask_array(
                 files,
@@ -635,7 +635,7 @@ def dask(
                 allow_missing,
                 real_options,
             )
-    elif library.name == 'ak':
+    elif library.name == "ak":
         if open_files:
             return _get_dak_array(
                 files,
@@ -663,6 +663,8 @@ def dask(
             )
     else:
         raise NotImplementedError()
+
+
 class Report:
     """
     Args:
@@ -3575,6 +3577,7 @@ def _get_dask_array_delay_open(
         dask_dict[key] = da.concatenate(dask_arrays, allow_unknown_chunksizes=True)
     return dask_dict
 
+
 def _get_dak_array(
     files,
     filter_name=no_filter,
@@ -3589,6 +3592,7 @@ def _get_dak_array(
 ):
     dask, _ = uproot.extras.dask()
     import dask_awkward
+
     hasbranches = []
     common_keys = None
     is_self = []
@@ -3659,11 +3663,12 @@ def _get_dak_array(
                 )
             )
         )
-    
 
     @dask.delayed
-    def del_fn(ttree,start,stop):
-        return ttree.arrays(common_keys,library='ak',entry_start=start,entry_stop=stop)
+    def del_fn(ttree, start, stop):
+        return ttree.arrays(
+            common_keys, library="ak", entry_start=start, entry_stop=stop
+        )
 
     dask_arrays = []
     for ttree in hasbranches:
@@ -3675,6 +3680,7 @@ def _get_dak_array(
             entry_step = step_size
         else:
             entry_step = ttree.num_entries_for(step_size)
+
         def foreach(start):
             stop = min(start + entry_step, entry_stop)
             length = stop - start
@@ -3705,6 +3711,7 @@ def _get_dak_array_delay_open(
     delayed_open_fn = dask.delayed(uproot._util.regularize_object_path)
 
     dask_arrays = []
+
     @dask.delayed
     def delayed_get_array(ttree):
         return ttree.arrays(library="ak")
@@ -3715,9 +3722,7 @@ def _get_dak_array_delay_open(
         )
         delayed_array = delayed_get_array(delayed_tree)
 
-        dask_arrays.append(
-            delayed_array
-        )
+        dask_arrays.append(delayed_array)
     return dask_awkward.from_delayed(dask_arrays)
 
 
