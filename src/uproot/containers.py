@@ -1396,10 +1396,10 @@ class AsMap(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # @aryan26roy: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
-        # helper_obj = uproot._awkward_forth.GenHelper(context)
+        helper_obj = uproot._awkward_forth.GenHelper(context)
 
-        # if helper_obj.is_forth():
-        #     forth_obj = helper_obj.get_gen_obj()
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1408,9 +1408,9 @@ class AsMap(AsContainer):
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             cursor.skip(6)
-            # if helper_obj.is_forth():
-            #     temp_jump = cursor._index - start_cursor._index
-            #     helper_obj.add_to_pre(f"{temp_jump+6} stream skip\n")
+            if helper_obj.is_forth():
+                temp_jump = cursor._index - start_cursor._index
+                helper_obj.add_to_pre(f"{temp_jump+6} stream skip\n")
         else:
             is_memberwise = False
 
@@ -1418,10 +1418,10 @@ class AsMap(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
 
             if _has_nested_header(self._keys) and header:
-                # helper_obj.add_to_pre(f"6 stream skip\n")
+                helper_obj.add_to_pre(f"6 stream skip\n")
                 cursor.skip(6)
-            # if helper_obj.is_forth():
-            #     temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
+            if helper_obj.is_forth():
+                temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
             keys = _read_nested(
                 self._keys,
                 length,
@@ -1433,13 +1433,13 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-            # if helper_obj.is_forth():
-            #     keys_form = forth_obj.top_form
-            #     keys_model = forth_obj._prev_node
-            #     print(keys_form, keys_model, "OOKKOKOKOk")
-            #     temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
+            if helper_obj.is_forth():
+                keys_form = forth_obj.top_form
+                keys_model = forth_obj._prev_node
+                print(keys_form, keys_model, "OOKKOKOKOk")
+                temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
             if _has_nested_header(self._values) and header:
-                # keys_model["content"]["pre_code"].append(f"6 stream skip\n")
+                keys_model["content"]["post_code"].append(f"6 stream skip\n")
                 cursor.skip(6)
             values = _read_nested(
                 self._values,
@@ -1452,26 +1452,26 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-            # if helper_obj.is_forth():
-            #     values_form = forth_obj.top_form
-            #     values_model = forth_obj._prev_node
-            #     forth_obj.awkward_model = temp_node
-            #     forth_obj._prev_node = temp_node_top
-            #     forth_obj.aform = temp_form
-            #     forth_obj.top_form = temp_form_top
-            #     aform = {"class": "RecordArray", "contents": {"key": keys_form, "value": values_form}}
-            #     if forth_obj.should_add_form():
-            #         forth_obj.add_form(aform)
-            #     temp = forth_obj.add_node(
-            #         f"nodeMap",
-            #         helper_obj.get_pre(),
-            #         helper_obj.get_post(),
-            #         helper_obj.get_init(),
-            #         helper_obj.get_header(),
-            #         "i64",
-            #         1,
-            #         [keys_model, values_model],
-            #     )
+            if helper_obj.is_forth():
+                values_form = forth_obj.top_form
+                values_model = forth_obj._prev_node
+                forth_obj.awkward_model = temp_node
+                forth_obj._prev_node = temp_node_top
+                forth_obj.aform = temp_form
+                forth_obj.top_form = temp_form_top
+                aform = {"class": "RecordArray", "contents": {"key": keys_form, "value": values_form}}
+                if forth_obj.should_add_form():
+                    forth_obj.add_form(aform)
+                temp = forth_obj.add_node(
+                    f"nodeMap",
+                    helper_obj.get_pre(),
+                    helper_obj.get_post(),
+                    helper_obj.get_init(),
+                    helper_obj.get_header(),
+                    "i64",
+                    1,
+                    [keys_model, values_model],
+                )
             out = STLMap(keys, values)
 
             if self._header and header:
