@@ -89,12 +89,20 @@ def _read_nested(
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
+            if helper_obj.is_forth():
+                temp_count = context["forth"].gen.count_obj
             for i in range(length):
+                if helper_obj.is_forth():
+                    context["forth"].gen.count_obj = temp_count
                 values[i] = model.read(
                     chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
+            if helper_obj.is_forth():
+                temp_count = context["forth"].gen.count_obj
             for i in range(length):
+                if helper_obj.is_forth():
+                    context["forth"].gen.count_obj = temp_count
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         return values
 
@@ -469,7 +477,6 @@ class AsString(AsContainer):
             keys = forth_obj.get_keys(2)
             offsets_num = keys[0]
             data_num = keys[1]
-
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -480,13 +487,13 @@ class AsString(AsContainer):
             if helper_obj.is_forth():
                 temp_jump = cursor._index - start_cursor._index
                 if temp_jump != 0:
-                    helper_obj.add_to_pre(f"{temp_jump} stream skip")
+                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
             if helper_obj.is_forth():
                 helper_obj.add_to_pre(
-                    f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data \n"
+                    f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data\n"
                 )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
@@ -818,7 +825,6 @@ in file {}""".format(
                     )
                     if helper_obj.is_forth():
                         forth_obj.go_to(temp["content"])
-                        # print(forth_obj._prev_node, "UOUOUO")
 
                 # if helper_obj.is_forth():
                 #    forth_obj.go_to(temp)
@@ -1410,16 +1416,24 @@ class AsMap(AsContainer):
             cursor.skip(6)
             if helper_obj.is_forth():
                 temp_jump = cursor._index - start_cursor._index
-                helper_obj.add_to_pre(f"{temp_jump+6} stream skip\n")
+                helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
-
+        #raise NotImplementedError
         if is_memberwise:
             length = cursor.field(chunk, _stl_container_size, context)
-
+            if helper_obj.is_forth():
+                key = forth_obj.get_keys(1)
+                form_key = f"part0-node{key}-offsets"
+                helper_obj.add_to_header(f"output part0-node{key}-offsets int64\n")
+                helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\n")
+                helper_obj.add_to_pre(f"stream !I-> stack\n dup part0-node{key}-offsets +<- stack\n")
             if _has_nested_header(self._keys) and header:
-                helper_obj.add_to_pre(f"6 stream skip\n")
+                if helper_obj.is_forth():
+                    helper_obj.add_to_pre("6 stream skip\n")
                 cursor.skip(6)
+            if helper_obj.is_forth():
+                helper_obj.add_to_pre("dup 0 do\n")
             if helper_obj.is_forth():
                 temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
             keys = _read_nested(
@@ -1436,11 +1450,15 @@ class AsMap(AsContainer):
             if helper_obj.is_forth():
                 keys_form = forth_obj.top_form
                 keys_model = forth_obj._prev_node
-                print(keys_form, keys_model, "OOKKOKOKOk")
-                temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
+                temp_node1, temp_node_top1, temp_form1, temp_form_top1 = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
+            if helper_obj.is_forth():
+                keys_model["content"]["post_code"].append("loop\n")
             if _has_nested_header(self._values) and header:
-                keys_model["content"]["post_code"].append(f"6 stream skip\n")
                 cursor.skip(6)
+                if helper_obj.is_forth():
+                    keys_model["content"]["post_code"].append("6 stream skip\n")
+            if helper_obj.is_forth():
+                keys_model["content"]["post_code"].append("0 do\n")
             values = _read_nested(
                 self._values,
                 length,
@@ -1455,12 +1473,14 @@ class AsMap(AsContainer):
             if helper_obj.is_forth():
                 values_form = forth_obj.top_form
                 values_model = forth_obj._prev_node
+                values_model["content"]["post_code"].append("loop \n")
                 forth_obj.awkward_model = temp_node
                 forth_obj._prev_node = temp_node_top
                 forth_obj.aform = temp_form
                 forth_obj.top_form = temp_form_top
-                aform = {"class": "RecordArray", "contents": {"key": keys_form, "value": values_form}}
+                aform = {"class": "ListOffsetArray", "offsets": "i64", "content": {"class": "RecordArray", "contents": [keys_form, values_form], "parameters": {"__array__": "sorted_map"}, }, "form_key": f"node{key}"}
                 if forth_obj.should_add_form():
+                    forth_obj.add_form_key(form_key)
                     forth_obj.add_form(aform)
                 temp = forth_obj.add_node(
                     f"nodeMap",
@@ -1470,7 +1490,7 @@ class AsMap(AsContainer):
                     helper_obj.get_header(),
                     "i64",
                     1,
-                    [keys_model, values_model],
+                    [keys_model["content"], values_model["content"]],
                 )
             out = STLMap(keys, values)
 

@@ -13,7 +13,9 @@ def test_00():
     with uproot.open(skhep_testdata.data_path("issue367b.root")) as file:
         branch = file["tree/weights"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, entry_stop=2)
+        assert py[0]['0'][0] == 'expskin_FluxUnisim'
         # py[-1] == <STLMap {'expskin_FluxUnisim': [0.944759093019904, 1.0890682745548674, ..., 1.1035170311451232, 0.8873957186284592], ...} at 0x7fbc4c1325e0>
 
 

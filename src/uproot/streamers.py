@@ -907,8 +907,6 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             fields[-1].append(self.name)
             formats[-1].append(_ftype_to_struct(self.fType))
             formats_memberwise.append(_ftype_to_struct(self.fType))
-
-            # print("AHAHAHA")
             if (
                 i + 1 == len(elements)
                 or not isinstance(elements[i + 1], Model_TStreamerBasicType)

@@ -1341,7 +1341,6 @@ class DispatchByVersion:
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
         # if helper_obj.is_forth():
-        # print(versioned_cls)
         temp_var = cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete
