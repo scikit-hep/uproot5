@@ -766,7 +766,7 @@ class Model:
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
         helper_obj = uproot._awkward_forth.GenHelper(context)
         if helper_obj.is_forth():
-            forth_obj = context["forth"]
+            forth_obj = context["forth"].gen
 
         if context.get("reading", True):
             temp_index = cursor._index

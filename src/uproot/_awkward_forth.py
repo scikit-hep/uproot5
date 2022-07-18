@@ -233,9 +233,9 @@ class GenHelper:
         self._header = ""
         self._init = ""
         self._form_key = []
-        if "forth" in context.keys():
+        if hasattr(context.get("forth"), "gen"):
             self.forth_present = True
-            self._gen_obj = context["forth"]
+            self._gen_obj = context["forth"].gen
 
     def is_forth(self):
         return self.forth_present
