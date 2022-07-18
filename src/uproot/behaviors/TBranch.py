@@ -636,18 +636,31 @@ def dask(
                 real_options,
             )
     elif library.name == 'ak':
-        return _get_dak_array(
-            files,
-            filter_name,
-            filter_typename,
-            filter_branch,
-            recursive,
-            full_paths,
-            step_size,
-            custom_classes,
-            allow_missing,
-            real_options,
-        )
+        if open_files:
+            return _get_dak_array(
+                files,
+                filter_name,
+                filter_typename,
+                filter_branch,
+                recursive,
+                full_paths,
+                step_size,
+                custom_classes,
+                allow_missing,
+                real_options,
+            )
+        else:
+            return _get_dak_array_delay_open(
+                files,
+                filter_name,
+                filter_typename,
+                filter_branch,
+                recursive,
+                full_paths,
+                custom_classes,
+                allow_missing,
+                real_options,
+            )
     else:
         raise NotImplementedError()
 class Report:
@@ -3677,6 +3690,37 @@ def _get_dak_array(
     return dask_awkward.from_delayed(dask_arrays)
 
 
+def _get_dak_array_delay_open(
+    files,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    custom_classes=None,
+    allow_missing=False,
+    real_options=None,  # NOTE: a comma after **options breaks Python 2
+):
+    dask, _ = uproot.extras.dask()
+    import dask_awkward
+
+    delayed_open_fn = dask.delayed(uproot._util.regularize_object_path)
+
+    dask_arrays = []
+    @dask.delayed
+    def delayed_get_array(ttree):
+        return ttree.arrays(library="ak")
+
+    for file_path, object_path in files:
+        delayed_tree = delayed_open_fn(
+            file_path, object_path, custom_classes, allow_missing, real_options
+        )
+        delayed_array = delayed_get_array(delayed_tree)
+
+        dask_arrays.append(
+            delayed_array
+        )
+    return dask_awkward.from_delayed(dask_arrays)
 
 
 class _WrapDict(MutableMapping):
