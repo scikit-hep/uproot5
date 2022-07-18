@@ -922,7 +922,7 @@ class HasBranches(Mapping):
                 + "\n"
             )
 
-        for name, branch in self.iteritems(  # noqa: B301 (not a dict)
+        for name, branch in self.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1406,7 +1406,7 @@ class HasBranches(Mapping):
         Returns the names of the subbranches as a list of strings.
         """
         return list(
-            self.iterkeys(  # noqa: B301 (not a dict)
+            self.iterkeys(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
@@ -1443,7 +1443,7 @@ class HasBranches(Mapping):
         :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
         return list(
-            self.itervalues(  # noqa: B301 (not a dict)
+            self.itervalues(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
@@ -1480,7 +1480,7 @@ class HasBranches(Mapping):
         of (str, :doc:`uproot.behaviors.TBranch.TBranch`).
         """
         return list(
-            self.iteritems(  # noqa: B301 (not a dict)
+            self.iteritems(
                 filter_name=filter_name,
                 filter_typename=filter_typename,
                 filter_branch=filter_branch,
@@ -1554,7 +1554,7 @@ class HasBranches(Mapping):
 
         Returns the names of the subbranches as an iterator over strings.
         """
-        for k, _ in self.iteritems(  # noqa: B301 (not a dict)
+        for k, _ in self.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1590,7 +1590,7 @@ class HasBranches(Mapping):
         (Note: with ``recursive=False``, this is the same as
         :ref:`uproot.behaviors.TBranch.HasBranches.branches`.)
         """
-        for _, v in self.iteritems(  # noqa: B301 (not a dict)
+        for _, v in self.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1652,7 +1652,7 @@ class HasBranches(Mapping):
                 yield branch.name, branch
 
             if recursive:
-                for k1, v in branch.iteritems(  # noqa: B301 (not a dict)
+                for k1, v in branch.iteritems(
                     recursive=recursive,
                     filter_name=no_filter,
                     filter_typename=filter_typename,
@@ -1696,7 +1696,7 @@ class HasBranches(Mapping):
         Returns (name, typename) pairs of the subbranches as an iterator over
         2-tuples of (str, str).
         """
-        for k, v in self.iteritems(  # noqa: B301 (not a dict)
+        for k, v in self.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1709,7 +1709,7 @@ class HasBranches(Mapping):
         """
         Supports key-completion in an IPython or Jupyter kernel.
         """
-        return self.iterkeys()  # noqa: B301 (not a dict)
+        return self.iterkeys()
 
     def num_entries_for(
         self,
@@ -1827,7 +1827,7 @@ class HasBranches(Mapping):
         :ref:`uproot.behaviors.TBranch.TBranch.entry_offsets`.
         """
         common_offsets = None
-        for branch in self.itervalues(  # noqa: B301 (not a dict)
+        for branch in self.itervalues(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -1861,9 +1861,7 @@ class HasBranches(Mapping):
 
         if "/" in where:
             where = "/".join([x for x in where.split("/") if x != ""])
-            for k, v in self.iteritems(  # noqa: B301 (not a dict)
-                recursive=True, full_paths=True
-            ):
+            for k, v in self.iteritems(recursive=True, full_paths=True):
                 if where == k:
                     self._lookup[original_where] = v
                     return v
@@ -2814,7 +2812,7 @@ def _filter_name_deep(filter_name, hasbranches, branch):
 
 def _keys_deep(hasbranches):
     out = set()
-    for branch in hasbranches.itervalues(recursive=True):  # noqa: B301 (not a dict)
+    for branch in hasbranches.itervalues(recursive=True):
         name = branch.name
         out.add(name)
         while branch is not hasbranches:
@@ -3076,7 +3074,7 @@ def _regularize_expressions(
     branchid_interpretation = {}
 
     if expressions is None:
-        for branchname, branch in hasbranches.iteritems(  # noqa: B301 (not a dict)
+        for branchname, branch in hasbranches.iteritems(
             filter_name=filter_name,
             filter_typename=filter_typename,
             filter_branch=filter_branch,
@@ -3369,7 +3367,7 @@ def _hasbranches_num_entries_for(
     hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
 ):
     total_bytes = 0.0
-    for branch in hasbranches.itervalues(recursive=True):  # noqa: B301 (not a dict)
+    for branch in hasbranches.itervalues(recursive=True):
         if branch.cache_key in branchid_interpretation:
             entry_offsets = branch.entry_offsets
             start = entry_offsets[0]
