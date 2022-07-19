@@ -824,6 +824,7 @@ class Model:
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
             if helper_obj.is_forth():
+                #raise NotImplementedError
                 forth_obj.add_node(
                     "model828",
                     helper_obj.get_pre(),
@@ -1308,6 +1309,7 @@ class DispatchByVersion:
         versioned_cls = cls.class_of_version(version)
         bytes_skipped = cursor._index - start_index
         if helper_obj.is_forth():
+            #raise NotImplementedError
             helper_obj.add_to_pre(f"{bytes_skipped} stream skip \n")
             forth_obj.add_node(
                 "Model1319",

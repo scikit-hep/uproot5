@@ -273,7 +273,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 class_flags,
             )
         read_members.append(
-            "        if helper_obj.is_forth():\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {'record': 'TVector2'}})\n            temp = forth_obj.add_node(f\"node{{forth_obj.get_keys()}}\",helper_obj.get_pre(),helper_obj.get_post(),helper_obj.get_init(),helper_obj.get_header(),\"i64\",0,None)"
+            "        if helper_obj.is_forth():\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {'record': 'TVector2'}})\n            temp = forth_obj.add_node('dynamic',helper_obj.get_pre(),helper_obj.get_post(),helper_obj.get_init(),helper_obj.get_header(),\"i64\",0,None)"
         )
         if len(read_members) == 1:
             # untested as of PR #629
@@ -684,15 +684,18 @@ class Model_TStreamerBase(Model_TStreamerElement):
         read_member_n.append(f"        if member_index == {i}:")
 
         # @aryan26roy: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
+        # raise NotImplementedError
         read_members.append(
-            "        if helper_obj.is_forth():\n            forth_obj.dummy_form = True"
+            "        if helper_obj.is_forth():\n                temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {'name': 'TOP', 'content': {}})\n"
         )
         read_members.append(
             f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))"
         )
-        read_members.append(
-            "        if helper_obj.is_forth():\n                temp_form = forth_obj.get_temp_form_top()\n                content.update(temp_form['contents'])\n                forth_obj.set_dummy_none()\n"
-        )
+        read_members.append("        if helper_obj.is_forth():\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj._prev_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj._prev_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                forth_obj.add_node_whole(temp_model1, temp_model_ref)\n                content.update(temp_form1['contents'])\n                forth_obj.enable_adding()"
+                            )
+        # read_members.append(
+        #    "        if helper_obj.is_forth():\n                temp_form = forth_obj.get_temp_form_top()\n                content.update(temp_form['contents'])\n                forth_obj.set_dummy_none(temp_top_dummy, temp_dummy, temp_top_flag)\n"
+        # )
         read_member_n.append("    " + read_members[-1])
         strided_interpretation.append(
             f"        members.extend(file.class_named({self.name!r}, {self.base_version!r}).strided_interpretation(file, header, tobject_header, breadcrumbs).members)"
@@ -912,13 +915,30 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 or not isinstance(elements[i + 1], Model_TStreamerBasicType)
                 or elements[i + 1].array_length != 0
             ):
-
                 if len(fields[-1]) == 1:
                     # @aryan26roy: test_0637's 01,02,29,38,44,56
-
+                    read_members.append("        if helper_obj.is_forth():")
+                    read_members.append("                key = forth_obj.get_keys(1)")
                     read_members.append(
-                        f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)"
+                        '                form_key = f"part0-node{key}-data"'
                     )
+                    read_members.append(
+                        f'                helper_obj.add_to_header(f"output part0-node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[-1][0])}\\n")'
+                    )
+                    read_members.append(
+                        f'                content["{fields[-1][0]}"] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}'
+                    )
+                    read_members.append(
+                        f'                helper_obj.add_to_pre(f"stream !{formats[-1][0]}-> part0-node{{key}}-data\\n")'
+                    )
+                    read_members.append(
+                        "                if forth_obj.should_add_form():"
+                    )
+                    read_members.append(
+                        "                        forth_obj.add_form_key(form_key)"
+                    )
+                    read_members.append(f"        self._members[{fields[-1][0]!r}] = cursor.field(chunk, self._format{len(formats) - 1}, context)"
+                                        )
 
                 else:
                     read_members.append("        if helper_obj.is_forth():")
@@ -959,7 +979,6 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         else:
             # @aryan26roy: test_0637's 44,56
-
             read_members.append(
                 f"        self._members[{self.name!r}] = cursor.array(chunk, {self.array_length}, self._dtype{len(dtypes)}, context)"
             )
@@ -1091,7 +1110,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
     instead of creating a behavior class to mix in functionality.
     """
 
-    @property
+    @ property
     def count_name(self):
         """
         The count name (``fCountName``) of this ``TStreamerLoop``.
@@ -1180,14 +1199,14 @@ class Model_TStreamerSTL(Model_TStreamerElement):
     instead of creating a behavior class to mix in functionality.
     """
 
-    @property
+    @ property
     def stl_type(self):
         """
         The STL type code (``fSTLtype``) of this ``TStreamerSTL``.
         """
         return self._members["fSTLtype"]
 
-    @property
+    @ property
     def fCtype(self):
         """
         The type code (``fCtype``) of this ``TStreamerSTL``.
@@ -1458,9 +1477,9 @@ class TStreamerObjectTypes:
         # @aryan26roy: test_0637's 01,02,29,45,46,49,50,56
 
         read_members.append(
-            f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)"
+            f"        if helper_obj.is_forth():\n                temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {{'name': 'TOP', 'content': {{}}}})\n        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)\n        if helper_obj.is_forth():\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj._prev_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj._prev_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                temp_var = forth_obj.add_node_whole(temp_model1, temp_model_ref)\n                content['{self.name}'] = temp_form1\n                forth_obj.enable_adding()"
         )
-        read_member_n.append("    " + read_members[-1])
+        read_member_n.append("    " + f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)")
 
         strided_interpretation.append(
             f"        members.append(({self.name!r}, file.class_named({self.typename.rstrip('*')!r}, 'max').strided_interpretation(file, header, tobject_header, breadcrumbs)))"

@@ -62,10 +62,10 @@ class ForthGenerator:
     def get_temp_form_top(self):
         return self.top_dummy
 
-    def set_dummy_none(self):
-        self.top_dummy = None
-        self.dummy_aform = None
-        self.dummy_form = False
+    def set_dummy_none(self, temp_top, temp_form, temp_flag):
+        self.top_dummy = temp_top
+        self.dummy_aform = temp_form
+        self.dummy_form = temp_flag
 
     def add_form(self, aform, conlen=0):
         if self.dummy_form:
@@ -137,6 +137,18 @@ class ForthGenerator:
 
     def get_ref(self, index):
         return self.ref_list[index]
+
+    def enable_adding(self):
+        if "content" in self.awkward_model.keys():
+            if self.awkward_model["content"] == None:
+                self.awkward_model["content"] = {}
+
+    def add_node_whole(self, new_node, ref_latest):
+        if "content" in self.awkward_model.keys():
+            self.awkward_model["content"] = new_node
+        else:
+            self.awkward_model["contents"].append(new_node)
+        self.awkward_model = ref_latest
 
     def add_node(
         self, name, precode, postcode, initcode, headercode, dtype, num_child, content

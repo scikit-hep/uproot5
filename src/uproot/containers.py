@@ -1419,7 +1419,7 @@ class AsMap(AsContainer):
                 helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
-        #raise NotImplementedError
+        # raise NotImplementedError
         if is_memberwise:
             length = cursor.field(chunk, _stl_container_size, context)
             if helper_obj.is_forth():
@@ -1427,7 +1427,9 @@ class AsMap(AsContainer):
                 form_key = f"part0-node{key}-offsets"
                 helper_obj.add_to_header(f"output part0-node{key}-offsets int64\n")
                 helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\n")
-                helper_obj.add_to_pre(f"stream !I-> stack\n dup part0-node{key}-offsets +<- stack\n")
+                helper_obj.add_to_pre(
+                    f"stream !I-> stack\n dup part0-node{key}-offsets +<- stack\n"
+                )
             if _has_nested_header(self._keys) and header:
                 if helper_obj.is_forth():
                     helper_obj.add_to_pre("6 stream skip\n")
@@ -1435,7 +1437,14 @@ class AsMap(AsContainer):
             if helper_obj.is_forth():
                 helper_obj.add_to_pre("dup 0 do\n")
             if helper_obj.is_forth():
-                temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
+                (
+                    temp_node,
+                    temp_node_top,
+                    temp_form,
+                    temp_form_top,
+                ) = forth_obj.replace_form_and_model(
+                    None, {"name": "TOP", "content": {}}
+                )
             keys = _read_nested(
                 self._keys,
                 length,
@@ -1450,7 +1459,14 @@ class AsMap(AsContainer):
             if helper_obj.is_forth():
                 keys_form = forth_obj.top_form
                 keys_model = forth_obj._prev_node
-                temp_node1, temp_node_top1, temp_form1, temp_form_top1 = forth_obj.replace_form_and_model(None, {"name": "TOP", "content": {}})
+                (
+                    temp_node1,
+                    temp_node_top1,
+                    temp_form1,
+                    temp_form_top1,
+                ) = forth_obj.replace_form_and_model(
+                    None, {"name": "TOP", "content": {}}
+                )
             if helper_obj.is_forth():
                 keys_model["content"]["post_code"].append("loop\n")
             if _has_nested_header(self._values) and header:
@@ -1478,7 +1494,16 @@ class AsMap(AsContainer):
                 forth_obj._prev_node = temp_node_top
                 forth_obj.aform = temp_form
                 forth_obj.top_form = temp_form_top
-                aform = {"class": "ListOffsetArray", "offsets": "i64", "content": {"class": "RecordArray", "contents": [keys_form, values_form], "parameters": {"__array__": "sorted_map"}, }, "form_key": f"node{key}"}
+                aform = {
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "content": {
+                        "class": "RecordArray",
+                        "contents": [keys_form, values_form],
+                        "parameters": {"__array__": "sorted_map"},
+                    },
+                    "form_key": f"node{key}",
+                }
                 if forth_obj.should_add_form():
                     forth_obj.add_form_key(form_key)
                     forth_obj.add_form(aform)

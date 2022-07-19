@@ -267,6 +267,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 container[elem] = context["forth"].vm.output_Index64(elem)
             else:
                 container[elem] = context["forth"].vm.output_NumpyArray(elem)
+        print(self._form)
         output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
         self.hook_after_basket_array(
@@ -561,7 +562,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         self._original = original
         super().__init__(_unravel_members(members))
 
-    @ property
+    @property
     def model(self):
         """
         The full Uproot deserialization model for the data
@@ -569,7 +570,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         """
         return self._model
 
-    @ property
+    @property
     def members(self):
         """
         The name (str) and fixed-width
@@ -578,7 +579,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         """
         return self._members
 
-    @ property
+    @property
     def original(self):
         """
         If not None, this was the original
@@ -599,7 +600,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def __eq__(self, other):
         return isinstance(other, AsStridedObjects) and self._model == other._model
 
-    @ property
+    @property
     def numpy_dtype(self):
         return numpy.dtype(object)
 
@@ -622,11 +623,11 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
             form = awkward.forms.RegularForm(form, dim)
         return form
 
-    @ property
+    @property
     def cache_key(self):
         return f"{type(self).__name__}({self._model.__name__})"
 
-    @ property
+    @property
     def typename(self):
         return uproot.model.classname_decode(self._model.__name__)[0]
 
@@ -702,7 +703,7 @@ class ObjectArray:
             self._cursor_offset,
         )
 
-    @ property
+    @property
     def model(self):
         """
         The full Uproot deserialization model for the data
@@ -710,28 +711,28 @@ class ObjectArray:
         """
         return self._model
 
-    @ property
+    @property
     def branch(self):
         """
         The ``TBranch`` from which the data are drawn.
         """
         return self._branch
 
-    @ property
+    @property
     def context(self):
         """
         Auxiliary data used in deserialization (dict).
         """
         return self._context
 
-    @ property
+    @property
     def byte_offsets(self):
         """
         Index where each entry of the ``byte_content`` starts and stops.
         """
         return self._byte_offsets
 
-    @ property
+    @property
     def byte_content(self):
         """
         Raw but uncompressed data, directly from
@@ -739,7 +740,7 @@ class ObjectArray:
         """
         return self._byte_content
 
-    @ property
+    @property
     def cursor_offset(self):
         """
         Correction to the integer keys used in
@@ -841,21 +842,21 @@ class StridedObjectArray:
                 "non-numpy temporary arrays require changes in library interpretations"
             )
 
-    @ property
+    @property
     def interpretation(self):
         """
         The interpretation that produced this array.
         """
         return self._interpretation
 
-    @ property
+    @property
     def array(self):
         """
         Underlying array object, which may be NumPy or another temporary array.
         """
         return self._array
 
-    @ property
+    @property
     def shape(self):
         assert self._array.shape == (len(self),) + self._interpretation.inner_shape
         return self._array.shape

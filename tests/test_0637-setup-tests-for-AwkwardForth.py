@@ -15,7 +15,7 @@ def test_00():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, entry_stop=2)
-        assert py[0]['0'][0] == 'expskin_FluxUnisim'
+        assert py[0]["0"][0] == "expskin_FluxUnisim"
         # py[-1] == <STLMap {'expskin_FluxUnisim': [0.944759093019904, 1.0890682745548674, ..., 1.1035170311451232, 0.8873957186284592], ...} at 0x7fbc4c1325e0>
 
 
@@ -23,7 +23,10 @@ def test_01():
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
         branch = file["Delphes/GenJet/GenJet.SoftDroppedSubJet1"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0][0]['1'] == pytest.approx(84.56447925448748)
+        assert py[0][0]['0']['fZ'] == pytest.approx(-81.600465)
         # py[-1] == array([<TLorentzVector (version 4) at 0x7fac4bb8d2b0>, <TLorentzVector (version 4) at 0x7fac4bb8d2e0>], dtype=object)
 
 

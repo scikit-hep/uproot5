@@ -53,7 +53,7 @@ in file {}""".format(
             skip_length = cursor._index - start_index
             helper_obj.add_to_pre(f"{skip_length} stream skip \n")
             if forth_obj.should_add_form():
-                temp_aform = '{"class": "RecordArray", "contents":{}, "parameters": {"__record__": "TObject"}}'
+                temp_aform = '{"class": "RecordArray", "contents":[], "parameters": {"__record__": "TObject"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             forth_obj.add_node(
                 "TObjext",
