@@ -67,7 +67,7 @@ class ForthGenerator:
         self.dummy_aform = temp_form
         self.dummy_form = temp_flag
 
-    def add_form(self, aform, conlen=0):
+    def add_form(self, aform, conlen=0, traverse=1):
         if self.dummy_form:
             if self.dummy_aform is None:
                 self.dummy_aform = aform
@@ -91,15 +91,20 @@ class ForthGenerator:
             if self.aform is None:
                 self.aform = aform
                 self.top_form = self.aform
+                if traverse == 2:
+                    self.aform = self.aform["content"]
             else:
                 if "content" in self.aform.keys():
                     if self.aform["content"] == "NULL":
                         self.aform["content"] = aform
-                        self.aform = self.aform["content"]
+                        if traverse == 2:
+                            self.aform = self.aform["content"]["content"]
+                        else:
+                            self.aform = self.aform["content"]
                     else:
                         raise ValueError
                 elif "contents" in self.aform.keys():
-                    if len(self.aform["content"]) == conlen:
+                    if len(self.aform["contents"]) == conlen:
                         return
                     else:
                         raise ValueError

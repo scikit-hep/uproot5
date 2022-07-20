@@ -25,8 +25,8 @@ def test_01():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0]['1'] == pytest.approx(84.56447925448748)
-        assert py[0][0]['0']['fZ'] == pytest.approx(-81.600465)
+        assert py[0][0]["1"] == pytest.approx(84.56447925448748)
+        assert py[0][0]["0"]["fZ"] == pytest.approx(-81.600465)
         # py[-1] == array([<TLorentzVector (version 4) at 0x7fac4bb8d2b0>, <TLorentzVector (version 4) at 0x7fac4bb8d2e0>], dtype=object)
 
 
@@ -34,7 +34,10 @@ def test_02():
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
         branch = file["Delphes/GenJet/GenJet.TrimmedP4[5]"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak")
+        assert py[0][0][0]["fE"] == 0
+        assert py[-1][8][3]["fE"] == 0
         # py[-1] == array([[<TLorentzVector (version 4) at 0x7fbfea1fa3d0>, <TLorentzVector (version 4) at 0x7fbfea1fa370>, <TLorentzVector (version 4) at 0x7fbfea1fa310>, <TLorentzVector (version 4) at 0x7fbfea1fa2b0>, <TLorentzVector (version 4) at 0x7fbfea1fa250>], [<TLorentzVector (version 4) at 0x7fbfea1fa1f0>, <TLorentzVector (version 4) at 0x7fbfea1fa190>, <TLorentzVector (version 4) at 0x7fbfea1fa130>, <TLorentzVector (version 4) at 0x7fbfea1fa0d0>, <TLorentzVector (version 4) at 0x7fbfea1fa070>]], dtype=object)
 
 

@@ -791,17 +791,26 @@ in file {}""".format(
                     helper_obj.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
-                    helper_obj.add_to_post(
-                        f"repeat\nswap part0-node{offsets_num}-offsets +<- stack drop\n"
-                    )
+                    if len(self.inner_shape) > 0:
+                        helper_obj.add_to_post(
+                            f"repeat\nswap {self.inner_shape[0]} / part0-node{offsets_num}-offsets +<- stack drop\n"
+                        )
+                    else:
+                        helper_obj.add_to_post(
+                            f"repeat\nswap part0-node{offsets_num}-offsets +<- stack drop\n"
+                        )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
                         if self._header:
                             temp_bool = "true"
                         else:
                             temp_bool = "false"
-                        temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
-                        forth_obj.add_form(json.loads(temp_aform))
+                        if len(self.inner_shape) > 0:
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            forth_obj.add_form(json.loads(temp_aform), traverse=2)
+                        else:
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
                         helper_obj.get_pre(),
@@ -816,8 +825,11 @@ in file {}""".format(
                 if cursor.index >= chunk.stop and helper_obj.is_forth():
                     forth_obj.var_set = True
                 out = []
-
+                if helper_obj.is_forth():
+                    temp_count = forth_obj.count_obj
                 while cursor.index < chunk.stop:
+                    if helper_obj.is_forth():
+                        forth_obj.count_obj = temp_count
                     out.append(
                         self._values.read(
                             chunk, cursor, context, file, selffile, parent
@@ -946,7 +958,6 @@ class AsRVec(AsContainer):
             )
 
         out = ROOTRVec(values)
-
         if self._header and header:
             uproot.deserialization.numbytes_check(
                 chunk,

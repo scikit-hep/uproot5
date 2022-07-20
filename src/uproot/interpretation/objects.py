@@ -267,7 +267,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                 container[elem] = context["forth"].vm.output_Index64(elem)
             else:
                 container[elem] = context["forth"].vm.output_NumpyArray(elem)
-        print(self._form)
         output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
         self.hook_after_basket_array(
@@ -303,7 +302,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 branch.file.detached,
                 branch,
             )
-
+            # print(output, "ERERERER")
             if not context["forth"].gen.var_set:
                 context["forth"].prereaddone = True
                 self._assemble_forth(
