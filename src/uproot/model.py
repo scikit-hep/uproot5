@@ -773,7 +773,7 @@ class Model:
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
             if length != 0:
-                helper_obj.add_to_pre(f"{length} stream skip \n")
+                helper_obj.add_to_pre(f"{length} stream skip\n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -824,7 +824,7 @@ class Model:
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
             if helper_obj.is_forth():
-                # raise NotImplementedError
+                #print(forth_obj.awkward_model, "OPOPOPOPOPO")
                 forth_obj.add_node(
                     "model828",
                     helper_obj.get_pre(),

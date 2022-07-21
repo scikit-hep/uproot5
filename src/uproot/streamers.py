@@ -214,11 +214,14 @@ class Model_TStreamerInfo(uproot.model.Model):
             "            )",
         ]
         read_members.append(
-            """
+            f"""
         helper_obj = uproot._awkward_forth.GenHelper(context)
         if helper_obj.is_forth():
             forth_obj = helper_obj.get_gen_obj()
-            content = {}\n"""
+            content = {{}}
+            #if '{self.name}' == 'ElementLinkBase':
+            #    raise NotImplementedError
+            #print(forth_obj.awkward_model, '======', forth_obj._prev_node, '{self.name}')\n"""
         )
         read_member_n = [
             "    def read_member_n(self, chunk, cursor, context, file, member_index):"
@@ -691,13 +694,13 @@ class Model_TStreamerBase(Model_TStreamerElement):
         read_members.append(
             f"        self._bases.append(c({self.name!r}, {self.base_version!r}).read(chunk, cursor, context, file, self._file, self._parent, concrete=self.concrete))"
         )
+        read_member_n.append("    " + read_members[-1])
         read_members.append(
-            "        if helper_obj.is_forth():\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj._prev_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj._prev_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                forth_obj.add_node_whole(temp_model1, temp_model_ref)\n                content.update(temp_form1['contents'])\n                forth_obj.enable_adding()"
+            f"        if helper_obj.is_forth():\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj._prev_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj._prev_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                forth_obj.add_node_whole(temp_model1, temp_model_ref)\n                content.update(temp_form1['contents'])\n                forth_obj.enable_adding()"
         )
         # read_members.append(
         #    "        if helper_obj.is_forth():\n                temp_form = forth_obj.get_temp_form_top()\n                content.update(temp_form['contents'])\n                forth_obj.set_dummy_none(temp_top_dummy, temp_dummy, temp_top_flag)\n"
         # )
-        read_member_n.append("    " + read_members[-1])
         strided_interpretation.append(
             f"        members.extend(file.class_named({self.name!r}, {self.base_version!r}).strided_interpretation(file, header, tobject_header, breadcrumbs).members)"
         )

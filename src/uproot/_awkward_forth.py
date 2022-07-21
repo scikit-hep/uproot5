@@ -11,6 +11,9 @@ symbol_dict = {
     np.dtype(">f8"): "d",
     np.dtype(">i8"): "q",
     np.dtype(">i4"): "i",
+    np.dtype(">i2"): "h",
+    np.dtype(">u4"): "I",
+    np.dtype("bool"): "?",
 }
 
 
@@ -149,6 +152,7 @@ class ForthGenerator:
                 self.awkward_model["content"] = {}
 
     def add_node_whole(self, new_node, ref_latest):
+        print(self._prev_node, '=========================')
         if "content" in self.awkward_model.keys():
             self.awkward_model["content"] = new_node
         else:
@@ -302,3 +306,9 @@ def convert_dtype(format):
         return "int64"
     elif format == "i":
         return "int32"
+    elif format == "I":
+        return "uint32"
+    elif format == "?":
+        return "bool"
+    elif format == "h":
+        return "int16"
