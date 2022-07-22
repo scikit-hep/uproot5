@@ -103,8 +103,13 @@ def _read_nested(
                 temp_count = context["forth"].gen.count_obj
             for i in range(length):
                 if helper_obj.is_forth():
+                    if 'temp_ref' in context.keys():
+                        context["forth"].gen.go_to(context['temp_ref'])
                     context["forth"].gen.count_obj = temp_count
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
+        if helper_obj.is_forth():
+            if 'temp_ref' in context.keys():
+                del context['temp_ref']
         return values
 
 
@@ -888,7 +893,7 @@ in file {}""".format(
                         )
                     )
                     if helper_obj.is_forth():
-                        forth_obj.go_to(temp["content"])
+                        forth_obj.go_to(temp)
 
                 # if helper_obj.is_forth():
                 #    forth_obj.go_to(temp)
@@ -1205,6 +1210,7 @@ class AsVector(AsContainer):
                     1,
                     {},
                 )
+                context['temp_ref'] = temp
 
             if length == 0 and helper_obj.is_forth():
                 forth_obj.var_set = True

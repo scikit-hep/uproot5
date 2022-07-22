@@ -14,7 +14,7 @@ def test_00():
         branch = file["tree/weights"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[0]["0"][0] == "expskin_FluxUnisim"
         # py[-1] == <STLMap {'expskin_FluxUnisim': [0.944759093019904, 1.0890682745548674, ..., 1.1035170311451232, 0.8873957186284592], ...} at 0x7fbc4c1325e0>
 
@@ -105,7 +105,9 @@ def test_09():
             "AntiKt10UFOCSSKJetsAuxDyn.GhostVR30Rmax4Rmin02TrackJet_BTagging201903"
         ]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0][0]['0'][0] == 352341021
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7febbf1b2fa0>], ...] at 0x7febbf1b2f40>
 
 
@@ -125,7 +127,9 @@ def test_11():
             "TruthBosonsWithDecayVerticesAuxDyn.incomingParticleLinks"
         ]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0][0]['0'][0] == 921521854
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::TruthParticle_v1>> (version 1) at 0x7f636a9484c0>], ...] at 0x7f636a948eb0>
 
 
@@ -133,7 +137,9 @@ def test_12():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/TruthBottomAuxDyn.parentLinks"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0][0]['1'][0] == 2
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::TruthParticle_v1>> (version 1) at 0x7fc259ae37c0>], ...] at 0x7fc259ae3f10>
 
 
@@ -141,7 +147,9 @@ def test_13():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/egammaClustersAuxDyn.constituentClusterLinks"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=3)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=3)
+        assert py[0][0]['1'][0] == 0
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::CaloCluster_v1>> (version 1) at 0x7fa94e968c10>], ...] at 0x7fa94e968c70>
 
 
@@ -206,7 +214,7 @@ def test_20():
         branch = file["E/Evt/hits/hits.trig"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[0][5] == 1
         # py[-1] == array([0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], dtype=int32)
 
@@ -246,7 +254,7 @@ def test_24():
         branch = file["E/Evt/trks/trks.rec_stages"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[0][1][-1] == 5
         # py[-1] == array([<STLVector [1, 3, 5, 4] at 0x7fea61938d60>, <STLVector [1, 3, 5] at 0x7fea6194a4f0>, <STLVector [1, 3] at 0x7fea6194a580>, <STLVector [1, 3] at 0x7fea6194a5e0>, <STLVector [1, 3] at 0x7fea6194a640>, <STLVector [1, 3] at 0x7fea6194a6a0>, <STLVector [1, 3] at 0x7fea6194a700>, <STLVector [1, 3] at 0x7fea6194a760>, <STLVector [1, 3] at 0x7fea6194a7c0>, <STLVector [1, 3] at 0x7fea6194a820>, <STLVector [1, 3] at 0x7fea6194a880>, <STLVector [1, 3] at 0x7fea6194a8e0>, <STLVector [1, 3] at 0x7fea6194a940>, <STLVector [1, 3] at 0x7fea6194a9a0>, <STLVector [1, 3] at 0x7fea6194aa00>, <STLVector [1, 3] at 0x7fea6194aa60>, <STLVector [1, 3] at 0x7fea6194aac0>, <STLVector [1, 3] at 0x7fea6194ab20>, <STLVector [1, 3] at 0x7fea6194ab80>, <STLVector [1] at 0x7fea6194abe0>, <STLVector [1] at 0x7fea6194ac40>, <STLVector [1] at 0x7fea6194aca0>, <STLVector [1] at 0x7fea6194ad00>, <STLVector [1] at 0x7fea6194ad60>, <STLVector [1] at 0x7fea6194adc0>, <STLVector [1] at 0x7fea6194ae20>, <STLVector [1] at 0x7fea6194ae80>, <STLVector [1] at 0x7fea6194aee0>, <STLVector [1] at 0x7fea6194af40>, <STLVector [1] at 0x7fea6194afa0>, <STLVector [1] at 0x7fea6194e040>, <STLVector [1] at 0x7fea6194e0a0>, <STLVector [1] at 0x7fea6194e100>, <STLVector [1] at 0x7fea6194e160>, <STLVector [1] at 0x7fea6194e1c0>, <STLVector [1] at 0x7fea6194e220>, <STLVector [1] at 0x7fea6194e280>, <STLVector [1] at 0x7fea6194e2e0>, <STLVector [1] at 0x7fea6194e340>, <STLVector [1] at 0x7fea6194e3a0>, <STLVector [1] at 0x7fea6194e400>, <STLVector [1] at 0x7fea6194e460>, <STLVector [1] at 0x7fea6194e4c0>, <STLVector [1] at 0x7fea6194e520>, <STLVector [1] at 0x7fea6194e580>, <STLVector [1] at 0x7fea6194e5e0>, <STLVector [1] at 0x7fea6194e640>, <STLVector [1] at 0x7fea6194e6a0>, <STLVector [1] at 0x7fea6194e700>, <STLVector [1] at 0x7fea6194e760>, <STLVector [1] at 0x7fea6194e7c0>, <STLVector [1] at 0x7fea6194e820>, <STLVector [1] at 0x7fea6194e880>, <STLVector [1] at 0x7fea6194e8e0>, <STLVector [1] at 0x7fea6194e940>], dtype=object)
 
@@ -256,7 +264,7 @@ def test_25():
         branch = file["config/VERSION/VERSION._name"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[0][-1] == 'numuCCAnalysis'
         # py[-1] == array(['psychePolicy', 'psycheEventModel', 'psycheCore', 'psycheUtils', 'psycheND280Utils', 'psycheIO', 'psycheSelections', 'psycheSystematics', 'highlandEventModel', 'highlandTools', 'highlandCore', 'highlandCorrections', 'highlandIO', 'baseAnalysis', 'baseTrackerAnalysis', 'numuCCAnalysis'], dtype=object)
 
@@ -324,7 +332,7 @@ def test_32():
         branch = file["T/data/name"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1] == 'two'
         # py[-1] == "two"
 
@@ -360,7 +368,8 @@ def test_36():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Model/Model./Model.samplerNamesUnique"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[0][-1] == 'MP_F_99.'
         # py[-1] == <STLVector ['DRIFT_0.', 'PRXSE01A.', ..., 'PRBHF_99.', 'MP_F_99.'] at 0x7f22f206df10>
 
@@ -369,7 +378,9 @@ def test_37():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Model/Model./Model.staPos"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0][555]['2'] == 100.94856572890848
         # py[-1] == array([<TVector3 (version 3) at 0x7f3385c9cbe0>, <TVector3 (version 3) at 0x7f3385c9cc10>, <TVector3 (version 3) at 0x7f3385c9cc40>, ..., <TVector3 (version 3) at 0x7f3385b0cfd0>, <TVector3 (version 3) at 0x7f3385a9e040>, <TVector3 (version 3) at 0x7f3385a9e070>], dtype=object)
 
 
@@ -393,7 +404,9 @@ def test_40():
     with uproot.open(skhep_testdata.data_path("uproot-issue-407.root")) as file:
         branch = file["tree/branch"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0]['fDatime'] == 1749155840
         # py[-1] == <TDatime at 0x7f79c7368430>
 
 
@@ -402,7 +415,7 @@ def test_41():
         branch = file["Event/Trajectory./Trajectory.XYZ"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert len(py[0]) == 0
         # py[-1] == <STLVector [] at 0x7feac87629a0>
 
@@ -412,7 +425,7 @@ def test_42():
         branch = file["Event/Trajectory./Trajectory.energyDeposit"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert len(py[0]) == 0
         # py[-1] == <STLVector [] at 0x7feac87629a0>
 
@@ -577,7 +590,7 @@ def test_60():
         branch = file["tree/vector_vector_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1][1] == 'two'
         # py[-1] == <STLVector [['one'], ['one', 'two']] at 0x7fae23700eb0>
 
@@ -587,7 +600,7 @@ def test_61():
         branch = file["tree/vector_vector_tstring"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
-        py = branch.array(interp, library="np", entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1][1] == 'two'
         # py[-1] == <STLVector [['one'], ['one', 'two']] at 0x7f06ad24c460>
 

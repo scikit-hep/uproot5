@@ -152,7 +152,6 @@ class ForthGenerator:
                 self.awkward_model["content"] = {}
 
     def add_node_whole(self, new_node, ref_latest):
-        print(self._prev_node, '=========================')
         if "content" in self.awkward_model.keys():
             self.awkward_model["content"] = new_node
         else:
