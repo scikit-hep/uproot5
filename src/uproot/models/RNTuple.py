@@ -361,7 +361,7 @@ class PageLinkInner:
         # delay reading inner list of page descriptions
         future_cursor = cursor.copy()
         num_bytes, num_pages = local_cursor.fields(chunk, self._frame_header, context)
-        assert num_bytes < 0, f"{num_bytes= !r}"
+        assert num_bytes < 0, f"num_bytes={num_bytes}"
         cursor.skip(-num_bytes)
         return InnerListLocator(chunk, future_cursor, context, num_pages)
 
@@ -443,7 +443,7 @@ class ListFrameReader:
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
         num_bytes, num_items = local_cursor.fields(chunk, self._frame_header, context)
-        assert num_bytes < 0, f"{num_bytes= !r}"
+        assert num_bytes < 0, f"num_bytes={num_bytes}"
         cursor.skip(-num_bytes)
         return [
             self.payload.read(chunk, local_cursor, context) for _ in range(num_items)
