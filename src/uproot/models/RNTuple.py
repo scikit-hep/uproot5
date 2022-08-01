@@ -24,7 +24,7 @@ _rntuple_num_bytes_fields = struct.Struct("<II")
 _rntuple_col_types = {
     1: "u64",
     2: "uint32",
-    3: "uint64", #Switch
+    3: "uint64",  # Switch
     4: "uint8",
     5: "char",
     6: "bit",
@@ -35,22 +35,20 @@ _rntuple_col_types = {
     11: "int32",
     12: "int16",
     13: "int8",
-    14: "uint32", #SplitIndex64 delta encoding
-    15: "uint64", #SplitIndex32 delta encoding
-    16: "float64", #split
-    17: "float32", #split
-    18: "float16", #split
-    19: "int64", #split
-    20: "int32", #split
-    21: "int16", #split
+    14: "uint32",  # SplitIndex64 delta encoding
+    15: "uint64",  # SplitIndex32 delta encoding
+    16: "float64",  # split
+    17: "float32",  # split
+    18: "float16",  # split
+    19: "int64",  # split
+    20: "int32",  # split
+    21: "int16",  # split
 }
 
 
 def _renamemeA(chunk, cursor, context):
     env_version, min_version = cursor.fields(chunk, _rntuple_frame_format, context)
     return {"env_version": env_version, "min_version": min_version}
-
-
 
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
@@ -172,10 +170,11 @@ in file {}""".format(
     def cluster_summaries(self):
         return self.footer.cluster_summaries
 
-    #FIXME
+    # FIXME
     @property
     def _length(self):
         return self.cluster_summaries[0].num_entries
+
     def __len__(self):
         return self._length
 
@@ -265,9 +264,7 @@ in file {}""".format(
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
 
-        form = ak._v2.forms.RecordForm(
-            recordlist, topnames, form_key="toplevel"
-        )
+        form = ak._v2.forms.RecordForm(recordlist, topnames, form_key="toplevel")
         return form
 
     def pagelist(self, listdesc):
@@ -291,7 +288,7 @@ in file {}""".format(
         dt_str = _rntuple_col_types[dtype_byte]
         T = numpy.dtype(dt_str)
         res = self.read_pagedesc(pagelist[0], T)
-        #FIXME vector read
+        # FIXME vector read
         for p in pagelist[1:]:
             res = numpy.append(res, self.read_pagedesc(p, T))
             if len(res) > L:
@@ -301,12 +298,18 @@ in file {}""".format(
             res = numpy.insert(res, 0, 0)  # for offsets
         return res
 
-    def arrays(self, filter_names="*", filter_typenames=None, 
-            entry_start=0, entry_stop=None, 
-            decompression_executor=None, array_cache=None):
+    def arrays(
+        self,
+        filter_names="*",
+        filter_typenames=None,
+        entry_start=0,
+        entry_stop=None,
+        decompression_executor=None,
+        array_cache=None,
+    ):
         if entry_stop == None:
             entry_stop = self._length
-        L = entry_stop-entry_start
+        L = entry_stop - entry_start
         form = self.to_akform().select_columns(filter_names)
         D = {}
         for i, cr in enumerate(self.column_records):
@@ -319,10 +322,12 @@ in file {}""".format(
 class Container:
     def __init__(self, D):
         self._dict = D
+
     def __getitem__(self, name):
         l = name.rfind("-")
         internal_name = name[:l]
         return self._dict[internal_name]
+
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
 class PageDescription:
@@ -375,6 +380,7 @@ class PageLink:
         out.pagelinklist = self.top_most_list.read(chunk, cursor, context)
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
         return out
+
 
 class LocatorReader:
     _locator_format = struct.Struct("<iQ")
@@ -597,6 +603,7 @@ class FooterReader:
         )
         out.meta_block_links = self.meta_data_links.read(chunk, cursor, context)
         return out
+
 
 uproot.classes[
     "ROOT::Experimental::RNTuple"
