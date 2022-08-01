@@ -267,7 +267,8 @@ in file {}""".format(
         return form
 
     def pagelist(self, listdesc):
-        pages = listdesc.reader.read(listdesc.chunk, listdesc.cursor, listdesc.context)
+        local_cursor = listdesc.cursor.copy()
+        pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
         return pages
 
     def read_pagedesc(self, desc, dtype):
