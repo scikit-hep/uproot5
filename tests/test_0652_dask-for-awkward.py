@@ -7,7 +7,7 @@ import skhep_testdata
 import uproot
 
 dask = pytest.importorskip("dask")
-
+dask_awkward= pytest.importorskip("dask_awkward")
 
 def test_single_dask_awkward_array():
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"

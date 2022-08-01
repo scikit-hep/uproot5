@@ -42,7 +42,7 @@ jobs:
           conda env list
           conda info
           conda install numpy pandas pytest lz4 python-xxhash requests
-          pip install scikit-hep-testdata boost-histogram hist dask[array] dask-awkward
+          pip install scikit-hep-testdata boost-histogram hist dask[array]
           conda list
 
       - name: "Install Awkward"
@@ -57,6 +57,7 @@ jobs:
         run: |
           conda env list
           conda install root
+          pip install dask-awkward
           conda list
 
       - name: "Install XRootD"
