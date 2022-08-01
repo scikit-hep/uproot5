@@ -56,9 +56,8 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
 
-    @property
     def keys(self):
-        return self.header.column_names
+        return self.field_names
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
