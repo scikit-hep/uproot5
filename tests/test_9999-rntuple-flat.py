@@ -16,5 +16,8 @@ def test():
     with uproot.open(filename) as f:
         obj = f["ntuple"]
         assert obj.keys() == ["one_integers", "two_floats"]
-        assert [r.type_name for r in obj.header.field_records] == ["std::int32_t", "float"]
+        assert [r.type_name for r in obj.header.field_records] == [
+            "std::int32_t",
+            "float",
+        ]
         assert obj.header.crc32 == obj.footer.header_crc32
