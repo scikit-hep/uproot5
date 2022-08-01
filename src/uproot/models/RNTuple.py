@@ -251,7 +251,7 @@ in file {}""".format(
             return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
         else:
             # everything should recursive above this branch
-            assert False
+            raise(AssertionError("this should be unreachable"))
 
     def to_akform(self):
         frs = self.header.field_records
@@ -282,8 +282,8 @@ in file {}""".format(
 
     def read_col_page(self, ncol, L):
         ngroup = self.which_colgroup(ncol)
-        l = self.page_list_envelopes.pagelinklist[ngroup][ncol]
-        pagelist = self.pagelist(l)
+        link = self.page_list_envelopes.pagelinklist[ngroup][ncol]
+        pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
         dt_str = _rntuple_col_types[dtype_byte]
         T = numpy.dtype(dt_str)
@@ -307,7 +307,7 @@ in file {}""".format(
         decompression_executor=None,
         array_cache=None,
     ):
-        if entry_stop == None:
+        if entry_stop is None:
             entry_stop = self._length
         L = entry_stop - entry_start
         form = self.to_akform().select_columns(filter_names)
@@ -324,8 +324,8 @@ class Container:
         self._dict = D
 
     def __getitem__(self, name):
-        l = name.rfind("-")
-        internal_name = name[:l]
+        cutoff = name.rfind("-")
+        internal_name = name[:cutoff]
         return self._dict[internal_name]
 
 
@@ -357,7 +357,6 @@ class PageLinkInner:
     _frame_header = struct.Struct("<ii")
 
     def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
         local_cursor = cursor.copy()
         # delay reading inner list of page descriptions
         future_cursor = cursor.copy()
