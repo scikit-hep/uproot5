@@ -161,7 +161,7 @@ in file {}""".format(
             f = FooterReader().read(self._footer_chunk, cursor, context)
             assert (
                 f.header_crc32 == self.header.crc32
-            ), f"{self.header.crc32=}, {f.header_crc32=}"
+            ), f"crc32={self.header.crc32}, header_crc32={f.header_crc32}"
             self._footer = f
 
         return self._footer
