@@ -24,8 +24,10 @@ _rntuple_num_bytes_fields = struct.Struct("<II")
 _rntuple_col_types = {
     1: "u64",
     2: "uint32",
+    3: "uint64", #Switch
     4: "uint8",
     5: "char",
+    6: "bit",
     7: "float64",
     8: "float32",
     9: "float16",
@@ -33,6 +35,14 @@ _rntuple_col_types = {
     11: "int32",
     12: "int16",
     13: "int8",
+    14: "uint32", #SplitIndex64 delta encoding
+    15: "uint64", #SplitIndex32 delta encoding
+    16: "float64", #split
+    17: "float32", #split
+    18: "float16", #split
+    19: "int64", #split
+    20: "int32", #split
+    21: "int16", #split
 }
 
 
@@ -40,6 +50,331 @@ def _renamemeA(chunk, cursor, context):
     env_version, min_version = cursor.fields(chunk, _rntuple_frame_format, context)
     return {"env_version": env_version, "min_version": min_version}
 
+
+
+
+class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
+    """
+    A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
+    """
+
+    @property
+    def keys(self):
+        return self.header.column_names
+
+    def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {}
+in file {}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
+
+        (
+            self._members["fCheckSum"],
+            self._members["fVersion"],
+            self._members["fSize"],
+            self._members["fSeekHeader"],
+            self._members["fNBytesHeader"],
+            self._members["fLenHeader"],
+            self._members["fSeekFooter"],
+            self._members["fNBytesFooter"],
+            self._members["fLenFooter"],
+            self._members["fReserved"],
+        ) = cursor.fields(chunk, _rntuple_format1, context)
+
+        seek, nbytes = self._members["fSeekHeader"], self._members["fNBytesHeader"]
+        header_range = (seek, seek + nbytes)
+
+        seek, nbytes = self._members["fSeekFooter"], self._members["fNBytesFooter"]
+        footer_range = (seek, seek + nbytes)
+
+        notifications = queue.Queue()
+        compressed_header_chunk, compressed_footer_chunk = file.source.chunks(
+            [header_range, footer_range], notifications=notifications
+        )
+
+        if self._members["fNBytesHeader"] == self._members["fLenHeader"]:
+            self._header_chunk = compressed_header_chunk
+            self._header_cursor = uproot.source.cursor.Cursor(
+                self._members["fSeekHeader"]
+            )
+        else:
+            self._header_chunk = uproot.compression.decompress(
+                compressed_header_chunk,
+                uproot.source.cursor.Cursor(self._members["fSeekHeader"]),
+                context,
+                self._members["fNBytesHeader"],
+                self._members["fLenHeader"],
+            )
+            self._header_cursor = uproot.source.cursor.Cursor(0)
+
+        if self._members["fNBytesFooter"] == self._members["fLenFooter"]:
+            self._footer_chunk = compressed_footer_chunk
+            self._footer_cursor = uproot.source.cursor.Cursor(
+                self._members["fSeekFooter"]
+            )
+        else:
+            self._footer_chunk = uproot.compression.decompress(
+                compressed_footer_chunk,
+                uproot.source.cursor.Cursor(self._members["fSeekFooter"]),
+                context,
+                self._members["fNBytesFooter"],
+                self._members["fLenFooter"],
+            )
+            self._footer_cursor = uproot.source.cursor.Cursor(0)
+
+        self._header, self._footer = None, None
+
+        self._field_names = None
+        self._column_records = None
+
+        # back link from column name to page inner list
+        self.column_innerlist_dict = {}
+
+    @property
+    def header(self):
+        if self._header is None:
+            cursor = self._header_cursor.copy()
+            context = {}
+
+            h = HeaderReader().read(self._header_chunk, cursor, context)
+            self._header = h
+
+        return self._header
+
+    @property
+    def field_names(self):
+        if self._field_names is None:
+            self._field_names = [r.field_name for r in self.header.field_records]
+        return self._field_names
+
+    @property
+    def column_records(self):
+        return self.header.column_records
+
+    @property
+    def footer(self):
+        if self._footer is None:
+            cursor = self._footer_cursor.copy()
+            context = {}
+
+            f = FooterReader().read(self._footer_chunk, cursor, context)
+            assert (
+                f.header_crc32 == self.header.crc32
+            ), f"{self.header.crc32=}, {f.header_crc32=}"
+            self._footer = f
+
+        return self._footer
+
+    @property
+    def cluster_summaries(self):
+        return self.footer.cluster_summaries
+
+    #FIXME
+    @property
+    def _length(self):
+        return self.cluster_summaries[0].num_entries
+    def __len__(self):
+        return self._length
+
+    def which_colgroup(self, ncol):
+        return 0  # FIXME haven't seen file with column group yet
+
+    def read_locator(self, loc, uncomp_size, cursor, context):
+        chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
+        if loc.num_bytes < uncomp_size:
+            decomp_chunk = uproot.compression.decompress(
+                chunk, cursor, context, loc.num_bytes, uncomp_size, block_info=None
+            )
+            cursor.move_to(0)
+        else:
+            decomp_chunk = chunk
+        return decomp_chunk
+
+    @property
+    def page_list_envelopes(self):
+        context = {}
+
+        if not self.column_innerlist_dict:
+            for record in self.footer.cluster_group_records:
+                link = record.page_list_link
+                loc = link.locator
+                cursor = uproot.source.cursor.Cursor(loc.offset)
+                decomp_chunk = self.read_locator(
+                    loc, link.env_uncomp_size, cursor, context
+                )
+                self.column_innerlist_dict = PageLink().read(
+                    decomp_chunk, cursor, context
+                )
+
+        return self.column_innerlist_dict
+
+    def col_form(self, field_id):
+        for cr in self.header.column_records:
+            if cr.field_id == field_id:
+                form_key = f"field-{cr.field_id}"
+                if cr.type > 2:  # data column
+                    return ak._v2.forms.NumpyForm(
+                        _rntuple_col_types[cr.type], form_key=form_key
+                    )
+                else:  # offset index column
+                    return form_key
+
+    def field_form(self, this_id, seen):
+        frs = self.header.field_records
+        fr = frs[this_id]
+        seen.append(this_id)
+        if fr.struct_role == 0:
+            # base case of recursive
+            # these two roles have exactly one column belong to them
+            return self.col_form(this_id)
+        elif fr.struct_role == 1:
+            keyname = self.col_form(this_id)
+            child_id = next(
+                filter(
+                    lambda i: frs[i].parent_field_id == this_id,
+                    range(this_id + 1, len(frs)),
+                )
+            )
+            inner = self.field_form(child_id, seen)
+            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=keyname)
+        elif fr.struct_role == 2:
+            # struct field
+            newids = []
+            for i, fr in enumerate(frs):
+                if i not in seen and fr.parent_field_id == this_id:
+                    newids.append(i)
+            # go find N in the rest, N is the # of fields in struct
+            recordlist = [self.field_form(i, seen) for i in newids]
+            namelist = [frs[i].field_name for i in newids]
+            return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
+        else:
+            # everything should recursive above this branch
+            assert False
+
+    def to_akform(self):
+        frs = self.header.field_records
+        recordlist = []
+        topnames = []
+        seen = []
+        for (i, fr) in enumerate(frs):
+            if fr.parent_field_id == i:
+                topnames.append(fr.field_name)
+            if i not in seen:
+                recordlist.append(self.field_form(i, seen))
+
+        form = ak._v2.forms.RecordForm(
+            recordlist, topnames, form_key="toplevel"
+        )
+        return form
+
+    def pagelist(self, listdesc):
+        pages = listdesc.reader.read(listdesc.chunk, listdesc.cursor, listdesc.context)
+        return pages
+
+    def read_pagedesc(self, desc, dtype):
+        num_elements = desc.num_elements
+        loc = desc.locator
+        cursor = uproot.source.cursor.Cursor(loc.offset)
+        context = {}
+        uncomp_size = num_elements * dtype.itemsize
+        decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
+        return cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
+
+    def read_col_page(self, ncol, L):
+        ngroup = self.which_colgroup(ncol)
+        l = self.page_list_envelopes.pagelinklist[ngroup][ncol]
+        pagelist = self.pagelist(l)
+        dtype_byte = self.column_records[ncol].type
+        dt_str = _rntuple_col_types[dtype_byte]
+        T = numpy.dtype(dt_str)
+        res = self.read_pagedesc(pagelist[0], T)
+        #FIXME vector read
+        for p in pagelist[1:]:
+            res = numpy.append(res, self.read_pagedesc(p, T))
+            if len(res) > L:
+                break
+
+        if dtype_byte <= 2:
+            res = numpy.insert(res, 0, 0)  # for offsets
+        return res
+
+    def arrays(self, filter_names="*", filter_typenames=None, 
+            entry_start=0, entry_stop=None, 
+            decompression_executor=None, array_cache=None):
+        if entry_stop == None:
+            entry_stop = self._length
+        L = entry_stop-entry_start
+        form = self.to_akform().select_columns(filter_names)
+        D = {}
+        for i, cr in enumerate(self.column_records):
+            n = cr.field_id
+            D[f"field-{n}"] = self.read_col_page(i, L)
+        return ak._v2.from_buffers(form, L, Container(D))
+
+
+# Supporting classes
+class Container:
+    def __init__(self, D):
+        self._dict = D
+    def __getitem__(self, name):
+        l = name.rfind("-")
+        internal_name = name[:l]
+        return self._dict[internal_name]
+
+# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
+class PageDescription:
+    def read(self, chunk, cursor, context):
+        out = MetaData(type(self).__name__)
+        out.num_elements = cursor.field(chunk, struct.Struct("<I"), context)
+        out.locator = LocatorReader().read(chunk, cursor, context)
+        return out
+
+
+class InnerListLocator:
+    def __init__(self, chunk, cursor, context, num_pages):
+        self.chunk = chunk
+        self.cursor = cursor
+        self.context = context
+        self.num_pages = num_pages
+        self.reader = ListFrameReader(PageDescription())
+        self._page_descs = None
+
+    def __repr__(self):
+        return (
+            f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages})"
+        )
+
+
+class PageLinkInner:
+    _frame_header = struct.Struct("<ii")
+
+    def read(self, chunk, cursor, context):
+        out = MetaData(type(self).__name__)
+        local_cursor = cursor.copy()
+        # delay reading inner list of page descriptions
+        future_cursor = cursor.copy()
+        num_bytes, num_pages = local_cursor.fields(chunk, self._frame_header, context)
+        assert num_bytes < 0, f"{num_bytes= !r}"
+        cursor.skip(-num_bytes)
+        return InnerListLocator(chunk, future_cursor, context, num_pages)
+
+
+class PageLink:
+    def __init__(self):
+        self.top_most_list = ListFrameReader(  # top-most list
+            ListFrameReader(PageLinkInner())  # outer list (inner list)
+        )
+
+    def read(self, chunk, cursor, context):
+        out = MetaData(type(self).__name__)
+        out.env_header = _renamemeA(chunk, cursor, context)
+
+        out.pagelinklist = self.top_most_list.read(chunk, cursor, context)
+        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
+        return out
 
 class LocatorReader:
     _locator_format = struct.Struct("<iQ")
@@ -257,313 +592,11 @@ class FooterReader:
             chunk, cursor, context
         )
         out.cluster_summaries = self.cluster_summary_frames.read(chunk, cursor, context)
-        out.cluster_records = self.cluster_group_record_frames.read(
+        out.cluster_group_records = self.cluster_group_record_frames.read(
             chunk, cursor, context
         )
         out.meta_block_links = self.meta_data_links.read(chunk, cursor, context)
         return out
-
-
-class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
-    """
-    A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
-    """
-
-    @property
-    def keys(self):
-        return self.header.column_names
-
-    def read_members(self, chunk, cursor, context, file):
-        if self.is_memberwise:
-            raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
-            )
-
-        (
-            self._members["fCheckSum"],
-            self._members["fVersion"],
-            self._members["fSize"],
-            self._members["fSeekHeader"],
-            self._members["fNBytesHeader"],
-            self._members["fLenHeader"],
-            self._members["fSeekFooter"],
-            self._members["fNBytesFooter"],
-            self._members["fLenFooter"],
-            self._members["fReserved"],
-        ) = cursor.fields(chunk, _rntuple_format1, context)
-
-        seek, nbytes = self._members["fSeekHeader"], self._members["fNBytesHeader"]
-        header_range = (seek, seek + nbytes)
-
-        seek, nbytes = self._members["fSeekFooter"], self._members["fNBytesFooter"]
-        footer_range = (seek, seek + nbytes)
-
-        notifications = queue.Queue()
-        compressed_header_chunk, compressed_footer_chunk = file.source.chunks(
-            [header_range, footer_range], notifications=notifications
-        )
-
-        if self._members["fNBytesHeader"] == self._members["fLenHeader"]:
-            self._header_chunk = compressed_header_chunk
-            self._header_cursor = uproot.source.cursor.Cursor(
-                self._members["fSeekHeader"]
-            )
-        else:
-            self._header_chunk = uproot.compression.decompress(
-                compressed_header_chunk,
-                uproot.source.cursor.Cursor(self._members["fSeekHeader"]),
-                context,
-                self._members["fNBytesHeader"],
-                self._members["fLenHeader"],
-            )
-            self._header_cursor = uproot.source.cursor.Cursor(0)
-
-        if self._members["fNBytesFooter"] == self._members["fLenFooter"]:
-            self._footer_chunk = compressed_footer_chunk
-            self._footer_cursor = uproot.source.cursor.Cursor(
-                self._members["fSeekFooter"]
-            )
-        else:
-            self._footer_chunk = uproot.compression.decompress(
-                compressed_footer_chunk,
-                uproot.source.cursor.Cursor(self._members["fSeekFooter"]),
-                context,
-                self._members["fNBytesFooter"],
-                self._members["fLenFooter"],
-            )
-            self._footer_cursor = uproot.source.cursor.Cursor(0)
-
-        self._header, self._footer = None, None
-
-        self._field_names = None
-        self._column_records = None
-
-        # back link from column name to page inner list
-        self.column_innerlist_dict = {}
-
-    @property
-    def header(self):
-        if self._header is None:
-            cursor = self._header_cursor.copy()
-            context = {}
-
-            h = HeaderReader().read(self._header_chunk, cursor, context)
-            self._header = h
-
-        return self._header
-
-    @property
-    def field_names(self):
-        if self._field_names is None:
-            self._field_names = [r.field_name for r in self.header.field_records]
-        return self._field_names
-
-    @property
-    def column_records(self):
-        return self.header.column_records
-
-    @property
-    def footer(self):
-        if self._footer is None:
-            cursor = self._footer_cursor.copy()
-            context = {}
-
-            f = FooterReader().read(self._footer_chunk, cursor, context)
-            assert (
-                f.header_crc32 == self.header.crc32
-            ), f"{self.header.crc32=}, {f.header_crc32=}"
-            self._footer = f
-
-        return self._footer
-
-    # FIXME make it non-eager
-    def col_container(self):
-        return Container(self)
-
-    def which_colgroup(self, ncol):
-        return 0  # FIXME haven't seen file with column group yet
-
-    def read_col_page(self, ncol, npage):
-        ngroup = self.which_colgroup(ncol)
-        l = self.page_list_envelopes.pagelinklist[ngroup][ncol]
-        desc = self.read_pagelist(l, npage)
-        dtype_byte = self.column_records[ncol].type
-        dt_str = _rntuple_col_types[dtype_byte]
-        res = self.read_pagedesc(desc, numpy.dtype(dt_str))
-        if dtype_byte <= 2:
-            res = numpy.insert(res, 0, 0)  # for offsets
-        return res
-
-    def read_pagelist(self, listdesc, npage):
-        return listdesc.reader.read(listdesc.chunk, listdesc.cursor, listdesc.context)[
-            npage
-        ]
-
-    def read_pagedesc(self, desc, dtype):
-        num_elements = desc.num_elements
-        loc = desc.locator
-        cursor = uproot.source.cursor.Cursor(loc.offset)
-        context = {}
-        uncomp_size = num_elements * dtype.itemsize
-        decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
-        return cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
-
-    def read_locator(self, loc, uncomp_size, cursor, context):
-        chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
-        if loc.num_bytes < uncomp_size:
-            decomp_chunk = uproot.compression.decompress(
-                chunk, cursor, context, loc.num_bytes, uncomp_size, block_info=None
-            )
-            cursor.move_to(0)
-        else:
-            decomp_chunk = chunk
-        return decomp_chunk
-
-    @property
-    def page_list_envelopes(self):
-        context = {}
-
-        if not self.column_innerlist_dict:
-            for record in self.footer.cluster_records:
-                link = record.page_list_link
-                loc = link.locator
-                cursor = uproot.source.cursor.Cursor(loc.offset)
-                decomp_chunk = self.read_locator(
-                    loc, link.env_uncomp_size, cursor, context
-                )
-                self.column_innerlist_dict = PageLink().read(
-                    decomp_chunk, cursor, context
-                )
-        return self.column_innerlist_dict
-
-    def col_form(self, field_id):
-        for cr in self.header.column_records:
-            if cr.field_id == field_id:
-                form_key = f"field-{cr.field_id}"
-                if cr.type > 2:  # data column
-                    return ak._v2.forms.NumpyForm(
-                        _rntuple_col_types[cr.type], form_key=form_key
-                    )
-                else:  # offset index column
-                    return form_key
-
-    def field_form(self, this_id, seen):
-        frs = self.header.field_records
-        fr = frs[this_id]
-        seen.append(this_id)
-        if fr.struct_role == 0:
-            # base case of recursive
-            # these two roles have exactly one column belong to them
-            return self.col_form(this_id)
-        elif fr.struct_role == 1:
-            keyname = self.col_form(this_id)
-            child_id = next(
-                filter(
-                    lambda i: frs[i].parent_field_id == this_id,
-                    range(this_id + 1, len(frs)),
-                )
-            )
-            inner = self.field_form(child_id, seen)
-            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=keyname)
-        elif fr.struct_role == 2:
-            # struct field
-            newids = []
-            for i, fr in enumerate(frs):
-                if i not in seen and fr.parent_field_id == this_id:
-                    newids.append(i)
-            # go find N in the rest, N is the # of fields in struct
-            recordlist = [self.field_form(i, seen) for i in newids]
-            namelist = [frs[i].field_name for i in newids]
-            return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
-        else:
-            # everything should recursive above this branch
-            assert False
-
-    def to_akform(self):
-        frs = self.header.field_records
-        recordlist = []
-        topnames = []
-        seen = []
-        for (i, fr) in enumerate(frs):
-            if fr.parent_field_id == i:
-                topnames.append(fr.field_name)
-            if i not in seen:
-                recordlist.append(self.field_form(i, seen))
-
-        form = ak._v2.forms.RecordForm(
-            recordlist, topnames, form_key="toplevel-whatever"
-        )
-        return form
-
-
-class Container:
-    def __init__(self, rntuple):
-        self._dict = {}
-        for i, cr in enumerate(rntuple.column_records):
-            n = cr.field_id
-            self._dict[f"field-{n}"] = rntuple.read_col_page(i, 0)
-
-    def __getitem__(self, name):
-        l = name.rfind("-")
-        internal_name = name[:l]
-        return self._dict[internal_name]
-
-
-# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
-class PageDescription:
-    def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
-        out.num_elements = cursor.field(chunk, struct.Struct("<I"), context)
-        out.locator = LocatorReader().read(chunk, cursor, context)
-        return out
-
-
-class InnerListLocator:
-    def __init__(self, chunk, cursor, context, num_pages):
-        self.chunk = chunk
-        self.cursor = cursor
-        self.context = context
-        self.num_pages = num_pages
-        self.reader = ListFrameReader(PageDescription())
-        self._page_descs = None
-
-    def __repr__(self):
-        return (
-            f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages})"
-        )
-
-
-class PageLinkInner:
-    _frame_header = struct.Struct("<ii")
-
-    def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
-        local_cursor = cursor.copy()
-        # delay reading inner list of page descriptions
-        future_cursor = cursor.copy()
-        num_bytes, num_pages = local_cursor.fields(chunk, self._frame_header, context)
-        assert num_bytes < 0, f"{num_bytes= !r}"
-        cursor.skip(-num_bytes)
-        return InnerListLocator(chunk, future_cursor, context, num_pages)
-
-
-class PageLink:
-    def __init__(self):
-        self.top_most_list = ListFrameReader(  # top-most list
-            ListFrameReader(PageLinkInner())  # outer list (inner list)
-        )
-
-    def read(self, chunk, cursor, context):
-        out = MetaData(type(self).__name__)
-        out.env_header = _renamemeA(chunk, cursor, context)
-
-        out.pagelinklist = self.top_most_list.read(chunk, cursor, context)
-        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
-        return out
-
 
 uproot.classes[
     "ROOT::Experimental::RNTuple"
