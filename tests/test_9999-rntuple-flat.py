@@ -21,5 +21,8 @@ def test():
             "float",
         ]
         assert R.header.crc32 == R.footer.header_crc32
-        assert all(R.arrays(entry_stop=3)["one_integers"] == numpy.array([9,8,7]))
-        assert all(R.arrays("one_integers", entry_stop=3)["one_integers"] == numpy.array([9,8,7]))
+        assert all(R.arrays(entry_stop=3)["one_integers"] == numpy.array([9, 8, 7]))
+        assert all(
+            R.arrays("one_integers", entry_stop=3)["one_integers"]
+            == numpy.array([9, 8, 7])
+        )
