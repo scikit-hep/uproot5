@@ -20,6 +20,7 @@ extras = {
         "hist>=1.2",
     ],
     "test": [
+        "awkward>=1.0.0,<2",
         "pytest>=4.6",
         "flake8",
         "flake8-print>=5",
