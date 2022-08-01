@@ -16,7 +16,6 @@ import queue
 import re
 import sys
 import threading
-from math import ceil
 from collections.abc import Iterable, Mapping, MutableMapping
 
 import numpy
@@ -3589,7 +3588,7 @@ def _get_dak_array(
     step_size="100 MB",
     custom_classes=None,
     allow_missing=False,
-    real_options=None,  # NOTE: a comma after **options breaks Python 2
+    real_options=None,
 ):
     import dask_awkward
 
@@ -3669,38 +3668,39 @@ def _get_dak_array(
             self.hasbranches = hasbranches
             self.branches = branches
 
-        def __call__(self,i_start_stop):
+        def __call__(self, i_start_stop):
             i, start, stop = i_start_stop
-            return self.hasbranches[i].arrays(self.branches,entry_start=start,entry_stop=stop)
+            return self.hasbranches[i].arrays(
+                self.branches, entry_start=start, entry_stop=stop
+            )
 
     partition_args = []
-    for i,ttree in enumerate(hasbranches):
+    for i, ttree in enumerate(hasbranches):
         entry_start, entry_stop = _regularize_entries_start_stop(
-            ttree.num_entries,None,None
+            ttree.num_entries, None, None
         )
         entry_step = 0
         if uproot._util.isint(step_size):
             entry_step = step_size
         else:
-            entry_step = ttree.num_entries_for(step_size,expressions=common_keys)
+            entry_step = ttree.num_entries_for(step_size, expressions=common_keys)
 
         def foreach(start):
-            stop = min(start+entry_step,entry_stop)
-            partition_args.append((i,start,stop))
+            stop = min(start + entry_step, entry_stop)
+            partition_args.append((i, start, stop))
 
-        for start in range(entry_start,entry_stop,entry_step):
+        for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
-    first5 = hasbranches[0].arrays(common_keys,entry_start=0,entry_stop=5)
+    first5 = hasbranches[0].arrays(common_keys, entry_start=0, entry_stop=5)
     meta = dask_awkward.core.typetracer_array(first5)
 
     return dask_awkward.from_map(
-        _UprootRead(hasbranches,common_keys),
+        _UprootRead(hasbranches, common_keys),
         partition_args,
-        label='from-uproot',
-        meta=meta
+        label="from-uproot",
+        meta=meta,
     )
-
 
 
 def _get_dak_array_delay_open(
@@ -3716,7 +3716,7 @@ def _get_dak_array_delay_open(
 ):
     import dask_awkward
 
-    ffile_path,fobject_path = files[0]
+    ffile_path, fobject_path = files[0]
     obj = uproot._util.regularize_object_path(
         ffile_path, fobject_path, custom_classes, allow_missing, real_options
     )
@@ -3729,25 +3729,33 @@ def _get_dak_array_delay_open(
     )
 
     class _UprootOpenAndRead:
-        def __init__(self,custom_classes,allow_missing,real_options,common_keys) -> None:
+        def __init__(
+            self, custom_classes, allow_missing, real_options, common_keys
+        ) -> None:
             self.custom_classes = custom_classes
             self.allow_missing = allow_missing
             self.real_options = real_options
             self.common_keys = common_keys
 
-        def __call__(self,file_path_object_path):
+        def __call__(self, file_path_object_path):
             file_path, object_path = file_path_object_path
-            ttree = uproot._util.regularize_object_path(file_path,object_path,self.custom_classes,self.allow_missing,self.real_options)
+            ttree = uproot._util.regularize_object_path(
+                file_path,
+                object_path,
+                self.custom_classes,
+                self.allow_missing,
+                self.real_options,
+            )
             return ttree.arrays(self.common_keys)
 
-    first5 = obj.arrays(common_keys,entry_start=0,entry_stop=5)
+    first5 = obj.arrays(common_keys, entry_start=0, entry_stop=5)
     meta = dask_awkward.core.typetracer_array(first5)
 
     return dask_awkward.from_map(
-        _UprootOpenAndRead(custom_classes,allow_missing,real_options,common_keys),
+        _UprootOpenAndRead(custom_classes, allow_missing, real_options, common_keys),
         files,
         label="from-uproot",
-        meta=meta
+        meta=meta,
     )
 
 
