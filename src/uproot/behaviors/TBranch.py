@@ -16,6 +16,7 @@ import queue
 import re
 import sys
 import threading
+from math import ceil
 from collections.abc import Iterable, Mapping, MutableMapping
 
 import numpy
@@ -3590,7 +3591,6 @@ def _get_dak_array(
     allow_missing=False,
     real_options=None,  # NOTE: a comma after **options breaks Python 2
 ):
-    dask, _ = uproot.extras.dask()
     import dask_awkward
 
     hasbranches = []
@@ -3664,34 +3664,43 @@ def _get_dak_array(
             )
         )
 
-    @dask.delayed
-    def del_fn(ttree, start, stop):
-        return ttree.arrays(
-            common_keys, library="ak", entry_start=start, entry_stop=stop
-        )
+    class _UprootRead:
+        def __init__(self, hasbranches, branches) -> None:
+            self.hasbranches = hasbranches
+            self.branches = branches
 
-    dask_arrays = []
-    for ttree in hasbranches:
+        def __call__(self,i_start_stop):
+            i, start, stop = i_start_stop
+            return self.hasbranches[i].arrays(self.branches,entry_start=start,entry_stop=stop)
+
+    partition_args = []
+    for i,ttree in enumerate(hasbranches):
         entry_start, entry_stop = _regularize_entries_start_stop(
-            ttree.tree.num_entries, None, None
+            ttree.num_entries,None,None
         )
         entry_step = 0
         if uproot._util.isint(step_size):
             entry_step = step_size
         else:
-            entry_step = ttree.num_entries_for(step_size)
+            entry_step = ttree.num_entries_for(step_size,expressions=common_keys)
 
         def foreach(start):
-            stop = min(start + entry_step, entry_stop)
-            length = stop - start
+            stop = min(start+entry_step,entry_stop)
+            partition_args.append((i,start,stop))
 
-            delayed_array = del_fn(ttree, start, stop)
-            dask_arrays.append(delayed_array)
-
-        for start in range(entry_start, entry_stop, entry_step):
+        for start in range(entry_start,entry_stop,entry_step):
             foreach(start)
 
-    return dask_awkward.from_delayed(dask_arrays)
+    first5 = hasbranches[0].arrays(common_keys,entry_start=0,entry_stop=5)
+    meta = dask_awkward.core.typetracer_array(first5)
+
+    return dask_awkward.from_map(
+        _UprootRead(hasbranches,common_keys),
+        partition_args,
+        label='from-uproot',
+        meta=meta
+    )
+
 
 
 def _get_dak_array_delay_open(
@@ -3705,25 +3714,41 @@ def _get_dak_array_delay_open(
     allow_missing=False,
     real_options=None,  # NOTE: a comma after **options breaks Python 2
 ):
-    dask, _ = uproot.extras.dask()
     import dask_awkward
 
-    delayed_open_fn = dask.delayed(uproot._util.regularize_object_path)
+    ffile_path,fobject_path = files[0]
+    obj = uproot._util.regularize_object_path(
+        ffile_path, fobject_path, custom_classes, allow_missing, real_options
+    )
+    common_keys = obj.keys(
+        recursive=recursive,
+        filter_name=filter_name,
+        filter_typename=filter_typename,
+        filter_branch=filter_branch,
+        full_paths=full_paths,
+    )
 
-    dask_arrays = []
+    class _UprootOpenAndRead:
+        def __init__(self,custom_classes,allow_missing,real_options,common_keys) -> None:
+            self.custom_classes = custom_classes
+            self.allow_missing = allow_missing
+            self.real_options = real_options
+            self.common_keys = common_keys
 
-    @dask.delayed
-    def delayed_get_array(ttree):
-        return ttree.arrays(library="ak")
+        def __call__(self,file_path_object_path):
+            file_path, object_path = file_path_object_path
+            ttree = uproot._util.regularize_object_path(file_path,object_path,self.custom_classes,self.allow_missing,self.real_options)
+            return ttree.arrays(self.common_keys)
 
-    for file_path, object_path in files:
-        delayed_tree = delayed_open_fn(
-            file_path, object_path, custom_classes, allow_missing, real_options
-        )
-        delayed_array = delayed_get_array(delayed_tree)
+    first5 = obj.arrays(common_keys,entry_start=0,entry_stop=5)
+    meta = dask_awkward.core.typetracer_array(first5)
 
-        dask_arrays.append(delayed_array)
-    return dask_awkward.from_delayed(dask_arrays)
+    return dask_awkward.from_map(
+        _UprootOpenAndRead(custom_classes,allow_missing,real_options,common_keys),
+        files,
+        label="from-uproot",
+        meta=meta
+    )
 
 
 class _WrapDict(MutableMapping):
