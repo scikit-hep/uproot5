@@ -318,8 +318,8 @@ in file {}""".format(
         entry_stop = entry_stop or self._length
         clusters = self.cluster_summaries
         if len(clusters) != 1:
-            raise(RuntimeError("Not implemented"))
-        #FIXME we assume cluster starts at entry 0, i.e only one cluster
+            raise (RuntimeError("Not implemented"))
+        # FIXME we assume cluster starts at entry 0, i.e only one cluster
         L = clusters[0].num_entries
 
         form = self.to_akform().select_columns(filter_names)
