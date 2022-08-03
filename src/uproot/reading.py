@@ -1405,7 +1405,8 @@ class ReadOnlyDirectory(Mapping):
         if self._fSeekKeys == 0:
             self._header_key = None
             self._keys = []
-
+            self._keys_lookup = {}
+            self._len = None 
         else:
             keys_start = self._fSeekKeys
             keys_stop = min(keys_start + self._fNbytesKeys + 8, file.fEND)
