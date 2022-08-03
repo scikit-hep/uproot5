@@ -22,7 +22,7 @@ _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 
 _rntuple_col_types = {
-    1: "u64",
+    1: "uint64",
     2: "uint32",
     3: "uint64",  # Switch
     4: "uint8",
@@ -56,8 +56,17 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
 
+    @property
+    def _keys(self):
+        keys = []
+        frs = self.header.field_records
+        for (i, fr) in enumerate(frs):
+            if fr.parent_field_id == i:
+                keys.append(fr.field_name)
+        return keys
+
     def keys(self):
-        return self.field_names
+        return self._keys
 
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
@@ -255,7 +264,7 @@ in file {}""".format(
     def to_akform(self):
         frs = self.header.field_records
         recordlist = []
-        topnames = []
+        topnames = self.keys()
         seen = []
         for (i, fr) in enumerate(frs):
             if fr.parent_field_id == i:
@@ -280,19 +289,18 @@ in file {}""".format(
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
         return cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
 
-    def read_col_page(self, ncol, L):
+    def read_col_page(self, ncol, entry_start):
         ngroup = self.which_colgroup(ncol)
         link = self.page_list_envelopes.pagelinklist[ngroup][ncol]
         pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
         dt_str = _rntuple_col_types[dtype_byte]
         T = numpy.dtype(dt_str)
-        res = self.read_pagedesc(pagelist[0], T)
+
         # FIXME vector read
+        res = self.read_pagedesc(pagelist[0], T)
         for p in pagelist[1:]:
             res = numpy.append(res, self.read_pagedesc(p, T))
-            if len(res) > L:
-                break
 
         if dtype_byte <= 2:
             res = numpy.insert(res, 0, 0)  # for offsets
@@ -307,15 +315,19 @@ in file {}""".format(
         decompression_executor=None,
         array_cache=None,
     ):
-        if entry_stop is None:
-            entry_stop = self._length
-        L = entry_stop - entry_start
+        entry_stop = entry_stop or self._length
+        clusters = self.cluster_summaries
+        if len(clusters) != 1:
+            raise(RuntimeError("Not implemented"))
+        #FIXME we assume cluster starts at entry 0, i.e only one cluster
+        L = clusters[0].num_entries
+
         form = self.to_akform().select_columns(filter_names)
         D = {}
         for i, cr in enumerate(self.column_records):
             n = cr.field_id
             D[f"field-{n}"] = self.read_col_page(i, L)
-        return ak._v2.from_buffers(form, L, Container(D))
+        return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
 # Supporting classes
