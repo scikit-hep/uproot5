@@ -26,7 +26,7 @@ _rntuple_col_types = {
     2: "uint32",
     3: "uint64",  # Switch
     4: "uint8",
-    5: "char",
+    5: "uint8", #char
     6: "bit",
     7: "float64",
     8: "float32",
@@ -218,26 +218,48 @@ in file {}""".format(
 
         return self.column_innerlist_dict
 
-    def col_form(self, field_id):
-        for cr in self.header.column_records:
-            if cr.field_id == field_id:
-                form_key = f"field-{cr.field_id}"
-                if cr.type > 2:  # data column
-                    return ak._v2.forms.NumpyForm(
-                        _rntuple_col_types[cr.type], form_key=form_key
-                    )
-                else:  # offset index column
-                    return form_key
+    def col_form(self, field_id, type_name=None):
+        rel_crs = []
+        rel_crs_idxs = []
+        for i, cr in enumerate(self.header.column_records):
+            if cr.field_id == field_id: 
+                rel_crs.append(cr)
+                rel_crs_idxs.append(i)
+            if cr.field_id > field_id: break #early exit because crs are ordered
+        if len(rel_crs) == 1: # normal case
+            cr = rel_crs[0]
+            form_key = f"field-{cr.field_id}"
+            if cr.type == 3: # switch (UnionForm)
+                return form_key
+            elif cr.type > 2:  # data column
+                return ak._v2.forms.NumpyForm(
+                    _rntuple_col_types[cr.type], form_key=form_key
+                )
+            else:  # offset index column
+                return form_key
+        elif type_name == "std::string":
+            form_key = f"field-{cr.field_id}"
+            cr_char = rel_crs[-1]
+            assert cr_char.type == 5 #char
+
+            form_key_char = f"field-{cr_char.field_id}"
+            inner = self.col_form(rel_crs_idxs[-1])
+            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=form_key)
+        else:
+            print(field_id)
+            raise(RuntimeError("Missing special case"))
 
     def field_form(self, this_id, seen):
         frs = self.header.field_records
         fr = frs[this_id]
         seen.append(this_id)
-        if fr.struct_role == 0:
+        sr = fr.struct_role
+        if sr == 0:
             # base case of recursive
-            # these two roles have exactly one column belong to them
-            return self.col_form(this_id)
-        elif fr.struct_role == 1:
+            # n.b. the split may be in column
+            return self.col_form(this_id, fr.type_name)
+        elif sr == 1:
+            # mother of a collection, i.e. vector (meaning field is jagged)
             keyname = self.col_form(this_id)
             child_id = next(
                 filter(
@@ -247,8 +269,8 @@ in file {}""".format(
             )
             inner = self.field_form(child_id, seen)
             return ak._v2.forms.ListOffsetForm("u32", inner, form_key=keyname)
-        elif fr.struct_role == 2:
-            # struct field
+        elif sr == 2:
+            # mother of a record, i.e. struct
             newids = []
             for i, fr in enumerate(frs):
                 if i not in seen and fr.parent_field_id == this_id:
@@ -257,6 +279,15 @@ in file {}""".format(
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [frs[i].field_name for i in newids]
             return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
+        elif sr == 3:
+            keyname = self.col_form(this_id)
+            newids = []
+            for i, fr in enumerate(frs):
+                if i not in seen and fr.parent_field_id == this_id:
+                    newids.append(i)
+            recordlist = [self.field_form(i, seen) for i in newids]
+            return ak._v2.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
+            # mother of a variant, i.e. union
         else:
             # everything should recursive above this branch
             raise (AssertionError("this should be unreachable"))
@@ -267,8 +298,6 @@ in file {}""".format(
         topnames = self.keys()
         seen = []
         for (i, fr) in enumerate(frs):
-            if fr.parent_field_id == i:
-                topnames.append(fr.field_name)
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
 
@@ -291,13 +320,17 @@ in file {}""".format(
 
     def read_col_page(self, ncol, entry_start):
         ngroup = self.which_colgroup(ncol)
-        link = self.page_list_envelopes.pagelinklist[ngroup][ncol]
+        linklist = self.page_list_envelopes.pagelinklist[ngroup]
+        link = linklist[ncol]
         pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
         dt_str = _rntuple_col_types[dtype_byte]
         T = numpy.dtype(dt_str)
 
         # FIXME vector read
+        # n.b. it's possible pagelist is empty
+        if not pagelist:
+            return numpy.empty(0, T)
         res = self.read_pagedesc(pagelist[0], T)
         for p in pagelist[1:]:
             res = numpy.append(res, self.read_pagedesc(p, T))
