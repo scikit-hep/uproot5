@@ -26,7 +26,7 @@ _rntuple_col_types = {
     2: "uint32",
     3: "uint64",  # Switch
     4: "uint8",
-    5: "uint8", #char
+    5: "uint8",  # char
     6: "bit",
     7: "float64",
     8: "float32",
@@ -222,14 +222,15 @@ in file {}""".format(
         rel_crs = []
         rel_crs_idxs = []
         for i, cr in enumerate(self.header.column_records):
-            if cr.field_id == field_id: 
+            if cr.field_id == field_id:
                 rel_crs.append(cr)
                 rel_crs_idxs.append(i)
-            if cr.field_id > field_id: break #early exit because crs are ordered
-        if len(rel_crs) == 1: # normal case
+            if cr.field_id > field_id:
+                break  # early exit because crs are ordered
+        if len(rel_crs) == 1:  # normal case
             cr = rel_crs[0]
             form_key = f"field-{cr.field_id}"
-            if cr.type == 3: # switch (UnionForm)
+            if cr.type == 3:  # switch (UnionForm)
                 return form_key
             elif cr.type > 2:  # data column
                 return ak._v2.forms.NumpyForm(
@@ -240,14 +241,14 @@ in file {}""".format(
         elif type_name == "std::string":
             form_key = f"field-{cr.field_id}"
             cr_char = rel_crs[-1]
-            assert cr_char.type == 5 #char
+            assert cr_char.type == 5  # char
 
             form_key_char = f"field-{cr_char.field_id}"
             inner = self.col_form(rel_crs_idxs[-1])
             return ak._v2.forms.ListOffsetForm("u32", inner, form_key=form_key)
         else:
             print(field_id)
-            raise(RuntimeError("Missing special case"))
+            raise (RuntimeError("Missing special case"))
 
     def field_form(self, this_id, seen):
         frs = self.header.field_records
