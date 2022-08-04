@@ -234,7 +234,7 @@ def regularize_rename(rename):
             def applyrules(x):
                 for matcher, trans in rules:
                     if matcher.search(x) is not None:
-                        return matcher.sub(trans, x)   # noqa: B023
+                        return matcher.sub(trans, x)  # noqa: B023
                 else:
                     return x
 
