@@ -546,7 +546,7 @@ def lazy(
                 is_self.append(True)
 
                 def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)
+                    return branch is original and filter_branch(branch)  # noqa: B023
 
             else:
                 is_self.append(False)
@@ -614,17 +614,17 @@ def lazy(
         )
 
         def foreach(start):
-            stop = min(start + entry_step, entry_stop)
+            stop = min(start + entry_step, entry_stop)  # noqa: B023
             length = stop - start
 
             fields = []
             names = []
             for key in common_keys:
-                branch = obj[key]
+                branch = obj[key]  # noqa: B023
 
-                interpretation = branchid_interpretation[branch.cache_key]
+                interpretation = branchid_interpretation[branch.cache_key]  # noqa: B023
                 form = interpretation.awkward_form(
-                    obj.file,
+                    obj.file,  # noqa: B023
                     {
                         "index_format": "i64",
                         "header": False,
@@ -637,7 +637,7 @@ def lazy(
                 )
 
                 generator = awkward.layout.ArrayGenerator(
-                    branch.array,
+                    branch.array,  # noqa: B023
                     (
                         None,
                         start,
@@ -654,7 +654,7 @@ def lazy(
                     length,
                 )
                 cache_key = "{}:{}:{}-{}:{}".format(
-                    branch.cache_key,
+                    branch.cache_key,  # noqa: B023
                     interpretation.cache_key,
                     start,
                     stop,
@@ -665,7 +665,7 @@ def lazy(
                     generator, cache=array_cache, cache_key=cache_key
                 )
                 fields.append(virtualarray)
-                names.append(key)
+                names.append(key)  # noqa: B023
 
             recordarray = awkward.layout.RecordArray(fields, names, length)
             partitions.append(recordarray)
@@ -3594,7 +3594,7 @@ def _get_dask_array(
                 is_self.append(True)
 
                 def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)
+                    return branch is original and filter_branch(branch)  # noqa: B023
 
             else:
                 is_self.append(False)
@@ -3671,13 +3671,13 @@ def _get_dask_array(
                 dt, inner_shape = dt.subdtype
 
             def foreach(start):
-                stop = min(start + entry_step, entry_stop)
+                stop = min(start + entry_step, entry_stop)  # noqa: B023
                 length = stop - start
 
-                delayed_array = delayed_get_array(ttree, key, start, stop)
-                shape = (length,) + inner_shape
-                dask_arrays.append(
-                    da.from_delayed(delayed_array, shape=shape, dtype=dt)
+                delayed_array = delayed_get_array(ttree, key, start, stop)  # noqa: B023
+                shape = (length,) + inner_shape  # noqa: B023
+                dask_arrays.append(  # noqa: B023
+                    da.from_delayed(delayed_array, shape=shape, dtype=dt)  # noqa: B023
                 )
 
             for start in range(entry_start, entry_stop, entry_step):
