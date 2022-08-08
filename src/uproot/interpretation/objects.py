@@ -302,7 +302,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 branch.file.detached,
                 branch,
             )
-            # print(output, "ERERERER")
+            context["forth"].gen.awkward_model = context["forth"].gen._prev_node
             if not context["forth"].gen.var_set:
                 context["forth"].prereaddone = True
                 self._assemble_forth(
@@ -322,7 +322,6 @@ loop
 """
                 self._forth_form_keys = tuple(context["forth"].gen.form_keys)
                 self._form = context["forth"].gen.top_form
-                print(self._complete_forth_code)
                 return None  # we should re-read all the data with Forth
 
         return output  # Forth-generation was unsuccessful: this is Python output

@@ -791,7 +791,9 @@ def test_80():
     ) as file:
         branch = file["t/x"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        interp._forth = True
         py = branch.array(interp, library="np", entry_stop=2)
+        assert len(py[0]) == 0
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
 
 

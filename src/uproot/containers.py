@@ -1105,7 +1105,6 @@ class AsVector(AsContainer):
         # @aryan26roy: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
 
         helper_obj = uproot._awkward_forth.GenHelper(context)
-
         if helper_obj.is_forth():
             forth_obj = helper_obj.get_gen_obj()
 
@@ -1179,7 +1178,6 @@ class AsVector(AsContainer):
                         )
         else:
             length = cursor.field(chunk, _stl_container_size, context)
-
             if helper_obj.is_forth():
                 key = forth_obj.get_keys(1)
                 form_key = f"part0-node{key}-offsets"
@@ -1214,6 +1212,7 @@ class AsVector(AsContainer):
 
             if length == 0 and helper_obj.is_forth():
                 forth_obj.var_set = True
+
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
