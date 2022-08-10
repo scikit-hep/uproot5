@@ -160,7 +160,7 @@ def lz4_block():
     """
     try:
         import lz4.block
-        import xxhash  # noqa: F401
+        import xxhash
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
             """install the 'lz4' and `xxhash` packages with:
@@ -182,7 +182,7 @@ def xxhash():
     Attempts to import ``lz4`` as well.
     """
     try:
-        import lz4.block  # noqa: F401
+        import lz4.block
         import xxhash
     except ModuleNotFoundError:
         raise ModuleNotFoundError(
@@ -270,3 +270,20 @@ or
         )
     else:
         return dask, da
+
+
+def dask_awkward():
+    """
+    Imports and returns ``dask_awkward``.
+    """
+    try:
+        import dask_awkward
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            """for uproot.dask, install the (complete) 'dask' package with:
+    pip install "dask[complete]"
+or
+    conda install dask"""
+        )
+    else:
+        return dask_awkward
