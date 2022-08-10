@@ -1,8 +1,12 @@
-
 import numpy
+
 import uproot
 from uproot._util import no_filter
-from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_entries_start_stop
+from uproot.behaviors.TBranch import (
+    HasBranches,
+    TBranch,
+    _regularize_entries_start_stop,
+)
 
 
 def _get_dask_array(
@@ -178,6 +182,7 @@ def _get_dask_array_delay_open(
         dask_dict[key] = da.concatenate(dask_arrays, allow_unknown_chunksizes=True)
     return dask_dict
 
+
 class _UprootRead:
     def __init__(self, hasbranches, branches) -> None:
         self.hasbranches = hasbranches
@@ -188,6 +193,7 @@ class _UprootRead:
         return self.hasbranches[i].arrays(
             self.branches, entry_start=start, entry_stop=stop
         )
+
 
 class _UprootOpenAndRead:
     def __init__(
@@ -208,6 +214,7 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         return ttree.arrays(self.common_keys)
+
 
 def _get_dak_array(
     files,
@@ -294,7 +301,6 @@ def _get_dak_array(
             )
         )
 
-
     partition_args = []
     for i, ttree in enumerate(hasbranches):
         entry_start, entry_stop = _regularize_entries_start_stop(
@@ -313,8 +319,12 @@ def _get_dak_array(
         for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
-    first_basket_start, first_basket_stop = hasbranches[0][common_keys[0]].basket_entry_start_stop(0)
-    first_basket = hasbranches[0].arrays(common_keys, entry_start=first_basket_start, entry_stop=first_basket_stop)
+    first_basket_start, first_basket_stop = hasbranches[0][
+        common_keys[0]
+    ].basket_entry_start_stop(0)
+    first_basket = hasbranches[0].arrays(
+        common_keys, entry_start=first_basket_start, entry_stop=first_basket_stop
+    )
     meta = dask_awkward.core.typetracer_array(first_basket)
 
     return dask_awkward.from_map(
@@ -350,9 +360,12 @@ def _get_dak_array_delay_open(
         full_paths=full_paths,
     )
 
-
-    first_basket_start, first_basket_stop = obj[common_keys[0]].basket_entry_start_stop(0)
-    first_basket = obj.arrays(common_keys, entry_start=first_basket_start, entry_stop=first_basket_stop)
+    first_basket_start, first_basket_stop = obj[common_keys[0]].basket_entry_start_stop(
+        0
+    )
+    first_basket = obj.arrays(
+        common_keys, entry_start=first_basket_start, entry_stop=first_basket_stop
+    )
     meta = dask_awkward.core.typetracer_array(first_basket)
 
     return dask_awkward.from_map(
@@ -361,4 +374,3 @@ def _get_dak_array_delay_open(
         label="from-uproot",
         meta=meta,
     )
-
