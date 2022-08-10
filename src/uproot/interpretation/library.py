@@ -163,7 +163,7 @@ class Library:
         return repr(self.name)
 
     def __eq__(self, other):
-        return type(_libraries[self.name]) is type(_libraries[other.name]) # noqa: E721
+        return type(_libraries[self.name]) is type(_libraries[other.name])  # noqa: E721
 
 
 class NumPy(Library):
