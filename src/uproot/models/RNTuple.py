@@ -218,18 +218,29 @@ in file {}""".format(
 
         return self.column_innerlist_dict
 
+    def base_col_form(self, col_id):
+        cr = self.header.column_records[col_id]
+        form_key = f"column-{col_id}"
+        if cr.type == 3:  # switch (UnionForm)
+            return form_key
+        elif cr.type > 2:  # data column
+            return ak._v2.forms.NumpyForm(
+                _rntuple_col_types[cr.type], form_key=form_key
+            )
+        else:  # offset index column
+            return form_key
     def col_form(self, field_id, type_name=None):
+        #FIXME remove this ugly logic
         rel_crs = []
         rel_crs_idxs = []
         for i, cr in enumerate(self.header.column_records):
             if cr.field_id == field_id:
                 rel_crs.append(cr)
                 rel_crs_idxs.append(i)
-            if cr.field_id > field_id:
-                break  # early exit because crs are ordered
+            if cr.field_id > field_id: break
         if len(rel_crs) == 1:  # normal case
+            form_key = f"column-{rel_crs_idxs[0]}"
             cr = rel_crs[0]
-            form_key = f"field-{cr.field_id}"
             if cr.type == 3:  # switch (UnionForm)
                 return form_key
             elif cr.type > 2:  # data column
@@ -239,12 +250,10 @@ in file {}""".format(
             else:  # offset index column
                 return form_key
         elif type_name == "std::string":
-            form_key = f"field-{cr.field_id}"
+            form_key = f"column-{cr.field_id}"
             cr_char = rel_crs[-1]
             assert cr_char.type == 5  # char
-
-            form_key_char = f"field-{cr_char.field_id}"
-            inner = self.col_form(rel_crs_idxs[-1])
+            inner = self.base_col_form(rel_crs_idxs[-1])
             return ak._v2.forms.ListOffsetForm("u32", inner, form_key=form_key)
         else:
             print(field_id)
@@ -359,8 +368,7 @@ in file {}""".format(
         form = self.to_akform().select_columns(filter_names)
         D = {}
         for i, cr in enumerate(self.column_records):
-            n = cr.field_id
-            D[f"field-{n}"] = self.read_col_page(i, L)
+            D[f"column-{i}"] = self.read_col_page(i, L)
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
