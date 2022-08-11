@@ -229,15 +229,17 @@ in file {}""".format(
             )
         else:  # offset index column
             return form_key
+
     def col_form(self, field_id, type_name=None):
-        #FIXME remove this ugly logic
+        # FIXME remove this ugly logic
         rel_crs = []
         rel_crs_idxs = []
         for i, cr in enumerate(self.header.column_records):
             if cr.field_id == field_id:
                 rel_crs.append(cr)
                 rel_crs_idxs.append(i)
-            if cr.field_id > field_id: break
+            if cr.field_id > field_id:
+                break
         if len(rel_crs) == 1:  # normal case
             form_key = f"column-{rel_crs_idxs[0]}"
             cr = rel_crs[0]
