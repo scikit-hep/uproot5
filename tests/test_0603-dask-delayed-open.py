@@ -14,8 +14,8 @@ def test_single_delay_open():
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     ttree = uproot.open(filename1)
 
-    assert uproot.dask(filename1, open_files=False)["px1"].chunks == ((numpy.nan,),)
-    arr = uproot.dask(filename1, open_files=False)["px1"].compute() == ttree[
+    assert uproot.dask(filename1, open_files=False,library='np')["px1"].chunks == ((numpy.nan,),)
+    arr = uproot.dask(filename1, open_files=False,library='np')["px1"].compute() == ttree[
         "px1"
     ].array(library="np")
     assert arr.all()
@@ -26,11 +26,11 @@ def test_multiple_delay_open():
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"
     true_val = uproot.concatenate([filename1, filename2], library="np")
 
-    assert uproot.dask([filename1, filename2], open_files=False)["px1"].chunks == (
+    assert uproot.dask([filename1, filename2], open_files=False,library='np')["px1"].chunks == (
         (numpy.nan, numpy.nan),
     )
     arr = (
-        uproot.dask([filename1, filename2], open_files=False)["px1"].compute()
+        uproot.dask([filename1, filename2], open_files=False,library='np')["px1"].compute()
         == true_val["px1"]
     )
     assert arr.all()

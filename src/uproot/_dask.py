@@ -17,7 +17,7 @@ def dask(
     recursive=True,
     full_paths=False,
     step_size="100 MB",
-    library="np",
+    library="ak",
     custom_classes=None,
     allow_missing=False,
     open_files=True,
