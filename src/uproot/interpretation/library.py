@@ -739,7 +739,6 @@ in object {}""".format(
             return concatenated
 
 
-
 def _is_pandas_rangeindex(pandas, index):
     if hasattr(pandas, "RangeIndex") and isinstance(index, pandas.RangeIndex):
         return True

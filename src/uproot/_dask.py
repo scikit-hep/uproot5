@@ -112,7 +112,7 @@ def dask(
 
     filter_branch = uproot._util.regularize_filter(filter_branch)
 
-    if library.name == 'np':
+    if library.name == "np":
         if open_files:
             return _get_dask_array(
                 files,
@@ -138,7 +138,7 @@ def dask(
                 allow_missing,
                 real_options,
             )
-    elif library.name == 'ak':
+    elif library.name == "ak":
         if open_files:
             return _get_dak_array(
                 files,
