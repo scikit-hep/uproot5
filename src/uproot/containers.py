@@ -290,7 +290,7 @@ class AsDynamic(AsContainer):
             return awkward._v2.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
-                parameters={"uproot": {"as": "array", "header": self._header}},
+                parameters={"uproot": {"as": "dynamic"}},
             )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
