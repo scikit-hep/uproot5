@@ -48,7 +48,7 @@ def test(tmp_path):
         f["h_reg"] = h_reg
         f["h_var"] = h_var
 
-    with uproot.open("test.root") as f:
+    with uproot.open(filename) as f:
         print(f["h_reg"].to_hist().axes[0].edges.tolist())
 
         assert f["h_reg"].to_hist().axes[0].edges.tolist() == pytest.approx(expectation)
