@@ -649,7 +649,10 @@ def _fXbins_maybe_regular(axis, boost_histogram):
         else:
             return edges.astype(">f8")
     else:
-        if isinstance(axis, boost_histogram.axis.Regular):
+        if (
+            isinstance(axis, boost_histogram.axis.Regular)
+            and getattr(axis, "transform", None) is None
+        ):
             return numpy.array([], dtype=">f8")
         else:
             return axis.edges
