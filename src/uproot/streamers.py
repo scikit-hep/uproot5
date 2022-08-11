@@ -312,6 +312,13 @@ class Model_TStreamerInfo(uproot.model.Model):
             f"    class_flags = {{{', '.join(repr(k) + ': ' + repr(v) for k, v in class_flags.items())}}}"
         )
 
+        # std::pair cannot be strided
+        if self.name.startswith("pair<"):
+            strided_interpretation = strided_interpretation[:2]
+            strided_interpretation.append(
+                "        raise uproot.interpretation.objects.CannotBeStrided('std::pair')"
+            )
+
         classname = uproot.model.classname_encode(self.name, self.class_version)
         return "\n".join(
             [f"class {classname}(uproot.model.VersionedModel):"]
