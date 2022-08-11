@@ -157,3 +157,40 @@ def test_regular_3d(tmp_path):
     assert h2.GetBinContent(8, 9, 2) == 0
     assert h2.GetBinContent(9, 8, 1) == 0
     f.Close()
+
+
+def test_issue_0659(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    cat_axis = hist.axis.IntCategory([10, 11, 12], label="Category")
+    reg_axis = hist.axis.Regular(100, 0, 100, label="Random")
+    h = hist.Hist(cat_axis)
+    h2 = hist.Hist(cat_axis, reg_axis)
+    h.fill(np.random.randint(1, 4, 1000))
+    h2.fill(np.random.randint(1, 4, 1000), np.random.normal(20, 5, 1000))
+
+    with uproot.recreate(newfile) as fout:
+        fout["h"] = h
+        fout["h2"] = h2
+
+    with uproot.open(newfile) as fin:
+        h_opened = fin["h"]
+        assert h_opened.values(flow=False).shape == (3,)
+        assert h_opened.values(flow=True).shape == (5,)
+        assert h_opened.axis(0).edges().tolist() == [0.0, 1.0, 2.0, 3.0]
+
+        h2_opened = fin["h2"]
+        assert h2_opened.values(flow=False).shape == (3, 100)
+        assert h2_opened.values(flow=True).shape == (5, 102)
+        assert h2_opened.axis(0).edges().tolist() == [0.0, 1.0, 2.0, 3.0]
+        assert h2_opened.axis(1).edges().tolist() == list(map(float, range(101)))
+
+        h_opened.to_hist()
+        h2_opened.to_hist()
+
+    f = ROOT.TFile(newfile)
+    h_opened2 = f.Get("h")
+    h2_opened2 = f.Get("h2")
+    h_opened2.GetBinContent(0) == 0.0
+    h2_opened2.GetBinContent(0) == 0.0
+    f.Close()
