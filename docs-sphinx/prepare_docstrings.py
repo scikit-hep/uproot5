@@ -35,7 +35,7 @@ common = [
     "uproot.reading.open",
     "uproot.behaviors.TBranch.iterate",
     "uproot.behaviors.TBranch.concatenate",
-    "uproot.behaviors.TBranch.dask",
+    "uproot._dask.dask",
     "uproot.behaviors.TBranch.lazy",
     "uproot.writing.writable.create",
     "uproot.writing.writable.recreate",

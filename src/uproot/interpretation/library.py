@@ -257,46 +257,6 @@ class NumPy(Library):
         elif isinstance(all_arrays[0], dict):
             return concatenated
 
-    def dask(
-        self,
-        files,
-        filter_name,
-        filter_typename,
-        filter_branch,
-        recursive,
-        full_paths,
-        step_size,
-        custom_classes,
-        allow_missing,
-        real_options,
-        open_files,
-    ):
-        if open_files:
-            return uproot._dask._get_dask_array(
-                files,
-                filter_name,
-                filter_typename,
-                filter_branch,
-                recursive,
-                full_paths,
-                step_size,
-                custom_classes,
-                allow_missing,
-                real_options,
-            )
-        else:
-            return uproot._dask._get_dask_array_delay_open(
-                files,
-                filter_name,
-                filter_typename,
-                filter_branch,
-                recursive,
-                full_paths,
-                custom_classes,
-                allow_missing,
-                real_options,
-            )
-
 
 def _strided_to_awkward(awkward, path, interpretation, data):
     contents = []
@@ -778,45 +738,6 @@ in object {}""".format(
         elif isinstance(all_arrays[0], dict):
             return concatenated
 
-    def dask(
-        self,
-        files,
-        filter_name,
-        filter_typename,
-        filter_branch,
-        recursive,
-        full_paths,
-        step_size,
-        custom_classes,
-        allow_missing,
-        real_options,
-        open_files,
-    ):
-        if open_files:
-            return uproot._dask._get_dak_array(
-                files,
-                filter_name,
-                filter_typename,
-                filter_branch,
-                recursive,
-                full_paths,
-                step_size,
-                custom_classes,
-                allow_missing,
-                real_options,
-            )
-        else:
-            return uproot._dask._get_dak_array_delay_open(
-                files,
-                filter_name,
-                filter_typename,
-                filter_branch,
-                recursive,
-                full_paths,
-                custom_classes,
-                allow_missing,
-                real_options,
-            )
 
 
 def _is_pandas_rangeindex(pandas, index):

@@ -181,10 +181,10 @@ from uproot.behaviors.TBranch import TBranch
 from uproot.behaviors.TBranch import iterate
 from uproot.behaviors.TBranch import concatenate
 from uproot.behaviors.TBranch import lazy
-from uproot.behaviors.TBranch import dask
 
 from uproot.behavior import behavior_of
 
 from uproot._util import no_filter
+from uproot._dask import dask
 
 from uproot.pyroot import from_pyroot
