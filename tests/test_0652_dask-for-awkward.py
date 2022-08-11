@@ -8,7 +8,7 @@ import uproot
 
 dask = pytest.importorskip("dask")
 dask_awkward = pytest.importorskip("dask_awkward")
-
+from dask_awkward.testutils import assert_eq
 
 def test_single_dask_awkward_array():
     test_path = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
@@ -18,8 +18,7 @@ def test_single_dask_awkward_array():
     dak_array = uproot.dask(test_path, library="ak")
 
     assert len(ak_array) == len(dak_array)
-
-    assert dak_array.compute().to_list() == ak_array.to_list()
+    assert_eq(dak_array,ak_array)
 
 
 def test_dask_concatenation():
@@ -34,8 +33,7 @@ def test_dask_concatenation():
     )
 
     assert len(ak_array) == len(dak_array)
-
-    assert dak_array.compute().to_list() == ak_array.to_list()
+    assert_eq(dak_array,ak_array,check_unconcat_form=False)
 
 
 def test_multidim_array():
@@ -48,8 +46,7 @@ def test_multidim_array():
     dak_array = uproot.dask(test_path, library="ak")
 
     assert len(ak_array) == len(dak_array)
-
-    assert dak_array.compute().to_list() == ak_array.to_list()
+    assert_eq(dak_array,ak_array)
 
 
 def test_chunking_single_num():
@@ -92,5 +89,4 @@ def test_delay_open():
     )
 
     assert len(ak_array) == len(dak_array)
-
-    assert dak_array.compute().to_list() == ak_array.to_list()
+    assert_eq(dak_array,ak_array,check_unconcat_form=False)
