@@ -254,13 +254,15 @@ in file {}""".format(
                 )
             else:  # offset index column
                 return form_key
-        elif type_name == "std::string": # string field splits->2 in col records
+        elif type_name == "std::string":  # string field splits->2 in col records
             assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
-            assert cr_char.type == 5 # char
+            assert cr_char.type == 5  # char
             inner = self.base_col_form(rel_crs_idxs[-1])
             form_key = f"column-{rel_crs_idxs[0]}"
-            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=form_key, parameters={"__array__": "string"})
+            return ak._v2.forms.ListOffsetForm(
+                "u32", inner, form_key=form_key, parameters={"__array__": "string"}
+            )
         else:
             print(field_id)
             raise (RuntimeError("Missing special case"))
@@ -378,14 +380,15 @@ in file {}""".format(
         recursive_find(form, target_cols)
         for i, cr in enumerate(self.column_records):
             key = f"column-{i}"
-            if key not in target_cols: continue
+            if key not in target_cols:
+                continue
 
             content = self.read_col_page(i, L)
             if cr.type == 3:
                 # split Switch column into index and tag
                 # TODO what's this -1 hack
-                tags  = (content >> 44).astype('int8') - 1
-                kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000fffff))
+                tags = (content >> 44).astype("int8") - 1
+                kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
                 D[f"{key}-index"] = kindex
                 D[f"{key}-tags"] = tags
             else:
@@ -405,6 +408,7 @@ def recursive_find(form, res):
     if hasattr(form, "content"):
         if issubclass(type(form.content), ak._v2.forms.Form):
             recursive_find(form.content, res)
+
 
 class Container:
     def __init__(self, D):
