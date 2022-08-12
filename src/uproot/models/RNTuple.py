@@ -52,6 +52,9 @@ def _renamemeA(chunk, cursor, context):
 
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
+    def debug(self):
+        return self.header.field_records, self.header.column_records
+
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
@@ -251,12 +254,12 @@ in file {}""".format(
                 )
             else:  # offset index column
                 return form_key
-        elif type_name == "std::string":
+        elif type_name == "std::string": # string field splits->2 in col records
             form_key = f"column-{cr.field_id}"
             cr_char = rel_crs[-1]
-            assert cr_char.type == 5  # char
+            assert cr_char.type == 5 # char
             inner = self.base_col_form(rel_crs_idxs[-1])
-            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=form_key)
+            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=form_key, parameters={"__array__": "string"})
         else:
             print(field_id)
             raise (RuntimeError("Missing special case"))
@@ -292,6 +295,7 @@ in file {}""".format(
             namelist = [frs[i].field_name for i in newids]
             return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
         elif sr == 3:
+            # mother of a variant, i.e. union
             keyname = self.col_form(this_id)
             newids = []
             for i, fr in enumerate(frs):
@@ -299,7 +303,6 @@ in file {}""".format(
                     newids.append(i)
             recordlist = [self.field_form(i, seen) for i in newids]
             return ak._v2.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
-            # mother of a variant, i.e. union
         else:
             # everything should recursive above this branch
             raise (AssertionError("this should be unreachable"))
@@ -367,22 +370,73 @@ in file {}""".format(
         # FIXME we assume cluster starts at entry 0, i.e only one cluster
         L = clusters[0].num_entries
 
+        form = ak._v2.forms.from_iter({
+            "class": "RecordArray",
+            "contents": {
+                "variant_int32_double": {
+                    "class": "UnionArray",
+                    "tags": "i8",
+                    "index": "i64",
+                    "contents": [
+                        {
+                            "class": "NumpyArray",
+                            "primitive": "int32",
+                            "form_key": "column-1"
+                            },
+                        {
+                            "class": "NumpyArray",
+                            "primitive": "float64",
+                            "form_key": "column-2"
+                            }
+                        ],
+                    "form_key": "column-0"
+                    }
+                },
+            "form_key": "toplevel"
+            }
+            )
         form = self.to_akform().select_columns(filter_names)
+        # only read columns mentioned in the awkward form
+        target_cols = []
+        recursive_find(form, target_cols)
         D = {}
         for i, cr in enumerate(self.column_records):
-            D[f"column-{i}"] = self.read_col_page(i, L)
+            key = f"column-{i}"
+            if key not in target_cols: continue
+
+            content = self.read_col_page(i, L)
+            if cr.type == 3:
+                # split Switch column into index and tag
+                tags  = (content >> 44).astype('int8') - 1
+                kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000fffff))
+                D[f"{key}-index"] = kindex
+                D[f"{key}-tags"] = tags
+            elif cr.type <= 2:
+                D[f"{key}-offsets"] = content
+            else:
+                D[f"{key}-data"] = content
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
 # Supporting classes
+def recursive_find(form, res):
+    if hasattr(form, "form_key"):
+        res.append(form.form_key)
+    if hasattr(form, "contents"):
+        for c in form.contents:
+            recursive_find(c, res)
+    if hasattr(form, "content"):
+        if issubclass(type(form.content), ak._v2.forms.Form):
+            recursive_find(form.content, res)
+
 class Container:
     def __init__(self, D):
         self._dict = D
 
     def __getitem__(self, name):
         cutoff = name.rfind("-")
-        internal_name = name[:cutoff]
-        return self._dict[internal_name]
+        internal_name = name[cutoff]
+        return self._dict[name]
 
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
