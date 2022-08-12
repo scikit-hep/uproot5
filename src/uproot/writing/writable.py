@@ -1029,6 +1029,19 @@ class WritableDirectory(MutableMapping):
     def _subdir(self, key):
         name = key.name.string
 
+        if name in self._subdirs:
+            sub = self._subdirs[name]
+            for tree in self._file._trees.values():
+                if (
+                    tree._cascading.directory.key.location
+                    == sub._cascading.key.location
+                    and tree._cascading.directory is not sub._cascading
+                ):
+                    self._subdirs[name] = WritableDirectory(
+                        self._path + (name,), self._file, tree._cascading.directory
+                    )
+                    break
+
         if name not in self._subdirs:
             raw_bytes = self._file.sink.read(
                 key.seek_location,
