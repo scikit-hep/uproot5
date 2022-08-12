@@ -255,10 +255,11 @@ in file {}""".format(
             else:  # offset index column
                 return form_key
         elif type_name == "std::string": # string field splits->2 in col records
-            form_key = f"column-{cr.field_id}"
+            assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
             assert cr_char.type == 5 # char
             inner = self.base_col_form(rel_crs_idxs[-1])
+            form_key = f"column-{rel_crs_idxs[0]}"
             return ak._v2.forms.ListOffsetForm("u32", inner, form_key=form_key, parameters={"__array__": "string"})
         else:
             print(field_id)
@@ -370,36 +371,11 @@ in file {}""".format(
         # FIXME we assume cluster starts at entry 0, i.e only one cluster
         L = clusters[0].num_entries
 
-        form = ak._v2.forms.from_iter({
-            "class": "RecordArray",
-            "contents": {
-                "variant_int32_double": {
-                    "class": "UnionArray",
-                    "tags": "i8",
-                    "index": "i64",
-                    "contents": [
-                        {
-                            "class": "NumpyArray",
-                            "primitive": "int32",
-                            "form_key": "column-1"
-                            },
-                        {
-                            "class": "NumpyArray",
-                            "primitive": "float64",
-                            "form_key": "column-2"
-                            }
-                        ],
-                    "form_key": "column-0"
-                    }
-                },
-            "form_key": "toplevel"
-            }
-            )
         form = self.to_akform().select_columns(filter_names)
         # only read columns mentioned in the awkward form
         target_cols = []
-        recursive_find(form, target_cols)
         D = {}
+        recursive_find(form, target_cols)
         for i, cr in enumerate(self.column_records):
             key = f"column-{i}"
             if key not in target_cols: continue
@@ -407,14 +383,15 @@ in file {}""".format(
             content = self.read_col_page(i, L)
             if cr.type == 3:
                 # split Switch column into index and tag
+                # TODO what's this -1 hack
                 tags  = (content >> 44).astype('int8') - 1
                 kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000fffff))
                 D[f"{key}-index"] = kindex
                 D[f"{key}-tags"] = tags
-            elif cr.type <= 2:
-                D[f"{key}-offsets"] = content
             else:
+                # don't distinguish data and offsets
                 D[f"{key}-data"] = content
+                D[f"{key}-offsets"] = content
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
