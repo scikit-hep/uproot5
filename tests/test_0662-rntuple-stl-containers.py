@@ -1,10 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import json
-import awkward as ak
 import queue
 import sys
 
+import awkward as ak
 import numpy
 import pytest
 import skhep_testdata
@@ -55,5 +55,5 @@ def test_rntuple_stl_containers():
         assert r["vector_tuple_int32_string"][0]._1 == ["one"]
         assert ak.all(r["vector_tuple_int32_string"][1]._0 == [1, 2])
         assert ak.all(r["vector_tuple_int32_string"][1]._1 == ["one", "two"])
-        assert ak.all(r["vector_tuple_int32_string"]._0 == [[1], [1,2]])
+        assert ak.all(r["vector_tuple_int32_string"]._0 == [[1], [1, 2]])
         assert ak.all(r["vector_tuple_int32_string"]._1 == [["one"], ["one", "two"]])

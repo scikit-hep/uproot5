@@ -333,7 +333,9 @@ in file {}""".format(
         context = {}
         uncomp_size = num_elements * dtype.itemsize
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
-        destination[start:stop] = cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
+        destination[start:stop] = cursor.array(
+            decomp_chunk, num_elements, dtype, context, move=False
+        )
 
     def read_col_page(self, ncol, entry_start):
         ngroup = self.which_colgroup(ncol)
