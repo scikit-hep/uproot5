@@ -4,7 +4,6 @@
 This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 """
 
-
 import queue
 import struct
 
@@ -327,14 +326,14 @@ in file {}""".format(
         pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
         return pages
 
-    def read_pagedesc(self, desc, dtype):
+    def read_pagedesc(self, destination, start, stop, desc, dtype):
         num_elements = desc.num_elements
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
         uncomp_size = num_elements * dtype.itemsize
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
-        return cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
+        destination[start:stop] = cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
 
     def read_col_page(self, ncol, entry_start):
         ngroup = self.which_colgroup(ncol)
@@ -349,9 +348,13 @@ in file {}""".format(
         # n.b. it's possible pagelist is empty
         if not pagelist:
             return numpy.empty(0, T)
-        res = self.read_pagedesc(pagelist[0], T)
-        for p in pagelist[1:]:
-            res = numpy.append(res, self.read_pagedesc(p, T))
+        total_len = numpy.sum([desc.num_elements for desc in pagelist])
+        res = numpy.empty(total_len, T)
+        tracker = 0
+        for p in pagelist:
+            tracker_end = tracker + p.num_elements
+            self.read_pagedesc(res, tracker, tracker_end, p, T)
+            tracker = tracker_end
 
         if dtype_byte <= 2:
             res = numpy.insert(res, 0, 0)  # for offsets
