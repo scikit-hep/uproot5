@@ -1550,14 +1550,16 @@ class AsMap(AsContainer):
                 else:
                     helper_obj.add_to_pre("dup\n")
             if helper_obj.is_forth():
+                temp = {"name": "TOP", "content": {}}
                 (
                     temp_node,
                     temp_node_top,
                     temp_form,
                     temp_form_top,
                 ) = forth_obj.replace_form_and_model(
-                    None, {"name": "TOP", "content": {}}
+                    None, temp
                 )
+                context['temp_ref'] = temp
             keys = _read_nested(
                 self._keys,
                 length,
@@ -1570,6 +1572,7 @@ class AsMap(AsContainer):
                 header=False,
             )
             if helper_obj.is_forth():
+                temp = {"name": "TOP", "content": {}}
                 keys_form = forth_obj.top_form
                 keys_model = forth_obj._prev_node
                 (
@@ -1578,8 +1581,9 @@ class AsMap(AsContainer):
                     temp_form1,
                     temp_form_top1,
                 ) = forth_obj.replace_form_and_model(
-                    None, {"name": "TOP", "content": {}}
+                    None, temp
                 )
+                context['temp_ref'] = temp
             if helper_obj.is_forth():
                 if not isinstance(self._keys, numpy.dtype):
                     keys_model["content"]["post_code"].append("loop\n")

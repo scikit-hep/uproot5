@@ -5,6 +5,7 @@ This module defines utilities for adding components to the forth reader.
 """
 
 import numpy as np
+import uproot.containers
 
 symbol_dict = {
     np.dtype(">f4"): "f",
@@ -15,6 +16,11 @@ symbol_dict = {
     np.dtype(">u4"): "I",
     np.dtype("bool"): "?",
 }
+
+
+def check_depth(node):
+    if isinstance(node, uproot.containers.AsVector):
+        return 1
 
 
 class ForthGenerator:
@@ -54,6 +60,20 @@ class ForthGenerator:
         self.top_form = None
         self.aform = form
         return temp_node, temp_node_top, temp_form, temp_form_top
+
+    def get_code_recursive(self, node):
+        if 'content' in node.keys():
+            if node['content'] is None:
+                return ''.join(node['pre_code']), ''.join(node['post_code']) , node['init_code'], node['header_code']
+            else:
+                pre, post, init, header = self.get_code_recursive(node["content"])
+                pre2 = ''.join(node['pre_code'])
+                pre2 = pre2 + pre
+                post2 = ''.join(node['post_code'])
+                post2 = post2 + post
+                init = node['init_code'] + init
+                header = node['header_code'] + header
+                return pre2, post2, init, header
 
     def should_add_form(self):
         if "content" in self.awkward_model.keys():

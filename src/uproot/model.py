@@ -814,6 +814,7 @@ class Model:
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
+                helper_obj._pre_code.pop(-1)
 
             elif self._instance_version == 0:
                 helper_obj.add_to_pre("4 stream skip\n")
@@ -824,7 +825,6 @@ class Model:
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
             if helper_obj.is_forth():
-                #print(forth_obj.awkward_model, "OPOPOPOPOPO")
                 forth_obj.add_node(
                     "model828",
                     helper_obj.get_pre(),

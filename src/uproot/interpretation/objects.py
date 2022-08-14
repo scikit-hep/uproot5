@@ -260,6 +260,9 @@ class AsObjects(uproot.interpretation.Interpretation):
             }
         )
         context["forth"].vm.stack_push(len(byte_offsets) - 1)
+        print(self._complete_forth_code)
+        print(byte_offsets)
+        print(temp_data[:100])
         context["forth"].vm.resume()
         container = {}
         for elem in self._forth_form_keys:
@@ -308,7 +311,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 self._assemble_forth(
                     context["forth"].gen, context["forth"].gen._prev_node["content"]
                 )
-
+                print(context["forth"].gen._prev_node["content"])
                 self._complete_forth_code = f"""input stream
 input byteoffsets
 input bytestops

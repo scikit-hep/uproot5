@@ -313,7 +313,9 @@ def test_30():
     with uproot.open(skhep_testdata.data_path("uproot-issue243-new.root")) as file:
         branch = file["triggerList/triggerMap/triggerMap.first"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=16)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=16)
+        assert len(py[0]) == 0
         # py[-1] == array(['HLT_2j35_bmv2c2060_split_2j35_L14J15.0ETA25', 'HLT_j100_2j55_bmv2c2060_split'], dtype=object)
 
 
@@ -360,7 +362,9 @@ def test_35():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0]['1'][0]['name'] == 'anti_alpha'
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7fb557996df0>, ...} at 0x7fb557a012e0>
 
 
@@ -388,7 +392,9 @@ def test_38():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Event/PRBHF_46."]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0]['zp'][0] == pytest.approx(0.9999998807907104)
         # py[-1] == <BDSOutputROOTEventSampler<float> (version 4) at 0x7f9be2f7b2e0>
 
 
@@ -396,7 +402,9 @@ def test_39():
     with uproot.open(skhep_testdata.data_path("uproot-issue399.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[-1][1]['0'] == -1000020030
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7f6d05752220>, ...} at 0x7f6d057397f0>
 
 
@@ -468,7 +476,9 @@ def test_47():
     with uproot.open(skhep_testdata.data_path("uproot-issue494.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[-1][-1]['1']['mass'] == pytest.approx(3.727379)
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7f53a43c2220>, ...} at 0x7f53a44278b0>
 
 
@@ -477,6 +487,7 @@ def test_48():
         branch = file["Geant4Data/Geant4Data./Geant4Data.ions"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         py = branch.array(interp, library="np", entry_stop=2)
+        #assert py[-1]['0'][-1] == 1000020040
         # py[-1] == <STLMap {} at 0x7fda831357f0>
 
 
