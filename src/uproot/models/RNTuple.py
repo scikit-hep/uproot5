@@ -421,7 +421,6 @@ class Container:
 
     def __getitem__(self, name):
         cutoff = name.rfind("-")
-        internal_name = name[cutoff]
         return self._dict[name]
 
 
