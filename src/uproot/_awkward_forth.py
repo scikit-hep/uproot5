@@ -13,7 +13,10 @@ symbol_dict = {
     np.dtype(">i8"): "q",
     np.dtype(">i4"): "i",
     np.dtype(">i2"): "h",
+    np.dtype(">u1"): "B",
+    np.dtype(">u2"): "H",
     np.dtype(">u4"): "I",
+    np.dtype(">u8"): "Q",
     np.dtype("bool"): "?",
 }
 
@@ -62,6 +65,7 @@ class ForthGenerator:
         return temp_node, temp_node_top, temp_form, temp_form_top
 
     def get_code_recursive(self, node):
+        print(node, 'aass')
         if 'content' in node.keys():
             if node['content'] is None:
                 return ''.join(node['pre_code']), ''.join(node['post_code']) , node['init_code'], node['header_code']
@@ -74,6 +78,8 @@ class ForthGenerator:
                 init = node['init_code'] + init
                 header = node['header_code'] + header
                 return pre2, post2, init, header
+        elif self.var_set:
+            return '', '', '', ''
 
     def should_add_form(self):
         if "content" in self.awkward_model.keys():
@@ -331,3 +337,9 @@ def convert_dtype(format):
         return "bool"
     elif format == "h":
         return "int16"
+    elif format == "H":
+        return "uint16"
+    elif format == "Q":
+        return "uint64"
+    elif format == "B":
+        return "uint8"

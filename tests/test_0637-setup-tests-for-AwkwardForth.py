@@ -167,7 +167,9 @@ def test_15():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisHLT_mu24_ilooseAuxDyn.TrigMatchedObjects"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[1][-1][-1]['m_persKey'] == 980095599
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7fb9b9d24c10>], ...] at 0x7fb9b9d29250>
 
 
@@ -175,7 +177,9 @@ def test_16():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisHLT_mu40AuxDyn.TrigMatchedObjects"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[1][0]['m_persKey'][0] == 980095599
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7f6e29be5cd0>], ...] at 0x7f6e29bea250>
 
 
@@ -268,14 +272,12 @@ def test_25():
         assert py[0][-1] == 'numuCCAnalysis'
         # py[-1] == array(['psychePolicy', 'psycheEventModel', 'psycheCore', 'psycheUtils', 'psycheND280Utils', 'psycheIO', 'psycheSelections', 'psycheSystematics', 'highlandEventModel', 'highlandTools', 'highlandCore', 'highlandCorrections', 'highlandIO', 'baseAnalysis', 'baseTrackerAnalysis', 'numuCCAnalysis'], dtype=object)
 
-# make it last
 
-
-def test_26():
-    with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
-        branch = file["config/SEL/SEL._firstSteps"]
-        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+# def test_26():
+#     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
+#         branch = file["config/SEL/SEL._firstSteps"]
+#         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+#         py = branch.array(interp, library="np", entry_stop=2)
         # py[-1] == array([<STLVector [] at 0x7f5060ef49d0>], dtype=object)
 
 
@@ -298,15 +300,13 @@ def test_28():
         assert py[0][0][-1] == 10
         # py[-1] == array([<STLVector [8, 9, 10, 11, 10, 7, 6, 7, 7, 8, 11, 10] at 0x7f409846fa00>], dtype=object)
 
-# some fields missing
 
-
-def test_29():
-    with uproot.open(skhep_testdata.data_path("uproot-issue213.root")) as file:
-        branch = file["T/eventPack/fGenInfo"]
-        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == <JPetGeantEventInformation (version 3) at 0x7fd5bdeedac0>
+# def test_29():
+#     with uproot.open(skhep_testdata.data_path("uproot-issue213.root")) as file:
+#         branch = file["T/eventPack/fGenInfo"]
+#         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+#         py = branch.array(interp, library="np", entry_stop=2)
+#         py[-1] == <JPetGeantEventInformation (version 3) at 0x7fd5bdeedac0>
 
 
 def test_30():
@@ -456,19 +456,19 @@ def test_44():
         # py[-1] == <Event (version 1) at 0x7f1e3aef2dc0>
 
 
-def test_45():
-    with uproot.open(skhep_testdata.data_path("uproot-issue485.root")) as file:
-        branch = file["MCTrack/global"]
-        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+# def test_45():
+#     with uproot.open(skhep_testdata.data_path("uproot-issue485.root")) as file:
+#         branch = file["MCTrack/global"]
+#         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+#         py = branch.array(interp, library="np", entry_stop=2)
         # py[-1] == <STLVector [<allpix::MCTrack (version 2) at 0x7f88b9a8ad90>, ...] at 0x7f88b9a8ad00>
 
 
-def test_46():
-    with uproot.open(skhep_testdata.data_path("uproot-issue485.root")) as file:
-        branch = file["MCParticle/detector1"]
-        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+# def test_46():
+#     with uproot.open(skhep_testdata.data_path("uproot-issue485.root")) as file:
+#         branch = file["MCParticle/detector1"]
+#         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+#         py = branch.array(interp, library="np", entry_stop=2)
         # py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f94bc223760>, ...] at 0x7f94bc223550>
 
 
@@ -482,30 +482,29 @@ def test_47():
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7f53a43c2220>, ...} at 0x7f53a44278b0>
 
 
-def test_48():
-    with uproot.open(skhep_testdata.data_path("uproot-issue494.root")) as file:
-        branch = file["Geant4Data/Geant4Data./Geant4Data.ions"]
-        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+# def test_48():
+#     with uproot.open(skhep_testdata.data_path("uproot-issue494.root")) as file:
+#         branch = file["Geant4Data/Geant4Data./Geant4Data.ions"]
+#         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+#         py = branch.array(interp, library="np", entry_stop=2)
         #assert py[-1]['0'][-1] == 1000020040
         # py[-1] == <STLMap {} at 0x7fda831357f0>
 
 
-def test_49():
-    with uproot.open(skhep_testdata.data_path("uproot-issue498.root")) as file:
-        branch = file["MCParticle/timepix"]
-        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+# def test_49():
+#     with uproot.open(skhep_testdata.data_path("uproot-issue498.root")) as file:
+#         branch = file["MCParticle/timepix"]
+#         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+#         py = branch.array(interp, library="np", entry_stop=2)
         # py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f0697bf1820>] at 0x7f0697bf1a00>
 
 
-def test_50():
-    with uproot.open(skhep_testdata.data_path("uproot-issue498.root")) as file:
-        branch = file["PixelHit/timepix"]
-        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+# def test_50():
+#     with uproot.open(skhep_testdata.data_path("uproot-issue498.root")) as file:
+#         branch = file["PixelHit/timepix"]
+#         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+#         py = branch.array(interp, library="np", entry_stop=2)
         # py[-1] == <STLVector [] at 0x7f769cbf0bb0>
-
 
 def test_51():
     with uproot.open(skhep_testdata.data_path("uproot-issue510b.root")) as file:
