@@ -263,8 +263,7 @@ in file {}""".format(
                 "u32", inner, form_key=form_key, parameters={"__array__": "string"}
             )
         else:
-            print(field_id)
-            raise (RuntimeError("Missing special case"))
+            raise (RuntimeError(f"Missing special case: {field_id}"))
 
     def field_form(self, this_id, seen):
         frs = self.header.field_records
@@ -382,7 +381,7 @@ in file {}""".format(
         # only read columns mentioned in the awkward form
         target_cols = []
         D = {}
-        recursive_find(form, target_cols)
+        _recursive_find(form, target_cols)
         for i, cr in enumerate(self.column_records):
             key = f"column-{i}"
             if key not in target_cols:
@@ -404,15 +403,15 @@ in file {}""".format(
 
 
 # Supporting classes
-def recursive_find(form, res):
+def _recursive_find(form, res):
     if hasattr(form, "form_key"):
         res.append(form.form_key)
     if hasattr(form, "contents"):
         for c in form.contents:
-            recursive_find(c, res)
+            _recursive_find(c, res)
     if hasattr(form, "content"):
         if issubclass(type(form.content), ak._v2.forms.Form):
-            recursive_find(form.content, res)
+            _recursive_find(form.content, res)
 
 
 class Container:
@@ -420,7 +419,6 @@ class Container:
         self._dict = D
 
     def __getitem__(self, name):
-        cutoff = name.rfind("-")
         return self._dict[name]
 
 
