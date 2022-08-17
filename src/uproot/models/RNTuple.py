@@ -384,21 +384,19 @@ in file {}""".format(
         _recursive_find(form, target_cols)
         for i, cr in enumerate(self.column_records):
             key = f"column-{i}"
-            if key not in target_cols:
-                continue
-
-            content = self.read_col_page(i, L)
-            if cr.type == 3:
-                # split Switch column into index and tag
-                # TODO what's this -1 hack
-                tags = (content >> 44).astype("int8") - 1
-                kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
-                D[f"{key}-index"] = kindex
-                D[f"{key}-tags"] = tags
-            else:
-                # don't distinguish data and offsets
-                D[f"{key}-data"] = content
-                D[f"{key}-offsets"] = content
+            if key in target_cols:
+                content = self.read_col_page(i, L)
+                if cr.type == 3:
+                    # split Switch column into index and tag
+                    # TODO what's this -1 hack
+                    tags = (content >> 44).astype("int8") - 1
+                    kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
+                    D[f"{key}-index"] = kindex
+                    D[f"{key}-tags"] = tags
+                else:
+                    # don't distinguish data and offsets
+                    D[f"{key}-data"] = content
+                    D[f"{key}-offsets"] = content
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
