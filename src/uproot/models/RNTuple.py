@@ -254,7 +254,9 @@ in file {}""".format(
             assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
             assert cr_char.type == 5  # char
-            inner = self.base_col_form(rel_crs_idxs[-1], parameters={"__array__": "char"})
+            inner = self.base_col_form(
+                rel_crs_idxs[-1], parameters={"__array__": "char"}
+            )
             form_key = f"column-{rel_crs_idxs[0]}"
             return ak._v2.forms.ListOffsetForm(
                 "u32", inner, form_key=form_key, parameters={"__array__": "string"}
