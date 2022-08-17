@@ -51,9 +51,6 @@ def _renamemeA(chunk, cursor, context):
 
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
-    def debug(self):
-        return self.header.field_records, self.header.column_records
-
     """
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
@@ -220,14 +217,14 @@ in file {}""".format(
 
         return self.column_innerlist_dict
 
-    def base_col_form(self, col_id):
+    def base_col_form(self, col_id, parameters=None):
         cr = self.header.column_records[col_id]
         form_key = f"column-{col_id}"
-        if cr.type == 3:  # switch (UnionForm)
+        if cr.type == uproot.const.rt_role_union:  # switch (UnionForm)
             return form_key
-        elif cr.type > 2:  # data column
+        elif cr.type > uproot.const.rt_role_struct:  # data column
             return ak._v2.forms.NumpyForm(
-                _rntuple_col_types[cr.type], form_key=form_key
+                _rntuple_col_types[cr.type], form_key=form_key, parameters=parameters
             )
         else:  # offset index column
             return form_key
@@ -245,9 +242,9 @@ in file {}""".format(
         if len(rel_crs) == 1:  # normal case
             form_key = f"column-{rel_crs_idxs[0]}"
             cr = rel_crs[0]
-            if cr.type == 3:  # switch (UnionForm)
+            if cr.type == uproot.const.rt_role_union:  # switch (UnionForm)
                 return form_key
-            elif cr.type > 2:  # data column
+            elif cr.type > uproot.const.rt_role_struct:  # data column
                 return ak._v2.forms.NumpyForm(
                     _rntuple_col_types[cr.type], form_key=form_key
                 )
@@ -257,7 +254,7 @@ in file {}""".format(
             assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
             assert cr_char.type == 5  # char
-            inner = self.base_col_form(rel_crs_idxs[-1])
+            inner = self.base_col_form(rel_crs_idxs[-1], parameters={"__array__": "char"})
             form_key = f"column-{rel_crs_idxs[0]}"
             return ak._v2.forms.ListOffsetForm(
                 "u32", inner, form_key=form_key, parameters={"__array__": "string"}
@@ -386,7 +383,7 @@ in file {}""".format(
             key = f"column-{i}"
             if key in target_cols:
                 content = self.read_col_page(i, L)
-                if cr.type == 3:
+                if cr.type == uproot.const.rt_role_union:
                     # split Switch column into index and tag
                     # TODO what's this -1 hack
                     tags = (content >> 44).astype("int8") - 1
