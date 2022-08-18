@@ -217,8 +217,7 @@ in file {}""".format(
 
         return self.column_innerlist_dict
 
-    def base_col_form(self, col_id, parameters=None):
-        cr = self.header.column_records[col_id]
+    def base_col_form(self, cr, col_id, parameters=None):
         form_key = f"column-{col_id}"
         if cr.type == uproot.const.rt_role_union:  # switch (UnionForm)
             return form_key
@@ -239,23 +238,16 @@ in file {}""".format(
                 rel_crs_idxs.append(i)
             if cr.field_id > field_id:
                 break
-        if len(rel_crs) == 1:  # normal case
-            form_key = f"column-{rel_crs_idxs[0]}"
-            cr = rel_crs[0]
-            if cr.type == uproot.const.rt_role_union:  # switch (UnionForm)
-                return form_key
-            elif cr.type > uproot.const.rt_role_struct:  # data column
-                return ak._v2.forms.NumpyForm(
-                    _rntuple_col_types[cr.type], form_key=form_key
-                )
-            else:  # offset index column
-                return form_key
+        if len(rel_crs) == 1:  # base case
+            return self.base_col_form(
+                rel_crs[0], rel_crs_idxs[0]
+            )
         elif type_name == "std::string":  # string field splits->2 in col records
             assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
             assert cr_char.type == 5  # char
             inner = self.base_col_form(
-                rel_crs_idxs[-1], parameters={"__array__": "char"}
+                cr_char, rel_crs_idxs[-1], parameters={"__array__": "char"}
             )
             form_key = f"column-{rel_crs_idxs[0]}"
             return ak._v2.forms.ListOffsetForm(
