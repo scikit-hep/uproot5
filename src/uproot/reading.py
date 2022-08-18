@@ -1621,7 +1621,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this does not read any data from the file.
         """
         return list(
-            self.iterkeys(  # noqa: B301 (not a dict)
+            self.iterkeys(  # (not a dict)
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -1652,7 +1652,7 @@ class ReadOnlyDirectory(Mapping):
         and ``filter_classname``.
         """
         return list(
-            self.itervalues(  # noqa: B301 (not a dict)
+            self.itervalues(  # (not a dict)
                 recursive=recursive,
                 filter_name=filter_name,
                 filter_classname=filter_classname,
@@ -1684,7 +1684,7 @@ class ReadOnlyDirectory(Mapping):
         and ``filter_classname``.
         """
         return list(
-            self.iteritems(  # noqa: B301 (not a dict)
+            self.iteritems(  # (not a dict)
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -1760,7 +1760,7 @@ class ReadOnlyDirectory(Mapping):
                 seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1 in key.get().iterkeys(  # noqa: B301 (not a dict)
+                for k1 in key.get().iterkeys(  # (not a dict)
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=no_filter,
@@ -1795,7 +1795,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
         """
-        for _, v in self.iteritems(  # noqa: B301 (not a dict)
+        for _, v in self.iteritems(  # (not a dict)
             recursive=recursive,
             cycle=False,
             filter_name=filter_name,
@@ -1840,7 +1840,7 @@ class ReadOnlyDirectory(Mapping):
                 seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iteritems(  # noqa: B301 (not a dict)
+                for k1, v in key.get().iteritems(  # (not a dict)
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=no_filter,
@@ -1906,7 +1906,7 @@ class ReadOnlyDirectory(Mapping):
         """
         Supports key-completion in an IPython or Jupyter kernel.
         """
-        return self.iterkeys()  # noqa: B301 (not a dict)
+        return self.iterkeys()  # (not a dict)
 
     def __len__(self):
         if self._len is None:
@@ -1926,7 +1926,7 @@ class ReadOnlyDirectory(Mapping):
             return True
 
     def __iter__(self):
-        return self.iterkeys()  # noqa: B301 (not a dict)
+        return self.iterkeys()  # (not a dict)
 
     def title_of(self, where):
         """

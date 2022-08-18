@@ -601,13 +601,13 @@ class WritableDirectory(MutableMapping):
         return False
 
     def __iter__(self):
-        return self.iterkeys()  # noqa B301 (not a dict)
+        return self.iterkeys()  # B301 (not a dict)
 
     def _ipython_key_completions_(self):
         """
         Supports key-completion in an IPython or Jupyter kernel.
         """
-        return self.iterkeys()  # noqa: B301 (not a dict)
+        return self.iterkeys()  # (not a dict)
 
     def keys(
         self,
@@ -633,7 +633,7 @@ class WritableDirectory(MutableMapping):
         Note that this does not read any data from the file.
         """
         return list(
-            self.iterkeys(  # noqa: B301 (not a dict)
+            self.iterkeys(  # (not a dict)
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -664,7 +664,7 @@ class WritableDirectory(MutableMapping):
         and ``filter_classname``.
         """
         return list(
-            self.itervalues(  # noqa: B301 (not a dict)
+            self.itervalues(  # (not a dict)
                 recursive=recursive,
                 filter_name=filter_name,
                 filter_classname=filter_classname,
@@ -696,7 +696,7 @@ class WritableDirectory(MutableMapping):
         and ``filter_classname``.
         """
         return list(
-            self.iteritems(  # noqa: B301 (not a dict)
+            self.iteritems(  # (not a dict)
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -771,9 +771,7 @@ class WritableDirectory(MutableMapping):
                     yield keyname
 
             if recursive and classname in ("TDirectory", "TDirectoryFile"):
-                for k1 in self._get(  # noqa: B301 (not a dict)
-                    keyname, cyclenum
-                ).iterkeys(
+                for k1 in self._get(keyname, cyclenum).iterkeys(  # (not a dict)
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=filter_name,
@@ -806,7 +804,7 @@ class WritableDirectory(MutableMapping):
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
         """
-        for keyname in self.iterkeys(  # noqa: B301 (not a dict)
+        for keyname in self.iterkeys(  # (not a dict)
             recursive=recursive,
             cycle=True,
             filter_name=filter_name,
@@ -838,7 +836,7 @@ class WritableDirectory(MutableMapping):
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
         """
-        for keyname in self.iterkeys(  # noqa: B301 (not a dict)
+        for keyname in self.iterkeys(  # (not a dict)
             recursive=recursive,
             cycle=True,
             filter_name=filter_name,
@@ -886,7 +884,7 @@ class WritableDirectory(MutableMapping):
             if recursive and classname in ("TDirectory", "TDirectoryFile"):
                 for k1, c1 in self._get(
                     keyname, cyclenum
-                ).iterclassnames(  # noqa: B301 (not a dict)
+                ).iterclassnames(  # (not a dict)
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=filter_name,

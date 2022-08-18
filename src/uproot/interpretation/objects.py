@@ -480,7 +480,11 @@ class CannotBeAwkward(Exception):
     """
 
     def __init__(self, because):
-        self.because = because
+        self._because = because
+
+    @property
+    def because(self):
+        return self._because
 
 
 class ObjectArray:
