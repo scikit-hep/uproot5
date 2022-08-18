@@ -302,7 +302,7 @@ in file {}""".format(
         recordlist = []
         topnames = self.keys()
         seen = []
-        for (i, _) in enumerate(frs):
+        for i, _ in enumerate(frs):
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
 
