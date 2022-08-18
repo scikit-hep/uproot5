@@ -149,6 +149,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     <td align="center"><a href="http://blog.kushkothari.in"><img src="https://avatars.githubusercontent.com/u/53650538?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Kush Kothari</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=kkothari2001" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/aryan26roy"><img src="https://avatars.githubusercontent.com/u/50577809?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Aryan Roy</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=aryan26roy" title="Code">💻</a></td>
     <td align="center"><a href="http://blog.jling.dev"><img src="https://avatars.githubusercontent.com/u/5306213?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Jerry Ling</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=Moelf" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/kakwok"><img src="https://avatars.githubusercontent.com/u/12798013?v=4?s=100" width="100px;" alt=""/><br /><sub><b>kakwok</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=kakwok" title="Code">💻</a></td>
   </tr>
 </table>
 

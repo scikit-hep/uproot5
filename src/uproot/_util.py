@@ -246,21 +246,24 @@ def regularize_rename(rename):
     )
 
 
+_fix_url_path = re.compile(r"^((file|https?|root):/)([^/])", re.I)
+
+
 def regularize_path(path):
     """
     Converts pathlib Paths into plain string paths (for all versions of Python).
     """
     if isinstance(path, getattr(os, "PathLike", ())):
-        path = os.fspath(path)
+        path = _fix_url_path.sub(r"\1/\3", os.fspath(path))
 
     elif hasattr(path, "__fspath__"):
-        path = path.__fspath__()
+        path = _fix_url_path.sub(r"\1/\3", path.__fspath__())
 
     elif path.__class__.__module__ == "pathlib":
         import pathlib
 
         if isinstance(path, pathlib.Path):
-            path = str(path)
+            path = _fix_url_path.sub(r"\1/\3", str(path))
 
     return path
 

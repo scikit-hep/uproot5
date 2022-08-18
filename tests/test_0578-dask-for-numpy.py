@@ -15,7 +15,7 @@ def test_single_dask_array():
     ttree = uproot.open(test_path)
 
     np_arrays = ttree.arrays(library="np")
-    dask_arrays = uproot.dask(test_path)
+    dask_arrays = uproot.dask(test_path, library="np")
 
     assert list(dask_arrays.keys()) == list(
         np_arrays.keys()
@@ -35,7 +35,9 @@ def test_dask_concatenation():
     np_arrays = uproot.concatenate(
         [test_path1, test_path2, test_path3, test_path4], library="np"
     )
-    dask_arrays = uproot.dask([test_path1, test_path2, test_path3, test_path4])
+    dask_arrays = uproot.dask(
+        [test_path1, test_path2, test_path3, test_path4], library="np"
+    )
 
     assert list(dask_arrays.keys()) == list(
         np_arrays.keys()
@@ -53,7 +55,7 @@ def test_multidim_array():
     ttree = uproot.open(test_path)
 
     np_arrays = ttree.arrays(library="np")
-    dask_arrays = uproot.dask(test_path)
+    dask_arrays = uproot.dask(test_path, library="np")
 
     assert list(dask_arrays.keys()) == list(
         np_arrays.keys()
@@ -65,7 +67,7 @@ def test_multidim_array():
 
 def test_chunking_single_num():
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
-    assert uproot.dask(filename1, step_size=30)["px1"].chunks == (
+    assert uproot.dask(filename1, step_size=30, library="np")["px1"].chunks == (
         (
             30,
             30,
@@ -152,7 +154,7 @@ def test_chunking_single_string():
     dask = pytest.importorskip("dask")
     da = pytest.importorskip("dask.array")
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
-    assert uproot.dask(filename1, step_size="100B")["px1"].chunks == (
+    assert uproot.dask(filename1, step_size="100B", library="np")["px1"].chunks == (
         (
             19,
             19,
@@ -283,7 +285,9 @@ def test_chunking_single_string():
 def test_chunking_multiple_num():
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"
-    assert uproot.dask([filename1, filename2], step_size=30)["px1"].chunks == (
+    assert uproot.dask([filename1, filename2], step_size=30, library="np")[
+        "px1"
+    ].chunks == (
         (
             30,
             30,
@@ -446,7 +450,9 @@ def test_chunking_multiple_num():
 def test_chunking_multiple_string():
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root") + ":events"
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"
-    assert uproot.dask([filename1, filename2], step_size="100B")["px1"].chunks == (
+    assert uproot.dask([filename1, filename2], step_size="100B", library="np")[
+        "px1"
+    ].chunks == (
         (
             19,
             19,

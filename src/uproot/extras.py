@@ -270,3 +270,20 @@ or
         )
     else:
         return dask, da
+
+
+def dask_awkward():
+    """
+    Imports and returns ``dask_awkward``.
+    """
+    try:
+        import dask_awkward
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError(
+            """for uproot.dask, install the (complete) 'dask' package with:
+    pip install "dask[complete]"
+or
+    conda install dask"""
+        )
+    else:
+        return dask_awkward

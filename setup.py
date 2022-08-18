@@ -29,6 +29,7 @@ extras = {
         "xxhash",
         "requests",
         "dask[array]",
+        "dask-awkward",
     ],
 }
 extras["all"] = sum(extras.values(), [])

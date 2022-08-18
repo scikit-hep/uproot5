@@ -264,11 +264,10 @@ def to_writable(obj):
             fSumw2 = obj.variances(flow=True)
 
             # and flow=True is different from flow=False (obj actually has flow bins)
-            if (
-                data.shape == obj.values(flow=False).shape
-                and fSumw2.shape == obj.variances(flow=True).shape
-            ):
-                raise TypeError
+            data_noflow = obj.values(flow=False)
+            for flow, noflow in zip(data.shape, data_noflow.shape):
+                if flow != noflow + 2:
+                    raise TypeError
 
         except TypeError:
             # flow=True is not supported, fallback to allocate-and-fill
@@ -650,7 +649,10 @@ def _fXbins_maybe_regular(axis, boost_histogram):
         else:
             return edges.astype(">f8")
     else:
-        if isinstance(axis, boost_histogram.axis.Regular):
+        if (
+            isinstance(axis, boost_histogram.axis.Regular)
+            and getattr(axis, "transform", None) is None
+        ):
             return numpy.array([], dtype=">f8")
         else:
             return axis.edges
