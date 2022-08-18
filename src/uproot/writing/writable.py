@@ -882,9 +882,7 @@ class WritableDirectory(MutableMapping):
                     yield keyname, classname
 
             if recursive and classname in ("TDirectory", "TDirectoryFile"):
-                for k1, c1 in self._get(
-                    keyname, cyclenum
-                ).iterclassnames(
+                for k1, c1 in self._get(keyname, cyclenum).iterclassnames(
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=filter_name,
