@@ -122,7 +122,7 @@ class Model_TRefArray(uproot.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
         helper_obj = uproot._awkward_forth.GenHelper(context)
         if helper_obj.is_forth():
-            awkward = uproot.extras.awkward()  # noqa:F841
+            awkward = uproot.extras.awkward()
             forth_obj = helper_obj.get_gen_obj()
         if self.is_memberwise:
             raise NotImplementedError(
