@@ -22,8 +22,8 @@ def test_rntuple_stl_containers():
             "vector_vector_int32",
             "vector_string",
             "vector_vector_string",
-            "variant_int32_float",
-            "vector_variant_int32_float",
+            "variant_int32_string",
+            "vector_variant_int64_string",
             "tuple_int32_string",
             "vector_tuple_int32_string",
         ]
@@ -40,12 +40,13 @@ def test_rntuple_stl_containers():
         assert ak.all(r["vector_string"][1] == ["one", "two"])
 
         assert ak.all(r["vector_vector_string"] == [["one"], [["one"], ["two"]]])
-        assert type(r["variant_int32_float"][0]) == numpy.float32
-        assert type(r["variant_int32_float"][1]) == numpy.float32
+        assert type(r["variant_int32_string"][0]) == numpy.int32
+        assert type(r["variant_int32_string"][1]) == str
 
-        assert type(r["vector_variant_int32_float"][0][0]) == numpy.int32
-        assert type(r["vector_variant_int32_float"][1][0]) == numpy.int32
-        assert type(r["vector_variant_int32_float"][1][1]) == numpy.float32
+        assert r["vector_variant_int64_string"][0][0] == "one"
+        assert r["vector_variant_int64_string"][1][0] == "one"
+        assert r["vector_variant_int64_string"][1][1] == 2
+        assert type(r["vector_variant_int64_string"][1][1]) == numpy.int64
 
         assert ak.all(r["tuple_int32_string"]._0 == [1, 2])
         assert ak.all(r["tuple_int32_string"]._1 == ["one", "two"])
