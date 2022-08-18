@@ -182,7 +182,7 @@ def xxhash():
     Attempts to import ``lz4`` as well.
     """
     try:
-        import lz4.block
+        import lz4.block  # noqa: F401
         import xxhash
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
