@@ -35,7 +35,7 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     def _keys(self):
         keys = []
         field_records = self.header.field_records
-        for (i, fr) in enumerate(field_records):
+        for i, fr in enumerate(field_records):
             if fr.parent_field_id == i:
                 keys.append(fr.field_name)
         return keys
