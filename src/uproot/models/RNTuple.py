@@ -295,7 +295,7 @@ in file {}""".format(
             return ak._v2.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
         else:
             # everything should recursive above this branch
-            raise (AssertionError("this should be unreachable"))
+            raise AssertionError("this should be unreachable")
 
     def to_akform(self):
         frs = self.header.field_records
