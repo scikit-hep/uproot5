@@ -40,8 +40,8 @@ def test_rntuple_stl_containers():
         assert ak.all(r["vector_string"][1] == ["one", "two"])
 
         assert ak.all(r["vector_vector_string"] == [["one"], [["one"], ["two"]]])
-        assert type(r["variant_int32_string"][0]) == numpy.int32
-        assert type(r["variant_int32_string"][1]) == str
+        assert r["variant_int32_string"][0] == 1
+        assert r["variant_int32_string"][1] == "two"
 
         assert r["vector_variant_int64_string"][0][0] == "one"
         assert r["vector_variant_int64_string"][1][0] == "one"

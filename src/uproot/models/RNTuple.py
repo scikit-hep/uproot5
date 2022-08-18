@@ -20,30 +20,6 @@ _rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 
-_rntuple_col_types = {
-    1: "uint64",
-    2: "uint32",
-    3: "uint64",  # Switch
-    4: "uint8",
-    5: "uint8",  # char
-    6: "bit",
-    7: "float64",
-    8: "float32",
-    9: "float16",
-    10: "int64",
-    11: "int32",
-    12: "int16",
-    13: "int8",
-    14: "uint32",  # SplitIndex64 delta encoding
-    15: "uint64",  # SplitIndex32 delta encoding
-    16: "float64",  # split
-    17: "float32",  # split
-    18: "float16",  # split
-    19: "int64",  # split
-    20: "int32",  # split
-    21: "int16",  # split
-}
-
 
 def _renamemeA(chunk, cursor, context):
     env_version, min_version = cursor.fields(chunk, _rntuple_frame_format, context)
@@ -58,8 +34,8 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     @property
     def _keys(self):
         keys = []
-        frs = self.header.field_records
-        for (i, fr) in enumerate(frs):
+        field_records = self.header.field_records
+        for (i, fr) in enumerate(field_records):
             if fr.parent_field_id == i:
                 keys.append(fr.field_name)
         return keys
@@ -219,11 +195,11 @@ in file {}""".format(
 
     def base_col_form(self, cr, col_id, parameters=None):
         form_key = f"column-{col_id}"
-        if cr.type == uproot.const.rt_role_union:  # switch (UnionForm)
+        if cr.type == uproot.const.rntuple_role_union:
             return form_key
-        elif cr.type > uproot.const.rt_role_struct:  # data column
+        elif cr.type > uproot.const.rntuple_role_struct:
             return ak._v2.forms.NumpyForm(
-                _rntuple_col_types[cr.type], form_key=form_key, parameters=parameters
+                uproot.const.rntuple_col_num_to_dtype_dict[cr.type], form_key=form_key, parameters=parameters
             )
         else:  # offset index column
             return form_key
@@ -243,7 +219,7 @@ in file {}""".format(
         elif type_name == "std::string":  # string field splits->2 in col records
             assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
-            assert cr_char.type == 5  # char
+            assert cr_char.type == uproot.const.rntuple_col_dtype_to_num_dict["char"]
             inner = self.base_col_form(
                 cr_char, rel_crs_idxs[-1], parameters={"__array__": "char"}
             )
@@ -255,40 +231,37 @@ in file {}""".format(
             raise (RuntimeError(f"Missing special case: {field_id}"))
 
     def field_form(self, this_id, seen):
-        frs = self.header.field_records
-        fr = frs[this_id]
+        field_records = self.header.field_records
+        this_record = field_records[this_id]
         seen.append(this_id)
-        sr = fr.struct_role
-        if sr == 0:
+        sr = this_record.struct_role
+        if sr == uproot.const.rntuple_role_leaf:
             # base case of recursive
             # n.b. the split may be in column
-            return self.col_form(this_id, fr.type_name)
-        elif sr == 1:
-            # mother of a collection, i.e. vector (meaning field is jagged)
+            return self.col_form(this_id, this_record.type_name)
+        elif sr == uproot.const.rntuple_role_vector:
             keyname = self.col_form(this_id)
             child_id = next(
                 filter(
-                    lambda i: frs[i].parent_field_id == this_id,
-                    range(this_id + 1, len(frs)),
+                    lambda i: field_records[i].parent_field_id == this_id,
+                    range(this_id + 1, len(field_records)),
                 )
             )
             inner = self.field_form(child_id, seen)
             return ak._v2.forms.ListOffsetForm("u32", inner, form_key=keyname)
-        elif sr == 2:
-            # mother of a record, i.e. struct
+        elif sr == uproot.const.rntuple_role_struct:
             newids = []
-            for i, fr in enumerate(frs):
+            for i, fr in enumerate(field_records):
                 if i not in seen and fr.parent_field_id == this_id:
                     newids.append(i)
             # go find N in the rest, N is the # of fields in struct
             recordlist = [self.field_form(i, seen) for i in newids]
-            namelist = [frs[i].field_name for i in newids]
+            namelist = [field_records[i].field_name for i in newids]
             return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
-        elif sr == 3:
-            # mother of a variant, i.e. union
+        elif sr == uproot.const.rntuple_role_union:
             keyname = self.col_form(this_id)
             newids = []
-            for i, fr in enumerate(frs):
+            for i, fr in enumerate(field_records):
                 if i not in seen and fr.parent_field_id == this_id:
                     newids.append(i)
             recordlist = [self.field_form(i, seen) for i in newids]
@@ -298,11 +271,11 @@ in file {}""".format(
             raise AssertionError("this should be unreachable")
 
     def to_akform(self):
-        frs = self.header.field_records
+        field_records = self.header.field_records
         recordlist = []
         topnames = self.keys()
         seen = []
-        for i, _ in enumerate(frs):
+        for i in range(len(field_records)):
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
 
@@ -331,7 +304,7 @@ in file {}""".format(
         link = linklist[ncol]
         pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
-        dt_str = _rntuple_col_types[dtype_byte]
+        dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         T = numpy.dtype(dt_str)
 
         # FIXME vector read
@@ -375,8 +348,7 @@ in file {}""".format(
             key = f"column-{i}"
             if key in target_cols:
                 content = self.read_col_page(i, L)
-                if cr.type == uproot.const.rt_role_union:
-                    # split Switch column into index and tag
+                if cr.type == uproot.const.rntuple_role_union:
                     # TODO what's this -1 hack
                     tags = (content >> 44).astype("int8") - 1
                     kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))

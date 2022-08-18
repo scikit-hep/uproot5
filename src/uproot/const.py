@@ -116,7 +116,55 @@ kGenerateOffsetMap = numpy.uint8(1)
 kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
+rntuple_col_num_to_dtype_dict = {
+    1: "uint64",
+    2: "uint32",
+    3: "uint64",  # Switch
+    4: "uint8",
+    5: "uint8",  # char
+    6: "bit",
+    7: "float64",
+    8: "float32",
+    9: "float16",
+    10: "int64",
+    11: "int32",
+    12: "int16",
+    13: "int8",
+    14: "uint32",  # SplitIndex64 delta encoding
+    15: "uint64",  # SplitIndex32 delta encoding
+    16: "float64",  # split
+    17: "float32",  # split
+    18: "float16",  # split
+    19: "int64",  # split
+    20: "int32",  # split
+    21: "int16",  # split
+}
+
+rntuple_col_dtype_to_num_dict = {
+        "index64" : 1,
+        "index32" : 2,
+        "switch" : 3,
+        "byte" : 4,
+        "char" : 5,
+        "bit" : 6,
+        "real64" : 7,
+        "real32" : 8,
+        "real16" : 9,
+        "int64" : 10,
+        "int32" : 11,
+        "int16" : 12,
+        "int8" : 13,
+        "splitindex64": 14,
+        "splitindex32": 15,
+        "splitreal64" : 16,
+        "splitreal32" : 17,
+        "splitreal16" : 18,
+        "splitin64"   : 19,
+        "splitint32"  : 20,
+        "splitint16"  : 21,
+}
+
 rntuple_role_leaf = 0
-rntuple_role_vec = 1
+rntuple_role_vector = 1
 rntuple_role_struct = 2
 rntuple_role_union = 3
