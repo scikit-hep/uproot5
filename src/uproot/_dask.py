@@ -1,3 +1,5 @@
+from collections.abc import Callable, Iterable, Mapping
+
 import numpy
 
 import uproot
@@ -7,7 +9,7 @@ from uproot.behaviors.TBranch import (
     TBranch,
     _regularize_entries_start_stop,
 )
-from collections.abc import Callable, Iterable, Mapping
+
 
 def dask(
     files,
@@ -167,6 +169,7 @@ def dask(
     else:
         raise NotImplementedError()
 
+
 class _PackedArgCallable:
     """Wrap a callable such that packed arguments can be unrolled.
     Inspired by dask.dataframe.io.io._PackedArgCallable.
@@ -175,8 +178,8 @@ class _PackedArgCallable:
     def __init__(
         self,
         func: Callable,
-        args= None,
-        kwargs= None,
+        args=None,
+        kwargs=None,
         packed: bool = False,
     ):
         self.func = func
@@ -192,6 +195,7 @@ class _PackedArgCallable:
             *(self.args or []),
             **(self.kwargs or {}),
         )
+
 
 class LazyInputsDict(Mapping):
     """Dictionary with lazy key value pairs
@@ -223,21 +227,22 @@ class LazyInputsDict(Mapping):
     def keys(self):
         return ((i,) for i in range(len(self.inputs)))
 
+
 def _dask_array_from_map(
     func,
     *iterables,
     chunks,
     dtype,
-    args= None,
-    label= None,
-    token= None,
+    args=None,
+    label=None,
+    token=None,
     **kwargs,
 ):
     dask, da = uproot.extras.dask()
     if not callable(func):
         raise ValueError("`func` argument must be `callable`")
     lengths = set()
-    iters= list(iterables)
+    iters = list(iterables)
     for i, iterable in enumerate(iters):
         if not isinstance(iterable, Iterable):
             raise ValueError(
@@ -282,7 +287,7 @@ def _dask_array_from_map(
 
     # Define io_func
     if packed or args or kwargs:
-        io_func= _PackedArgCallable(
+        io_func = _PackedArgCallable(
             func,
             args=args,
             kwargs=kwargs,
@@ -290,7 +295,6 @@ def _dask_array_from_map(
         )
     else:
         io_func = func
-
 
     io_arg_map = dask.blockwise.BlockwiseDepDict(
         mapping=LazyInputsDict(inputs),  # type: ignore
@@ -307,7 +311,8 @@ def _dask_array_from_map(
     )
 
     hlg = dask.highlevelgraph.HighLevelGraph.from_collections(name, dsk)
-    return dask.array.core.Array(hlg,name,chunks,dtype=dtype)
+    return dask.array.core.Array(hlg, name, chunks, dtype=dtype)
+
 
 class _UprootReadNumpy:
     def __init__(self, hasbranches, key) -> None:
@@ -317,8 +322,9 @@ class _UprootReadNumpy:
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
         return self.hasbranches[i][self.key].array(
-            entry_start=start, entry_stop=stop,library='np'
+            entry_start=start, entry_stop=stop, library="np"
         )
+
 
 def _get_dask_array(
     files,
@@ -415,7 +421,7 @@ def _get_dask_array(
 
         chunks = []
         chunk_args = []
-        for i,ttree in enumerate(hasbranches):
+        for i, ttree in enumerate(hasbranches):
             entry_start, entry_stop = _regularize_entries_start_stop(
                 ttree.tree.num_entries, None, None
             )
@@ -424,24 +430,25 @@ def _get_dask_array(
                 entry_step = step_size
             else:
                 entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
-            
+
             def foreach(start):
                 stop = min(start + entry_step, entry_stop)
                 length = stop - start
                 chunks.append(length)
-                chunk_args.append((i,start,stop))
+                chunk_args.append((i, start, stop))
 
             for start in range(entry_start, entry_stop, entry_step):
                 foreach(start)
 
         dask_dict[key] = _dask_array_from_map(
-            _UprootReadNumpy(hasbranches,key),
+            _UprootReadNumpy(hasbranches, key),
             chunk_args,
             chunks=(tuple(chunks),),
             dtype=dt,
         )
-    
+
     return dask_dict
+
 
 def _get_dask_array_delay_open(
     files,
