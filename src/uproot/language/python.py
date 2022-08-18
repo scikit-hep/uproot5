@@ -23,7 +23,7 @@ def _expression_to_node(expression, file_path, object_path):
         raise SyntaxError(
             err.args[0] + f"\nin file {file_path}\nin object {object_path}",
             err.args[1],
-        )
+        ) from err
 
     if len(node.body) != 1 or not isinstance(node.body[0], ast.Expr):
         raise SyntaxError(
@@ -170,7 +170,7 @@ def _expression_to_function(
                 keys=sorted(keys) + list(aliases),
                 file_path=file_path,
                 object_path=object_path,
-            )
+            ) from err
 
         function = ast.parse("lambda: None").body[0].value
         function.body = expr
@@ -383,7 +383,7 @@ class PythonLanguage(uproot.language.Language):
             except KeyError as err:
                 raise uproot.KeyInFileError(
                     err.args[0], file_path=file_path, object_path=object_path
-                )
+                ) from err
 
     def compute_expressions(
         self,
