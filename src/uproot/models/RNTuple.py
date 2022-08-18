@@ -239,9 +239,7 @@ in file {}""".format(
             if cr.field_id > field_id:
                 break
         if len(rel_crs) == 1:  # base case
-            return self.base_col_form(
-                rel_crs[0], rel_crs_idxs[0]
-            )
+            return self.base_col_form(rel_crs[0], rel_crs_idxs[0])
         elif type_name == "std::string":  # string field splits->2 in col records
             assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
