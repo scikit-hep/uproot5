@@ -4,7 +4,6 @@
 This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 """
 
-
 import queue
 import struct
 
@@ -21,30 +20,6 @@ _rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 
-_rntuple_col_types = {
-    1: "uint64",
-    2: "uint32",
-    3: "uint64",  # Switch
-    4: "uint8",
-    5: "char",
-    6: "bit",
-    7: "float64",
-    8: "float32",
-    9: "float16",
-    10: "int64",
-    11: "int32",
-    12: "int16",
-    13: "int8",
-    14: "uint32",  # SplitIndex64 delta encoding
-    15: "uint64",  # SplitIndex32 delta encoding
-    16: "float64",  # split
-    17: "float32",  # split
-    18: "float16",  # split
-    19: "int64",  # split
-    20: "int32",  # split
-    21: "int16",  # split
-}
-
 
 def _renamemeA(chunk, cursor, context):
     env_version, min_version = cursor.fields(chunk, _rntuple_frame_format, context)
@@ -59,8 +34,8 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     @property
     def _keys(self):
         keys = []
-        frs = self.header.field_records
-        for (i, fr) in enumerate(frs):
+        field_records = self.header.field_records
+        for i, fr in enumerate(field_records):
             if fr.parent_field_id == i:
                 keys.append(fr.field_name)
         return keys
@@ -218,57 +193,91 @@ in file {}""".format(
 
         return self.column_innerlist_dict
 
-    def col_form(self, field_id):
-        for cr in self.header.column_records:
+    def base_col_form(self, cr, col_id, parameters=None):
+        form_key = f"column-{col_id}"
+        if cr.type == uproot.const.rntuple_role_union:
+            return form_key
+        elif cr.type > uproot.const.rntuple_role_struct:
+            return ak._v2.forms.NumpyForm(
+                uproot.const.rntuple_col_num_to_dtype_dict[cr.type],
+                form_key=form_key,
+                parameters=parameters,
+            )
+        else:  # offset index column
+            return form_key
+
+    def col_form(self, field_id, type_name=None):
+        # FIXME remove this ugly logic
+        rel_crs = []
+        rel_crs_idxs = []
+        for i, cr in enumerate(self.header.column_records):
             if cr.field_id == field_id:
-                form_key = f"field-{cr.field_id}"
-                if cr.type > 2:  # data column
-                    return ak._v2.forms.NumpyForm(
-                        _rntuple_col_types[cr.type], form_key=form_key
-                    )
-                else:  # offset index column
-                    return form_key
+                rel_crs.append(cr)
+                rel_crs_idxs.append(i)
+            if cr.field_id > field_id:
+                break
+        if len(rel_crs) == 1:  # base case
+            return self.base_col_form(rel_crs[0], rel_crs_idxs[0])
+        elif type_name == "std::string":  # string field splits->2 in col records
+            assert len(rel_crs_idxs) == 2
+            cr_char = rel_crs[-1]
+            assert cr_char.type == uproot.const.rntuple_col_type_to_num_dict["char"]
+            inner = self.base_col_form(
+                cr_char, rel_crs_idxs[-1], parameters={"__array__": "char"}
+            )
+            form_key = f"column-{rel_crs_idxs[0]}"
+            return ak._v2.forms.ListOffsetForm(
+                "u32", inner, form_key=form_key, parameters={"__array__": "string"}
+            )
+        else:
+            raise (RuntimeError(f"Missing special case: {field_id}"))
 
     def field_form(self, this_id, seen):
-        frs = self.header.field_records
-        fr = frs[this_id]
+        field_records = self.header.field_records
+        this_record = field_records[this_id]
         seen.append(this_id)
-        if fr.struct_role == 0:
+        sr = this_record.struct_role
+        if sr == uproot.const.rntuple_role_leaf:
             # base case of recursive
-            # these two roles have exactly one column belong to them
-            return self.col_form(this_id)
-        elif fr.struct_role == 1:
+            # n.b. the split may be in column
+            return self.col_form(this_id, this_record.type_name)
+        elif sr == uproot.const.rntuple_role_vector:
             keyname = self.col_form(this_id)
             child_id = next(
                 filter(
-                    lambda i: frs[i].parent_field_id == this_id,
-                    range(this_id + 1, len(frs)),
+                    lambda i: field_records[i].parent_field_id == this_id,
+                    range(this_id + 1, len(field_records)),
                 )
             )
             inner = self.field_form(child_id, seen)
             return ak._v2.forms.ListOffsetForm("u32", inner, form_key=keyname)
-        elif fr.struct_role == 2:
-            # struct field
+        elif sr == uproot.const.rntuple_role_struct:
             newids = []
-            for i, fr in enumerate(frs):
+            for i, fr in enumerate(field_records):
                 if i not in seen and fr.parent_field_id == this_id:
                     newids.append(i)
             # go find N in the rest, N is the # of fields in struct
             recordlist = [self.field_form(i, seen) for i in newids]
-            namelist = [frs[i].field_name for i in newids]
+            namelist = [field_records[i].field_name for i in newids]
             return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
+        elif sr == uproot.const.rntuple_role_union:
+            keyname = self.col_form(this_id)
+            newids = []
+            for i, fr in enumerate(field_records):
+                if i not in seen and fr.parent_field_id == this_id:
+                    newids.append(i)
+            recordlist = [self.field_form(i, seen) for i in newids]
+            return ak._v2.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
         else:
             # everything should recursive above this branch
-            raise (AssertionError("this should be unreachable"))
+            raise AssertionError("this should be unreachable")
 
     def to_akform(self):
-        frs = self.header.field_records
+        field_records = self.header.field_records
         recordlist = []
         topnames = self.keys()
         seen = []
-        for (i, fr) in enumerate(frs):
-            if fr.parent_field_id == i:
-                topnames.append(fr.field_name)
+        for i in range(len(field_records)):
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
 
@@ -280,27 +289,37 @@ in file {}""".format(
         pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
         return pages
 
-    def read_pagedesc(self, desc, dtype):
+    def read_pagedesc(self, destination, start, stop, desc, dtype):
         num_elements = desc.num_elements
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
         uncomp_size = num_elements * dtype.itemsize
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
-        return cursor.array(decomp_chunk, num_elements, dtype, context, move=False)
+        destination[start:stop] = cursor.array(
+            decomp_chunk, num_elements, dtype, context, move=False
+        )
 
     def read_col_page(self, ncol, entry_start):
         ngroup = self.which_colgroup(ncol)
-        link = self.page_list_envelopes.pagelinklist[ngroup][ncol]
+        linklist = self.page_list_envelopes.pagelinklist[ngroup]
+        link = linklist[ncol]
         pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
-        dt_str = _rntuple_col_types[dtype_byte]
+        dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         T = numpy.dtype(dt_str)
 
         # FIXME vector read
-        res = self.read_pagedesc(pagelist[0], T)
-        for p in pagelist[1:]:
-            res = numpy.append(res, self.read_pagedesc(p, T))
+        # n.b. it's possible pagelist is empty
+        if not pagelist:
+            return numpy.empty(0, T)
+        total_len = numpy.sum([desc.num_elements for desc in pagelist])
+        res = numpy.empty(total_len, T)
+        tracker = 0
+        for p in pagelist:
+            tracker_end = tracker + p.num_elements
+            self.read_pagedesc(res, tracker, tracker_end, p, T)
+            tracker = tracker_end
 
         if dtype_byte <= 2:
             res = numpy.insert(res, 0, 0)  # for offsets
@@ -323,22 +342,49 @@ in file {}""".format(
         L = clusters[0].num_entries
 
         form = self.to_akform().select_columns(filter_names)
+        # only read columns mentioned in the awkward form
+        target_cols = []
         D = {}
+        _recursive_find(form, target_cols)
         for i, cr in enumerate(self.column_records):
-            n = cr.field_id
-            D[f"field-{n}"] = self.read_col_page(i, L)
+            key = f"column-{i}"
+            if key in target_cols:
+                content = self.read_col_page(i, L)
+                if cr.type == uproot.const.rntuple_role_union:
+                    kindex, tags = _split_switch_bits(content)
+                    D[f"{key}-index"] = kindex
+                    D[f"{key}-tags"] = tags
+                else:
+                    # don't distinguish data and offsets
+                    D[f"{key}-data"] = content
+                    D[f"{key}-offsets"] = content
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
-# Supporting classes
+# Supporting function and classes
+def _split_switch_bits(content):
+    kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
+    tags = (content >> 44).astype("int8") - 1
+    return kindex, tags
+
+
+def _recursive_find(form, res):
+    if hasattr(form, "form_key"):
+        res.append(form.form_key)
+    if hasattr(form, "contents"):
+        for c in form.contents:
+            _recursive_find(c, res)
+    if hasattr(form, "content"):
+        if issubclass(type(form.content), ak._v2.forms.Form):
+            _recursive_find(form.content, res)
+
+
 class Container:
     def __init__(self, D):
         self._dict = D
 
     def __getitem__(self, name):
-        cutoff = name.rfind("-")
-        internal_name = name[:cutoff]
-        return self._dict[internal_name]
+        return self._dict[name]
 
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
