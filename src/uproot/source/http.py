@@ -433,7 +433,7 @@ for URL {}""".format(
                 while now < stop:
                     for (
                         future_start,
-                        future_stop,  # (future_stop is used after the loop)
+                        future_stop,  # noqa: B007 (future_stop is used after the loop)
                     ) in futures:
                         if now == future_start:
                             break
