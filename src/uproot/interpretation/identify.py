@@ -440,7 +440,7 @@ def interpretation_of(branch, context, simplify=True):
                 ),
                 branch.file.file_path,
                 branch.object_path,
-            )
+            ) from None
 
         if branch.top_level and branch.has_member("fClassName"):
             model_cls = parse_typename(
