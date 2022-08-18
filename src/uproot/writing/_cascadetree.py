@@ -125,7 +125,7 @@ class Tree:
                         raise TypeError
                     branch_dtype = numpy.dtype(branch_type)
 
-                except TypeError:
+                except TypeError as err:
                     try:
                         awkward = uproot.extras.awkward()
                     except ModuleNotFoundError as err:
@@ -145,7 +145,7 @@ class Tree:
                         except Exception:
                             raise TypeError(
                                 f"not a NumPy dtype or an Awkward datashape: {branch_type!r}"
-                            )
+                            ) from err
                     if isinstance(branch_datashape, awkward._v2.types.ArrayType):
                         branch_datashape = branch_datashape.content
 
@@ -166,12 +166,12 @@ class Tree:
                         subname = self._field_name(branch_name, key)
                         try:
                             dtype = numpy.dtype(content)
-                        except Exception:
+                        except Exception as err:
                             raise TypeError(
                                 "values of a dict must be NumPy types\n\n    key {} has type {}".format(
                                     repr(key), repr(content)
                                 )
-                            )
+                            ) from err
                         self._branch_lookup[subname] = len(self._branch_data)
                         self._branch_data.append(
                             self._branch_np(subname, content, dtype)
