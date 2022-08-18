@@ -199,7 +199,9 @@ in file {}""".format(
             return form_key
         elif cr.type > uproot.const.rntuple_role_struct:
             return ak._v2.forms.NumpyForm(
-                uproot.const.rntuple_col_num_to_dtype_dict[cr.type], form_key=form_key, parameters=parameters
+                uproot.const.rntuple_col_num_to_dtype_dict[cr.type],
+                form_key=form_key,
+                parameters=parameters,
             )
         else:  # offset index column
             return form_key
@@ -364,6 +366,7 @@ def _split_switch_bits(content):
     kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
     tags = (content >> 44).astype("int8") - 1
     return kindex, tags
+
 
 def _recursive_find(form, res):
     if hasattr(form, "form_key"):
