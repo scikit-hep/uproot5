@@ -349,9 +349,7 @@ in file {}""".format(
             if key in target_cols:
                 content = self.read_col_page(i, L)
                 if cr.type == uproot.const.rntuple_role_union:
-                    # TODO what's this -1 hack
-                    tags = (content >> 44).astype("int8") - 1
-                    kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
+                    kindex, tags = _split_switch_bits(content)
                     D[f"{key}-index"] = kindex
                     D[f"{key}-tags"] = tags
                 else:
@@ -361,7 +359,12 @@ in file {}""".format(
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
-# Supporting classes
+# Supporting function and classes
+def _split_switch_bits(content):
+    kindex = numpy.bitwise_and(content, numpy.int64(0x00000000000FFFFF))
+    tags = (content >> 44).astype("int8") - 1
+    return kindex, tags
+
 def _recursive_find(form, res):
     if hasattr(form, "form_key"):
         res.append(form.form_key)
