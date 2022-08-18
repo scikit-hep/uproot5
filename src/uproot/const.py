@@ -116,7 +116,7 @@ kGenerateOffsetMap = numpy.uint8(1)
 kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
-rt_role_leaf = 0
-rt_role_vec = 1
-rt_role_struct = 2
-rt_role_union = 3
+rntuple_role_leaf = 0
+rntuple_role_vec = 1
+rntuple_role_struct = 2
+rntuple_role_union = 3
