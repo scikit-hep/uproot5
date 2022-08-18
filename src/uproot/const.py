@@ -140,7 +140,7 @@ rntuple_col_num_to_dtype_dict = {
     21: "int16",  # split
 }
 
-rntuple_col_dtype_to_num_dict = {
+rntuple_col_type_to_num_dict = {
     "index64": 1,
     "index32": 2,
     "switch": 3,

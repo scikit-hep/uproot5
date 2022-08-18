@@ -221,7 +221,7 @@ in file {}""".format(
         elif type_name == "std::string":  # string field splits->2 in col records
             assert len(rel_crs_idxs) == 2
             cr_char = rel_crs[-1]
-            assert cr_char.type == uproot.const.rntuple_col_dtype_to_num_dict["char"]
+            assert cr_char.type == uproot.const.rntuple_col_type_to_num_dict["char"]
             inner = self.base_col_form(
                 cr_char, rel_crs_idxs[-1], parameters={"__array__": "char"}
             )
