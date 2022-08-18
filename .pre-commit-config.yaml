@@ -33,6 +33,7 @@ repos:
   rev: v2.0.0
   hooks:
   - id: setup-cfg-fmt
+    args: [--include-version-classifiers, --max-py-version=3.10]
 
 - repo: https://github.com/mgedmin/check-manifest
   rev: "0.48"
@@ -45,7 +46,7 @@ repos:
   hooks:
   - id: yesqa
     additional_dependencies: &flake8-dependencies
-    - flake8-bugbear==22.4.25
+    - flake8-bugbear==22.7.1
     - flake8-docstrings==1.6.0
     - flake8-print==5.0.0
 
