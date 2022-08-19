@@ -300,8 +300,8 @@ in file {}""".format(
             decomp_chunk, num_elements, dtype, context, move=False
         )
 
-    def read_col_page(self, ncol, entry_start):
-        ngroup = self.which_colgroup(ncol)
+    def read_col_page(self, ncol, entry_start, ngroup=0):
+        # ngroup = self.which_colgroup(ncol)
         linklist = self.page_list_envelopes.pagelinklist[ngroup]
         link = linklist[ncol]
         pagelist = self.pagelist(link)
@@ -336,10 +336,14 @@ in file {}""".format(
     ):
         entry_stop = entry_stop or self._length
         clusters = self.cluster_summaries
-        if len(clusters) != 1:
+        cluster_starts = numpy.array([c.num_first_entry for c in clusters])
+        cluster_stops = cluster_starts + numpy.array([c.num_entries for c in clusters]) - 1
+        start_cluster_idx = numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right") - 1
+        if start_cluster_idx != stop_cluster_idx:
             raise (RuntimeError("Not implemented"))
-        # FIXME we assume cluster starts at entry 0, i.e only one cluster
-        L = clusters[0].num_entries
+        # FIXME we assume only one cluster is needed
+        L = clusters[start_cluster_idx].num_entries
 
         form = self.to_akform().select_columns(filter_names)
         # only read columns mentioned in the awkward form
@@ -349,7 +353,7 @@ in file {}""".format(
         for i, cr in enumerate(self.column_records):
             key = f"column-{i}"
             if key in target_cols:
-                content = self.read_col_page(i, L)
+                content = self.read_col_page(i, L, start_cluster_idx)
                 if cr.type == uproot.const.rntuple_role_union:
                     kindex, tags = _split_switch_bits(content)
                     D[f"{key}-index"] = kindex
@@ -358,6 +362,8 @@ in file {}""".format(
                     # don't distinguish data and offsets
                     D[f"{key}-data"] = content
                     D[f"{key}-offsets"] = content
+        entry_start -= cluster_starts[start_cluster_idx]
+        entry_stop -= cluster_stops[stop_cluster_idx]
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
