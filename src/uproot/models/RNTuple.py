@@ -300,9 +300,11 @@ in file {}""".format(
             decomp_chunk, num_elements, dtype, context, move=False
         )
 
-    def read_col_page(self, ncol, entry_start, ngroup=0):
-        # ngroup = self.which_colgroup(ncol)
-        linklist = self.page_list_envelopes.pagelinklist[ngroup]
+    def read_col_pages(self, ncol, cluster_range):
+        return numpy.concatenate([self.read_col_page(ncol, i) for i in cluster_range], axis=0)
+
+    def read_col_page(self, ncol, cluster_i):
+        linklist = self.page_list_envelopes.pagelinklist[cluster_i]
         link = linklist[ncol]
         pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
@@ -335,15 +337,14 @@ in file {}""".format(
         array_cache=None,
     ):
         entry_stop = entry_stop or self._length
+
         clusters = self.cluster_summaries
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
         cluster_stops = cluster_starts + numpy.array([c.num_entries for c in clusters]) - 1
+
         start_cluster_idx = numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
-        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right") - 1
-        if start_cluster_idx != stop_cluster_idx:
-            raise (RuntimeError("Not implemented"))
-        # FIXME we assume only one cluster is needed
-        L = clusters[start_cluster_idx].num_entries
+        stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
+        L = numpy.sum([c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]])
 
         form = self.to_akform().select_columns(filter_names)
         # only read columns mentioned in the awkward form
@@ -353,7 +354,7 @@ in file {}""".format(
         for i, cr in enumerate(self.column_records):
             key = f"column-{i}"
             if key in target_cols:
-                content = self.read_col_page(i, L, start_cluster_idx)
+                content = self.read_col_pages(i, range(start_cluster_idx, stop_cluster_idx))
                 if cr.type == uproot.const.rntuple_role_union:
                     kindex, tags = _split_switch_bits(content)
                     D[f"{key}-index"] = kindex
