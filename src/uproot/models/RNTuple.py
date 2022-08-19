@@ -362,8 +362,9 @@ in file {}""".format(
                     # don't distinguish data and offsets
                     D[f"{key}-data"] = content
                     D[f"{key}-offsets"] = content
-        entry_start -= cluster_starts[start_cluster_idx]
-        entry_stop -= cluster_stops[stop_cluster_idx]
+        cluster_offset = cluster_starts[start_cluster_idx]
+        entry_start -= cluster_offset
+        entry_stop -= cluster_offset - 1
         return ak._v2.from_buffers(form, L, Container(D))[entry_start:entry_stop]
 
 
