@@ -304,7 +304,9 @@ in file {}""".format(
         )
 
     def read_col_pages(self, ncol, cluster_range):
-        return numpy.concatenate([self.read_col_page(ncol, i) for i in cluster_range], axis=0)
+        return numpy.concatenate(
+            [self.read_col_page(ncol, i) for i in cluster_range], axis=0
+        )
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
@@ -349,11 +351,17 @@ in file {}""".format(
 
         clusters = self.cluster_summaries
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-        cluster_stops = cluster_starts + numpy.array([c.num_entries for c in clusters]) - 1
+        cluster_stops = (
+            cluster_starts + numpy.array([c.num_entries for c in clusters]) - 1
+        )
 
-        start_cluster_idx = numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+        start_cluster_idx = (
+            numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
+        )
         stop_cluster_idx = numpy.searchsorted(cluster_starts, entry_stop, side="right")
-        L = numpy.sum([c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]])
+        L = numpy.sum(
+            [c.num_entries for c in clusters[start_cluster_idx:stop_cluster_idx]]
+        )
 
         form = self.to_akform().select_columns(filter_names)
         # only read columns mentioned in the awkward form
@@ -364,7 +372,9 @@ in file {}""".format(
             key = f"column-{i}"
             dtype_byte = cr.type
             if key in target_cols:
-                content = self.read_col_pages(i, range(start_cluster_idx, stop_cluster_idx))
+                content = self.read_col_pages(
+                    i, range(start_cluster_idx, stop_cluster_idx)
+                )
                 if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
                     D[f"{key}-index"] = kindex
