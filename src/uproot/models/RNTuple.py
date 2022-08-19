@@ -195,11 +195,15 @@ in file {}""".format(
 
     def base_col_form(self, cr, col_id, parameters=None):
         form_key = f"column-{col_id}"
-        if cr.type == uproot.const.rntuple_role_union:
+        dtype_byte = cr.type
+        if dtype_byte == uproot.const.rntuple_role_union:
             return form_key
-        elif cr.type > uproot.const.rntuple_role_struct:
+        elif dtype_byte > uproot.const.rntuple_role_struct:
+            dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
+            if dt_str == "bit":
+                dt_str = "bool"
             return ak._v2.forms.NumpyForm(
-                uproot.const.rntuple_col_num_to_dtype_dict[cr.type],
+                dt_str,
                 form_key=form_key,
                 parameters=parameters,
             )
@@ -289,14 +293,13 @@ in file {}""".format(
         pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
         return pages
 
-    def read_pagedesc(self, destination, start, stop, desc, dtype):
-        num_elements = desc.num_elements
+    def read_pagedesc(self, destination, desc, num_elements, dtype):
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
         uncomp_size = num_elements * dtype.itemsize
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
-        destination[start:stop] = cursor.array(
+        destination[:] = cursor.array(
             decomp_chunk, num_elements, dtype, context, move=False
         )
 
@@ -309,7 +312,12 @@ in file {}""".format(
         pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
         dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-        T = numpy.dtype(dt_str)
+        len_divider = 1
+        if dt_str == "bit":
+            T = numpy.dtype("bool")
+            len_divider = 8
+        else:
+            T = numpy.dtype(dt_str)
 
         # FIXME vector read
         # n.b. it's possible pagelist is empty
@@ -318,12 +326,13 @@ in file {}""".format(
         total_len = numpy.sum([desc.num_elements for desc in pagelist])
         res = numpy.empty(total_len, T)
         tracker = 0
-        for p in pagelist:
-            tracker_end = tracker + p.num_elements
-            self.read_pagedesc(res, tracker, tracker_end, p, T)
+        for page_desc in pagelist:
+            n_elements = page_desc.num_elements
+            tracker_end = tracker + n_elements
+            self.read_pagedesc(res[tracker:tracker_end], page_desc, n_elements, T)
             tracker = tracker_end
 
-        if dtype_byte <= 2:
+        if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
             res = numpy.insert(res, 0, 0)  # for offsets
         return res
 
@@ -353,13 +362,16 @@ in file {}""".format(
         _recursive_find(form, target_cols)
         for i, cr in enumerate(self.column_records):
             key = f"column-{i}"
+            dtype_byte = cr.type
             if key in target_cols:
                 content = self.read_col_pages(i, range(start_cluster_idx, stop_cluster_idx))
-                if cr.type == uproot.const.rntuple_role_union:
+                if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["switch"]:
                     kindex, tags = _split_switch_bits(content)
                     D[f"{key}-index"] = kindex
                     D[f"{key}-tags"] = tags
                 else:
+                    if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["bit"]:
+                        content = numpy.unpackbits(content.view(dtype=numpy.uint8))
                     # don't distinguish data and offsets
                     D[f"{key}-data"] = content
                     D[f"{key}-offsets"] = content

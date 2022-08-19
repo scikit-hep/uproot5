@@ -122,7 +122,7 @@ rntuple_col_num_to_dtype_dict = {
     3: "uint64",  # Switch
     4: "uint8",
     5: "uint8",  # char
-    6: "bool",
+    6: "bit",
     7: "float64",
     8: "float32",
     9: "float16",
