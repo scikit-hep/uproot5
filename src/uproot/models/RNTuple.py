@@ -293,22 +293,25 @@ in file {}""".format(
         pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
         return pages
 
-    def read_pagedesc(self, destination, desc, num_elements, dtype, len_divider):
+    def read_pagedesc(self, destination, desc, num_elements, dtype):
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
-        # in case it's bit <-> bool
+        # bool in RNTuple is always stored as bits
+        isbit = dtype == bool
+        len_divider = 8 if isbit else 1
         num_elements_toread = int(numpy.ceil(num_elements / len_divider))
         uncomp_size = num_elements_toread * dtype.itemsize
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
         content = cursor.array(
             decomp_chunk, num_elements_toread, dtype, context, move=False
         )
-        if len_divider != 1:
+        if isbit:
             content = numpy.unpackbits(
                 content.view(dtype=numpy.uint8), bitorder="little"
             )
         assert len(destination) == num_elements
+        # only needed to chop off extra bits due to `unpackbits`
         destination[:] = content[:num_elements]
 
     def read_col_pages(self, ncol, cluster_range):
@@ -322,10 +325,8 @@ in file {}""".format(
         pagelist = self.pagelist(link)
         dtype_byte = self.column_records[ncol].type
         dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-        len_divider = 1
         if dt_str == "bit":
             T = numpy.dtype("bool")
-            len_divider = 8
         else:
             T = numpy.dtype(dt_str)
 
@@ -340,8 +341,7 @@ in file {}""".format(
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
             self.read_pagedesc(
-                res[tracker:tracker_end], page_desc, n_elements, T, len_divider
-            )
+                res[tracker:tracker_end], page_desc, n_elements, T)
             tracker = tracker_end
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
