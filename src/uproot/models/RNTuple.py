@@ -305,7 +305,9 @@ in file {}""".format(
             decomp_chunk, num_elements_toread, dtype, context, move=False
         )
         if len_divider != 1:
-            content = numpy.unpackbits(content.view(dtype=numpy.uint8), bitorder="little")
+            content = numpy.unpackbits(
+                content.view(dtype=numpy.uint8), bitorder="little"
+            )
         assert len(destination) == num_elements
         destination[:] = content[:num_elements]
 
@@ -337,7 +339,9 @@ in file {}""".format(
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
-            self.read_pagedesc(res[tracker:tracker_end], page_desc, n_elements, T, len_divider)
+            self.read_pagedesc(
+                res[tracker:tracker_end], page_desc, n_elements, T, len_divider
+            )
             tracker = tracker_end
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
