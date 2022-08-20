@@ -340,8 +340,7 @@ in file {}""".format(
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
-            self.read_pagedesc(
-                res[tracker:tracker_end], page_desc, n_elements, T)
+            self.read_pagedesc(res[tracker:tracker_end], page_desc, n_elements, T)
             tracker = tracker_end
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
