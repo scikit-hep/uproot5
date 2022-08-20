@@ -361,9 +361,6 @@ in file {}""".format(
 
         clusters = self.cluster_summaries
         cluster_starts = numpy.array([c.num_first_entry for c in clusters])
-        cluster_stops = (
-            cluster_starts + numpy.array([c.num_entries for c in clusters]) - 1
-        )
 
         start_cluster_idx = (
             numpy.searchsorted(cluster_starts, entry_start, side="right") - 1
