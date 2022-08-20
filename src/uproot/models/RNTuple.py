@@ -308,9 +308,11 @@ in file {}""".format(
             decomp_chunk, num_elements_toread, dtype, context, move=False
         )
         if isbit:
-            content = numpy.unpackbits(
-                    content.view(dtype=numpy.uint8)
-                    ).reshape(-1, 8)[:, ::-1].reshape(-1)
+            content = (
+                numpy.unpackbits(content.view(dtype=numpy.uint8))
+                .reshape(-1, 8)[:, ::-1]
+                .reshape(-1)
+            )
 
         # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
@@ -393,7 +395,9 @@ in file {}""".format(
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
-        return ak._v2.from_buffers(form, cluster_num_entries, container_dict)[entry_start:entry_stop]
+        return ak._v2.from_buffers(form, cluster_num_entries, container_dict)[
+            entry_start:entry_stop
+        ]
 
 
 # Supporting function and classes
@@ -412,6 +416,7 @@ def _recursive_find(form, res):
     if hasattr(form, "content"):
         if issubclass(type(form.content), ak._v2.forms.Form):
             _recursive_find(form.content, res)
+
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
 class PageDescription:
