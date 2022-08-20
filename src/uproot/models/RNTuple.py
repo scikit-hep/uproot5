@@ -242,8 +242,8 @@ in file {}""".format(
         seen.append(this_id)
         sr = this_record.struct_role
         if sr == uproot.const.rntuple_role_leaf:
-            # base case of recursive
-            # n.b. the split may be in column
+            # base case of recursion
+            # n.b. the split may happen in column
             return self.col_form(this_id, this_record.type_name)
         elif sr == uproot.const.rntuple_role_vector:
             keyname = self.col_form(this_id)
@@ -273,7 +273,7 @@ in file {}""".format(
             recordlist = [self.field_form(i, seen) for i in newids]
             return ak._v2.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
         else:
-            # everything should recursive above this branch
+            # everything should recurse above this branch
             raise AssertionError("this should be unreachable")
 
     def to_akform(self):
@@ -293,15 +293,21 @@ in file {}""".format(
         pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
         return pages
 
-    def read_pagedesc(self, destination, desc, num_elements, dtype):
+    def read_pagedesc(self, destination, desc, num_elements, dtype, len_divider):
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
-        uncomp_size = num_elements * dtype.itemsize
+        # in case it's bit <-> bool
+        num_elements_toread = int(numpy.ceil(num_elements / len_divider))
+        uncomp_size = num_elements_toread * dtype.itemsize
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
-        destination[:] = cursor.array(
-            decomp_chunk, num_elements, dtype, context, move=False
+        content = cursor.array(
+            decomp_chunk, num_elements_toread, dtype, context, move=False
         )
+        if len_divider != 1:
+            content = numpy.unpackbits(content.view(dtype=numpy.uint8), bitorder="little")
+        assert len(destination) == num_elements
+        destination[:] = content[:num_elements]
 
     def read_col_pages(self, ncol, cluster_range):
         return numpy.concatenate(
@@ -331,7 +337,7 @@ in file {}""".format(
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
-            self.read_pagedesc(res[tracker:tracker_end], page_desc, n_elements, T)
+            self.read_pagedesc(res[tracker:tracker_end], page_desc, n_elements, T, len_divider)
             tracker = tracker_end
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
@@ -380,8 +386,6 @@ in file {}""".format(
                     D[f"{key}-index"] = kindex
                     D[f"{key}-tags"] = tags
                 else:
-                    if dtype_byte == uproot.const.rntuple_col_type_to_num_dict["bit"]:
-                        content = numpy.unpackbits(content.view(dtype=numpy.uint8))
                     # don't distinguish data and offsets
                     D[f"{key}-data"] = content
                     D[f"{key}-offsets"] = content
