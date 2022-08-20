@@ -293,13 +293,14 @@ in file {}""".format(
         pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
         return pages
 
-    def read_pagedesc(self, destination, desc, num_elements, dtype_str, dtype):
+    def read_pagedesc(self, destination, desc, dtype_str, dtype):
         loc = desc.locator
         cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
         # bool in RNTuple is always stored as bits
         isbit = dtype_str == "bit"
         len_divider = 8 if isbit else 1
+        num_elements = len(destination)
         num_elements_toread = int(numpy.ceil(num_elements / len_divider))
         uncomp_size = num_elements_toread * dtype.itemsize
         decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
@@ -308,10 +309,10 @@ in file {}""".format(
         )
         if isbit:
             content = numpy.unpackbits(
-                content.view(dtype=numpy.uint8), bitorder="little"
-            )
-        assert len(destination) == num_elements
-        # only needed to chop off extra bits due to `unpackbits`
+                    content.view(dtype=numpy.uint8)
+                    ).reshape(-1, 8)[:, ::-1].reshape(-1)
+
+        # needed to chop off extra bits incase we used `unpackbits`
         destination[:] = content[:num_elements]
 
     def read_col_pages(self, ncol, cluster_range):
@@ -340,7 +341,7 @@ in file {}""".format(
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
-            self.read_pagedesc(res[tracker:tracker_end], page_desc, n_elements, dtype_str, dtype)
+            self.read_pagedesc(res[tracker:tracker_end], page_desc, dtype_str, dtype)
             tracker = tracker_end
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
