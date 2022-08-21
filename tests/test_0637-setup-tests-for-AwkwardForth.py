@@ -452,7 +452,9 @@ def test_44():
     with uproot.open(skhep_testdata.data_path("uproot-issue46.root")) as file:
         branch = file["tree/evt"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[0]['1'][-1] == True
         # py[-1] == <Event (version 1) at 0x7f1e3aef2dc0>
 
 

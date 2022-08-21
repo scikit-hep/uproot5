@@ -15,6 +15,8 @@ import numpy
 import uproot
 import uproot._awkward_forth
 
+COUNT_NAMES = []
+
 _canonical_typename_patterns = [
     (re.compile(r"\bChar_t\b"), "char"),
     (re.compile(r"\bUChar_t\b"), "unsigned char"),
@@ -206,6 +208,9 @@ class Model_TStreamerInfo(uproot.model.Model):
         Returns Python code as a string that, when evaluated, would be a suitable
         :doc:`uproot.model.VersionedModel` for this class and version.
         """
+        for element in self.elements:    # (self is a TStreamerInfo)
+            if element.has_member("fCountName"):
+                COUNT_NAMES.append(element.member("fCountName"))
         read_members = [
             "    def read_members(self, chunk, cursor, context, file):",
             "        import uproot._awkward_forth",
@@ -805,6 +810,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 """
         if context.get('speedbump', True):
             cursor.skip(1)
+            print(cursor._index, 'ioioioio')
             if helper_obj.is_forth():
                 helper_obj.add_to_pre('1 stream skip \\n')
 """.strip(
@@ -830,13 +836,16 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
             read_members.append(
                 f'                content["{self.name!r}"] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
             )
-            read_members.append(f'                #raise NotImplementedError\n                helper_obj.add_to_pre(f"{{self.member({self.count_name!r})}} dup part0-node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> part0-node{{key}}-data\\n")')
+            read_members.append(f'                #raise NotImplementedError\n                helper_obj.add_to_pre(f" dup part0-node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> part0-node{{key}}-data\\n")')
             read_members.append('                if forth_obj.should_add_form():')
             read_members.append('                        forth_obj.add_form_key(form_key)')
             read_members.append('                        forth_obj.add_form_key(form_key2)')
 
         read_members.append(
-            f"        self._members[{self.name!r}] = cursor.array(chunk, self.member({self.count_name!r}), tmp, context);"
+            f"        print(type(self.member({self.count_name!r})), 'YUYUYUYUY');\n"
+        )
+        read_members.append(
+            f"        self._members[{self.name!r}] = cursor.array(chunk, self.member({self.count_name!r}), tmp, context);\n        print(self.member({self.count_name!r}), 'nmnmnmnm')\n"
         )
         read_member_n.append("    " + read_members[-1])
 
@@ -951,9 +960,15 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     read_members.append(
                         f'                content["{fields[-1][0]}"] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}'
                     )
-                    read_members.append(
-                        f'                helper_obj.add_to_pre(f"stream !{formats[-1][0]}-> part0-node{{key}}-data\\n stream pos .s cr drop\\n")'
-                    )
+                    if fields[-1][0] in COUNT_NAMES:
+                        read_members.append(
+                            f'                helper_obj.add_to_pre(f"stream !{formats[-1][0]}-> stack dup part0-node{{key}}-data <- stack\\n")'
+                        )
+                    else:
+                        read_members.append(
+                            f'                helper_obj.add_to_pre(f"stream !{formats[-1][0]}-> part0-node{{key}}-data\\n")'
+                        )
+
                     read_members.append(
                         "                if forth_obj.should_add_form():"
                     )
@@ -1007,7 +1022,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             read_members.append('                key = forth_obj.get_keys(1)')
             read_members.append('                key2 = forth_obj.get_keys(1)')
             read_members.append('                form_key = f"part0-node{key}-data"')
-            read_members.append('                form_key2 = f"part0-node{key2}-data"')
+            read_members.append('                form_key2 = f"part0-node{key2}-offsets"')
             read_members.append(
                 f'                helper_obj.add_to_header(f"output part0-node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")'
             )
@@ -1016,7 +1031,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
             )
             read_members.append('                helper_obj.add_to_init(f"0 part0-node{key2}-offsets <- stack\\n")')
             read_members.append(
-                f'                content["{self.name!r}"] = {{"class": "ListOffsetArray", "primitive": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
+                f'                content["{self.name!r}"] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
             )
             read_members.append(f'                helper_obj.add_to_pre(f"{self.array_length} dup part0-node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> part0-node{{key}}-data\\n")\n')
             read_members.append('                if forth_obj.should_add_form():')
@@ -1289,7 +1304,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
             "        if helper_obj.is_forth():\n                temp_node, temp_node_top, temp_form, temp_form_top = forth_obj.replace_form_and_model(None, {'name': 'TOP', 'content': {}})\n"
         )
         read_members.append(
-            f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, context, file, self._file, self.concrete)"
+            f"        self._members[{self.name!r}] = self._stl_container{len(containers)}.read(chunk, cursor, context, file, self._file, self.concrete)\n        print(cursor._index)"
         )
         read_member_n.append("    " + read_members[-1])
         read_members.append(

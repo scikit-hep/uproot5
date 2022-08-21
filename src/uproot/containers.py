@@ -1179,14 +1179,16 @@ class AsVector(AsContainer):
                             chunk, cursor, context, file, member_index
                         )
         else:
+            print(cursor._index, 'errererer')
             length = cursor.field(chunk, _stl_container_size, context)
+            print(cursor._index, 'errererer')
             if helper_obj.is_forth():
                 key = forth_obj.get_keys(1)
                 form_key = f"part0-node{key}-offsets"
                 helper_obj.add_to_header(f"output part0-node{key}-offsets int64\n")
                 helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\n")
                 helper_obj.add_to_pre(
-                    f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n"
+                    f"stream !I-> stack\n dup part0-node{key}-offsets +<- stack\n"
                 )
                 # helper_obj.add_to_post("loop\n")
                 if forth_obj.should_add_form():
