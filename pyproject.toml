@@ -1,7 +1,93 @@
 [build-system]
-
 requires = [
-    "setuptools>=42",
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "uproot"
+description = "ROOT I/O in pure Python and NumPy."
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.6"
+authors = [
+    { name = "Jim Pivarski", email = "pivarski@princeton.edu" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Software Development",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "awkward>=1.9.0rc1",
+    "importlib-metadata;python_version<\"3.8\"",
+    "numpy",
+    "packaging",
+]
+dynamic = [
+    "version",
 ]
 
-build-backend = "setuptools.build_meta"
+[project.optional-dependencies]
+dev = [
+    "awkward>=1.9.0rc1",
+    "boost_histogram>=0.13",
+    "dask-awkward;python_version >= \"3.8\"",
+    "dask[array];python_version >= \"3.8\"",
+    "hist>=1.2",
+    "pandas",
+]
+test = [
+    "awkward>=1.9.0rc1",
+    "lz4",
+    "pytest>=6",
+    "pytest-timeout",
+    "pytest-rerunfailures",
+    "requests",
+    "scikit-hep-testdata",
+    "xxhash",
+]
+
+[project.urls]
+Download = "https://github.com/scikit-hep/uproot5/releases"
+Homepage = "https://github.com/scikit-hep/uproot5"
+
+[tool.hatch.version]
+path = "src/uproot/version.py"
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
+xfail_strict = true
+filterwarnings = ["error"]
+log_cli_level = "info"
+testpaths = ["tests"]
+markers = [
+    "slow",
+    "network",
+    "xrootd",
+]
+timeout = 600
+
+[tool.isort]
+profile = "black"

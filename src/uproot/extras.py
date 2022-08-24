@@ -11,10 +11,14 @@ error messages containing instructions on how to install the library.
 
 import atexit
 import os
-
-import pkg_resources
+import sys
 
 from uproot._util import parse_version
+
+if sys.version_info < (3, 8):
+    import importlib_metadata
+else:
+    import importlib.metadata as importlib_metadata
 
 
 def awkward():
@@ -23,7 +27,7 @@ def awkward():
     """
     try:
         import awkward
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'awkward' package with:
 
@@ -32,7 +36,7 @@ def awkward():
 Alternatively, you can use ``library="np"`` or globally set ``uproot.default_library``
 to output as NumPy arrays, rather than Awkward arrays.
 """
-        )
+        ) from err
     if parse_version("1") < parse_version(awkward.__version__) < parse_version("2"):
         return awkward
     else:
@@ -49,7 +53,7 @@ def pandas():
     """
     try:
         import pandas
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'pandas' package with:
 
@@ -58,7 +62,7 @@ def pandas():
 or
 
     conda install pandas"""
-        )
+        ) from err
     else:
         return pandas
 
@@ -74,7 +78,7 @@ def XRootD_client():
         import XRootD
         import XRootD.client
 
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """Install XRootD python bindings with:
 
@@ -82,7 +86,7 @@ def XRootD_client():
 
 (or download from http://xrootd.org/dload.html and manually compile with """
             """cmake; setting PYTHONPATH and LD_LIBRARY_PATH appropriately)."""
-        )
+        ) from err
 
     if older_xrootd("5.1.0"):
         # This is registered after calling "import XRootD.client" so it is ran
@@ -132,14 +136,13 @@ def xrootd_version():
     Gets the XRootD version if installed, otherwise returns None.
     """
     try:
-        version = pkg_resources.get_distribution("XRootD").version
-    except pkg_resources.DistributionNotFound:
+        return importlib_metadata.version("xrootd")
+    except ModuleNotFoundError:
         try:
             # Versions before 4.11.1 used pyxrootd as the package name
-            version = pkg_resources.get_distribution("pyxrootd").version
-        except pkg_resources.DistributionNotFound:
-            version = None
-    return version
+            return importlib_metadata.version("pyxrootd")
+        except ModuleNotFoundError:
+            return None
 
 
 def lzma():
@@ -170,7 +173,7 @@ def lz4_block():
 or
 
     conda install lz4 python-xxhash"""
-        )
+        ) from err
     else:
         return lz4.block
 
@@ -184,7 +187,7 @@ def xxhash():
     try:
         import lz4.block
         import xxhash
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'lz4' and `xxhash` packages with:
 
@@ -193,7 +196,7 @@ def xxhash():
 or
 
     conda install lz4 python-xxhash"""
-        )
+        ) from err
     else:
         return xxhash
 
@@ -204,7 +207,7 @@ def zstandard():
     """
     try:
         import zstandard
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'zstandard' package with:
 
@@ -213,7 +216,7 @@ def zstandard():
 or
 
     conda install zstandard"""
-        )
+        ) from err
     else:
         return zstandard
 
@@ -224,7 +227,7 @@ def boost_histogram():
     """
     try:
         import boost_histogram
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'boost-histogram' package with:
 
@@ -233,7 +236,7 @@ def boost_histogram():
 or
 
     conda install -c conda-forge boost-histogram"""
-        )
+        ) from err
     else:
         return boost_histogram
 
@@ -244,12 +247,12 @@ def hist():
     """
     try:
         import hist
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'hist' package with:
 
     pip install hist"""
-        )
+        ) from err
     else:
         return hist
 
@@ -261,13 +264,13 @@ def dask():
     try:
         import dask
         import dask.array as da
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """for uproot.dask with 'library="np"', install the complete 'dask' package with:
     pip install "dask[complete]"
 or
     conda install dask"""
-        )
+        ) from err
     else:
         return dask, da
 
@@ -280,12 +283,12 @@ def dask_awkward():
         import dask
         import dask.array as da
         import dask_awkward
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """for uproot.dask, install the 'dask-awkward' package with:
     pip install "dask[complete] dask-awkward"
 or
     conda install dask dask-awkward"""
-        )
+        ) from err
     else:
         return dask_awkward

@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from urllib.parse import unquote, urlparse
 
 import numpy
-import setuptools
+import packaging.version
 
 win = platform.system().lower().startswith("win")
 
@@ -81,8 +81,8 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         warnings.simplefilter("error", numpy.VisibleDeprecationWarning)
         try:
             out = numpy.asarray(array)
-        except (ValueError, numpy.VisibleDeprecationWarning):
-            raise TypeError("cannot be converted to a NumPy array")
+        except (ValueError, numpy.VisibleDeprecationWarning) as err:
+            raise TypeError("cannot be converted to a NumPy array") from err
         if not issubclass(out.dtype.type, types):
             raise TypeError(f"cannot be converted to a NumPy array of type {types}")
         return out
@@ -93,10 +93,10 @@ def parse_version(version):
     Converts a semver string into a Version object that can be compared with
     ``<``, ``>=``, etc.
 
-    Currently implemented using ``setuptools.extern.packaging.version.parse``
+    Currently implemented using ``packaging.Version``
     (exposing that library in the return type).
     """
-    return setuptools.extern.packaging.version.parse(version)
+    return packaging.version.parse(version)
 
 
 def from_module(obj, module_name):
@@ -234,7 +234,7 @@ def regularize_rename(rename):
             def applyrules(x):
                 for matcher, trans in rules:
                     if matcher.search(x) is not None:
-                        return matcher.sub(trans, x)
+                        return matcher.sub(trans, x)  # noqa: B023
                 else:
                     return x
 

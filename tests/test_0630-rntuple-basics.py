@@ -11,7 +11,7 @@ import skhep_testdata
 import uproot
 
 
-def test():
+def test_flat():
     filename = skhep_testdata.data_path("test_ntuple_int_float.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
@@ -38,6 +38,8 @@ def test():
         )
         assert all(R.arrays(entry_start=-3)["one_integers"] == numpy.array([3, 2, 1]))
 
+
+def test_jagged():
     filename = skhep_testdata.data_path("test_ntuple_int_vfloat_tlv_vtlv.root")
     with uproot.open(filename) as f:
         R = f["ntuple"]
