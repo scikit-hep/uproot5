@@ -11,10 +11,14 @@ error messages containing instructions on how to install the library.
 
 import atexit
 import os
-
-import pkg_resources
+import sys
 
 from uproot._util import parse_version
+
+if sys.version_info < (3, 8):
+    import importlib_metadata
+else:
+    import importlib.metadata as importlib_metadata
 
 
 def awkward():
@@ -132,14 +136,13 @@ def xrootd_version():
     Gets the XRootD version if installed, otherwise returns None.
     """
     try:
-        version = pkg_resources.get_distribution("XRootD").version
-    except pkg_resources.DistributionNotFound:
+        return importlib_metadata.version("xrootd")
+    except ModuleNotFoundError:
         try:
             # Versions before 4.11.1 used pyxrootd as the package name
-            version = pkg_resources.get_distribution("pyxrootd").version
-        except pkg_resources.DistributionNotFound:
-            version = None
-    return version
+            return importlib_metadata.version("pyxrootd")
+        except ModuleNotFoundError:
+            return None
 
 
 def lzma():
