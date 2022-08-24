@@ -28,8 +28,8 @@ extras = {
         "lz4",
         "xxhash",
         "requests",
-        "dask[array]",
-        "dask-awkward",
+        'dask[array];python_version >= "3.8"',
+        'dask-awkward;python_version >= "3.8"',
     ],
 }
 extras["all"] = sum(extras.values(), [])
