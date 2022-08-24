@@ -35,14 +35,15 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          channels: "conda-forge"
+          miniforge-variant: Mambaforge
+          use-mamba: true
 
       - name: "Install most dependencies"
         run: |
           conda env list
           conda info
-          conda install numpy pandas pytest lz4 python-xxhash requests
-          pip install scikit-hep-testdata boost-histogram hist dask[array]
+          mamba install numpy pandas pytest lz4 python-xxhash request scikit-hep-testdata boost-histogram hist
+          pip install dask[array]
           conda list
 
       - name: "Install Awkward"
@@ -56,7 +57,7 @@ jobs:
         if: "matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
-          conda install root
+          mamba install root
           pip install dask-awkward
           conda list
 
@@ -64,14 +65,14 @@ jobs:
         if: "runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
-          conda install xrootd
+          mamba install xrootd
           conda list
 
       - name: "Install pytest-rerunfailures"
         id: rerunfailures-install
         run: |
           conda env list
-          conda install pytest-rerunfailures || pip install pytest-rerunfailures
+          mamba install pytest-rerunfailures || pip install pytest-rerunfailures
           conda list
 
       - name: "Pip install the package"
