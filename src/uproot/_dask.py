@@ -239,6 +239,7 @@ def _dask_array_from_map(
     **kwargs,
 ):
     dask = uproot.extras.dask()
+    da = uproot.extras.dask_array()
     if not callable(func):
         raise ValueError("`func` argument must be `callable`")
     lengths = set()
@@ -311,7 +312,7 @@ def _dask_array_from_map(
     )
 
     hlg = dask.highlevelgraph.HighLevelGraph.from_collections(name, dsk)
-    return dask.array.core.Array(hlg, name, chunks, dtype=dtype)
+    return da.core.Array(hlg, name, chunks, dtype=dtype)
 
 
 class _UprootReadNumpy:

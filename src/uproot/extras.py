@@ -260,6 +260,7 @@ def dask():
     """
     try:
         import dask
+        import dask.blockwise
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """for uproot.dask, install the (complete) 'dask' package with:
