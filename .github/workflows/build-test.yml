@@ -21,6 +21,7 @@ jobs:
             python-version: "3.7"
 
     runs-on: "${{ matrix.platform }}"
+    timeout-minutes: 30
 
     # Required for miniconda to activate conda
     defaults:
