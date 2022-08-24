@@ -64,7 +64,6 @@ jobs:
 
       - name: "Run pytest"
         run: |
-          PYTEST_EXTRA_FLAGS="--only-rerun requests.exceptions.HTTPError" \
           python -m pytest -vv tests \
             --reruns 3 --reruns-delay 30 \
-            ${PYTEST_EXTRA_FLAGS:-}
+            --only-rerun requests.exceptions.HTTPError
