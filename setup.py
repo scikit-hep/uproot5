@@ -24,6 +24,7 @@ extras = {
     "test": [
         "awkward>=1.9.0rc1",
         "pytest>=4.6",
+        "pytest-timeout",
         "scikit-hep-testdata",
         "lz4",
         "xxhash",

@@ -25,6 +25,7 @@ jobs:
             python-version: "3.7"
 
     runs-on: "${{ matrix.platform }}"
+    timeout-minutes: 30
 
     # Required for miniconda to activate conda
     defaults:
@@ -39,19 +40,14 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          channels: "conda-forge"
-
-      - name: "Install most dependencies"
-        run: |
-          conda env list
-          conda info
-          conda list
+          miniforge-variant: Mambaforge
+          use-mamba: true
 
       - name: "Install ROOT"
         if: "matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
-          conda install root
+          mamba install root
           pip install dask-awkward
           conda list
 
@@ -59,14 +55,14 @@ jobs:
         if: "runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
-          conda install xrootd
+          mamba install xrootd
           conda list
 
-      - name: "Install pytest-rerunfailures"
+      - name: "Install pytest extras"
         id: rerunfailures-install
         run: |
           conda env list
-          conda install pytest-rerunfailures || pip install pytest-rerunfailures
+          mamba install pytest-rerunfailures pytest-timeout
           conda list
 
       - name: "Pip install the package"
