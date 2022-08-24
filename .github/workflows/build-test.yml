@@ -69,11 +69,11 @@ jobs:
           mamba install xrootd
           conda list
 
-      - name: "Install pytest-rerunfailures"
+      - name: "Install pytest extras"
         id: rerunfailures-install
         run: |
           conda env list
-          mamba install pytest-rerunfailures || pip install pytest-rerunfailures
+          mamba install pytest-rerunfailures pytest-timeout
           conda list
 
       - name: "Pip install the package"
