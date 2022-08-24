@@ -444,6 +444,7 @@ def _get_dask_array(
             chunk_args,
             chunks=(tuple(chunks),),
             dtype=dt,
+            label=f"{key}-from-uproot",
         )
 
     return dask_dict
