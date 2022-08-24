@@ -29,18 +29,6 @@ repos:
   hooks:
   - id: isort
 
-- repo: https://github.com/asottile/setup-cfg-fmt
-  rev: v2.0.0
-  hooks:
-  - id: setup-cfg-fmt
-    args: [--include-version-classifiers, --max-py-version=3.10]
-
-- repo: https://github.com/mgedmin/check-manifest
-  rev: "0.48"
-  hooks:
-  - id: check-manifest
-    stages: [manual]
-
 - repo: https://github.com/asottile/yesqa
   rev: v1.4.0
   hooks:
