@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from urllib.parse import unquote, urlparse
 
 import numpy
-import packaging
+import packaging.version
 
 win = platform.system().lower().startswith("win")
 
