@@ -24,8 +24,6 @@ extras = {
     "test": [
         "awkward>=1.9.0rc1",
         "pytest>=4.6",
-        "flake8",
-        "flake8-print>=5",
         "scikit-hep-testdata",
         "lz4",
         "xxhash",
