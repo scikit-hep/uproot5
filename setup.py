@@ -14,23 +14,21 @@ def get_version():
 
 extras = {
     "dev": [
-        "awkward>=1.0.0,<2",
+        "awkward>=1.9.0rc1",
         "pandas",
         "boost_histogram>=0.13",
         "hist>=1.2",
+        'dask[array];python_version >= "3.8"',
+        'dask-awkward;python_version >= "3.8"',
     ],
     "test": [
         "awkward>=1.9.0rc1",
         "pytest>=4.6",
         "pytest-timeout",
-        "flake8",
-        "flake8-print>=5",
         "scikit-hep-testdata",
         "lz4",
         "xxhash",
         "requests",
-        "dask[array]",
-        "dask-awkward",
     ],
 }
 extras["all"] = sum(extras.values(), [])
