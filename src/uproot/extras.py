@@ -260,6 +260,22 @@ def dask():
     """
     try:
         import dask
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """for uproot.dask, install the (complete) 'dask' package with:
+    pip install "dask[complete]"
+or
+    conda install dask"""
+        ) from err
+    else:
+        return dask
+
+
+def dask_array():
+    """
+    Imports and returns ``dask.array``.
+    """
+    try:
         import dask.array as da
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
@@ -269,7 +285,7 @@ or
     conda install dask"""
         ) from err
     else:
-        return dask, da
+        return da
 
 
 def dask_awkward():
@@ -280,10 +296,8 @@ def dask_awkward():
         import dask_awkward
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
-            """for uproot.dask, install the (complete) 'dask' package with:
-    pip install "dask[complete]"
-or
-    conda install dask"""
+            """for uproot.dask, install the 'dask_awkward' package with:
+    pip install "dask[complete] dask-awkward" """
         ) from err
     else:
         return dask_awkward

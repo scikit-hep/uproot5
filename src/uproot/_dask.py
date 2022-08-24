@@ -238,7 +238,7 @@ def _dask_array_from_map(
     token=None,
     **kwargs,
 ):
-    dask, da = uproot.extras.dask()
+    dask = uproot.extras.dask()
     if not callable(func):
         raise ValueError("`func` argument must be `callable`")
     lengths = set()
@@ -338,7 +338,6 @@ def _get_dask_array(
     allow_missing=False,
     real_options=None,
 ):
-    dask, da = uproot.extras.dask()
     hasbranches = []
     common_keys = None
     is_self = []
@@ -461,7 +460,8 @@ def _get_dask_array_delay_open(
     allow_missing=False,
     real_options=None,
 ):
-    dask, da = uproot.extras.dask()
+    dask = uproot.extras.dask()
+    da = uproot.extras.dask_array()
     ffile_path, fobject_path = files[0]
     obj = uproot._util.regularize_object_path(
         ffile_path, fobject_path, custom_classes, allow_missing, real_options
