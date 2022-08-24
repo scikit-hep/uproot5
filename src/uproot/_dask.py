@@ -352,7 +352,7 @@ def _get_dask_array(
                 is_self.append(True)
 
                 def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)
+                    return branch is original and filter_branch(branch)  # noqa: B023
 
             else:
                 is_self.append(False)
@@ -426,10 +426,14 @@ def _get_dask_array(
                 entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
             
             def foreach(start):
-                stop = min(start + entry_step, entry_stop)
+                stop = min(start + entry_step, entry_stop)  # noqa: B023
                 length = stop - start
-                chunks.append(length)
-                chunk_args.append((i,start,stop))
+
+                delayed_array = delayed_get_array(ttree, key, start, stop)  # noqa: B023
+                shape = (length,) + inner_shape  # noqa: B023
+                dask_arrays.append(  # noqa: B023
+                    da.from_delayed(delayed_array, shape=shape, dtype=dt)  # noqa: B023
+                )
 
             for start in range(entry_start, entry_stop, entry_step):
                 foreach(start)
@@ -558,7 +562,7 @@ def _get_dak_array(
                 is_self.append(True)
 
                 def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)
+                    return branch is original and filter_branch(branch)  # noqa: B023
 
             else:
                 is_self.append(False)
@@ -622,8 +626,8 @@ def _get_dak_array(
             entry_step = ttree.num_entries_for(step_size, expressions=common_keys)
 
         def foreach(start):
-            stop = min(start + entry_step, entry_stop)
-            partition_args.append((i, start, stop))
+            stop = min(start + entry_step, entry_stop)  # noqa: B023
+            partition_args.append((i, start, stop))  # noqa: B023
 
         for start in range(entry_start, entry_stop, entry_step):
             foreach(start)

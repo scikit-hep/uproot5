@@ -81,8 +81,8 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         warnings.simplefilter("error", numpy.VisibleDeprecationWarning)
         try:
             out = numpy.asarray(array)
-        except (ValueError, numpy.VisibleDeprecationWarning):
-            raise TypeError("cannot be converted to a NumPy array")
+        except (ValueError, numpy.VisibleDeprecationWarning) as err:
+            raise TypeError("cannot be converted to a NumPy array") from err
         if not issubclass(out.dtype.type, types):
             raise TypeError(f"cannot be converted to a NumPy array of type {types}")
         return out
@@ -234,7 +234,7 @@ def regularize_rename(rename):
             def applyrules(x):
                 for matcher, trans in rules:
                     if matcher.search(x) is not None:
-                        return matcher.sub(trans, x)
+                        return matcher.sub(trans, x)  # noqa: B023
                 else:
                     return x
 

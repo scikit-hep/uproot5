@@ -574,7 +574,7 @@ in object {}""".format(
                         interpretation.branch.file.file_path,
                         interpretation.branch.object_path,
                     )
-                )
+                ) from err
 
             unlabeled = awkward._v2.from_iter(
                 (_object_to_awkward_json(form, x) for x in array), highlevel=False
@@ -1193,12 +1193,12 @@ def _regularize_library(library):
     else:
         try:
             return _libraries[library]
-        except KeyError:
+        except KeyError as err:
             raise ValueError(
                 """library {} not recognized (for this function); """
                 """try "np" (NumPy), "ak" (Awkward Array), or "pd" (Pandas) """
                 """instead""".format(repr(library))
-            )
+            ) from err
 
 
 _libraries_lazy = {Awkward.name: _libraries[Awkward.name]}
@@ -1235,9 +1235,9 @@ def _regularize_library_lazy(library):
     else:
         try:
             return _libraries_lazy[library]
-        except KeyError:
+        except KeyError as err:
             raise ValueError(
                 """library {} not recognized (for this function); """
                 """try "ak" (Awkward Array) """
                 """instead""".format(repr(library))
-            )
+            ) from err
