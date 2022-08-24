@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from urllib.parse import unquote, urlparse
 
 import numpy
-import setuptools
+import packaging
 
 win = platform.system().lower().startswith("win")
 
@@ -93,10 +93,10 @@ def parse_version(version):
     Converts a semver string into a Version object that can be compared with
     ``<``, ``>=``, etc.
 
-    Currently implemented using ``setuptools.extern.packaging.version.parse``
+    Currently implemented using ``packaging.Version``
     (exposing that library in the return type).
     """
-    return setuptools.extern.packaging.version.parse(version)
+    return packaging.version.parse(version)
 
 
 def from_module(obj, module_name):
