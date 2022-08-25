@@ -1,0 +1,7 @@
+[flake8]
+extend-ignore = E203, E501, E722, B950, E266, D
+extend-select = B9, E711, D103
+max-complexity = 100
+exclude = tests/*.py, setup.py, src/uproot/__init__.py, docs-sphinx/*.py
+per-file-ignores =
+    dev/*: T
