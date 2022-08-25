@@ -57,7 +57,9 @@ dev = [
     "pandas",
 ]
 test = [
+    "aiohttp",
     "awkward>=1.9.0rc1",
+    "fsspec-xrootd",
     "lz4",
     "pytest>=6",
     "pytest-timeout",

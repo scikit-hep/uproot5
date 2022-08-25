@@ -45,6 +45,12 @@ class FSSpecSource(uproot.source.chunk.Source):
             path = repr("..." + self._file_path[-10:])
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        pass
+
     def chunk(self, start, stop):
         """
         Args:
@@ -112,12 +118,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         The number of bytes in the file.
         """
         return self._fs.size(self._file_path)
-
-    def close(self):
-        """
-        Manually closes the file(s) and stops any running threads.
-        """
-        pass
 
     @property
     def closed(self):
