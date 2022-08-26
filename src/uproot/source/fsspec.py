@@ -35,9 +35,12 @@ class FSSpecSource(uproot.source.chunk.Source):
             }
         }
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
+        self._file = self._fs.open(self._file_path, "rb")
+        self._fh = None
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
+        self.__enter__()
 
     def __repr__(self):
         path = repr(self._file_path)
@@ -46,10 +49,12 @@ class FSSpecSource(uproot.source.chunk.Source):
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
     def __enter__(self):
+        self._fh = self._file.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        pass
+        self._fh = None
+        self._file.__exit__(exception_type, exception_value, traceback)
 
     def chunk(self, start, stop):
         """
@@ -64,7 +69,11 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
-        data = self._fs.cat_file(self._file_path, start, stop)
+        if self._fh:
+            self._fh.seek(start)
+            data = self._fh.read(stop - start)
+        else:
+            data = self._fs.cat_file(self._file_path, start, stop)
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
