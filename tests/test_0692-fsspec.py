@@ -19,6 +19,7 @@ def test_open_fsspec_http():
 @pytest.mark.network
 @pytest.mark.xrootd
 def test_open_fsspec_xrootd():
+    pytest.importorskip("XRootD")
     with uproot.open(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         xrootd_handler=uproot.source.fsspec.FSSpecSource,
