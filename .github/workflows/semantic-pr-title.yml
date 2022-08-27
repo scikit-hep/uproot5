@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: semantic-pr-title-${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
