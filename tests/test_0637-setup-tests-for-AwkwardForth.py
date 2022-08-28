@@ -563,7 +563,9 @@ def test_56():
     ) as file:
         branch = file["tree/evt"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-        py = branch.array(interp, library="np", entry_stop=2)
+        interp._forth = True
+        py = branch.array(interp, library="ak", entry_stop=2)
+        assert py[1]['SliceU64'][0] == 1
         # py[-1] == <Event (version 1) at 0x7fecdbf61dc0>
 
 

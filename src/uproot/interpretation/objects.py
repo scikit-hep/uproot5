@@ -259,18 +259,19 @@ class AsObjects(uproot.interpretation.Interpretation):
                 "bytestops": numpy.array(byte_offsets[1:]),
             }
         )
-        print(self._complete_forth_code)
-        print(temp_data[:100])
         context["forth"].vm.stack_push(len(byte_offsets) - 1)
         context["forth"].vm.resume()
         container = {}
-        print(context["forth"].vm.outputs)
         # for elem in self._forth_form_keys:
         #     if "offsets" in elem:
         #         container[elem] = context["forth"].vm.output_Index64(elem)
         #     else:
         #         container[elem] = context["forth"].vm.output_NumpyArray(elem)
         container = context["forth"].vm.outputs
+        # print('==================================')
+        # print(self._form)
+        # print('==================================')
+        # print('==================================')
         output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
         self.hook_after_basket_array(
@@ -326,7 +327,7 @@ loop
                 self._forth_form_keys = tuple(context["forth"].gen.form_keys)
                 self._form = context["forth"].gen.top_form
                 return None  # we should re-read all the data with Forth
-
+            print()
         return output  # Forth-generation was unsuccessful: this is Python output
 
     def _assemble_forth(self, forth_obj, awkward_model):

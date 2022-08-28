@@ -481,7 +481,6 @@ class AsString(AsContainer):
         helper_obj = uproot._awkward_forth.GenHelper(context)
 
         if helper_obj.is_forth():
-            print('afefe')
             #raise NotImplementedError
             forth_obj = helper_obj.get_gen_obj()
             keys = forth_obj.get_keys(2)
@@ -1179,9 +1178,7 @@ class AsVector(AsContainer):
                             chunk, cursor, context, file, member_index
                         )
         else:
-            print(cursor._index, 'errererer')
             length = cursor.field(chunk, _stl_container_size, context)
-            print(cursor._index, 'errererer')
             if helper_obj.is_forth():
                 key = forth_obj.get_keys(1)
                 form_key = f"part0-node{key}-offsets"
@@ -1202,7 +1199,6 @@ class AsVector(AsContainer):
                 if not isinstance(self._values, numpy.dtype):
                     helper_obj.add_to_pre("0 do\n")
                     helper_obj.add_to_post("loop\n")
-                    print('ADFAEF')
                 temp = forth_obj.add_node(
                     f"node{key}",
                     helper_obj.get_pre(),
@@ -1217,12 +1213,17 @@ class AsVector(AsContainer):
 
             if length == 0 and helper_obj.is_forth():
                 forth_obj.var_set = True
+            if helper_obj.is_forth():
+                print(forth_obj.var_set,'=========================================')
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
 
         if helper_obj.is_forth():
+            print('=========================================')
+            print(forth_obj.top_form)
+            print('=========================================')
             forth_obj.go_to(temp)
 
         out = STLVector(values)
@@ -1561,6 +1562,7 @@ class AsMap(AsContainer):
                     temp_node_top,
                     temp_form,
                     temp_form_top,
+                    temp_prev_form
                 ) = forth_obj.replace_form_and_model(
                     None, temp
                 )
@@ -1585,6 +1587,7 @@ class AsMap(AsContainer):
                     temp_node_top1,
                     temp_form1,
                     temp_form_top1,
+                    temp_prev_form1
                 ) = forth_obj.replace_form_and_model(
                     None, temp
                 )
@@ -1619,6 +1622,7 @@ class AsMap(AsContainer):
                 forth_obj._prev_node = temp_node_top
                 forth_obj.aform = temp_form
                 forth_obj.top_form = temp_form_top
+                forth_obj.prev_form = temp_prev_form
                 aform = {
                     "class": "ListOffsetArray",
                     "offsets": "i64",
