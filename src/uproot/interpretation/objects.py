@@ -262,16 +262,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         context["forth"].vm.stack_push(len(byte_offsets) - 1)
         context["forth"].vm.resume()
         container = {}
-        # for elem in self._forth_form_keys:
-        #     if "offsets" in elem:
-        #         container[elem] = context["forth"].vm.output_Index64(elem)
-        #     else:
-        #         container[elem] = context["forth"].vm.output_NumpyArray(elem)
         container = context["forth"].vm.outputs
-        # print('==================================')
-        # print(self._form)
-        # print('==================================')
-        # print('==================================')
         output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
         self.hook_after_basket_array(

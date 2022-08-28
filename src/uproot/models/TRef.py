@@ -149,9 +149,6 @@ in file {}""".format(
                 f"part0-node{form_keys[2]}-data",
                 f"part0-node{form_keys[5]}-data",
             ]
-            # print("===========================================")
-            # print(not bool(forth_obj.awkward_model["content"]), "YUYIYIIy")
-            # print("===========================================")
             if forth_obj.should_add_form():
                 for elem in keys:
                     forth_obj.add_form_key(elem)

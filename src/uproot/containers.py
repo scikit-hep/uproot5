@@ -1213,17 +1213,13 @@ class AsVector(AsContainer):
 
             if length == 0 and helper_obj.is_forth():
                 forth_obj.var_set = True
-            if helper_obj.is_forth():
-                print(forth_obj.var_set,'=========================================')
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
 
         if helper_obj.is_forth():
-            print('=========================================')
-            print(forth_obj.top_form)
-            print('=========================================')
+
             forth_obj.go_to(temp)
 
         out = STLVector(values)

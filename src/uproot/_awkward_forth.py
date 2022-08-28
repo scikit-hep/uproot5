@@ -67,7 +67,6 @@ class ForthGenerator:
         return temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form
 
     def get_code_recursive(self, node):
-        print(node, 'aass')
         if 'content' in node.keys():
             if node['content'] is None:
                 return ''.join(node['pre_code']), ''.join(node['post_code']) , node['init_code'], node['header_code']
@@ -88,7 +87,6 @@ class ForthGenerator:
             if self.awkward_model["content"] is None:
                 return False
             else:
-                print(self.awkward_model['content'].keys)
                 if len(self.awkward_model['content'].keys()) == 0:
                     return True
                 elif self.awkward_model['content']['name'] == 'dynamic':
@@ -105,7 +103,6 @@ class ForthGenerator:
         self.dummy_form = temp_flag
 
     def add_form(self, aform, conlen=0, traverse=1):
-        print(self.var_set, 'ARARARARR')
         if self.dummy_form:
             if self.dummy_aform is None:
                 self.dummy_aform = aform
@@ -170,14 +167,10 @@ class ForthGenerator:
         return count
     def replace_keys(self, old, new):
         temp = new
-        print('++++++++++++++++++++++')
-        print(old, new)
-        print('++++++++++++++++++++++')
         while old != 'NULL':
             new['form_key'] = old['form_key']
             new = new['content']
             old = old['content']
-        print(temp)
         return temp
 
 
@@ -250,7 +243,6 @@ class ForthGenerator:
                 return temp_obj
             else:
                 if self.awkward_model['content'] != None:
-                    print(self.awkward_model['content'])
                     if self.awkward_model['content']['name'] == 'dynamic':
                         temp_obj = {
                         "name": name,
