@@ -18,7 +18,6 @@ def test_single_dask_awkward_array():
     ak_array = ttree.arrays()
     dak_array = uproot.dask(test_path, library="ak")
 
-    assert len(ak_array) == len(dak_array)
     assert_eq(dak_array, ak_array)
 
 
@@ -33,7 +32,6 @@ def test_dask_concatenation():
         [test_path1, test_path2, test_path3, test_path4], library="ak"
     )
 
-    assert len(ak_array) == len(dak_array)
     assert_eq(dak_array, ak_array, check_unconcat_form=False)
 
 
@@ -89,5 +87,4 @@ def test_delay_open():
         [test_path1, test_path2, test_path3, test_path4], open_files=False, library="ak"
     )
 
-    assert len(ak_array) == len(dak_array)
     assert_eq(dak_array, ak_array, check_unconcat_form=False)
