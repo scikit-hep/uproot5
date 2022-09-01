@@ -453,7 +453,6 @@ def test_fromroot_TH2(tmp_path):
             fout["there"] = h2.to_numpy()
 
     with uproot.open(newfile) as finagin:
-        print(finagin["out"].member("fSumw2")._data.tolist())
         assert np.array_equal(
             finagin["out"].member("fSumw2"),
             [0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0]
