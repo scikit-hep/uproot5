@@ -32,7 +32,7 @@ def test_dask_concatenation():
         [test_path1, test_path2, test_path3, test_path4], library="ak"
     )
 
-    assert_eq(dak_array, ak_array, check_unconcat_form=False)
+    assert_eq(dak_array, ak_array)
 
 
 def test_multidim_array():
@@ -87,4 +87,4 @@ def test_delay_open():
         [test_path1, test_path2, test_path3, test_path4], open_files=False, library="ak"
     )
 
-    assert_eq(dak_array, ak_array, check_unconcat_form=False)
+    assert_eq(dak_array, ak_array)

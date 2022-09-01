@@ -263,6 +263,23 @@ def dask():
     """
     try:
         import dask
+        import dask.blockwise
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """for uproot.dask with 'library="np"', install the complete 'dask' package with:
+    pip install "dask[complete]"
+or
+    conda install dask"""
+        ) from err
+    else:
+        return dask
+
+
+def dask_array():
+    """
+    Imports and returns ``dask.array``.
+    """
+    try:
         import dask.array as da
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
@@ -272,7 +289,7 @@ or
     conda install dask"""
         ) from err
     else:
-        return dask, da
+        return da
 
 
 def dask_awkward():
