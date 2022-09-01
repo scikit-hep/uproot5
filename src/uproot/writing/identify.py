@@ -289,7 +289,7 @@ def to_writable(obj):
             tmp = obj.variances()
             s = tmp.shape
             if tmp is None:
-                fSumw2 = data
+                fSumw2 = None
             elif ndim == 1:
                 fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
                 fSumw2[1:-1] = tmp
@@ -302,17 +302,18 @@ def to_writable(obj):
 
         else:
             # continuing to use flow=True, because it is supported
-            if fSumw2 is None:
-                fSumw2 = data
             data = data.astype(data.dtype.newbyteorder(">"))
-            fSumw2 = fSumw2.astype(">f8")
+            if fSumw2 is not None:
+                fSumw2 = fSumw2.astype(">f8")
 
         # we're assuming the PlottableHistogram ensures data.shape == weights.shape
-        assert data.shape == fSumw2.shape
+        if fSumw2 is not None:
+            assert data.shape == fSumw2.shape
 
         # data are stored in transposed order for 2D and 3D
         data = data.T.reshape(-1)
-        fSumw2 = fSumw2.T.reshape(-1)
+        if fSumw2 is not None:
+            fSumw2 = fSumw2.T.reshape(-1)
 
         # ROOT has fEntries = sum *without* weights, *with* flow bins
         fEntries = data.sum()
@@ -460,7 +461,7 @@ def to_writable(obj):
                 fTsumw2=fTsumw2,
                 fTsumwx=fTsumwx,
                 fTsumwx2=fTsumwx2,
-                fSumw2=with_flow,
+                fSumw2=None,
                 fXaxis=to_TAxis(
                     fName="xaxis",
                     fTitle="",
@@ -521,7 +522,7 @@ def to_writable(obj):
                 fTsumwy=fTsumwy,
                 fTsumwy2=fTsumwy2,
                 fTsumwxy=fTsumwxy,
-                fSumw2=with_flow,
+                fSumw2=None,
                 fXaxis=to_TAxis(
                     fName="xaxis",
                     fTitle="",
@@ -608,7 +609,7 @@ def to_writable(obj):
                 fTsumwz2=fTsumwz2,
                 fTsumwxz=fTsumwxz,
                 fTsumwyz=fTsumwyz,
-                fSumw2=with_flow,
+                fSumw2=None,
                 fXaxis=to_TAxis(
                     fName="xaxis",
                     fTitle="",
@@ -977,8 +978,9 @@ def to_TH1x(
         fTsumw2 (float): Total Sum of squares of weights.
         fTsumwx (float): Total Sum of weight*X.
         fTsumwx2 (float): Total Sum of weight*X*X.
-        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
-            of sum of squares of weights.
+        fSumw2 (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights. If None, a zero-length :doc:`uproot.models.TArray.Model_TArrayD`
+            is created in its place.
         fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.identify.to_TAxis`
             with ``fName="xaxis"`` and ``fTitle=""``.
         fYaxis (None or :doc:`uproot.models.TH.Model_TAxis_v10`): None generates a
@@ -1066,7 +1068,9 @@ def to_TH1x(
     else:
         tarray_data = to_TArray(data)
 
-    if isinstance(fSumw2, uproot.models.TArray.Model_TArray):
+    if fSumw2 is None:
+        tarray_fSumw2 = to_TArray(numpy.array([], dtype=numpy.float64))
+    elif isinstance(fSumw2, uproot.models.TArray.Model_TArray):
         tarray_fSumw2 = fSumw2
     else:
         tarray_fSumw2 = to_TArray(fSumw2)
@@ -1195,8 +1199,9 @@ def to_TH2x(
         fTsumwy (float): Total Sum of weight*Y. (TH2 only: https://root.cern.ch/doc/master/classTH2.html)
         fTsumwy2 (float): Total Sum of weight*Y*Y. (TH2 only.)
         fTsumwxy (float): Total Sum of weight*X*Y. (TH2 only.)
-        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
-            of sum of squares of weights.
+        fSumw2 (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights. If None, a zero-length :doc:`uproot.models.TArray.Model_TArrayD`
+            is created in its place.
         fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.identify.to_TAxis`
             with ``fName="xaxis"`` and ``fTitle=""``.
         fYaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.identify.to_TAxis`
@@ -1366,8 +1371,9 @@ def to_TH3x(
         fTsumwz2 (float): Total Sum of weight*Z*Z. (TH3 only.)
         fTsumwxz (float): Total Sum of weight*X*Z. (TH3 only.)
         fTsumwyz (float): Total Sum of weight*Y*Z. (TH3 only.)
-        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
-            of sum of squares of weights.
+        fSumw2 (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights. If None, a zero-length :doc:`uproot.models.TArray.Model_TArrayD`
+            is created in its place.
         fXaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.identify.to_TAxis`
             with ``fName="xaxis"`` and ``fTitle=""``.
         fYaxis (:doc:`uproot.models.TH.Model_TAxis_v10`): Use :doc:`uproot.writing.identify.to_TAxis`
@@ -1538,8 +1544,9 @@ def to_TProfile(
         fTsumwx2 (float): Total Sum of weight*X*X.
         fTsumwy (float): Total Sum of weight*Y. (TProfile only: https://root.cern.ch/doc/master/classTProfile.html)
         fTsumwy2 (float): Total Sum of weight*Y*Y. (TProfile only.)
-        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
-            of sum of squares of weights.
+        fSumw2 (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights. If None, a zero-length :doc:`uproot.models.TArray.Model_TArrayD`
+            is created in its place.
         fBinEntries (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Number
             of entries per bin. (TProfile only.)
         fBinSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
@@ -1714,8 +1721,9 @@ def to_TProfile2D(
         fTsumwxy (float): Total Sum of weight*X*Y. (TH2 only.)
         fTsumwz (float): Total Sum of weight*Z. (TProfile2D only: https://root.cern.ch/doc/master/classTProfile2D.html)
         fTsumwz2 (float): Total Sum of weight*Z*Z. (TProfile2D only.)
-        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
-            of sum of squares of weights.
+        fSumw2 (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights. If None, a zero-length :doc:`uproot.models.TArray.Model_TArrayD`
+            is created in its place.
         fBinEntries (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Number
             of entries per bin. (TProfile2D only.)
         fBinSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
@@ -1902,8 +1910,9 @@ def to_TProfile3D(
         fTsumwyz (float): Total Sum of weight*Y*Z. (TH3 only.)
         fTsumwt (float): Total Sum of weight*T. (TProfile3D only: https://root.cern.ch/doc/master/classTProfile3D.html)
         fTsumwt2 (float): Total Sum of weight*T*T. (TProfile3D only.)
-        fSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
-            of sum of squares of weights.
+        fSumw2 (None or numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
+            of sum of squares of weights. If None, a zero-length :doc:`uproot.models.TArray.Model_TArrayD`
+            is created in its place.
         fBinEntries (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Number
             of entries per bin. (TProfile3D only.)
         fBinSumw2 (numpy.ndarray of numpy.float64 or :doc:`uproot.models.TArray.Model_TArrayD`): Array
