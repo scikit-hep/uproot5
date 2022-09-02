@@ -29,10 +29,10 @@ def test():
         header_stop = header_start + obj.member("fNBytesHeader")
         header_chunk = f.file.source.chunk(header_start, header_stop)
 
-        print("HEADER")
-        cursor = uproot.Cursor(header_start)
-        cursor.debug(header_chunk, 80)
-        print("\n")
+        # print("HEADER")
+        # cursor = uproot.Cursor(header_start)
+        # cursor.debug(header_chunk, 80)
+        # print("\n")
 
         notifications = queue.Queue()
         footer_start = obj.member("fSeekFooter")
@@ -42,10 +42,10 @@ def test():
             notifications,
         )
 
-        print("FOOTER")
-        cursor = uproot.Cursor(footer_start)
-        cursor.debug(footer_chunk, 80)
-        print("\n")
+        # print("FOOTER")
+        # cursor = uproot.Cursor(footer_start)
+        # cursor.debug(footer_chunk, 80)
+        # print("\n")
 
 
 # HEADER

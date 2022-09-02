@@ -417,9 +417,8 @@ def test_fromroot_TH1(tmp_path):
             fout["there"] = h2.to_numpy()
 
     with uproot.open(newfile) as finagin:
-        assert np.array_equal(
-            finagin["out"].member("fSumw2"), finagin["there"].member("fSumw2")
-        )
+        assert np.array_equal(finagin["out"].member("fSumw2"), [0, 2, 1, 0])
+        assert np.array_equal(finagin["there"].member("fSumw2"), [])
         assert {
             k: v for k, v in finagin["out"].all_members.items() if k.startswith("fTs")
         } == {
@@ -455,8 +454,11 @@ def test_fromroot_TH2(tmp_path):
 
     with uproot.open(newfile) as finagin:
         assert np.array_equal(
-            finagin["out"].member("fSumw2"), finagin["there"].member("fSumw2")
+            finagin["out"].member("fSumw2"),
+            [0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0]
+            + [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         )
+        assert np.array_equal(finagin["there"].member("fSumw2"), [])
         assert {
             k: v for k, v in finagin["out"].all_members.items() if k.startswith("fTs")
         } == {
@@ -491,8 +493,21 @@ def test_fromroot_TH3(tmp_path):
 
     with uproot.open(newfile) as finagin:
         assert np.array_equal(
-            finagin["out"].member("fSumw2"), finagin["there"].member("fSumw2")
+            finagin["out"].member("fSumw2"),
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            + [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         )
+        assert np.array_equal(finagin["there"].member("fSumw2"), [])
         assert {
             k: v for k, v in finagin["out"].all_members.items() if k.startswith("fTs")
         } == {
