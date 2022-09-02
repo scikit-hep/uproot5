@@ -5,6 +5,7 @@ This module defines utilities for adding components to the forth reader.
 """
 
 import numpy as np
+
 import uproot.containers
 
 symbol_dict = {
@@ -67,29 +68,34 @@ class ForthGenerator:
         return temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form
 
     def get_code_recursive(self, node):
-        if 'content' in node.keys():
-            if node['content'] is None:
-                return ''.join(node['pre_code']), ''.join(node['post_code']) , node['init_code'], node['header_code']
+        if "content" in node.keys():
+            if node["content"] is None:
+                return (
+                    "".join(node["pre_code"]),
+                    "".join(node["post_code"]),
+                    node["init_code"],
+                    node["header_code"],
+                )
             else:
                 pre, post, init, header = self.get_code_recursive(node["content"])
-                pre2 = ''.join(node['pre_code'])
+                pre2 = "".join(node["pre_code"])
                 pre2 = pre2 + pre
-                post2 = ''.join(node['post_code'])
+                post2 = "".join(node["post_code"])
                 post2 = post2 + post
-                init = node['init_code'] + init
-                header = node['header_code'] + header
+                init = node["init_code"] + init
+                header = node["header_code"] + header
                 return pre2, post2, init, header
         elif self.var_set:
-            return '', '', '', ''
+            return "", "", "", ""
 
     def should_add_form(self):
         if "content" in self.awkward_model.keys():
             if self.awkward_model["content"] is None:
                 return False
             else:
-                if len(self.awkward_model['content'].keys()) == 0:
+                if len(self.awkward_model["content"].keys()) == 0:
                     return True
-                elif self.awkward_model['content']['name'] == 'dynamic':
+                elif self.awkward_model["content"]["name"] == "dynamic":
                     return True
                 else:
                     return False
@@ -141,9 +147,9 @@ class ForthGenerator:
                     else:
                         raise ValueError
                 elif "contents" in self.aform.keys():
-                    if self.aform['class'] == 'RecordArray':
+                    if self.aform["class"] == "RecordArray":
                         if self.prev_form != None:
-                            self.prev_form['content'] = aform
+                            self.prev_form["content"] = aform
                             self.aform = aform
                         else:
                             self.top_form = aform
@@ -156,23 +162,24 @@ class ForthGenerator:
                         pass
                     else:
                         raise ValueError
-    def depth(self,form):
+
+    def depth(self, form):
         count = 0
         temp = form
-        while 'content' in temp.keys():
+        while "content" in temp.keys():
             count += 1
-            if isinstance(temp['content'],str):
+            if isinstance(temp["content"], str):
                 break
-            temp = temp['content']
+            temp = temp["content"]
         return count
+
     def replace_keys(self, old, new):
         temp = new
-        while old != 'NULL':
-            new['form_key'] = old['form_key']
-            new = new['content']
-            old = old['content']
+        while old != "NULL":
+            new["form_key"] = old["form_key"]
+            new = new["content"]
+            old = old["content"]
         return temp
-
 
     def get_keys(self, num_keys):
         if num_keys == 1:
@@ -242,19 +249,19 @@ class ForthGenerator:
                 self.awkward_model = self.awkward_model["content"]
                 return temp_obj
             else:
-                if self.awkward_model['content'] != None:
-                    if self.awkward_model['content']['name'] == 'dynamic':
+                if self.awkward_model["content"] != None:
+                    if self.awkward_model["content"]["name"] == "dynamic":
                         temp_obj = {
-                        "name": name,
-                        "type": dtype,
-                        "pre_code": precode,
-                        "post_code": postcode,
-                        "init_code": initcode,
-                        "header_code": headercode,
-                        "num_child": num_child,
-                        "content": content,
-                    }
-                        self.awkward_model['content'] = temp_obj
+                            "name": name,
+                            "type": dtype,
+                            "pre_code": precode,
+                            "post_code": postcode,
+                            "init_code": initcode,
+                            "header_code": headercode,
+                            "num_child": num_child,
+                            "content": content,
+                        }
+                        self.awkward_model["content"] = temp_obj
                         self.awkward_model = self.awkward_model["content"]
                         return temp_obj
                     else:

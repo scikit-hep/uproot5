@@ -48,7 +48,10 @@ def test_03():
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[0][0] == 'Converter.hepmcStatusList = "[]";\n'
-        assert py[0][14] == 'ToolSvc.photons.delphesArrayName = "PhotonEfficiency/photons";\nToolSvc.photons.isolationTags = "photonITags";\nToolSvc.photons.mcAssociations = "photonsToMC";\nToolSvc.photons.particles = "photons";\n'
+        assert (
+            py[0][14]
+            == 'ToolSvc.photons.delphesArrayName = "PhotonEfficiency/photons";\nToolSvc.photons.isolationTags = "photonITags";\nToolSvc.photons.mcAssociations = "photonsToMC";\nToolSvc.photons.particles = "photons";\n'
+        )
         # py[-1] == <STLVector ['Converter.hepmcStatusList = "[]";\n', ...] at 0x7f7fc23ca2e0>
 
 
@@ -68,7 +71,7 @@ def test_04():
 #         branch = file["CollectionTree/TrigConfKeys"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == <xAOD::TrigConfKeys_v1 (version 1) at 0x7fecf9212760>
+# py[-1] == <xAOD::TrigConfKeys_v1 (version 1) at 0x7fecf9212760>
 
 
 def test_06():
@@ -107,7 +110,7 @@ def test_09():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0]['0'][0] == 352341021
+        assert py[0][0]["0"][0] == 352341021
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7febbf1b2fa0>], ...] at 0x7febbf1b2f40>
 
 
@@ -129,7 +132,7 @@ def test_11():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0]['0'][0] == 921521854
+        assert py[0][0]["0"][0] == 921521854
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::TruthParticle_v1>> (version 1) at 0x7f636a9484c0>], ...] at 0x7f636a948eb0>
 
 
@@ -139,7 +142,7 @@ def test_12():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0]['1'][0] == 2
+        assert py[0][0]["1"][0] == 2
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::TruthParticle_v1>> (version 1) at 0x7fc259ae37c0>], ...] at 0x7fc259ae3f10>
 
 
@@ -149,7 +152,7 @@ def test_13():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=3)
-        assert py[0][0]['1'][0] == 0
+        assert py[0][0]["1"][0] == 0
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::CaloCluster_v1>> (version 1) at 0x7fa94e968c10>], ...] at 0x7fa94e968c70>
 
 
@@ -169,7 +172,7 @@ def test_15():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][-1][-1]['m_persKey'] == 980095599
+        assert py[1][-1][-1]["m_persKey"] == 980095599
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7fb9b9d24c10>], ...] at 0x7fb9b9d29250>
 
 
@@ -179,7 +182,7 @@ def test_16():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][0]['m_persKey'][0] == 980095599
+        assert py[1][0]["m_persKey"][0] == 980095599
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7f6e29be5cd0>], ...] at 0x7f6e29bea250>
 
 
@@ -269,7 +272,7 @@ def test_25():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][-1] == 'numuCCAnalysis'
+        assert py[0][-1] == "numuCCAnalysis"
         # py[-1] == array(['psychePolicy', 'psycheEventModel', 'psycheCore', 'psycheUtils', 'psycheND280Utils', 'psycheIO', 'psycheSelections', 'psycheSystematics', 'highlandEventModel', 'highlandTools', 'highlandCore', 'highlandCorrections', 'highlandIO', 'baseAnalysis', 'baseTrackerAnalysis', 'numuCCAnalysis'], dtype=object)
 
 
@@ -278,7 +281,7 @@ def test_25():
 #         branch = file["config/SEL/SEL._firstSteps"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == array([<STLVector [] at 0x7f5060ef49d0>], dtype=object)
+# py[-1] == array([<STLVector [] at 0x7f5060ef49d0>], dtype=object)
 
 
 def test_27():
@@ -287,7 +290,7 @@ def test_27():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0][-1] == 'muFGD+Np'
+        assert py[0][0][-1] == "muFGD+Np"
         # py[-1] == array([<STLVector ['muTPC', 'muTPC+pTPC', ..., 'muFGD+Np'] at 0x7f1d79005a90>], dtype=object)
 
 
@@ -335,7 +338,7 @@ def test_32():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1] == 'two'
+        assert py[-1] == "two"
         # py[-1] == "two"
 
 
@@ -345,7 +348,7 @@ def test_33():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][4]['1'][-1] == 1.0
+        assert py[0][4]["1"][-1] == 1.0
         # py[-1] == <STLMap {'expskin_FluxUnisim': [0.944759093019904, 1.0890682745548674, ..., 1.1035170311451232, 0.8873957186284592], ...} at 0x7f4443068ca0>
 
 
@@ -355,7 +358,7 @@ def test_34():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1] == '$Name: geant4-10-05-patch-01 $'
+        assert py[-1] == "$Name: geant4-10-05-patch-01 $"
 
 
 def test_35():
@@ -364,7 +367,7 @@ def test_35():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0]['1'][0]['name'] == 'anti_alpha'
+        assert py[0]["1"][0]["name"] == "anti_alpha"
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7fb557996df0>, ...} at 0x7fb557a012e0>
 
 
@@ -374,7 +377,7 @@ def test_36():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][-1] == 'MP_F_99.'
+        assert py[0][-1] == "MP_F_99."
         # py[-1] == <STLVector ['DRIFT_0.', 'PRXSE01A.', ..., 'PRBHF_99.', 'MP_F_99.'] at 0x7f22f206df10>
 
 
@@ -384,7 +387,7 @@ def test_37():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][555]['2'] == 100.94856572890848
+        assert py[0][555]["2"] == 100.94856572890848
         # py[-1] == array([<TVector3 (version 3) at 0x7f3385c9cbe0>, <TVector3 (version 3) at 0x7f3385c9cc10>, <TVector3 (version 3) at 0x7f3385c9cc40>, ..., <TVector3 (version 3) at 0x7f3385b0cfd0>, <TVector3 (version 3) at 0x7f3385a9e040>, <TVector3 (version 3) at 0x7f3385a9e070>], dtype=object)
 
 
@@ -394,7 +397,7 @@ def test_38():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0]['zp'][0] == pytest.approx(0.9999998807907104)
+        assert py[0]["zp"][0] == pytest.approx(0.9999998807907104)
         # py[-1] == <BDSOutputROOTEventSampler<float> (version 4) at 0x7f9be2f7b2e0>
 
 
@@ -404,7 +407,7 @@ def test_39():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1][1]['0'] == -1000020030
+        assert py[-1][1]["0"] == -1000020030
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7f6d05752220>, ...} at 0x7f6d057397f0>
 
 
@@ -414,7 +417,7 @@ def test_40():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0]['fDatime'] == 1749155840
+        assert py[0]["fDatime"] == 1749155840
         # py[-1] == <TDatime at 0x7f79c7368430>
 
 
@@ -454,7 +457,7 @@ def test_44():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0]['1'][-1] == True
+        assert py[0]["1"][-1] == True
         # py[-1] == <Event (version 1) at 0x7f1e3aef2dc0>
 
 
@@ -463,7 +466,7 @@ def test_44():
 #         branch = file["MCTrack/global"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == <STLVector [<allpix::MCTrack (version 2) at 0x7f88b9a8ad90>, ...] at 0x7f88b9a8ad00>
+# py[-1] == <STLVector [<allpix::MCTrack (version 2) at 0x7f88b9a8ad90>, ...] at 0x7f88b9a8ad00>
 
 
 # def test_46():
@@ -471,7 +474,7 @@ def test_44():
 #         branch = file["MCParticle/detector1"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f94bc223760>, ...] at 0x7f94bc223550>
+# py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f94bc223760>, ...] at 0x7f94bc223550>
 
 
 def test_47():
@@ -480,7 +483,7 @@ def test_47():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1][-1]['1']['mass'] == pytest.approx(3.727379)
+        assert py[-1][-1]["1"]["mass"] == pytest.approx(3.727379)
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7f53a43c2220>, ...} at 0x7f53a44278b0>
 
 
@@ -489,8 +492,8 @@ def test_47():
 #         branch = file["Geant4Data/Geant4Data./Geant4Data.ions"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        #assert py[-1]['0'][-1] == 1000020040
-        # py[-1] == <STLMap {} at 0x7fda831357f0>
+# assert py[-1]['0'][-1] == 1000020040
+# py[-1] == <STLMap {} at 0x7fda831357f0>
 
 
 # def test_49():
@@ -498,7 +501,7 @@ def test_47():
 #         branch = file["MCParticle/timepix"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f0697bf1820>] at 0x7f0697bf1a00>
+# py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f0697bf1820>] at 0x7f0697bf1a00>
 
 
 # def test_50():
@@ -506,7 +509,8 @@ def test_47():
 #         branch = file["PixelHit/timepix"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == <STLVector [] at 0x7f769cbf0bb0>
+# py[-1] == <STLVector [] at 0x7f769cbf0bb0>
+
 
 def test_51():
     with uproot.open(skhep_testdata.data_path("uproot-issue510b.root")) as file:
@@ -514,7 +518,7 @@ def test_51():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1] == 'GENIE:fixed@density-fixed'
+        assert py[-1] == "GENIE:fixed@density-fixed"
 
 
 def test_52():
@@ -523,7 +527,7 @@ def test_52():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][-1]['refs'][-1] == 2223
+        assert py[1][-1]["refs"][-1] == 2223
         # py[-1] == array([<TRefArray [2407] at 0x7f7888dff0d0>, <TRefArray [2411] at 0x7f7888dee100>, <TRefArray [2405] at 0x7f7888dff130>, <TRefArray [2406] at 0x7f7888dff1f0>, <TRefArray [2523] at 0x7f7888dff280>, <TRefArray [2352] at 0x7f7888dff310>, <TRefArray [2192] at 0x7f7888dff3a0>, <TRefArray [2425] at 0x7f7888dff430>, <TRefArray [2340] at 0x7f7888dff4c0>, <TRefArray [2533] at 0x7f7888dff550>, <TRefArray [2264] at 0x7f7888dff5e0>, <TRefArray [2263] at 0x7f7888dff670>, <TRefArray [2396] at 0x7f7888dff700>, <TRefArray [2519] at 0x7f7888dff790>, <TRefArray [2044] at 0x7f7888dff820>, <TRefArray [2273] at 0x7f7888dff8b0>, <TRefArray [2270] at 0x7f7888dff940>, <TRefArray [2388] at 0x7f7888dff9d0>, <TRefArray [2473] at 0x7f7888dffa60>, <TRefArray [2272] at 0x7f7888dffaf0>, <TRefArray [2475] at 0x7f7888dffb80>, <TRefArray [2212] at 0x7f7888dffc10>, <TRefArray [2220] at 0x7f7888dffca0>, <TRefArray [2358] at 0x7f7888dffd30>, <TRefArray [2472] at 0x7f7888dffdc0>, <TRefArray [2359] at 0x7f7888dffe50>, <TRefArray [2360] at 0x7f7888dffee0>, <TRefArray [2201] at 0x7f7888dfff70>, <TRefArray [2362] at 0x7f7888e02040>, <TRefArray [2537] at 0x7f7888e020d0>, <TRefArray [2230] at 0x7f7888e02160>, <TRefArray [2488] at 0x7f7888e021f0>, <TRefArray [2307] at 0x7f7888e02280>, <TRefArray [2570] at 0x7f7888e02310>, <TRefArray [2569] at 0x7f7888e023a0>, <TRefArray [2515] at 0x7f7888e02430>, <TRefArray [2423] at 0x7f7888e024c0>, <TRefArray [2571] at 0x7f7888e02550>, <TRefArray [2578] at 0x7f7888e025e0>, <TRefArray [2386] at 0x7f7888e02670>, <TRefArray [2579] at 0x7f7888e02700>, <TRefArray [2580] at 0x7f7888e02790>, <TRefArray [2556] at 0x7f7888e02820>, <TRefArray [2555] at 0x7f7888e028b0>, <TRefArray [2355] at 0x7f7888e02940>, <TRefArray [2222, 2223] at 0x7f7888e029d0>], dtype=object)
 
 
@@ -533,7 +537,7 @@ def test_53():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][-1]['fE'] == 0.0
+        assert py[0][-1]["fE"] == 0.0
         # py[-1] == array([<TLorentzVector (version 4) at 0x7f6a396bf2b0>, <TLorentzVector (version 4) at 0x7f6a396bf250>, <TLorentzVector (version 4) at 0x7f6a396bf1f0>, <TLorentzVector (version 4) at 0x7f6a396bf190>, <TLorentzVector (version 4) at 0x7f6a396bf130>, <TLorentzVector (version 4) at 0x7f6a396bf0d0>], dtype=object)
 
 
@@ -543,7 +547,7 @@ def test_54():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][-1][4]['fE'] == 0.0
+        assert py[0][-1][4]["fE"] == 0.0
         # py[-1] == array([[<TLorentzVector (version 4) at 0x7f6a02cb3220>, <TLorentzVector (version 4) at 0x7f6a02cb3280>, <TLorentzVector (version 4) at 0x7f6a02cb3fd0>, <TLorentzVector (version 4) at 0x7f6a02cb3f70>, <TLorentzVector (version 4) at 0x7f6a02cb3f10>], [<TLorentzVector (version 4) at 0x7f6a02cb3eb0>, <TLorentzVector (version 4) at 0x7f6a02cb3e50>, <TLorentzVector (version 4) at 0x7f6a02cb3df0>, <TLorentzVector (version 4) at 0x7f6a02cb3d90>, <TLorentzVector (version 4) at 0x7f6a02cb3d30>], [<TLorentzVector (version 4) at 0x7f6a02cb3cd0>, <TLorentzVector (version 4) at 0x7f6a02cb3c70>, <TLorentzVector (version 4) at 0x7f6a02cb3c10>, <TLorentzVector (version 4) at 0x7f6a02cb3bb0>, <TLorentzVector (version 4) at 0x7f6a02cb3b50>], [<TLorentzVector (version 4) at 0x7f6a02cb3af0>, <TLorentzVector (version 4) at 0x7f6a02cb3a90>, <TLorentzVector (version 4) at 0x7f6a02cb3a30>, <TLorentzVector (version 4) at 0x7f6a02cb39d0>, <TLorentzVector (version 4) at 0x7f6a02cb3970>], [<TLorentzVector (version 4) at 0x7f6a02cb3910>, <TLorentzVector (version 4) at 0x7f6a02cb38b0>, <TLorentzVector (version 4) at 0x7f6a02cb3850>, <TLorentzVector (version 4) at 0x7f6a02cb34f0>, <TLorentzVector (version 4) at 0x7f6a02cb3580>], [<TLorentzVector (version 4) at 0x7f6a02cb3430>, <TLorentzVector (version 4) at 0x7f6a02cb33d0>, <TLorentzVector (version 4) at 0x7f6a02cb3370>, <TLorentzVector (version 4) at 0x7f6a02cb32e0>, <TLorentzVector (version 4) at 0x7f6a02cba910>]], dtype=object)
 
 
@@ -565,7 +569,7 @@ def test_56():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1]['SliceU64'][0] == 1
+        assert py[1]["SliceU64"][0] == 1
         # py[-1] == <Event (version 1) at 0x7fecdbf61dc0>
 
 
@@ -575,7 +579,7 @@ def test_57():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1][1] == 'two'
+        assert py[-1][1] == "two"
         # py[-1] == <STLVector ['one', 'two'] at 0x7fdeeb3f8d90>
 
 
@@ -585,7 +589,7 @@ def test_58():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1] == 'two'
+        assert py[1][1] == "two"
         # py[-1] == <STLVector ['one', 'two'] at 0x7f42edc0c0a0>
 
 
@@ -605,7 +609,7 @@ def test_60():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1][1][1] == 'two'
+        assert py[-1][1][1] == "two"
         # py[-1] == <STLVector [['one'], ['one', 'two']] at 0x7fae23700eb0>
 
 
@@ -615,7 +619,7 @@ def test_61():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1][1][1] == 'two'
+        assert py[-1][1][1] == "two"
         # py[-1] == <STLVector [['one'], ['one', 'two']] at 0x7f06ad24c460>
 
 
@@ -635,7 +639,7 @@ def test_63():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1][1][1] == 'two'
+        assert py[-1][1][1] == "two"
         # py[-1] == <STLVector [{'one'}, {'one', 'two'}] at 0x7fb29ded7370>
 
 
@@ -655,7 +659,7 @@ def test_65():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1][1] == 'two'
+        assert py[-1][1] == "two"
         # py[-1] == <STLSet {'one', 'two'} at 0x7f5ffd9ff1c0>
 
 
@@ -665,7 +669,7 @@ def test_66():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[-1]['1'][1] == 2
+        assert py[-1]["1"][1] == 2
         # py[-1] == <STLMap {1: 1, 2: 2} at 0x7f23be1efbe0>
 
 
@@ -675,7 +679,7 @@ def test_67():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 2
+        assert py[1][1]["1"][1] == 2
         # py[-1] == <STLMap {1: [1], 2: [1, 2]} at 0x7f899441d2b0>
 
 
@@ -685,7 +689,7 @@ def test_68():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 'two'
+        assert py[1][1]["1"][1] == "two"
         # py[-1] == <STLMap {1: ['one'], 2: ['one', 'two']} at 0x7fd19d3288b0>
 
 
@@ -695,7 +699,7 @@ def test_69():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 2
+        assert py[1][1]["1"][1] == 2
         # py[-1] == <STLMap {1: {1}, 2: {1, 2}} at 0x7f2b3f1b5fa0>
 
 
@@ -705,7 +709,7 @@ def test_70():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 'two'
+        assert py[1][1]["1"][1] == "two"
         # py[-1] == <STLMap {1: {'one'}, 2: {'one', 'two'}} at 0x7f4718b237c0>
 
 
@@ -715,7 +719,7 @@ def test_71():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'] == 2
+        assert py[1][1]["1"] == 2
         # py[-1] == <STLMap {'one': 1, 'two': 2} at 0x7f4179bed1f0>
 
 
@@ -725,7 +729,7 @@ def test_72():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 2
+        assert py[1][1]["1"][1] == 2
         # py[-1] == <STLMap {'one': [1], 'two': [1, 2]} at 0x7f26376e9b20>
 
 
@@ -735,7 +739,7 @@ def test_73():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 'two'
+        assert py[1][1]["1"][1] == "two"
         # py[-1] == <STLMap {'one': ['one'], 'two': ['one', 'two']} at 0x7f3e45d34910>
 
 
@@ -745,7 +749,7 @@ def test_74():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 2
+        assert py[1][1]["1"][1] == 2
         # py[-1] == <STLMap {'one': {1}, 'two': {1, 2}} at 0x7f5a94b1c760>
 
 
@@ -755,7 +759,7 @@ def test_75():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1] == 'two'
+        assert py[1][1]["1"][1] == "two"
         # py[-1] == <STLMap {'one': {'one'}, 'two': {'one', 'two'}} at 0x7f1a1e95aa90>
 
 
@@ -765,7 +769,7 @@ def test_76():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1][1] == 2
+        assert py[1][1]["1"][1][1] == 2
         # py[-1] == <STLMap {1: [[1]], 2: [[1], [1, 2]]} at 0x7fc98bd7ec10>
 
 
@@ -775,7 +779,7 @@ def test_77():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'][1][1] == 2
+        assert py[1][1]["1"][1][1] == 2
         # py[-1] == <STLMap {1: [{1}], 2: [{1}, {1, 2}]} at 0x7fcf9b191610>
 
 
@@ -785,7 +789,7 @@ def test_78():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'] == 'TWO'
+        assert py[1][1]["1"] == "TWO"
         # py[-1] == <STLMap {'one': 'ONE', 'two': 'TWO'} at 0x7f887b27cb20>
 
 
@@ -795,7 +799,7 @@ def test_79():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]['1'] == 'TWO'
+        assert py[1][1]["1"] == "TWO"
         # py[-1] == <STLMap {'one': 'ONE', 'two': 'TWO'} at 0x7f4c4e527610>
 
 
@@ -817,7 +821,7 @@ def test_81():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0]['1'] == pytest.approx(2.5636332035064697)
+        assert py[0]["1"] == pytest.approx(2.5636332035064697)
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
 
 
