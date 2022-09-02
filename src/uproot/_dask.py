@@ -440,6 +440,10 @@ def _get_dask_array(
             for start in range(entry_start, entry_stop, entry_step):
                 foreach(start)
 
+        if len(chunk_args) == 0:
+            chunks.append(0)
+            chunk_args.append((0, 0, 0))
+
         dask_dict[key] = _dask_array_from_map(
             _UprootReadNumpy(hasbranches, key),
             chunk_args,
@@ -637,14 +641,11 @@ def _get_dak_array(
         for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
-    first_basket_start, first_basket_stop = hasbranches[0][
-        common_keys[0]
-    ].basket_entry_start_stop(0)
-    first_basket = hasbranches[0].arrays(
-        common_keys, entry_start=first_basket_start, entry_stop=first_basket_stop
-    )
-    meta = dask_awkward.core.typetracer_array(first_basket)
+    empty_arr = hasbranches[0].arrays(common_keys, entry_start=0, entry_stop=0)
+    meta = dask_awkward.core.typetracer_array(empty_arr)
 
+    if len(partition_args) == 0:
+        partition_args.append((0, 0, 0))
     return dask_awkward.from_map(
         _UprootRead(hasbranches, common_keys),
         partition_args,
