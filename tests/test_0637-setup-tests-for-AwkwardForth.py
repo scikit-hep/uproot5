@@ -848,3 +848,27 @@ def test_82():
         interp._forth = True
         py = branch.array(interpretation=interp, library="ak")
         assert py.frame_index[0] == 126
+        assert py.frame_index[-1] == 128
+
+
+def test_83():
+    with uproot.open(skhep_testdata.data_path("uproot-issue434.root")) as file:
+        branch = file["KM3NET_SUMMARYSLICE/vector<KM3NETDAQ::JDAQSummaryFrame>"]
+        interp = uproot.interpretation.jagged.AsJagged(
+            uproot.interpretation.numerical.AsDtype(
+                [
+                    ("dom_id", ">i4"),
+                    ("dq_status", ">u4"),
+                    ("hrv", ">u4"),
+                    ("fifo", ">u4"),
+                    ("status3", ">u4"),
+                    ("status4", ">u4"),
+                ]
+                + [(f"ch{c}", "u1") for c in range(31)]
+            ),
+            header_bytes=10,
+        )
+        interp._forth = True
+        py = branch.array(interpretation=interp, library="ak")
+        assert py.dom_id[0][0] == 806451572
+        assert py.ch0[0][-1] == 46
