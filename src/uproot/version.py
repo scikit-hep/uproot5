@@ -12,7 +12,7 @@ of the latest release on PyPI.
 
 import re
 
-__version__ = "4.3.4"
+__version__ = "4.3.5"
 version = __version__
 version_info = tuple(re.split(r"[-\.]", __version__))
 
