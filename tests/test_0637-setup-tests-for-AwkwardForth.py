@@ -872,3 +872,12 @@ def test_83():
         py = branch.array(interpretation=interp, library="ak")
         assert py.dom_id[0][0] == 806451572
         assert py.ch0[0][-1] == 46
+
+
+def test_84():
+    with uproot.open(skhep_testdata.data_path("uproot-issue-214.root")) as file:
+        branch = file["E/Evt/trks/trks.rec_stages"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        interp._forth = True
+        py = branch.array(interpretation=interp, library="ak")
+        assert py[0][0][0] == 1
