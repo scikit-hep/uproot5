@@ -819,3 +819,28 @@ def test_81():
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[0]['1'] == pytest.approx(2.5636332035064697)
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
+
+
+def test_82():
+    with uproot.open(skhep_testdata.data_path("uproot-issue434.root")) as file:
+        branch = file["KM3NET_SUMMARYSLICE/KM3NETDAQ::JDAQSummarysliceHeader"]
+        interp = uproot.interpretation.numerical.AsDtype(
+            [
+                (" cnt", "u4"),
+                (" vers", "u2"),
+                (" cnt2", "u4"),
+                (" vers2", "u2"),
+                (" cnt3", "u4"),
+                (" vers3", "u2"),
+                ("detector_id", ">i4"),
+                ("run", ">i4"),
+                ("frame_index", ">i4"),
+                (" cnt4", "u4"),
+                (" vers4", "u2"),
+                ("UTC_seconds", ">u4"),
+                ("UTC_16nanosecondcycles", ">u4"),
+            ]
+        )
+        interp._forth = True
+        py = branch.array(interpretation=interp, library="ak")
+        assert py.frame_index[0] == 126
