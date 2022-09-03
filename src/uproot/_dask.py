@@ -693,4 +693,3 @@ def _get_dak_array_delay_open(
         label="from-uproot",
         meta=meta,
     )
-
