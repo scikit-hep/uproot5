@@ -690,13 +690,8 @@ def _get_dak_array_delay_open(
         full_paths=full_paths,
     )
 
-    first_basket_start, first_basket_stop = obj[common_keys[0]].basket_entry_start_stop(
-        0
-    )
-    first_basket = obj.arrays(
-        common_keys, entry_start=first_basket_start, entry_stop=first_basket_stop
-    )
-    meta = dask_awkward.core.typetracer_array(first_basket)
+    empty_arr = obj.arrays(common_keys, entry_start=0, entry_stop=0)
+    meta = dask_awkward.core.typetracer_array(empty_arr)
 
     return dask_awkward.from_map(
         _UprootOpenAndRead(custom_classes, allow_missing, real_options, common_keys),
