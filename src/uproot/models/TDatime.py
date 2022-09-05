@@ -10,9 +10,8 @@ import struct
 import numpy
 
 import uproot
-import uproot.behaviors.TDatime
 import uproot._awkward_forth
-import json
+import uproot.behaviors.TDatime
 
 _tdatime_format1 = struct.Struct(">I")
 
@@ -32,13 +31,21 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
             key = forth_obj.get_keys(1)
             form_key = f"part0-node{key}-data"
             helper_obj.add_to_header(f"output part0-node{key}-data int32\n")
-            helper_obj.add_to_pre(
-                f"stream !I-> part0-node{key}-data\n"
-            )
+            helper_obj.add_to_pre(f"stream !I-> part0-node{key}-data\n")
             form_key = f"part0-node{key}-data"
             if forth_obj.should_add_form():
                 forth_obj.add_form_key(form_key)
-                temp_aform = {"class": "RecordArray", "contents": {'fDatime': {"class": "NumpyArray", "primitive": "uint32", "form_key": f"node{key}"}}, "parameters": {"__record__": "TDatime"}}
+                temp_aform = {
+                    "class": "RecordArray",
+                    "contents": {
+                        "fDatime": {
+                            "class": "NumpyArray",
+                            "primitive": "uint32",
+                            "form_key": f"node{key}",
+                        }
+                    },
+                    "parameters": {"__record__": "TDatime"},
+                }
                 forth_obj.add_form(temp_aform)
             temp_form = forth_obj.add_node(
                 f"node{key}",

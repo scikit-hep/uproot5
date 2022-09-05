@@ -105,13 +105,13 @@ def _read_nested(
                 temp_count = context["forth"].gen.count_obj
             for i in range(length):
                 if helper_obj.is_forth():
-                    if 'temp_ref' in context.keys():
-                        context["forth"].gen.go_to(context['temp_ref'])
+                    if "temp_ref" in context.keys():
+                        context["forth"].gen.go_to(context["temp_ref"])
                     context["forth"].gen.count_obj = temp_count
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         if helper_obj.is_forth():
-            if 'temp_ref' in context.keys():
-                del context['temp_ref']
+            if "temp_ref" in context.keys():
+                del context["temp_ref"]
         return values
 
 
@@ -481,7 +481,7 @@ class AsString(AsContainer):
         helper_obj = uproot._awkward_forth.GenHelper(context)
 
         if helper_obj.is_forth():
-            #raise NotImplementedError
+            # raise NotImplementedError
             forth_obj = helper_obj.get_gen_obj()
             keys = forth_obj.get_keys(2)
             offsets_num = keys[0]
@@ -1207,7 +1207,7 @@ class AsVector(AsContainer):
                     1,
                     {},
                 )
-                context['temp_ref'] = temp
+                context["temp_ref"] = temp
 
             if length == 0 and helper_obj.is_forth():
                 forth_obj.var_set = True
@@ -1557,11 +1557,9 @@ class AsMap(AsContainer):
                     temp_node_top,
                     temp_form,
                     temp_form_top,
-                    temp_prev_form
-                ) = forth_obj.replace_form_and_model(
-                    None, temp
-                )
-                context['temp_ref'] = temp
+                    temp_prev_form,
+                ) = forth_obj.replace_form_and_model(None, temp)
+                context["temp_ref"] = temp
             keys = _read_nested(
                 self._keys,
                 length,
@@ -1582,11 +1580,9 @@ class AsMap(AsContainer):
                     temp_node_top1,
                     temp_form1,
                     temp_form_top1,
-                    temp_prev_form1
-                ) = forth_obj.replace_form_and_model(
-                    None, temp
-                )
-                context['temp_ref'] = temp
+                    temp_prev_form1,
+                ) = forth_obj.replace_form_and_model(None, temp)
+                context["temp_ref"] = temp
             if helper_obj.is_forth():
                 if not isinstance(self._keys, numpy.dtype):
                     keys_model["content"]["post_code"].append("loop\n")
@@ -1632,7 +1628,7 @@ class AsMap(AsContainer):
                     forth_obj.add_form_key(form_key)
                     forth_obj.add_form(aform)
                 temp = forth_obj.add_node(
-                    f"nodeMap",
+                    "nodeMap",
                     helper_obj.get_pre(),
                     helper_obj.get_post(),
                     helper_obj.get_init(),
