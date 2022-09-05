@@ -5,6 +5,7 @@ This module defines versioned models for ``TDatime``.
 """
 
 
+import json
 import struct
 
 import numpy
