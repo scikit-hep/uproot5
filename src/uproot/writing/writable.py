@@ -1897,6 +1897,7 @@ class WritableBranch:
                 "compression must be None or a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0)"
             )
 
+
 class WritableNTuple:
     """
     Args:

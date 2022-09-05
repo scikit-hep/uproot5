@@ -466,6 +466,7 @@ class Key(CascadeLeaf):
             big=big,
         )
 
+
 class RKeyBlob(Key):
     pass
 
@@ -1812,16 +1813,12 @@ class Directory(CascadeNode):
         branch_types,
     ):
         import uproot.writing._cascadentuple
+
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
-                None, 1700499286, 0, 48, 866, 133, 159, 1201, 81, 104, 0
-                )
+            None, 1700499286, 0, 48, 866, 133, 159, 1201, 81, 104, 0
+        )
         ntuple = uproot.writing._cascadentuple.NTuple(
-            self,
-            name,
-            title,
-            branch_types,
-            self._freesegments,
-            anchor
+            self, name, title, branch_types, self._freesegments, anchor
         )
         ntuple.write(sink)
         return ntuple
