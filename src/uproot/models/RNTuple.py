@@ -31,6 +31,8 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
 
+    writable = True
+
     @property
     def _keys(self):
         keys = []
@@ -65,6 +67,19 @@ in file {}""".format(
             self._members["fReserved"],
         ) = cursor.fields(chunk, _rntuple_format1, context)
 
+
+        self._headerfooter_chunk_ready = False
+        self._header, self._footer = None, None
+
+        self._field_names = None
+        self._column_records = None
+
+        # back link from column name to page inner list
+        self.column_innerlist_dict = {}
+
+        
+    def _prepare_headerfooter_chunk(self):
+        context = {}
         seek, nbytes = self._members["fSeekHeader"], self._members["fNBytesHeader"]
         header_range = (seek, seek + nbytes)
 
@@ -72,7 +87,7 @@ in file {}""".format(
         footer_range = (seek, seek + nbytes)
 
         notifications = queue.Queue()
-        compressed_header_chunk, compressed_footer_chunk = file.source.chunks(
+        compressed_header_chunk, compressed_footer_chunk = self.file.source.chunks(
             [header_range, footer_range], notifications=notifications
         )
 
@@ -105,18 +120,13 @@ in file {}""".format(
                 self._members["fLenFooter"],
             )
             self._footer_cursor = uproot.source.cursor.Cursor(0)
-
-        self._header, self._footer = None, None
-
-        self._field_names = None
-        self._column_records = None
-
-        # back link from column name to page inner list
-        self.column_innerlist_dict = {}
+        self._headerfooter_chunk_ready = True
 
     @property
     def header(self):
         if self._header is None:
+            if not self._headerfooter_chunk_ready:
+                self._prepare_headerfooter_chunk()
             cursor = self._header_cursor.copy()
             context = {}
 
@@ -138,6 +148,8 @@ in file {}""".format(
     @property
     def footer(self):
         if self._footer is None:
+            if not self._headerfooter_chunk_ready:
+                self._prepare_headerfooter_chunk()
             cursor = self._footer_cursor.copy()
             context = {}
 
@@ -398,6 +410,30 @@ in file {}""".format(
         return ak._v2.from_buffers(form, cluster_num_entries, container_dict)[
             entry_start:entry_stop
         ]
+
+    def _serialize(self, out, header, name, tobject_flags):
+        import uproot.writing._cascade
+        where = len(out)
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
+
+        out.append(_rntuple_format1.pack(
+            self._members["fCheckSum"],
+            self._members["fVersion"],
+            self._members["fSize"],
+            self._members["fSeekHeader"],
+            self._members["fNBytesHeader"],
+            self._members["fLenHeader"],
+            self._members["fSeekFooter"],
+            self._members["fNBytesFooter"],
+            self._members["fLenFooter"],
+            self._members["fReserved"]
+            ))
+
+        if header:
+            num_bytes = sum(len(x) for x in out[where:])
+            version = 0 #RNTuple is pre-release, thus 0
+            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
 
 # Supporting function and classes
