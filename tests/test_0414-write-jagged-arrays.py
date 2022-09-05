@@ -21,10 +21,12 @@ def test_awkward_as_numpy(tmp_path):
         fout.mktree(
             "tree",
             {
-                "b1": awkward.types.from_datashape("int32"),
-                "b2": awkward.types.from_datashape("2 * float64"),
-                "b3": awkward.types.from_datashape("2 * 3 * float64"),
-                "b4": awkward.Array([1.1, 2.2, 3.3]).type,
+                "b1": awkward._v2.types.from_datashape("int32", highlevel=False),
+                "b2": awkward._v2.types.from_datashape("2 * float64", highlevel=False),
+                "b3": awkward._v2.types.from_datashape(
+                    "2 * 3 * float64", highlevel=False
+                ),
+                "b4": awkward._v2.Array([1.1, 2.2, 3.3]).type,
             },
         )
 
@@ -43,7 +45,9 @@ def test_awkward_record(tmp_path):
             "tree",
             {
                 "b1": "int32",
-                "b2": awkward.types.from_datashape('{"x": float64, "y": 3 * float64}'),
+                "b2": awkward._v2.types.from_datashape(
+                    '{"x": float64, "y": 3 * float64}', highlevel=False
+                ),
             },
         )
 
@@ -58,7 +62,9 @@ def test_awkward_record_data(tmp_path):
 
     with uproot.recreate(newfile, compression=None) as fout:
         b1 = np.array([1, 2, 3], np.int32)
-        b2 = awkward.Array([{"x": 1.1, "y": 4}, {"x": 2.2, "y": 5}, {"x": 3.3, "y": 6}])
+        b2 = awkward._v2.Array(
+            [{"x": 1.1, "y": 4}, {"x": 2.2, "y": 5}, {"x": 3.3, "y": 6}]
+        )
         fout.mktree("tree", {"b1": b1.dtype, "b2": b2.type})
         fout["tree"].extend({"b1": b1, "b2": b2})
 
@@ -152,8 +158,8 @@ def test_awkward_record_pandas(tmp_path):
 def test_top_level(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    df1 = awkward.Array({"x": [1, 2, 3], "y": [1.1, 2.2, 3.3]})
-    df2 = awkward.Array({"x": [4, 5, 6], "y": [4.4, 5.5, 6.6]})
+    df1 = awkward._v2.Array({"x": [1, 2, 3], "y": [1.1, 2.2, 3.3]})
+    df2 = awkward._v2.Array({"x": [4, 5, 6], "y": [4.4, 5.5, 6.6]})
 
     with uproot.recreate(newfile, compression=None) as fout:
         fout["tree"] = df1
@@ -186,7 +192,9 @@ def test_awkward_jagged_metadata(tmp_path):
             "tree",
             {
                 "b1": "int64",
-                "b2": awkward.types.from_datashape("var * float64"),
+                "b2": awkward._v2.types.from_datashape(
+                    "var * float64", highlevel=False
+                ),
             },
         )
 
@@ -200,15 +208,15 @@ def test_awkward_jagged_metadata(tmp_path):
 
     b1 = t1.GetBranch("b1")
     assert b1.GetLeaf("b1").GetName() == "b1"
-    assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert not b1.GetLeaf("b1").GetLeafCount()
 
     nb2 = t1.GetBranch("nb2")
     assert nb2.GetLeaf("nb2").GetName() == "nb2"
-    assert nb2.GetLeaf("nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert not nb2.GetLeaf("nb2").GetLeafCount()
 
     b2 = t1.GetBranch("b2")
     assert b2.GetLeaf("b2").GetName() == "b2"
-    assert b2.GetLeaf("b2").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2.GetLeaf("b2").GetLeafCount()
     assert b2.GetLeaf("b2").GetLeafCount().GetName() == "nb2"
 
     f1.Close()
@@ -222,7 +230,9 @@ def test_awkward_jagged_record_metadata(tmp_path):
             "tree",
             {
                 "b1": "int64",
-                "b2": awkward.types.from_datashape('var * {"x": float64, "y": int8}'),
+                "b2": awkward._v2.types.from_datashape(
+                    'var * {"x": float64, "y": int8}', highlevel=False
+                ),
             },
         )
 
@@ -237,20 +247,20 @@ def test_awkward_jagged_record_metadata(tmp_path):
 
     b1 = t1.GetBranch("b1")
     assert b1.GetLeaf("b1").GetName() == "b1"
-    assert b1.GetLeaf("b1").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert not b1.GetLeaf("b1").GetLeafCount()
 
     nb2 = t1.GetBranch("nb2")
     assert nb2.GetLeaf("nb2").GetName() == "nb2"
-    assert nb2.GetLeaf("nb2").GetLeafCount() == None  # noqa: E711 (ROOT null check)
+    assert not nb2.GetLeaf("nb2").GetLeafCount()
 
     b2_x = t1.GetBranch("b2_x")
     assert b2_x.GetLeaf("b2_x").GetName() == "b2_x"
-    assert b2_x.GetLeaf("b2_x").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2_x.GetLeaf("b2_x").GetLeafCount()
     assert b2_x.GetLeaf("b2_x").GetLeafCount().GetName() == "nb2"
 
     b2_y = t1.GetBranch("b2_y")
     assert b2_y.GetLeaf("b2_y").GetName() == "b2_y"
-    assert b2_y.GetLeaf("b2_y").GetLeafCount() != None  # noqa: E711 (ROOT null check)
+    assert b2_y.GetLeaf("b2_y").GetLeafCount()
     assert b2_y.GetLeaf("b2_y").GetLeafCount().GetName() == "nb2"
 
     f1.Close()
@@ -261,7 +271,7 @@ def test_awkward_jagged_data_1(tmp_path):
 
     with uproot.recreate(newfile, compression=None) as fout:
         b1 = np.array([1, 2, 3, 4, 5], np.int64)
-        b2 = awkward.Array(
+        b2 = awkward._v2.Array(
             [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]]
         )
         fout.mktree("tree", {"b1": b1.dtype, "b2": b2.type})
@@ -299,7 +309,7 @@ def test_awkward_jagged_data_2(tmp_path):
 
     with uproot.recreate(newfile, compression=None) as fout:
         b1 = np.array([1, 2, 3, 4, 5], np.int64)
-        b2 = awkward.Array(
+        b2 = awkward._v2.Array(
             [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]]
         )
         fout["tree"] = {"b1": b1, "b2": b2}
@@ -342,7 +352,7 @@ def test_awkward_jagged_data_3(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        big = awkward.Array(
+        big = awkward._v2.Array(
             [[0.0, 1.1, 2.2], [], [3.3, 4.4], [5.5], [6.6, 7.7, 8.8, 9.9]] * 300
         )
         fout["tree"] = {"big": big}
@@ -381,7 +391,7 @@ def test_awkward_jagged_record_1(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        array = awkward.Array(
+        array = awkward._v2.Array(
             [
                 [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
                 [],
@@ -411,7 +421,7 @@ def test_awkward_jagged_record_2(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
     with uproot.recreate(newfile, compression=None) as fout:
-        fout["tree"] = awkward.Array(
+        fout["tree"] = awkward._v2.Array(
             [
                 [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
                 [],
@@ -419,7 +429,7 @@ def test_awkward_jagged_record_2(tmp_path):
             ]
         )
         fout["tree"].extend(
-            awkward.Array(
+            awkward._v2.Array(
                 [
                     [{"x": 1, "y": 1.1}, {"x": 2, "y": 2.2}, {"x": 3, "y": 3.3}],
                     [],

@@ -163,9 +163,9 @@ class AsStrings(uproot.interpretation.Interpretation):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
-            awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {
@@ -217,10 +217,10 @@ class AsStrings(uproot.interpretation.Interpretation):
                 )
                 self._threadlocal.forth_vm.reset()
 
-                return awkward.Array(
-                    awkward.layout.ListOffsetArray64(
-                        awkward.layout.Index64(offsets),
-                        awkward.layout.NumpyArray(
+                return awkward._v2.Array(
+                    awkward._v2.contents.ListOffsetArray(
+                        awkward._v2.index.Index64(offsets),
+                        awkward._v2.contents.NumpyArray(
                             data, parameters={"__array__": "char"}
                         ),
                         parameters={"__array__": "string"},
@@ -342,7 +342,9 @@ class AsStrings(uproot.interpretation.Interpretation):
             ):
                 assert isinstance(library, uproot.interpretation.library.Awkward)
                 awkward = library.imported
-                output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
+                output = awkward._v2.concatenate(
+                    trimmed, mergebool=False, highlevel=False
+                )
 
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,

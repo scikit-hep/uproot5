@@ -265,7 +265,7 @@ class AsDtype(Numerical):
         d, s = _dtype_shape(self._to_dtype)
         out = uproot._util.awkward_form(d, file, context)
         for size in s[::-1]:
-            out = awkward.forms.RegularForm(out, size)
+            out = awkward._v2.forms.RegularForm(out, size)
         return out
 
     @property
@@ -340,7 +340,7 @@ class AsDtype(Numerical):
         dtype, shape = _dtype_shape(self._from_dtype)
         try:
             output = data.view(dtype).reshape((-1,) + shape)
-        except ValueError:
+        except ValueError as err:
             raise ValueError(
                 """basket {} in tree/branch {} has the wrong number of bytes ({}) """
                 """for interpretation {}
@@ -351,7 +351,7 @@ in file {}""".format(
                     self,
                     branch.file.file_path,
                 )
-            )
+            ) from err
 
         self.hook_after_basket_array(
             data=data,
@@ -402,7 +402,7 @@ class AsDtypeInPlace(AsDtype):
         Specialized version of _prepare_output : re-use our target array kept in self._to_fill.
         """
         if library.name != "np":
-            raise Exception(
+            raise TypeError(
                 "AsDtypeInPlace can only be used with library 'np', not '{}'".format(
                     library.name
                 )
@@ -411,7 +411,7 @@ class AsDtypeInPlace(AsDtype):
         output = self._to_fill.view(self.to_dtype)
 
         if length > len(output):
-            raise Exception(
+            raise ValueError(
                 "Requesting to fill an array of size {} (type {}) with input of size {} (type {})".format(
                     len(output), self._to_dtype, length, self._from_dtype
                 )
@@ -542,7 +542,7 @@ class TruncatedNumerical(Numerical):
 
         try:
             raw = data.view(self.from_dtype)
-        except ValueError:
+        except ValueError as err:
             raise ValueError(
                 """basket {} in tree/branch {} has the wrong number of bytes ({}) """
                 """for interpretation {} (expecting raw array of {})
@@ -554,7 +554,7 @@ in file {}""".format(
                     repr(self._from_dtype),
                     branch.file.file_path,
                 )
-            )
+            ) from err
 
         if self.is_truncated:
             exponent = raw["exponent"].astype(numpy.int32)
@@ -648,10 +648,8 @@ class AsDouble32(TruncatedNumerical):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        out = awkward.forms.NumpyForm(
-            (),
-            8,
-            "d",
+        out = awkward._v2.forms.NumpyForm(
+            "float64",
             parameters={
                 "uproot": {
                     "as": "Double32",
@@ -662,7 +660,7 @@ class AsDouble32(TruncatedNumerical):
             },
         )
         for size in self._to_dims[::-1]:
-            out = awkward.forms.RegularForm(out, size)
+            out = awkward._v2.forms.RegularForm(out, size)
         return out
 
 
@@ -718,10 +716,8 @@ class AsFloat16(TruncatedNumerical):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        out = awkward.forms.NumpyForm(
-            (),
-            4,
-            "f",
+        out = awkward._v2.forms.NumpyForm(
+            "float32",
             parameters={
                 "uproot": {
                     "as": "Float16",
@@ -732,5 +728,5 @@ class AsFloat16(TruncatedNumerical):
             },
         )
         for size in self._to_dims[::-1]:
-            out = awkward.forms.RegularForm(out, size)
+            out = awkward._v2.forms.RegularForm(out, size)
         return out

@@ -337,10 +337,10 @@ class AsDynamic(AsContainer):
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
-            return awkward.forms.ListOffsetForm(
+            return awkward._v2.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
-                parameters={"uproot": {"as": "array", "header": self._header}},
+                parameters={"uproot": {"as": "dynamic"}},
             )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -462,9 +462,9 @@ class AsString(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
-            awkward.forms.NumpyForm((), 1, "B", parameters={"__array__": "char"}),
+            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {
@@ -535,15 +535,15 @@ class AsString(AsContainer):
                 forth_obj.add_form(json.loads(temp_aform))
 
                 form_keys = [
-                    f"part0-node{data_num}-data",
-                    f"part0-node{offsets_num}-offsets",
+                    f"node{data_num}-data",
+                    f"node{offsets_num}-offsets",
                 ]
                 for elem in form_keys:
                     forth_obj.add_form_key(elem)
             helper_obj.add_to_header(
-                f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
+                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            helper_obj.add_to_init(f"0 part0-node{offsets_num}-offsets <- stack\n")
+            helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
                 helper_obj.get_pre(),
@@ -708,8 +708,8 @@ class AsArray(AsContainer):
         awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
-            values_form = awkward.forms.RegularForm(values_form, dim)
-        return awkward.forms.ListOffsetForm(
+            values_form = awkward._v2.forms.RegularForm(values_form, dim)
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             values_form,
             parameters={
@@ -841,12 +841,10 @@ in file {}""".format(
 
                 if helper_obj.is_forth():
                     helper_obj.add_to_header(
-                        f"output part0-node{offsets_num}-offsets int64\n"
+                        f"output node{offsets_num}-offsets int64\n"
                     )
-                    form_key = f"part0-node{offsets_num}-offsets"
-                    helper_obj.add_to_init(
-                        f"0 part0-node{offsets_num}-offsets <- stack\n"
-                    )
+                    form_key = f"node{offsets_num}-offsets"
+                    helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
                     helper_obj.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
@@ -950,7 +948,7 @@ class AsRVec(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "RVec", "header": self._header}},
@@ -1097,7 +1095,7 @@ class AsVector(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "vector", "header": self._header}},
@@ -1304,7 +1302,7 @@ class AsSet(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._keys, file, context),
             parameters={
@@ -1498,13 +1496,14 @@ class AsMap(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward.forms.ListOffsetForm(
+        return awkward._v2.forms.ListOffsetForm(
             context["index_format"],
-            awkward.forms.RecordForm(
+            awkward._v2.forms.RecordForm(
                 (
                     uproot._util.awkward_form(self._keys, file, context),
                     uproot._util.awkward_form(self._values, file, context),
-                )
+                ),
+                None,
             ),
             parameters={
                 "__array__": "sorted_map",

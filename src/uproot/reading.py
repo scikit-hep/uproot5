@@ -1405,7 +1405,8 @@ class ReadOnlyDirectory(Mapping):
         if self._fSeekKeys == 0:
             self._header_key = None
             self._keys = []
-
+            self._keys_lookup = {}
+            self._len = None
         else:
             keys_start = self._fSeekKeys
             keys_stop = min(keys_start + self._fNbytesKeys + 8, file.fEND)
@@ -1444,11 +1445,18 @@ class ReadOnlyDirectory(Mapping):
             )
 
             self._keys = []
+            self._keys_lookup = {}
             for _ in range(num_keys):
                 key = ReadOnlyKey(
                     keys_chunk, keys_cursor, {}, file, self, read_strings=True
                 )
+                name = key.fName
+                if name not in self._keys_lookup:
+                    self._keys_lookup[name] = []
+                self._keys_lookup[name].append(len(self._keys))
                 self._keys.append(key)
+
+            self._len = None
 
             self.hook_after_keys(
                 chunk=chunk,
@@ -1613,7 +1621,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this does not read any data from the file.
         """
         return list(
-            self.iterkeys(  # noqa: B301 (not a dict)
+            self.iterkeys(
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -1644,7 +1652,7 @@ class ReadOnlyDirectory(Mapping):
         and ``filter_classname``.
         """
         return list(
-            self.itervalues(  # noqa: B301 (not a dict)
+            self.itervalues(
                 recursive=recursive,
                 filter_name=filter_name,
                 filter_classname=filter_classname,
@@ -1676,7 +1684,7 @@ class ReadOnlyDirectory(Mapping):
         and ``filter_classname``.
         """
         return list(
-            self.iteritems(  # noqa: B301 (not a dict)
+            self.iteritems(
                 recursive=recursive,
                 cycle=cycle,
                 filter_name=filter_name,
@@ -1752,7 +1760,7 @@ class ReadOnlyDirectory(Mapping):
                 seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1 in key.get().iterkeys(  # noqa: B301 (not a dict)
+                for k1 in key.get().iterkeys(
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=no_filter,
@@ -1787,7 +1795,7 @@ class ReadOnlyDirectory(Mapping):
         Note that this reads all objects that are selected by ``filter_name``
         and ``filter_classname``.
         """
-        for _, v in self.iteritems(  # noqa: B301 (not a dict)
+        for _, v in self.iteritems(
             recursive=recursive,
             cycle=False,
             filter_name=filter_name,
@@ -1832,7 +1840,7 @@ class ReadOnlyDirectory(Mapping):
                 seen.add(out)
 
             if recursive and key.fClassName in ("TDirectory", "TDirectoryFile"):
-                for k1, v in key.get().iteritems(  # noqa: B301 (not a dict)
+                for k1, v in key.get().iteritems(
                     recursive=recursive,
                     cycle=cycle,
                     filter_name=no_filter,
@@ -1898,14 +1906,16 @@ class ReadOnlyDirectory(Mapping):
         """
         Supports key-completion in an IPython or Jupyter kernel.
         """
-        return self.iterkeys()  # noqa: B301 (not a dict)
+        return self.iterkeys()
 
     def __len__(self):
-        return len(self._keys) + sum(
-            len(x.get())
-            for x in self._keys
-            if x.fClassName in ("TDirectory", "TDirectoryFile")
-        )
+        if self._len is None:
+            self._len = len(self._keys) + sum(
+                len(x.get())
+                for x in self._keys
+                if x.fClassName in ("TDirectory", "TDirectoryFile")
+            )
+        return self._len
 
     def __contains__(self, where):
         try:
@@ -1916,7 +1926,7 @@ class ReadOnlyDirectory(Mapping):
             return True
 
     def __iter__(self):
-        return self.iterkeys()  # noqa: B301 (not a dict)
+        return self.iterkeys()
 
     def title_of(self, where):
         """
@@ -2031,14 +2041,14 @@ class ReadOnlyDirectory(Mapping):
             item, cycle = where, None
 
         last = None
-        for key in self._keys:
-            if key.fName == item:
-                if cycle == key.fCycle:
-                    return key
-                elif cycle is None and last is None:
-                    last = key
-                elif cycle is None and last.fCycle < key.fCycle:
-                    last = key
+        for index in self._keys_lookup.get(item, []):
+            key = self._keys[index]
+            if cycle == key.fCycle:
+                return key
+            elif cycle is None and last is None:
+                last = key
+            elif cycle is None and last.fCycle < key.fCycle:
+                last = key
 
         if last is not None:
             return last

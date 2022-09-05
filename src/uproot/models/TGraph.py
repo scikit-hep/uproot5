@@ -242,7 +242,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import ListOffsetForm, RecordForm
+        from awkward._v2.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -257,18 +257,14 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
             contents["@instance_version"] = uproot._util.awkward_form(
                 numpy.dtype("u2"), file, context
             )
-        contents.update(
-            file.class_named("TNamed", 1).awkward_form(file, context).contents
-        )
-        contents.update(
-            file.class_named("TAttLine", 2).awkward_form(file, context).contents
-        )
-        contents.update(
-            file.class_named("TAttFill", 2).awkward_form(file, context).contents
-        )
-        contents.update(
-            file.class_named("TAttMarker", 2).awkward_form(file, context).contents
-        )
+        tmp_awkward_form = file.class_named("TNamed", 1).awkward_form(file, context)
+        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        tmp_awkward_form = file.class_named("TAttLine", 2).awkward_form(file, context)
+        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        tmp_awkward_form = file.class_named("TAttFill", 2).awkward_form(file, context)
+        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
+        tmp_awkward_form = file.class_named("TAttMarker", 2).awkward_form(file, context)
+        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
         contents["fNpoints"] = uproot._util.awkward_form(
             numpy.dtype(">u4"), file, context
         )
@@ -292,7 +288,11 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
         contents["fMaximum"] = uproot._util.awkward_form(
             numpy.dtype(">f8"), file, context
         )
-        return RecordForm(contents, parameters={"__record__": "TGraph"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TGraph"},
+        )
 
     _format0 = struct.Struct(">I")
     _format1 = struct.Struct(">dd")
@@ -454,7 +454,7 @@ class Model_TGraphErrors_v3(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import ListOffsetForm, RecordForm
+        from awkward._v2.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -469,9 +469,8 @@ class Model_TGraphErrors_v3(
             contents["@instance_version"] = uproot._util.awkward_form(
                 numpy.dtype("u2"), file, context
             )
-        contents.update(
-            file.class_named("TGraph", 4).awkward_form(file, context).contents
-        )
+        tmp_awkward_form = file.class_named("TGraph", 4).awkward_form(file, context)
+        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
         contents["fEX"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
@@ -486,7 +485,11 @@ class Model_TGraphErrors_v3(
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
-        return RecordForm(contents, parameters={"__record__": "TGraphErrors"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TGraphErrors"},
+        )
 
     _dtype0 = numpy.dtype(">f8")
     _dtype1 = numpy.dtype(">f8")
@@ -668,7 +671,7 @@ class Model_TGraphAsymmErrors_v3(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward.forms import ListOffsetForm, RecordForm
+        from awkward._v2.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -683,9 +686,8 @@ class Model_TGraphAsymmErrors_v3(
             contents["@instance_version"] = uproot._util.awkward_form(
                 numpy.dtype("u2"), file, context
             )
-        contents.update(
-            file.class_named("TGraph", 4).awkward_form(file, context).contents
-        )
+        tmp_awkward_form = file.class_named("TGraph", 4).awkward_form(file, context)
+        contents.update(zip(tmp_awkward_form.fields, tmp_awkward_form.contents))
         contents["fEXlow"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
@@ -714,7 +716,11 @@ class Model_TGraphAsymmErrors_v3(
                 "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
             },
         )
-        return RecordForm(contents, parameters={"__record__": "TGraphAsymmErrors"})
+        return RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            parameters={"__record__": "TGraphAsymmErrors"},
+        )
 
     _dtype0 = numpy.dtype(">f8")
     _dtype1 = numpy.dtype(">f8")

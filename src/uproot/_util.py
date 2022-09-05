@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from urllib.parse import unquote, urlparse
 
 import numpy
-import setuptools
+import packaging.version
 
 win = platform.system().lower().startswith("win")
 
@@ -81,8 +81,8 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
         warnings.simplefilter("error", numpy.VisibleDeprecationWarning)
         try:
             out = numpy.asarray(array)
-        except (ValueError, numpy.VisibleDeprecationWarning):
-            raise TypeError("cannot be converted to a NumPy array")
+        except (ValueError, numpy.VisibleDeprecationWarning) as err:
+            raise TypeError("cannot be converted to a NumPy array") from err
         if not issubclass(out.dtype.type, types):
             raise TypeError(f"cannot be converted to a NumPy array of type {types}")
         return out
@@ -93,10 +93,10 @@ def parse_version(version):
     Converts a semver string into a Version object that can be compared with
     ``<``, ``>=``, etc.
 
-    Currently implemented using ``setuptools.extern.packaging.version.parse``
+    Currently implemented using ``packaging.Version``
     (exposing that library in the return type).
     """
-    return setuptools.extern.packaging.version.parse(version)
+    return packaging.version.parse(version)
 
 
 def from_module(obj, module_name):
@@ -234,7 +234,7 @@ def regularize_rename(rename):
             def applyrules(x):
                 for matcher, trans in rules:
                     if matcher.search(x) is not None:
-                        return matcher.sub(trans, x)
+                        return matcher.sub(trans, x)  # noqa: B023
                 else:
                     return x
 
@@ -246,21 +246,24 @@ def regularize_rename(rename):
     )
 
 
+_fix_url_path = re.compile(r"^((file|https?|root):/)([^/])", re.I)
+
+
 def regularize_path(path):
     """
     Converts pathlib Paths into plain string paths (for all versions of Python).
     """
     if isinstance(path, getattr(os, "PathLike", ())):
-        path = os.fspath(path)
+        path = _fix_url_path.sub(r"\1/\3", os.fspath(path))
 
     elif hasattr(path, "__fspath__"):
-        path = path.__fspath__()
+        path = _fix_url_path.sub(r"\1/\3", path.__fspath__())
 
     elif path.__class__.__module__ == "pathlib":
         import pathlib
 
         if isinstance(path, pathlib.Path):
-            path = str(path)
+            path = _fix_url_path.sub(r"\1/\3", str(path))
 
     return path
 
@@ -550,29 +553,29 @@ def awkward_form(model, file, context):
 
         if model not in _primitive_awkward_form:
             if model == numpy.dtype(numpy.bool_) or model == numpy.dtype(bool):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"bool"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"bool"')
             elif model == numpy.dtype(numpy.int8):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int8"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int8"')
             elif model == numpy.dtype(numpy.uint8):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint8"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint8"')
             elif model == numpy.dtype(numpy.int16):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int16"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int16"')
             elif model == numpy.dtype(numpy.uint16):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint16"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint16"')
             elif model == numpy.dtype(numpy.int32):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int32"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int32"')
             elif model == numpy.dtype(numpy.uint32):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint32"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint32"')
             elif model == numpy.dtype(numpy.int64):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"int64"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"int64"')
             elif model == numpy.dtype(numpy.uint64):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson('"uint64"')
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json('"uint64"')
             elif model == numpy.dtype(numpy.float32):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json(
                     '"float32"'
                 )
             elif model == numpy.dtype(numpy.float64):
-                _primitive_awkward_form[model] = awkward.forms.Form.fromjson(
+                _primitive_awkward_form[model] = awkward._v2.forms.from_json(
                     '"float64"'
                 )
             else:
@@ -590,101 +593,95 @@ def awkward_form_remove_uproot(awkward, form):
     """
     parameters = dict(form.parameters)
     parameters.pop("uproot", None)
-    if isinstance(form, awkward.forms.BitMaskedForm):
-        return awkward.forms.BitMaskedForm(
+    if isinstance(form, awkward._v2.forms.BitMaskedForm):
+        return awkward._v2.forms.BitMaskedForm(
             form.mask,
             awkward_form_remove_uproot(awkward, form.content),
             form.valid_when,
             form.lsb_order,
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.ByteMaskedForm):
-        return awkward.forms.ByteMaskedForm(
+    elif isinstance(form, awkward._v2.forms.ByteMaskedForm):
+        return awkward._v2.forms.ByteMaskedForm(
             form.mask,
             awkward_form_remove_uproot(awkward, form.content),
             form.valid_when,
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.EmptyForm):
-        return awkward.forms.EmptyForm(
-            form.has_identities,
+    elif isinstance(form, awkward._v2.forms.EmptyForm):
+        return awkward._v2.forms.EmptyForm(
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.IndexedForm):
-        return awkward.forms.IndexedForm(
+    elif isinstance(form, awkward._v2.forms.IndexedForm):
+        return awkward._v2.forms.IndexedForm(
             form.index,
             awkward_form_remove_uproot(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.IndexedOptionForm):
-        return awkward.forms.IndexedOptionForm(
+    elif isinstance(form, awkward._v2.forms.IndexedOptionForm):
+        return awkward._v2.forms.IndexedOptionForm(
             form.index,
             awkward_form_remove_uproot(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.ListForm):
-        return awkward.forms.ListForm(
+    elif isinstance(form, awkward._v2.forms.ListForm):
+        return awkward._v2.forms.ListForm(
             form.starts,
             form.stops,
             awkward_form_remove_uproot(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.ListOffsetForm):
-        return awkward.forms.ListOffsetForm(
+    elif isinstance(form, awkward._v2.forms.ListOffsetForm):
+        return awkward._v2.forms.ListOffsetForm(
             form.offsets,
             awkward_form_remove_uproot(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.NumpyForm):
-        return awkward.forms.NumpyForm(
+    elif isinstance(form, awkward._v2.forms.NumpyForm):
+        return awkward._v2.forms.NumpyForm(
+            form.primitive,
             form.inner_shape,
-            form.itemsize,
-            form.format,
-            form.has_identities,
+            form.has_identifier,
+            form.parameters,
+        )
+    elif isinstance(form, awkward._v2.forms.RecordForm):
+        contents = {
+            k: awkward_form_remove_uproot(awkward, v)
+            for k, v in form.contents.items()
+            if not k.startswith("@")
+        }
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.RecordForm):
-        return awkward.forms.RecordForm(
-            {
-                k: awkward_form_remove_uproot(awkward, v)
-                for k, v in form.contents.items()
-                if not k.startswith("@")
-            },
-            form.has_identities,
-            parameters,
-        )
-    elif isinstance(form, awkward.forms.RegularForm):
-        return awkward.forms.RegularForm(
+    elif isinstance(form, awkward._v2.forms.RegularForm):
+        return awkward._v2.forms.RegularForm(
             awkward_form_remove_uproot(awkward, form.content),
             form.size,
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.UnionForm):
-        return awkward.forms.UnionForm(
+    elif isinstance(form, awkward._v2.forms.UnionForm):
+        return awkward._v2.forms.UnionForm(
             form.tags,
             form.index,
             [awkward_form_remove_uproot(awkward, x) for x in form.contents],
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
-    elif isinstance(form, awkward.forms.UnmaskedForm):
-        return awkward.forms.UnmaskedForm(
+    elif isinstance(form, awkward._v2.forms.UnmaskedForm):
+        return awkward._v2.forms.UnmaskedForm(
             awkward_form_remove_uproot(awkward, form.content),
-            form.has_identities,
-            parameters,
-        )
-    elif isinstance(form, awkward.forms.VirtualForm):
-        return awkward.forms.VirtualForm(
-            awkward_form_remove_uproot(awkward, form.form),
-            form.has_length,
-            form.has_identities,
+            form.has_identifiers,
             parameters,
         )
     else:
@@ -708,9 +705,10 @@ def recursively_fix_awkward_form_of_iter(awkward, interpretation, form):
             fixed[key] = recursively_fix_awkward_form_of_iter(
                 awkward, subinterpretation, form.content(key)
             )
-        return awkward.forms.RecordForm(
-            fixed,
-            form.has_identities,
+        return awkward._v2.forms.RecordForm(
+            list(fixed.values()),
+            list(fixed.keys()),
+            form.has_identifiers,
             form.parameters,
         )
     elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
@@ -728,107 +726,103 @@ def awkward_form_of_iter(awkward, form):
 
     (It might have been read with a different numeric type.)
     """
-    if isinstance(form, awkward.forms.BitMaskedForm):
-        return awkward.forms.BitMaskedForm(
+    if isinstance(form, awkward._v2.forms.BitMaskedForm):
+        return awkward._v2.forms.BitMaskedForm(
             form.mask,
             awkward_form_of_iter(awkward, form.content),
             form.valid_when,
             form.lsb_order,
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.ByteMaskedForm):
-        return awkward.forms.ByteMaskedForm(
+    elif isinstance(form, awkward._v2.forms.ByteMaskedForm):
+        return awkward._v2.forms.ByteMaskedForm(
             form.mask,
             awkward_form_of_iter(awkward, form.content),
             form.valid_when,
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.EmptyForm):
-        return awkward.forms.EmptyForm(
-            form.has_identities,
+    elif isinstance(form, awkward._v2.forms.EmptyForm):
+        return awkward._v2.forms.EmptyForm(
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.IndexedForm):
-        return awkward.forms.IndexedForm(
+    elif isinstance(form, awkward._v2.forms.IndexedForm):
+        return awkward._v2.forms.IndexedForm(
             form.index,
             awkward_form_of_iter(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.IndexedOptionForm):
-        return awkward.forms.IndexedOptionForm(
+    elif isinstance(form, awkward._v2.forms.IndexedOptionForm):
+        return awkward._v2.forms.IndexedOptionForm(
             form.index,
             awkward_form_of_iter(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.ListForm):
-        return awkward.forms.ListForm(
+    elif isinstance(form, awkward._v2.forms.ListForm):
+        return awkward._v2.forms.ListForm(
             form.starts,
             form.stops,
             awkward_form_of_iter(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.ListOffsetForm):
-        return awkward.forms.ListOffsetForm(
+    elif isinstance(form, awkward._v2.forms.ListOffsetForm):
+        return awkward._v2.forms.ListOffsetForm(
             form.offsets,
             awkward_form_of_iter(awkward, form.content),
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.NumpyForm):
+    elif isinstance(form, awkward._v2.forms.NumpyForm):
         if form.parameter("__array__") in ("char", "byte"):
             f = form
         else:
-            d = form.to_numpy()
+            d = awkward._v2.types.numpytype.primitive_to_dtype(form.primitive)
             if issubclass(d.type, numpy.integer):
                 d = numpy.dtype(numpy.int64)
             elif issubclass(d.type, numpy.floating):
                 d = numpy.dtype(numpy.float64)
-            f = awkward.forms.Form.from_numpy(d)
-        out = awkward.forms.NumpyForm(
+            f = awkward._v2.forms.numpyform.from_dtype(d)
+        out = awkward._v2.forms.NumpyForm(
+            f.primitive,
             form.inner_shape,
-            f.itemsize,
-            f.format,
-            form.has_identities,
+            form.has_identifier,
             form.parameters,
         )
         return out
-    elif isinstance(form, awkward.forms.RecordForm):
-        return awkward.forms.RecordForm(
-            {k: awkward_form_of_iter(awkward, v) for k, v in form.contents.items()},
-            form.has_identities,
+    elif isinstance(form, awkward._v2.forms.RecordForm):
+        contents = {
+            k: awkward_form_of_iter(awkward, v) for k, v in form.contents.items()
+        }
+        return awkward._v2.forms.RecordForm(
+            list(contents.values()),
+            list(contents.keys()),
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.RegularForm):
-        return awkward.forms.RegularForm(
+    elif isinstance(form, awkward._v2.forms.RegularForm):
+        return awkward._v2.forms.RegularForm(
             awkward_form_of_iter(awkward, form.content),
             form.size,
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.UnionForm):
-        return awkward.forms.UnionForm(
+    elif isinstance(form, awkward._v2.forms.UnionForm):
+        return awkward._v2.forms.UnionForm(
             form.tags,
             form.index,
             [awkward_form_of_iter(awkward, x) for x in form.contents],
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
-    elif isinstance(form, awkward.forms.UnmaskedForm):
-        return awkward.forms.UnmaskedForm(
+    elif isinstance(form, awkward._v2.forms.UnmaskedForm):
+        return awkward._v2.forms.UnmaskedForm(
             awkward_form_of_iter(awkward, form.content),
-            form.has_identities,
-            form.parameters,
-        )
-    elif isinstance(form, awkward.forms.VirtualForm):
-        return awkward.forms.VirtualForm(
-            awkward_form_of_iter(awkward, form.form),
-            form.has_length,
-            form.has_identities,
+            form.has_identifiers,
             form.parameters,
         )
     else:
@@ -1079,3 +1073,15 @@ in file {1}""".format(
             if allow_missing and object_path not in file:
                 return None
             return file[object_path]
+
+
+def _content_cls_from_name(awkward, name):
+    if name.endswith("32") or name.endswith("64"):
+        name = name[-2:]
+    elif name.endswith("U32"):
+        name = name[-3:]
+    elif name.endswith("8_32") or name.endswith("8_64"):
+        name = name[-4:]
+    elif name.endswith("8_U32"):
+        name = name[-5:]
+    return getattr(awkward._v2.contents, name)

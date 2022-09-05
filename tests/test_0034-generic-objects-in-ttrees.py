@@ -237,11 +237,10 @@ def test_strided_awkward():
         result = tree["MET"].array(library="ak")
 
         assert (
-            repr(awkward.type(result))
-            == '2421 * TVector2["fX": float64, "fY": float64]'
+            str(awkward._v2.type(result)) == "2421 * TVector2[fX: float64, fY: float64]"
         )
 
-        assert awkward.to_list(result["fX"][:10]) == [
+        assert awkward._v2.to_list(result["fX"][:10]) == [
             5.912771224975586,
             24.76520347595215,
             -25.78508758544922,
@@ -253,7 +252,7 @@ def test_strided_awkward():
             42.416194915771484,
             -1.9144694805145264,
         ]
-        assert awkward.to_list(result["fY"][:10]) == [
+        assert awkward._v2.to_list(result["fY"][:10]) == [
             2.5636332035064697,
             -16.349109649658203,
             16.237131118774414,
@@ -275,9 +274,9 @@ def test_jagged_strided_awkward():
         result = tree["muonp4"].array(library="ak")
 
         assert (
-            repr(awkward.type(result))
-            == '2421 * var * TLorentzVector["fP": TVector3["fX": float64, '
-            '"fY": float64, "fZ": float64], "fE": float64]'
+            str(awkward._v2.type(result))
+            == "2421 * var * TLorentzVector[fP: TVector3[fX: float64, "
+            "fY: float64, fZ: float64], fE: float64]"
         )
 
         assert result[0, 0, "fE"] == 54.77949905395508
@@ -293,7 +292,7 @@ def test_jagged_awkward_1():
     ] as branch:
         assert branch.interpretation == AsJagged(AsDtype(">u8"), header_bytes=1)
         result = branch.array(library="ak", entry_stop=6)
-        assert awkward.to_list(result) == [
+        assert awkward._v2.to_list(result) == [
             [],
             [1],
             [2, 2],
@@ -310,7 +309,7 @@ def test_jagged_awkward_2():
     ] as branch:
         assert branch.interpretation == AsJagged(AsDtype(">f8"), header_bytes=10)
         result = branch.array(library="ak", entry_stop=6)
-        assert awkward.to_list(result) == [
+        assert awkward._v2.to_list(result) == [
             [],
             [1],
             [2, 2],
@@ -332,63 +331,25 @@ def test_general_awkward_form():
             "breadcrumbs": (),
         }
         assert json.loads(
-            branch.interpretation.awkward_form(branch.file, context).tojson(
-                verbose=False
-            )
+            branch.interpretation.awkward_form(branch.file, context).to_json()
         ) == json.loads(
             """{
     "class": "RecordArray",
     "contents": {
-        "ArrayF32": {
-            "class": "RegularArray",
-            "content": "float32",
-            "size": 10
-        },
-        "ArrayF64": {
-            "class": "RegularArray",
-            "content": "float64",
-            "size": 10
-        },
-        "ArrayI16": {
-            "class": "RegularArray",
-            "content": "int16",
-            "size": 10
-        },
-        "ArrayI32": {
-            "class": "RegularArray",
-            "content": "int32",
-            "size": 10
-        },
-        "ArrayI64": {
-            "class": "RegularArray",
-            "content": "int64",
-            "size": 10
-        },
-        "ArrayU16": {
-            "class": "RegularArray",
-            "content": "uint16",
-            "size": 10
-        },
-        "ArrayU32": {
-            "class": "RegularArray",
-            "content": "uint32",
-            "size": 10
-        },
-        "ArrayU64": {
-            "class": "RegularArray",
-            "content": "uint64",
-            "size": 10
-        },
         "Beg": {
-            "class": "ListOffsetArray64",
+            "class": "ListOffsetArray",
             "offsets": "i64",
             "content": {
                 "class": "NumpyArray",
-                "format": "B",
-                "itemsize": 1,
-                "parameters": {"__array__": "char"},
-                "primitive": "uint8"
+                "primitive": "uint8",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {
+                    "__array__": "char"
+                },
+                "form_key": null
             },
+            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -396,18 +357,87 @@ def test_general_awkward_form():
                     "header": false,
                     "length_bytes": "1-5"
                 }
-            }
+            },
+            "form_key": null
         },
-        "End": {
-            "class": "ListOffsetArray64",
+        "I16": {
+            "class": "NumpyArray",
+            "primitive": "int16",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "I32": {
+            "class": "NumpyArray",
+            "primitive": "int32",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "I64": {
+            "class": "NumpyArray",
+            "primitive": "int64",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "U16": {
+            "class": "NumpyArray",
+            "primitive": "uint16",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "U32": {
+            "class": "NumpyArray",
+            "primitive": "uint32",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "U64": {
+            "class": "NumpyArray",
+            "primitive": "uint64",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "F32": {
+            "class": "NumpyArray",
+            "primitive": "float32",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "F64": {
+            "class": "NumpyArray",
+            "primitive": "float64",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "Str": {
+            "class": "ListOffsetArray",
             "offsets": "i64",
             "content": {
                 "class": "NumpyArray",
-                "format": "B",
-                "itemsize": 1,
-                "parameters": {"__array__": "char"},
-                "primitive": "uint8"
+                "primitive": "uint8",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {
+                    "__array__": "char"
+                },
+                "form_key": null
             },
+            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -415,123 +445,345 @@ def test_general_awkward_form():
                     "header": false,
                     "length_bytes": "1-5"
                 }
-            }
+            },
+            "form_key": null
         },
-        "F32": "float32",
-        "F64": "float64",
-        "I16": "int16",
-        "I32": "int32",
-        "I64": "int64",
-        "N": "uint32",
         "P3": {
             "class": "RecordArray",
             "contents": {
-                "Px": "int32",
-                "Py": "float64",
-                "Pz": "int32"
+                "Px": {
+                    "class": "NumpyArray",
+                    "primitive": "int32",
+                    "inner_shape": [],
+                    "has_identifier": false,
+                    "parameters": {},
+                    "form_key": null
+                },
+                "Py": {
+                    "class": "NumpyArray",
+                    "primitive": "float64",
+                    "inner_shape": [],
+                    "has_identifier": false,
+                    "parameters": {},
+                    "form_key": null
+                },
+                "Pz": {
+                    "class": "NumpyArray",
+                    "primitive": "int32",
+                    "inner_shape": [],
+                    "has_identifier": false,
+                    "parameters": {},
+                    "form_key": null
+                }
             },
+            "has_identifier": false,
             "parameters": {
                 "__record__": "P3"
-            }
+            },
+            "form_key": null
         },
-        "SliceF32": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "float32",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
+        "ArrayI16": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "int16",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
         },
-        "SliceF64": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "float64",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
+        "ArrayI32": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "int32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "ArrayI64": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "int64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "ArrayU16": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint16",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "ArrayU32": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "ArrayU64": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "ArrayF32": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "float32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "ArrayF64": {
+            "class": "RegularArray",
+            "size": 10,
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "float64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
+        },
+        "N": {
+            "class": "NumpyArray",
+            "primitive": "uint32",
+            "inner_shape": [],
+            "has_identifier": false,
+            "parameters": {},
+            "form_key": null
         },
         "SliceI16": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "int16",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
-        },
-        "SliceI32": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "int32",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
-        },
-        "SliceI64": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "int64",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
-        },
-        "SliceU16": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "uint16",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
-        },
-        "SliceU32": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "uint32",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
-        },
-        "SliceU64": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "uint64",
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            }
-        },
-        "StdStr": {
-            "class": "ListOffsetArray64",
+            "class": "ListOffsetArray",
             "offsets": "i64",
             "content": {
                 "class": "NumpyArray",
-                "format": "B",
-                "itemsize": 1,
-                "parameters": {"__array__": "char"},
-                "primitive": "uint8"
+                "primitive": "int16",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
             },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "SliceI32": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "int32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "SliceI64": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "int64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "SliceU16": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint16",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "SliceU32": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "SliceU64": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "SliceF32": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "float32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "SliceF64": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "float64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "TStreamerBasicPointer",
+                    "count_name": "N"
+                }
+            },
+            "form_key": null
+        },
+        "StdStr": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint8",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {
+                    "__array__": "char"
+                },
+                "form_key": null
+            },
+            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -539,76 +791,186 @@ def test_general_awkward_form():
                     "header": true,
                     "length_bytes": "1-5"
                 }
-            }
-        },
-        "StlVecF32": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "float32",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
-        },
-        "StlVecF64": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "float64",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
+            },
+            "form_key": null
         },
         "StlVecI16": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "int16",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
-        },
-        "StlVecI32": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "int32",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
-        },
-        "StlVecI64": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "int64",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
-        },
-        "StlVecStr": {
-            "class": "ListOffsetArray64",
+            "class": "ListOffsetArray",
             "offsets": "i64",
             "content": {
-                "class": "ListOffsetArray64",
+                "class": "NumpyArray",
+                "primitive": "int16",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecI32": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "int32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecI64": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "int64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecU16": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint16",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecU32": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecU64": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "uint64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecF32": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "float32",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecF64": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "NumpyArray",
+                "primitive": "float64",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {},
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
+                }
+            },
+            "form_key": null
+        },
+        "StlVecStr": {
+            "class": "ListOffsetArray",
+            "offsets": "i64",
+            "content": {
+                "class": "ListOffsetArray",
                 "offsets": "i64",
                 "content": {
                     "class": "NumpyArray",
-                    "format": "B",
-                    "itemsize": 1,
-                    "parameters": {"__array__": "char"},
-                    "primitive": "uint8"
+                    "primitive": "uint8",
+                    "inner_shape": [],
+                    "has_identifier": false,
+                    "parameters": {
+                        "__array__": "char"
+                    },
+                    "form_key": null
                 },
+                "has_identifier": false,
                 "parameters": {
                     "__array__": "string",
                     "uproot": {
@@ -616,58 +978,32 @@ def test_general_awkward_form():
                         "header": false,
                         "length_bytes": "1-5"
                     }
+                },
+                "form_key": null
+            },
+            "has_identifier": false,
+            "parameters": {
+                "uproot": {
+                    "as": "vector",
+                    "header": true
                 }
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
+            "form_key": null
         },
-        "StlVecU16": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "uint16",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
-        },
-        "StlVecU32": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "uint32",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
-        },
-        "StlVecU64": {
-            "class": "ListOffsetArray64",
-            "offsets": "i64",
-            "content": "uint64",
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            }
-        },
-        "Str": {
-            "class": "ListOffsetArray64",
+        "End": {
+            "class": "ListOffsetArray",
             "offsets": "i64",
             "content": {
                 "class": "NumpyArray",
-                "format": "B",
-                "itemsize": 1,
-                "parameters": {"__array__": "char"},
-                "primitive": "uint8"
+                "primitive": "uint8",
+                "inner_shape": [],
+                "has_identifier": false,
+                "parameters": {
+                    "__array__": "char"
+                },
+                "form_key": null
             },
+            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -675,15 +1011,15 @@ def test_general_awkward_form():
                     "header": false,
                     "length_bytes": "1-5"
                 }
-            }
-        },
-        "U16": "uint16",
-        "U32": "uint32",
-        "U64": "uint64"
+            },
+            "form_key": null
+        }
     },
+    "has_identifier": false,
     "parameters": {
         "__record__": "Event"
-    }
+    },
+    "form_key": null
 }"""
         )
 
@@ -693,7 +1029,7 @@ def test_jagged_awkward_3():
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
         "tree/evt/StlVecStr"
     ] as branch:
-        assert awkward.to_list(branch.array(library="ak")[:6, :3]) == [
+        assert awkward._v2.to_list(branch.array(library="ak")[:6, :3]) == [
             [],
             ["vec-001"],
             ["vec-002", "vec-002"],
@@ -708,7 +1044,7 @@ def test_awkward_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["string"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["string"].array(library="ak")) == [
             "one",
             "two",
             "three",
@@ -722,7 +1058,7 @@ def test_awkward_tstring():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["tstring"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["tstring"].array(library="ak")) == [
             "one",
             "two",
             "three",
@@ -736,7 +1072,7 @@ def test_awkward_vector_int32():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["vector_int32"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["vector_int32"].array(library="ak")) == [
             [1],
             [1, 2],
             [1, 2, 3],
@@ -750,7 +1086,7 @@ def test_awkward_vector_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["vector_string"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["vector_string"].array(library="ak")) == [
             ["one"],
             ["one", "two"],
             ["one", "two", "three"],
@@ -764,7 +1100,7 @@ def test_awkward_vector_tstring():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["vector_tstring"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["vector_tstring"].array(library="ak")) == [
             ["one"],
             ["one", "two"],
             ["one", "two", "three"],
@@ -778,7 +1114,7 @@ def test_awkward_vector_vector_int32():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["vector_vector_int32"].array(library="ak")) == [
+        assert awkward._v2.to_list(tree["vector_vector_int32"].array(library="ak")) == [
             [[1]],
             [[1], [1, 2]],
             [[1], [1, 2], [1, 2, 3]],
@@ -792,7 +1128,9 @@ def test_awkward_vector_vector_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(tree["vector_vector_string"].array(library="ak")) == [
+        assert awkward._v2.to_list(
+            tree["vector_vector_string"].array(library="ak")
+        ) == [
             [["one"]],
             [["one"], ["one", "two"]],
             [["one"], ["one", "two"], ["one", "two", "three"]],
@@ -817,15 +1155,15 @@ def test_awkward_map_int32_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(tree["map_int32_int16"].array(library="ak"))
-        assert awkward.to_list(keys) == [
+        keys, values = awkward._v2.unzip(tree["map_int32_int16"].array(library="ak"))
+        assert awkward._v2.to_list(keys) == [
             [1],
             [1, 2],
             [1, 2, 3],
             [1, 2, 3, 4],
             [1, 2, 3, 4, 5],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             [1],
             [1, 2],
             [1, 2, 3],
@@ -839,15 +1177,17 @@ def test_awkward_map_int32_vector_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(tree["map_int32_vector_int16"].array(library="ak"))
-        assert awkward.to_list(keys) == [
+        keys, values = awkward._v2.unzip(
+            tree["map_int32_vector_int16"].array(library="ak")
+        )
+        assert awkward._v2.to_list(keys) == [
             [1],
             [1, 2],
             [1, 2, 3],
             [1, 2, 3, 4],
             [1, 2, 3, 4, 5],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             [[1]],
             [[1], [1, 2]],
             [[1], [1, 2], [1, 2, 3]],
@@ -861,17 +1201,17 @@ def test_awkward_map_int32_vector_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
+        keys, values = awkward._v2.unzip(
             tree["map_int32_vector_string"].array(library="ak")
         )
-        assert awkward.to_list(keys) == [
+        assert awkward._v2.to_list(keys) == [
             [1],
             [1, 2],
             [1, 2, 3],
             [1, 2, 3, 4],
             [1, 2, 3, 4, 5],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             [["one"]],
             [["one"], ["one", "two"]],
             [["one"], ["one", "two"], ["one", "two", "three"]],
@@ -896,15 +1236,15 @@ def test_awkward_map_string_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(tree["map_string_int16"].array(library="ak"))
-        assert awkward.to_list(keys) == [
+        keys, values = awkward._v2.unzip(tree["map_string_int16"].array(library="ak"))
+        assert awkward._v2.to_list(keys) == [
             ["one"],
             ["one", "two"],
             ["one", "three", "two"],
             ["four", "one", "three", "two"],
             ["five", "four", "one", "three", "two"],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             [1],
             [1, 2],
             [1, 3, 2],
@@ -918,17 +1258,17 @@ def test_awkward_map_string_vector_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
+        keys, values = awkward._v2.unzip(
             tree["map_string_vector_string"].array(library="ak")
         )
-        assert awkward.to_list(keys) == [
+        assert awkward._v2.to_list(keys) == [
             ["one"],
             ["one", "two"],
             ["one", "three", "two"],
             ["four", "one", "three", "two"],
             ["five", "four", "one", "three", "two"],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             [["one"]],
             [["one"], ["one", "two"]],
             [["one"], ["one", "two", "three"], ["one", "two"]],
@@ -953,17 +1293,17 @@ def test_awkward_map_int32_vector_vector_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
+        keys, values = awkward._v2.unzip(
             tree["map_int32_vector_vector_int16"].array(library="ak")
         )
-        assert awkward.to_list(keys) == [
+        assert awkward._v2.to_list(keys) == [
             [1],
             [1, 2],
             [1, 2, 3],
             [1, 2, 3, 4],
             [1, 2, 3, 4, 5],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             [[[1]]],
             [[[1]], [[1], [1, 2]]],
             [[[1]], [[1], [1, 2]], [[1], [1, 2], [1, 2, 3]]],
@@ -988,15 +1328,15 @@ def test_awkward_map_string_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(tree["map_string_string"].array(library="ak"))
-        assert awkward.to_list(keys) == [
+        keys, values = awkward._v2.unzip(tree["map_string_string"].array(library="ak"))
+        assert awkward._v2.to_list(keys) == [
             ["one"],
             ["one", "two"],
             ["one", "three", "two"],
             ["four", "one", "three", "two"],
             ["five", "four", "one", "three", "two"],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             ["ONE"],
             ["ONE", "TWO"],
             ["ONE", "THREE", "TWO"],
@@ -1010,15 +1350,15 @@ def test_awkward_map_string_tstring():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(tree["map_string_tstring"].array(library="ak"))
-        assert awkward.to_list(keys) == [
+        keys, values = awkward._v2.unzip(tree["map_string_tstring"].array(library="ak"))
+        assert awkward._v2.to_list(keys) == [
             ["one"],
             ["one", "two"],
             ["one", "three", "two"],
             ["four", "one", "three", "two"],
             ["five", "four", "one", "three", "two"],
         ]
-        assert awkward.to_list(values) == [
+        assert awkward._v2.to_list(values) == [
             ["ONE"],
             ["ONE", "TWO"],
             ["ONE", "THREE", "TWO"],
@@ -1038,13 +1378,10 @@ def test_awkward_map_int_struct():
         )
         result = branch.array(library="ak")
         assert (
-            repr(awkward.type(result))
-            == '1 * [var * (int64, struct[["charge", "mass", "name"], '
-            '[int64, float64, string], parameters={"__record__": '
-            '"BDSOutputROOTGeant4Data::ParticleInfo"}]), '
-            'parameters={"__array__": "sorted_map"}]'
+            str(awkward._v2.type(result))
+            == '1 * [var * (int64, struct[{name: string, charge: int64, mass: float64}, parameters={"__record__": "BDSOutputROOTGeant4Data::ParticleInfo"}]), parameters={"__array__": "sorted_map"}]'
         )
-        assert awkward.to_list(result[0, "0"]) == [
+        assert awkward._v2.to_list(result[0, "0"]) == [
             -1000020040,
             -1000020030,
             -1000010030,
@@ -1076,7 +1413,7 @@ def test_awkward_map_int_struct():
             1000020030,
             1000020040,
         ]
-        assert awkward.to_list(result[0, "1", "name"]) == [
+        assert awkward._v2.to_list(result[0, "1", "name"]) == [
             "anti_alpha",
             "anti_He3",
             "anti_triton",
@@ -1108,7 +1445,7 @@ def test_awkward_map_int_struct():
             "He3",
             "alpha",
         ]
-        assert awkward.to_list(result[0, "1", "charge"]) == [
+        assert awkward._v2.to_list(result[0, "1", "charge"]) == [
             -2,
             -2,
             -1,
@@ -1140,7 +1477,7 @@ def test_awkward_map_int_struct():
             2,
             2,
         ]
-        assert awkward.to_list(result[0, "1", "mass"]) == [
+        assert awkward._v2.to_list(result[0, "1", "mass"]) == [
             3.727379,
             2.808391,
             2.808921,
@@ -1180,54 +1517,54 @@ def test_awkward_nosplit_file():
         "tree/evt"
     ] as branch:
         result = branch.array(library="ak", entry_stop=5)
-        assert awkward.to_list(result["Beg"]) == [
+        assert awkward._v2.to_list(result["Beg"]) == [
             "beg-000",
             "beg-001",
             "beg-002",
             "beg-003",
             "beg-004",
         ]
-        assert awkward.to_list(result["I16"]) == [0, 1, 2, 3, 4]
-        assert awkward.to_list(result["F32"]) == [0.0, 1.0, 2.0, 3.0, 4.0]
-        assert awkward.to_list(result["Str"]) == [
+        assert awkward._v2.to_list(result["I16"]) == [0, 1, 2, 3, 4]
+        assert awkward._v2.to_list(result["F32"]) == [0.0, 1.0, 2.0, 3.0, 4.0]
+        assert awkward._v2.to_list(result["Str"]) == [
             "evt-000",
             "evt-001",
             "evt-002",
             "evt-003",
             "evt-004",
         ]
-        assert awkward.to_list(result["P3", "Px"]) == [-1, 0, 1, 2, 3]
-        assert awkward.to_list(result["P3", "Py"]) == [0.0, 1.0, 2.0, 3.0, 4.0]
-        assert awkward.to_list(result["P3", "Pz"]) == [-1, 0, 1, 2, 3]
-        assert awkward.to_list(result["ArrayI32"]) == [
+        assert awkward._v2.to_list(result["P3", "Px"]) == [-1, 0, 1, 2, 3]
+        assert awkward._v2.to_list(result["P3", "Py"]) == [0.0, 1.0, 2.0, 3.0, 4.0]
+        assert awkward._v2.to_list(result["P3", "Pz"]) == [-1, 0, 1, 2, 3]
+        assert awkward._v2.to_list(result["ArrayI32"]) == [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
             [4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
         ]
-        assert awkward.to_list(result["StdStr"]) == [
+        assert awkward._v2.to_list(result["StdStr"]) == [
             "std-000",
             "std-001",
             "std-002",
             "std-003",
             "std-004",
         ]
-        assert awkward.to_list(result["SliceI64"]) == [
+        assert awkward._v2.to_list(result["SliceI64"]) == [
             [],
             [1],
             [2, 2],
             [3, 3, 3],
             [4, 4, 4, 4],
         ]
-        assert awkward.to_list(result["StlVecStr"]) == [
+        assert awkward._v2.to_list(result["StlVecStr"]) == [
             [],
             ["vec-001"],
             ["vec-002", "vec-002"],
             ["vec-003", "vec-003", "vec-003"],
             ["vec-004", "vec-004", "vec-004", "vec-004"],
         ]
-        assert awkward.to_list(result["End"]) == [
+        assert awkward._v2.to_list(result["End"]) == [
             "end-000",
             "end-001",
             "end-002",
@@ -1278,7 +1615,7 @@ def test_map_string_TVector3():
         "Model/Model.scoringMeshTranslation"
     ] as branch:
         result = branch.array(library="ak")
-        assert awkward.to_list(result["0"]) == [
+        assert awkward._v2.to_list(result["0"]) == [
             [
                 "global_mesh",
                 "mesh_foil1",
@@ -1301,7 +1638,7 @@ def test_map_string_TVector3():
                 "mesh_t7",
             ]
         ]
-        assert awkward.to_list(result["1"]) == [
+        assert awkward._v2.to_list(result["1"]) == [
             [
                 {"fX": 0.0, "fY": 0.0, "fZ": 0.074},
                 {"fX": 0.0, "fY": 0.04, "fZ": 0.048509515},
@@ -1331,24 +1668,24 @@ def test_gohep_output_file():
     with uproot.open(skhep_testdata.data_path("uproot-issue413.root"))[
         "mytree"
     ] as tree:
-        assert awkward.to_list(tree["I32"].array()) == [0, 1, 2, 3, 4]
-        assert awkward.to_list(tree["F64"].array()) == [0.0, 1.0, 2.0, 3.0, 4.0]
-        assert awkward.to_list(tree["Str"].array()) == [
+        assert awkward._v2.to_list(tree["I32"].array()) == [0, 1, 2, 3, 4]
+        assert awkward._v2.to_list(tree["F64"].array()) == [0.0, 1.0, 2.0, 3.0, 4.0]
+        assert list(tree["Str"].array()) == [
             "evt-0",
             "evt-1",
             "evt-2",
             "evt-3",
             "evt-4",
         ]
-        assert awkward.to_list(tree["ArrF64"].array()) == [
+        assert awkward._v2.to_list(tree["ArrF64"].array()) == [
             [0.0, 1.0, 2.0, 3.0, 4.0],
             [1.0, 2.0, 3.0, 4.0, 5.0],
             [2.0, 3.0, 4.0, 5.0, 6.0],
             [3.0, 4.0, 5.0, 6.0, 7.0],
             [4.0, 5.0, 6.0, 7.0, 8.0],
         ]
-        assert awkward.to_list(tree["N"].array()) == [0, 1, 2, 3, 4]
-        assert awkward.to_list(tree["SliF64"].array()) == [
+        assert awkward._v2.to_list(tree["N"].array()) == [0, 1, 2, 3, 4]
+        assert awkward._v2.to_list(tree["SliF64"].array()) == [
             [],
             [1.0],
             [2.0, 3.0],

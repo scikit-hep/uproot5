@@ -1,14 +1,19 @@
 name: "Test build"
 
 on:
+  workflow_dispatch:
+  pull_request:
   push:
     branches: ["main"]
-  pull_request:
-    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         platform: ["windows-latest", "macos-latest", "ubuntu-latest"]
         python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
@@ -22,6 +27,7 @@ jobs:
       fail-fast: false
 
     runs-on: "${{ matrix.platform }}"
+    timeout-minutes: 30
 
     # Required for miniconda to activate conda
     defaults:
@@ -36,50 +42,29 @@ jobs:
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-          channels: "conda-forge"
-
-      - name: "Install most dependencies"
-        run: |
-          conda env list
-          conda info
-          conda install numpy pandas pytest lz4 python-xxhash requests
-          pip install scikit-hep-testdata boost-histogram hist dask[array]
-          conda list
-
-      - name: "Install Awkward"
-        if: "runner.os != 'Windows'"
-        run: |
-          conda env list
-          pip install --pre "awkward>=1.0.0"
-          conda list
+          miniforge-variant: Mambaforge
+          use-mamba: true
 
       - name: "Install ROOT"
         if: "matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
-          conda install root
+          mamba install root
+          pip install dask-awkward
           conda list
 
       - name: "Install XRootD"
         if: "runner.os != 'macOS'  &&  runner.os != 'Windows'"
         run: |
           conda env list
-          conda install xrootd
-          conda list
-
-      - name: "Install pytest-rerunfailures"
-        id: rerunfailures-install
-        run: |
-          conda env list
-          conda install pytest-rerunfailures || pip install pytest-rerunfailures
+          mamba install xrootd
           conda list
 
       - name: "Pip install the package"
-        run: python -m pip install .
+        run: python -m pip install .[test,dev]
 
       - name: "Run pytest"
         run: |
-          PYTEST_EXTRA_FLAGS="--only-rerun requests.exceptions.HTTPError"
           python -m pytest -vv tests \
             --reruns 3 --reruns-delay 30 \
-            ${PYTEST_EXTRA_FLAGS:-}
+            --only-rerun requests.exceptions.HTTPError
