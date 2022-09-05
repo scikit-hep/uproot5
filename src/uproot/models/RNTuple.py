@@ -67,7 +67,6 @@ in file {}""".format(
             self._members["fReserved"],
         ) = cursor.fields(chunk, _rntuple_format1, context)
 
-
         self._headerfooter_chunk_ready = False
         self._header, self._footer = None, None
 
@@ -77,7 +76,6 @@ in file {}""".format(
         # back link from column name to page inner list
         self.column_innerlist_dict = {}
 
-        
     def _prepare_headerfooter_chunk(self):
         context = {}
         seek, nbytes = self._members["fSeekHeader"], self._members["fNBytesHeader"]
@@ -413,26 +411,29 @@ in file {}""".format(
 
     def _serialize(self, out, header, name, tobject_flags):
         import uproot.writing._cascade
+
         where = len(out)
         for x in self._bases:
             x._serialize(out, True, None, tobject_flags)
 
-        out.append(_rntuple_format1.pack(
-            self._members["fCheckSum"],
-            self._members["fVersion"],
-            self._members["fSize"],
-            self._members["fSeekHeader"],
-            self._members["fNBytesHeader"],
-            self._members["fLenHeader"],
-            self._members["fSeekFooter"],
-            self._members["fNBytesFooter"],
-            self._members["fLenFooter"],
-            self._members["fReserved"]
-            ))
+        out.append(
+            _rntuple_format1.pack(
+                self._members["fCheckSum"],
+                self._members["fVersion"],
+                self._members["fSize"],
+                self._members["fSeekHeader"],
+                self._members["fNBytesHeader"],
+                self._members["fLenHeader"],
+                self._members["fSeekFooter"],
+                self._members["fNBytesFooter"],
+                self._members["fLenFooter"],
+                self._members["fReserved"],
+            )
+        )
 
         if header:
             num_bytes = sum(len(x) for x in out[where:])
-            version = 0 #RNTuple is pre-release, thus 0
+            version = 0  # RNTuple is pre-release, thus 0
             out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
 
