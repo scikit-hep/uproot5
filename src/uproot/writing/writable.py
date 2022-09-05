@@ -213,6 +213,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._fUUID = self._cascading.fileheader.uuid.bytes
 
         self._trees = {}
+        self._ntuples = {}
 
     def __repr__(self):
         return f"<WritableFile {self.file_path!r} at 0x{id(self):012x}>"
@@ -417,6 +418,9 @@ class WritableFile(uproot.reading.CommonFileMethods):
 
     def _new_tree(self, tree):
         self._trees[tree._cascading.key.seek_location] = tree
+
+    def _new_ntuple(self, ntuple):
+        self._ntuples[ntuple._cascading.key.seek_location] = ntuple
 
     def _has_tree(self, loc):
         return loc in self._trees
@@ -1312,6 +1316,48 @@ in file {} in directory {}""".format(
 
         return tree
 
+    def mkntuple(
+        self,
+        name,
+        branch_types,
+        title="",
+    ):
+        """
+        Args:
+            name (str): Name of the new RNTuple.
+            branch_types (dict or pairs of str \u2192 NumPy dtype/Awkward type): Name
+                and type specification for the TBranches.
+            title (str): Title for the new RNTuple.
+
+        Creates an empty RNTuple in this directory.
+        """
+        if self._file.sink.closed:
+            raise ValueError("cannot create a RNTuple in a closed file")
+
+        try:
+            at = name.rindex("/")
+        except ValueError:
+            treename = name
+            directory = self
+        else:
+            dirpath, treename = name[:at], name[at + 1 :]
+            directory = self.mkdir(dirpath)
+
+        path = directory._path + (treename,)
+
+        ntuple = WritableNTuple(
+            path,
+            directory._file,
+            directory._cascading.add_ntuple(
+                directory._file.sink,
+                treename,
+                title,
+                branch_types,
+            ),
+        )
+        directory._file._new_ntuple(ntuple)
+        return ntuple
+
     def copy_from(
         self,
         source,
@@ -1850,3 +1896,236 @@ class WritableBranch:
             raise TypeError(
                 "compression must be None or a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0)"
             )
+
+class WritableNTuple:
+    """
+    Args:
+        path (tuple of str): Path of directory names to this RNTuple.
+        file (:doc:`uproot.writing.writable.WritableFile`): Handle to the file in
+            which this RNTuple can be found.
+        cascading (:doc:`uproot.writing._cascadetree.NTuple`): The low-level
+            directory object.
+
+    Represents a writable ``RNTuple`` from a ROOT file.
+
+    Assigning TTree-like data to a directory creates the TTree object with all of
+    its metadata and fills it with the contents of the arrays in one step. To separate
+    the process of creating the TTree metadata from filling the first TBasket, use the
+    :doc:`uproot.writing.writable.WritableDirectory.mktree` method:
+
+    .. code-block:: python
+
+        my_directory.mkntuple("tuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
+
+    The ``numpy_dtype`` is any data that NumPy recognizes as a ``np.dtype``, and the
+    ``awkward_type`` is an `ak.types.Type <https://awkward-array.readthedocs.io/en/latest/ak.types.Type.html>`__ from
+    `ak.type <https://awkward-array.readthedocs.io/en/latest/_auto/ak.type.html>`__ or
+    a string in that form, such as ``"var * float64"`` for variable-length doubles.
+
+    RNTuple can be extended using :ref:`uproot.writing.writable.WritableNTuple.extend`
+    method:
+
+    .. code-block:: python
+
+        my_directory["tuple6"].extend({"branch1": another_numpy_array,
+                                      "branch2": another_awkward_array})
+
+    Be sure to make these extensions as large as is feasible within memory constraints,
+    because a ROOT file full of small clusters is bloated (larger than it needs to be)
+    and slow to read (especially for Uproot, but also for ROOT).
+
+    For instance, if you want to write a million events and have enough memory
+    available to do that 100 thousand events at a time (total of 10 TBaskets),
+    then do so. Filling the RNTuple a hundred events at a time (total of 10000 TBaskets)
+    would be considerably slower for writing and reading, and the file would be much
+    larger than it could otherwise be, even with compression.
+    """
+
+    def __init__(self, path, file, cascading):
+        self._path = path
+        self._file = file
+        self._cascading = cascading
+
+    def __repr__(self):
+        return "<WritableNTuple {} at 0x{:012x}>".format(
+            repr("/" + "/".join(self._path)), id(self)
+        )
+
+    @property
+    def path(self):
+        """
+        Path of directory names to this RNTuple as a tuple of strings.
+        """
+        return self._path
+
+    @property
+    def object_path(self):
+        """
+        Path of directory names to this RNTuple as a single string, delimited by
+        slashes.
+        """
+        return "/".join(("",) + self._path + ("",)).replace("//", "/")
+
+    @property
+    def file_path(self):
+        """
+        Filesystem path of the open file, or None if using a file-like object.
+        """
+        return self._file.file_path
+
+    @property
+    def file(self):
+        """
+        Handle to the :doc:`uproot.writing.writable.WritableDirectory` in which
+        this directory can be found.
+        """
+        return self._file
+
+    def close(self):
+        """
+        Explicitly close the file.
+
+        (Files can also be closed with the Python ``with`` statement, as context
+        managers.)
+
+        After closing, objects cannot be read from or written to the file.
+        """
+        self._file.close()
+
+    @property
+    def closed(self):
+        """
+        True if the file has been closed; False otherwise.
+
+        The file may have been closed explicitly with
+        :ref:`uproot.writing.writable.WritableFile.close` or implicitly in the Python
+        ``with`` statement, as a context manager.
+
+        After closing, objects cannot be read from or written to the file.
+        """
+        return self._file.closed
+
+    def __enter__(self):
+        self._file.sink.__enter__()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._file.sink.__exit__(exception_type, exception_value, traceback)
+
+    @property
+    def compression(self):
+        """
+        Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
+        for new blobs added to the RNTuple.
+
+        This property can be changed and doesn't have to be the same as the compression
+        of the file, which allows you to write different objects with different
+        compression settings.
+
+        The following are equivalent:
+
+        .. code-block:: python
+
+            my_directory["tree"]["branch1"].compression = uproot.ZLIB(1)
+            my_directory["tree"]["branch2"].compression = uproot.LZMA(9)
+
+        and
+
+        .. code-block:: python
+
+            my_directory["tree"].compression = {"branch1": uproot.ZLIB(1),
+                                                "branch2": uproot.LZMA(9)}
+        """
+        out = {}
+        last = None
+        for datum in self._cascading._branch_data:
+            if datum["kind"] != "record":
+                last = out[datum["fName"]] = datum["compression"]
+        if all(x == last for x in out.values()):
+            return last
+        else:
+            return out
+
+    @compression.setter
+    def compression(self, value):
+        if value is None or isinstance(value, uproot.compression.Compression):
+            for datum in self._cascading._branch_data:
+                if datum["kind"] != "record":
+                    datum["compression"] = value
+
+        elif (
+            isinstance(value, Mapping)
+            and all(
+                uproot._util.isstr(k)
+                and (v is None or isinstance(v, uproot.compression.Compression))
+                for k, v in value.items()
+            )
+            and all(
+                datum["fName"] in value
+                for datum in self._cascading._branch_data
+                if datum["kind"] != "record"
+            )
+            and len(value)
+            == len(
+                [
+                    datum
+                    for datum in self._cascading._branch_data
+                    if datum["kind"] != "record"
+                ]
+            )
+        ):
+            for datum in self._cascading._branch_data:
+                if datum["kind"] != "record":
+                    datum["compression"] = value[datum["fName"]]
+
+        else:
+            raise TypeError(
+                "compression must be None, a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0), or a mapping of branch names to such objects"
+            )
+
+    def __getitem__(self, where):
+        for datum in self._cascading._branch_data:
+            if datum["kind"] != "record" and datum["fName"] == where:
+                return WritableBranch(self, datum)
+        else:
+            raise uproot.KeyInFileError(
+                where,
+                because="no such branch in writable tree",
+                file_path=self.file_path,
+            )
+
+    @property
+    def num_entries(self):
+        """
+        The number of entries accumulated so far.
+        """
+        return self._cascading.num_entries
+
+    def extend(self, data):
+        """
+        Args:
+            data (dict of str \u2192 arrays): More array data to add to the RNTuple.
+
+        This method adds data to an existing RNTuple, whether it was created through
+        assignment or :doc:`uproot.writing.writable.WritableDirectory.mkntuple`.
+
+        The arrays must be a dict, but the values of the dict can be any of the
+        array/DataFrame types described in :doc:`uproot.writing.writable.WritableTree`.
+        However, these types must be compatible with the established TBranch
+        types, the dict must contain a key for every TBranch, and the arrays must have
+        the same lengths (in their first dimension).
+
+        For example,
+
+        .. code-block:: python
+
+            my_directory.mkntuple("ntuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
+
+            my_directory["ntuple6"].extend({"branch1": another_numpy_array,
+                                          "branch2": another_awkward_array})
+
+        .. warning::
+
+            **As a word of warning,** be sure that each call to :ref:`uproot.writing.writable.WritableNTuple.extend` includes at least 100 kB per branch/array. (NumPy and Awkward Arrays have an `nbytes <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.nbytes.html>`__ property; you want at least ``100000`` per array.) If you ask Uproot to write very small TBaskets, it will spend more time working on TBasket overhead than actually writing data. The absolute worst case is one-entry-per-:ref:`uproot.writing.writable.WritableTree.extend`. See `#428 (comment) <https://github.com/scikit-hep/uproot4/pull/428#issuecomment-908703486>`__.
+        """
+        self._cascading.extend(self._file, self._file.sink, data)

@@ -36,7 +36,6 @@ import uproot.serialization
 import uproot.source.chunk
 import uproot.source.cursor
 import uproot.streamers
-import uproot.writing._cascadetree
 
 
 class CascadeLeaf:
@@ -466,6 +465,9 @@ class Key(CascadeLeaf):
             created_on=uproot._util.code_to_datetime(fDatime),
             big=big,
         )
+
+class RKeyBlob(Key):
+    pass
 
 
 _free_format_small = struct.Struct(">HII")
@@ -1786,6 +1788,8 @@ class Directory(CascadeNode):
         initial_basket_capacity,
         resize_factor,
     ):
+        import uproot.writing._cascadetree
+
         tree = uproot.writing._cascadetree.Tree(
             self,
             name,
@@ -1799,6 +1803,28 @@ class Directory(CascadeNode):
         )
         tree.write_anew(sink)
         return tree
+
+    def add_ntuple(
+        self,
+        sink,
+        name,
+        title,
+        branch_types,
+    ):
+        import uproot.writing._cascadentuple
+        anchor = uproot.writing._cascadentuple.NTuple_Anchor(
+                None, 1700499286, 0, 48, 866, 133, 159, 1201, 81, 104, 0
+                )
+        ntuple = uproot.writing._cascadentuple.NTuple(
+            self,
+            name,
+            title,
+            branch_types,
+            self._freesegments,
+            anchor
+        )
+        ntuple.write(sink)
+        return ntuple
 
 
 class RootDirectory(Directory):

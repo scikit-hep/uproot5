@@ -31,8 +31,6 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     A versionless :doc:`uproot.model.Model` for ``ROOT::Experimental::RNTuple``.
     """
 
-    writable = True
-
     @property
     def _keys(self):
         keys = []
@@ -408,33 +406,6 @@ in file {}""".format(
         return ak._v2.from_buffers(form, cluster_num_entries, container_dict)[
             entry_start:entry_stop
         ]
-
-    def _serialize(self, out, header, name, tobject_flags):
-        import uproot.writing._cascade
-
-        where = len(out)
-        for x in self._bases:
-            x._serialize(out, True, None, tobject_flags)
-
-        out.append(
-            _rntuple_format1.pack(
-                self._members["fCheckSum"],
-                self._members["fVersion"],
-                self._members["fSize"],
-                self._members["fSeekHeader"],
-                self._members["fNBytesHeader"],
-                self._members["fLenHeader"],
-                self._members["fSeekFooter"],
-                self._members["fNBytesFooter"],
-                self._members["fLenFooter"],
-                self._members["fReserved"],
-            )
-        )
-
-        if header:
-            num_bytes = sum(len(x) for x in out[where:])
-            version = 0  # RNTuple is pre-release, thus 0
-            out.insert(where, uproot.serialization.numbytes_version(num_bytes, version))
 
 
 # Supporting function and classes
