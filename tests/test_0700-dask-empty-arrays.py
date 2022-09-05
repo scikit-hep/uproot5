@@ -27,12 +27,38 @@ def test_dask_numpy_empty_arrays():
         assert comp.all(), f"Incorrect array at key {key}"
 
 
+def test_dask_delayed_open_numpy():
+    test_path = skhep_testdata.data_path("uproot-issue-697.root") + ":tree"
+    ttree = uproot.open(test_path)
+
+    np_arrays = ttree.arrays(library="np")
+    dask_arrays = uproot.dask(test_path, library="np", open_files=False)
+
+    assert list(dask_arrays.keys()) == list(
+        np_arrays.keys()
+    ), "Different keys detected in dictionary of dask arrays and dictionary of numpy arrays"
+
+    for key in np_arrays.keys():
+        comp = dask_arrays[key].compute() == np_arrays[key]
+        assert comp.all(), f"Incorrect array at key {key}"
+
+
 def test_dask_awkward_empty_arrays():
     test_path = skhep_testdata.data_path("uproot-issue-697.root") + ":tree"
     ttree = uproot.open(test_path)
 
     ak_array = ttree.arrays()
     dak_array = uproot.dask(test_path, library="ak")
+
+    assert_eq(dak_array, ak_array)
+
+
+def test_dask_delayed_open_awkward():
+    test_path = skhep_testdata.data_path("uproot-issue-697.root") + ":tree"
+    ttree = uproot.open(test_path)
+
+    ak_array = ttree.arrays()
+    dak_array = uproot.dask(test_path, library="ak", open_files=False)
 
     assert_eq(dak_array, ak_array)
 

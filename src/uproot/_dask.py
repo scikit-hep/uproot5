@@ -327,6 +327,25 @@ class _UprootReadNumpy:
         )
 
 
+class _UprootOpenAndReadNumpy:
+    def __init__(self, custom_classes, allow_missing, real_options, key):
+        self.custom_classes = custom_classes
+        self.allow_missing = allow_missing
+        self.real_options = real_options
+        self.key = key
+
+    def __call__(self, file_path_object_path):
+        file_path, object_path = file_path_object_path
+        ttree = uproot._util.regularize_object_path(
+            file_path,
+            object_path,
+            self.custom_classes,
+            self.allow_missing,
+            self.real_options,
+        )
+        return ttree[self.key].array(library="np")
+
+
 def _get_dask_array(
     files,
     filter_name=no_filter,
@@ -466,8 +485,6 @@ def _get_dask_array_delay_open(
     allow_missing=False,
     real_options=None,
 ):
-    dask = uproot.extras.dask()
-    da = uproot.extras.dask_array()
     ffile_path, fobject_path = files[0]
     obj = uproot._util.regularize_object_path(
         ffile_path, fobject_path, custom_classes, allow_missing, real_options
@@ -481,27 +498,21 @@ def _get_dask_array_delay_open(
     )
 
     dask_dict = {}
-    delayed_open_fn = dask.delayed(uproot._util.regularize_object_path)
-
-    @dask.delayed
-    def delayed_get_array(ttree, key):
-        return ttree[key].array(library="np")
 
     for key in common_keys:
-        dask_arrays = []
-        for file_path, object_path in files:
-            delayed_tree = delayed_open_fn(
-                file_path, object_path, custom_classes, allow_missing, real_options
-            )
-            delayed_array = delayed_get_array(delayed_tree, key)
-            dt = obj[key].interpretation.numpy_dtype
-            if dt.subdtype is not None:
-                dt, inner_shape = dt.subdtype
+        dt = obj[key].interpretation.numpy_dtype
+        if dt.subdtype is None:
+            inner_shape = ()
+        else:
+            dt, inner_shape = dt.subdtype
 
-            dask_arrays.append(
-                da.from_delayed(delayed_array, shape=(numpy.nan,), dtype=dt)
-            )
-        dask_dict[key] = da.concatenate(dask_arrays, allow_unknown_chunksizes=True)
+        dask_dict[key] = _dask_array_from_map(
+            _UprootOpenAndReadNumpy(custom_classes, allow_missing, real_options, key),
+            files,
+            chunks=((numpy.nan,) * len(files),),
+            dtype=dt,
+            label=f"{key}-from-uproot",
+        )
     return dask_dict
 
 
@@ -679,13 +690,8 @@ def _get_dak_array_delay_open(
         full_paths=full_paths,
     )
 
-    first_basket_start, first_basket_stop = obj[common_keys[0]].basket_entry_start_stop(
-        0
-    )
-    first_basket = obj.arrays(
-        common_keys, entry_start=first_basket_start, entry_stop=first_basket_stop
-    )
-    meta = dask_awkward.core.typetracer_array(first_basket)
+    empty_arr = obj.arrays(common_keys, entry_start=0, entry_stop=0)
+    meta = dask_awkward.core.typetracer_array(empty_arr)
 
     return dask_awkward.from_map(
         _UprootOpenAndRead(custom_classes, allow_missing, real_options, common_keys),
