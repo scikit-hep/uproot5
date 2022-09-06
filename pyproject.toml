@@ -87,7 +87,7 @@ markers = [
     "network",
     "xrootd",
 ]
-#timeout = 600
+timeout = 600
 
 [tool.isort]
 profile = "black"
