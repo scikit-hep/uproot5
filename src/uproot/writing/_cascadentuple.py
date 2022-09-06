@@ -10,9 +10,9 @@ See :doc:`uproot.writing._cascade` for a general overview of the cascading write
 """
 
 
+import datetime
 import struct
 import zlib
-import datetime
 
 import uproot
 import uproot.compression
@@ -20,14 +20,15 @@ import uproot.const
 import uproot.reading
 import uproot.serialization
 from uproot.models.RNTuple import (
+    _rntuple_column_record_format,
     _rntuple_feature_flag_format,
     _rntuple_field_description,
-    _rntuple_column_record_format,
     _rntuple_format1,
     _rntuple_frame_format,
     _rntuple_record_size_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
+
 
 class RBlob_Key(Key):
     def __init__(
@@ -52,24 +53,25 @@ class RBlob_Key(Key):
             big=big,
         )
 
+
 def _serialize_rntuple_string(content):
     return _record_frame_wrap(str.encode(content))
+
 
 def _record_frame_wrap(payload):
     aloc = len(payload)
     raw_bytes = _rntuple_record_size_format.pack(aloc) + payload
     return raw_bytes
 
+
 def _serialize_rntuple_list_frame(items):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
     payload_bytes = b"".join([_record_frame_wrap(x.serialize()) for x in items])
     size = 4 + 4 + len(payload_bytes)
-    size_bytes = struct.Struct("<i").pack(-size) # negative size means list
+    size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
     # n.b last byte of `n_item bytes` is reserved as of Sep 2022
-    raw_bytes = b"".join(
-        [size_bytes, n_items.to_bytes(4, "little"), payload_bytes]
-    )
+    raw_bytes = b"".join([size_bytes, n_items.to_bytes(4, "little"), payload_bytes])
     return raw_bytes
 
 
@@ -118,15 +120,10 @@ class NTuple_Field_Description:
         )
         return b"".join([header_bytes, string_bytes])
 
+
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#column-description
 class NTuple_Column_Description:
-    def __init__(
-        self,
-        type_num,
-        bits_on_disk,
-        field_id,
-        flags
-    ):
+    def __init__(self, type_num, bits_on_disk, field_id, flags):
         self.type_num = type_num
         self.bits_on_disk = bits_on_disk
         self.field_id = field_id
@@ -140,6 +137,7 @@ class NTuple_Column_Description:
             self.flags,
         )
         return header_bytes
+
 
 """
  0                   1                   2                   3
@@ -198,11 +196,7 @@ class NTuple_Header(CascadeLeaf):
                 0, 0, 0, 0, 0, "one_integers", "std::int32_t", "", ""
             )
         ]
-        column_records = [
-            NTuple_Column_Description(
-                11, 32, 0, 0
-            )
-        ]
+        column_records = [NTuple_Column_Description(11, 32, 0, 0)]
         alias_records = []
         extra_type_info = []
 
@@ -409,10 +403,9 @@ class NTuple(CascadeNode):
             location,
             uncompressed_bytes,
             len(raw_data),
-            created_on = datetime.datetime.now(),
-            big=big
+            created_on=datetime.datetime.now(),
+            big=big,
         )
-
 
         key.write(sink)
         sink.write(location + key.num_bytes, raw_data)
@@ -429,7 +422,9 @@ class NTuple(CascadeNode):
             big=False,
         )
 
-        self._anchor.fSeekHeader = self._header_key.location + self._header_key.allocation
+        self._anchor.fSeekHeader = (
+            self._header_key.location + self._header_key.allocation
+        )
         self._anchor.fNBytesHeader = len(header_raw_data)
         self._anchor.fLenHeader = len(header_raw_data)
 

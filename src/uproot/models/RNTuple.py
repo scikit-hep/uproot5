@@ -5,10 +5,10 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 """
 
 import struct
+import zlib
 
 import awkward as ak
 import numpy
-import zlib
 
 import uproot
 
@@ -581,7 +581,6 @@ class ColumnRecordReader:
 
 
 class AliasColumnReader:
-
     def read(self, chunk, cursor, context):
         out = MetaData("AliasColumn")
 
@@ -592,7 +591,6 @@ class AliasColumnReader:
 
 
 class ExtraTypeInfoReader:
-
     def read(self, chunk, cursor, context):
         out = MetaData("ExtraTypeInfoReader")
 

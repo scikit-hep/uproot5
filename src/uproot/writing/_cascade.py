@@ -467,7 +467,6 @@ class Key(CascadeLeaf):
         )
 
 
-
 _free_format_small = struct.Struct(">HII")
 _free_format_big = struct.Struct(">HQQ")
 
