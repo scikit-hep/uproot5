@@ -13,7 +13,6 @@ See :doc:`uproot.writing._cascade` for a general overview of the cascading write
 import struct
 import zlib
 
-
 import uproot
 import uproot.compression
 import uproot.const
@@ -23,7 +22,7 @@ from uproot.models.RNTuple import (
     _rntuple_feature_flag_format,
     _rntuple_field_description,
     _rntuple_format1,
-    _rntuple_frame_format
+    _rntuple_frame_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode
 
