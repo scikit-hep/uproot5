@@ -35,7 +35,7 @@ in file {}""".format(
             )
         if helper_obj.is_forth():
             helper_obj.add_to_pre(
-                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data\n"
+                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
             )
             if forth_obj.should_add_form():
                 temp_aform = {
@@ -59,15 +59,15 @@ in file {}""".format(
                 forth_obj.add_form(temp_aform)
 
                 form_keys = [
-                    f"part0-node{data_num}-data",
-                    f"part0-node{offsets_num}-offsets",
+                    f"node{data_num}-data",
+                    f"node{offsets_num}-offsets",
                 ]
                 for elem in form_keys:
                     forth_obj.add_form_key(elem)
             helper_obj.add_to_header(
-                f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
+                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            helper_obj.add_to_init(f"0 part0-node{offsets_num}-offsets <- stack\n")
+            helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
                 helper_obj.get_pre(),

@@ -60,11 +60,11 @@ def _read_nested(
             raise TypeError("Cannot be awkward")
         if helper_obj.is_forth():
             key = forth_obj.get_keys(1)
-            form_key = f"part0-node{key}-data"
+            form_key = f"node{key}-data"
             helper_obj.add_to_header(
-                f"output part0-node{key}-data {uproot._awkward_forth.convert_dtype(symbol)}\n"
+                f"output node{key}-data {uproot._awkward_forth.convert_dtype(symbol)}\n"
             )
-            helper_obj.add_to_pre(f"stream #!{symbol}-> part0-node{key}-data\n")
+            helper_obj.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
             if forth_obj.should_add_form():
                 forth_obj.add_form_key(form_key)
                 forth_obj.add_form(
@@ -502,14 +502,14 @@ class AsString(AsContainer):
             out = cursor.string(chunk, context)
             if helper_obj.is_forth():
                 helper_obj.add_to_pre(
-                    f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{offsets_num}-offsets +<- stack stream #!B-> part0-node{data_num}-data\n"
+                    f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
                 )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
             if helper_obj.is_forth():
                 helper_obj.add_to_pre(
-                    f"stream !I-> stack dup part0-node{offsets_num}-offsets +<- stack stream #B-> part0-node{data_num}-data\n"
+                    f"stream !I-> stack dup node{offsets_num}-offsets +<- stack stream #B-> node{data_num}-data\n"
                 )
         else:
             raise AssertionError(repr(self._length_bytes))
@@ -541,9 +541,9 @@ class AsString(AsContainer):
                 for elem in form_keys:
                     forth_obj.add_form_key(elem)
             helper_obj.add_to_header(
-                f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
+                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            helper_obj.add_to_init(f"0 part0-node{offsets_num}-offsets <- stack\n")
+            helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
                 helper_obj.get_pre(),
@@ -758,22 +758,20 @@ in file {}""".format(
             else:
                 if helper_obj.is_forth():
                     helper_obj.add_to_header(
-                        f"output part0-node{offsets_num}-offsets int64\n"
+                        f"output node{offsets_num}-offsets int64\n"
                     )
-                    form_key = f"part0-node{offsets_num}-offsets"
-                    helper_obj.add_to_init(
-                        f"0 part0-node{offsets_num}-offsets <- stack\n"
-                    )
+                    form_key = f"node{offsets_num}-offsets"
+                    helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
                     helper_obj.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
                     if len(self.inner_shape) > 0:
                         helper_obj.add_to_post(
-                            f"repeat\nswap {self.inner_shape[0]} / part0-node{offsets_num}-offsets +<- stack drop\n"
+                            f"repeat\nswap {self.inner_shape[0]} / node{offsets_num}-offsets +<- stack drop\n"
                         )
                     else:
                         helper_obj.add_to_post(
-                            f"repeat\nswap part0-node{offsets_num}-offsets +<- stack drop\n"
+                            f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
@@ -841,22 +839,20 @@ in file {}""".format(
 
                 if helper_obj.is_forth():
                     helper_obj.add_to_header(
-                        f"output part0-node{offsets_num}-offsets int64\n"
+                        f"output node{offsets_num}-offsets int64\n"
                     )
-                    form_key = f"part0-node{offsets_num}-offsets"
-                    helper_obj.add_to_init(
-                        f"0 part0-node{offsets_num}-offsets <- stack\n"
-                    )
+                    form_key = f"node{offsets_num}-offsets"
+                    helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
                     helper_obj.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
                     if len(self.inner_shape) > 0:
                         helper_obj.add_to_post(
-                            f"repeat\nswap {self.inner_shape[0]} / part0-node{offsets_num}-offsets +<- stack drop\n"
+                            f"repeat\nswap {self.inner_shape[0]} / node{offsets_num}-offsets +<- stack drop\n"
                         )
                     else:
                         helper_obj.add_to_post(
-                            f"repeat\nswap part0-node{offsets_num}-offsets +<- stack drop\n"
+                            f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
@@ -1181,11 +1177,11 @@ class AsVector(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
             if helper_obj.is_forth():
                 key = forth_obj.get_keys(1)
-                form_key = f"part0-node{key}-offsets"
-                helper_obj.add_to_header(f"output part0-node{key}-offsets int64\n")
-                helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\n")
+                form_key = f"node{key}-offsets"
+                helper_obj.add_to_header(f"output node{key}-offsets int64\n")
+                helper_obj.add_to_init(f"0 node{key}-offsets <- stack\n")
                 helper_obj.add_to_pre(
-                    f"stream !I-> stack\n dup part0-node{key}-offsets +<- stack\n"
+                    f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
                 # helper_obj.add_to_post("loop\n")
                 if forth_obj.should_add_form():
@@ -1347,11 +1343,11 @@ in file {}""".format(
         if helper_obj.is_forth():
             key = forth_obj.get_keys(1)
 
-            form_key = f"part0-node{key}-offsets"
-            helper_obj.add_to_header(f"output part0-node{key}-offsets int64\n")
-            helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\n")
+            form_key = f"node{key}-offsets"
+            helper_obj.add_to_header(f"output node{key}-offsets int64\n")
+            helper_obj.add_to_init(f"0 node{key}-offsets <- stack\n")
             helper_obj.add_to_pre(
-                f"stream !I-> stack\ndup part0-node{key}-offsets +<- stack\n"
+                f"stream !I-> stack\ndup node{key}-offsets +<- stack\n"
             )
             # helper_obj.add_to_post("loop\n")
             if forth_obj.should_add_form():
@@ -1537,11 +1533,11 @@ class AsMap(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
             if helper_obj.is_forth():
                 key = forth_obj.get_keys(1)
-                form_key = f"part0-node{key}-offsets"
-                helper_obj.add_to_header(f"output part0-node{key}-offsets int64\n")
-                helper_obj.add_to_init(f"0 part0-node{key}-offsets <- stack\n")
+                form_key = f"node{key}-offsets"
+                helper_obj.add_to_header(f"output node{key}-offsets int64\n")
+                helper_obj.add_to_init(f"0 node{key}-offsets <- stack\n")
                 helper_obj.add_to_pre(
-                    f"stream !I-> stack\n dup part0-node{key}-offsets +<- stack\n"
+                    f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
             if _has_nested_header(self._keys) and header:
                 if helper_obj.is_forth():

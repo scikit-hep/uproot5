@@ -29,10 +29,10 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
         if helper_obj.is_forth():
             forth_obj = helper_obj.get_gen_obj()
             key = forth_obj.get_keys(1)
-            form_key = f"part0-node{key}-data"
-            helper_obj.add_to_header(f"output part0-node{key}-data int32\n")
-            helper_obj.add_to_pre(f"stream !I-> part0-node{key}-data\n")
-            form_key = f"part0-node{key}-data"
+            form_key = f"node{key}-data"
+            helper_obj.add_to_header(f"output node{key}-data int32\n")
+            helper_obj.add_to_pre(f"stream !I-> node{key}-data\n")
+            form_key = f"node{key}-data"
             if forth_obj.should_add_form():
                 forth_obj.add_form_key(form_key)
                 temp_aform = {
