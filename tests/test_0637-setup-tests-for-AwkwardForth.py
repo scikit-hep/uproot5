@@ -110,7 +110,7 @@ def test_09():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0][0]['m_persKey'] == 352341021
+        assert py[0][0][0]["m_persKey"] == 352341021
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7febbf1b2fa0>], ...] at 0x7febbf1b2f40>
 
 
@@ -132,7 +132,7 @@ def test_11():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0][0]['m_persKey'] == 921521854
+        assert py[0][0][0]["m_persKey"] == 921521854
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::TruthParticle_v1>> (version 1) at 0x7f636a9484c0>], ...] at 0x7f636a948eb0>
 
 
@@ -142,7 +142,7 @@ def test_12():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0][0][0]['m_persIndex'] == 2
+        assert py[0][0][0]["m_persIndex"] == 2
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::TruthParticle_v1>> (version 1) at 0x7fc259ae37c0>], ...] at 0x7fc259ae3f10>
 
 
@@ -152,7 +152,7 @@ def test_13():
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = True
         py = branch.array(interp, library="ak", entry_stop=3)
-        assert py[0][0][0]['m_persIndex'] == 0
+        assert py[0][0][0]["m_persIndex"] == 0
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::CaloCluster_v1>> (version 1) at 0x7fa94e968c10>], ...] at 0x7fa94e968c70>
 
 
