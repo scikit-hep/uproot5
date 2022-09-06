@@ -541,9 +541,9 @@ class AsString(AsContainer):
                 for elem in form_keys:
                     forth_obj.add_form_key(elem)
             helper_obj.add_to_header(
-                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
+                f"output part0-node{offsets_num}-offsets int64\noutput part0-node{data_num}-data uint8\n"
             )
-            helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            helper_obj.add_to_init(f"0 part0-node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
                 helper_obj.get_pre(),
@@ -841,10 +841,10 @@ in file {}""".format(
 
                 if helper_obj.is_forth():
                     helper_obj.add_to_header(
-                        f"output node{offsets_num}-offsets int64\n"
+                        f"output part0-node{offsets_num}-offsets int64\n"
                     )
-                    form_key = f"node{offsets_num}-offsets"
-                    helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+                    form_key = f"part0-node{offsets_num}-offsets"
+                    helper_obj.add_to_init(f"0 part0-node{offsets_num}-offsets <- stack\n")
                     helper_obj.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
