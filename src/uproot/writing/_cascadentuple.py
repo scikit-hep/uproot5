@@ -11,10 +11,8 @@ See :doc:`uproot.writing._cascade` for a general overview of the cascading write
 
 
 import struct
-import warnings
 import zlib
 
-import numpy
 
 import uproot
 import uproot.compression
@@ -25,18 +23,17 @@ from uproot.models.RNTuple import (
     _rntuple_feature_flag_format,
     _rntuple_field_description,
     _rntuple_format1,
-    _rntuple_frame_format,
-    _rntuple_num_bytes_fields,
+    _rntuple_frame_format
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode
 
 
-def serialize_rntuple_string(content):
+def _serialize_rntuple_string(content):
     aloc = len(content)
     return struct.Struct("<I").pack(aloc) + str.encode(content)
 
 
-def serialize_rntuple_list_frame(items):
+def _serialize_rntuple_list_frame(items):
     n_items = len(items)
     payload_bytes = b"".join([x.serialize() for x in items])
     size = 4 + 4 + len(payload_bytes)
@@ -80,7 +77,7 @@ class NTuple_Field_Description:
         )
         string_bytes = b"".join(
             [
-                serialize_rntuple_string(x)
+                _serialize_rntuple_string(x)
                 for x in (
                     self.field_name,
                     self.type_name,
@@ -89,7 +86,7 @@ class NTuple_Field_Description:
                 )
             ]
         )
-        return string_bytes
+        return b"".join([header_bytes, string_bytes])
 
 
 """
@@ -135,22 +132,22 @@ class NTuple_Header(CascadeLeaf):
         env_header = _rntuple_frame_format.pack(1, 1)
         feature_flag = _rntuple_feature_flag_format.pack(0)
         rc_tag = struct.Struct("I").pack(1)
-        name = serialize_rntuple_string(self._name)
-        description = serialize_rntuple_string(self._ntuple_description)
-        writer = serialize_rntuple_string("uproot " + uproot.__version__)
+        name = _serialize_rntuple_string(self._name)
+        description = _serialize_rntuple_string(self._ntuple_description)
+        writer = _serialize_rntuple_string("uproot " + uproot.__version__)
 
+        out = []
+        out.extend([env_header, feature_flag, rc_tag, name, description, writer])
         field_records = [
             NTuple_Field_Description(
                 0, 0, 0, 0, 0, "one_integer", "std::int32_t", "", ""
             )
         ]
+        out.append(_serialize_rntuple_list_frame(field_records))
+        out_string = b"".join(out)
+        crc32 = zlib.crc32(out_string)
 
-        header_data_bytes = b"".join(
-            [env_header, feature_flag, rc_tag, name, description, writer]
-        )
-        crc32 = zlib.crc32(header_data_bytes)
-
-        header_bytes = b"".join([header_data_bytes, crc32.to_bytes(4, "little")])
+        header_bytes = b"".join([out_string, crc32.to_bytes(4, "little")])
         return header_bytes
 
 
