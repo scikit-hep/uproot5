@@ -80,7 +80,7 @@ in file {}""".format(
         context = {}
         seek, nbytes = self._members["fSeekHeader"], self._members["fNBytesHeader"]
 
-        compressed_header_chunk = self.file.source.chunk(seek, seek+nbytes)
+        compressed_header_chunk = self.file.source.chunk(seek, seek + nbytes)
 
         if self._members["fNBytesHeader"] == self._members["fLenHeader"]:
             self._header_chunk = compressed_header_chunk
@@ -102,7 +102,7 @@ in file {}""".format(
         context = {}
         seek, nbytes = self._members["fSeekFooter"], self._members["fNBytesFooter"]
 
-        compressed_footer_chunk = self.file.source.chunk(seek, seek+nbytes)
+        compressed_footer_chunk = self.file.source.chunk(seek, seek + nbytes)
 
         if self._members["fNBytesFooter"] == self._members["fLenFooter"]:
             self._footer_chunk = compressed_footer_chunk
@@ -553,7 +553,6 @@ class ListFrameReader:
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#field-description
 class FieldRecordReader:
-
     def read(self, chunk, cursor, context):
         out = MetaData("FieldRecordFrame")
         (
