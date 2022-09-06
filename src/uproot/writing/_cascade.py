@@ -467,9 +467,6 @@ class Key(CascadeLeaf):
         )
 
 
-class RKeyBlob(Key):
-    pass
-
 
 _free_format_small = struct.Struct(">HII")
 _free_format_big = struct.Struct(">HQQ")

@@ -8,6 +8,7 @@ import struct
 
 import awkward as ak
 import numpy
+import zlib
 
 import uproot
 
@@ -19,6 +20,10 @@ _rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 _rntuple_field_description = struct.Struct("<IIIHH")
+_rntuple_column_record_format = struct.Struct("<HHII")
+_rntuple_alias_column_ = struct.Struct("<II")
+_rntuple_extra_type_info = struct.Struct("<III")
+_rntuple_record_size_format = struct.Struct("<I")
 
 
 def _renamemeA(chunk, cursor, context):
@@ -124,13 +129,12 @@ in file {}""".format(
         if self._header is None:
             if not self._header_chunk_ready:
                 self._prepare_header_chunk()
-            # print(self._header_chunk.raw_data)
-            # print(self._header_chunk.raw_data.tostring())
             cursor = self._header_cursor.copy()
             context = {}
 
             h = HeaderReader().read(self._header_chunk, cursor, context)
             self._header = h
+            assert h.crc32 == zlib.crc32(self._header_chunk.raw_data[:-4])
 
         return self._header
 
@@ -522,14 +526,12 @@ class MetaData:
 
 
 class RecordFrameReader:
-    _record_size_format = struct.Struct("<I")
-
     def __init__(self, payload):
         self.payload = payload
 
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        num_bytes = local_cursor.field(chunk, self._record_size_format, context)
+        num_bytes = local_cursor.field(chunk, _rntuple_record_size_format, context)
         cursor.skip(num_bytes)
         return self.payload.read(chunk, local_cursor, context)
 
@@ -570,36 +572,32 @@ class FieldRecordReader:
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#column-description
 class ColumnRecordReader:
-    _column_record_format = struct.Struct("<HHII")
-
     def read(self, chunk, cursor, context):
         out = MetaData("ColumnRecordFrame")
         out.type, out.nbits, out.field_id, out.flags = cursor.fields(
-            chunk, self._column_record_format, context
+            chunk, _rntuple_column_record_format, context
         )
         return out
 
 
 class AliasColumnReader:
-    _alias_column_ = struct.Struct("<II")
 
     def read(self, chunk, cursor, context):
         out = MetaData("AliasColumn")
 
         out.physical_id, out.field_id = cursor.fields(
-            chunk, self._alias_column, context
+            chunk, _rntuple_alias_column, context
         )
         return out
 
 
 class ExtraTypeInfoReader:
-    _extra_type_info = struct.Struct("<III")
 
     def read(self, chunk, cursor, context):
         out = MetaData("ExtraTypeInfoReader")
 
         out.type_ver_from, out.type_ver_to, out.content_id = cursor.fields(
-            chunk, self._extra_type_info, context
+            chunk, _rntuple_extra_type_info, context
         )
         out.type_name = cursor.rntuple_string(chunk, context)
         return out

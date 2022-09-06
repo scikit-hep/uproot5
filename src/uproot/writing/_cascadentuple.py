@@ -12,6 +12,7 @@ See :doc:`uproot.writing._cascade` for a general overview of the cascading write
 
 import struct
 import zlib
+import datetime
 
 import uproot
 import uproot.compression
@@ -21,25 +22,55 @@ import uproot.serialization
 from uproot.models.RNTuple import (
     _rntuple_feature_flag_format,
     _rntuple_field_description,
+    _rntuple_column_record_format,
     _rntuple_format1,
     _rntuple_frame_format,
+    _rntuple_record_size_format,
 )
-from uproot.writing._cascade import CascadeLeaf, CascadeNode
+from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
+class RBlob_Key(Key):
+    def __init__(
+        self,
+        location,
+        uncompressed_bytes,
+        compressed_bytes,
+        created_on=None,
+        big=None,
+    ):
+        super().__init__(
+            location,
+            uncompressed_bytes,
+            compressed_bytes,
+            String(None, "RBlob"),
+            String(None, ""),
+            String(None, ""),
+            0,
+            13,
+            location,
+            created_on=created_on,
+            big=big,
+        )
 
 def _serialize_rntuple_string(content):
-    aloc = len(content)
-    return struct.Struct("<I").pack(aloc) + str.encode(content)
+    return _record_frame_wrap(str.encode(content))
 
+def _record_frame_wrap(payload):
+    aloc = len(payload)
+    raw_bytes =  struct.Struct("<I").pack(aloc) + payload
+    return raw_bytes
 
 def _serialize_rntuple_list_frame(items):
+    # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
-    payload_bytes = b"".join([x.serialize() for x in items])
+    payload_bytes = b"".join([_record_frame_wrap(x.serialize()) for x in items])
     size = 4 + 4 + len(payload_bytes)
+    size_bytes = struct.Struct("<i").pack(-size) # negative size means list
     # n.b last byte of `n_item bytes` is reserved as of Sep 2022
-    return b"".join(
-        [size.to_bytes(4, "little"), n_items.to_bytes(4, "little"), payload_bytes]
+    raw_bytes = b"".join(
+        [size_bytes, n_items.to_bytes(4, "little"), payload_bytes]
     )
+    return raw_bytes
 
 
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#field-description
@@ -87,6 +118,28 @@ class NTuple_Field_Description:
         )
         return b"".join([header_bytes, string_bytes])
 
+# https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#column-description
+class NTuple_Column_Description:
+    def __init__(
+        self,
+        type_num,
+        bits_on_disk,
+        field_id,
+        flags
+    ):
+        self.type_num = type_num
+        self.bits_on_disk = bits_on_disk
+        self.field_id = field_id
+        self.flags = flags
+
+    def serialize(self):
+        header_bytes = _rntuple_column_record_format.pack(
+            self.type_num,
+            self.bits_on_disk,
+            self.field_id,
+            self.flags,
+        )
+        return header_bytes
 
 """
  0                   1                   2                   3
@@ -117,6 +170,7 @@ class NTuple_Header(CascadeLeaf):
         self._ntuple_description = ntuple_description
         self._akform = akform
 
+        self._serialize = None
         aloc = len(self.serialize())
         super().__init__(location, aloc)
 
@@ -128,6 +182,8 @@ class NTuple_Header(CascadeLeaf):
         )
 
     def serialize(self):
+        if self._serialize:
+            return self._serialize
         env_header = _rntuple_frame_format.pack(1, 1)
         feature_flag = _rntuple_feature_flag_format.pack(0)
         rc_tag = struct.Struct("I").pack(1)
@@ -139,15 +195,27 @@ class NTuple_Header(CascadeLeaf):
         out.extend([env_header, feature_flag, rc_tag, name, description, writer])
         field_records = [
             NTuple_Field_Description(
-                0, 0, 0, 0, 0, "one_integer", "std::int32_t", "", ""
+                0, 0, 0, 0, 0, "one_integers", "std::int32_t", "", ""
             )
         ]
+        column_records = [
+            NTuple_Column_Description(
+                11, 32, 0, 0
+            )
+        ]
+        alias_records = []
+        extra_type_info = []
+
         out.append(_serialize_rntuple_list_frame(field_records))
+        out.append(_serialize_rntuple_list_frame(column_records))
+        out.append(_serialize_rntuple_list_frame(alias_records))
+        out.append(_serialize_rntuple_list_frame(extra_type_info))
         out_string = b"".join(out)
         crc32 = zlib.crc32(out_string)
 
         header_bytes = b"".join([out_string, crc32.to_bytes(4, "little")])
-        return header_bytes
+        self._serialize = header_bytes
+        return self._serialize
 
 
 class NTuple_Anchor(CascadeLeaf):
@@ -310,20 +378,61 @@ class NTuple(CascadeNode):
     def extend(self, file, sink, data):
         pass
 
+    def add_rblob(
+        self,
+        sink,
+        raw_data,
+        uncompressed_bytes,
+        big=None,
+    ):
+
+        class_name_title_bytes = b"\x05RBlob\x00\x00"
+        strings_size = 8
+
+        location = None
+        if not big:
+            requested_bytes = (
+                uproot.reading._key_format_small.size + strings_size + len(raw_data)
+            )
+            location = self._freesegments.allocate(requested_bytes, dry_run=True)
+            position = location + uproot.reading._key_format_small.size
+            if location < uproot.const.kStartBigFile:
+                self._freesegments.allocate(requested_bytes, dry_run=False)
+            else:
+                location = None
+
+        if location is None:
+            requested_bytes = (
+                uproot.reading._key_format_big.size + strings_size + len(raw_data)
+            )
+            location = self._freesegments.allocate(requested_bytes, dry_run=False)
+            position = location + uproot.reading._key_format_big.size
+
+        key = RBlob_Key(
+            location,
+            uncompressed_bytes,
+            len(raw_data),
+            created_on = datetime.datetime.now(),
+            big=big
+        )
+
+
+        key.write(sink)
+        sink.write(location + key.num_bytes, raw_data)
+        sink.set_file_length(self._freesegments.fileheader.end)
+        sink.flush()
+        return key
+
     def write(self, sink):
         header_raw_data = self._header.serialize()
-        self._header_key = self._directory.add_object(
+        self._header_key = self.add_rblob(
             sink,
-            "RBlob",
-            self._name,
-            self._title,
             header_raw_data,
             len(header_raw_data),
-            replaces=self._header_key,
             big=False,
         )
 
-        self._anchor.fSeekHeader = self._header_key.seek_location
+        self._anchor.fSeekHeader = self._header_key.location + self._header_key.allocation
         self._anchor.fNBytesHeader = len(header_raw_data)
         self._anchor.fLenHeader = len(header_raw_data)
 
@@ -336,9 +445,10 @@ class NTuple(CascadeNode):
             anchor_raw_data,
             len(anchor_raw_data),
             replaces=self._key,
-            big=True,
+            big=False,
         )
         self._anchor.location = self._key.location + self._key.allocation
+        self._freesegments.write(sink)
 
     def write_updates(self, sink):
         sink.flush()
