@@ -4,7 +4,6 @@
 This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 """
 
-import queue
 import struct
 
 import awkward as ak
