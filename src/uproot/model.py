@@ -814,7 +814,8 @@ class Model:
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
-                helper_obj._pre_code.pop(-1)
+                if helper_obj.is_forth():
+                    helper_obj._pre_code.pop(-1)
 
             elif self._instance_version == 0:
                 helper_obj.add_to_pre("4 stream skip\n")
