@@ -844,7 +844,9 @@ in file {}""".format(
                         f"output part0-node{offsets_num}-offsets int64\n"
                     )
                     form_key = f"part0-node{offsets_num}-offsets"
-                    helper_obj.add_to_init(f"0 part0-node{offsets_num}-offsets <- stack\n")
+                    helper_obj.add_to_init(
+                        f"0 part0-node{offsets_num}-offsets <- stack\n"
+                    )
                     helper_obj.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
