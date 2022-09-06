@@ -19,6 +19,7 @@ _rntuple_format1 = struct.Struct(">iIIQIIQIIQ")
 _rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
+_rntuple_field_description = struct.Struct("<IIIHH")
 
 
 def _renamemeA(chunk, cursor, context):
@@ -65,27 +66,21 @@ in file {}""".format(
             self._members["fReserved"],
         ) = cursor.fields(chunk, _rntuple_format1, context)
 
-        self._headerfooter_chunk_ready = False
+        self._header_chunk_ready = False
+        self._footer_chunk_ready = False
         self._header, self._footer = None, None
 
         self._field_names = None
         self._column_records = None
 
         # back link from column name to page inner list
-        self.column_innerlist_dict = {}
+        self._page_list_envelopes = {}
 
-    def _prepare_headerfooter_chunk(self):
+    def _prepare_header_chunk(self):
         context = {}
         seek, nbytes = self._members["fSeekHeader"], self._members["fNBytesHeader"]
-        header_range = (seek, seek + nbytes)
 
-        seek, nbytes = self._members["fSeekFooter"], self._members["fNBytesFooter"]
-        footer_range = (seek, seek + nbytes)
-
-        notifications = queue.Queue()
-        compressed_header_chunk, compressed_footer_chunk = self.file.source.chunks(
-            [header_range, footer_range], notifications=notifications
-        )
+        compressed_header_chunk = self.file.source.chunk(seek, seek+nbytes)
 
         if self._members["fNBytesHeader"] == self._members["fLenHeader"]:
             self._header_chunk = compressed_header_chunk
@@ -101,6 +96,13 @@ in file {}""".format(
                 self._members["fLenHeader"],
             )
             self._header_cursor = uproot.source.cursor.Cursor(0)
+        self._header_chunk_ready = True
+
+    def _prepare_footer_chunk(self):
+        context = {}
+        seek, nbytes = self._members["fSeekFooter"], self._members["fNBytesFooter"]
+
+        compressed_footer_chunk = self.file.source.chunk(seek, seek+nbytes)
 
         if self._members["fNBytesFooter"] == self._members["fLenFooter"]:
             self._footer_chunk = compressed_footer_chunk
@@ -116,13 +118,15 @@ in file {}""".format(
                 self._members["fLenFooter"],
             )
             self._footer_cursor = uproot.source.cursor.Cursor(0)
-        self._headerfooter_chunk_ready = True
+        self._footer_chunk_ready = True
 
     @property
     def header(self):
         if self._header is None:
-            if not self._headerfooter_chunk_ready:
-                self._prepare_headerfooter_chunk()
+            if not self._header_chunk_ready:
+                self._prepare_header_chunk()
+            # print(self._header_chunk.raw_data)
+            # print(self._header_chunk.raw_data.tostring())
             cursor = self._header_cursor.copy()
             context = {}
 
@@ -144,8 +148,8 @@ in file {}""".format(
     @property
     def footer(self):
         if self._footer is None:
-            if not self._headerfooter_chunk_ready:
-                self._prepare_headerfooter_chunk()
+            if not self._footer_chunk_ready:
+                self._prepare_footer_chunk()
             cursor = self._footer_cursor.copy()
             context = {}
 
@@ -187,7 +191,7 @@ in file {}""".format(
     def page_list_envelopes(self):
         context = {}
 
-        if not self.column_innerlist_dict:
+        if not self._page_list_envelopes:
             for record in self.footer.cluster_group_records:
                 link = record.page_list_link
                 loc = link.locator
@@ -195,11 +199,11 @@ in file {}""".format(
                 decomp_chunk = self.read_locator(
                     loc, link.env_uncomp_size, cursor, context
                 )
-                self.column_innerlist_dict = PageLink().read(
+                self._page_list_envelopes = PageLink().read(
                     decomp_chunk, cursor, context
                 )
 
-        return self.column_innerlist_dict
+        return self._page_list_envelopes
 
     def base_col_form(self, cr, col_id, parameters=None):
         form_key = f"column-{col_id}"
@@ -549,7 +553,6 @@ class ListFrameReader:
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#field-description
 class FieldRecordReader:
-    _field_description = struct.Struct("<IIIHH")
 
     def read(self, chunk, cursor, context):
         out = MetaData("FieldRecordFrame")
@@ -559,7 +562,7 @@ class FieldRecordReader:
             out.parent_field_id,
             out.struct_role,
             out.flags,
-        ) = cursor.fields(chunk, self._field_description, context)
+        ) = cursor.fields(chunk, _rntuple_field_description, context)
 
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for i in range(4)
@@ -620,7 +623,7 @@ class HeaderReader:
         )
 
     def read(self, chunk, cursor, context):
-        out = MetaData("Header")
+        out = MetaData(type(self).__name__)
         out.env_header = _renamemeA(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.rc_tag = cursor.field(chunk, struct.Struct("I"), context)

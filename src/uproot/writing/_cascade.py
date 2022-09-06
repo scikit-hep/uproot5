@@ -1817,8 +1817,16 @@ class Directory(CascadeNode):
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
             None, 1700499286, 0, 48, 866, 133, 159, 1201, 81, 104, 0
         )
+
+        header = uproot.writing._cascadentuple.NTuple_Header(None, name, "", branch_types)
+
         ntuple = uproot.writing._cascadentuple.NTuple(
-            self, name, title, branch_types, self._freesegments, anchor
+            self, name, title, branch_types, 
+            self._freesegments,
+            header,
+            [],
+            [],
+            anchor
         )
         ntuple.write(sink)
         return ntuple
