@@ -21,7 +21,7 @@ _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 _rntuple_field_description = struct.Struct("<IIIHH")
 _rntuple_column_record_format = struct.Struct("<HHII")
-_rntuple_alias_column_ = struct.Struct("<II")
+_rntuple_alias_column = struct.Struct("<II")
 _rntuple_extra_type_info = struct.Struct("<III")
 _rntuple_record_size_format = struct.Struct("<I")
 

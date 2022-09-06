@@ -57,7 +57,7 @@ def _serialize_rntuple_string(content):
 
 def _record_frame_wrap(payload):
     aloc = len(payload)
-    raw_bytes =  struct.Struct("<I").pack(aloc) + payload
+    raw_bytes = _rntuple_record_size_format.pack(aloc) + payload
     return raw_bytes
 
 def _serialize_rntuple_list_frame(items):
@@ -386,7 +386,6 @@ class NTuple(CascadeNode):
         big=None,
     ):
 
-        class_name_title_bytes = b"\x05RBlob\x00\x00"
         strings_size = 8
 
         location = None
@@ -395,7 +394,6 @@ class NTuple(CascadeNode):
                 uproot.reading._key_format_small.size + strings_size + len(raw_data)
             )
             location = self._freesegments.allocate(requested_bytes, dry_run=True)
-            position = location + uproot.reading._key_format_small.size
             if location < uproot.const.kStartBigFile:
                 self._freesegments.allocate(requested_bytes, dry_run=False)
             else:
@@ -406,7 +404,6 @@ class NTuple(CascadeNode):
                 uproot.reading._key_format_big.size + strings_size + len(raw_data)
             )
             location = self._freesegments.allocate(requested_bytes, dry_run=False)
-            position = location + uproot.reading._key_format_big.size
 
         key = RBlob_Key(
             location,
