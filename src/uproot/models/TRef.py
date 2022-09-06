@@ -137,14 +137,14 @@ in file {}""".format(
 
             helper_obj.add_to_pre("10 stream skip\n")
             helper_obj.add_to_pre(
-                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{form_keys[1]}-offsets +<- stack stream #!B-> node{form_keys[2]}-data\n"
+                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup part0-node{form_keys[1]}-offsets +<- stack stream #!B-> part0-node{form_keys[2]}-data\n"
             )
             helper_obj.add_to_pre(
-                f"stream !I-> stack dup node{form_keys[3]}-data <- stack\n"
+                f"stream !I-> stack dup part0-node{form_keys[3]}-data <- stack\n"
             )
             helper_obj.add_to_pre("6 stream skip\n")
             helper_obj.add_to_pre(
-                f"dup node{form_keys[4]}-offsets +<- stack stream #!I-> node{form_keys[5]}-data\n"
+                f"dup part0-node{form_keys[4]}-offsets +<- stack stream #!I-> part0-node{form_keys[5]}-data\n"
             )
             keys = [
                 f"node{form_keys[1]}-offsets",
