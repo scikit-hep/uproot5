@@ -260,12 +260,15 @@ class NTuple(CascadeNode):
         self._header_key = None
 
     def __repr__(self):
-        return "{}({}, {}, {}, {}, {}, {}, {})".format(
+        return "{}({}, {}, {}, {}, {}, {}, {}, {})".format(
             type(self).__name__,
             self._directory,
             self._name,
             self._title,
-            [(datum["fName"], datum["akform"]) for datum in self._branch_data],
+            self._header,
+            self._footer,
+            self._cluster_metadata,
+            self._anchor,
             self._freesegments,
         )
 
