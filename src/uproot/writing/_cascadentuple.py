@@ -10,35 +10,56 @@ See :doc:`uproot.writing._cascade` for a general overview of the cascading write
 """
 
 
-import zlib
 import struct
 import warnings
+import zlib
 
 import numpy
 
 import uproot
 import uproot.compression
 import uproot.const
-from uproot.models.RNTuple import _rntuple_format1, _rntuple_frame_format, _rntuple_feature_flag_format, _rntuple_num_bytes_fields, _rntuple_field_description
-from uproot.writing._cascade import CascadeLeaf, CascadeNode
 import uproot.reading
 import uproot.serialization
+from uproot.models.RNTuple import (
+    _rntuple_feature_flag_format,
+    _rntuple_field_description,
+    _rntuple_format1,
+    _rntuple_frame_format,
+    _rntuple_num_bytes_fields,
+)
+from uproot.writing._cascade import CascadeLeaf, CascadeNode
+
 
 def serialize_rntuple_string(content):
     aloc = len(content)
     return struct.Struct("<I").pack(aloc) + str.encode(content)
 
+
 def serialize_rntuple_list_frame(items):
     n_items = len(items)
     payload_bytes = b"".join([x.serialize() for x in items])
-    size = 4+4+len(payload_bytes)
-    #n.b last byte of `n_item bytes` is reserved as of Sep 2022
-    return b"".join([size.to_bytes(4, "little"), n_items.to_bytes(4, "little"), payload_bytes])
+    size = 4 + 4 + len(payload_bytes)
+    # n.b last byte of `n_item bytes` is reserved as of Sep 2022
+    return b"".join(
+        [size.to_bytes(4, "little"), n_items.to_bytes(4, "little"), payload_bytes]
+    )
+
 
 # https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md#field-description
-class NTuple_Field_Description():
-    def __init__(self, field_version, type_version, parent_field_id, struct_role, 
-            flags, field_name, type_name, type_alias, field_description):
+class NTuple_Field_Description:
+    def __init__(
+        self,
+        field_version,
+        type_version,
+        parent_field_id,
+        struct_role,
+        flags,
+        field_name,
+        type_name,
+        type_alias,
+        field_description,
+    ):
         self.field_version = field_version
         self.type_version = type_version
         self.parent_field_id = parent_field_id
@@ -48,14 +69,28 @@ class NTuple_Field_Description():
         self.type_name = type_name
         self.type_alias = type_alias
         self.field_description = field_description
+
     def serialize(self):
-        header_bytes = _rntuple_field_description.pack(self.field_version, self.type_version, self.parent_field_id, self.struct_role,
-                self.flags)
+        header_bytes = _rntuple_field_description.pack(
+            self.field_version,
+            self.type_version,
+            self.parent_field_id,
+            self.struct_role,
+            self.flags,
+        )
         string_bytes = b"".join(
-                [serialize_rntuple_string(x) for x in 
-                    (self.field_name, self.type_name, self.type_alias, self.field_description)]
+            [
+                serialize_rntuple_string(x)
+                for x in (
+                    self.field_name,
+                    self.type_name,
+                    self.type_alias,
+                    self.field_description,
                 )
+            ]
+        )
         return string_bytes
+
 
 """
  0                   1                   2                   3
@@ -78,10 +113,9 @@ class NTuple_Field_Description():
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 """
 
-class NTuple_Header(CascadeLeaf):
 
-    def __init__(self, location, 
-                name, ntuple_description, akform):
+class NTuple_Header(CascadeLeaf):
+    def __init__(self, location, name, ntuple_description, akform):
 
         self._name = name
         self._ntuple_description = ntuple_description
@@ -98,21 +132,27 @@ class NTuple_Header(CascadeLeaf):
         )
 
     def serialize(self):
-        env_header = _rntuple_frame_format.pack(1,1)
+        env_header = _rntuple_frame_format.pack(1, 1)
         feature_flag = _rntuple_feature_flag_format.pack(0)
         rc_tag = struct.Struct("I").pack(1)
         name = serialize_rntuple_string(self._name)
         description = serialize_rntuple_string(self._ntuple_description)
-        writer = serialize_rntuple_string("uproot "+uproot.__version__)
+        writer = serialize_rntuple_string("uproot " + uproot.__version__)
 
-        field_records = [NTuple_Field_Description(0, 0, 0, 0, 
-                0, "one_integer", "std::int32_t", "", "")]
+        field_records = [
+            NTuple_Field_Description(
+                0, 0, 0, 0, 0, "one_integer", "std::int32_t", "", ""
+            )
+        ]
 
-        header_data_bytes = b"".join([env_header, feature_flag, rc_tag, name, description, writer])
+        header_data_bytes = b"".join(
+            [env_header, feature_flag, rc_tag, name, description, writer]
+        )
         crc32 = zlib.crc32(header_data_bytes)
 
         header_bytes = b"".join([header_data_bytes, crc32.to_bytes(4, "little")])
         return header_bytes
+
 
 class NTuple_Anchor(CascadeLeaf):
     """
@@ -124,45 +164,48 @@ class NTuple_Anchor(CascadeLeaf):
     4-byte length.
     """
 
-    def __init__(self, location, 
-                fCheckSum,
-                fVersion,
-                fSize,
-                fSeekHeader,
-                fNBytesHeader,
-                fLenHeader,
-                fSeekFooter,
-                fNBytesFooter,
-                fLenFooter,
-                fReserved):
+    def __init__(
+        self,
+        location,
+        fCheckSum,
+        fVersion,
+        fSize,
+        fSeekHeader,
+        fNBytesHeader,
+        fLenHeader,
+        fSeekFooter,
+        fNBytesFooter,
+        fLenFooter,
+        fReserved,
+    ):
 
         aloc = _rntuple_format1.size
         super().__init__(location, aloc)
-        self.fCheckSum =       fCheckSum
-        self.fVersion =        fVersion
-        self.fSize =           fSize
-        self.fSeekHeader =     fSeekHeader
-        self.fNBytesHeader =   fNBytesHeader
-        self.fLenHeader =      fLenHeader
-        self.fSeekFooter =     fSeekFooter
-        self.fNBytesFooter =   fNBytesFooter
-        self.fLenFooter =      fLenFooter
-        self.fReserved =       fReserved
+        self.fCheckSum = fCheckSum
+        self.fVersion = fVersion
+        self.fSize = fSize
+        self.fSeekHeader = fSeekHeader
+        self.fNBytesHeader = fNBytesHeader
+        self.fLenHeader = fLenHeader
+        self.fSeekFooter = fSeekFooter
+        self.fNBytesFooter = fNBytesFooter
+        self.fLenFooter = fLenFooter
+        self.fReserved = fReserved
 
     @property
     def _members(self):
         return [
-                self.fCheckSum, 
-                self.fVersion, 
-                self.fSize, 
-                self.fSeekHeader,
-                self.fNBytesHeader, 
-                self.fLenHeader, 
-                self.fSeekFooter, 
-                self.fNBytesFooter, 
-                self.fLenFooter, 
-                self.fReserved
-                ]
+            self.fCheckSum,
+            self.fVersion,
+            self.fSize,
+            self.fSeekHeader,
+            self.fNBytesHeader,
+            self.fLenHeader,
+            self.fSeekFooter,
+            self.fNBytesFooter,
+            self.fLenFooter,
+            self.fReserved,
+        ]
 
     def __repr__(self):
         return "{}({}, {})".format(
@@ -176,7 +219,8 @@ class NTuple_Anchor(CascadeLeaf):
         # version = 0
         # aloc = _rntuple_format1.size
         # uproot.serialization.numbytes_version(aloc, version)
-        return  b'@\x00\x006\x00\x00' + _rntuple_format1.pack(*self._members)
+        return b"@\x00\x006\x00\x00" + _rntuple_format1.pack(*self._members)
+
 
 class NTuple(CascadeNode):
     """
@@ -203,7 +247,7 @@ class NTuple(CascadeNode):
         header,
         footer,
         cluster_metadata,
-        anchor
+        anchor,
     ):
         super().__init__(footer, anchor, freesegments)
         self._directory = directory
@@ -217,7 +261,6 @@ class NTuple(CascadeNode):
 
         self._key = None
         self._header_key = None
-
 
     def __repr__(self):
         return "{}({}, {}, {}, {}, {}, {}, {})".format(
@@ -268,7 +311,6 @@ class NTuple(CascadeNode):
     def extend(self, file, sink, data):
         pass
 
-
     def write(self, sink):
         header_raw_data = self._header.serialize()
         self._header_key = self._directory.add_object(
@@ -301,4 +343,3 @@ class NTuple(CascadeNode):
 
     def write_updates(self, sink):
         sink.flush()
-
