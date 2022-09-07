@@ -28,8 +28,9 @@ from uproot.models.RNTuple import (
     _rntuple_feature_flag_format,
     _rntuple_field_description,
     _rntuple_format1,
-    _rntuple_frame_format,
     _rntuple_record_size_format,
+    _rntuple_cluster_group_format,
+    _rntuple_locator_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
@@ -236,6 +237,7 @@ class NTuple_Header(CascadeLeaf):
         self._akform = akform
 
         self._serialize = None
+        self._crc32 = None
         aloc = len(self.serialize())
         super().__init__(location, aloc)
 
@@ -274,7 +276,7 @@ class NTuple_Header(CascadeLeaf):
     def serialize(self):
         if self._serialize:
             return self._serialize
-        env_header = _rntuple_frame_format.pack(1, 1)
+        env_header = uproot.const.rntuple_env_header
         feature_flag = _rntuple_feature_flag_format.pack(0)
         rc_tag = struct.Struct("I").pack(1)
         name = _serialize_rntuple_string(self._name)
@@ -294,11 +296,99 @@ class NTuple_Header(CascadeLeaf):
         out.append(_serialize_rntuple_list_frame(alias_records))
         out.append(_serialize_rntuple_list_frame(extra_type_info))
         out_string = b"".join(out)
-        crc32 = zlib.crc32(out_string)
+        self._crc32 = zlib.crc32(out_string)
 
-        header_bytes = b"".join([out_string, crc32.to_bytes(4, "little")])
+        header_bytes = b"".join([out_string, self._crc32.to_bytes(4, "little")])
         self._serialize = header_bytes
         return self._serialize
+"""
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|        Envelope Version       |        Minimum Version        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                         ENVELOPE PAYLOAD
+    Feature flags
+    Header checksum (CRC32)
+    List frame of extension header envelope links
+    List frame of column group record frames
+    List frame of cluster summary record frames
+    List frame of cluster group record frames
+    List frame of meta-data block envelope links
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                             CRC32                             |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+"""
+
+class NTuple_Footer(CascadeLeaf):
+    def __init__(self, location, feature_flags, header_crc32, akform):
+
+        self._feature_flags = feature_flags
+        self._header_crc32 = header_crc32
+        self._akform = akform
+
+        aloc = len(self.serialize())
+        super().__init__(location, aloc)
+
+    def __repr__(self):
+        return "{}({}, {}, {}, {})".format(
+            type(self).__name__,
+            self._location,
+            self._feature_flags,
+            self._header_crc32,
+            ", ".join([repr(x) for x in self._akform]),
+        )
+
+    def serialize(self):
+        env_header = uproot.const.rntuple_env_header
+        out = []
+        feature_flag = _rntuple_feature_flag_format.pack(0)
+        out.extend([env_header, feature_flag, self._header_crc32.to_bytes(4, "little")])
+
+        extension_header_envelope_links = []
+        column_group_record_frames = []
+        cluster_summary_record_frames = []
+        locator = NTuple_Locator(16, 1039)
+        page_list_link = NTuple_EnvLink(16, locator)
+        cluster_group_record_frames = [NTuple_ClusterGroupRecord(0, page_list_link)]
+        metadata_block_envelope_links = []
+
+        out.append(_serialize_rntuple_list_frame(extension_header_envelope_links))
+        out.append(_serialize_rntuple_list_frame(column_group_record_frames))
+        out.append(_serialize_rntuple_list_frame(cluster_summary_record_frames))
+        out.append(_serialize_rntuple_list_frame(cluster_group_record_frames)) # never empty
+        out.append(_serialize_rntuple_list_frame(metadata_block_envelope_links))
+        out_bytes = b"".join(out)
+        crc32 = zlib.crc32(out_bytes)
+        return out_bytes + crc32.to_bytes(4, "little")
+
+class NTuple_Locator:
+    def __init__(self, num_bytes, offset):
+        self.num_bytes = num_bytes
+        self.offset = offset
+
+    def serialize(self):
+        outbytes = _rntuple_locator_format.pack(self.num_bytes, self.offset)
+        return outbytes
+
+class NTuple_EnvLink:
+    def __init__(self, uncomp_size, locator):
+        self.uncomp_size = uncomp_size
+        self.locator = locator
+
+    def serialize(self):
+        out = [struct.Struct("<I").pack(self.uncomp_size), self.locator.serialize()]
+        return b"".join(out)
+
+class NTuple_ClusterGroupRecord:
+    def __init__(self, num_clusters, page_list_link):
+        self.num_clusters = num_clusters
+        self.page_list_link = page_list_link
+
+    def serialize(self):
+        header_bytes = _rntuple_cluster_group_format.pack(self.num_clusters)
+        page_list_link_bytes = self.page_list_link.serialize()
+        return header_bytes + page_list_link_bytes
 
 
 class NTuple_Anchor(CascadeLeaf):
@@ -503,6 +593,7 @@ class NTuple(CascadeNode):
         return key
 
     def write(self, sink):
+        #### Header ##############################
         header_raw_data = self._header.serialize()
         self._header_key = self.add_rblob(
             sink,
@@ -510,13 +601,29 @@ class NTuple(CascadeNode):
             len(header_raw_data),
             big=False,
         )
-
         self._anchor.fSeekHeader = (
             self._header_key.location + self._header_key.allocation
         )
         self._anchor.fNBytesHeader = len(header_raw_data)
         self._anchor.fLenHeader = len(header_raw_data)
+        #### Header end ##############################
 
+        #### Footer ##############################
+        footer_raw_data = self._footer.serialize()
+        self._footer_key = self.add_rblob(
+            sink,
+            footer_raw_data,
+            len(footer_raw_data),
+            big=False,
+        )
+        self._anchor.fSeekFooter = (
+            self._footer_key.location + self._footer_key.allocation
+        )
+        self._anchor.fNBytesFooter = len(footer_raw_data)
+        self._anchor.fLenFooter = len(footer_raw_data)
+        #### Footer end ##############################
+
+        #### Anchor ##############################
         anchor_raw_data = self._anchor.serialize()
         self._key = self._directory.add_object(
             sink,
@@ -529,6 +636,8 @@ class NTuple(CascadeNode):
             big=False,
         )
         self._anchor.location = self._key.location + self._key.allocation
+        #### Anchor end ##############################
+
         self._freesegments.write(sink)
 
     def write_updates(self, sink):

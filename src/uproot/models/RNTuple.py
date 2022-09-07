@@ -16,7 +16,6 @@ import uproot
 _rntuple_format1 = struct.Struct(">iIIQIIQIIQ")
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#envelopes
-_rntuple_frame_format = struct.Struct("<HH")
 _rntuple_feature_flag_format = struct.Struct("<Q")
 _rntuple_num_bytes_fields = struct.Struct("<II")
 _rntuple_field_description = struct.Struct("<IIIHH")
@@ -25,10 +24,12 @@ _rntuple_alias_column = struct.Struct("<II")
 _rntuple_extra_type_info = struct.Struct("<III")
 _rntuple_record_size_format = struct.Struct("<I")
 _rntuple_frame_header = struct.Struct("<ii")
+_rntuple_cluster_group_format = struct.Struct("<I")
+_rntuple_locator_format = struct.Struct("<iQ")
 
 
-def _renamemeA(chunk, cursor, context):
-    env_version, min_version = cursor.fields(chunk, _rntuple_frame_format, context)
+def _envelop_header(chunk, cursor, context):
+    env_version, min_version = cursor.fields(chunk, uproot.const._rntuple_frame_format, context)
     return {"env_version": env_version, "min_version": min_version}
 
 
@@ -163,6 +164,7 @@ in file {}""".format(
             assert (
                 f.header_crc32 == self.header.crc32
             ), f"crc32={self.header.crc32}, header_crc32={f.header_crc32}"
+            assert f.crc32 == zlib.crc32(self._footer_chunk.raw_data[:-4])
             self._footer = f
 
         return self._footer
@@ -481,7 +483,7 @@ class PageLink:
 
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.env_header = _renamemeA(chunk, cursor, context)
+        out.env_header = _envelop_header(chunk, cursor, context)
 
         out.pagelinklist = self.top_most_list.read(chunk, cursor, context)
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
@@ -489,11 +491,10 @@ class PageLink:
 
 
 class LocatorReader:
-    _locator_format = struct.Struct("<iQ")
 
     def read(self, chunk, cursor, context):
         out = MetaData("Locator")
-        out.num_bytes, out.offset = cursor.fields(chunk, self._locator_format, context)
+        out.num_bytes, out.offset = cursor.fields(chunk, _rntuple_locator_format, context)
         return out
 
 
@@ -621,7 +622,7 @@ class HeaderReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
-        out.env_header = _renamemeA(chunk, cursor, context)
+        out.env_header = _envelop_header(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.rc_tag = cursor.field(chunk, struct.Struct("I"), context)
         out.name, out.ntuple_description, out.writer_identifier = (
@@ -660,11 +661,10 @@ class ClusterSummaryReader:
 
 
 class ClusterGroupRecordReader:
-    _cluster_group_format = struct.Struct("<I")
 
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterGroupRecord")
-        out.num_clusters = cursor.field(chunk, self._cluster_group_format, context)
+        out.num_clusters = cursor.field(chunk, _rntuple_cluster_group_format, context)
         out.page_list_link = EnvLinkReader().read(chunk, cursor, context)
         return out
 
@@ -685,7 +685,7 @@ class FooterReader:
 
     def read(self, chunk, cursor, context):
         out = MetaData("Footer")
-        out.env_header = _renamemeA(chunk, cursor, context)
+        out.env_header = _envelop_header(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
@@ -698,6 +698,7 @@ class FooterReader:
             chunk, cursor, context
         )
         out.meta_block_links = self.meta_data_links.read(chunk, cursor, context)
+        out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
         return out
 
 

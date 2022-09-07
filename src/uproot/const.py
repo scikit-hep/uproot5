@@ -4,7 +4,7 @@
 This module defines integer constants used by serialization and deserialization routines.
 """
 
-
+import struct
 import numpy
 
 # determines when a file is "big"
@@ -116,6 +116,8 @@ kGenerateOffsetMap = numpy.uint8(1)
 kStreamedMemberWise = numpy.uint16(1 << 14)
 
 ############ RNTuple https://github.com/root-project/root/blob/master/tree/ntuple/v7/doc/specifications.md
+_rntuple_frame_format = struct.Struct("<HH")
+rntuple_env_header = _rntuple_frame_format.pack(1, 1)
 rntuple_col_num_to_dtype_dict = {
     1: "uint64",
     2: "uint32",

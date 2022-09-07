@@ -1806,20 +1806,22 @@ class Directory(CascadeNode):
         sink,
         name,
         title,
-        branch_types,
+        akform
     ):
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
-            None, 1700499286, 0, 48, 866, 133, 159, 1201, 81, 104, 0
+            None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         )
 
         header = uproot.writing._cascadentuple.NTuple_Header(
-            None, name, "", branch_types
+            None, name, "", akform
         )
 
+        footer = uproot.writing._cascadentuple.NTuple_Footer(None, 0, header._crc32, akform)
+
         ntuple = uproot.writing._cascadentuple.NTuple(
-            self, name, title, branch_types, self._freesegments, header, [], [], anchor
+            self, name, title, akform, self._freesegments, header, footer, [], anchor
         )
         ntuple.write(sink)
         return ntuple
