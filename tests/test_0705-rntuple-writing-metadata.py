@@ -1,24 +1,30 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-import awkward as ak
 import json
+import os
 import queue
 import sys
 
+import awkward as ak
 import numpy
 import pytest
 import skhep_testdata
 
 import uproot
-import os
 
 
 def test_flat(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
     with uproot.recreate(filepath) as file:
-        akform = ak._v2.forms.RecordForm([ak._v2.forms.NumpyForm('float64'), 
-            ak._v2.forms.NumpyForm('int32'), ak._v2.forms.NumpyForm('bool')], ['one', 'two', 'three'])
+        akform = ak._v2.forms.RecordForm(
+            [
+                ak._v2.forms.NumpyForm("float64"),
+                ak._v2.forms.NumpyForm("int32"),
+                ak._v2.forms.NumpyForm("bool"),
+            ],
+            ["one", "two", "three"],
+        )
         file.mkntuple("ntuple", akform)
 
     frs = uproot.open(filepath)["ntuple"].header.field_records
