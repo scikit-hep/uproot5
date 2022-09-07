@@ -11,13 +11,15 @@ See :doc:`uproot.writing._cascade` for a general overview of the cascading write
 
 
 import datetime
-import awkward
 import struct
 import zlib
 
+import awkward
+
 import uproot
 import uproot.compression
-#rntuple_col_type_to_num_dict
+
+# rntuple_col_type_to_num_dict
 import uproot.const
 import uproot.reading
 import uproot.serialization
@@ -53,7 +55,7 @@ _ak_primitive_to_typename_dict = {
     # "splitin64": 19,
     # "splitint32": 20,
     # "splitint16": 21,
-    }
+}
 _ak_primitive_to_num_dict = {
     "i64": 1,
     "i32": 2,
@@ -77,6 +79,7 @@ _ak_primitive_to_num_dict = {
     # "splitint32": 20,
     # "splitint16": 21,
 }
+
 
 class RBlob_Key(Key):
     def __init__(
@@ -106,8 +109,8 @@ def _serialize_rntuple_string(content):
     return _record_frame_wrap(str.encode(content), False)
 
 
-def _record_frame_wrap(payload, includeself = True):
-    aloc = len(payload) 
+def _record_frame_wrap(payload, includeself=True):
+    aloc = len(payload)
     if includeself:
         aloc += 4
     raw_bytes = _rntuple_record_size_format.pack(aloc) + payload
@@ -160,8 +163,9 @@ class NTuple_Field_Description:
             repr(self.field_name),
             repr(self.type_name),
             repr(self.type_alias),
-            repr(self.field_description)
+            repr(self.field_description),
         )
+
     def serialize(self):
         header_bytes = _rntuple_field_description.pack(
             self.field_version,
@@ -266,7 +270,6 @@ class NTuple_Header(CascadeLeaf):
             column_records.append(col)
 
         return field_records, column_records
-
 
     def serialize(self):
         if self._serialize:
