@@ -1801,24 +1801,18 @@ class Directory(CascadeNode):
         tree.write_anew(sink)
         return tree
 
-    def add_ntuple(
-        self,
-        sink,
-        name,
-        title,
-        akform
-    ):
+    def add_ntuple(self, sink, name, title, akform):
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
             None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
         )
 
-        header = uproot.writing._cascadentuple.NTuple_Header(
-            None, name, "", akform
-        )
+        header = uproot.writing._cascadentuple.NTuple_Header(None, name, "", akform)
 
-        footer = uproot.writing._cascadentuple.NTuple_Footer(None, 0, header._crc32, akform)
+        footer = uproot.writing._cascadentuple.NTuple_Footer(
+            None, 0, header._crc32, akform
+        )
 
         ntuple = uproot.writing._cascadentuple.NTuple(
             self, name, title, akform, self._freesegments, header, footer, [], anchor

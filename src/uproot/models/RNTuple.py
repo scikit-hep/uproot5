@@ -29,7 +29,9 @@ _rntuple_locator_format = struct.Struct("<iQ")
 
 
 def _envelop_header(chunk, cursor, context):
-    env_version, min_version = cursor.fields(chunk, uproot.const._rntuple_frame_format, context)
+    env_version, min_version = cursor.fields(
+        chunk, uproot.const._rntuple_frame_format, context
+    )
     return {"env_version": env_version, "min_version": min_version}
 
 
@@ -491,10 +493,11 @@ class PageLink:
 
 
 class LocatorReader:
-
     def read(self, chunk, cursor, context):
         out = MetaData("Locator")
-        out.num_bytes, out.offset = cursor.fields(chunk, _rntuple_locator_format, context)
+        out.num_bytes, out.offset = cursor.fields(
+            chunk, _rntuple_locator_format, context
+        )
         return out
 
 
@@ -661,7 +664,6 @@ class ClusterSummaryReader:
 
 
 class ClusterGroupRecordReader:
-
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterGroupRecord")
         out.num_clusters = cursor.field(chunk, _rntuple_cluster_group_format, context)

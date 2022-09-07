@@ -24,13 +24,13 @@ import uproot.const
 import uproot.reading
 import uproot.serialization
 from uproot.models.RNTuple import (
+    _rntuple_cluster_group_format,
     _rntuple_column_record_format,
     _rntuple_feature_flag_format,
     _rntuple_field_description,
     _rntuple_format1,
-    _rntuple_record_size_format,
-    _rntuple_cluster_group_format,
     _rntuple_locator_format,
+    _rntuple_record_size_format,
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
@@ -301,6 +301,8 @@ class NTuple_Header(CascadeLeaf):
         header_bytes = b"".join([out_string, self._crc32.to_bytes(4, "little")])
         self._serialize = header_bytes
         return self._serialize
+
+
 """
  0                   1                   2                   3
  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -319,6 +321,7 @@ class NTuple_Header(CascadeLeaf):
 |                             CRC32                             |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 """
+
 
 class NTuple_Footer(CascadeLeaf):
     def __init__(self, location, feature_flags, header_crc32, akform):
@@ -356,11 +359,14 @@ class NTuple_Footer(CascadeLeaf):
         out.append(_serialize_rntuple_list_frame(extension_header_envelope_links))
         out.append(_serialize_rntuple_list_frame(column_group_record_frames))
         out.append(_serialize_rntuple_list_frame(cluster_summary_record_frames))
-        out.append(_serialize_rntuple_list_frame(cluster_group_record_frames)) # never empty
+        out.append(
+            _serialize_rntuple_list_frame(cluster_group_record_frames)
+        )  # never empty
         out.append(_serialize_rntuple_list_frame(metadata_block_envelope_links))
         out_bytes = b"".join(out)
         crc32 = zlib.crc32(out_bytes)
         return out_bytes + crc32.to_bytes(4, "little")
+
 
 class NTuple_Locator:
     def __init__(self, num_bytes, offset):
@@ -371,6 +377,7 @@ class NTuple_Locator:
         outbytes = _rntuple_locator_format.pack(self.num_bytes, self.offset)
         return outbytes
 
+
 class NTuple_EnvLink:
     def __init__(self, uncomp_size, locator):
         self.uncomp_size = uncomp_size
@@ -379,6 +386,7 @@ class NTuple_EnvLink:
     def serialize(self):
         out = [struct.Struct("<I").pack(self.uncomp_size), self.locator.serialize()]
         return b"".join(out)
+
 
 class NTuple_ClusterGroupRecord:
     def __init__(self, num_clusters, page_list_link):
