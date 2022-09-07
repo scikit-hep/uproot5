@@ -10,10 +10,12 @@ import pytest
 import skhep_testdata
 
 import uproot
+import os
 
 
-def test_flat():
-    with uproot.recreate("/tmp/test.root") as file:
+def test_flat(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+    with uproot.recreate(filepath) as file:
         akform = ak._v2.forms.RecordForm([ak._v2.forms.NumpyForm('float64'), 
             ak._v2.forms.NumpyForm('int32'), ak._v2.forms.NumpyForm('bool')], ['one', 'two', 'three'])
         file.mkntuple("ntuple", akform)
