@@ -24,6 +24,7 @@ _rntuple_column_record_format = struct.Struct("<HHII")
 _rntuple_alias_column = struct.Struct("<II")
 _rntuple_extra_type_info = struct.Struct("<III")
 _rntuple_record_size_format = struct.Struct("<I")
+_rntuple_frame_header = struct.Struct("<ii")
 
 
 def _renamemeA(chunk, cursor, context):
@@ -129,13 +130,15 @@ in file {}""".format(
         if self._header is None:
             if not self._header_chunk_ready:
                 self._prepare_header_chunk()
-            cursor = self._header_cursor.copy()
             context = {}
+            cursor = self._header_cursor.copy()
 
             h = HeaderReader().read(self._header_chunk, cursor, context)
             self._header = h
             assert h.crc32 == zlib.crc32(self._header_chunk.raw_data[:-4])
 
+        # cursor = self._header_cursor.copy()
+        # cursor.debug(self._header_chunk)
         return self._header
 
     @property
@@ -537,14 +540,13 @@ class RecordFrameReader:
 
 
 class ListFrameReader:
-    _frame_header = struct.Struct("<ii")
 
     def __init__(self, payload):
         self.payload = payload
 
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        num_bytes, num_items = local_cursor.fields(chunk, self._frame_header, context)
+        num_bytes, num_items = local_cursor.fields(chunk, _rntuple_frame_header, context)
         assert num_bytes < 0, f"num_bytes={num_bytes}"
         cursor.skip(-num_bytes)
         return [

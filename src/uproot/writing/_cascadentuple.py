@@ -11,11 +11,13 @@ See :doc:`uproot.writing._cascade` for a general overview of the cascading write
 
 
 import datetime
+import awkward
 import struct
 import zlib
 
 import uproot
 import uproot.compression
+#rntuple_col_type_to_num_dict
 import uproot.const
 import uproot.reading
 import uproot.serialization
@@ -29,6 +31,52 @@ from uproot.models.RNTuple import (
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
+_ak_primitive_to_typename_dict = {
+    "i64": "std::int64_t",
+    "i32": "std::int32_t",
+    # "switch": 3,
+    # "byte": 4,
+    # "char": 5,
+    "bool": "bit",
+    "float64": "double",
+    "float32": "float",
+    # "float16": 9,
+    "int64": "std::int64_t",
+    "int32": "std::int32_t",
+    "int16": "std::int16_t",
+    "int8": "std::int8_t",
+    # "splitindex64": 14,
+    # "splitindex32": 15,
+    # "splitreal64": 16,
+    # "splitreal32": 17,
+    # "splitreal16": 18,
+    # "splitin64": 19,
+    # "splitint32": 20,
+    # "splitint16": 21,
+    }
+_ak_primitive_to_num_dict = {
+    "i64": 1,
+    "i32": 2,
+    # "switch": 3,
+    # "byte": 4,
+    # "char": 5,
+    "bool": 6,
+    "float64": 7,
+    "float32": 8,
+    "float16": 9,
+    "int64": 10,
+    "int32": 11,
+    "int16": 12,
+    "int8": 13,
+    # "splitindex64": 14,
+    # "splitindex32": 15,
+    # "splitreal64": 16,
+    # "splitreal32": 17,
+    # "splitreal16": 18,
+    # "splitin64": 19,
+    # "splitint32": 20,
+    # "splitint16": 21,
+}
 
 class RBlob_Key(Key):
     def __init__(
@@ -55,11 +103,13 @@ class RBlob_Key(Key):
 
 
 def _serialize_rntuple_string(content):
-    return _record_frame_wrap(str.encode(content))
+    return _record_frame_wrap(str.encode(content), False)
 
 
-def _record_frame_wrap(payload):
-    aloc = len(payload)
+def _record_frame_wrap(payload, includeself = True):
+    aloc = len(payload) 
+    if includeself:
+        aloc += 4
     raw_bytes = _rntuple_record_size_format.pack(aloc) + payload
     return raw_bytes
 
@@ -67,7 +117,7 @@ def _record_frame_wrap(payload):
 def _serialize_rntuple_list_frame(items):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
-    payload_bytes = b"".join([_record_frame_wrap(x.serialize()) for x in items])
+    payload_bytes = b"".join([_record_frame_wrap(x.serialize(), True) for x in items])
     size = 4 + 4 + len(payload_bytes)
     size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
     # n.b last byte of `n_item bytes` is reserved as of Sep 2022
@@ -99,6 +149,19 @@ class NTuple_Field_Description:
         self.type_alias = type_alias
         self.field_description = field_description
 
+    def __repr__(self):
+        return "{}({}, {}, {}, {}, {}, {}, {}, {}, {})".format(
+            type(self).__name__,
+            repr(self.field_version),
+            repr(self.type_version),
+            repr(self.parent_field_id),
+            repr(self.struct_role),
+            repr(self.flags),
+            repr(self.field_name),
+            repr(self.type_name),
+            repr(self.type_alias),
+            repr(self.field_description)
+        )
     def serialize(self):
         header_bytes = _rntuple_field_description.pack(
             self.field_version,
@@ -176,8 +239,34 @@ class NTuple_Header(CascadeLeaf):
         return "{}({}, {})".format(
             type(self).__name__,
             self._location,
-            ", ".join([repr(x) for x in self._members]),
+            ", ".join([repr(x) for x in self._akform]),
         )
+
+    def generate_field_col_records(self):
+        akform = self._akform
+        field_names = akform.fields
+        contents = akform.contents
+        field_records = []
+        column_records = []
+
+        for field_id, (field_name, ak_col) in enumerate(zip(field_names, contents)):
+            if not isinstance(ak_col, awkward._v2.forms.NumpyForm):
+                raise NotImplementedError("only flat column is supported")
+            ak_primitive = ak_col.primitive
+            type_name = _ak_primitive_to_typename_dict[ak_primitive]
+            parent_field_id = field_id
+            field = NTuple_Field_Description(
+                0, 0, parent_field_id, 0, 0, field_name, type_name, "", ""
+            )
+            type_num = _ak_primitive_to_num_dict[ak_primitive]
+            type_size = uproot.const.rntuple_col_num_to_size_dict[type_num]
+            col = NTuple_Column_Description(type_num, type_size, field_id, 0)
+
+            field_records.append(field)
+            column_records.append(col)
+
+        return field_records, column_records
+
 
     def serialize(self):
         if self._serialize:
@@ -187,16 +276,13 @@ class NTuple_Header(CascadeLeaf):
         rc_tag = struct.Struct("I").pack(1)
         name = _serialize_rntuple_string(self._name)
         description = _serialize_rntuple_string(self._ntuple_description)
-        writer = _serialize_rntuple_string("uproot " + uproot.__version__)
+        # writer = _serialize_rntuple_string("uproot " + uproot.__version__)
+        writer = _serialize_rntuple_string("ROOT v6.26/06")
 
         out = []
         out.extend([env_header, feature_flag, rc_tag, name, description, writer])
-        field_records = [
-            NTuple_Field_Description(
-                0, 0, 0, 0, 0, "one_integers", "std::int32_t", "", ""
-            )
-        ]
-        column_records = [NTuple_Column_Description(11, 32, 0, 0)]
+
+        field_records, column_records = self.generate_field_col_records()
         alias_records = []
         extra_type_info = []
 

@@ -139,6 +139,29 @@ rntuple_col_num_to_dtype_dict = {
     20: "int32",  # split
     21: "int16",  # split
 }
+rntuple_col_num_to_size_dict = {
+    1: 64,
+    2: 32,
+    3: 64,  # Switch
+    4: 8,
+    5: 8,  # char
+    6: 1,
+    7: 64,
+    8: 32,
+    9: 16,
+    10: 64,
+    11: 32,
+    12: 16,
+    13: 8,
+    14: 32,  # SplitIndex64 delta encoding
+    15: 64,  # SplitIndex32 delta encoding
+    16: 64,  # split
+    17: 32,  # split
+    18: 16,  # split
+    19: 64,  # split
+    20: 32,  # split
+    21: 16,  # split
+}
 
 rntuple_col_type_to_num_dict = {
     "index64": 1,
