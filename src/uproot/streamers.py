@@ -224,7 +224,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         helper_obj = uproot._awkward_forth.GenHelper(context)
         if helper_obj.is_forth():
             forth_obj = helper_obj.get_gen_obj()
-            content = {}\n"""
+            content = {}"""
         )
         read_member_n = [
             "    def read_member_n(self, chunk, cursor, context, file, member_index):"
@@ -1022,7 +1022,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     # @aryan26roy: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,39,45,46,47,49,50,56
 
                     read_members.append(
-                        f"        {assign_members} = cursor.fields(chunk, self._format{len(formats) - 1}, context)"
+                        f"\n        {assign_members} = cursor.fields(chunk, self._format{len(formats) - 1}, context)"
                     )
 
             read_member_n.append(
