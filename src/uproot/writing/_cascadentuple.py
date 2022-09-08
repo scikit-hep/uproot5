@@ -15,7 +15,6 @@ import struct
 import zlib
 
 import awkward
-import numpy
 
 import uproot
 import uproot.compression
