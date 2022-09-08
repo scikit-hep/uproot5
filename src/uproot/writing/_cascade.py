@@ -1814,9 +1814,14 @@ class Directory(CascadeNode):
             None, 0, header._crc32, akform
         )
 
-        empty_page_list_bytes = numpy.array([  1,   0,   1,   0, 248, 255, 255, 255,   0,   0,   0,   0, 177, 200, 170, 159], dtype=numpy.uint8)
+        empty_page_list_bytes = numpy.array(
+            [1, 0, 1, 0, 248, 255, 255, 255, 0, 0, 0, 0, 177, 200, 170, 159],
+            dtype=numpy.uint8,
+        )
         offset = self._freesegments.allocate(16)
-        footer._page_list_link.locator = uproot.writing._cascadentuple.NTuple_Locator(16, offset)
+        footer._page_list_link.locator = uproot.writing._cascadentuple.NTuple_Locator(
+            16, offset
+        )
 
         ntuple = uproot.writing._cascadentuple.NTuple(
             self, name, title, akform, self._freesegments, header, footer, [], anchor

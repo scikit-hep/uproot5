@@ -350,7 +350,9 @@ class NTuple_Footer(CascadeLeaf):
         extension_header_envelope_links = []
         column_group_record_frames = []
         cluster_summary_record_frames = []
-        cluster_group_record_frames = [NTuple_ClusterGroupRecord(0, self._page_list_link)]
+        cluster_group_record_frames = [
+            NTuple_ClusterGroupRecord(0, self._page_list_link)
+        ]
         metadata_block_envelope_links = []
 
         out.append(_serialize_rntuple_list_frame(extension_header_envelope_links))
