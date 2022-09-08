@@ -15,11 +15,10 @@ import struct
 import zlib
 
 import awkward
+import numpy
 
 import uproot
 import uproot.compression
-
-# rntuple_col_type_to_num_dict
 import uproot.const
 import uproot.reading
 import uproot.serialization
@@ -329,9 +328,9 @@ class NTuple_Footer(CascadeLeaf):
         self._feature_flags = feature_flags
         self._header_crc32 = header_crc32
         self._akform = akform
+        self._page_list_link = NTuple_EnvLink(16, None)
 
-        aloc = len(self.serialize())
-        super().__init__(location, aloc)
+        super().__init__(location, None)
 
     def __repr__(self):
         return "{}({}, {}, {}, {})".format(
@@ -351,9 +350,7 @@ class NTuple_Footer(CascadeLeaf):
         extension_header_envelope_links = []
         column_group_record_frames = []
         cluster_summary_record_frames = []
-        locator = NTuple_Locator(16, 1039)
-        page_list_link = NTuple_EnvLink(16, locator)
-        cluster_group_record_frames = [NTuple_ClusterGroupRecord(0, page_list_link)]
+        cluster_group_record_frames = [NTuple_ClusterGroupRecord(0, self._page_list_link)]
         metadata_block_envelope_links = []
 
         out.append(_serialize_rntuple_list_frame(extension_header_envelope_links))
@@ -370,11 +367,11 @@ class NTuple_Footer(CascadeLeaf):
 
 class NTuple_Locator:
     def __init__(self, num_bytes, offset):
-        self.num_bytes = num_bytes
-        self.offset = offset
+        self._num_bytes = num_bytes
+        self._offset = offset
 
     def serialize(self):
-        outbytes = _rntuple_locator_format.pack(self.num_bytes, self.offset)
+        outbytes = _rntuple_locator_format.pack(self._num_bytes, self._offset)
         return outbytes
 
 
@@ -438,7 +435,7 @@ class NTuple_Anchor(CascadeLeaf):
         self.fReserved = fReserved
 
     @property
-    def _members(self):
+    def _fields(self):
         return [
             self.fCheckSum,
             self.fVersion,
@@ -456,7 +453,7 @@ class NTuple_Anchor(CascadeLeaf):
         return "{}({}, {})".format(
             type(self).__name__,
             self._location,
-            ", ".join([repr(x) for x in self._members]),
+            ", ".join([repr(x) for x in self._fields]),
         )
 
     def serialize(self):
@@ -464,7 +461,11 @@ class NTuple_Anchor(CascadeLeaf):
         # version = 0
         # aloc = _rntuple_format1.size
         # uproot.serialization.numbytes_version(aloc, version)
-        return b"@\x00\x006\x00\x00" + _rntuple_format1.pack(*self._members)
+        out = _rntuple_format1.pack(*self._fields)
+        crc32 = zlib.crc32(out[4:])
+        self.fCheckSum = crc32
+        out = _rntuple_format1.pack(*self._fields)
+        return b"@\x00\x006\x00\x00" + out
 
 
 class NTuple(CascadeNode):

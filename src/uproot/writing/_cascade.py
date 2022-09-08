@@ -1805,7 +1805,7 @@ class Directory(CascadeNode):
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
-            None, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+            None, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0
         )
 
         header = uproot.writing._cascadentuple.NTuple_Header(None, name, "", akform)
@@ -1814,10 +1814,17 @@ class Directory(CascadeNode):
             None, 0, header._crc32, akform
         )
 
+        empty_page_list_bytes = numpy.array([  1,   0,   1,   0, 248, 255, 255, 255,   0,   0,   0,   0, 177, 200, 170, 159], dtype=numpy.uint8)
+        offset = self._freesegments.allocate(16)
+        footer._page_list_link.locator = uproot.writing._cascadentuple.NTuple_Locator(16, offset)
+
         ntuple = uproot.writing._cascadentuple.NTuple(
             self, name, title, akform, self._freesegments, header, footer, [], anchor
         )
+
+        sink.write(offset, empty_page_list_bytes)
         ntuple.write(sink)
+        sink.flush()
         return ntuple
 
 

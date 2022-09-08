@@ -13,7 +13,7 @@ import numpy
 import uproot
 
 # https://github.com/root-project/root/blob/e9fa243af91217e9b108d828009c81ccba7666b5/tree/ntuple/v7/inc/ROOT/RMiniFile.hxx#L65
-_rntuple_format1 = struct.Struct(">iIIQIIQIIQ")
+_rntuple_format1 = struct.Struct(">IIIQIIQIIQ")
 
 # https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#envelopes
 _rntuple_feature_flag_format = struct.Struct("<Q")
@@ -186,7 +186,8 @@ in file {}""".format(
     def which_colgroup(self, ncol):
         return 0  # FIXME haven't seen file with column group yet
 
-    def read_locator(self, loc, uncomp_size, cursor, context):
+    def read_locator(self, loc, uncomp_size, context):
+        cursor = uproot.source.cursor.Cursor(loc.offset)
         chunk = self.file.source.chunk(loc.offset, loc.offset + loc.num_bytes)
         if loc.num_bytes < uncomp_size:
             decomp_chunk = uproot.compression.decompress(
@@ -195,7 +196,7 @@ in file {}""".format(
             cursor.move_to(0)
         else:
             decomp_chunk = chunk
-        return decomp_chunk
+        return decomp_chunk, cursor
 
     @property
     def page_list_envelopes(self):
@@ -205,9 +206,8 @@ in file {}""".format(
             for record in self.footer.cluster_group_records:
                 link = record.page_list_link
                 loc = link.locator
-                cursor = uproot.source.cursor.Cursor(loc.offset)
-                decomp_chunk = self.read_locator(
-                    loc, link.env_uncomp_size, cursor, context
+                decomp_chunk, cursor = self.read_locator(
+                    loc, link.env_uncomp_size, context
                 )
                 self._page_list_envelopes = PageLink().read(
                     decomp_chunk, cursor, context
@@ -317,7 +317,6 @@ in file {}""".format(
 
     def read_pagedesc(self, destination, desc, dtype_str, dtype):
         loc = desc.locator
-        cursor = uproot.source.cursor.Cursor(loc.offset)
         context = {}
         # bool in RNTuple is always stored as bits
         isbit = dtype_str == "bit"
@@ -325,7 +324,7 @@ in file {}""".format(
         num_elements = len(destination)
         num_elements_toread = int(numpy.ceil(num_elements / len_divider))
         uncomp_size = num_elements_toread * dtype.itemsize
-        decomp_chunk = self.read_locator(loc, uncomp_size, cursor, context)
+        decomp_chunk, cursor = self.read_locator(loc, uncomp_size, context)
         content = cursor.array(
             decomp_chunk, num_elements_toread, dtype, context, move=False
         )
