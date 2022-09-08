@@ -50,14 +50,51 @@ def dask(
             in each chunk. The string must be a number followed by a memory unit,
             such as "100 MB".
         library (str or :doc:`uproot.interpretation.library.Library`): The library
-            that is used to represent arrays.
+            that is used to represent arrays. If ``library='np'`` it returns a dict
+            of dask arrays and if ``library='ak'`` it returns a single dask-awkward
+            array. ``library='pd'`` has not been implemented yet and will raise a
+            ``NotImplementedError``.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
             the specified ``TTree``.
+        open_files (bool): If True, the function will open the files to read file
+            metadata, i.e. only the main data read is delayed till the compute call on
+            the dask collections. If False, the opening of the files and reading the 
+            metadata is also delayed till the compute call. In this case, branch-names 
+            are inferred by opening only the first file.
         options: See below.
 
-    Returns dask equivalents of the backends supported by uproot.
+    Returns dask equivalents of the backends supported by uproot. If ``library='np'``, 
+    the function returns a Python dict of dask arrays. If ``library='ak'``, the 
+    function returns a single dask-awkward array. This function requires additional 
+    dependancies like ``dask[complete]`` and ``dask-awkward``.
+
+    Here's a dependancy guide.
+
+    For using ``library='np'`` install dask with 
+
+    .. code-block:: bash
+
+        # with pip
+        pip install "dask[complete]"
+        # or with conda
+        conda install dask
+
+    For using ``library='ak'`` install dask(shown above) and dask-awkard with
+
+    .. code-block:: bash
+
+        pip install dask-awkward   # not on conda-forge yet
+        
+    For example:
+
+    .. code-block:: python
+
+        >>> uproot.dask(root_file)
+        dask.awkward<from-uproot, npartitions=1>
+        >>> uproot.dask(root_file,library='np')
+        {'Type': dask.array<Type-from-uproot, shape=(2304,), dtype=object, chunksize=(2304,), chunktype=numpy.ndarray>, ...}
 
     Allowed types for the ``files`` parameter:
 
@@ -197,7 +234,7 @@ class _PackedArgCallable:
         )
 
 
-class LazyInputsDict(Mapping):
+class _LazyInputsDict(Mapping):
     """Dictionary with lazy key value pairs
     Parameters
     ----------
@@ -298,7 +335,7 @@ def _dask_array_from_map(
         io_func = func
 
     io_arg_map = dask.blockwise.BlockwiseDepDict(
-        mapping=LazyInputsDict(inputs),  # type: ignore
+        mapping=_LazyInputsDict(inputs),  # type: ignore
         produces_tasks=produces_tasks,
     )
 

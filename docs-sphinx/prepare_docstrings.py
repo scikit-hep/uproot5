@@ -14,6 +14,7 @@ order = [
     "uproot.reading",
     "uproot.writing",
     "uproot.behaviors",
+    "uproot._dask",
     "uproot.behavior",
     "uproot.model",
     "uproot.streamers",
@@ -63,6 +64,7 @@ common = [
     "uproot.source.http.MultithreadedHTTPSource",
     "uproot.source.xrootd.XRootDSource",
     "uproot.source.xrootd.MultithreadedXRootDSource",
+    "uproot.models.TTree.num_entries"
 ]
 
 latest_commit = (
@@ -104,7 +106,7 @@ def ensure(filename, content):
 
 
 def handle_module(modulename, module):
-    if any(x.startswith("_") for x in modulename.split(".")):
+    if (any(x.startswith("_") for x in modulename.split(".")) and not any(x == "_dask" for x in modulename.split("."))):
         return
 
     content = """{0}
@@ -121,7 +123,7 @@ def handle_module(modulename, module):
         toctree2.write("    " + modulename + " (module) <" + modulename + ">\n")
 
     if modulename != "uproot" and all(
-        not x.startswith("_") for x in modulename.split(".")
+        not x.startswith("_") or x=='_dask' for x in modulename.split(".")
     ):
 
         def good(obj):
