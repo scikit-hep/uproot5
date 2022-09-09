@@ -54,10 +54,21 @@ def test_header(tmp_path):
     assert crs[1].nbits == 32
     assert crs[2].nbits == 1
 
+def test_writable(tmp_path):
+    filepath = os.path.join(tmp_path, "test.root")
+
+    with uproot.recreate(filepath) as file:
+        akform = ak._v2.forms.RecordForm(
+            [
+                ak._v2.forms.NumpyForm("int32"),
+            ],
+            ["one"],
+        )
+        file.mkntuple("ntuple", akform)
+        assert type(file["ntuple"]).__name__ == "WritableNTuple"
+
 
 ROOT = pytest.importorskip("ROOT")
-
-
 def test_ROOT(tmp_path, capfd):
     filepath = os.path.join(tmp_path, "test.root")
 
