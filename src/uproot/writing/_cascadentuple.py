@@ -24,13 +24,13 @@ import uproot.reading
 import uproot.serialization
 from uproot.models.RNTuple import (
     _rntuple_cluster_group_format,
+    _rntuple_cluster_summary_format,
     _rntuple_column_record_format,
     _rntuple_feature_flag_format,
     _rntuple_field_description,
     _rntuple_format1,
     _rntuple_locator_format,
     _rntuple_record_size_format,
-    _rntuple_cluster_summary_format
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
@@ -80,6 +80,7 @@ _ak_primitive_to_num_dict = {
     # "splitint32": 20,
     # "splitint16": 21,
 }
+
 
 class RBlob_Key(Key):
     def __init__(
@@ -348,13 +349,19 @@ class NTuple_Footer(CascadeLeaf):
             self.column_group_record_frames,
             self.cluster_summary_record_frames,
             self.cluster_group_record_frames,
-            self.metadata_block_envelope_links
+            self.metadata_block_envelope_links,
         )
 
     def serialize(self):
         env_header = uproot.const.rntuple_env_header
         out = []
-        out.extend([env_header, self.feature_flag_bytes, self._header_crc32.to_bytes(4, "little")])
+        out.extend(
+            [
+                env_header,
+                self.feature_flag_bytes,
+                self._header_crc32.to_bytes(4, "little"),
+            ]
+        )
         out.append(_serialize_rntuple_list_frame(self.extension_header_envelope_links))
         out.append(_serialize_rntuple_list_frame(self.column_group_record_frames))
         out.append(_serialize_rntuple_list_frame(self.cluster_summary_record_frames))
@@ -377,11 +384,8 @@ class NTuple_Locator:
         return outbytes
 
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__,
-            self.num_bytes,
-            self.offset
-        )
+        return "{}({}, {})".format(type(self).__name__, self.num_bytes, self.offset)
+
 
 class NTuple_EnvLink:
     def __init__(self, uncomp_size, locator):
@@ -393,11 +397,8 @@ class NTuple_EnvLink:
         return b"".join(out)
 
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__,
-            self.uncomp_size,
-            self.locator
-        )
+        return "{}({}, {})".format(type(self).__name__, self.uncomp_size, self.locator)
+
 
 class NTuple_ClusterGroupRecord:
     def __init__(self, num_clusters, page_list_link):
@@ -408,44 +409,45 @@ class NTuple_ClusterGroupRecord:
         header_bytes = _rntuple_cluster_group_format.pack(self.num_clusters)
         page_list_link_bytes = self.page_list_link.serialize()
         return header_bytes + page_list_link_bytes
+
     def __repr__(self):
         return "{}({}, {})".format(
-            type(self).__name__,
-            self.num_clusters,
-            self.page_list_link
+            type(self).__name__, self.num_clusters, self.page_list_link
         )
+
 
 class NTuple_ClusterSummary:
     def __init__(self, num_first_entry, num_entries):
         self.num_first_entry = num_first_entry
         self.num_entries = num_entries
+
     def serialize(self):
-        # from spec: 
+        # from spec:
         # to save space, the page descriptions (inner items) are not in a record frame.
-        payload_bytes = _rntuple_cluster_summary_format.pack(self.num_first_entry, self.num_entries)
+        payload_bytes = _rntuple_cluster_summary_format.pack(
+            self.num_first_entry, self.num_entries
+        )
         return payload_bytes
+
     def __repr__(self):
         return "{}({}, {})".format(
-            type(self).__name__,
-            self.num_first_entry,
-            self.num_entries
+            type(self).__name__, self.num_first_entry, self.num_entries
         )
+
 
 class NTuple_InnerListLocator:
     def __init__(self, num_pages, page_descs):
         self.num_pages = num_pages
         self.page_descs = page_descs
+
     def serialize(self):
-        # from spec: 
+        # from spec:
         # to save space, the page descriptions (inner items) are not in a record frame.
         payload_bytes = b"".join([x.serialize() for x in self.page_descs])
         return payload_bytes
+
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__,
-            self.num_pages,
-            self.page_descs
-        )
+        return "{}({}, {})".format(type(self).__name__, self.num_pages, self.page_descs)
 
 
 class NTuple_PageDescription:
@@ -457,11 +459,7 @@ class NTuple_PageDescription:
         return struct.Struct("<I").pack(self.num_elements) * self.locator.serialize()
 
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__,
-            self.num_elements,
-            self.locator
-        )
+        return "{}({}, {})".format(type(self).__name__, self.num_elements, self.locator)
 
 
 class NTuple_Anchor(CascadeLeaf):
@@ -739,7 +737,7 @@ class NTuple(CascadeNode):
 
     def extend(self, file, sink, data):
         """
-        1. pages(data) 
+        1. pages(data)
         2. page inner list locator
         3. page list envelopes
         4. relocate footer
@@ -751,21 +749,18 @@ class NTuple(CascadeNode):
         self._footer.cluster_summary_record_frames.append(cluster_summary)
 
         # page (actual column content)
-        dummy_data= numpy.array([9,8,7,6,5,4,3,2,1,0], dtype="int32")
+        dummy_data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
         dummy_data_bytes = dummy_data.view("uint8")
         num_elements = len(dummy_data)
-        page_key = self.add_rblob(
-                sink,
-                dummy_data_bytes,
-                num_elements,
-                big=False
-                )
+        page_key = self.add_rblob(sink, dummy_data_bytes, num_elements, big=False)
         print(page_key)
         self.array_to_type(data.layout, data.type)
 
         #### relocate Footer ##############################
         old_footer_key = self._footer_key
-        self._freesegments.release(old_footer_key.location, old_footer_key.location + old_footer_key.allocation)
+        self._freesegments.release(
+            old_footer_key.location, old_footer_key.location + old_footer_key.allocation
+        )
         footer_raw_data = self._footer.serialize()
         self._footer_key = self.add_rblob(
             sink,

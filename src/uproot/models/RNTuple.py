@@ -29,7 +29,6 @@ _rntuple_locator_format = struct.Struct("<iQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 
 
-
 def _envelop_header(chunk, cursor, context):
     env_version, min_version = cursor.fields(
         chunk, uproot.const._rntuple_frame_format, context
