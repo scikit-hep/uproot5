@@ -428,6 +428,12 @@ class WritableFile(uproot.reading.CommonFileMethods):
     def _get_tree(self, loc):
         return self._trees[loc]
 
+    def _has_ntuple(self, loc):
+        return loc in self._ntuples
+
+    def _get_ntuple(self, loc):
+        return self._ntuples[loc]
+
     def _move_tree(self, oldloc, newloc):
         tree = self._trees[oldloc]
         del self._trees[oldloc]
@@ -986,6 +992,13 @@ class WritableDirectory(MutableMapping):
             else:
                 raise TypeError(
                     "WritableDirectory cannot view preexisting TTrees; open the file with uproot.open instead of uproot.recreate or uproot.update"
+                )
+        elif key.classname.string == "ROOT::Experimental::RNTuple":
+            if self._file._has_ntuple(key.seek_location):
+                return self._file._get_ntuple(key.seek_location)
+            else:
+                raise TypeError(
+                    "WritableDirectory cannot view preexisting RNTuple; open the file with uproot.open instead of uproot.recreate or uproot.update"
                 )
 
         else:
