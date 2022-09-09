@@ -54,6 +54,7 @@ def test_header(tmp_path):
     assert crs[1].nbits == 32
     assert crs[2].nbits == 1
 
+
 def test_writable(tmp_path):
     filepath = os.path.join(tmp_path, "test.root")
 
@@ -69,6 +70,8 @@ def test_writable(tmp_path):
 
 
 ROOT = pytest.importorskip("ROOT")
+
+
 def test_ROOT(tmp_path, capfd):
     filepath = os.path.join(tmp_path, "test.root")
 
