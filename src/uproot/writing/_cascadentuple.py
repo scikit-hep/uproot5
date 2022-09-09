@@ -625,6 +625,7 @@ class NTuple(CascadeNode):
         return self._num_entries
 
     def actually_use(self, array):
+        pass
         # print(type(array))
         # print(f"using {array!r}")
 
