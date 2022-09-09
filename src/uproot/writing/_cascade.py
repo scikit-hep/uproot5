@@ -1805,7 +1805,7 @@ class Directory(CascadeNode):
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
-            None, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0
+            None, 0, 0, 48, None, None, None, None, None, None, None
         )
 
         header = uproot.writing._cascadentuple.NTuple_Header(None, name, "", akform)
@@ -1813,6 +1813,34 @@ class Directory(CascadeNode):
         footer = uproot.writing._cascadentuple.NTuple_Footer(
             None, 0, header._crc32, akform
         )
+
+        # the empty page list is hard-coded bytes which represents:
+        # 0                   1                   2                   3
+        # 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        # |        Envelope Version       |        Minimum Version        |
+        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        # |                             Size                            |T|
+        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        # |           Number of Items (for list frames)           |Reserv.|
+        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        # |                         FRAME PAYLOAD                         |
+        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        # |                             CRC32                             |
+        # +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+        #
+        # - Envelope Version = 1 (0x0100)
+        # - Minimum Version = 1  (0x0100)
+        # - Size = -8 (0xf8ffffff) [value is negative because this is a list]
+        # - Number of Items = 0 (0x00000000) [empty list]
+        # - FRAME PAYLOAD = empty [because number of items is 0]
+        # - CRC32 = 2678769841
+        # manually calculate CRC32:
+
+        # In [1]: zlib.crc32(b'\x01\x00\x01\x00\xf8\xff\xff\xff\00\00\00\00')
+        # Out[1]: 2678769841
+        # In [2]: np.array([177, 200, 170, 159], dtype=np.uint8).view("uint32")
+        # Out[2]: array([2678769841], dtype=uint32)
 
         empty_page_list_bytes = numpy.array(
             [1, 0, 1, 0, 248, 255, 255, 255, 0, 0, 0, 0, 177, 200, 170, 159],
