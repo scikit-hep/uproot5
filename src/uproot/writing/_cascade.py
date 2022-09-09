@@ -1805,7 +1805,7 @@ class Directory(CascadeNode):
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(
-            None, 0, 0, 48, None, None, None, None, None, None, None
+            None, 0, 0, 48, None, None, None, None, None, None, 0
         )
 
         header = uproot.writing._cascadentuple.NTuple_Header(None, name, "", akform)

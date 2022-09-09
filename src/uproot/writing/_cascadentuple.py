@@ -463,7 +463,7 @@ class NTuple_Anchor(CascadeLeaf):
         # aloc = _rntuple_format1.size
         # uproot.serialization.numbytes_version(aloc, version)
         out = _rntuple_format1.pack(*self._fields)
-        crc32 = zlib.crc32(out[4:])
+        crc32 = zlib.crc32(out)
         self.fCheckSum = crc32
         out = _rntuple_format1.pack(*self._fields)
         return b"@\x00\x006\x00\x00" + out
