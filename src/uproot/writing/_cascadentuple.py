@@ -625,17 +625,17 @@ class NTuple(CascadeNode):
         return self._num_entries
 
     def actually_use(self, array):
-        print(type(array))
-        print(f"using {array!r}")
+        # print(type(array))
+        # print(f"using {array!r}")
 
     def array_to_type(self, array, type):
         if isinstance(type, awkward._v2.types.ArrayType):
             type = type.content
-        # type: unknown
+        # type is unknown
         if isinstance(type, awkward._v2.types.UnknownType):
             raise TypeError("cannot write data of unknown type to RNTuple")
 
-        # type: primitive (e.g. "float32")
+        # type is primitive (e.g. "float32")
         elif isinstance(type, awkward._v2.types.NumpyType):
             if isinstance(array, awkward._v2.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
@@ -657,7 +657,7 @@ class NTuple(CascadeNode):
             else:
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
-        # type: regular-length lists (e.g. "3 * float32")
+        # type is regular-length lists (e.g. "3 * float32")
         elif isinstance(type, awkward._v2.types.RegularType):
             if isinstance(array, awkward._v2.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
@@ -676,7 +676,7 @@ class NTuple(CascadeNode):
             else:
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
-        # type: variable-length lists (e.g. "var * float32")
+        # type is variable-length lists (e.g. "var * float32")
         elif isinstance(type, awkward._v2.types.ListType):
             if isinstance(array, awkward._v2.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
@@ -696,11 +696,11 @@ class NTuple(CascadeNode):
             else:
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
-        # type: potentially missing data (e.g. "?float32")
+        # type is potentially missing data (e.g. "?float32")
         elif isinstance(type, awkward._v2.types.OptionType):
             raise NotImplementedError("RNTuple does not yet have an option-type")
 
-        # type: struct-like records (e.g. "{x: float32, y: var * int64}")
+        # type is struct-like records (e.g. "{x: float32, y: var * int64}")
         elif isinstance(type, awkward._v2.types.RecordType):
             if isinstance(array, awkward._v2.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
@@ -715,7 +715,7 @@ class NTuple(CascadeNode):
             else:
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
-        # type: heterogeneous unions/variants (e.g. "union[float32, var * int64]")
+        # type is heterogeneous unions/variants (e.g. "union[float32, var * int64]")
         elif isinstance(type, awkward._v2.types.UnionType):
             if isinstance(array, awkward._v2.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
@@ -753,7 +753,6 @@ class NTuple(CascadeNode):
         dummy_data_bytes = dummy_data.view("uint8")
         num_elements = len(dummy_data)
         page_key = self.add_rblob(sink, dummy_data_bytes, num_elements, big=False)
-        print(page_key)
         self.array_to_type(data.layout, data.type)
 
         #### relocate Footer ##############################
