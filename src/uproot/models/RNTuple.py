@@ -26,6 +26,8 @@ _rntuple_record_size_format = struct.Struct("<I")
 _rntuple_frame_header = struct.Struct("<ii")
 _rntuple_cluster_group_format = struct.Struct("<I")
 _rntuple_locator_format = struct.Struct("<iQ")
+_rntuple_cluster_summary_format = struct.Struct("<QQ")
+
 
 
 def _envelop_header(chunk, cursor, context):
@@ -652,12 +654,10 @@ class ColumnGroupRecordReader:
 
 
 class ClusterSummaryReader:
-    _cluster_summary_format = struct.Struct("<QQ")
-
     def read(self, chunk, cursor, context):
         out = MetaData("ClusterSummaryRecord")
         out.num_first_entry, out.num_entries = cursor.fields(
-            chunk, self._cluster_summary_format, context
+            chunk, _rntuple_cluster_summary_format, context
         )
         return out
 

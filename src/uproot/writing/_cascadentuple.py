@@ -15,6 +15,7 @@ import struct
 import zlib
 
 import awkward
+import numpy
 
 import uproot
 import uproot.compression
@@ -29,6 +30,7 @@ from uproot.models.RNTuple import (
     _rntuple_format1,
     _rntuple_locator_format,
     _rntuple_record_size_format,
+    _rntuple_cluster_summary_format
 )
 from uproot.writing._cascade import CascadeLeaf, CascadeNode, Key, String
 
@@ -78,7 +80,6 @@ _ak_primitive_to_num_dict = {
     # "splitint32": 20,
     # "splitint16": 21,
 }
-
 
 class RBlob_Key(Key):
     def __init__(
@@ -329,38 +330,38 @@ class NTuple_Footer(CascadeLeaf):
         self._akform = akform
         self._page_list_link = NTuple_EnvLink(16, None)
 
+        self.feature_flag_bytes = _rntuple_feature_flag_format.pack(self._feature_flags)
+        self.extension_header_envelope_links = []
+        self.column_group_record_frames = []
+        self.cluster_summary_record_frames = []
+        self.cluster_group_record_frames = [
+            NTuple_ClusterGroupRecord(0, self._page_list_link)
+        ]
+        self.metadata_block_envelope_links = []
+
         super().__init__(location, None)
 
     def __repr__(self):
-        return "{}({}, {}, {}, {})".format(
+        return "{}(extension_header_env_links = {}, column_group_record_frames = {}, cluster_summary_record_frames={}, cluster_group_record_frames{}, metadata_block_envelope_link = {})".format(
             type(self).__name__,
-            self._location,
-            self._feature_flags,
-            self._header_crc32,
-            ", ".join([repr(x) for x in self._akform]),
+            self.extension_header_envelope_links,
+            self.column_group_record_frames,
+            self.cluster_summary_record_frames,
+            self.cluster_group_record_frames,
+            self.metadata_block_envelope_links
         )
 
     def serialize(self):
         env_header = uproot.const.rntuple_env_header
         out = []
-        feature_flag = _rntuple_feature_flag_format.pack(0)
-        out.extend([env_header, feature_flag, self._header_crc32.to_bytes(4, "little")])
-
-        extension_header_envelope_links = []
-        column_group_record_frames = []
-        cluster_summary_record_frames = []
-        cluster_group_record_frames = [
-            NTuple_ClusterGroupRecord(0, self._page_list_link)
-        ]
-        metadata_block_envelope_links = []
-
-        out.append(_serialize_rntuple_list_frame(extension_header_envelope_links))
-        out.append(_serialize_rntuple_list_frame(column_group_record_frames))
-        out.append(_serialize_rntuple_list_frame(cluster_summary_record_frames))
+        out.extend([env_header, self.feature_flag_bytes, self._header_crc32.to_bytes(4, "little")])
+        out.append(_serialize_rntuple_list_frame(self.extension_header_envelope_links))
+        out.append(_serialize_rntuple_list_frame(self.column_group_record_frames))
+        out.append(_serialize_rntuple_list_frame(self.cluster_summary_record_frames))
         out.append(
-            _serialize_rntuple_list_frame(cluster_group_record_frames)
+            _serialize_rntuple_list_frame(self.cluster_group_record_frames)
         )  # never empty
-        out.append(_serialize_rntuple_list_frame(metadata_block_envelope_links))
+        out.append(_serialize_rntuple_list_frame(self.metadata_block_envelope_links))
         out_bytes = b"".join(out)
         crc32 = zlib.crc32(out_bytes)
         return out_bytes + crc32.to_bytes(4, "little")
@@ -368,13 +369,19 @@ class NTuple_Footer(CascadeLeaf):
 
 class NTuple_Locator:
     def __init__(self, num_bytes, offset):
-        self._num_bytes = num_bytes
-        self._offset = offset
+        self.num_bytes = num_bytes
+        self.offset = offset
 
     def serialize(self):
-        outbytes = _rntuple_locator_format.pack(self._num_bytes, self._offset)
+        outbytes = _rntuple_locator_format.pack(self.num_bytes, self.offset)
         return outbytes
 
+    def __repr__(self):
+        return "{}({}, {})".format(
+            type(self).__name__,
+            self.num_bytes,
+            self.offset
+        )
 
 class NTuple_EnvLink:
     def __init__(self, uncomp_size, locator):
@@ -385,6 +392,12 @@ class NTuple_EnvLink:
         out = [struct.Struct("<I").pack(self.uncomp_size), self.locator.serialize()]
         return b"".join(out)
 
+    def __repr__(self):
+        return "{}({}, {})".format(
+            type(self).__name__,
+            self.uncomp_size,
+            self.locator
+        )
 
 class NTuple_ClusterGroupRecord:
     def __init__(self, num_clusters, page_list_link):
@@ -395,6 +408,60 @@ class NTuple_ClusterGroupRecord:
         header_bytes = _rntuple_cluster_group_format.pack(self.num_clusters)
         page_list_link_bytes = self.page_list_link.serialize()
         return header_bytes + page_list_link_bytes
+    def __repr__(self):
+        return "{}({}, {})".format(
+            type(self).__name__,
+            self.num_clusters,
+            self.page_list_link
+        )
+
+class NTuple_ClusterSummary:
+    def __init__(self, num_first_entry, num_entries):
+        self.num_first_entry = num_first_entry
+        self.num_entries = num_entries
+    def serialize(self):
+        # from spec: 
+        # to save space, the page descriptions (inner items) are not in a record frame.
+        payload_bytes = _rntuple_cluster_summary_format.pack(self.num_first_entry, self.num_entries)
+        return payload_bytes
+    def __repr__(self):
+        return "{}({}, {})".format(
+            type(self).__name__,
+            self.num_first_entry,
+            self.num_entries
+        )
+
+class NTuple_InnerListLocator:
+    def __init__(self, num_pages, page_descs):
+        self.num_pages = num_pages
+        self.page_descs = page_descs
+    def serialize(self):
+        # from spec: 
+        # to save space, the page descriptions (inner items) are not in a record frame.
+        payload_bytes = b"".join([x.serialize() for x in self.page_descs])
+        return payload_bytes
+    def __repr__(self):
+        return "{}({}, {})".format(
+            type(self).__name__,
+            self.num_pages,
+            self.page_descs
+        )
+
+
+class NTuple_PageDescription:
+    def __init__(self, num_elements, locator):
+        self.num_elements = num_elements
+        self.locator = locator
+
+    def serialize(self):
+        return struct.Struct("<I").pack(self.num_elements) * self.locator.serialize()
+
+    def __repr__(self):
+        return "{}({}, {})".format(
+            type(self).__name__,
+            self.num_elements,
+            self.locator
+        )
 
 
 class NTuple_Anchor(CascadeLeaf):
@@ -508,6 +575,7 @@ class NTuple(CascadeNode):
 
         self._key = None
         self._header_key = None
+        self._num_entries = 0
 
     def __repr__(self):
         return "{}({}, {}, {}, {}, {}, {}, {}, {})".format(
@@ -558,8 +626,166 @@ class NTuple(CascadeNode):
     def num_entries(self):
         return self._num_entries
 
+    def actually_use(self, array):
+        print(type(array))
+        print(f"using {array!r}")
+
+    def array_to_type(self, array, type):
+        if isinstance(type, awkward._v2.types.ArrayType):
+            type = type.content
+        # type: unknown
+        if isinstance(type, awkward._v2.types.UnknownType):
+            raise TypeError("cannot write data of unknown type to RNTuple")
+
+        # type: primitive (e.g. "float32")
+        elif isinstance(type, awkward._v2.types.NumpyType):
+            if isinstance(array, awkward._v2.contents.IndexedArray):
+                self.array_to_type(array.project(), type)  # always project IndexedArray
+                return
+            elif isinstance(array, awkward._v2.contents.EmptyArray):
+                self.array_to_type(
+                    array.to_NumpyArray(
+                        awkward._v2.types.numpytype.primitive_to_dtype(type.primitive)
+                    ),
+                    type,
+                )
+                return
+            elif isinstance(array, awkward._v2.contents.NumpyArray):
+                if array.form.type != type:
+                    raise TypeError(f"expected {type!s}, found {array.form.type!s}")
+                else:
+                    self.actually_use(array.data)
+                    return
+            else:
+                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
+
+        # type: regular-length lists (e.g. "3 * float32")
+        elif isinstance(type, awkward._v2.types.RegularType):
+            if isinstance(array, awkward._v2.contents.IndexedArray):
+                self.array_to_type(array.project(), type)  # always project IndexedArray
+                return
+            elif isinstance(array, awkward._v2.contents.RegularArray):
+                if array.size != type.size:
+                    raise TypeError(f"expected {type!s}, found {array.form.type!s}")
+                else:
+                    if type.parameter("__array__") == "string":
+                        # maybe the fact that this is a string changes how it's used
+                        self.actually_use(f"regular strings of length {type.size}")
+                    else:
+                        self.actually_use(f"regular lists of length {type.size}")
+                    self.array_to_type(array.content, type.content)
+                    return
+            else:
+                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
+
+        # type: variable-length lists (e.g. "var * float32")
+        elif isinstance(type, awkward._v2.types.ListType):
+            if isinstance(array, awkward._v2.contents.IndexedArray):
+                self.array_to_type(array.project(), type)  # always project IndexedArray
+                return
+            elif isinstance(array, awkward._v2.contents.ListArray):
+                self.array_to_type(array.toListOffsetArray64(True), type)
+                return
+            elif isinstance(array, awkward._v2.contents.ListOffsetArray):
+                if type.parameter("__array__") == "string":
+                    # maybe the fact that this is a string changes how it's used
+                    self.actually_use("variable-length strings")
+                else:
+                    self.actually_use("variable-length lists")
+                self.actually_use(array.offsets.data)
+                self.array_to_type(array.content, type.content)
+                return
+            else:
+                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
+
+        # type: potentially missing data (e.g. "?float32")
+        elif isinstance(type, awkward._v2.types.OptionType):
+            raise NotImplementedError("RNTuple does not yet have an option-type")
+
+        # type: struct-like records (e.g. "{x: float32, y: var * int64}")
+        elif isinstance(type, awkward._v2.types.RecordType):
+            if isinstance(array, awkward._v2.contents.IndexedArray):
+                self.array_to_type(array.project(), type)  # always project IndexedArray
+                return
+            elif isinstance(array, awkward._v2.contents.RecordArray):
+                self.actually_use("begin record")
+                for field, subtype in zip(type.fields, type.contents):
+                    self.actually_use(f"field {field}")
+                    self.array_to_type(array[field], subtype)
+                self.actually_use("end record")
+                return
+            else:
+                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
+
+        # type: heterogeneous unions/variants (e.g. "union[float32, var * int64]")
+        elif isinstance(type, awkward._v2.types.UnionType):
+            if isinstance(array, awkward._v2.contents.IndexedArray):
+                self.array_to_type(array.project(), type)  # always project IndexedArray
+                return
+            elif isinstance(array, awkward._v2.contents.UnionArray):
+                self.actually_use("begin union")
+                self.actually_use(array.tags.data)
+                self.actually_use(array.index.data)
+                for index, subtype in enumerate(type.contents):
+                    self.actually_use(f"index {index}")
+                    self.array_to_type(array.project(index), subtype)
+                self.actually_use("end union")
+                return
+            else:
+                raise TypeError(f"expected {type!s}, found {array.form.type!s}")
+
+        else:
+            raise AssertionError(f"type must be an Awkward Type, not {type!r}")
+
     def extend(self, file, sink, data):
-        pass
+        """
+        1. pages(data) 
+        2. page inner list locator
+        3. page list envelopes
+        4. relocate footer
+        5. update anchor's foot metadata values in-place
+        """
+
+        cluster_summary = NTuple_ClusterSummary(self._num_entries, len(data))
+        self._num_entries += len(data)
+        self._footer.cluster_summary_record_frames.append(cluster_summary)
+
+        # page (actual column content)
+        dummy_data= numpy.array([9,8,7,6,5,4,3,2,1,0], dtype="int32")
+        dummy_data_bytes = dummy_data.view("uint8")
+        num_elements = len(dummy_data)
+        page_key = self.add_rblob(
+                sink,
+                dummy_data_bytes,
+                num_elements,
+                big=False
+                )
+        print(page_key)
+        self.array_to_type(data.layout, data.type)
+
+        #### relocate Footer ##############################
+        old_footer_key = self._footer_key
+        self._freesegments.release(old_footer_key.location, old_footer_key.location + old_footer_key.allocation)
+        footer_raw_data = self._footer.serialize()
+        self._footer_key = self.add_rblob(
+            sink,
+            footer_raw_data,
+            len(footer_raw_data),
+            big=False,
+        )
+
+        ### update anchor
+        self._anchor.fSeekFooter = (
+            self._footer_key.location + self._footer_key.allocation
+        )
+        self._anchor.fNBytesFooter = len(footer_raw_data)
+        self._anchor.fLenFooter = self._anchor.fNBytesFooter
+
+        anchor_raw_data = self._anchor.serialize()
+        sink.write(self._anchor.location, anchor_raw_data)
+        self._freesegments.write(sink)
+
+        sink.flush()
 
     def add_rblob(
         self,

@@ -2097,17 +2097,6 @@ class WritableNTuple:
                 "compression must be None, a uproot.compression.Compression object, like uproot.ZLIB(4) or uproot.ZSTD(0), or a mapping of branch names to such objects"
             )
 
-    def __getitem__(self, where):
-        for datum in self._cascading._branch_data:
-            if datum["kind"] != "record" and datum["fName"] == where:
-                return WritableBranch(self, datum)
-        else:
-            raise uproot.KeyInFileError(
-                where,
-                because="no such branch in writable tree",
-                file_path=self.file_path,
-            )
-
     @property
     def num_entries(self):
         """
