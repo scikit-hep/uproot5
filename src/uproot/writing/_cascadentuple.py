@@ -441,7 +441,7 @@ class NTuple_InnerListLocator:
         self.page_descs = page_descs
 
     def serialize(self):
-        # from spec:
+        # from RNTuple spec:
         # to save space, the page descriptions (inner items) are not in a record frame.
         payload_bytes = b"".join([x.serialize() for x in self.page_descs])
         return payload_bytes
@@ -533,6 +533,18 @@ class NTuple_Anchor(CascadeLeaf):
         out = _rntuple_format1.pack(*self._fields)
         return b"@\x00\x006\x00\x00" + out
 
+
+class Ntuple_PageLink:
+    def __init__(self, num_bytes, offset):
+        self.num_bytes = num_bytes
+        self.offset = offset
+
+    def serialize(self):
+        outbytes = _rntuple_locator_format.pack(self.num_bytes, self.offset)
+        return outbytes
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.num_bytes}, {self.offset})"
 
 class NTuple(CascadeNode):
     """

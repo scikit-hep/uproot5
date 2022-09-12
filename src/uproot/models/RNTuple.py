@@ -82,8 +82,7 @@ in file {}""".format(
         self._field_names = None
         self._column_records = None
 
-        # back link from column name to page inner list
-        self._page_list_envelopes = {}
+        self._page_list_envelopes = []
 
     def _prepare_header_chunk(self):
         context = {}
@@ -346,8 +345,7 @@ in file {}""".format(
 
     def read_col_page(self, ncol, cluster_i):
         linklist = self.page_list_envelopes.pagelinklist[cluster_i]
-        link = linklist[ncol]
-        pagelist = self.pagelist(link)
+        pagelist = linklist[ncol]
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
         if dtype_str == "bit":
@@ -440,7 +438,6 @@ def _recursive_find(form, res):
             _recursive_find(form.content, res)
 
 
-# https://github.com/jblomer/root/blob/ntuple-binary-format-v1/tree/ntuple/v7/doc/specifications.md#page-list-envelope
 class PageDescription:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
@@ -449,32 +446,13 @@ class PageDescription:
         return out
 
 
-class InnerListLocator:
-    def __init__(self, chunk, cursor, context, num_pages):
-        self.chunk = chunk
-        self.cursor = cursor
-        self.context = context
-        self.num_pages = num_pages
-        self.reader = ListFrameReader(PageDescription())
-        self._page_descs = None
-
-    def __repr__(self):
-        return (
-            f"InnerListLocator({self.chunk}, {self.cursor}, num_pages={self.num_pages})"
-        )
-
-
 class PageLinkInner:
-    _frame_header = struct.Struct("<ii")
-
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        # delay reading inner list of page descriptions
-        future_cursor = cursor.copy()
-        num_bytes, num_pages = local_cursor.fields(chunk, self._frame_header, context)
+        num_bytes, num_pages = local_cursor.fields(chunk, _rntuple_frame_header, context)
         assert num_bytes < 0, f"num_bytes={num_bytes}"
         cursor.skip(-num_bytes)
-        return InnerListLocator(chunk, future_cursor, context, num_pages)
+        return [PageDescription().read(chunk, local_cursor, context) for _ in range(num_pages)]
 
 
 class PageLink:
