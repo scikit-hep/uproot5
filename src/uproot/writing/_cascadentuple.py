@@ -384,7 +384,7 @@ class NTuple_Locator:
         return outbytes
 
     def __repr__(self):
-        return "{}({}, {})".format(type(self).__name__, self.num_bytes, self.offset)
+        return f"{type(self).__name__}({self.num_bytes}, {self.offset})"
 
 
 class NTuple_EnvLink:
@@ -397,7 +397,7 @@ class NTuple_EnvLink:
         return b"".join(out)
 
     def __repr__(self):
-        return "{}({}, {})".format(type(self).__name__, self.uncomp_size, self.locator)
+        return f"{type(self).__name__}({self.uncomp_size}, {self.locator})"
 
 
 class NTuple_ClusterGroupRecord:
@@ -447,7 +447,7 @@ class NTuple_InnerListLocator:
         return payload_bytes
 
     def __repr__(self):
-        return "{}({}, {})".format(type(self).__name__, self.num_pages, self.page_descs)
+        return f"{type(self).__name__}({self.num_pages}, {self.page_descs})"
 
 
 class NTuple_PageDescription:
@@ -459,7 +459,7 @@ class NTuple_PageDescription:
         return struct.Struct("<I").pack(self.num_elements) * self.locator.serialize()
 
     def __repr__(self):
-        return "{}({}, {})".format(type(self).__name__, self.num_elements, self.locator)
+        return f"{type(self).__name__}({self.num_elements}, {self.locator})"
 
 
 class NTuple_Anchor(CascadeLeaf):
