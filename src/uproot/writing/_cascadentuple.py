@@ -546,6 +546,7 @@ class Ntuple_PageLink:
     def __repr__(self):
         return f"{type(self).__name__}({self.num_bytes}, {self.offset})"
 
+
 class NTuple(CascadeNode):
     """
     Writes a RNTuple, including all fields, columns, and (upon ``extend``) pages.

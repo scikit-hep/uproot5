@@ -449,10 +449,15 @@ class PageDescription:
 class PageLinkInner:
     def read(self, chunk, cursor, context):
         local_cursor = cursor.copy()
-        num_bytes, num_pages = local_cursor.fields(chunk, _rntuple_frame_header, context)
+        num_bytes, num_pages = local_cursor.fields(
+            chunk, _rntuple_frame_header, context
+        )
         assert num_bytes < 0, f"num_bytes={num_bytes}"
         cursor.skip(-num_bytes)
-        return [PageDescription().read(chunk, local_cursor, context) for _ in range(num_pages)]
+        return [
+            PageDescription().read(chunk, local_cursor, context)
+            for _ in range(num_pages)
+        ]
 
 
 class PageLink:
