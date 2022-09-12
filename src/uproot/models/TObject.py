@@ -5,6 +5,7 @@ This module defines a versionless model for ``TObject``.
 """
 
 
+import json
 import struct
 
 import numpy
@@ -24,6 +25,11 @@ class Model_TObject(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        helper_obj = uproot._awkward_forth.GenHelper(context)
+        start_index = cursor._index
+        if helper_obj.is_forth():
+            forth_obj = helper_obj.get_gen_obj()
+            # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -43,6 +49,22 @@ in file {}""".format(
         if self._members["@fBits"] & uproot.const.kIsReferenced:
             cursor.skip(2)
         self._members["@fBits"] = int(self._members["@fBits"])
+        if helper_obj.is_forth():
+            skip_length = cursor._index - start_index
+            helper_obj.add_to_pre(f"{skip_length} stream skip \n")
+            if forth_obj.should_add_form():
+                temp_aform = '{"class": "RecordArray", "contents":[], "parameters": {"__record__": "TObject"}}'
+                forth_obj.add_form(json.loads(temp_aform))
+            forth_obj.add_node(
+                "TObjext",
+                helper_obj.get_pre(),
+                helper_obj.get_post(),
+                helper_obj.get_init(),
+                helper_obj.get_header(),
+                "i64",
+                0,
+                {},
+            )
 
     writable = True
 

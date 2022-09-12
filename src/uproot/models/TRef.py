@@ -124,6 +124,7 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         if helper_obj.is_forth():
             awkward = uproot.extras.awkward()  # noqa:F841
             forth_obj = helper_obj.get_gen_obj()
+            # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -158,13 +159,13 @@ in file {}""".format(
                 temp_bool = "false"
                 temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[0]}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
-            helper_obj.add_to_header(
-                f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int64\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int64\n"
-            )
-            helper_obj.add_to_init(
-                f"0 node{form_keys[1]}-offsets <- stack\n0 node{form_keys[4]}-offsets <- stack\n"
-            )
-            temp = forth_obj.add_node(
+                helper_obj.add_to_header(
+                    f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int64\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int64\n"
+                )
+                helper_obj.add_to_init(
+                    f"0 node{form_keys[1]}-offsets <- stack\n0 node{form_keys[4]}-offsets <- stack\n"
+                )
+            forth_obj.add_node(
                 f"node{form_keys[0]}",
                 helper_obj.get_pre(),
                 helper_obj.get_post(),
@@ -174,7 +175,6 @@ in file {}""".format(
                 1,
                 None,
             )
-            forth_obj.go_to(temp)
 
         cursor.skip(10)
         self._members["fName"] = cursor.string(chunk, context)

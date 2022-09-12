@@ -4,6 +4,31 @@
 This module defines utilities for adding components to the forth reader.
 """
 
+import numpy as np
+
+import uproot.containers
+
+symbol_dict = {
+    np.dtype(">f4"): "f",
+    np.dtype(">f8"): "d",
+    np.dtype(">i8"): "q",
+    np.dtype(">i4"): "i",
+    np.dtype(">i2"): "h",
+    np.dtype(">u1"): "B",
+    np.dtype(">u2"): "H",
+    np.dtype(">u4"): "I",
+    np.dtype(">u8"): "Q",
+    np.dtype("bool"): "?",
+}
+
+
+def check_depth(node):
+    """
+    This method checks the depth of the provided container
+    """
+    if isinstance(node, uproot.containers.AsVector):
+        return 1
+
 
 class ForthGenerator:
     """
@@ -11,9 +36,15 @@ class ForthGenerator:
     """
 
     def __init__(self, aform=None, count_obj=0, var_set=False):
+        self.dummy_form = False
+        self.top_dummy = None
+        self.dummy_aform = None
         self.aform = aform
         self.top_form = None
-        self.awkward_model = {}
+        self.prev_form = None
+        self.awkward_model = {"name": "TOP", "content": {}}
+        self._prev_node = self.awkward_model
+        self.ref_list = []
         self.forth_code = {}
         self.forth_keys = {}
         self.final_code = []
@@ -27,21 +58,131 @@ class ForthGenerator:
     def traverse_aform(self):
         self.aform = self.aform.content
 
+    def replace_form_and_model(self, form, model):
+        temp_node = self.awkward_model
+        temp_prev_form = self.prev_form
+        temp_node_top = self._prev_node
+        self.awkward_model = model
+        self._prev_node = self.awkward_model
+        temp_form = self.aform
+        temp_form_top = self.top_form
+        self.top_form = None
+        self.aform = form
+        return temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form
+
+    def get_code_recursive(self, node):
+        if "content" in node.keys():
+            if node["content"] is None:
+                return (
+                    "".join(node["pre_code"]),
+                    "".join(node["post_code"]),
+                    node["init_code"],
+                    node["header_code"],
+                )
+            else:
+                pre, post, init, header = self.get_code_recursive(node["content"])
+                pre2 = "".join(node["pre_code"])
+                pre2 = pre2 + pre
+                post2 = "".join(node["post_code"])
+                post2 = post2 + post
+                init = node["init_code"] + init
+                header = node["header_code"] + header
+                return pre2, post2, init, header
+        elif self.var_set:
+            return "", "", "", ""
+
     def should_add_form(self):
-        return not bool(self.awkward_model)
-
-    def add_form(self, aform):
-        if self.aform is None:
-            self.aform = aform
-            self.top_form = self.aform
-
-        else:
-            if "content" in self.aform.keys():
-                if self.aform["content"] == "NULL":
-                    self.aform["content"] = aform
-                    self.aform = self.aform["content"]
+        if "content" in self.awkward_model.keys():
+            if self.awkward_model["content"] is None:
+                return False
+            else:
+                if len(self.awkward_model["content"].keys()) == 0:
+                    return True
+                elif self.awkward_model["content"]["name"] == "dynamic":
+                    return True
                 else:
-                    raise ValueError
+                    return False
+
+    def get_temp_form_top(self):
+        return self.top_dummy
+
+    def set_dummy_none(self, temp_top, temp_form, temp_flag):
+        self.top_dummy = temp_top
+        self.dummy_aform = temp_form
+        self.dummy_form = temp_flag
+
+    def add_form(self, aform, conlen=0, traverse=1):
+        if self.dummy_form:
+            if self.dummy_aform is None:
+                self.dummy_aform = aform
+                self.top_dummy = aform
+            else:
+                if "content" in self.dummy_aform.keys():
+                    if self.dummy_aform["content"] == "NULL":
+                        self.dummy_aform["content"] = aform
+                        self.dummy_aform = self.dummy_aform["content"]
+                    else:
+                        raise ValueError
+                elif "contents" in self.dummy_aform.keys():
+                    if (
+                        len(self.dummy_aform["content"])
+                        < self.dummy_aform["parameters"]["lencon"]
+                    ):
+                        self.dummy_aform["contents"].append(aform)
+                    else:
+                        raise ValueError
+        else:
+            if self.aform is None:
+                self.aform = aform
+                self.top_form = self.aform
+                if traverse == 2:
+                    self.aform = self.aform["content"]
+            else:
+                if "content" in self.aform.keys():
+                    if self.aform["content"] == "NULL":
+                        self.aform["content"] = aform
+                        self.prev_form = self.aform
+                        if traverse == 2:
+                            self.aform = self.aform["content"]["content"]
+                            self.prev_form = self.prev_form["content"]
+                        else:
+                            self.aform = self.aform["content"]
+                    else:
+                        raise ValueError
+                elif "contents" in self.aform.keys():
+                    if self.aform["class"] == "RecordArray":
+                        if self.prev_form is not None:
+                            self.prev_form["content"] = aform
+                            self.aform = aform
+                        else:
+                            self.top_form = aform
+                            self.aform = aform
+                        # for elem in aform['contents'].keys():
+                        #     if self.depth(self.aform['contents'][elem])< self.depth(aform['contents'][elem]):
+                        #         aform['contents'][elem] = self.replace_keys(self.aform['contents'][elem],aform['contents'][elem])
+                        #         self.aform['contents'][elem] = aform['contents'][elem]
+                    elif len(self.aform["contents"]) == conlen:
+                        pass
+                    else:
+                        raise ValueError
+
+    def depth(self, form):
+        count = 0
+        temp = form
+        while "content" in temp.keys():
+            count += 1
+            if isinstance(temp["content"], str):
+                break
+            temp = temp["content"]
+        return count
+
+    def replace_keys(self, old, new):
+        temp = new
+        while old != "NULL":
+            new["form_key"] = old["form_key"]
+            new = new["content"]
+            old = old["content"]
+        return temp
 
     def get_keys(self, num_keys):
         if num_keys == 1:
@@ -61,18 +202,43 @@ class ForthGenerator:
         self.form_keys.append(key)
 
     def go_to(self, aform):
-        aform["content"] = self.awkward_model
+        # aform["content"] = self.awkward_model
+        self.awkward_model = aform
+
+    def become(self, aform):
         self.awkward_model = aform
 
     def check_model(self):
         return bool(self.awkward_model)
 
+    def get_current_node(self):
+        self.ref_list.append(self._prev_node)
+        return len(self.ref_list) - 1
+
+    def get_ref(self, index):
+        return self.ref_list[index]
+
+    def enable_adding(self):
+        if "content" in self.awkward_model.keys():
+            if self.awkward_model["content"] is None:
+                self.awkward_model["content"] = {}
+
+    def add_node_whole(self, new_node, ref_latest):
+        if "content" in self.awkward_model.keys():
+            self.awkward_model["content"] = new_node
+        else:
+            self.awkward_model["contents"].append(new_node)
+        self.awkward_model = ref_latest
+
     def add_node(
         self, name, precode, postcode, initcode, headercode, dtype, num_child, content
     ):
         if isinstance(self.awkward_model, dict):
-            if not bool(self.awkward_model):
-                self.awkward_model = {
+            if (
+                not bool(self.awkward_model["content"])
+                and self.awkward_model["content"] is not None
+            ):
+                temp_obj = {
                     "name": name,
                     "type": dtype,
                     "pre_code": precode,
@@ -82,13 +248,33 @@ class ForthGenerator:
                     "num_child": num_child,
                     "content": content,
                 }
-                temp_node = self.awkward_model
+                self.awkward_model["content"] = temp_obj
                 self.awkward_model = self.awkward_model["content"]
-                return temp_node
+                return temp_obj
             else:
-                temp_node = self.awkward_model
-                self.awkward_model = self.awkward_model["content"]
-                return temp_node
+                if self.awkward_model["content"] is not None:
+                    if self.awkward_model["content"]["name"] == "dynamic":
+                        temp_obj = {
+                            "name": name,
+                            "type": dtype,
+                            "pre_code": precode,
+                            "post_code": postcode,
+                            "init_code": initcode,
+                            "header_code": headercode,
+                            "num_child": num_child,
+                            "content": content,
+                        }
+                        self.awkward_model["content"] = temp_obj
+                        self.awkward_model = self.awkward_model["content"]
+                        return temp_obj
+                    else:
+                        temp_node = self.awkward_model
+                        self.awkward_model = self.awkward_model["content"]
+                        return temp_node
+                else:
+                    temp_node = self.awkward_model
+                    self.awkward_model = self.awkward_model["content"]
+                    return temp_node
         if isinstance(self.awkward_model, list):
             for elem in self.awkward_model:
                 if name in elem.values():
@@ -159,9 +345,9 @@ class GenHelper:
         self._header = ""
         self._init = ""
         self._form_key = []
-        if "forth" in context.keys():
+        if hasattr(context.get("forth"), "gen"):
             self.forth_present = True
-            self._gen_obj = context["forth"]
+            self._gen_obj = context["forth"].gen
 
     def is_forth(self):
         return self.forth_present
@@ -192,3 +378,34 @@ class GenHelper:
 
     def get_init(self):
         return self._init
+
+
+def convert_dtype(format):
+    """Takes datatype codes from classses and returns the full datatype name.
+
+    Args:
+        format (string): The datatype in the dynamic class
+
+    Returns:
+        string: The datatype in words.
+    """
+    if format == "d":
+        return "float64"
+    elif format == "f":
+        return "float32"
+    elif format == "q":
+        return "int64"
+    elif format == "i":
+        return "int32"
+    elif format == "I":
+        return "uint32"
+    elif format == "?":
+        return "bool"
+    elif format == "h":
+        return "int16"
+    elif format == "H":
+        return "uint16"
+    elif format == "Q":
+        return "uint64"
+    elif format == "B":
+        return "uint8"
