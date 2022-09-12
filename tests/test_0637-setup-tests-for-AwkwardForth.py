@@ -11,7 +11,7 @@ pytest.importorskip("awkward")
 
 def test_00():
     with uproot.open(skhep_testdata.data_path("issue367b.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/weights"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -22,19 +22,19 @@ def test_00():
 
 def test_01():
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
-        for elem in [True,False]:
-                branch = file["Delphes/GenJet/GenJet.SoftDroppedSubJet1"]
-                interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
-                interp._forth = elem
-                py = branch.array(interp, library="ak", entry_stop=2)
-                assert py[0][0]["fE"] == pytest.approx(84.56447925448748)
-                assert py[0][0]["fP"]["fZ"] == pytest.approx(-81.600465)
+        for elem in [True, False]:
+            branch = file["Delphes/GenJet/GenJet.SoftDroppedSubJet1"]
+            interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+            interp._forth = elem
+            py = branch.array(interp, library="ak", entry_stop=2)
+            assert py[0][0]["fE"] == pytest.approx(84.56447925448748)
+            assert py[0][0]["fP"]["fZ"] == pytest.approx(-81.600465)
         # py[-1] == array([<TLorentzVector (version 4) at 0x7fac4bb8d2b0>, <TLorentzVector (version 4) at 0x7fac4bb8d2e0>], dtype=object)
 
 
 def test_02():
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Delphes/GenJet/GenJet.TrimmedP4[5]"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -46,7 +46,7 @@ def test_02():
 
 def test_03():
     with uproot.open(skhep_testdata.data_path("uproot-FCCDelphesOutput.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["metadata/gaudiConfigOptions"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -61,7 +61,7 @@ def test_03():
 
 def test_04():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["POOLContainerForm/DataHeaderForm/m_uints"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -81,7 +81,7 @@ def test_04():
 
 def test_06():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree/AnalysisJetsAuxDyn.NumTrkPt500"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -92,7 +92,7 @@ def test_06():
 
 def test_07():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree/AnalysisJetsAuxDyn.SumPtTrkPt500"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -106,12 +106,12 @@ def test_07():
 #         branch = file["CollectionTree/AnalysisJetsAuxDyn.GhostTrack"]
 #         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
 #         py = branch.array(interp, library="np", entry_stop=2)
-        # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7fc6a08f2f70>, ...], ...] at 0x7fc6a08f2f10>
+# py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7fc6a08f2f70>, ...], ...] at 0x7fc6a08f2f10>
 
 
 def test_09():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree"][
                 "AntiKt10UFOCSSKJetsAuxDyn.GhostVR30Rmax4Rmin02TrackJet_BTagging201903"
             ]
@@ -124,7 +124,7 @@ def test_09():
 
 def test_10():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree/CaloCalTopoClustersAuxDyn.e_sampl"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -135,7 +135,7 @@ def test_10():
 
 def test_11():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree"][
                 "TruthBosonsWithDecayVerticesAuxDyn.incomingParticleLinks"
             ]
@@ -148,7 +148,7 @@ def test_11():
 
 def test_12():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree/TruthBottomAuxDyn.parentLinks"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -159,7 +159,7 @@ def test_12():
 
 def test_13():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree/egammaClustersAuxDyn.constituentClusterLinks"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -170,7 +170,7 @@ def test_13():
 
 def test_14():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree/egammaClustersAuxDyn.eta_sampl"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -181,8 +181,10 @@ def test_14():
 
 def test_15():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
-            branch = file["CollectionTree/AnalysisHLT_mu24_ilooseAuxDyn.TrigMatchedObjects"]
+        for elem in [True, False]:
+            branch = file[
+                "CollectionTree/AnalysisHLT_mu24_ilooseAuxDyn.TrigMatchedObjects"
+            ]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
             py = branch.array(interp, library="ak", entry_stop=2)
@@ -192,7 +194,7 @@ def test_15():
 
 def test_16():
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["CollectionTree/AnalysisHLT_mu40AuxDyn.TrigMatchedObjects"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -203,7 +205,7 @@ def test_16():
 
 def test_17():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/AAObject/usr_names"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -214,7 +216,7 @@ def test_17():
 
 def test_18():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/hits/hits.t"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -225,7 +227,7 @@ def test_18():
 
 def test_19():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/hits/hits.a"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -236,7 +238,7 @@ def test_19():
 
 def test_20():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/hits/hits.trig"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -247,7 +249,7 @@ def test_20():
 
 def test_21():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/hits/hits.tot"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -258,7 +260,7 @@ def test_21():
 
 def test_22():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/hits/hits.pos.x"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -269,7 +271,7 @@ def test_22():
 
 def test_23():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/trks/trks.usr_names"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -280,7 +282,7 @@ def test_23():
 
 def test_24():
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["E/Evt/trks/trks.rec_stages"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -291,7 +293,7 @@ def test_24():
 
 def test_25():
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["config/VERSION/VERSION._name"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -310,7 +312,7 @@ def test_25():
 
 def test_27():
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["config/SEL/SEL._branchAlias"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -321,7 +323,7 @@ def test_27():
 
 def test_28():
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["config/SEL/SEL._nCutsInBranch"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -340,7 +342,7 @@ def test_28():
 
 def test_30():
     with uproot.open(skhep_testdata.data_path("uproot-issue243-new.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["triggerList/triggerMap/triggerMap.first"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -351,7 +353,7 @@ def test_30():
 
 def test_31():
     with uproot.open(skhep_testdata.data_path("uproot-issue-308.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["MetaData/BranchIDLists"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -362,7 +364,7 @@ def test_31():
 
 def test_32():
     with uproot.open(skhep_testdata.data_path("uproot-issue31.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["T/data/name"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -373,7 +375,7 @@ def test_32():
 
 def test_33():
     with uproot.open(skhep_testdata.data_path("uproot-issue367b.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/weights"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -384,7 +386,7 @@ def test_33():
 
 def test_34():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Header/Header./Header.geant4Version"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -394,7 +396,7 @@ def test_34():
 
 def test_35():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -405,7 +407,7 @@ def test_35():
 
 def test_36():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Model/Model./Model.samplerNamesUnique"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -416,7 +418,7 @@ def test_36():
 
 def test_37():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Model/Model./Model.staPos"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -427,7 +429,7 @@ def test_37():
 
 def test_38():
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Event/PRBHF_46."]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -438,7 +440,7 @@ def test_38():
 
 def test_39():
     with uproot.open(skhep_testdata.data_path("uproot-issue399.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -449,7 +451,7 @@ def test_39():
 
 def test_40():
     with uproot.open(skhep_testdata.data_path("uproot-issue-407.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/branch"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -460,7 +462,7 @@ def test_40():
 
 def test_41():
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Event/Trajectory./Trajectory.XYZ"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -471,7 +473,7 @@ def test_41():
 
 def test_42():
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Event/Trajectory./Trajectory.energyDeposit"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -482,7 +484,7 @@ def test_42():
 
 def test_43():
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Event/Trajectory./Trajectory.ionA"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -493,7 +495,7 @@ def test_43():
 
 def test_44():
     with uproot.open(skhep_testdata.data_path("uproot-issue46.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/evt"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -520,7 +522,7 @@ def test_44():
 
 def test_47():
     with uproot.open(skhep_testdata.data_path("uproot-issue494.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -556,7 +558,7 @@ def test_47():
 
 def test_51():
     with uproot.open(skhep_testdata.data_path("uproot-issue510b.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["EDepSimEvents/Event/Primaries/Primaries.GeneratorName"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -566,7 +568,7 @@ def test_51():
 
 def test_52():
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Delphes/EFlowPhoton/EFlowPhoton.Particles"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -577,7 +579,7 @@ def test_52():
 
 def test_53():
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Delphes/Jet/Jet.SoftDroppedSubJet2"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -588,7 +590,7 @@ def test_53():
 
 def test_54():
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["Delphes/Jet/Jet.TrimmedP4[5]"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -599,7 +601,7 @@ def test_54():
 
 def test_55():
     with uproot.open(skhep_testdata.data_path("uproot-issue519.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["testtree/testbranch"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -612,7 +614,7 @@ def test_56():
     with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root")
     ) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/evt"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -623,7 +625,7 @@ def test_56():
 
 def test_57():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/vector_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -634,7 +636,7 @@ def test_57():
 
 def test_58():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/vector_tstring"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -645,7 +647,7 @@ def test_58():
 
 def test_59():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/vector_vector_int32"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -656,7 +658,7 @@ def test_59():
 
 def test_60():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/vector_vector_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -667,7 +669,7 @@ def test_60():
 
 def test_61():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/vector_vector_tstring"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -678,7 +680,7 @@ def test_61():
 
 def test_62():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/vector_set_int32"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -689,7 +691,7 @@ def test_62():
 
 def test_63():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/vector_set_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -700,7 +702,7 @@ def test_63():
 
 def test_64():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/set_int32"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -711,7 +713,7 @@ def test_64():
 
 def test_65():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/set_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -722,7 +724,7 @@ def test_65():
 
 def test_66():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_int32_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -733,7 +735,7 @@ def test_66():
 
 def test_67():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_int32_vector_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -744,7 +746,7 @@ def test_67():
 
 def test_68():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_int32_vector_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -755,7 +757,7 @@ def test_68():
 
 def test_69():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_int32_set_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -766,7 +768,7 @@ def test_69():
 
 def test_70():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_int32_set_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -777,7 +779,7 @@ def test_70():
 
 def test_71():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_string_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -788,7 +790,7 @@ def test_71():
 
 def test_72():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_string_vector_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -799,7 +801,7 @@ def test_72():
 
 def test_73():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_string_vector_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -810,7 +812,7 @@ def test_73():
 
 def test_74():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_string_set_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -821,7 +823,7 @@ def test_74():
 
 def test_75():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_string_set_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -832,7 +834,7 @@ def test_75():
 
 def test_76():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_int32_vector_vector_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -843,7 +845,7 @@ def test_76():
 
 def test_77():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_int32_vector_set_int16"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -854,7 +856,7 @@ def test_77():
 
 def test_78():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_string_string"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -865,7 +867,7 @@ def test_78():
 
 def test_79():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["tree/map_string_tstring"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -878,7 +880,7 @@ def test_80():
     with uproot.open(
         skhep_testdata.data_path("uproot-vectorVectorDouble.root")
     ) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["t/x"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem
@@ -889,7 +891,7 @@ def test_80():
 
 def test_81():
     with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root")) as file:
-        for elem in [True,False]:
+        for elem in [True, False]:
             branch = file["events/MET"]
             interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
             interp._forth = elem

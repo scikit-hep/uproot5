@@ -36,14 +36,11 @@ class ForthGenerator:
     """
 
     def __init__(self, aform=None, count_obj=0, var_set=False):
-        self.dummy_form = False
-        self.top_dummy = None
-        self.dummy_aform = None
         self.aform = aform
         self.top_form = None
         self.prev_form = None
         self.awkward_model = {"name": "TOP", "content": {}}
-        self._prev_node = self.awkward_model
+        self.top_node = self.awkward_model
         self.ref_list = []
         self.forth_code = {}
         self.forth_keys = {}
@@ -61,9 +58,9 @@ class ForthGenerator:
     def replace_form_and_model(self, form, model):
         temp_node = self.awkward_model
         temp_prev_form = self.prev_form
-        temp_node_top = self._prev_node
+        temp_node_top = self.top_node
         self.awkward_model = model
-        self._prev_node = self.awkward_model
+        self.top_node = self.awkward_model
         temp_form = self.aform
         temp_form_top = self.top_form
         self.top_form = None
@@ -112,77 +109,35 @@ class ForthGenerator:
         self.dummy_form = temp_flag
 
     def add_form(self, aform, conlen=0, traverse=1):
-        if self.dummy_form:
-            if self.dummy_aform is None:
-                self.dummy_aform = aform
-                self.top_dummy = aform
-            else:
-                if "content" in self.dummy_aform.keys():
-                    if self.dummy_aform["content"] == "NULL":
-                        self.dummy_aform["content"] = aform
-                        self.dummy_aform = self.dummy_aform["content"]
-                    else:
-                        raise ValueError
-                elif "contents" in self.dummy_aform.keys():
-                    if (
-                        len(self.dummy_aform["content"])
-                        < self.dummy_aform["parameters"]["lencon"]
-                    ):
-                        self.dummy_aform["contents"].append(aform)
-                    else:
-                        raise ValueError
+        if self.aform is None:
+            self.aform = aform
+            self.top_form = self.aform
+            if traverse == 2:
+                self.aform = self.aform["content"]
         else:
-            if self.aform is None:
-                self.aform = aform
-                self.top_form = self.aform
-                if traverse == 2:
-                    self.aform = self.aform["content"]
-            else:
-                if "content" in self.aform.keys():
-                    if self.aform["content"] == "NULL":
-                        self.aform["content"] = aform
-                        self.prev_form = self.aform
-                        if traverse == 2:
-                            self.aform = self.aform["content"]["content"]
-                            self.prev_form = self.prev_form["content"]
-                        else:
-                            self.aform = self.aform["content"]
+            if "content" in self.aform.keys():
+                if self.aform["content"] == "NULL":
+                    self.aform["content"] = aform
+                    self.prev_form = self.aform
+                    if traverse == 2:
+                        self.aform = self.aform["content"]["content"]
+                        self.prev_form = self.prev_form["content"]
                     else:
-                        raise ValueError
-                elif "contents" in self.aform.keys():
-                    if self.aform["class"] == "RecordArray":
-                        if self.prev_form is not None:
-                            self.prev_form["content"] = aform
-                            self.aform = aform
-                        else:
-                            self.top_form = aform
-                            self.aform = aform
-                        # for elem in aform['contents'].keys():
-                        #     if self.depth(self.aform['contents'][elem])< self.depth(aform['contents'][elem]):
-                        #         aform['contents'][elem] = self.replace_keys(self.aform['contents'][elem],aform['contents'][elem])
-                        #         self.aform['contents'][elem] = aform['contents'][elem]
-                    elif len(self.aform["contents"]) == conlen:
-                        pass
+                        self.aform = self.aform["content"]
+                else:
+                    raise ValueError
+            elif "contents" in self.aform.keys():
+                if self.aform["class"] == "RecordArray":
+                    if self.prev_form is not None:
+                        self.prev_form["content"] = aform
+                        self.aform = aform
                     else:
-                        raise ValueError
-
-    def depth(self, form):
-        count = 0
-        temp = form
-        while "content" in temp.keys():
-            count += 1
-            if isinstance(temp["content"], str):
-                break
-            temp = temp["content"]
-        return count
-
-    def replace_keys(self, old, new):
-        temp = new
-        while old != "NULL":
-            new["form_key"] = old["form_key"]
-            new = new["content"]
-            old = old["content"]
-        return temp
+                        self.top_form = aform
+                        self.aform = aform
+                elif len(self.aform["contents"]) == conlen:
+                    pass
+                else:
+                    raise ValueError
 
     def get_keys(self, num_keys):
         if num_keys == 1:
@@ -202,7 +157,6 @@ class ForthGenerator:
         self.form_keys.append(key)
 
     def go_to(self, aform):
-        # aform["content"] = self.awkward_model
         self.awkward_model = aform
 
     def become(self, aform):
@@ -212,7 +166,7 @@ class ForthGenerator:
         return bool(self.awkward_model)
 
     def get_current_node(self):
-        self.ref_list.append(self._prev_node)
+        self.ref_list.append(self.top_node)
         return len(self.ref_list) - 1
 
     def get_ref(self, index):

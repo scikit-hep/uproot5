@@ -1572,7 +1572,7 @@ class AsMap(AsContainer):
             if helper_obj.is_forth():
                 temp = {"name": "TOP", "content": {}}
                 keys_form = forth_obj.top_form
-                keys_model = forth_obj._prev_node
+                keys_model = forth_obj.top_node
                 (
                     temp_node1,
                     temp_node_top1,
@@ -1604,11 +1604,11 @@ class AsMap(AsContainer):
             )
             if helper_obj.is_forth():
                 values_form = forth_obj.top_form
-                values_model = forth_obj._prev_node
+                values_model = forth_obj.top_node
                 if not isinstance(self._values, numpy.dtype):
                     values_model["content"]["post_code"].append("loop \n")
                 forth_obj.awkward_model = temp_node
-                forth_obj._prev_node = temp_node_top
+                forth_obj.top_node = temp_node_top
                 forth_obj.aform = temp_form
                 forth_obj.top_form = temp_form_top
                 forth_obj.prev_form = temp_prev_form
