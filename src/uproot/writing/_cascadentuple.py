@@ -748,6 +748,8 @@ class NTuple(CascadeNode):
         cluster_summary = NTuple_ClusterSummary(self._num_entries, len(data))
         self._num_entries += len(data)
         self._footer.cluster_summary_record_frames.append(cluster_summary)
+        # add one more cluster to the last cluster group
+        self._footer.cluster_group_record_frames[-1].num_clusters += 1
 
         # page (actual column content)
         dummy_data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
