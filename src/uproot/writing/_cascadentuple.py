@@ -118,10 +118,13 @@ def _record_frame_wrap(payload, includeself=True):
     return raw_bytes
 
 
-def _serialize_rntuple_list_frame(items):
+def _serialize_rntuple_list_frame(items, wrap=True):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
-    payload_bytes = b"".join([_record_frame_wrap(x.serialize(), True) for x in items])
+    if wrap:
+        payload_bytes = b"".join([_record_frame_wrap(x.serialize(), True) for x in items])
+    else:
+        payload_bytes = b"".join([x.serialize() for x in items])
     size = 4 + 4 + len(payload_bytes)
     size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
     # n.b last byte of `n_item bytes` is reserved as of Sep 2022
@@ -329,14 +332,13 @@ class NTuple_Footer(CascadeLeaf):
         self._feature_flags = feature_flags
         self._header_crc32 = header_crc32
         self._akform = akform
-        self._page_list_link = NTuple_EnvLink(16, None)
 
         self.feature_flag_bytes = _rntuple_feature_flag_format.pack(self._feature_flags)
         self.extension_header_envelope_links = []
         self.column_group_record_frames = []
         self.cluster_summary_record_frames = []
         self.cluster_group_record_frames = [
-            NTuple_ClusterGroupRecord(0, self._page_list_link)
+            NTuple_ClusterGroupRecord(0, NTuple_EnvLink(16, None))
         ]
         self.metadata_block_envelope_links = []
 
@@ -376,6 +378,8 @@ class NTuple_Footer(CascadeLeaf):
 
 class NTuple_Locator:
     def __init__(self, num_bytes, offset):
+        # approximate 2^16 - size of locator itself
+        assert num_bytes < 32768
         self.num_bytes = num_bytes
         self.offset = offset
 
@@ -401,18 +405,18 @@ class NTuple_EnvLink:
 
 
 class NTuple_ClusterGroupRecord:
-    def __init__(self, num_clusters, page_list_link):
+    def __init__(self, num_clusters, page_list_envlink):
         self.num_clusters = num_clusters
-        self.page_list_link = page_list_link
+        self.page_list_envlink = page_list_envlink
 
     def serialize(self):
         header_bytes = _rntuple_cluster_group_format.pack(self.num_clusters)
-        page_list_link_bytes = self.page_list_link.serialize()
+        page_list_link_bytes = self.page_list_envlink.serialize()
         return header_bytes + page_list_link_bytes
 
     def __repr__(self):
         return "{}({}, {})".format(
-            type(self).__name__, self.num_clusters, self.page_list_link
+            type(self).__name__, self.num_clusters, self.page_list_envlink
         )
 
 
@@ -436,27 +440,33 @@ class NTuple_ClusterSummary:
 
 
 class NTuple_InnerListLocator:
-    def __init__(self, num_pages, page_descs):
-        self.num_pages = num_pages
+    def __init__(self, page_descs):
         self.page_descs = page_descs
 
     def serialize(self):
         # from RNTuple spec:
         # to save space, the page descriptions (inner items) are not in a record frame.
+        # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
+        n_items = len(self.page_descs)
         payload_bytes = b"".join([x.serialize() for x in self.page_descs])
-        return payload_bytes
+        size = 4 + 4 + len(payload_bytes)
+        size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
+        # n.b last byte of `n_item bytes` is reserved as of Sep 2022
+        raw_bytes = b"".join([size_bytes, n_items.to_bytes(4, "little"), payload_bytes])
+        return raw_bytes
 
     def __repr__(self):
-        return f"{type(self).__name__}({self.num_pages}, {self.page_descs})"
+        return f"{type(self).__name__}({self.page_descs})"
 
 
 class NTuple_PageDescription:
     def __init__(self, num_elements, locator):
+        assert num_elements <= 65536
         self.num_elements = num_elements
         self.locator = locator
 
     def serialize(self):
-        return struct.Struct("<I").pack(self.num_elements) * self.locator.serialize()
+        return struct.Struct("<I").pack(self.num_elements) + self.locator.serialize()
 
     def __repr__(self):
         return f"{type(self).__name__}({self.num_elements}, {self.locator})"
@@ -761,15 +771,30 @@ class NTuple(CascadeNode):
         cluster_summary = NTuple_ClusterSummary(self._num_entries, len(data))
         self._num_entries += len(data)
         self._footer.cluster_summary_record_frames.append(cluster_summary)
-        # add one more cluster to the last cluster group
-        self._footer.cluster_group_record_frames[-1].num_clusters += 1
 
         # page (actual column content)
         dummy_data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
         dummy_data_bytes = dummy_data.view("uint8")
         num_elements = len(dummy_data)
         page_key = self.add_rblob(sink, dummy_data_bytes, num_elements, big=False)
-        self.array_to_type(data.layout, data.type)
+        page_locator = NTuple_Locator(len(dummy_data_bytes), page_key.location + page_key.allocation)
+        # FIXME use this
+        # self.array_to_type(data.layout, data.type)
+
+        # we always add one more `list of list` into the `footer.cluster_group_records`, because we always make a new
+        # cluster
+        page_desc = NTuple_PageDescription(num_elements, page_locator)
+        inner_page_list = NTuple_InnerListLocator([page_desc])
+        pagelist_bytes = uproot.const.rntuple_env_header + _serialize_rntuple_list_frame([inner_page_list], False)
+        _crc32 = zlib.crc32(pagelist_bytes)
+        pagelist_bytes += _crc32.to_bytes(4, "little")
+
+        pagelist_key = self.add_rblob(sink, pagelist_bytes, len(pagelist_bytes), big=False)
+        pagelist_locator = NTuple_Locator(len(pagelist_bytes), pagelist_key.location + pagelist_key.allocation)
+        new_page_list_envlink = NTuple_EnvLink(len(pagelist_bytes), pagelist_locator)
+
+        new_cluster_group_record = NTuple_ClusterGroupRecord(1, new_page_list_envlink)
+        self._footer.cluster_group_record_frames.append(new_cluster_group_record)
 
         #### relocate Footer ##############################
         old_footer_key = self._footer_key

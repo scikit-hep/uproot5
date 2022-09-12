@@ -178,13 +178,10 @@ in file {}""".format(
     # FIXME
     @property
     def _length(self):
-        return self.cluster_summaries[0].num_entries
+        return sum(x.num_entries for x in self.cluster_summaries)
 
     def __len__(self):
         return self._length
-
-    def which_colgroup(self, ncol):
-        return 0  # FIXME haven't seen file with column group yet
 
     def read_locator(self, loc, uncomp_size, context):
         cursor = uproot.source.cursor.Cursor(loc.offset)
@@ -309,11 +306,6 @@ in file {}""".format(
 
         form = ak._v2.forms.RecordForm(recordlist, topnames, form_key="toplevel")
         return form
-
-    def pagelist(self, listdesc):
-        local_cursor = listdesc.cursor.copy()
-        pages = listdesc.reader.read(listdesc.chunk, local_cursor, listdesc.context)
-        return pages
 
     def read_pagedesc(self, destination, desc, dtype_str, dtype):
         loc = desc.locator
