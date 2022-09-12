@@ -122,7 +122,9 @@ def _serialize_rntuple_list_frame(items, wrap=True):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
     if wrap:
-        payload_bytes = b"".join([_record_frame_wrap(x.serialize(), True) for x in items])
+        payload_bytes = b"".join(
+            [_record_frame_wrap(x.serialize(), True) for x in items]
+        )
     else:
         payload_bytes = b"".join([x.serialize() for x in items])
     size = 4 + 4 + len(payload_bytes)
@@ -777,7 +779,9 @@ class NTuple(CascadeNode):
         dummy_data_bytes = dummy_data.view("uint8")
         num_elements = len(dummy_data)
         page_key = self.add_rblob(sink, dummy_data_bytes, num_elements, big=False)
-        page_locator = NTuple_Locator(len(dummy_data_bytes), page_key.location + page_key.allocation)
+        page_locator = NTuple_Locator(
+            len(dummy_data_bytes), page_key.location + page_key.allocation
+        )
         # FIXME use this
         # self.array_to_type(data.layout, data.type)
 
@@ -785,12 +789,19 @@ class NTuple(CascadeNode):
         # cluster
         page_desc = NTuple_PageDescription(num_elements, page_locator)
         inner_page_list = NTuple_InnerListLocator([page_desc])
-        pagelist_bytes = uproot.const.rntuple_env_header + _serialize_rntuple_list_frame([inner_page_list], False)
+        pagelist_bytes = (
+            uproot.const.rntuple_env_header
+            + _serialize_rntuple_list_frame([inner_page_list], False)
+        )
         _crc32 = zlib.crc32(pagelist_bytes)
         pagelist_bytes += _crc32.to_bytes(4, "little")
 
-        pagelist_key = self.add_rblob(sink, pagelist_bytes, len(pagelist_bytes), big=False)
-        pagelist_locator = NTuple_Locator(len(pagelist_bytes), pagelist_key.location + pagelist_key.allocation)
+        pagelist_key = self.add_rblob(
+            sink, pagelist_bytes, len(pagelist_bytes), big=False
+        )
+        pagelist_locator = NTuple_Locator(
+            len(pagelist_bytes), pagelist_key.location + pagelist_key.allocation
+        )
         new_page_list_envlink = NTuple_EnvLink(len(pagelist_bytes), pagelist_locator)
 
         new_cluster_group_record = NTuple_ClusterGroupRecord(1, new_page_list_envlink)
