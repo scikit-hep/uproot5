@@ -76,10 +76,7 @@ def _read_nested(
                 )
             temp = forth_obj.add_node(
                 f"node{key}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 1,
                 None,
@@ -546,10 +543,7 @@ class AsString(AsContainer):
             helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 0,
                 None,
@@ -787,10 +781,7 @@ in file {}""".format(
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
-                        helper_obj.get_pre(),
-                        helper_obj.get_post(),
-                        helper_obj.get_init(),
-                        helper_obj.get_header(),
+                        helper_obj.get_attrs(),
                         "i64",
                         1,
                         {},
@@ -868,10 +859,7 @@ in file {}""".format(
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
-                        helper_obj.get_pre(),
-                        helper_obj.get_post(),
-                        helper_obj.get_init(),
-                        helper_obj.get_header(),
+                        helper_obj.get_attrs(),
                         "i64",
                         1,
                         {},
@@ -1197,10 +1185,7 @@ class AsVector(AsContainer):
                     helper_obj.add_to_post("loop\n")
                 temp = forth_obj.add_node(
                     f"node{key}",
-                    helper_obj.get_pre(),
-                    helper_obj.get_post(),
-                    helper_obj.get_init(),
-                    helper_obj.get_header(),
+                    helper_obj.get_attrs(),
                     "i64",
                     1,
                     {},
@@ -1363,10 +1348,7 @@ in file {}""".format(
                 helper_obj.add_to_post("loop\n")
             temp = forth_obj.add_node(
                 f"node{key}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 1,
                 {},
@@ -1627,10 +1609,7 @@ class AsMap(AsContainer):
                     forth_obj.add_form(aform)
                 temp = forth_obj.add_node(
                     "nodeMap",
-                    helper_obj.get_pre(),
-                    helper_obj.get_post(),
-                    helper_obj.get_init(),
-                    helper_obj.get_header(),
+                    helper_obj.get_attrs(),
                     "i64",
                     1,
                     [keys_model["content"], values_model["content"]],

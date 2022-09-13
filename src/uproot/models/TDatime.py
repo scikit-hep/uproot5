@@ -49,10 +49,7 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
                 forth_obj.add_form(temp_aform)
             temp_form = forth_obj.add_node(
                 f"node{key}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 0,
                 None,

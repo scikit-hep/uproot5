@@ -169,9 +169,7 @@ class ForthGenerator:
             self.awkward_model["contents"].append(new_node)
         self.awkward_model = ref_latest
 
-    def add_node(
-        self, name, precode, postcode, initcode, headercode, dtype, num_child, content
-    ):
+    def add_node(self, name, code_attrs, dtype, num_child, content):
         if isinstance(self.awkward_model, dict):
             if (
                 not bool(self.awkward_model["content"])
@@ -180,10 +178,10 @@ class ForthGenerator:
                 temp_obj = {
                     "name": name,
                     "type": dtype,
-                    "pre_code": precode,
-                    "post_code": postcode,
-                    "init_code": initcode,
-                    "header_code": headercode,
+                    "pre_code": code_attrs["precode"],
+                    "post_code": code_attrs["postcode"],
+                    "init_code": code_attrs["initcode"],
+                    "header_code": code_attrs["headercode"],
                     "num_child": num_child,
                     "content": content,
                 }
@@ -196,10 +194,10 @@ class ForthGenerator:
                         temp_obj = {
                             "name": name,
                             "type": dtype,
-                            "pre_code": precode,
-                            "post_code": postcode,
-                            "init_code": initcode,
-                            "header_code": headercode,
+                            "pre_code": code_attrs["precode"],
+                            "post_code": code_attrs["postcode"],
+                            "init_code": code_attrs["initcode"],
+                            "header_code": code_attrs["headercode"],
                             "num_child": num_child,
                             "content": content,
                         }
@@ -222,10 +220,10 @@ class ForthGenerator:
                 {
                     "name": name,
                     "type": dtype,
-                    "pre_code": precode,
-                    "post_code": postcode,
-                    "init_code": initcode,
-                    "header_code": headercode,
+                    "pre_code": code_attrs["precode"],
+                    "post_code": code_attrs["postcode"],
+                    "init_code": code_attrs["initcode"],
+                    "header_code": code_attrs["headercode"],
                     "num_child": num_child,
                     "content": content,
                 }
@@ -297,26 +295,22 @@ class GenHelper:
     def add_to_pre(self, code):
         self._pre_code.append(code)
 
-    def get_pre(self):
-        return self._pre_code
-
     def add_to_post(self, code):
         self._post_code.append(code)
 
-    def get_post(self):
-        return self._post_code
+    def get_attrs(self):
+        return {
+            "precode": self._pre_code,
+            "postcode": self._post_code,
+            "initcode": self._init,
+            "headercode": self._header,
+        }
 
     def add_to_header(self, code):
         self._header += code
 
-    def get_header(self):
-        return self._header
-
     def add_to_init(self, code):
         self._init += code
-
-    def get_init(self):
-        return self._init
 
 
 def convert_dtype(format):

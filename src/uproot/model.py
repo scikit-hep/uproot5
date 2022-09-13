@@ -786,10 +786,7 @@ class Model:
                     if helper_obj.is_forth():
                         forth_obj.add_node(
                             "pass",
-                            helper_obj.get_pre(),
-                            helper_obj.get_post(),
-                            helper_obj.get_init(),
-                            helper_obj.get_header(),
+                            helper_obj.get_attrs(),
                             "i64",
                             1,
                             {},
@@ -828,10 +825,7 @@ class Model:
             if helper_obj.is_forth():
                 forth_obj.add_node(
                     "model828",
-                    helper_obj.get_pre(),
-                    helper_obj.get_post(),
-                    helper_obj.get_init(),
-                    helper_obj.get_header(),
+                    helper_obj.get_attrs(),
                     "i64",
                     1,
                     {},
@@ -1314,10 +1308,7 @@ class DispatchByVersion:
             helper_obj.add_to_pre(f"{bytes_skipped} stream skip \n")
             forth_obj.add_node(
                 "Model1319",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 1,
                 {},
