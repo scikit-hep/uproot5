@@ -132,7 +132,6 @@ class ForthGenerator:
         self.dummy_aform = temp_form
         self.dummy_form = temp_flag
 
-
     def depth(self, form):
         count = 0
         temp = form
