@@ -127,68 +127,11 @@ class ForthGenerator:
                 else:
                     return False
 
-    def get_temp_form_top(self):
-        return self.top_dummy
-
     def set_dummy_none(self, temp_top, temp_form, temp_flag):
         self.top_dummy = temp_top
         self.dummy_aform = temp_form
         self.dummy_form = temp_flag
 
-    def add_form(self, aform, conlen=0, traverse=1):
-        if self.dummy_form:
-            if self.dummy_aform is None:
-                self.dummy_aform = aform
-                self.top_dummy = aform
-            else:
-                if "content" in self.dummy_aform.keys():
-                    if self.dummy_aform["content"] == "NULL":
-                        self.dummy_aform["content"] = aform
-                        self.dummy_aform = self.dummy_aform["content"]
-                    else:
-                        raise ValueError
-                elif "contents" in self.dummy_aform.keys():
-                    if (
-                        len(self.dummy_aform["content"])
-                        < self.dummy_aform["parameters"]["lencon"]
-                    ):
-                        self.dummy_aform["contents"].append(aform)
-                    else:
-                        raise ValueError
-        else:
-            if self.aform is None:
-                self.aform = aform
-                self.top_form = self.aform
-                if traverse == 2:
-                    self.aform = self.aform["content"]
-            else:
-                if "content" in self.aform.keys():
-                    if self.aform["content"] == "NULL":
-                        self.aform["content"] = aform
-                        self.prev_form = self.aform
-                        if traverse == 2:
-                            self.aform = self.aform["content"]["content"]
-                            self.prev_form = self.prev_form["content"]
-                        else:
-                            self.aform = self.aform["content"]
-                    else:
-                        raise ValueError
-                elif "contents" in self.aform.keys():
-                    if self.aform["class"] == "RecordArray":
-                        if self.prev_form is not None:
-                            self.prev_form["content"] = aform
-                            self.aform = aform
-                        else:
-                            self.top_form = aform
-                            self.aform = aform
-                        # for elem in aform['contents'].keys():
-                        #     if self.depth(self.aform['contents'][elem])< self.depth(aform['contents'][elem]):
-                        #         aform['contents'][elem] = self.replace_keys(self.aform['contents'][elem],aform['contents'][elem])
-                        #         self.aform['contents'][elem] = aform['contents'][elem]
-                    elif len(self.aform["contents"]) == conlen:
-                        pass
-                    else:
-                        raise ValueError
 
     def depth(self, form):
         count = 0
