@@ -6,8 +6,6 @@ This module defines utilities for adding components to the forth reader.
 
 import numpy as np
 
-import uproot.containers
-
 symbol_dict = {
     np.dtype(">f4"): "f",
     np.dtype(">f8"): "d",
@@ -20,14 +18,6 @@ symbol_dict = {
     np.dtype(">u8"): "Q",
     np.dtype("bool"): "?",
 }
-
-
-def check_depth(node):
-    """
-    This method checks the depth of the provided container
-    """
-    if isinstance(node, uproot.containers.AsVector):
-        return 1
 
 
 class ForthGenerator:
@@ -102,11 +92,6 @@ class ForthGenerator:
 
     def get_temp_form_top(self):
         return self.top_dummy
-
-    def set_dummy_none(self, temp_top, temp_form, temp_flag):
-        self.top_dummy = temp_top
-        self.dummy_aform = temp_form
-        self.dummy_form = temp_flag
 
     def add_form(self, aform, conlen=0, traverse=1):
         if self.aform is None:
