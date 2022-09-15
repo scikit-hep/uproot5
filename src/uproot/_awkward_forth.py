@@ -113,7 +113,7 @@ class ForthGenerator:
                     else:
                         self.aform = self.aform["content"]
                 else:
-                    raise ValueError
+                    raise ValueError("Form representation is corrupted.")
             elif "contents" in self.aform.keys():
                 if self.aform["class"] == "RecordArray":
                     if self.prev_form is not None:
@@ -131,24 +131,6 @@ class ForthGenerator:
         self.top_dummy = temp_top
         self.dummy_aform = temp_form
         self.dummy_form = temp_flag
-
-    def depth(self, form):
-        count = 0
-        temp = form
-        while "content" in temp.keys():
-            count += 1
-            if isinstance(temp["content"], str):
-                break
-            temp = temp["content"]
-        return count
-
-    def replace_keys(self, old, new):
-        temp = new
-        while old != "NULL":
-            new["form_key"] = old["form_key"]
-            new = new["content"]
-            old = old["content"]
-        return temp
 
     def get_keys(self, num_keys):
         if num_keys == 1:
@@ -283,7 +265,7 @@ class ForthGenerator:
 
     def add_to_final(self, code):
         if not isinstance(code, list):
-            raise TypeError
+            raise TypeError("Something went wrong with Forth code generation.")
         self.final_code.extend(code)
         return
 
