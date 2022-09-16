@@ -122,9 +122,7 @@ def _serialize_rntuple_list_frame(items, wrap=True):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
     if wrap:
-        payload_bytes = b"".join(
-            [_record_frame_wrap(x.serialize()) for x in items]
-        )
+        payload_bytes = b"".join([_record_frame_wrap(x.serialize()) for x in items])
     else:
         payload_bytes = b"".join([x.serialize() for x in items])
     size = 4 + 4 + len(payload_bytes)
@@ -771,7 +769,9 @@ class NTuple(CascadeNode):
         # page (actual column content)
         dummy_data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
         dummy_data_bytes = dummy_data.view("uint8")
-        page_key = self.add_rblob(sink, dummy_data_bytes, len(dummy_data_bytes), big=False)
+        page_key = self.add_rblob(
+            sink, dummy_data_bytes, len(dummy_data_bytes), big=False
+        )
         page_locator = NTuple_Locator(
             len(dummy_data_bytes), page_key.location + page_key.allocation
         )
@@ -783,14 +783,15 @@ class NTuple(CascadeNode):
         page_desc = NTuple_PageDescription(len(dummy_data), page_locator)
         inner_page_list = NTuple_InnerListLocator([page_desc])
         inner_page_list_bytes = _serialize_rntuple_list_frame([inner_page_list], False)
-        inner_size_bytes = struct.Struct("<i").pack(-len(inner_page_list_bytes)-8)  # negative size means list
+        inner_size_bytes = struct.Struct("<i").pack(
+            -len(inner_page_list_bytes) - 8
+        )  # negative size means list
         # we always extend one cluster at a time
-        outer_page_list_bytes = b"".join([inner_size_bytes, struct.Struct("<i").pack(1), inner_page_list_bytes])
-
-        pagelist_bytes = (
-            uproot.const.rntuple_env_header +
-            outer_page_list_bytes
+        outer_page_list_bytes = b"".join(
+            [inner_size_bytes, struct.Struct("<i").pack(1), inner_page_list_bytes]
         )
+
+        pagelist_bytes = uproot.const.rntuple_env_header + outer_page_list_bytes
         _crc32 = zlib.crc32(pagelist_bytes)
 
         pagelist_bytes += struct.Struct("<I").pack(_crc32)
