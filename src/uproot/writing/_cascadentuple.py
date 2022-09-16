@@ -123,7 +123,7 @@ def _serialize_rntuple_list_frame(items, wrap=True):
     n_items = len(items)
     if wrap:
         payload_bytes = b"".join(
-            [_record_frame_wrap(x.serialize(), True) for x in items]
+            [_record_frame_wrap(x.serialize()) for x in items]
         )
     else:
         payload_bytes = b"".join([x.serialize() for x in items])
@@ -448,13 +448,7 @@ class NTuple_InnerListLocator:
     def serialize(self):
         # from RNTuple spec:
         # to save space, the page descriptions (inner items) are not in a record frame.
-        # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
-        n_items = len(self.page_descs)
-        payload_bytes = b"".join([x.serialize() for x in self.page_descs])
-        size = 4 + 4 + len(payload_bytes)
-        size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
-        # n.b last byte of `n_item bytes` is reserved as of Sep 2022
-        raw_bytes = b"".join([size_bytes, n_items.to_bytes(4, "little"), payload_bytes])
+        raw_bytes = _serialize_rntuple_list_frame(self.page_descs, wrap=False)
         return raw_bytes
 
     def __repr__(self):
@@ -777,8 +771,7 @@ class NTuple(CascadeNode):
         # page (actual column content)
         dummy_data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
         dummy_data_bytes = dummy_data.view("uint8")
-        num_elements = len(dummy_data)
-        page_key = self.add_rblob(sink, dummy_data_bytes, num_elements, big=False)
+        page_key = self.add_rblob(sink, dummy_data_bytes, len(dummy_data_bytes), big=False)
         page_locator = NTuple_Locator(
             len(dummy_data_bytes), page_key.location + page_key.allocation
         )
@@ -787,14 +780,20 @@ class NTuple(CascadeNode):
 
         # we always add one more `list of list` into the `footer.cluster_group_records`, because we always make a new
         # cluster
-        page_desc = NTuple_PageDescription(num_elements, page_locator)
+        page_desc = NTuple_PageDescription(len(dummy_data), page_locator)
         inner_page_list = NTuple_InnerListLocator([page_desc])
+        inner_page_list_bytes = _serialize_rntuple_list_frame([inner_page_list], False)
+        inner_size_bytes = struct.Struct("<i").pack(-len(inner_page_list_bytes)-8)  # negative size means list
+        # we always extend one cluster at a time
+        outer_page_list_bytes = b"".join([inner_size_bytes, struct.Struct("<i").pack(1), inner_page_list_bytes])
+
         pagelist_bytes = (
-            uproot.const.rntuple_env_header
-            + _serialize_rntuple_list_frame([inner_page_list], False)
+            uproot.const.rntuple_env_header +
+            outer_page_list_bytes
         )
         _crc32 = zlib.crc32(pagelist_bytes)
-        pagelist_bytes += _crc32.to_bytes(4, "little")
+
+        pagelist_bytes += struct.Struct("<I").pack(_crc32)
 
         pagelist_key = self.add_rblob(
             sink, pagelist_bytes, len(pagelist_bytes), big=False

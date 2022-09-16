@@ -461,9 +461,16 @@ class PageLink:
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
         out.env_header = _envelop_header(chunk, cursor, context)
-
-        out.pagelinklist = self.top_most_list.read(chunk, cursor, context)
+        local_cursor = cursor.copy()
+        num_bytes, num_items = cursor.fields(
+            chunk, _rntuple_frame_header, context
+        )
+        if num_items == 0:
+            return out
+        out.pagelinklist = self.top_most_list.read(chunk, local_cursor, context)
+        cursor.skip(-num_bytes-8)
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
+        assert zlib.crc32(chunk.raw_data[:-4]) == out.crc32
         return out
 
 
