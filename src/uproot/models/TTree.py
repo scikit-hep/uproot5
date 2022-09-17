@@ -968,6 +968,7 @@ def num_entries(paths):
         paths = [uproot._util.file_object_path_split(paths)]
 
     for i, (file_path, object_path) in enumerate(paths2):
-        yield paths[i][0], paths[i][1], uproot.open(
+        with uproot.open(
             {file_path: object_path}, custom_classes={"TTree": Model_TTree_NumEntries}
-        ).all_members["fEntries"][0]
+        ) as f:
+            yield paths[i][0], paths[i][1], f.all_members["fEntries"][0]
