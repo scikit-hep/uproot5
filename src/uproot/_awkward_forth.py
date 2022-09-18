@@ -113,7 +113,7 @@ class ForthGenerator:
                     else:
                         self.aform = self.aform["content"]
                 else:
-                    raise ValueError("Form representation is corrupted.")
+                    raise AssertionError("Form representation is corrupted.")
             elif "contents" in self.aform.keys():
                 if self.aform["class"] == "RecordArray":
                     if self.prev_form is not None:
@@ -144,7 +144,7 @@ class ForthGenerator:
                 self.count_obj += 1
             return out
         else:
-            raise ValueError("Number of keys cannot be less than 1")
+            raise AssertionError("Number of keys cannot be less than 1")
 
     def add_form_key(self, key):
         self.form_keys.append(key)
@@ -265,7 +265,7 @@ class ForthGenerator:
 
     def add_to_final(self, code):
         if not isinstance(code, list):
-            raise TypeError("Something went wrong with Forth code generation.")
+            raise AssertionError("Something went wrong with Forth code generation.")
         self.final_code.extend(code)
         return
 
