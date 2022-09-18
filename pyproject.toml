@@ -51,7 +51,7 @@ dynamic = [
 dev = [
     "awkward>=1.9.0rc1",
     "boost_histogram>=0.13",
-    "dask-awkward;python_version >= \"3.8\"",
+    "dask-awkward>=2022.9a0;python_version >= \"3.8\"",
     "dask[array];python_version >= \"3.8\"",
     "hist>=1.2",
     "pandas",

@@ -49,7 +49,6 @@ jobs:
         run: |
           conda env list
           mamba install root
-          pip install dask-awkward
           conda list
 
       - name: "Install XRootD"
