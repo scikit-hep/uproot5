@@ -2047,7 +2047,7 @@ class ReadOnlyDirectory(Mapping):
                 return key
             elif cycle is None and last is None:
                 last = key
-            elif cycle is None and last.fCycle < key.fCycle:
+            elif cycle is None and abs(last.fCycle) < abs(key.fCycle):
                 last = key
 
         if last is not None:
