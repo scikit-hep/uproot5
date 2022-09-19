@@ -8,7 +8,9 @@ import uproot
 
 dask = pytest.importorskip("dask")
 dask_awkward = pytest.importorskip("dask_awkward")
-from dask_awkward.testutils import assert_eq
+
+pytest.importorskip("pyarrow")  # dask_awkward.lib.testutils needs pyarrow
+from dask_awkward.lib.testutils import assert_eq
 
 
 def test_dask_numpy_empty_arrays():
