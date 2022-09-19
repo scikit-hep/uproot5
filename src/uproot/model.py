@@ -105,7 +105,10 @@ def reset_classes():
     reload(uproot.models.TMatrixT)
 
 
-_classname_regularize = re.compile(r"\s*(<|>|::)\s*")
+_classname_regularize = re.compile(r"\s*(<|>|,|::)\s*")
+_classname_regularize_type = re.compile(
+    r"[<,](Bool_t|Char_t|UChar_t|Short_t|UShort_t|Int_t|UInt_t|Long_t|ULong_t|Long64_t|ULong64_t|Size_t|Float_t|Double_t|LongDouble_t)[>,]"
+)
 _classname_encode_pattern = re.compile(rb"[^a-zA-Z0-9]+")
 _classname_decode_antiversion = re.compile(rb".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
 _classname_decode_version = re.compile(rb".*_v([0-9]+)$")
@@ -130,10 +133,51 @@ def classname_regularize(classname):
     If ``classname`` is None, this function returns None. Otherwise, it must be
     a string and it returns a string.
     """
-    if classname is None:
-        return classname
-    else:
-        return re.sub(_classname_regularize, r"\1", classname)
+    if classname is not None:
+        classname = re.sub(_classname_regularize, r"\1", classname)
+
+        m = _classname_regularize_type.search(classname)
+
+        while m is not None:
+            start, stop = m.span(1)
+            token = classname[start:stop]
+            if token == "Bool_t":
+                replacement = "bool"
+            elif token == "Char_t":
+                replacement = "char"
+            elif token == "UChar_t":
+                replacement = "unsigned char"
+            elif token == "Short_t":
+                replacement = "short"
+            elif token == "UShort_t":
+                replacement = "unsigned short"
+            elif token == "Int_t":
+                replacement = "int"
+            elif token == "UInt_t":
+                replacement = "unsigned int"
+            elif token == "Long_t":
+                replacement = "long"
+            elif token == "ULong_t":
+                replacement = "unsigned long"
+            elif token == "Long64_t":
+                replacement = "long long"
+            elif token == "ULong64_t":
+                replacement = "unsigned long long"
+            elif token == "Size_t":
+                replacement = "size_t"
+            elif token == "Float_t":
+                replacement = "float"
+            elif token == "Double_t":
+                replacement = "double"
+            elif token == "LongDouble_t":
+                replacement = "long double"
+            else:
+                raise AssertionError
+            classname = classname[:start] + replacement + classname[stop:]
+
+            m = _classname_regularize_type.search(classname)
+
+    return classname
 
 
 def classname_decode(encoded_classname):
