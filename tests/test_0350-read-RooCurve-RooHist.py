@@ -107,10 +107,10 @@ def test_to_boost(roohist, roocurve, roocurve_err):
 
     rc_boost = roocurve.to_boost(rh_boost.axes[0].edges)
     assert (rc_boost.axes[0].edges == rh_boost.axes[0].edges).all()
-    assert rc_boost._storage_type == boost_histogram.storage.Double
+    assert rc_boost.storage_type == boost_histogram.storage.Double
     rc_boost = roocurve.to_boost(rh_boost.axes[0].edges, error_curve=roocurve_err)
     assert (rc_boost.axes[0].edges == rh_boost.axes[0].edges).all()
-    assert rc_boost._storage_type == boost_histogram.storage.Weight
+    assert rc_boost.storage_type == boost_histogram.storage.Weight
 
 
 def test_interpolate(roocurve, roocurve_err):
