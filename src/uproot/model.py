@@ -105,9 +105,29 @@ def reset_classes():
     reload(uproot.models.TMatrixT)
 
 
+_root_alias_to_c_primitive = {
+    "Bool_t": "bool",
+    "Char_t": "char",
+    "UChar_t": "unsigned char",
+    "Short_t": "short",
+    "UShort_t": "unsigned short",
+    "Int_t": "int",
+    "UInt_t": "unsigned int",
+    "Long_t": "long",
+    "ULong_t": "unsigned long",
+    "Long64_t": "long long",
+    "ULong64_t": "unsigned long long",
+    "Size_t": "size_t",
+    "Float_t": "float",
+    "Double_t": "double",
+    "LongDouble_t": "long double",
+}
+
 _classname_regularize = re.compile(r"\s*(<|>|,|::)\s*")
 _classname_regularize_type = re.compile(
-    r"[<,](Bool_t|Char_t|UChar_t|Short_t|UShort_t|Int_t|UInt_t|Long_t|ULong_t|Long64_t|ULong64_t|Size_t|Float_t|Double_t|LongDouble_t)[>,]"
+    r"[<,]("
+    + "|".join([re.escape(p) for p in _root_alias_to_c_primitive])
+    + r")[>,]"
 )
 _classname_encode_pattern = re.compile(rb"[^a-zA-Z0-9]+")
 _classname_decode_antiversion = re.compile(rb".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
