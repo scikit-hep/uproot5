@@ -105,9 +105,29 @@ def reset_classes():
     reload(uproot.models.TMatrixT)
 
 
+_root_alias_to_c_primitive = {
+    "Bool_t": "bool",
+    "Char_t": "char",
+    "UChar_t": "unsigned char",
+    "Short_t": "short",
+    "UShort_t": "unsigned short",
+    "Int_t": "int",
+    "UInt_t": "unsigned int",
+    "Long_t": "long",
+    "ULong_t": "unsigned long",
+    "Long64_t": "long long",
+    "ULong64_t": "unsigned long long",
+    "Size_t": "size_t",
+    "Float_t": "float",
+    "Double_t": "double",
+    "LongDouble_t": "long double",
+}
+
 _classname_regularize = re.compile(r"\s*(<|>|,|::)\s*")
 _classname_regularize_type = re.compile(
-    r"[<,](Bool_t|Char_t|UChar_t|Short_t|UShort_t|Int_t|UInt_t|Long_t|ULong_t|Long64_t|ULong64_t|Size_t|Float_t|Double_t|LongDouble_t)[>,]"
+    r"[<,]("
+    + "|".join([re.escape(p) for p in _root_alias_to_c_primitive])
+    + r")[>,]"
 )
 
 _classname_encode_pattern = re.compile(rb"[^a-zA-Z0-9]+")
@@ -142,38 +162,7 @@ def classname_regularize(classname):
         while m is not None:
             start, stop = m.span(1)
             token = classname[start:stop]
-            if token == "Bool_t":
-                replacement = "bool"
-            elif token == "Char_t":
-                replacement = "char"
-            elif token == "UChar_t":
-                replacement = "unsigned char"
-            elif token == "Short_t":
-                replacement = "short"
-            elif token == "UShort_t":
-                replacement = "unsigned short"
-            elif token == "Int_t":
-                replacement = "int"
-            elif token == "UInt_t":
-                replacement = "unsigned int"
-            elif token == "Long_t":
-                replacement = "long"
-            elif token == "ULong_t":
-                replacement = "unsigned long"
-            elif token == "Long64_t":
-                replacement = "long long"
-            elif token == "ULong64_t":
-                replacement = "unsigned long long"
-            elif token == "Size_t":
-                replacement = "size_t"
-            elif token == "Float_t":
-                replacement = "float"
-            elif token == "Double_t":
-                replacement = "double"
-            elif token == "LongDouble_t":
-                replacement = "long double"
-            else:
-                raise AssertionError
+            replacement = _root_alias_to_c_primitive[token]
             classname = classname[:start] + replacement + classname[stop:]
 
             m = _classname_regularize_type.search(classname)
