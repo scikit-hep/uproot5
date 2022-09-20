@@ -125,9 +125,7 @@ _root_alias_to_c_primitive = {
 
 _classname_regularize = re.compile(r"\s*(<|>|,|::)\s*")
 _classname_regularize_type = re.compile(
-    r"[<,]("
-    + "|".join([re.escape(p) for p in _root_alias_to_c_primitive])
-    + r")[>,]"
+    r"[<,](" + "|".join([re.escape(p) for p in _root_alias_to_c_primitive]) + r")[>,]"
 )
 _classname_encode_pattern = re.compile(rb"[^a-zA-Z0-9]+")
 _classname_decode_antiversion = re.compile(rb".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
