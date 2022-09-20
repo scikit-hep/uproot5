@@ -161,38 +161,7 @@ def classname_regularize(classname):
         while m is not None:
             start, stop = m.span(1)
             token = classname[start:stop]
-            if token == "Bool_t":
-                replacement = "bool"
-            elif token == "Char_t":
-                replacement = "char"
-            elif token == "UChar_t":
-                replacement = "unsigned char"
-            elif token == "Short_t":
-                replacement = "short"
-            elif token == "UShort_t":
-                replacement = "unsigned short"
-            elif token == "Int_t":
-                replacement = "int"
-            elif token == "UInt_t":
-                replacement = "unsigned int"
-            elif token == "Long_t":
-                replacement = "long"
-            elif token == "ULong_t":
-                replacement = "unsigned long"
-            elif token == "Long64_t":
-                replacement = "long long"
-            elif token == "ULong64_t":
-                replacement = "unsigned long long"
-            elif token == "Size_t":
-                replacement = "size_t"
-            elif token == "Float_t":
-                replacement = "float"
-            elif token == "Double_t":
-                replacement = "double"
-            elif token == "LongDouble_t":
-                replacement = "long double"
-            else:
-                raise AssertionError
+            replacement = _root_alias_to_c_primitive[token]
             classname = classname[:start] + replacement + classname[stop:]
 
             m = _classname_regularize_type.search(classname)
