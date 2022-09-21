@@ -60,15 +60,15 @@ def dask(
             the specified ``TTree``.
         open_files (bool): If True (default), the function will open the files to read file
             metadata, i.e. only the main data read is delayed till the compute call on
-            the dask collections. If False, the opening of the files and reading the 
-            metadata is also delayed till the compute call. In this case, branch-names 
+            the dask collections. If False, the opening of the files and reading the
+            metadata is also delayed till the compute call. In this case, branch-names
             are inferred by opening only the first file.
         options: See below.
 
-    Returns dask equivalents of the backends supported by uproot. If ``library='np'``, 
-    the function returns a Python dict of dask arrays. If ``library='ak'``, the 
+    Returns dask equivalents of the backends supported by uproot. If ``library='np'``,
+    the function returns a Python dict of dask arrays. If ``library='ak'``, the
     function returns a single dask-awkward array.
-    
+
     For example:
 
     .. code-block:: python
@@ -93,7 +93,7 @@ def dask(
     .. code-block:: bash
 
         pip install dask-awkward   # not on conda-forge yet
-        
+
     Allowed types for the ``files`` parameter:
 
     * str/bytes: relative or absolute filesystem path or URL, without any colons
