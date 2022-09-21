@@ -53,5 +53,5 @@ html_static_path = []  # "_static"
 # Additional stuff
 master_doc = "index"
 
-exec(open("prepare_docstrings.py").read(), dict(globals()))
-exec(open("make_changelog.py").read(), dict(globals()))
+# exec(open("prepare_docstrings.py").read(), dict(globals()))
+# exec(open("make_changelog.py").read(), dict(globals()))

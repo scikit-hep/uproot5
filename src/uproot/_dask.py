@@ -58,7 +58,7 @@ def dask(
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
             the specified ``TTree``.
-        open_files (bool): If True, the function will open the files to read file
+        open_files (bool): If True (default), the function will open the files to read file
             metadata, i.e. only the main data read is delayed till the compute call on
             the dask collections. If False, the opening of the files and reading the 
             metadata is also delayed till the compute call. In this case, branch-names 
@@ -67,26 +67,8 @@ def dask(
 
     Returns dask equivalents of the backends supported by uproot. If ``library='np'``, 
     the function returns a Python dict of dask arrays. If ``library='ak'``, the 
-    function returns a single dask-awkward array. This function requires additional 
-    dependancies like ``dask[complete]`` and ``dask-awkward``.
-
-    Here's a dependancy guide.
-
-    For using ``library='np'`` install dask with 
-
-    .. code-block:: bash
-
-        # with pip
-        pip install "dask[complete]"
-        # or with conda
-        conda install dask
-
-    For using ``library='ak'`` install dask(shown above) and dask-awkard with
-
-    .. code-block:: bash
-
-        pip install dask-awkward   # not on conda-forge yet
-        
+    function returns a single dask-awkward array.
+    
     For example:
 
     .. code-block:: python
@@ -96,6 +78,22 @@ def dask(
         >>> uproot.dask(root_file,library='np')
         {'Type': dask.array<Type-from-uproot, shape=(2304,), dtype=object, chunksize=(2304,), chunktype=numpy.ndarray>, ...}
 
+
+    This function (naturally) depends on Dask. To use it with ``library="np"``:
+
+    .. code-block:: bash
+
+        # with pip
+        pip install "dask[complete]"
+        # or with conda
+        conda install dask
+
+    For using ``library='ak'``
+
+    .. code-block:: bash
+
+        pip install dask-awkward   # not on conda-forge yet
+        
     Allowed types for the ``files`` parameter:
 
     * str/bytes: relative or absolute filesystem path or URL, without any colons

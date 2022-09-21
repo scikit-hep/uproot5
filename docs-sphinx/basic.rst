@@ -429,6 +429,57 @@ For Pandas, a group is a `pandas.DataFrame <https://pandas.pydata.org/pandas-doc
 
 Even though you can extract individual arrays from these objects, they're read, decompressed, and interpreted as soon as you ask for them. Unless you're working with small files, be sure not to read everything when you only want a few of the arrays!
 
+Reading TBranches into Dask collections
+---------------------------------------
+Uproot supports reading TBranches into `Dask <https://www.dask.org/>`__ collections with the :doc:`uproot._dask.dask` function. Currently, 2 collections are supported, `Dask Awkward Array <https://dask-awkward.readthedocs.io/en/latest/>`__ with ``library='ak'`` and `Dask Array <https://docs.dask.org/en/stable/array.html>`__ with ``library='np'``.
+
+Uproot returns a single dask-awkard array when ``library='ak'`` and a Python dict of dask-arrays when ``library='np'``.
+
+.. code-block:: python
+
+    >>> uproot.dask(root_file)
+    dask.awkward<from-uproot, npartitions=1>
+    >>> dak_arr = uproot.dask(root_file)
+    >>> ak_arr = dak_arr.compute() # TBranches are not read until compute is called
+    >>> ak_arr.show()
+    [{one: 1, two: 1.1, three: 'uno'},
+    {one: 2, two: 2.2, three: 'dos'},
+    {one: 3, two: 3.3, three: 'tres'},
+    {one: 4, two: 4.4, three: 'quatro'}]
+    >>> uproot.dask(root_file,library='np') # now with library='np'
+    {
+    'one': dask.array<one-from-uproot, shape=(4,), dtype=int32, chunksize=(4,), chunktype=numpy.ndarray>,
+    'two': dask.array<two-from-uproot, shape=(4,), dtype=float32, chunksize=(4,), chunktype=numpy.ndarray>,
+    'three': dask.array<three-from-uproot, shape=(4,), dtype=object, chunksize=(4,), chunktype=numpy.ndarray>
+    }
+    >>> branch_dict = uproot.dask(root_file,library='np')
+    >>> branch_dict['one'].compute() # again, TBranch data isn't read until compute is called
+    array([1, 2, 3, 4], dtype=int32)
+
+Eager workflows can be converted to dask graphs that encode the order and interdependacies of computations that need to be performed. Consider the following workflow:
+
+.. code-block:: python
+
+    >>> dask_dict = uproot.dask(root_file,library='np')
+    >>> px = dask_dict['px1']
+    >>> py = dask_dict['py1']
+    >>> import numpy as np
+    >>> pt = np.sqrt(px**2 + py**2)
+    >>> pt # no data has been read yet
+    dask.array<sqrt, shape=(2304,), dtype=float64, chunksize=(2304,), chunktype=numpy.ndarray>
+    >>> pt.compute() # Only after compute is called, the TBranch data is read and further computations are executed.
+    array([44.7322, 38.8311, 38.8311, ..., 32.3997, 32.3997, 32.5076])
+
+The dask graph for this can be visualized with ``pt.visualize()``. The resultant image is shown below.
+
+.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/example-dask-graph.png
+    :alt: dask-graph-example
+    :width: 300px
+    :align: center
+
+
+Dask collections allow data to be read and processed in chunks, thus allowing larger-than-memory datasets to be processed easily and parallely. The ``step_size`` para
+
 Filtering TBranches
 -------------------
 
