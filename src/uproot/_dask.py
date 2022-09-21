@@ -527,6 +527,9 @@ class _UprootRead:
             self.branches, entry_start=start, entry_stop=stop
         )
 
+    def project_columns(self, columns):
+        return _UprootRead(self.hasbranches, columns)
+
 
 class _UprootOpenAndRead:
     def __init__(
