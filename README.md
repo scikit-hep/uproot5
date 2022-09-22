@@ -155,6 +155,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     <tr>
       <td align="center"><a href="https://github.com/veprbl"><img src="https://avatars.githubusercontent.com/u/245573?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Dmitry Kalinkin</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=veprbl" title="Code">💻</a> <a href="#infra-veprbl" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
       <td align="center"><a href="https://github.com/nikoladze"><img src="https://avatars.githubusercontent.com/u/3707225?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nikolai Hartmann</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=nikoladze" title="Code">💻</a></td>
+      <td align="center"><a href="https://www.lieret.net"><img src="https://avatars.githubusercontent.com/u/13602468?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Kilian Lieret</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=klieret" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>
