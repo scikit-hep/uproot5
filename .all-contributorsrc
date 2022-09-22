@@ -424,6 +424,15 @@
       "contributions": [
         "doc"
       ]
+    },
+    {
+      "login": "dcervenkov",
+      "name": "Daniel Cervenkov",
+      "avatar_url": "https://avatars.githubusercontent.com/u/23052054?v=4",
+      "profile": "https://github.com/dcervenkov",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
