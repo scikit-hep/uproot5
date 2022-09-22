@@ -163,4 +163,4 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
-💻: code, 📖: documentation, 🚇: infrastructure, 🚧: maintainance, ⚠: tests and feedback, 🤔: foundational ideas.
+💻: code, 📖: documentation, 🚇: infrastructure, 🚧: maintainance, ⚠: tests/feedback, 🤔: foundational ideas.
