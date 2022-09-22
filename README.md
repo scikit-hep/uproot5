@@ -157,6 +157,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center"><a href="https://github.com/nikoladze"><img src="https://avatars.githubusercontent.com/u/3707225?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Nikolai Hartmann</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=nikoladze" title="Code">💻</a></td>
       <td align="center"><a href="https://www.lieret.net"><img src="https://avatars.githubusercontent.com/u/13602468?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Kilian Lieret</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=klieret" title="Documentation">📖</a></td>
       <td align="center"><a href="https://github.com/dcervenkov"><img src="https://avatars.githubusercontent.com/u/23052054?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Daniel Cervenkov</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=dcervenkov" title="Code">💻</a></td>
+      <td align="center"><a href="https://github.com/beojan"><img src="https://avatars.githubusercontent.com/u/3727925?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Beojan Stanislaus</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=beojan" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
