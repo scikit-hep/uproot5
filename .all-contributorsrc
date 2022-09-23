@@ -396,6 +396,62 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "veprbl",
+      "name": "Dmitry Kalinkin",
+      "avatar_url": "https://avatars.githubusercontent.com/u/245573?v=4",
+      "profile": "https://github.com/veprbl",
+      "contributions": [
+        "code",
+        "infra"
+      ]
+    },
+    {
+      "login": "nikoladze",
+      "name": "Nikolai Hartmann",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3707225?v=4",
+      "profile": "https://github.com/nikoladze",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "klieret",
+      "name": "Kilian Lieret",
+      "avatar_url": "https://avatars.githubusercontent.com/u/13602468?v=4",
+      "profile": "https://www.lieret.net",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "dcervenkov",
+      "name": "Daniel Cervenkov",
+      "avatar_url": "https://avatars.githubusercontent.com/u/23052054?v=4",
+      "profile": "https://github.com/dcervenkov",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "beojan",
+      "name": "Beojan Stanislaus",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3727925?v=4",
+      "profile": "https://github.com/beojan",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "agoose77",
+      "name": "Angus Hollands",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1248413?v=4",
+      "profile": "https://github.com/agoose77",
+      "contributions": [
+        "code",
+        "maintenance"
+      ]
     }
   ],
   "contributorsPerLine": 7,
