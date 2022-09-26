@@ -212,9 +212,7 @@ class AsStrings(uproot.interpretation.Interpretation):
                 offsets = numpy.asarray(
                     self._threadlocal.forth_vm.output("out-offsets")
                 )
-                data = numpy.asarray(
-                    self._threadlocal.forth_vm.output("out-main")
-                )
+                data = numpy.asarray(self._threadlocal.forth_vm.output("out-main"))
                 self._threadlocal.forth_vm.reset()
 
                 return awkward.Array(
@@ -342,9 +340,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             ):
                 assert isinstance(library, uproot.interpretation.library.Awkward)
                 awkward = library.imported
-                output = awkward.concatenate(
-                    trimmed, mergebool=False, highlevel=False
-                )
+                output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
 
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,

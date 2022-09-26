@@ -236,9 +236,7 @@ def test_strided_awkward():
     ] as tree:
         result = tree["MET"].array(library="ak")
 
-        assert (
-            str(awkward.type(result)) == "2421 * TVector2[fX: float64, fY: float64]"
-        )
+        assert str(awkward.type(result)) == "2421 * TVector2[fX: float64, fY: float64]"
 
         assert awkward.to_list(result["fX"][:10]) == [
             5.912771224975586,
@@ -1128,9 +1126,7 @@ def test_awkward_vector_vector_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(
-            tree["vector_vector_string"].array(library="ak")
-        ) == [
+        assert awkward.to_list(tree["vector_vector_string"].array(library="ak")) == [
             [["one"]],
             [["one"], ["one", "two"]],
             [["one"], ["one", "two"], ["one", "two", "three"]],
@@ -1177,9 +1173,7 @@ def test_awkward_map_int32_vector_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
-            tree["map_int32_vector_int16"].array(library="ak")
-        )
+        keys, values = awkward.unzip(tree["map_int32_vector_int16"].array(library="ak"))
         assert awkward.to_list(keys) == [
             [1],
             [1, 2],

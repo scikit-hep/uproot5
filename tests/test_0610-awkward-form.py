@@ -148,9 +148,7 @@ def test_awkward_vector_vector_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(
-            tree["vector_vector_string"].array(library="ak")
-        ) == [
+        assert awkward.to_list(tree["vector_vector_string"].array(library="ak")) == [
             [["one"]],
             [["one"], ["one", "two"]],
             [["one"], ["one", "two"], ["one", "two", "three"]],
@@ -175,9 +173,7 @@ def test_awkward_vector_vector_tstring():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        assert awkward.to_list(
-            tree["vector_vector_tstring"].array(library="ak")
-        ) == [
+        assert awkward.to_list(tree["vector_vector_tstring"].array(library="ak")) == [
             [["one"]],
             [["one"], ["one", "two"]],
             [["one"], ["one", "two"], ["one", "two", "three"]],
@@ -291,9 +287,7 @@ def test_awkward_map_int32_vector_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
-            tree["map_int32_vector_int16"].array(library="ak")
-        )
+        keys, values = awkward.unzip(tree["map_int32_vector_int16"].array(library="ak"))
         assert awkward.to_list(keys) == [
             [1],
             [1, 2],
@@ -350,9 +344,7 @@ def test_awkward_map_int32_set_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
-            tree["map_int32_set_int16"].array(library="ak")
-        )
+        keys, values = awkward.unzip(tree["map_int32_set_int16"].array(library="ak"))
         assert awkward.to_list(keys) == [
             [1],
             [1, 2],
@@ -374,9 +366,7 @@ def test_awkward_map_int32_set_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
-            tree["map_int32_set_string"].array(library="ak")
-        )
+        keys, values = awkward.unzip(tree["map_int32_set_string"].array(library="ak"))
         assert awkward.to_list(keys) == [
             [1],
             [1, 2],
@@ -490,9 +480,7 @@ def test_awkward_map_string_set_int16():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
-            tree["map_string_set_int16"].array(library="ak")
-        )
+        keys, values = awkward.unzip(tree["map_string_set_int16"].array(library="ak"))
         assert awkward.to_list(keys) == [
             ["one"],
             ["one", "two"],
@@ -514,9 +502,7 @@ def test_awkward_map_string_set_string():
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
-        keys, values = awkward.unzip(
-            tree["map_string_set_string"].array(library="ak")
-        )
+        keys, values = awkward.unzip(tree["map_string_set_string"].array(library="ak"))
         assert awkward.to_list(keys) == [
             ["one"],
             ["one", "two"],

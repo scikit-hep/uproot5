@@ -571,13 +571,9 @@ def awkward_form(model, file, context):
             elif model == numpy.dtype(numpy.uint64):
                 _primitive_awkward_form[model] = awkward.forms.from_json('"uint64"')
             elif model == numpy.dtype(numpy.float32):
-                _primitive_awkward_form[model] = awkward.forms.from_json(
-                    '"float32"'
-                )
+                _primitive_awkward_form[model] = awkward.forms.from_json('"float32"')
             elif model == numpy.dtype(numpy.float64):
-                _primitive_awkward_form[model] = awkward.forms.from_json(
-                    '"float64"'
-                )
+                _primitive_awkward_form[model] = awkward.forms.from_json('"float64"')
             else:
                 raise AssertionError(f"{model!r}: {type(model)}")
 
