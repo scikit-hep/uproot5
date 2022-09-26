@@ -163,9 +163,9 @@ class AsStrings(uproot.interpretation.Interpretation):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
+            awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {
@@ -210,17 +210,17 @@ class AsStrings(uproot.interpretation.Interpretation):
                 self._threadlocal.forth_vm.begin({"stream": numpy.array(data)})
                 self._threadlocal.forth_vm.resume(raise_read_beyond=False)
                 offsets = numpy.asarray(
-                    self._threadlocal.forth_vm.output_Index64("out-offsets")
+                    self._threadlocal.forth_vm.output("out-offsets")
                 )
                 data = numpy.asarray(
-                    self._threadlocal.forth_vm.output_NumpyArray("out-main")
+                    self._threadlocal.forth_vm.output("out-main")
                 )
                 self._threadlocal.forth_vm.reset()
 
-                return awkward._v2.Array(
-                    awkward._v2.contents.ListOffsetArray(
-                        awkward._v2.index.Index64(offsets),
-                        awkward._v2.contents.NumpyArray(
+                return awkward.Array(
+                    awkward.contents.ListOffsetArray(
+                        awkward.index.Index64(offsets),
+                        awkward.contents.NumpyArray(
                             data, parameters={"__array__": "char"}
                         ),
                         parameters={"__array__": "string"},
@@ -342,7 +342,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             ):
                 assert isinstance(library, uproot.interpretation.library.Awkward)
                 awkward = library.imported
-                output = awkward._v2.concatenate(
+                output = awkward.concatenate(
                     trimmed, mergebool=False, highlevel=False
                 )
 

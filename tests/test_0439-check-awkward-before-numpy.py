@@ -14,7 +14,7 @@ def test(tmp_path):
     filename = os.path.join(str(tmp_path), "whatever.root")
 
     with uproot.recreate(filename) as file:
-        file["tree"] = {"branch": ak._v2.Array([[1, 2, 3], [4, 5, 6]])}
+        file["tree"] = {"branch": ak.Array([[1, 2, 3], [4, 5, 6]])}
 
     with uproot.open(filename) as file:
         assert isinstance(file["tree/branch"].interpretation, uproot.AsJagged)
