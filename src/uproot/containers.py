@@ -337,7 +337,7 @@ class AsDynamic(AsContainer):
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
-            return awkward._v2.forms.ListOffsetForm(
+            return awkward.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
                 parameters={"uproot": {"as": "dynamic"}},
@@ -462,9 +462,9 @@ class AsString(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
+            awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {
@@ -708,8 +708,8 @@ class AsArray(AsContainer):
         awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
-            values_form = awkward._v2.forms.RegularForm(values_form, dim)
-        return awkward._v2.forms.ListOffsetForm(
+            values_form = awkward.forms.RegularForm(values_form, dim)
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             values_form,
             parameters={
@@ -946,7 +946,7 @@ class AsRVec(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "RVec", "header": self._header}},
@@ -1093,7 +1093,7 @@ class AsVector(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "vector", "header": self._header}},
@@ -1300,7 +1300,7 @@ class AsSet(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._keys, file, context),
             parameters={
@@ -1494,9 +1494,9 @@ class AsMap(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.RecordForm(
+            awkward.forms.RecordForm(
                 (
                     uproot._util.awkward_form(self._keys, file, context),
                     uproot._util.awkward_form(self._values, file, context),

@@ -265,7 +265,7 @@ class AsDtype(Numerical):
         d, s = _dtype_shape(self._to_dtype)
         out = uproot._util.awkward_form(d, file, context)
         for size in s[::-1]:
-            out = awkward._v2.forms.RegularForm(out, size)
+            out = awkward.forms.RegularForm(out, size)
         return out
 
     @property
@@ -648,7 +648,7 @@ class AsDouble32(TruncatedNumerical):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        out = awkward._v2.forms.NumpyForm(
+        out = awkward.forms.NumpyForm(
             "float64",
             parameters={
                 "uproot": {
@@ -660,7 +660,7 @@ class AsDouble32(TruncatedNumerical):
             },
         )
         for size in self._to_dims[::-1]:
-            out = awkward._v2.forms.RegularForm(out, size)
+            out = awkward.forms.RegularForm(out, size)
         return out
 
 
@@ -716,7 +716,7 @@ class AsFloat16(TruncatedNumerical):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        out = awkward._v2.forms.NumpyForm(
+        out = awkward.forms.NumpyForm(
             "float32",
             parameters={
                 "uproot": {
@@ -728,5 +728,5 @@ class AsFloat16(TruncatedNumerical):
             },
         )
         for size in self._to_dims[::-1]:
-            out = awkward._v2.forms.RegularForm(out, size)
+            out = awkward.forms.RegularForm(out, size)
         return out

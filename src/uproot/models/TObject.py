@@ -106,7 +106,7 @@ in file {}""".format(
             contents["@pidf"] = uproot._util.awkward_form(
                 numpy.dtype("u2"), file, context
             )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TObject"},
