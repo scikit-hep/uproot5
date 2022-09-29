@@ -58,6 +58,9 @@ jobs:
           mamba install xrootd
           conda list
 
+      - name: "TEMPORARY!"
+        run: python -m pip install -U 'git+https://github.com/scikit-hep/awkward.git@main'
+
       - name: "Pip install the package"
         run: python -m pip install .[test,dev]
 
