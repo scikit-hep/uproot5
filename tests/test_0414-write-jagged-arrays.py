@@ -23,9 +23,7 @@ def test_awkward_as_numpy(tmp_path):
             {
                 "b1": awkward.types.from_datashape("int32", highlevel=False),
                 "b2": awkward.types.from_datashape("2 * float64", highlevel=False),
-                "b3": awkward.types.from_datashape(
-                    "2 * 3 * float64", highlevel=False
-                ),
+                "b3": awkward.types.from_datashape("2 * 3 * float64", highlevel=False),
                 "b4": awkward.Array([1.1, 2.2, 3.3]).type,
             },
         )
@@ -62,9 +60,7 @@ def test_awkward_record_data(tmp_path):
 
     with uproot.recreate(newfile, compression=None) as fout:
         b1 = np.array([1, 2, 3], np.int32)
-        b2 = awkward.Array(
-            [{"x": 1.1, "y": 4}, {"x": 2.2, "y": 5}, {"x": 3.3, "y": 6}]
-        )
+        b2 = awkward.Array([{"x": 1.1, "y": 4}, {"x": 2.2, "y": 5}, {"x": 3.3, "y": 6}])
         fout.mktree("tree", {"b1": b1.dtype, "b2": b2.type})
         fout["tree"].extend({"b1": b1, "b2": b2})
 
@@ -192,9 +188,7 @@ def test_awkward_jagged_metadata(tmp_path):
             "tree",
             {
                 "b1": "int64",
-                "b2": awkward.types.from_datashape(
-                    "var * float64", highlevel=False
-                ),
+                "b2": awkward.types.from_datashape("var * float64", highlevel=False),
             },
         )
 

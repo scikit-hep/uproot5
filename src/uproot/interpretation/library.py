@@ -280,9 +280,7 @@ def _strided_to_awkward(awkward, path, interpretation, data):
         "__record__": uproot.model.classname_decode(interpretation.model.__name__)[0]
     }
     length = len(data) if len(contents) == 0 else None
-    out = awkward.contents.RecordArray(
-        contents, names, length, parameters=parameters
-    )
+    out = awkward.contents.RecordArray(contents, names, length, parameters=parameters)
     for dim in reversed(interpretation.inner_shape):
         out = awkward.contents.RegularArray(out, dim)
     return out
