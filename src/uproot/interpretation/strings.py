@@ -210,10 +210,10 @@ class AsStrings(uproot.interpretation.Interpretation):
                 self._threadlocal.forth_vm.begin({"stream": numpy.array(data)})
                 self._threadlocal.forth_vm.resume(raise_read_beyond=False)
                 offsets = numpy.asarray(
-                    self._threadlocal.forth_vm.output_Index64("out-offsets")
+                    self._threadlocal.forth_vm.output("out-offsets")
                 )
                 data = numpy.asarray(
-                    self._threadlocal.forth_vm.output_NumpyArray("out-main")
+                    self._threadlocal.forth_vm.output("out-main")
                 )
                 self._threadlocal.forth_vm.reset()
 
