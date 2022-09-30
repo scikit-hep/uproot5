@@ -79,7 +79,10 @@ path = "src/uproot/version.py"
 minversion = "6.0"
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "default:module 'sre_parse' is deprecated:DeprecationWarning"
+]
 log_cli_level = "info"
 testpaths = ["tests"]
 markers = [
