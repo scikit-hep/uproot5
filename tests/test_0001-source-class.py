@@ -1,6 +1,7 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import os
+import platform
 import queue
 import sys
 from io import StringIO
@@ -9,6 +10,8 @@ import numpy
 import pytest
 
 import uproot
+
+macos_py311 = platform.system() == "Darwin" and sys.version_info >= (3, 11)
 
 
 def tobytes(x):
@@ -155,6 +158,7 @@ def test_http_port():
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
+@pytest.mark.skipif(macos_py311, reason="Python 3.11 MacOS SSL bug")
 @pytest.mark.network
 def test_http_size():
     with uproot.source.http.HTTPSource(
@@ -172,6 +176,7 @@ def test_http_size():
     assert size1 == size2
 
 
+@pytest.mark.skipif(macos_py311, reason="Python 3.11 MacOS SSL bug")
 @pytest.mark.network
 def test_http_size_port():
     with uproot.source.http.HTTPSource(
@@ -202,6 +207,7 @@ def test_http_fail():
         chunks[0].raw_data
 
 
+@pytest.mark.skipif(macos_py311, reason="Python 3.11 MacOS SSL bug")
 @pytest.mark.network
 def test_no_multipart():
     for num_workers in [1, 2]:
@@ -231,6 +237,7 @@ def test_no_multipart_fail():
             chunks[0].raw_data
 
 
+@pytest.mark.skipif(macos_py311, reason="Python 3.11 MacOS SSL bug")
 @pytest.mark.network
 def test_fallback():
     for num_workers in [1, 2]:
