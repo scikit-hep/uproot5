@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
-[![Python 3.6‒3.10](https://img.shields.io/badge/python-3.6%E2%80%923.10-blue)](https://www.python.org)
+[![Python 3.7‒3.11](https://img.shields.io/badge/python-3.7%E2%80%923.11-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Continuous integration tests](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=tests)](https://github.com/scikit-hep/uproot4/actions)
 
@@ -62,9 +62,9 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 # Dependencies
 
-**Uproot's only strict dependency is NumPy.** This is the only dependency that pip will automatically install.
+**Uproot's only strict dependencies are NumPy and packaging.** You'll also need `importlib_metadata` if you are on Python 3.7. These will be automatically installed when you install uproot.
 
-**Awkward Array is highly recommended.** It is not a strict dependency to allow Uproot to be used in restrictive environments. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option or globally set `uproot.default_library` to return arrays as NumPy arrays (see documentation).
+**Awkward Array is highly recommended.** It is not a strict dependency, but is included in the dependencies to help most users; install without dependencies (`--no-deps` with pip) if you want to avoid `awkward`. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option or globally set `uproot.default_library` to return arrays as NumPy arrays (see documentation).
 
    * `awkward`: be sure to use Awkward Array 1.x.
 
@@ -74,7 +74,6 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
    * `lz4` and `xxhash`: only if reading ROOT files that have been LZ4-compressed.
    * `zstandard`: only if reading ROOT files that have been ZSTD-compressed.
-   * `backports.lzma`: only if reading ROOT files that have been LZMA-compressed (in Python 2).
 
 **For remote data:**
 
