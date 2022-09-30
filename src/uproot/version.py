@@ -12,7 +12,7 @@ of the latest release on PyPI.
 
 import re
 
-__version__ = "5.0.0rc3"  # must be "rc" (pre-release) until after `awkward>=2.0`
+__version__ = "5.0.0rc4"  # must be "rc" (pre-release) until after `awkward>=2.0`
 version = __version__
 version_info = tuple(re.split(r"[-\.]", __version__))
 
