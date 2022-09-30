@@ -81,7 +81,7 @@ addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
 filterwarnings = [
     "error",
-    "default:module 'sre_parse' is deprecated:DeprecationWarning"
+    "default:module 'sre_.*' is deprecated:DeprecationWarning"
 ]
 log_cli_level = "info"
 testpaths = ["tests"]
