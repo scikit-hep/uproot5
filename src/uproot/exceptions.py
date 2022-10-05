@@ -79,6 +79,7 @@ class KeyInFileError(KeyError):
 
         if self.cycle == "any":
             return f"not found: {self.key!r} (with any cycle number){because}{with_keys}{in_file}{in_object}"
-        if self.cycle is None:
+        elif self.cycle is None:
             return f"not found: {self.key!r}{because}{with_keys}{in_file}{in_object}"
-        return f"not found: {self.key!r} with cycle {self.cycle}{because}{with_keys}{in_file}{in_object}"
+        else:
+            return f"not found: {self.key!r} with cycle {self.cycle}{because}{with_keys}{in_file}{in_object}"
