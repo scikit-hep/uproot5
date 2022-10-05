@@ -1195,11 +1195,13 @@ class AsMap(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            cursor.skip(6)
         else:
             is_memberwise = False
 
         if is_memberwise:
+            if self._header and header:
+                cursor.skip(6)
+
             length = cursor.field(chunk, _stl_container_size, context)
 
             if _has_nested_header(self._keys) and header:
@@ -1246,12 +1248,31 @@ class AsMap(AsContainer):
             return out
 
         else:
-            raise NotImplementedError(
-                """non-memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, selffile.file_path
+            length = cursor.field(chunk, _stl_container_size, context)
+            keys, values = [], []
+            for _ in range(length):
+                keys.append(
+                    _read_nested(
+                        self._keys, 1, chunk, cursor, context, file, selffile, parent
+                    )
                 )
-            )
+                values.append(
+                    _read_nested(
+                        self._values, 1, chunk, cursor, context, file, selffile, parent
+                    )
+                )
+            out = STLMap(numpy.concatenate(keys), numpy.concatenate(values))
+            if self._header and header:
+                uproot.deserialization.numbytes_check(
+                    chunk,
+                    start_cursor,
+                    cursor,
+                    num_bytes,
+                    self.typename,
+                    context,
+                    file.file_path,
+                )
+            return out
 
     def __eq__(self, other):
         if not isinstance(other, AsMap):
