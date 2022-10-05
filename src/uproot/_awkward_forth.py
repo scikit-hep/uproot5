@@ -53,7 +53,6 @@ class ForthGenerator:
         self.form_keys = []
         self.var_set = var_set
         self.count_obj = count_obj
-        return
 
     def traverse_aform(self):
         self.aform = self.aform.content
@@ -316,21 +315,17 @@ class ForthGenerator:
             self.forth_code[ref] = {}
         self.forth_code[ref][str(ref) + "pre"] = forth_exec_pre
         self.forth_code[ref][str(ref) + "post"] = forth_exec_post
-        return
 
     def add_to_final(self, code):
         if not isinstance(code, list):
             raise TypeError
         self.final_code.extend(code)
-        return
 
     def add_to_header(self, code):
         self.final_header.append(code)
-        return
 
     def add_to_init(self, code):
         self.final_init.append(code)
-        return
 
 
 class GenHelper:
