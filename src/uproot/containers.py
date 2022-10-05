@@ -154,7 +154,7 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
         return lbracket + rbracket
     elif done:
         return lbracket + "".join(left) + "".join(right) + rbracket
-    elif len(left) == 0 and len(right) == 0:
+    elif len(left) == len(right) == 0:
         return lbracket + f"{tostring(0)}, ..." + rbracket
     elif len(right) == 0:
         return lbracket + "".join(left) + "..." + rbracket

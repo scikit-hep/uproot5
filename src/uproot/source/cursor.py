@@ -565,7 +565,7 @@ of file path {}""".format(
             stream.write(
                 prefix
                 + " ".join(
-                    f"{chr(x):>3s}" if chr(x) in _printable_characters else "---"
+                    f"{x:>3c}" if chr(x) in _printable_characters else "---"
                     for x in line_data
                 )
                 + "\n"

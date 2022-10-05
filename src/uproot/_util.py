@@ -376,7 +376,7 @@ def file_path_to_source_class(file_path, options):
             )
         return out, file_path
 
-    elif parsed_url.scheme.upper() == "HTTP" or parsed_url.scheme.upper() == "HTTPS":
+    elif parsed_url.scheme.upper() in {"HTTP", "HTTPS"}:
         out = options["http_handler"]
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
