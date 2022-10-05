@@ -19,6 +19,7 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
+import contextlib
 import threading
 
 import numpy
@@ -376,7 +377,7 @@ loop
         ``self``.
         """
         if self._branch is not None:
-            try:
+            with contextlib.suppress(CannotBeStrided):
                 return self._model.strided_interpretation(
                     self._branch.file,
                     header=False,
@@ -384,8 +385,6 @@ loop
                     breadcrumbs=(),
                     original=self._model,
                 )
-            except CannotBeStrided:
-                pass
 
         if isinstance(self._model, uproot.containers.AsString):
             header_bytes = 0
@@ -427,7 +426,7 @@ loop
                 )
 
             if self._branch is not None:
-                try:
+                with contextlib.suppress(CannotBeStrided):
                     content = self._model.values.strided_interpretation(
                         self._branch.file,
                         header=False,
@@ -450,8 +449,6 @@ loop
                         self._model.typename,
                         original=self._model,
                     )
-                except CannotBeStrided:
-                    pass
 
         return self
 
