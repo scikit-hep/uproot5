@@ -106,7 +106,7 @@ def dask(
     if library.name == "pd":
         raise NotImplementedError()
 
-    real_options = dict(options)
+    real_options = options.copy()
     if "num_workers" not in real_options:
         real_options["num_workers"] = 1
     if "num_fallback_workers" not in real_options:

@@ -559,7 +559,7 @@ class HTTPSource(uproot.source.chunk.Source):
         self._num_bytes = None
 
         self._fallback = None
-        self._fallback_options = dict(options)
+        self._fallback_options = options.copy()
         self._fallback_options["num_workers"] = self._num_fallback_workers
         self._open()
 
