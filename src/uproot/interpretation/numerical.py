@@ -182,11 +182,9 @@ class AsDtype(Numerical):
 
     def __repr__(self):
         if self._to_dtype == self._from_dtype.newbyteorder("="):
-            return f"AsDtype({repr(str(self._from_dtype))})"
+            return f"AsDtype({str(self._from_dtype)!r})"
         else:
-            return "AsDtype({}, {})".format(
-                repr(str(self._from_dtype)), repr(str(self._to_dtype))
-            )
+            return f"AsDtype({str(self._from_dtype)!r}, {str(self._to_dtype)!r})"
 
     def __eq__(self, other):
         return (
@@ -500,7 +498,7 @@ class TruncatedNumerical(Numerical):
         and :ref:`uproot.interpretation.numerical.TruncatedNumerical.high` are
         both ``0``), the data are truly truncated.
         """
-        return self._low == 0.0 and self._high == 0.0
+        return self._low == self._high == 0.0
 
     def __repr__(self):
         args = [repr(self._low), repr(self._high), repr(self._num_bits)]

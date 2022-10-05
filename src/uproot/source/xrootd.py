@@ -111,7 +111,7 @@ class XRootDResource(uproot.source.chunk.Resource):
 
         # https://github.com/xrootd/xrootd/blob/8e91462e76ab969720b40fc324714b84e0b4bd42/src/XrdCl/XrdClStatus.hh#L47-L103
         # https://github.com/xrootd/xrootd/blob/250eced4d3787c2ac5be2c8c922134153bbf7f08/src/XrdCl/XrdClStatus.cc#L34-L74
-        if status.code == 101 or status.code == 304 or status.code == 400:
+        if status.code in {101, 304, 400}:
             raise uproot._util._file_not_found(self._file_path, status.message)
 
         else:
