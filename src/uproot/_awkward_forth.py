@@ -328,9 +328,9 @@ class ForthGenerator:
         self.final_init.append(code)
 
 
-class GenHelper:
+class ForthLevelStash:
     """
-    Helper class to aid Forth code generation within one read/read_members function call.
+    Helper class to stash code at one level of Forth code generation. Keeps the code generation clean and maintains order for the code snippets.
     """
 
     def __init__(self, context):

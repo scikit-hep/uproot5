@@ -796,8 +796,8 @@ class Model:
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
-        helper_obj = uproot._awkward_forth.GenHelper(context)
-        if helper_obj.is_forth():
+        level_stash = uproot._awkward_forth.ForthLevelStash(context)
+        if level_stash.is_forth():
             forth_obj = context["forth"].gen
 
         if context.get("reading", True):
@@ -805,7 +805,7 @@ class Model:
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
             if length != 0:
-                helper_obj.add_to_pre(f"{length} stream skip\n")
+                level_stash.add_to_pre(f"{length} stream skip\n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -815,13 +815,13 @@ class Model:
                 if classname_version(correct_cls.__name__) != classname_version(
                     cls.__name__
                 ):
-                    if helper_obj.is_forth():
+                    if level_stash.is_forth():
                         forth_obj.add_node(
                             "pass",
-                            helper_obj.get_pre(),
-                            helper_obj.get_post(),
-                            helper_obj.get_init(),
-                            helper_obj.get_header(),
+                            level_stash.get_pre(),
+                            level_stash.get_post(),
+                            level_stash.get_init(),
+                            level_stash.get_header(),
                             "i64",
                             1,
                             {},
@@ -837,7 +837,7 @@ class Model:
                         parent,
                         concrete=concrete,
                     )
-                    # if helper_obj.is_forth():
+                    # if level_stash.is_forth():
                     #    forth_obj.go_to(temp)
                     return temp_var
 
@@ -846,24 +846,24 @@ class Model:
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
-                if helper_obj.is_forth():
-                    helper_obj._pre_code.pop(-1)
+                if level_stash.is_forth():
+                    level_stash._pre_code.pop(-1)
 
             elif self._instance_version == 0:
-                helper_obj.add_to_pre("4 stream skip\n")
+                level_stash.add_to_pre("4 stream skip\n")
                 cursor.skip(4)
 
         if context.get("reading", True):
             self.hook_before_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
-            if helper_obj.is_forth():
+            if level_stash.is_forth():
                 forth_obj.add_node(
                     "model828",
-                    helper_obj.get_pre(),
-                    helper_obj.get_post(),
-                    helper_obj.get_init(),
-                    helper_obj.get_header(),
+                    level_stash.get_pre(),
+                    level_stash.get_post(),
+                    level_stash.get_init(),
+                    level_stash.get_header(),
                     "i64",
                     1,
                     {},
@@ -1327,10 +1327,10 @@ class DispatchByVersion:
         """
         import uproot.deserialization
 
-        helper_obj = uproot._awkward_forth.GenHelper(context)
+        level_stash = uproot._awkward_forth.ForthLevelStash(context)
 
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        if level_stash.is_forth():
+            forth_obj = level_stash.get_gen_obj()
         # Ignores context["reading"], because otherwise, there would be nothing to do.
         start_index = cursor._index
         (
@@ -1341,15 +1341,15 @@ class DispatchByVersion:
 
         versioned_cls = cls.class_of_version(version)
         bytes_skipped = cursor._index - start_index
-        if helper_obj.is_forth():
+        if level_stash.is_forth():
             # raise NotImplementedError
-            helper_obj.add_to_pre(f"{bytes_skipped} stream skip \n")
+            level_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
             forth_obj.add_node(
                 "Model1319",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                level_stash.get_pre(),
+                level_stash.get_post(),
+                level_stash.get_init(),
+                level_stash.get_header(),
                 "i64",
                 1,
                 {},
@@ -1375,7 +1375,7 @@ class DispatchByVersion:
             )
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
-        # if helper_obj.is_forth():
+        # if level_stash.is_forth():
         temp_var = cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete
@@ -1385,7 +1385,7 @@ class DispatchByVersion:
             context,
             file,
         )
-        # if helper_obj.is_forth():
+        # if level_stash.is_forth():
         #    if "no_go_to" not in context.keys():
         # raise NotImplementedError
         # forth_obj.go_to(temp_node)
