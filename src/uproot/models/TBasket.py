@@ -272,7 +272,10 @@ class Model_TBasket(uproot.model.Model):
             cursor.skip(self._members["fKeylen"])
 
             self._raw_data = None
-            self._data = cursor.bytes(chunk, self.border, context)
+            if self.border == 0:
+                self._data = numpy.empty(0, dtype=numpy.uint8)
+            else:
+                self._data = cursor.bytes(chunk, self.border, context)
 
         else:
             compressed_bytes = self._members["fNbytes"] - self._members["fKeylen"]
