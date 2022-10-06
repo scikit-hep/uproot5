@@ -20,9 +20,9 @@ class Model_TString(uproot.model.Model, str):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        level_stash = uproot._awkward_forth.ForthLevelStash(context)
-        if level_stash.is_forth():
-            forth_obj = level_stash.get_gen_obj()
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
             keys = forth_obj.get_keys(2)
             offsets_num = keys[0]
             data_num = keys[1]
@@ -33,8 +33,8 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
-        if level_stash.is_forth():
-            level_stash.add_to_pre(
+        if forth_stash is not None:
+            forth_stash.add_to_pre(
                 f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
             )
             if forth_obj.should_add_form():
@@ -64,16 +64,16 @@ in file {}""".format(
                 ]
                 for elem in form_keys:
                     forth_obj.add_form_key(elem)
-            level_stash.add_to_header(
+            forth_stash.add_to_header(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            level_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
-                level_stash.get_pre(),
-                level_stash.get_post(),
-                level_stash.get_init(),
-                level_stash.get_header(),
+                forth_stash.get_pre(),
+                forth_stash.get_post(),
+                forth_stash.get_init(),
+                forth_stash.get_header(),
                 "i64",
                 0,
                 None,

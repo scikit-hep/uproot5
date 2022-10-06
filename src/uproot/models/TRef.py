@@ -120,10 +120,10 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         return self._members["fName"]
 
     def read_members(self, chunk, cursor, context, file):
-        level_stash = uproot._awkward_forth.ForthLevelStash(context)
-        if level_stash.is_forth():
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
             awkward = uproot.extras.awkward()  # noqa:F841
-            forth_obj = level_stash.get_gen_obj()
+            forth_obj = forth_stash.get_gen_obj()
             # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
@@ -132,18 +132,18 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
-        if level_stash.is_forth():
+        if forth_stash is not None:
             form_keys = forth_obj.get_keys(6)
 
-            level_stash.add_to_pre("10 stream skip\n")
-            level_stash.add_to_pre(
+            forth_stash.add_to_pre("10 stream skip\n")
+            forth_stash.add_to_pre(
                 f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{form_keys[1]}-offsets +<- stack stream #!B-> node{form_keys[2]}-data\n"
             )
-            level_stash.add_to_pre(
+            forth_stash.add_to_pre(
                 f"stream !I-> stack dup node{form_keys[3]}-data <- stack\n"
             )
-            level_stash.add_to_pre("6 stream skip\n")
-            level_stash.add_to_pre(
+            forth_stash.add_to_pre("6 stream skip\n")
+            forth_stash.add_to_pre(
                 f"dup node{form_keys[4]}-offsets +<- stack stream #!I-> node{form_keys[5]}-data\n"
             )
             keys = [
@@ -159,18 +159,18 @@ in file {}""".format(
                 temp_bool = "false"
                 temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "has_identifier": false, "parameters": {{}}, "form_key": "node{form_keys[0]}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
-                level_stash.add_to_header(
+                forth_stash.add_to_header(
                     f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int64\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int64\n"
                 )
-                level_stash.add_to_init(
+                forth_stash.add_to_init(
                     f"0 node{form_keys[1]}-offsets <- stack\n0 node{form_keys[4]}-offsets <- stack\n"
                 )
             forth_obj.add_node(
                 f"node{form_keys[0]}",
-                level_stash.get_pre(),
-                level_stash.get_post(),
-                level_stash.get_init(),
-                level_stash.get_header(),
+                forth_stash.get_pre(),
+                forth_stash.get_post(),
+                forth_stash.get_init(),
+                forth_stash.get_header(),
                 "i64",
                 1,
                 None,

@@ -25,10 +25,10 @@ class Model_TObject(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        level_stash = uproot._awkward_forth.ForthLevelStash(context)
+        forth_stash = uproot._awkward_forth.forth_stash(context)
         start_index = cursor._index
-        if level_stash.is_forth():
-            forth_obj = level_stash.get_gen_obj()
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
             # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
@@ -49,18 +49,18 @@ in file {}""".format(
         if self._members["@fBits"] & uproot.const.kIsReferenced:
             cursor.skip(2)
         self._members["@fBits"] = int(self._members["@fBits"])
-        if level_stash.is_forth():
+        if forth_stash is not None:
             skip_length = cursor._index - start_index
-            level_stash.add_to_pre(f"{skip_length} stream skip \n")
+            forth_stash.add_to_pre(f"{skip_length} stream skip \n")
             if forth_obj.should_add_form():
                 temp_aform = '{"class": "RecordArray", "contents":[], "parameters": {"__record__": "TObject"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             forth_obj.add_node(
                 "TObjext",
-                level_stash.get_pre(),
-                level_stash.get_post(),
-                level_stash.get_init(),
-                level_stash.get_header(),
+                forth_stash.get_pre(),
+                forth_stash.get_post(),
+                forth_stash.get_init(),
+                forth_stash.get_header(),
                 "i64",
                 0,
                 {},

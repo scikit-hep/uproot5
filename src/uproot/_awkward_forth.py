@@ -328,21 +328,28 @@ class ForthGenerator:
         self.final_init.append(code)
 
 
+def forth_stash(context):
+    """
+    Returns a ForthLevelStash object if ForthGeneration is to be done, else None.
+    """
+    if hasattr(context.get("forth"), "gen"):
+        return ForthLevelStash(context["forth"].gen)
+    else:
+        return None
+
+
 class ForthLevelStash:
     """
     Helper class to stash code at one level of Forth code generation. Keeps the code generation clean and maintains order for the code snippets.
     """
 
     def __init__(self, context):
-        self.forth_present = False
         self._pre_code = []
         self._post_code = []
         self._header = ""
         self._init = ""
         self._form_key = []
-        if hasattr(context.get("forth"), "gen"):
-            self.forth_present = True
-            self._gen_obj = context["forth"].gen
+        self._gen_obj = context
 
     def is_forth(self):
         return self.forth_present
