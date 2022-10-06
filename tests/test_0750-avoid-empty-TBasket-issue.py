@@ -14,4 +14,4 @@ def test():
     with uproot.open(skhep_testdata.data_path("uproot-issue-750.root"))[
         "tout/Electron_eta"
     ] as branch:
-        branch.array()
+        branch.array(library="np")
