@@ -71,7 +71,7 @@ def compile_class(file, classes, class_code, class_name):
     try:
         _actually_compile(class_code, new_scope)
     except SyntaxError as err:
-        raise SyntaxError(class_code+ '\n\n'+ str(err)) from err
+        raise SyntaxError(class_code + "\n\n" + str(err)) from err
 
     out = new_scope[class_name]
     out.class_code = class_code
