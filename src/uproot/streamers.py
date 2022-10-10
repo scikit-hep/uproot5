@@ -410,6 +410,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 concrete=self.concrete,
             )
         )
+        context["cancel_forth"] = True
         self._bases[0]._members["fName"] = _canonical_typename(
             self._bases[0]._members["fName"]
         )
@@ -529,7 +530,7 @@ class Model_TStreamerElement(uproot.model.Model):
                 concrete=self.concrete,
             )
         )
-
+        context["cancel_forth"] = True
         (
             self._members["fType"],
             self._members["fSize"],
@@ -628,6 +629,7 @@ class Model_TStreamerArtificial(Model_TStreamerElement):
         read_member_n.append(f"        if member_index == {i}:")
 
         # untested as of PR #629
+        read_members.append('        context["cancel_forth"] = True')
         read_members.append(
             f"        raise uproot.deserialization.DeserializationError('not implemented: class members defined by {type(self).__name__} of type {self.typename} in member {self.name} of class {streamerinfo.name}', chunk, cursor, context, file.file_path)"
         )
@@ -926,6 +928,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         read_member_n.append(f"        if member_index == {i}:")
         if self.typename == "Double32_t":
             # untested as of PR #629
+            read_members.append('        context["cancel_forth"] = True')
             read_members.append(
                 f"        self._members[{self.name!r}] = cursor.double32(chunk, context)"
             )
@@ -933,6 +936,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
 
         elif self.typename == "Float16_t":
             # untested as of PR #629
+            read_members.append('        context["cancel_forth"] = True')
             read_members.append(
                 f"        self._members[{self.name!r}] = cursor.float16(chunk, 12, context)"
             )
@@ -1204,6 +1208,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
         class_flags,
     ):
         # untested as of PR #629
+        read_members.append('        context["cancel_forth"] = True')
         read_members.append("        cursor.skip(6)")
         read_members.append(
             f"        for tmp in range(self.member({self.count_name!r})):"
@@ -1333,7 +1338,6 @@ class Model_TStreamerSTL(Model_TStreamerElement):
 
     def read_members(self, chunk, cursor, context, file):
         start = cursor.index
-
         self._bases.append(
             Model_TStreamerElement.read(
                 chunk,
@@ -1423,6 +1427,7 @@ class TStreamerPointerTypes:
         if self.fType == uproot.const.kObjectp or self.fType == uproot.const.kAnyp:
             # @aryan26roy: test_0637's (none! untested!)
 
+            read_members.append('        context["cancel_forth"] = True')
             read_members.append(
                 f"        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)"
             )
