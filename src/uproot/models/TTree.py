@@ -46,6 +46,7 @@ class Model_TTree_v16(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     behaviors = (uproot.behaviors.TTree.TTree,)
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}

@@ -345,7 +345,7 @@ class AsDynamic(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # @aryan26roy: test_0637's tests aren't expected to enter here
-
+        context["cancel_forth"] = True
         classname = cursor.string(chunk, context)
         cursor.skip(1)
         cls = file.class_named(classname)
@@ -954,7 +954,7 @@ class AsRVec(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # @aryan26roy: test_0637's (none! untested! but it's just like AsVector)
-
+        context["cancel_forth"] = True
         if self._header and header:
             start_cursor = cursor.copy()
             (
