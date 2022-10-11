@@ -344,7 +344,7 @@ class AsDynamic(AsContainer):
             )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's tests aren't expected to enter here
+        # AwkwardForth testing: test_0637's tests aren't expected to enter here
         context["cancel_forth"] = True
         classname = cursor.string(chunk, context)
         cursor.skip(1)
@@ -476,7 +476,7 @@ class AsString(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
+        # AwkwardForth testing: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
 
         forth_stash = uproot._awkward_forth.forth_stash(context)
 
@@ -623,7 +623,7 @@ class AsPointer(AsContainer):
         raise uproot.interpretation.objects.CannotBeAwkward("arbitrary pointer")
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 29,45,46,49,50 (Awkward Form discovered at read-time)
+        # AwkwardForth testing: test_0637's 29,45,46,49,50 (Awkward Form discovered at read-time)
 
         return uproot.deserialization.read_object_any(
             chunk, cursor, context, file, selffile, parent
@@ -722,7 +722,7 @@ class AsArray(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 01,02,23,24,25,26,27,28,30,51,52
+        # AwkwardForth testing: test_0637's 01,02,23,24,25,26,27,28,30,51,52
 
         forth_stash = uproot._awkward_forth.forth_stash(context)
 
@@ -953,7 +953,7 @@ class AsRVec(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's (none! untested! but it's just like AsVector)
+        # AwkwardForth testing: test_0637's (none! untested! but it's just like AsVector)
         context["cancel_forth"] = True
         if self._header and header:
             start_cursor = cursor.copy()
@@ -1100,7 +1100,7 @@ class AsVector(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
+        # AwkwardForth testing: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
         forth_stash = uproot._awkward_forth.forth_stash(context)
         if forth_stash is not None:
             forth_obj = forth_stash.get_gen_obj()
@@ -1310,7 +1310,7 @@ class AsSet(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 62,63,64,65,69,70,74,75,77
+        # AwkwardForth testing: test_0637's 62,63,64,65,69,70,74,75,77
 
         forth_stash = uproot._awkward_forth.forth_stash(context)
 
@@ -1510,7 +1510,7 @@ class AsMap(AsContainer):
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
+        # AwkwardForth testing: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
         forth_stash = uproot._awkward_forth.forth_stash(context)
 
         if forth_stash is not None:
