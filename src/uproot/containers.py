@@ -154,7 +154,7 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
         return lbracket + rbracket
     elif done:
         return lbracket + "".join(left) + "".join(right) + rbracket
-    elif len(left) == 0 and len(right) == 0:
+    elif len(left) == len(right) == 0:
         return lbracket + f"{tostring(0)}, ..." + rbracket
     elif len(right) == 0:
         return lbracket + "".join(left) + "..." + rbracket
@@ -1522,14 +1522,15 @@ class AsMap(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            cursor.skip(6)
-            if helper_obj.is_forth():
-                temp_jump = cursor._index - start_cursor._index
-                helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
-        # raise NotImplementedError
+
         if is_memberwise:
+            if self._header and header:
+                cursor.skip(6)
+                if helper_obj.is_forth():
+                    temp_jump = cursor._index - start_cursor._index
+                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
             length = cursor.field(chunk, _stl_container_size, context)
             if helper_obj.is_forth():
                 key = forth_obj.get_keys(1)
@@ -1651,12 +1652,38 @@ class AsMap(AsContainer):
             return out
 
         else:
-            raise NotImplementedError(
-                """non-memberwise serialization of {}
+            if helper_obj.is_forth():
+                raise NotImplementedError(
+                    """non-memberwise serialization of {}
 in file {}""".format(
-                    type(self).__name__, selffile.file_path
+                        type(self).__name__, selffile.file_path
+                    )
                 )
-            )
+            length = cursor.field(chunk, _stl_container_size, context)
+            keys, values = [], []
+            for _ in range(length):
+                keys.append(
+                    _read_nested(
+                        self._keys, 1, chunk, cursor, context, file, selffile, parent
+                    )
+                )
+                values.append(
+                    _read_nested(
+                        self._values, 1, chunk, cursor, context, file, selffile, parent
+                    )
+                )
+            out = STLMap(numpy.concatenate(keys), numpy.concatenate(values))
+            if self._header and header:
+                uproot.deserialization.numbytes_check(
+                    chunk,
+                    start_cursor,
+                    cursor,
+                    num_bytes,
+                    self.typename,
+                    context,
+                    file.file_path,
+                )
+            return out
 
     def __eq__(self, other):
         if not isinstance(other, AsMap):

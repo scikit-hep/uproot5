@@ -53,7 +53,7 @@ def compile_class(file, classes, class_code, class_name):
 
     Compile a new class from Python code and insert it in the dict of classes.
     """
-    new_scope = dict(scope)
+    new_scope = scope.copy()
     for cls in classes.values():
         new_scope[cls.__name__] = cls
 

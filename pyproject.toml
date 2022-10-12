@@ -9,7 +9,7 @@ name = "uproot"
 description = "ROOT I/O in pure Python and NumPy."
 readme = "README.md"
 license = "BSD-3-Clause"
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 authors = [
     { name = "Jim Pivarski", email = "pivarski@princeton.edu" },
 ]
@@ -25,11 +25,11 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -79,7 +79,10 @@ path = "src/uproot/version.py"
 minversion = "6.0"
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "default:module 'sre_.*' is deprecated:DeprecationWarning"
+]
 log_cli_level = "info"
 testpaths = ["tests"]
 markers = [

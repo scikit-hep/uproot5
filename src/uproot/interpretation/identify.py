@@ -732,13 +732,12 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
             ),
         )
 
-    elif has2 and tokens[i].group(0) == "long" and tokens[i + 1].group(0) == "long":
+    elif has2 and tokens[i].group(0) == tokens[i + 1].group(0) == "long":
         return i + 2, _parse_maybe_quote('numpy.dtype(">i8")', quote)
     elif (
         i + 2 < len(tokens)
         and tokens[i].group(0) == "unsigned"
-        and tokens[i + 1].group(0) == "long"
-        and tokens[i + 2].group(0) == "long"
+        and tokens[i + 1].group(0) == tokens[i + 2].group(0) == "long"
     ):
         return i + 3, _parse_maybe_quote('numpy.dtype(">u8")', quote)
 
