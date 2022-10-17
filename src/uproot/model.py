@@ -847,7 +847,7 @@ class Model:
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
-                if forth_stash is not None:
+                if forth_stash is not None and not context["cancel_forth"]:
                     forth_stash._pre_code.pop(-1)
 
             elif self._instance_version == 0:

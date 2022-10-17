@@ -1125,9 +1125,7 @@ class AsVector(AsContainer):
 
         if is_memberwise:
             if forth_stash is not None:
-                raise NotImplementedError(
-                    "Forth Reader does not support memberwise serialization."
-                )
+                context["cancel_forth"] = True
             # let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
@@ -1186,11 +1184,7 @@ class AsVector(AsContainer):
                 # forth_stash.add_to_post("loop\n")
                 if forth_obj.should_add_form():
                     forth_obj.add_form_key(form_key)
-                    if self._header:
-                        temp_bool = "true"
-                    else:
-                        temp_bool = "false"
-                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "form_key": "node{key}"}}'
                     forth_obj.add_form(json.loads(temp_aform))
                 if not isinstance(self._values, numpy.dtype):
                     forth_stash.add_to_pre("0 do\n")
@@ -1214,7 +1208,7 @@ class AsVector(AsContainer):
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
 
-        if forth_stash is not None:
+        if forth_stash is not None and not context["cancel_forth"]:
 
             forth_obj.go_to(temp)
 
