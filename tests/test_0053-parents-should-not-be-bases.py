@@ -87,8 +87,8 @@ def test_awkward_TRefArray():
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root"))["Delphes"] as t:
         assert t["GenJet.Particles"].array(entry_stop=1)[0].tolist() == [
             {
-                "fName": "",
                 "fSize": 45,
+                "fName": "",
                 "refs": [
                     2396,
                     2320,
@@ -138,8 +138,8 @@ def test_awkward_TRefArray():
                 ],
             },
             {
-                "fName": "",
                 "fSize": 20,
+                "fName": "",
                 "refs": [
                     2370,
                     1830,
@@ -164,8 +164,8 @@ def test_awkward_TRefArray():
                 ],
             },
             {
-                "fName": "",
                 "fSize": 21,
+                "fName": "",
                 "refs": [
                     2284,
                     1883,
@@ -191,8 +191,8 @@ def test_awkward_TRefArray():
                 ],
             },
             {
-                "fName": "",
                 "fSize": 31,
+                "fName": "",
                 "refs": [
                     1379,
                     2123,
@@ -228,8 +228,8 @@ def test_awkward_TRefArray():
                 ],
             },
             {
-                "fName": "",
                 "fSize": 26,
+                "fName": "",
                 "refs": [
                     1989,
                     1911,
@@ -260,8 +260,8 @@ def test_awkward_TRefArray():
                 ],
             },
             {
-                "fName": "",
                 "fSize": 32,
+                "fName": "",
                 "refs": [
                     2082,
                     2445,
@@ -298,8 +298,8 @@ def test_awkward_TRefArray():
                 ],
             },
             {
-                "fName": "",
                 "fSize": 26,
+                "fName": "",
                 "refs": [
                     2266,
                     1847,

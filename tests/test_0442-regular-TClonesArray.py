@@ -35,4 +35,4 @@ def test_read_delphes_ak(delphes_tree):
 
     branch = delphes_tree["GenJet04/GenJet04.Constituents"]
     array = branch.array(library="ak")
-    assert set(array.fields) == {"fName", "fSize", "refs"}
+    assert set(array.fields) == {"fSize", "fName", "refs"}
