@@ -48,7 +48,7 @@ class AsObjects(uproot.interpretation.Interpretation):
     def __init__(self, model, branch=None):
         self._model = model
         self._branch = branch
-        self._forth = False
+        self._forth = True
         self._forth_lock = threading.Lock()
         self._forth_form_keys = None
         self._complete_forth_code = None
