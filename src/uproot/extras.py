@@ -308,3 +308,15 @@ or
         ) from err
     else:
         return dask_awkward
+
+
+def awkward_pandas():
+    """
+    Imports and returns ``awkward_pandas``.
+    """
+    try:
+        import awkward_pandas
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError("""TODO""") from err
+    else:
+        return awkward_pandas

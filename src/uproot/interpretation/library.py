@@ -24,7 +24,6 @@ Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 
 
 import gc
-import itertools
 import json
 
 import numpy
@@ -840,105 +839,22 @@ class Pandas(Library):
 
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         pandas = self.imported
+        index = _pandas_basic_index(pandas, entry_start, entry_stop)
 
-        if isinstance(array, uproot.interpretation.objects.StridedObjectArray):
-            arrays = []
-            columns = []
-            _strided_to_pandas((), array.interpretation, array.array, arrays, columns)
-            maxlen = max(len(x) for x in columns)
-            if maxlen == 1:
-                columns = [x[0] for x in columns]
-            else:
-                columns = pandas.MultiIndex.from_tuples(
-                    [x + ("",) * (maxlen - len(x)) for x in columns]
-                )
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(
-                dict(zip(columns, arrays)), columns=columns, index=index
-            )
-            out.leaflist = maxlen != 1
-            return out
-
-        elif isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
-            array.content, uproot.interpretation.objects.StridedObjectArray
+        if (
+            (not (isinstance(array, numpy.ndarray)))
+            or (array.dtype.names is not None)
+            or (len(array.shape) != 1)
         ):
-            index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(entry_start, entry_stop),
-                names=["entry", "subentry"],
+            awkward_pandas = uproot.extras.awkward_pandas()
+            ak_lib = Awkward()
+            ak_arr = ak_lib.finalize(
+                array, branch, interpretation, entry_start, entry_stop
             )
-            arrays = []
-            columns = []
-            _strided_to_pandas(
-                (), array.content.interpretation, array.content.array, arrays, columns
+            return pandas.Series(
+                awkward_pandas.AwkwardExtensionArray(ak_arr), index=index
             )
-            maxlen = max(len(x) for x in columns)
-            if maxlen == 1:
-                columns = [x[0] for x in columns]
-            else:
-                columns = pandas.MultiIndex.from_tuples(
-                    [x + ("",) * (maxlen - len(x)) for x in columns]
-                )
-            out = pandas.DataFrame(
-                dict(zip(columns, arrays)), columns=columns, index=index
-            )
-            out.leaflist = maxlen != 1
-            return out
-
-        elif isinstance(array, uproot.interpretation.jagged.JaggedArray):
-            index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(entry_start, entry_stop),
-                names=["entry", "subentry"],
-            )
-            return pandas.Series(array.content, index=index)
-
-        elif isinstance(
-            array,
-            (
-                uproot.interpretation.strings.StringArray,
-                uproot.interpretation.objects.ObjectArray,
-            ),
-        ):
-            out = numpy.zeros(len(array), dtype=object)
-            for i, x in enumerate(array):
-                out[i] = x
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            return pandas.Series(out, index=index)
-
-        elif array.dtype.names is not None and len(array.shape) != 1:
-            names = []
-            arrays = {}
-            for n in array.dtype.names:
-                for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
-                    name = (n + "".join("[" + str(x) + "]" for x in tup),)
-                    names.append(name)
-                    arrays[name] = array[n][(slice(None),) + tup]
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(arrays, columns=names, index=index)
-            out.leaflist = True
-            return out
-
-        elif array.dtype.names is not None:
-            columns = pandas.MultiIndex.from_tuples([(x,) for x in array.dtype.names])
-            arrays = {y: array[x] for x, y in zip(array.dtype.names, columns)}
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(arrays, columns=columns, index=index)
-            out.leaflist = True
-            return out
-
-        elif len(array.shape) != 1:
-            names = []
-            arrays = {}
-            for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
-                name = "".join("[" + str(x) + "]" for x in tup)
-                names.append(name)
-                arrays[name] = array[(slice(None),) + tup]
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(arrays, columns=names, index=index)
-            out.leaflist = False
-            return out
-
         else:
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
             return pandas.Series(array, index=index)
 
     def group(self, arrays, expression_context, how):
@@ -955,130 +871,131 @@ class Pandas(Library):
 
         elif uproot._util.isstr(how) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
+            return _pandas_memory_efficient(pandas, arrays, names)
 
-            if any(isinstance(x, tuple) for x in names):
-                longest = max(len(x) for x in names if isinstance(x, tuple))
-                newarrays, newnames = {}, []
-                for x in names:
-                    if not isinstance(x, tuple):
-                        y = (x,) + ("",) * (longest - 1)
-                    else:
-                        y = x + ("",) * (longest - len(x))
-                    newarrays[y] = arrays[x]
-                    newnames.append(y)
-                arrays = newarrays
-                names = pandas.MultiIndex.from_tuples(newnames)
-
-            if all(_is_pandas_rangeindex(pandas, x.index) for x in arrays.values()):
-                return _pandas_memory_efficient(pandas, arrays, names)
-
-            indexes = []
-            groups = []
-            for name in names:
-                array = arrays[name]
-                if isinstance(array.index, pandas.MultiIndex):
-                    for index, group in zip(indexes, groups):
-                        if numpy.array_equal(array.index, index):
-                            group.append(name)
-                            break
-                    else:
-                        indexes.append(array.index)
-                        groups.append([name])
-            if how is None:
-                flat_index = None
-                dfs = [[] for x in indexes]
-                group_names = [[] for x in indexes]
-                for index, group, df, gn in zip(indexes, groups, dfs, group_names):
-                    for name in names:
-                        array = arrays[name]
-                        if _is_pandas_rangeindex(pandas, array.index):
-                            if flat_index is None or len(flat_index) != len(
-                                array.index
-                            ):
-                                flat_index = pandas.MultiIndex.from_arrays(
-                                    [array.index]
-                                )
-                            # Old versions of Pandas handle the following line poorly:
-                            # should we support them?
-                            #
-                            # >>> pandas.__version__
-                            # '0.22.0'
-                            # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
-                            # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
-                            # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
-                            # 0  0   NaN
-                            #    1   NaN
-                            #    2   NaN
-                            # 1  0   NaN
-                            #    1   NaN
-                            # dtype: float64
-                            #
-                            # >>> pandas.__version__
-                            # '1.3.2'
-                            # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
-                            # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
-                            # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
-                            # 0  0    1.1
-                            #    1    1.1
-                            #    2    1.1
-                            # 1  0    4.4
-                            #    1    4.4
-                            # dtype: float64
-                            df.append(
-                                pandas.Series(array.values, index=flat_index).reindex(
-                                    index
-                                )
-                            )
-                            gn.append(name)
-                        elif name in group:
-                            df.append(array)
-                            gn.append(name)
-                out = []
-                for index, df, gn in zip(indexes, dfs, group_names):
-                    out.append(
-                        pandas.DataFrame(
-                            data=dict(zip(gn, df)), index=index, columns=gn
-                        )
-                    )
-                if len(out) == 1:
-                    return out[0]
-                else:
-                    return tuple(out)
-            else:
-                out = None
-                for index, group in zip(indexes, groups):
-                    only = {name: arrays[name] for name in group}
-                    df = pandas.DataFrame(data=only, index=index, columns=group)
-                    if out is None:
-                        out = df
-                    else:
-                        out = pandas.merge(
-                            out, df, how=how, left_index=True, right_index=True
-                        )
-                flat_names = [
-                    name
-                    for name in names
-                    if _is_pandas_rangeindex(pandas, arrays[name].index)
-                ]
-                if len(flat_names) > 0:
-                    flat_index = pandas.MultiIndex.from_arrays(
-                        [arrays[flat_names[0]].index]
-                    )
-                    only = {
-                        name: pandas.Series(arrays[name].values, index=flat_index)
-                        for name in flat_names
-                    }
-                    df = pandas.DataFrame(
-                        data=only, index=flat_index, columns=flat_names
-                    )
-                    out = pandas.merge(
-                        df.reindex(out.index),
-                        out,
-                        how=how,
-                        left_index=True,
-                        right_index=True,
-                    )
-                return out
+            # if any(isinstance(x, tuple) for x in names):
+            #     longest = max(len(x) for x in names if isinstance(x, tuple))
+            #     newarrays, newnames = {}, []
+            #     for x in names:
+            #         if not isinstance(x, tuple):
+            #             y = (x,) + ("",) * (longest - 1)
+            #         else:
+            #             y = x + ("",) * (longest - len(x))
+            #         newarrays[y] = arrays[x]
+            #         newnames.append(y)
+            #     arrays = newarrays
+            #     names = pandas.MultiIndex.from_tuples(newnames)
+            #
+            # if all(_is_pandas_rangeindex(pandas, x.index) for x in arrays.values()):
+            #     return _pandas_memory_efficient(pandas, arrays, names)
+            #
+            # indexes = []
+            # groups = []
+            # for name in names:
+            #     array = arrays[name]
+            #     if isinstance(array.index, pandas.MultiIndex):
+            #         for index, group in zip(indexes, groups):
+            #             if numpy.array_equal(array.index, index):
+            #                 group.append(name)
+            #                 break
+            #         else:
+            #             indexes.append(array.index)
+            #             groups.append([name])
+            # if how is None:
+            #     flat_index = None
+            #     dfs = [[] for x in indexes]
+            #     group_names = [[] for x in indexes]
+            #     for index, group, df, gn in zip(indexes, groups, dfs, group_names):
+            #         for name in names:
+            #             array = arrays[name]
+            #             if _is_pandas_rangeindex(pandas, array.index):
+            #                 if flat_index is None or len(flat_index) != len(
+            #                     array.index
+            #                 ):
+            #                     flat_index = pandas.MultiIndex.from_arrays(
+            #                         [array.index]
+            #                     )
+            #                 # Old versions of Pandas handle the following line poorly:
+            #                 # should we support them?
+            #                 #
+            #                 # >>> pandas.__version__
+            #                 # '0.22.0'
+            #                 # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
+            #                 # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
+            #                 # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
+            #                 # 0  0   NaN
+            #                 #    1   NaN
+            #                 #    2   NaN
+            #                 # 1  0   NaN
+            #                 #    1   NaN
+            #                 # dtype: float64
+            #                 #
+            #                 # >>> pandas.__version__
+            #                 # '1.3.2'
+            #                 # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
+            #                 # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
+            #                 # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
+            #                 # 0  0    1.1
+            #                 #    1    1.1
+            #                 #    2    1.1
+            #                 # 1  0    4.4
+            #                 #    1    4.4
+            #                 # dtype: float64
+            #                 df.append(
+            #                     pandas.Series(array.values, index=flat_index).reindex(
+            #                         index
+            #                     )
+            #                 )
+            #                 gn.append(name)
+            #             elif name in group:
+            #                 df.append(array)
+            #                 gn.append(name)
+            #     out = []
+            #     for index, df, gn in zip(indexes, dfs, group_names):
+            #         out.append(
+            #             pandas.DataFrame(
+            #                 data=dict(zip(gn, df)), index=index, columns=gn
+            #             )
+            #         )
+            #     if len(out) == 1:
+            #         return out[0]
+            #     else:
+            #         return tuple(out)
+            # else:
+            #     out = None
+            #     for index, group in zip(indexes, groups):
+            #         only = {name: arrays[name] for name in group}
+            #         df = pandas.DataFrame(data=only, index=index, columns=group)
+            #         if out is None:
+            #             out = df
+            #         else:
+            #             out = pandas.merge(
+            #                 out, df, how=how, left_index=True, right_index=True
+            #             )
+            #     flat_names = [
+            #         name
+            #         for name in names
+            #         if _is_pandas_rangeindex(pandas, arrays[name].index)
+            #     ]
+            #     if len(flat_names) > 0:
+            #         flat_index = pandas.MultiIndex.from_arrays(
+            #             [arrays[flat_names[0]].index]
+            #         )
+            #         only = {
+            #             name: pandas.Series(arrays[name].values, index=flat_index)
+            #             for name in flat_names
+            #         }
+            #         df = pandas.DataFrame(
+            #             data=only, index=flat_index, columns=flat_names
+            #         )
+            #         out = pandas.merge(
+            #             df.reindex(out.index),
+            #             out,
+            #             how=how,
+            #             left_index=True,
+            #             right_index=True,
+            #         )
+            #     return out
 
         else:
             raise TypeError(
