@@ -781,6 +781,30 @@ def to_TList(data, name=""):
     return tlist
 
 
+def to_THashList(data, name=""):
+    """
+    Args:
+        data (:doc:`uproot.model.Model`): Python iterable to convert into a THashList.
+        name (str): Name of the list (usually empty: ``""``).
+
+    This function is for developers to create THashList objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+
+    if not all(isinstance(x, uproot.model.Model) for x in data):
+        raise TypeError(
+            "list to convert to THashList must only contain ROOT objects (uproot.Model)"
+        )
+
+    tlist = to_TList(data, name)
+
+    thashlist = uproot.models.THashList.Model_THashList.empty()
+
+    thashlist._bases.append(tlist)
+
+    return thashlist
+
+
 def to_TArray(data):
     """
     Args:
