@@ -735,12 +735,16 @@ def to_TObjString(string):
     This function is for developers to create TObjString objects that can be
     written to ROOT files, to implement conversion routines.
     """
+    tobject = uproot.models.TObject.Model_TObject.empty()
+    tobject._members["@fUniqueID"] = 0
+    tobject._members["@fBits"] = 0
+
     tobjstring = uproot.models.TObjString.Model_TObjString(str(string))
     tobjstring._deeply_writable = True
     tobjstring._cursor = None
     tobjstring._parent = None
     tobjstring._members = {}
-    tobjstring._bases = (uproot.models.TObject.Model_TObject(),)
+    tobjstring._bases = [tobject]
     tobjstring._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
     tobjstring._instance_version = 1
     return tobjstring
