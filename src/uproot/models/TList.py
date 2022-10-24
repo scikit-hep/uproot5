@@ -91,7 +91,9 @@ in file {}""".format(
         self._options = original._options
 
     def _serialize(self, out, header, name, tobject_flags):
-        assert self._members["fSize"] == len(self._data) == len(self._options), "Fatal error in TList serialization."
+        assert (
+            self._members["fSize"] == len(self._data) == len(self._options)
+        ), "Fatal error in TList serialization."
 
         import uproot.writing._cascade
 
