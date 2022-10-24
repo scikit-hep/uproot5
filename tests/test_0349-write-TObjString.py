@@ -87,6 +87,7 @@ def test_serialization(tmp_path):
     assert (
         tobjstring.tojson()["_typename"] == "TObjString"
     )  # https://github.com/scikit-hep/uproot5/issues/762
+    assert tobjstring.tojson()["fString"] == str(tobjstring)
 
     with uproot.recreate(filename) as f1:
         f1["first"] = tobjstring
