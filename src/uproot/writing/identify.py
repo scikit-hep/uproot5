@@ -664,8 +664,9 @@ def _fLabels_maybe_categorical(axis, boost_histogram):
     if boost_histogram is None:
         return None
 
-    if not isinstance(axis, boost_histogram.axis.IntCategory) and not isinstance(axis,
-                                                                                 boost_histogram.axis.StrCategory):
+    if not isinstance(axis, boost_histogram.axis.IntCategory) and not isinstance(
+        axis, boost_histogram.axis.StrCategory
+    ):
         return None
 
     labels = [str(label) for label in axis]
@@ -675,7 +676,9 @@ def _fLabels_maybe_categorical(axis, boost_histogram):
             try:
                 int(label)
             except ValueError:
-                raise ValueError(f"IntCategory labels must be valid integers. Found {label} on axis {axis}")
+                raise ValueError(
+                    f"IntCategory labels must be valid integers. Found {label} on axis {axis}"
+                )
 
     labels = [to_TObjString(label) for label in labels]
 
