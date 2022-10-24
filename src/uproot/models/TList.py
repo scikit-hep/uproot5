@@ -81,7 +81,7 @@ in file {}""".format(
             "_typename": "TList",
             "name": "TList",
             "arr": [x.tojson() for x in self._data],
-            "opt": [],
+            "opt": ["" for _ in self._data],
         }
 
     writable = True
