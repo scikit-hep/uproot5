@@ -326,6 +326,7 @@ def to_writable(obj):
                 fXmin=axis.edges[0],
                 fXmax=axis.edges[-1],
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
+                fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
             for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
         ]
@@ -657,6 +658,28 @@ def _fXbins_maybe_regular(axis, boost_histogram):
             return numpy.array([], dtype=">f8")
         else:
             return axis.edges
+
+
+def _fLabels_maybe_categorical(axis, boost_histogram):
+    if boost_histogram is None:
+        return None
+
+    if not isinstance(axis, boost_histogram.axis.IntCategory) and not isinstance(axis,
+                                                                                 boost_histogram.axis.StrCategory):
+        return None
+
+    labels = [str(label) for label in axis]
+    if isinstance(axis, boost_histogram.axis.IntCategory):
+        # Check labels are valid integers (this may be redundant)
+        for label in labels:
+            try:
+                int(label)
+            except ValueError:
+                raise ValueError(f"IntCategory labels must be valid integers. Found {label} on axis {axis}")
+
+    labels = [to_TObjString(label) for label in labels]
+
+    return to_THashList(labels)
 
 
 def _root_stats_1d(entries, edges):
