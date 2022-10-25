@@ -24,9 +24,7 @@ def string(data):
     is preceded by a 1-byte length; otherwise, it is preceded by ``b'\xff'`` and a
     4-byte length.
     """
-    return bytestring(
-        data.encode(errors="surrogateescape")
-    )
+    return bytestring(data.encode(errors="surrogateescape"))
 
 
 def bytestring(data):
