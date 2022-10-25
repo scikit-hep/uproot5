@@ -54,6 +54,8 @@ in file {}""".format(
     def __len__(self):
         return len(self._bases[0])
 
+    writable = True
+
     def _serialize(self, out, header, name, tobject_flags):
         assert len(self._bases) == 1, "Fatal error on THashList serialization."
         for x in self._bases:
