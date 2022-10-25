@@ -69,7 +69,10 @@ in file {}""".format(
     writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
-        out.append(b"\x00\x01" + _tobject_format2.pack(0, tobject_flags))
+        out.append(
+            b"\x00\x01"
+            + _tobject_format2.pack(self.member("@fUniqueID"), tobject_flags)
+        )
 
     @classmethod
     def strided_interpretation(
@@ -114,7 +117,7 @@ in file {}""".format(
 
     def __repr__(self):
         return "<TObject {} {} at 0x{:012x}>".format(
-            self._members.get("fUniqueID"), self._members.get("fBits"), id(self)
+            self.member("@fUniqueID"), self.member("@fBits"), id(self)
         )
 
     def tojson(self):
@@ -123,6 +126,14 @@ in file {}""".format(
             "fUniqueID": self.member("@fUniqueID"),
             "fBits": self.member("@fBits"),
         }
+
+    @classmethod
+    def empty(cls):
+        self = uproot.model.Model.empty()
+        self.__class__ = cls
+        self._members["@fUniqueID"] = 0
+        self._members["@fBits"] = 0
+        return self
 
 
 uproot.classes["TObject"] = Model_TObject

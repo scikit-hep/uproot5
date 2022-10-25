@@ -762,8 +762,6 @@ def to_TObjString(string):
     written to ROOT files, to implement conversion routines.
     """
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tobjstring = uproot.models.TObjString.Model_TObjString(str(string))
     tobjstring._deeply_writable = True
@@ -791,15 +789,14 @@ def to_TList(data, name=""):
         )
 
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tlist = uproot.models.TList.Model_TList.empty()
     tlist._bases.append(tobject)
     tlist._members["fName"] = name
     tlist._data = list(data)
     tlist._members["fSize"] = len(tlist._data)
-    tlist._options = [b""] * len(tlist._data)
+    # see https://github.com/scikit-hep/uproot5/pull/763#issuecomment-1290149135
+    tlist._options = [uproot.serialization.string("")] * len(tlist._data)
 
     if all(x._deeply_writable for x in tlist._data):
         tlist._deeply_writable = True
@@ -928,8 +925,6 @@ def to_TAxis(
     written to ROOT files, to implement conversion routines.
     """
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True
@@ -1072,8 +1067,6 @@ def to_TH1x(
     TH1C, TH1D, TH1F, TH1I, or TH1S depends on the dtype of the ``data`` array.
     """
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True

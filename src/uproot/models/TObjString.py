@@ -64,6 +64,12 @@ in file {}""".format(
 
     writable = True
 
+    def tojson(self):
+        out = self._bases[0].tojson()  # TObject
+        out["_typename"] = self.classname
+        out["fString"] = str(self)
+        return out
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
