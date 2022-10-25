@@ -114,7 +114,7 @@ in file {}""".format(
 
     def __repr__(self):
         return "<TObject {} {} at 0x{:012x}>".format(
-            self._members.get("fUniqueID"), self._members.get("fBits"), id(self)
+            self.member("@fUniqueID"), self.member("@fBits"), id(self)
         )
 
     def tojson(self):
