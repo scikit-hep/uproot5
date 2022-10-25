@@ -23,7 +23,9 @@ def test_write_empty(tmp_path):
 def test_write_single_key(tmp_path):
     filename = os.path.join(tmp_path, "whatever.root")
 
-    tlist = uproot.writing.identify.to_TList([uproot.writing.identify.to_TObjString("test string")])
+    tlist = uproot.writing.identify.to_TList(
+        [uproot.writing.identify.to_TObjString("test string")]
+    )
 
     with uproot.recreate(filename) as f:
         f["test"] = tlist
@@ -36,10 +38,14 @@ def test_write_nested(tmp_path):
     filename = os.path.join(tmp_path, "whatever.root")
 
     tlist_child = uproot.writing.identify.to_TList(
-        [uproot.writing.identify.to_TObjString(s) for s in "this is a test".split()])
+        [uproot.writing.identify.to_TObjString(s) for s in "this is a test".split()]
+    )
 
-    entries = [uproot.writing.identify.to_TObjString("this string goes in the front"), tlist_child,
-               uproot.writing.identify.to_TObjString("test string")]
+    entries = [
+        uproot.writing.identify.to_TObjString("this string goes in the front"),
+        tlist_child,
+        uproot.writing.identify.to_TObjString("test string"),
+    ]
 
     tlist = uproot.writing.identify.to_TList(entries)
 
