@@ -664,10 +664,10 @@ def _fLabels_maybe_categorical(axis, boost_histogram):
     if boost_histogram is None:
         return None
 
-    if not isinstance(axis, boost_histogram.axis.IntCategory) and not isinstance(
-        axis, boost_histogram.axis.StrCategory
-    ):
-        return None
+    if not isinstance(
+            axis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+        ):
+            return None
 
     labels = [str(label) for label in axis]
     if isinstance(axis, boost_histogram.axis.IntCategory):
