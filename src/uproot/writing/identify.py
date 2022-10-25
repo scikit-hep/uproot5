@@ -769,7 +769,7 @@ def to_TList(data, name=""):
     tlist._members["fName"] = name
     tlist._data = list(data)
     tlist._members["fSize"] = len(tlist._data)
-    tlist._options = [""] * len(tlist._data)
+    tlist._options = [b""] * len(tlist._data)
 
     if all(x._deeply_writable for x in tlist._data):
         tlist._deeply_writable = True
