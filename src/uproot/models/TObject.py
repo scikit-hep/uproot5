@@ -69,7 +69,7 @@ in file {}""".format(
     writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
-        out.append(b"\x00\x01" + _tobject_format2.pack(0, tobject_flags))
+        out.append(b"\x00\x01" + _tobject_format2.pack(self.member("@fUniqueID"), tobject_flags))
 
     @classmethod
     def strided_interpretation(
