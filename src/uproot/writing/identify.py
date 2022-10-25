@@ -742,7 +742,7 @@ def to_TObjString(string):
     tobjstring._cursor = None
     tobjstring._parent = None
     tobjstring._members = {}
-    tobjstring._bases = [tobject]
+    tobjstring._bases = (tobject,)
     tobjstring._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
     tobjstring._instance_version = 1
     return tobjstring
