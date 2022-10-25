@@ -124,5 +124,13 @@ in file {}""".format(
             "fBits": self.member("@fBits"),
         }
 
+    @classmethod
+    def empty(cls):
+        self = uproot.model.Model.empty()
+        self.__class__ = cls
+        self._members["@fUniqueID"] = 0
+        self._members["@fBits"] = 0
+        return self
+
 
 uproot.classes["TObject"] = Model_TObject
