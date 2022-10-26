@@ -768,7 +768,7 @@ def to_TObjString(string):
     tobjstring._cursor = None
     tobjstring._parent = None
     tobjstring._members = {}
-    tobjstring._bases = [tobject]
+    tobjstring._bases = (tobject,)
     tobjstring._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
     tobjstring._instance_version = 1
     return tobjstring
@@ -795,8 +795,7 @@ def to_TList(data, name=""):
     tlist._members["fName"] = name
     tlist._data = list(data)
     tlist._members["fSize"] = len(tlist._data)
-    # see https://github.com/scikit-hep/uproot5/pull/763#issuecomment-1290149135
-    tlist._options = [uproot.serialization.string("")] * len(tlist._data)
+    tlist._options = [b""] * len(tlist._data)
 
     if all(x._deeply_writable for x in tlist._data):
         tlist._deeply_writable = True
