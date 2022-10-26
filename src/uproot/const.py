@@ -4,6 +4,7 @@
 This module defines integer constants used by serialization and deserialization routines.
 """
 
+
 import numpy
 
 # determines when a file is "big"
