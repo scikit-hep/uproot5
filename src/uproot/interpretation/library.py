@@ -773,21 +773,8 @@ def _pandas_only_series(pandas, original_arrays, expression_context):
     arrays = {}
     names = []
     for name, context in expression_context:
-        if isinstance(original_arrays[name], pandas.Series):
-            arrays[_rename(name, context)] = original_arrays[name]
-            names.append(_rename(name, context))
-        else:
-            df = original_arrays[name]
-            for subname in df.columns:
-                if df.leaflist:
-                    if isinstance(subname, tuple):
-                        path = (_rename(name, context),) + subname
-                    else:
-                        path = (_rename(name, context), subname)
-                else:
-                    path = _rename(name, context) + subname
-                arrays[path] = df[subname]
-                names.append(path)
+        arrays[_rename(name, context)] = original_arrays[name]
+        names.append(_rename(name, context))
     return arrays, names
 
 
@@ -842,20 +829,20 @@ class Pandas(Library):
         index = _pandas_basic_index(pandas, entry_start, entry_stop)
 
         if (
-            (not (isinstance(array, numpy.ndarray)))
-            or (array.dtype.names is not None)
-            or (len(array.shape) != 1)
+            isinstance(array, numpy.ndarray)
+            and array.dtype.names is None
+            and len(array.shape) == 1
         ):
+            return pandas.Series(array, index=index)
+        else:
             awkward_pandas = uproot.extras.awkward_pandas()
-            ak_lib = Awkward()
+            ak_lib = _libraries[Awkward.name]
             ak_arr = ak_lib.finalize(
                 array, branch, interpretation, entry_start, entry_stop
             )
             return pandas.Series(
                 awkward_pandas.AwkwardExtensionArray(ak_arr), index=index
             )
-        else:
-            return pandas.Series(array, index=index)
 
     def group(self, arrays, expression_context, how):
         pandas = self.imported
@@ -872,130 +859,6 @@ class Pandas(Library):
         elif uproot._util.isstr(how) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
             return _pandas_memory_efficient(pandas, arrays, names)
-
-            # if any(isinstance(x, tuple) for x in names):
-            #     longest = max(len(x) for x in names if isinstance(x, tuple))
-            #     newarrays, newnames = {}, []
-            #     for x in names:
-            #         if not isinstance(x, tuple):
-            #             y = (x,) + ("",) * (longest - 1)
-            #         else:
-            #             y = x + ("",) * (longest - len(x))
-            #         newarrays[y] = arrays[x]
-            #         newnames.append(y)
-            #     arrays = newarrays
-            #     names = pandas.MultiIndex.from_tuples(newnames)
-            #
-            # if all(_is_pandas_rangeindex(pandas, x.index) for x in arrays.values()):
-            #     return _pandas_memory_efficient(pandas, arrays, names)
-            #
-            # indexes = []
-            # groups = []
-            # for name in names:
-            #     array = arrays[name]
-            #     if isinstance(array.index, pandas.MultiIndex):
-            #         for index, group in zip(indexes, groups):
-            #             if numpy.array_equal(array.index, index):
-            #                 group.append(name)
-            #                 break
-            #         else:
-            #             indexes.append(array.index)
-            #             groups.append([name])
-            # if how is None:
-            #     flat_index = None
-            #     dfs = [[] for x in indexes]
-            #     group_names = [[] for x in indexes]
-            #     for index, group, df, gn in zip(indexes, groups, dfs, group_names):
-            #         for name in names:
-            #             array = arrays[name]
-            #             if _is_pandas_rangeindex(pandas, array.index):
-            #                 if flat_index is None or len(flat_index) != len(
-            #                     array.index
-            #                 ):
-            #                     flat_index = pandas.MultiIndex.from_arrays(
-            #                         [array.index]
-            #                     )
-            #                 # Old versions of Pandas handle the following line poorly:
-            #                 # should we support them?
-            #                 #
-            #                 # >>> pandas.__version__
-            #                 # '0.22.0'
-            #                 # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
-            #                 # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
-            #                 # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
-            #                 # 0  0   NaN
-            #                 #    1   NaN
-            #                 #    2   NaN
-            #                 # 1  0   NaN
-            #                 #    1   NaN
-            #                 # dtype: float64
-            #                 #
-            #                 # >>> pandas.__version__
-            #                 # '1.3.2'
-            #                 # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
-            #                 # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
-            #                 # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
-            #                 # 0  0    1.1
-            #                 #    1    1.1
-            #                 #    2    1.1
-            #                 # 1  0    4.4
-            #                 #    1    4.4
-            #                 # dtype: float64
-            #                 df.append(
-            #                     pandas.Series(array.values, index=flat_index).reindex(
-            #                         index
-            #                     )
-            #                 )
-            #                 gn.append(name)
-            #             elif name in group:
-            #                 df.append(array)
-            #                 gn.append(name)
-            #     out = []
-            #     for index, df, gn in zip(indexes, dfs, group_names):
-            #         out.append(
-            #             pandas.DataFrame(
-            #                 data=dict(zip(gn, df)), index=index, columns=gn
-            #             )
-            #         )
-            #     if len(out) == 1:
-            #         return out[0]
-            #     else:
-            #         return tuple(out)
-            # else:
-            #     out = None
-            #     for index, group in zip(indexes, groups):
-            #         only = {name: arrays[name] for name in group}
-            #         df = pandas.DataFrame(data=only, index=index, columns=group)
-            #         if out is None:
-            #             out = df
-            #         else:
-            #             out = pandas.merge(
-            #                 out, df, how=how, left_index=True, right_index=True
-            #             )
-            #     flat_names = [
-            #         name
-            #         for name in names
-            #         if _is_pandas_rangeindex(pandas, arrays[name].index)
-            #     ]
-            #     if len(flat_names) > 0:
-            #         flat_index = pandas.MultiIndex.from_arrays(
-            #             [arrays[flat_names[0]].index]
-            #         )
-            #         only = {
-            #             name: pandas.Series(arrays[name].values, index=flat_index)
-            #             for name in flat_names
-            #         }
-            #         df = pandas.DataFrame(
-            #             data=only, index=flat_index, columns=flat_names
-            #         )
-            #         out = pandas.merge(
-            #             df.reindex(out.index),
-            #             out,
-            #             how=how,
-            #             left_index=True,
-            #             right_index=True,
-            #         )
-            #     return out
 
         else:
             raise TypeError(
@@ -1114,47 +977,5 @@ def _regularize_library(library):
             raise ValueError(
                 """library {} not recognized (for this function); """
                 """try "np" (NumPy), "ak" (Awkward Array), or "pd" (Pandas) """
-                """instead""".format(repr(library))
-            ) from err
-
-
-_libraries_lazy = {Awkward.name: _libraries[Awkward.name]}
-
-_libraries_lazy["awkward1"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["Awkward1"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["AWKWARD1"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["awkward"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["Awkward"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["AWKWARD"] = _libraries_lazy[Awkward.name]
-
-
-def _regularize_library_lazy(library):
-    if isinstance(library, Library):
-        if library.name in _libraries_lazy:
-            return _libraries_lazy[library.name]
-        else:
-            raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    type(library).__name__, repr(library.name)
-                )
-            )
-
-    elif isinstance(library, type) and issubclass(library, Library):
-        if library().name in _libraries_lazy:
-            return _libraries_lazy[library().name]
-        else:
-            raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    library.__name__, repr(library().name)
-                )
-            )
-
-    else:
-        try:
-            return _libraries_lazy[library]
-        except KeyError as err:
-            raise ValueError(
-                """library {} not recognized (for this function); """
-                """try "ak" (Awkward Array) """
                 """instead""".format(repr(library))
             ) from err
