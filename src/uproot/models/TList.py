@@ -106,7 +106,7 @@ in file {}""".format(
 
         for datum, option in zip(self._data, self._options):
             uproot.serialization._serialize_object_any(out, datum, None)
-            out.append(uproot.serialization.bytestring(option))
+            out.append(uproot.serialization.string(option))
 
         if header:
             num_bytes = sum(len(x) for x in out[where:])
