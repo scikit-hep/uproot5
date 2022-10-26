@@ -24,22 +24,12 @@ def string(data):
     is preceded by a 1-byte length; otherwise, it is preceded by ``b'\xff'`` and a
     4-byte length.
     """
-    return bytestring(data.encode(errors="surrogateescape"))
-
-
-def bytestring(data):
-    """
-    Converts Python bytes into a length-prefixed bytestring, ready to be written to a file.
-
-    If the string's byte representation (UTF-8) has fewer than 255 bytes, it
-    is preceded by a 1-byte length; otherwise, it is preceded by ``b'\xff'`` and a
-    4-byte length.
-    """
-    length = len(data)
+    bytestring = data.encode(errors="surrogateescape")
+    length = len(bytestring)
     if length < 255:
-        return struct.pack(">B%ds" % length, length, data)
+        return struct.pack(">B%ds" % length, length, bytestring)
     else:
-        return struct.pack(">BI%ds" % length, 255, length, data)
+        return struct.pack(">BI%ds" % length, 255, length, bytestring)
 
 
 def numbytes_version(num_bytes, version):
