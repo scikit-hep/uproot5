@@ -63,7 +63,7 @@ in file {}""".format(
         contents["fTitle"] = uproot.containers.AsString(
             False, typename="TString"
         ).awkward_form(file, context)
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TNamed"},
