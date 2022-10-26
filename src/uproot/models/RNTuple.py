@@ -202,7 +202,7 @@ in file {}""".format(
             dt_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
             if dt_str == "bit":
                 dt_str = "bool"
-            return ak._v2.forms.NumpyForm(
+            return ak.forms.NumpyForm(
                 dt_str,
                 form_key=form_key,
                 parameters=parameters,
@@ -230,7 +230,7 @@ in file {}""".format(
                 cr_char, rel_crs_idxs[-1], parameters={"__array__": "char"}
             )
             form_key = f"column-{rel_crs_idxs[0]}"
-            return ak._v2.forms.ListOffsetForm(
+            return ak.forms.ListOffsetForm(
                 "u32", inner, form_key=form_key, parameters={"__array__": "string"}
             )
         else:
@@ -254,7 +254,7 @@ in file {}""".format(
                 )
             )
             inner = self.field_form(child_id, seen)
-            return ak._v2.forms.ListOffsetForm("u32", inner, form_key=keyname)
+            return ak.forms.ListOffsetForm("u32", inner, form_key=keyname)
         elif structural_role == uproot.const.rntuple_role_struct:
             newids = []
             for i, fr in enumerate(field_records):
@@ -263,7 +263,7 @@ in file {}""".format(
             # go find N in the rest, N is the # of fields in struct
             recordlist = [self.field_form(i, seen) for i in newids]
             namelist = [field_records[i].field_name for i in newids]
-            return ak._v2.forms.RecordForm(recordlist, namelist, form_key="whatever")
+            return ak.forms.RecordForm(recordlist, namelist, form_key="whatever")
         elif structural_role == uproot.const.rntuple_role_union:
             keyname = self.col_form(this_id)
             newids = []
@@ -271,7 +271,7 @@ in file {}""".format(
                 if i not in seen and fr.parent_field_id == this_id:
                     newids.append(i)
             recordlist = [self.field_form(i, seen) for i in newids]
-            return ak._v2.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
+            return ak.forms.UnionForm("i8", "i64", recordlist, form_key=keyname)
         else:
             # everything should recurse above this branch
             raise AssertionError("this should be unreachable")
@@ -285,7 +285,7 @@ in file {}""".format(
             if i not in seen:
                 recordlist.append(self.field_form(i, seen))
 
-        form = ak._v2.forms.RecordForm(recordlist, topnames, form_key="toplevel")
+        form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
         return form
 
     def pagelist(self, listdesc):
@@ -395,7 +395,7 @@ in file {}""".format(
         cluster_offset = cluster_starts[start_cluster_idx]
         entry_start -= cluster_offset
         entry_stop -= cluster_offset
-        return ak._v2.from_buffers(form, cluster_num_entries, container_dict)[
+        return ak.from_buffers(form, cluster_num_entries, container_dict)[
             entry_start:entry_stop
         ]
 
@@ -414,7 +414,7 @@ def _recursive_find(form, res):
         for c in form.contents:
             _recursive_find(c, res)
     if hasattr(form, "content"):
-        if issubclass(type(form.content), ak._v2.forms.Form):
+        if issubclass(type(form.content), ak.forms.Form):
             _recursive_find(form.content, res)
 
 

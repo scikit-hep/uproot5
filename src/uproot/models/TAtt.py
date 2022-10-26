@@ -68,7 +68,7 @@ in file {}""".format(
         contents["fLineWidth"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TAttLine"},
@@ -134,7 +134,7 @@ in file {}""".format(
         contents["fLineWidth"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TAttLine"},
@@ -224,7 +224,7 @@ in file {}""".format(
         contents["fFillStyle"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TAttFill"},
@@ -284,7 +284,7 @@ in file {}""".format(
         contents["fFillStyle"] = uproot._util.awkward_form(
             numpy.dtype("i2"), file, context
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TAttFill"},
@@ -378,7 +378,7 @@ in file {}""".format(
         contents["fMarkerSize"] = uproot._util.awkward_form(
             numpy.dtype("f4"), file, context
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TAttMarker"},
@@ -519,7 +519,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -672,7 +672,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(

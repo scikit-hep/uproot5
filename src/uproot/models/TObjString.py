@@ -95,9 +95,9 @@ in file {}""".format(
     @classmethod
     def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
+            awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {"as": "TObjString", "header": True, "length_bytes": "1-5"},

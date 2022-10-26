@@ -66,7 +66,7 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 **Awkward Array is highly recommended.** It is not a strict dependency, but is included in the dependencies to help most users; install without dependencies (`--no-deps` with pip) if you want to avoid `awkward`. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option or globally set `uproot.default_library` to return arrays as NumPy arrays (see documentation).
 
-   * `awkward`: be sure to use Awkward Array 1.x.
+   * `awkward`: be sure to use Awkward Array 2.x.
 
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
 
