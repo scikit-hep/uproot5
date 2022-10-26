@@ -680,9 +680,12 @@ def _fLabels_maybe_categorical(axis, boost_histogram):
                     f"IntCategory labels must be valid integers. Found {label} on axis {axis}"
                 )
 
-    labels = [to_TObjString(label) for label in labels]
+    labels = to_THashList([to_TObjString(label) for label in labels])
+    # we need to set the TObject.fUniqueID to the index of the bin as done by TAxis::SetBinLabel
+    for i, label in enumerate(labels):
+        label._bases[0]._members["@fUniqueID"] = i + 1
 
-    return to_THashList(labels)
+    return labels
 
 
 def _root_stats_1d(entries, edges):
