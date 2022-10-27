@@ -129,8 +129,7 @@ in file {}""".format(
 
     @classmethod
     def empty(cls):
-        self = uproot.model.Model.empty()
-        self.__class__ = cls
+        self = super(Model_TObject, cls).empty()
         self._members["@fUniqueID"] = 0
         self._members["@fBits"] = 0
         return self
