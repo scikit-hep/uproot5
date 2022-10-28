@@ -279,7 +279,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 class_flags,
             )
         read_members.append(
-            "        if helper_obj.is_forth():\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {'record': 'TVector2'}}, len(content))\n            temp = forth_obj.add_node('dynamic',helper_obj.get_pre(),helper_obj.get_post(),helper_obj.get_init(),helper_obj.get_header(),\"i64\",0,None)\n"
+            "        if helper_obj.is_forth():\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {'record': 'TVector2'}}, len(content))\n            temp = forth_obj.add_node('dynamic',helper_obj.get_attrs(),\"i64\",0,None)\n"
         )
         if len(read_members) == 1:
             # untested as of PR #629
@@ -696,7 +696,6 @@ class Model_TStreamerBase(Model_TStreamerElement):
         read_member_n.append(f"        if member_index == {i}:")
 
         # @aryan26roy: test_0637's 01,02,08,09,11,12,13,15,16,29,38,45,46,49,50
-        # raise NotImplementedError
         read_members.append(
             "        if helper_obj.is_forth():\n                temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {'name': 'TOP', 'content': {}})\n"
         )
@@ -705,7 +704,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         )
         read_member_n.append("    " + read_members[-1])
         read_members.append(
-            "        if helper_obj.is_forth():\n                temp_prev_form1 = forth_obj.prev_form\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj._prev_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj._prev_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.prev_form = temp_prev_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                forth_obj.add_node_whole(temp_model1, temp_model_ref)\n                content.update(temp_form1['contents'])\n                forth_obj.enable_adding()"
+            "        if helper_obj.is_forth():\n                temp_prev_form1 = forth_obj.prev_form\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj.top_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj.top_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.prev_form = temp_prev_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                forth_obj.add_node_whole(temp_model1, temp_model_ref)\n                content.update(temp_form1['contents'])\n                forth_obj.enable_adding()"
         )
         # read_members.append(
         #    "        if helper_obj.is_forth():\n                temp_form = forth_obj.get_temp_form_top()\n                content.update(temp_form['contents'])\n                forth_obj.set_dummy_none(temp_top_dummy, temp_dummy, temp_top_flag)\n"
@@ -848,7 +847,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 f'                content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
             )
             read_members.append(
-                f'                #raise NotImplementedError\n                helper_obj.add_to_pre(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")'
+                f'                helper_obj.add_to_pre(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")'
             )
             read_members.append("                if forth_obj.should_add_form():")
             read_members.append(
@@ -1326,7 +1325,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
         read_member_n.append("    " + read_members[-1])
         read_members.append(
-            f"        if helper_obj.is_forth():\n                temp_prev_form1 = forth_obj.prev_form\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj._prev_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj.prev_form = temp_prev_form\n                forth_obj._prev_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                content[{self.name!r}] = temp_form1\n                pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n                helper_obj.add_to_header(header)\n                helper_obj.add_to_pre(pre)\n                helper_obj.add_to_post(post)\n                helper_obj.add_to_init(init)"
+            f"        if helper_obj.is_forth():\n                temp_prev_form1 = forth_obj.prev_form\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj.top_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj.prev_form = temp_prev_form\n                forth_obj.top_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                content[{self.name!r}] = temp_form1\n                pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n                helper_obj.add_to_header(header)\n                helper_obj.add_to_pre(pre)\n                helper_obj.add_to_post(post)\n                helper_obj.add_to_init(init)"
         )
         strided_interpretation.append(
             f"        members.append(({self.name!r}, cls._stl_container{len(containers)}.strided_interpretation(file, header, tobject_header, breadcrumbs)))"
@@ -1557,7 +1556,7 @@ class TStreamerObjectTypes:
         # @aryan26roy: test_0637's 01,02,29,45,46,49,50,56
 
         read_members.append(
-            f"        if helper_obj.is_forth():\n                temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {{'name': 'TOP', 'content': {{}}}})\n        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)\n        if helper_obj.is_forth():\n                temp_prev_form1 = forth_obj.prev_form\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj._prev_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj.prev_form = temp_prev_form\n                forth_obj._prev_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                content[{self.name!r}] = temp_form1\n                pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n                helper_obj.add_to_header(header)\n                helper_obj.add_to_pre(pre)\n                helper_obj.add_to_post(post)\n                helper_obj.add_to_init(init)"
+            f"        if helper_obj.is_forth():\n                temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {{'name': 'TOP', 'content': {{}}}})\n        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)\n        if helper_obj.is_forth():\n                temp_prev_form1 = forth_obj.prev_form\n                temp_form1 = forth_obj.top_form\n                temp_model1 = forth_obj.top_node\n                temp_model_ref = forth_obj.awkward_model\n                forth_obj.awkward_model = temp_node\n                forth_obj.prev_form = temp_prev_form\n                forth_obj.top_node = temp_node_top\n                forth_obj.aform = temp_form\n                forth_obj.top_form = temp_form_top\n                temp_model1 = temp_model1['content']\n                content[{self.name!r}] = temp_form1\n                pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n                helper_obj.add_to_header(header)\n                helper_obj.add_to_pre(pre)\n                helper_obj.add_to_post(post)\n                helper_obj.add_to_init(init)"
         )
         read_member_n.append(
             "    "

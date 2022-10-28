@@ -452,6 +452,15 @@
         "code",
         "maintenance"
       ]
+    },
+    {
+      "login": "lobis",
+      "name": "Luis Antonio Obis Aparicio",
+      "avatar_url": "https://avatars.githubusercontent.com/u/35803280?v=4",
+      "profile": "https://github.com/lobis",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
@@ -459,5 +468,6 @@
   "projectOwner": "scikit-hep",
   "repoType": "github",
   "repoHost": "https://github.com",
-  "skipCi": true
+  "skipCi": true,
+  "commitConvention": "angular"
 }
