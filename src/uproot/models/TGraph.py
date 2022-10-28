@@ -243,7 +243,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import ListOffsetForm, RecordForm
+        from awkward.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -455,7 +455,7 @@ class Model_TGraphErrors_v3(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import ListOffsetForm, RecordForm
+        from awkward.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -672,7 +672,7 @@ class Model_TGraphAsymmErrors_v3(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import ListOffsetForm, RecordForm
+        from awkward.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(

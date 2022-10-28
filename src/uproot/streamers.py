@@ -243,7 +243,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         awkward_form = [
             "    @classmethod",
             "    def awkward_form(cls, file, context):",
-            "        from awkward._v2.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
+            "        from awkward.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
             "        if cls in context['breadcrumbs']:",
             "            raise uproot.interpretation.objects.CannotBeAwkward('classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded')",
             "        context['breadcrumbs'] = context['breadcrumbs'] + (cls,)",
@@ -279,7 +279,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 class_flags,
             )
         read_members.append(
-            "        if forth_stash is not None:\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {'record': 'TVector2'}}, len(content))\n            temp = forth_obj.add_node('dynamic',forth_stash.get_pre(),forth_stash.get_post(),forth_stash.get_init(),forth_stash.get_header(),\"i64\",0,None)\n"
+            "        if forth_stash is not None:\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {'record': 'TVector2'}}, len(content))\n            temp = forth_obj.add_node('dynamic', forth_stash.get_attrs(), \"i64\", 0, None)\n"
         )
         if len(read_members) == 1:
             # untested as of PR #629
@@ -707,7 +707,7 @@ class Model_TStreamerBase(Model_TStreamerElement):
         )
         read_member_n.append("    " + read_members[-1])
         read_members.append(
-            "        if forth_stash is not None and not context['cancel_forth']:\n            temp_prev_form1 = forth_obj.prev_form\n            temp_form1 = forth_obj.top_form\n            temp_model1 = forth_obj._prev_node\n            temp_model_ref = forth_obj.awkward_model\n            forth_obj.awkward_model = temp_node\n            forth_obj._prev_node = temp_node_top\n            forth_obj.aform = temp_form\n            forth_obj.prev_form = temp_prev_form\n            forth_obj.top_form = temp_form_top\n            temp_model1 = temp_model1['content']\n            forth_obj.add_node_whole(temp_model1, temp_model_ref)\n            content.update(temp_form1['contents'])\n            forth_obj.enable_adding()"
+            "        if forth_stash is not None and not context['cancel_forth']:\n            temp_prev_form1 = forth_obj.prev_form\n            temp_form1 = forth_obj.top_form\n            temp_model1 = forth_obj.top_node\n            temp_model_ref = forth_obj.awkward_model\n            forth_obj.awkward_model = temp_node\n            forth_obj.top_node = temp_node_top\n            forth_obj.aform = temp_form\n            forth_obj.prev_form = temp_prev_form\n            forth_obj.top_form = temp_form_top\n            temp_model1 = temp_model1['content']\n            forth_obj.add_node_whole(temp_model1, temp_model_ref)\n            content.update(temp_form1['contents'])\n            forth_obj.enable_adding()"
         )
         # read_members.append(
         #    "        if forth_stash is not None:\n                temp_form = forth_obj.get_temp_form_top()\n                content.update(temp_form['contents'])\n                forth_obj.set_dummy_none(temp_top_dummy, temp_dummy, temp_top_flag)\n"
@@ -1323,7 +1323,7 @@ class Model_TStreamerSTL(Model_TStreamerElement):
         )
         read_member_n.append("    " + read_members[-1])
         read_members.append(
-            f"        if forth_stash is not None:\n            temp_prev_form1 = forth_obj.prev_form\n            temp_form1 = forth_obj.top_form\n            temp_model1 = forth_obj._prev_node\n            temp_model_ref = forth_obj.awkward_model\n            forth_obj.awkward_model = temp_node\n            forth_obj.prev_form = temp_prev_form\n            forth_obj._prev_node = temp_node_top\n            forth_obj.aform = temp_form\n            forth_obj.top_form = temp_form_top\n            temp_model1 = temp_model1['content']\n            content[{self.name!r}] = temp_form1\n            pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n            forth_stash.add_to_header(header)\n            forth_stash.add_to_pre(pre)\n            forth_stash.add_to_post(post)\n            forth_stash.add_to_init(init)"
+            f"        if forth_stash is not None:\n            temp_prev_form1 = forth_obj.prev_form\n            temp_form1 = forth_obj.top_form\n            temp_model1 = forth_obj.top_node\n            temp_model_ref = forth_obj.awkward_model\n            forth_obj.awkward_model = temp_node\n            forth_obj.prev_form = temp_prev_form\n            forth_obj.top_node = temp_node_top\n            forth_obj.aform = temp_form\n            forth_obj.top_form = temp_form_top\n            temp_model1 = temp_model1['content']\n            content[{self.name!r}] = temp_form1\n            pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n            forth_stash.add_to_header(header)\n            forth_stash.add_to_pre(pre)\n            forth_stash.add_to_post(post)\n            forth_stash.add_to_init(init)"
         )
         strided_interpretation.append(
             f"        members.append(({self.name!r}, cls._stl_container{len(containers)}.strided_interpretation(file, header, tobject_header, breadcrumbs)))"
@@ -1554,7 +1554,7 @@ class TStreamerObjectTypes:
         # AwkwardForth testing: test_0637's 01,02,29,45,46,49,50,56
 
         read_members.append(
-            f"        if forth_stash is not None:\n            temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {{'name': 'TOP', 'content': {{}}}})\n        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)\n        if forth_stash is not None:\n            temp_prev_form1 = forth_obj.prev_form\n            temp_form1 = forth_obj.top_form\n            temp_model1 = forth_obj._prev_node\n            temp_model_ref = forth_obj.awkward_model\n            forth_obj.awkward_model = temp_node\n            forth_obj.prev_form = temp_prev_form\n            forth_obj._prev_node = temp_node_top\n            forth_obj.aform = temp_form\n            forth_obj.top_form = temp_form_top\n            temp_model1 = temp_model1['content']\n            content[{self.name!r}] = temp_form1\n            pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n            forth_stash.add_to_header(header)\n            forth_stash.add_to_pre(pre)\n            forth_stash.add_to_post(post)\n            forth_stash.add_to_init(init)"
+            f"        if forth_stash is not None:\n            temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form = forth_obj.replace_form_and_model(None, {{'name': 'TOP', 'content': {{}}}})\n        self._members[{self.name!r}] = c({self.typename.rstrip('*')!r}).read(chunk, cursor, context, file, self._file, self.concrete)\n        if forth_stash is not None:\n            temp_prev_form1 = forth_obj.prev_form\n            temp_form1 = forth_obj.top_form\n            temp_model1 = forth_obj.top_node\n            temp_model_ref = forth_obj.awkward_model\n            forth_obj.awkward_model = temp_node\n            forth_obj.prev_form = temp_prev_form\n            forth_obj.top_node = temp_node_top\n            forth_obj.aform = temp_form\n            forth_obj.top_form = temp_form_top\n            temp_model1 = temp_model1['content']\n            content[{self.name!r}] = temp_form1\n            pre,post,init,header = forth_obj.get_code_recursive(temp_model1)\n            forth_stash.add_to_header(header)\n            forth_stash.add_to_pre(pre)\n            forth_stash.add_to_post(post)\n            forth_stash.add_to_init(init)"
         )
         read_member_n.append(
             "    "

@@ -80,7 +80,7 @@ in file {}""".format(
             contents["@other2"] = uproot._util.awkward_form(
                 numpy.dtype("u4"), file, context
             )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TRef"},
@@ -167,10 +167,7 @@ in file {}""".format(
                 )
             forth_obj.add_node(
                 f"node{form_keys[0]}",
-                forth_stash.get_pre(),
-                forth_stash.get_post(),
-                forth_stash.get_init(),
-                forth_stash.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 1,
                 None,
@@ -216,11 +213,11 @@ in file {}""".format(
             False, typename="TString"
         ).awkward_form(file, context)
         contents["fSize"] = uproot._util.awkward_form(numpy.dtype("i4"), file, context)
-        contents["refs"] = awkward._v2.forms.ListOffsetForm(
+        contents["refs"] = awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(numpy.dtype("i4"), file, context),
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TRefArray"},

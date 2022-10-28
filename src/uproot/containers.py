@@ -76,10 +76,7 @@ def _read_nested(
                 )
             temp = forth_obj.add_node(
                 f"node{key}",
-                forth_stash.get_pre(),
-                forth_stash.get_post(),
-                forth_stash.get_init(),
-                forth_stash.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 1,
                 None,
@@ -337,7 +334,7 @@ class AsDynamic(AsContainer):
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
-            return awkward._v2.forms.ListOffsetForm(
+            return awkward.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
                 parameters={"uproot": {"as": "dynamic"}},
@@ -462,9 +459,9 @@ class AsString(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
+            awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {
@@ -546,10 +543,7 @@ class AsString(AsContainer):
             forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
-                forth_stash.get_pre(),
-                forth_stash.get_post(),
-                forth_stash.get_init(),
-                forth_stash.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 0,
                 None,
@@ -708,8 +702,8 @@ class AsArray(AsContainer):
         awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
-            values_form = awkward._v2.forms.RegularForm(values_form, dim)
-        return awkward._v2.forms.ListOffsetForm(
+            values_form = awkward.forms.RegularForm(values_form, dim)
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             values_form,
             parameters={
@@ -787,10 +781,7 @@ in file {}""".format(
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
-                        forth_stash.get_pre(),
-                        forth_stash.get_post(),
-                        forth_stash.get_init(),
-                        forth_stash.get_header(),
+                        helper_obj.get_attrs(),
                         "i64",
                         1,
                         {},
@@ -868,10 +859,7 @@ in file {}""".format(
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
-                        forth_stash.get_pre(),
-                        forth_stash.get_post(),
-                        forth_stash.get_init(),
-                        forth_stash.get_header(),
+                        helper_obj.get_attrs(),
                         "i64",
                         1,
                         {},
@@ -946,7 +934,7 @@ class AsRVec(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "RVec", "header": self._header}},
@@ -1093,7 +1081,7 @@ class AsVector(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "vector", "header": self._header}},
@@ -1191,10 +1179,7 @@ class AsVector(AsContainer):
                     forth_stash.add_to_post("loop\n")
                 temp = forth_obj.add_node(
                     f"node{key}",
-                    forth_stash.get_pre(),
-                    forth_stash.get_post(),
-                    forth_stash.get_init(),
-                    forth_stash.get_header(),
+                    helper_obj.get_attrs(),
                     "i64",
                     1,
                     {},
@@ -1294,7 +1279,7 @@ class AsSet(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._keys, file, context),
             parameters={
@@ -1357,10 +1342,7 @@ in file {}""".format(
                 forth_stash.add_to_post("loop\n")
             temp = forth_obj.add_node(
                 f"node{key}",
-                forth_stash.get_pre(),
-                forth_stash.get_post(),
-                forth_stash.get_init(),
-                forth_stash.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 1,
                 {},
@@ -1488,9 +1470,9 @@ class AsMap(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.RecordForm(
+            awkward.forms.RecordForm(
                 (
                     uproot._util.awkward_form(self._keys, file, context),
                     uproot._util.awkward_form(self._values, file, context),
@@ -1567,7 +1549,7 @@ class AsMap(AsContainer):
             if forth_stash is not None:
                 temp = {"name": "TOP", "content": {}}
                 keys_form = forth_obj.top_form
-                keys_model = forth_obj._prev_node
+                keys_model = forth_obj.top_node
                 (
                     temp_node1,
                     temp_node_top1,
@@ -1599,11 +1581,11 @@ class AsMap(AsContainer):
             )
             if forth_stash is not None:
                 values_form = forth_obj.top_form
-                values_model = forth_obj._prev_node
+                values_model = forth_obj.top_node
                 if not isinstance(self._values, numpy.dtype):
                     values_model["content"]["post_code"].append("loop \n")
                 forth_obj.awkward_model = temp_node
-                forth_obj._prev_node = temp_node_top
+                forth_obj.top_node = temp_node_top
                 forth_obj.aform = temp_form
                 forth_obj.top_form = temp_form_top
                 forth_obj.prev_form = temp_prev_form
@@ -1622,10 +1604,7 @@ class AsMap(AsContainer):
                     forth_obj.add_form(aform)
                 temp = forth_obj.add_node(
                     "nodeMap",
-                    forth_stash.get_pre(),
-                    forth_stash.get_post(),
-                    forth_stash.get_init(),
-                    forth_stash.get_header(),
+                    helper_obj.get_attrs(),
                     "i64",
                     1,
                     [keys_model["content"], values_model["content"]],

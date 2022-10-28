@@ -58,7 +58,7 @@ def add_to_directory(obj, name, directory, streamers):
     if uproot._util.from_module(obj, "awkward"):
         import awkward
 
-        if isinstance(obj, awkward._v2.Array):
+        if isinstance(obj, awkward.Array):
             obj = {"": obj}
 
     if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
@@ -123,12 +123,12 @@ def add_to_directory(obj, name, directory, streamers):
                         except ImportError:
                             break
                         try:
-                            branch_array = awkward._v2.from_iter(branch_array)
+                            branch_array = awkward.from_iter(branch_array)
                         except Exception:
                             break
                         else:
                             data[branch_name] = branch_array
-                            metadata[branch_name] = awkward._v2.type(branch_array)
+                            metadata[branch_name] = awkward.type(branch_array)
 
                     else:
                         data[branch_name] = branch_array
@@ -735,12 +735,14 @@ def to_TObjString(string):
     This function is for developers to create TObjString objects that can be
     written to ROOT files, to implement conversion routines.
     """
+    tobject = uproot.models.TObject.Model_TObject.empty()
+
     tobjstring = uproot.models.TObjString.Model_TObjString(str(string))
     tobjstring._deeply_writable = True
     tobjstring._cursor = None
     tobjstring._parent = None
     tobjstring._members = {}
-    tobjstring._bases = (uproot.models.TObject.Model_TObject(),)
+    tobjstring._bases = (tobject,)
     tobjstring._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
     tobjstring._instance_version = 1
     return tobjstring
@@ -761,8 +763,6 @@ def to_TList(data, name=""):
         )
 
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tlist = uproot.models.TList.Model_TList.empty()
     tlist._bases.append(tobject)
@@ -874,8 +874,6 @@ def to_TAxis(
     written to ROOT files, to implement conversion routines.
     """
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True
@@ -1018,8 +1016,6 @@ def to_TH1x(
     TH1C, TH1D, TH1F, TH1I, or TH1S depends on the dtype of the ``data`` array.
     """
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True

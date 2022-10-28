@@ -134,19 +134,19 @@ class Tree:
                         ) from err
                     if isinstance(
                         branch_type,
-                        (awkward._v2.types.Type, awkward._v2.types.ArrayType),
+                        (awkward.types.Type, awkward.types.ArrayType),
                     ):
                         branch_datashape = branch_type
                     else:
                         try:
-                            branch_datashape = awkward._v2.types.from_datashape(
+                            branch_datashape = awkward.types.from_datashape(
                                 branch_type, highlevel=False
                             )
                         except Exception:
                             raise TypeError(
                                 f"not a NumPy dtype or an Awkward datashape: {branch_type!r}"
                             ) from err
-                    if isinstance(branch_datashape, awkward._v2.types.ArrayType):
+                    if isinstance(branch_datashape, awkward.types.ArrayType):
                         branch_datashape = branch_datashape.content
 
                     branch_dtype = self._branch_ak_to_np(branch_datashape)
@@ -519,16 +519,16 @@ class Tree:
                     f"an Awkward Array was provided, but 'awkward' cannot be imported: {data!r}"
                 ) from err
 
-            if isinstance(data, awkward._v2.Array):
+            if isinstance(data, awkward.Array):
                 if data.ndim > 1 and not data.layout.purelist_isregular:
                     provided = {
                         self._counter_name(""): numpy.asarray(
-                            awkward._v2.num(data, axis=1), dtype=">u4"
+                            awkward.num(data, axis=1), dtype=">u4"
                         )
                     }
                 else:
                     provided = {}
-                for k, v in zip(awkward._v2.fields(data), awkward._v2.unzip(data)):
+                for k, v in zip(awkward.fields(data), awkward.unzip(data)):
                     provided[k] = v
 
         if isinstance(data, numpy.ndarray) and data.dtype.fields is not None:
@@ -563,7 +563,7 @@ class Tree:
                                 raise TypeError(
                                     f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
                                 ) from err
-                            v = awkward._v2.from_iter(v)
+                            v = awkward.from_iter(v)
 
                     if getattr(v, "dtype", None) == numpy.dtype("O"):
                         try:
@@ -572,7 +572,7 @@ class Tree:
                             raise TypeError(
                                 f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
                             ) from err
-                        v = awkward._v2.from_iter(v)
+                        v = awkward.from_iter(v)
 
                 if uproot._util.from_module(v, "awkward"):
                     try:
@@ -582,12 +582,12 @@ class Tree:
                             f"an Awkward Array was provided, but 'awkward' cannot be imported: {k}: {type(v)}"
                         ) from err
                     if (
-                        isinstance(v, awkward._v2.Array)
+                        isinstance(v, awkward.Array)
                         and v.ndim > 1
                         and not v.layout.purelist_isregular
                     ):
                         kk = self._counter_name(k)
-                        vv = numpy.asarray(awkward._v2.num(v, axis=1), dtype=">u4")
+                        vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
                         if kk in provided:
                             if not numpy.array_equal(vv, provided[kk]):
                                 raise ValueError(
@@ -697,11 +697,11 @@ class Tree:
                         f"a jagged array was provided (possibly as an iterable), but 'awkward' cannot be imported: {branch_name}: {branch_array!r}"
                     ) from err
                 layout = branch_array.layout
-                while not isinstance(layout, awkward._v2.contents.ListOffsetArray):
-                    if isinstance(layout, awkward._v2.contents.IndexedArray):
+                while not isinstance(layout, awkward.contents.ListOffsetArray):
+                    if isinstance(layout, awkward.contents.IndexedArray):
                         layout = layout.project()
 
-                    elif isinstance(layout, awkward._v2.contents.ListArray):
+                    elif isinstance(layout, awkward.contents.ListArray):
                         layout = layout.toListOffsetArray64(False)
 
                     else:
@@ -719,14 +719,14 @@ class Tree:
                     content = content[: offsets[-1]]
 
                 shape = [len(content)]
-                while not isinstance(content, awkward._v2.contents.NumpyArray):
-                    if isinstance(content, awkward._v2.contents.IndexedArray):
+                while not isinstance(content, awkward.contents.NumpyArray):
+                    if isinstance(content, awkward.contents.IndexedArray):
                         content = content.project()
 
-                    elif isinstance(content, awkward._v2.contents.EmptyArray):
+                    elif isinstance(content, awkward.contents.EmptyArray):
                         content = content.toNumpyArray()
 
-                    elif isinstance(content, awkward._v2.contents.RegularArray):
+                    elif isinstance(content, awkward.contents.RegularArray):
                         shape.append(content.size)
                         content = content.content
 

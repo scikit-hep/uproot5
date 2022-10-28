@@ -6,8 +6,6 @@ This module defines utilities for adding components to the forth reader.
 
 import numpy as np
 
-import uproot.containers
-
 symbol_dict = {
     np.dtype(">f4"): "f",
     np.dtype(">f8"): "d",
@@ -20,14 +18,6 @@ symbol_dict = {
     np.dtype(">u8"): "Q",
     np.dtype("bool"): "?",
 }
-
-
-def check_depth(node):
-    """
-    This method checks the depth of the provided container
-    """
-    if isinstance(node, uproot.containers.AsVector):
-        return 1
 
 
 class ForthGenerator:
@@ -43,7 +33,7 @@ class ForthGenerator:
         self.top_form = None
         self.prev_form = None
         self.awkward_model = {"name": "TOP", "content": {}}
-        self._prev_node = self.awkward_model
+        self.top_node = self.awkward_model
         self.ref_list = []
         self.forth_code = {}
         self.forth_keys = {}
@@ -60,9 +50,9 @@ class ForthGenerator:
     def replace_form_and_model(self, form, model):
         temp_node = self.awkward_model
         temp_prev_form = self.prev_form
-        temp_node_top = self._prev_node
+        temp_node_top = self.top_node
         self.awkward_model = model
-        self._prev_node = self.awkward_model
+        self.top_node = self.awkward_model
         temp_form = self.aform
         temp_form_top = self.top_form
         self.top_form = None
@@ -105,83 +95,41 @@ class ForthGenerator:
     def get_temp_form_top(self):
         return self.top_dummy
 
+    def add_form(self, aform, conlen=0, traverse=1):
+        if self.aform is None:
+            self.aform = aform
+            self.top_form = self.aform
+            if traverse == 2:
+                self.aform = self.aform["content"]
+        else:
+            if "content" in self.aform.keys():
+                if self.aform["content"] == "NULL":
+                    self.aform["content"] = aform
+                    self.prev_form = self.aform
+                    if traverse == 2:
+                        self.aform = self.aform["content"]["content"]
+                        self.prev_form = self.prev_form["content"]
+                    else:
+                        self.aform = self.aform["content"]
+                else:
+                    raise AssertionError("Form representation is corrupted.")
+            elif "contents" in self.aform.keys():
+                if self.aform["class"] == "RecordArray":
+                    if self.prev_form is not None:
+                        self.prev_form["content"] = aform
+                        self.aform = aform
+                    else:
+                        self.top_form = aform
+                        self.aform = aform
+                elif len(self.aform["contents"]) == conlen:
+                    pass
+                else:
+                    return False
+
     def set_dummy_none(self, temp_top, temp_form, temp_flag):
         self.top_dummy = temp_top
         self.dummy_aform = temp_form
         self.dummy_form = temp_flag
-
-    def add_form(self, aform, conlen=0, traverse=1):
-        if self.dummy_form:
-            if self.dummy_aform is None:
-                self.dummy_aform = aform
-                self.top_dummy = aform
-            else:
-                if "content" in self.dummy_aform.keys():
-                    if self.dummy_aform["content"] == "NULL":
-                        self.dummy_aform["content"] = aform
-                        self.dummy_aform = self.dummy_aform["content"]
-                    else:
-                        raise ValueError
-                elif "contents" in self.dummy_aform.keys():
-                    if (
-                        len(self.dummy_aform["content"])
-                        < self.dummy_aform["parameters"]["lencon"]
-                    ):
-                        self.dummy_aform["contents"].append(aform)
-                    else:
-                        raise ValueError
-        else:
-            if self.aform is None:
-                self.aform = aform
-                self.top_form = self.aform
-                if traverse == 2:
-                    self.aform = self.aform["content"]
-            else:
-                if "content" in self.aform.keys():
-                    if self.aform["content"] == "NULL":
-                        self.aform["content"] = aform
-                        self.prev_form = self.aform
-                        if traverse == 2:
-                            self.aform = self.aform["content"]["content"]
-                            self.prev_form = self.prev_form["content"]
-                        else:
-                            self.aform = self.aform["content"]
-                    else:
-                        raise ValueError
-                elif "contents" in self.aform.keys():
-                    if self.aform["class"] == "RecordArray":
-                        if self.prev_form is not None:
-                            self.prev_form["content"] = aform
-                            self.aform = aform
-                        else:
-                            self.top_form = aform
-                            self.aform = aform
-                        # for elem in aform['contents'].keys():
-                        #     if self.depth(self.aform['contents'][elem])< self.depth(aform['contents'][elem]):
-                        #         aform['contents'][elem] = self.replace_keys(self.aform['contents'][elem],aform['contents'][elem])
-                        #         self.aform['contents'][elem] = aform['contents'][elem]
-                    elif len(self.aform["contents"]) == conlen:
-                        pass
-                    else:
-                        raise ValueError
-
-    def depth(self, form):
-        count = 0
-        temp = form
-        while "content" in temp.keys():
-            count += 1
-            if isinstance(temp["content"], str):
-                break
-            temp = temp["content"]
-        return count
-
-    def replace_keys(self, old, new):
-        temp = new
-        while old != "NULL":
-            new["form_key"] = old["form_key"]
-            new = new["content"]
-            old = old["content"]
-        return temp
 
     def get_keys(self, num_keys):
         if num_keys == 1:
@@ -195,13 +143,12 @@ class ForthGenerator:
                 self.count_obj += 1
             return out
         else:
-            raise ValueError("Number of keys cannot be less than 1")
+            raise AssertionError("Number of keys cannot be less than 1")
 
     def add_form_key(self, key):
         self.form_keys.append(key)
 
     def go_to(self, aform):
-        # aform["content"] = self.awkward_model
         self.awkward_model = aform
 
     def become(self, aform):
@@ -211,7 +158,7 @@ class ForthGenerator:
         return bool(self.awkward_model)
 
     def get_current_node(self):
-        self.ref_list.append(self._prev_node)
+        self.ref_list.append(self.top_node)
         return len(self.ref_list) - 1
 
     def get_ref(self, index):
@@ -229,9 +176,7 @@ class ForthGenerator:
             self.awkward_model["contents"].append(new_node)
         self.awkward_model = ref_latest
 
-    def add_node(
-        self, name, precode, postcode, initcode, headercode, dtype, num_child, content
-    ):
+    def add_node(self, name, code_attrs, dtype, num_child, content):
         if isinstance(self.awkward_model, dict):
             if (
                 not bool(self.awkward_model["content"])
@@ -240,10 +185,10 @@ class ForthGenerator:
                 temp_obj = {
                     "name": name,
                     "type": dtype,
-                    "pre_code": precode,
-                    "post_code": postcode,
-                    "init_code": initcode,
-                    "header_code": headercode,
+                    "pre_code": code_attrs["precode"],
+                    "post_code": code_attrs["postcode"],
+                    "init_code": code_attrs["initcode"],
+                    "header_code": code_attrs["headercode"],
                     "num_child": num_child,
                     "content": content,
                 }
@@ -256,10 +201,10 @@ class ForthGenerator:
                         temp_obj = {
                             "name": name,
                             "type": dtype,
-                            "pre_code": precode,
-                            "post_code": postcode,
-                            "init_code": initcode,
-                            "header_code": headercode,
+                            "pre_code": code_attrs["precode"],
+                            "post_code": code_attrs["postcode"],
+                            "init_code": code_attrs["initcode"],
+                            "header_code": code_attrs["headercode"],
                             "num_child": num_child,
                             "content": content,
                         }
@@ -282,10 +227,10 @@ class ForthGenerator:
                 {
                     "name": name,
                     "type": dtype,
-                    "pre_code": precode,
-                    "post_code": postcode,
-                    "init_code": initcode,
-                    "header_code": headercode,
+                    "pre_code": code_attrs["precode"],
+                    "post_code": code_attrs["postcode"],
+                    "init_code": code_attrs["initcode"],
+                    "header_code": code_attrs["headercode"],
                     "num_child": num_child,
                     "content": content,
                 }
@@ -318,7 +263,7 @@ class ForthGenerator:
 
     def add_to_final(self, code):
         if not isinstance(code, list):
-            raise TypeError
+            raise AssertionError("Something went wrong with Forth code generation.")
         self.final_code.extend(code)
 
     def add_to_header(self, code):
@@ -360,26 +305,22 @@ class ForthLevelStash:
     def add_to_pre(self, code):
         self._pre_code.append(code)
 
-    def get_pre(self):
-        return self._pre_code
-
     def add_to_post(self, code):
         self._post_code.append(code)
 
-    def get_post(self):
-        return self._post_code
+    def get_attrs(self):
+        return {
+            "precode": self._pre_code,
+            "postcode": self._post_code,
+            "initcode": self._init,
+            "headercode": self._header,
+        }
 
     def add_to_header(self, code):
         self._header += code
 
-    def get_header(self):
-        return self._header
-
     def add_to_init(self, code):
         self._init += code
-
-    def get_init(self):
-        return self._init
 
 
 def convert_dtype(format):

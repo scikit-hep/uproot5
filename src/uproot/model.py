@@ -819,10 +819,7 @@ class Model:
                     if forth_stash is not None:
                         forth_obj.add_node(
                             "pass",
-                            forth_stash.get_pre(),
-                            forth_stash.get_post(),
-                            forth_stash.get_init(),
-                            forth_stash.get_header(),
+                            helper_obj.get_attrs(),
                             "i64",
                             1,
                             {},
@@ -862,10 +859,7 @@ class Model:
             if forth_stash is not None:
                 forth_obj.add_node(
                     "model828",
-                    forth_stash.get_pre(),
-                    forth_stash.get_post(),
-                    forth_stash.get_init(),
-                    forth_stash.get_header(),
+                    helper_obj.get_attrs(),
                     "i64",
                     1,
                     {},
@@ -1348,10 +1342,7 @@ class DispatchByVersion:
             forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
             forth_obj.add_node(
                 "Model1319",
-                forth_stash.get_pre(),
-                forth_stash.get_post(),
-                forth_stash.get_init(),
-                forth_stash.get_header(),
+                helper_obj.get_attrs(),
                 "i64",
                 1,
                 {},
