@@ -45,11 +45,9 @@ in file {}""".format(
                         "class": "NumpyArray",
                         "primitive": "uint8",
                         "inner_shape": [],
-                        "has_identifier": False,
                         "parameters": {"__array__": "char"},
                         "form_key": f"node{data_num}",
                     },
-                    "has_identifier": False,
                     "parameters": {
                         "__array__": "string",
                         "uproot": {"as": "TString", "header": False},

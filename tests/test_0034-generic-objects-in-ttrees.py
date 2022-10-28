@@ -382,13 +382,11 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint8",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {
                     "__array__": "char"
                 },
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -403,7 +401,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "int16",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -411,7 +408,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "int32",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -419,7 +415,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "int64",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -427,7 +422,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "uint16",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -435,7 +429,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "uint32",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -443,7 +436,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "uint64",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -451,7 +443,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "float32",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -459,7 +450,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "float64",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -470,13 +460,11 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint8",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {
                     "__array__": "char"
                 },
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -499,7 +487,6 @@ def test_general_awkward_form():
                     "class": "NumpyArray",
                     "primitive": "int32",
                     "inner_shape": [],
-                    "has_identifier": false,
                     "parameters": {},
                     "form_key": null
                 },
@@ -507,7 +494,6 @@ def test_general_awkward_form():
                     "class": "NumpyArray",
                     "primitive": "float64",
                     "inner_shape": [],
-                    "has_identifier": false,
                     "parameters": {},
                     "form_key": null
                 },
@@ -515,12 +501,10 @@ def test_general_awkward_form():
                     "class": "NumpyArray",
                     "primitive": "int32",
                     "inner_shape": [],
-                    "has_identifier": false,
                     "parameters": {},
                     "form_key": null
                 }
             ],
-            "has_identifier": false,
             "parameters": {
                 "__record__": "P3"
             },
@@ -533,11 +517,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int16",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -548,11 +530,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -563,11 +543,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -578,11 +556,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint16",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -593,11 +569,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -608,11 +582,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -623,11 +595,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "float32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -638,11 +608,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "float64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -650,7 +618,6 @@ def test_general_awkward_form():
             "class": "NumpyArray",
             "primitive": "uint32",
             "inner_shape": [],
-            "has_identifier": false,
             "parameters": {},
             "form_key": null
         },
@@ -661,11 +628,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int16",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -681,11 +646,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -701,11 +664,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -721,11 +682,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint16",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -741,11 +700,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -761,11 +718,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -781,11 +736,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "float32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -801,11 +754,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "float64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "TStreamerBasicPointer",
@@ -821,13 +772,11 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint8",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {
                     "__array__": "char"
                 },
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -845,11 +794,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int16",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -865,11 +812,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -885,11 +830,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "int64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -905,11 +848,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint16",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -925,11 +866,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -945,11 +884,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -965,11 +902,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "float32",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -985,11 +920,9 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "float64",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {},
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -1008,13 +941,11 @@ def test_general_awkward_form():
                     "class": "NumpyArray",
                     "primitive": "uint8",
                     "inner_shape": [],
-                    "has_identifier": false,
                     "parameters": {
                         "__array__": "char"
                     },
                     "form_key": null
                 },
-                "has_identifier": false,
                 "parameters": {
                     "__array__": "string",
                     "uproot": {
@@ -1025,7 +956,6 @@ def test_general_awkward_form():
                 },
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "uproot": {
                     "as": "vector",
@@ -1041,13 +971,11 @@ def test_general_awkward_form():
                 "class": "NumpyArray",
                 "primitive": "uint8",
                 "inner_shape": [],
-                "has_identifier": false,
                 "parameters": {
                     "__array__": "char"
                 },
                 "form_key": null
             },
-            "has_identifier": false,
             "parameters": {
                 "__array__": "string",
                 "uproot": {
@@ -1059,7 +987,6 @@ def test_general_awkward_form():
             "form_key": null
         }
     ],
-    "has_identifier": false,
     "parameters": {
         "__record__": "Event"
     },

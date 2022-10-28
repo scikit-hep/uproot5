@@ -531,7 +531,7 @@ class AsString(AsContainer):
                     temp_header = "true"
                 else:
                     temp_header = "false"
-                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "has_identifier": false, "parameters": {{"__array__": "string" ,"uproot": {{"as": "vector", "header": {temp_header}}}}}, "form_key": "node{offsets_num}"}}'
+                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "parameters": {{"__array__": "string" ,"uproot": {{"as": "vector", "header": {temp_header}}}}}, "form_key": "node{offsets_num}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
 
                 form_keys = [
@@ -780,10 +780,10 @@ in file {}""".format(
                         else:
                             temp_bool = "false"
                         if len(self.inner_shape) > 0:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform), traverse=2)
                         else:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
@@ -861,10 +861,10 @@ in file {}""".format(
                         else:
                             temp_bool = "false"
                         if len(self.inner_shape) > 0:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform), traverse=2)
                         else:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
@@ -1190,7 +1190,7 @@ class AsVector(AsContainer):
                         temp_bool = "true"
                     else:
                         temp_bool = "false"
-                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
                     forth_obj.add_form(json.loads(temp_aform))
                 if not isinstance(self._values, numpy.dtype):
                     helper_obj.add_to_pre("0 do\n")
@@ -1356,7 +1356,7 @@ in file {}""".format(
                     temp_bool = "true"
                 else:
                     temp_bool = "false"
-                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"__array__": "set","uproot": {{"as": "set", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"__array__": "set","uproot": {{"as": "set", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             if not isinstance(self._keys, numpy.dtype):
                 helper_obj.add_to_pre("0 do\n")
