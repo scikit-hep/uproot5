@@ -868,10 +868,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         )
 
         awkward_form.append(
-            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], uproot._util.awkward_form(cls._dtype{len(dtypes)}, file, context),"
-        )
-        awkward_form.append(
-            f"            parameters={{'uproot': {{'as': 'TStreamerBasicPointer', 'count_name': {self.count_name!r}}}}},)"
+            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], uproot._util.awkward_form(cls._dtype{len(dtypes)}, file, context))"
         )
 
         member_names.append(self.name)
@@ -1077,12 +1074,12 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         if self.array_length == 0:
             if self.typename == "Double32_t":
                 awkward_form.append(
-                    f"        contents[{self.name!r}] = NumpyForm('float64', parameters={{'uproot': {{'as': 'Double32'}}}})"
+                    f"        contents[{self.name!r}] = NumpyForm('float64')"
                 )
 
             elif self.typename == "Float16_t":
                 awkward_form.append(
-                    f"        contents[{self.name!r}] = NumpyForm('float32', parameters={{'uproot': {{'as': 'Float16'}}}})"
+                    f"        contents[{self.name!r}] = NumpyForm('float32')"
                 )
 
             else:
@@ -1231,7 +1228,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
             f"        tmp = file.class_named({self.typename.rstrip('*')!r}, 'max').awkward_form(file, context)"
         )
         awkward_form.append(
-            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], tmp, parameters={{'uproot': {{'as': TStreamerLoop, 'count_name': {self.count_name!r}}}}})"
+            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], tmp)"
         )
 
         member_names.append(self.name)

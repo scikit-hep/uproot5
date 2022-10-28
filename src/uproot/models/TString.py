@@ -48,10 +48,7 @@ in file {}""".format(
                         "parameters": {"__array__": "char"},
                         "form_key": f"node{data_num}",
                     },
-                    "parameters": {
-                        "__array__": "string",
-                        "uproot": {"as": "TString", "header": False},
-                    },
+                    "parameters": {"__array__": "string"},
                     "form_key": f"node{offsets_num}",
                 }
                 forth_obj.add_form(temp_aform)

@@ -92,10 +92,7 @@ in file {}""".format(
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
-            parameters={
-                "__array__": "string",
-                "uproot": {"as": "TObjString", "header": True, "length_bytes": "1-5"},
-            },
+            parameters={"__array__": "string"},
         )
 
 

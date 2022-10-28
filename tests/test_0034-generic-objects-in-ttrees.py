@@ -328,6 +328,7 @@ def test_general_awkward_form():
             "tobject_header": True,
             "breadcrumbs": (),
         }
+
         assert json.loads(
             branch.interpretation.awkward_form(branch.file, context).to_json()
         ) == json.loads(
@@ -388,12 +389,7 @@ def test_general_awkward_form():
                 "form_key": null
             },
             "parameters": {
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": false,
-                    "length_bytes": "1-5"
-                }
+                "__array__": "string"
             },
             "form_key": null
         },
@@ -466,12 +462,7 @@ def test_general_awkward_form():
                 "form_key": null
             },
             "parameters": {
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": false,
-                    "length_bytes": "1-5"
-                }
+                "__array__": "string"
             },
             "form_key": null
         },
@@ -631,12 +622,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -649,12 +635,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -667,12 +648,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -685,12 +661,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -703,12 +674,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -721,12 +687,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -739,12 +700,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -757,12 +713,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "TStreamerBasicPointer",
-                    "count_name": "N"
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -778,12 +729,7 @@ def test_general_awkward_form():
                 "form_key": null
             },
             "parameters": {
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": true,
-                    "length_bytes": "1-5"
-                }
+                "__array__": "string"
             },
             "form_key": null
         },
@@ -797,12 +743,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -815,12 +756,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -833,12 +769,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -851,12 +782,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -869,12 +795,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -887,12 +808,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -905,12 +821,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -923,12 +834,7 @@ def test_general_awkward_form():
                 "parameters": {},
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -947,21 +853,11 @@ def test_general_awkward_form():
                     "form_key": null
                 },
                 "parameters": {
-                    "__array__": "string",
-                    "uproot": {
-                        "as": "string",
-                        "header": false,
-                        "length_bytes": "1-5"
-                    }
+                    "__array__": "string"
                 },
                 "form_key": null
             },
-            "parameters": {
-                "uproot": {
-                    "as": "vector",
-                    "header": true
-                }
-            },
+            "parameters": {},
             "form_key": null
         },
         {
@@ -977,12 +873,7 @@ def test_general_awkward_form():
                 "form_key": null
             },
             "parameters": {
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": false,
-                    "length_bytes": "1-5"
-                }
+                "__array__": "string"
             },
             "form_key": null
         }
