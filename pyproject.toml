@@ -9,7 +9,7 @@ name = "uproot"
 description = "ROOT I/O in pure Python and NumPy."
 readme = "README.md"
 license = "BSD-3-Clause"
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 authors = [
     { name = "Jim Pivarski", email = "pivarski@princeton.edu" },
 ]
@@ -25,11 +25,11 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.6",
     "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "awkward>=1.9.0rc1",
+    "awkward>=2.0.0rc1",
     "importlib-metadata;python_version<\"3.8\"",
     "numpy",
     "packaging",
@@ -49,15 +49,15 @@ dynamic = [
 
 [project.optional-dependencies]
 dev = [
-    "awkward>=1.9.0rc1",
+    "awkward>=2.0.0rc1",
     "boost_histogram>=0.13",
-    "dask-awkward>=2022.9a0;python_version >= \"3.8\"",
+    "dask-awkward>=2022.10a0;python_version >= \"3.8\"",
     "dask[array];python_version >= \"3.8\"",
     "hist>=1.2",
     "pandas",
 ]
 test = [
-    "awkward>=1.9.0rc1",
+    "awkward>=2.0.0rc1",
     "lz4",
     "pytest>=6",
     "pytest-timeout",
@@ -79,7 +79,10 @@ path = "src/uproot/version.py"
 minversion = "6.0"
 addopts = ["-ra", "--showlocals", "--strict-markers", "--strict-config"]
 xfail_strict = true
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "default:module 'sre_.*' is deprecated:DeprecationWarning"
+]
 log_cli_level = "info"
 testpaths = ["tests"]
 markers = [

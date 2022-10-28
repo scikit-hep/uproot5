@@ -106,7 +106,7 @@ def dask(
     if library.name == "pd":
         raise NotImplementedError()
 
-    real_options = dict(options)
+    real_options = options.copy()
     if "num_workers" not in real_options:
         real_options["num_workers"] = 1
     if "num_fallback_workers" not in real_options:
@@ -527,6 +527,9 @@ class _UprootRead:
             self.branches, entry_start=start, entry_stop=stop
         )
 
+    def project_columns(self, branches):
+        return _UprootRead(self.hasbranches, branches)
+
 
 class _UprootOpenAndRead:
     def __init__(
@@ -547,6 +550,11 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         return ttree.arrays(self.common_keys)
+
+    def project_columns(self, common_keys):
+        return _UprootOpenAndRead(
+            self.custom_classes, self.allow_missing, self.real_options, common_keys
+        )
 
 
 def _get_dak_array(

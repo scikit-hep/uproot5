@@ -243,7 +243,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         awkward_form = [
             "    @classmethod",
             "    def awkward_form(cls, file, context):",
-            "        from awkward._v2.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
+            "        from awkward.forms import NumpyForm, ListOffsetForm, RegularForm, RecordForm",
             "        if cls in context['breadcrumbs']:",
             "            raise uproot.interpretation.objects.CannotBeAwkward('classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded')",
             "        context['breadcrumbs'] = context['breadcrumbs'] + (cls,)",

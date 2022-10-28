@@ -151,7 +151,7 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
         return lbracket + rbracket
     elif done:
         return lbracket + "".join(left) + "".join(right) + rbracket
-    elif len(left) == 0 and len(right) == 0:
+    elif len(left) == len(right) == 0:
         return lbracket + f"{tostring(0)}, ..." + rbracket
     elif len(right) == 0:
         return lbracket + "".join(left) + "..." + rbracket
@@ -334,7 +334,7 @@ class AsDynamic(AsContainer):
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
-            return awkward._v2.forms.ListOffsetForm(
+            return awkward.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
                 parameters={"uproot": {"as": "dynamic"}},
@@ -459,9 +459,9 @@ class AsString(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
+            awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
             parameters={
                 "__array__": "string",
                 "uproot": {
@@ -702,8 +702,8 @@ class AsArray(AsContainer):
         awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
-            values_form = awkward._v2.forms.RegularForm(values_form, dim)
-        return awkward._v2.forms.ListOffsetForm(
+            values_form = awkward.forms.RegularForm(values_form, dim)
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             values_form,
             parameters={
@@ -934,7 +934,7 @@ class AsRVec(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "RVec", "header": self._header}},
@@ -1081,7 +1081,7 @@ class AsVector(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
             parameters={"uproot": {"as": "vector", "header": self._header}},
@@ -1285,7 +1285,7 @@ class AsSet(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._keys, file, context),
             parameters={
@@ -1476,9 +1476,9 @@ class AsMap(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.RecordForm(
+            awkward.forms.RecordForm(
                 (
                     uproot._util.awkward_form(self._keys, file, context),
                     uproot._util.awkward_form(self._values, file, context),
@@ -1504,14 +1504,15 @@ class AsMap(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            cursor.skip(6)
-            if helper_obj.is_forth():
-                temp_jump = cursor._index - start_cursor._index
-                helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
-        # raise NotImplementedError
+
         if is_memberwise:
+            if self._header and header:
+                cursor.skip(6)
+                if helper_obj.is_forth():
+                    temp_jump = cursor._index - start_cursor._index
+                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
             length = cursor.field(chunk, _stl_container_size, context)
             if helper_obj.is_forth():
                 key = forth_obj.get_keys(1)
@@ -1630,12 +1631,38 @@ class AsMap(AsContainer):
             return out
 
         else:
-            raise NotImplementedError(
-                """non-memberwise serialization of {}
+            if helper_obj.is_forth():
+                raise NotImplementedError(
+                    """non-memberwise serialization of {}
 in file {}""".format(
-                    type(self).__name__, selffile.file_path
+                        type(self).__name__, selffile.file_path
+                    )
                 )
-            )
+            length = cursor.field(chunk, _stl_container_size, context)
+            keys, values = [], []
+            for _ in range(length):
+                keys.append(
+                    _read_nested(
+                        self._keys, 1, chunk, cursor, context, file, selffile, parent
+                    )
+                )
+                values.append(
+                    _read_nested(
+                        self._values, 1, chunk, cursor, context, file, selffile, parent
+                    )
+                )
+            out = STLMap(numpy.concatenate(keys), numpy.concatenate(values))
+            if self._header and header:
+                uproot.deserialization.numbytes_check(
+                    chunk,
+                    start_cursor,
+                    cursor,
+                    num_bytes,
+                    self.typename,
+                    context,
+                    file.file_path,
+                )
+            return out
 
     def __eq__(self, other):
         if not isinstance(other, AsMap):

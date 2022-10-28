@@ -19,6 +19,7 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
+import contextlib
 import threading
 
 import numpy
@@ -226,7 +227,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         context["forth"].vm.resume()
         container = {}
         container = context["forth"].vm.outputs
-        output = awkward._v2.from_buffers(self._form, len(byte_offsets) - 1, container)
+        output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
 
         self.hook_after_basket_array(
             data=data,
@@ -339,7 +340,7 @@ loop
         ):
             assert isinstance(library, uproot.interpretation.library.Awkward)
             awkward = library.imported
-            output = awkward._v2.concatenate(trimmed, mergebool=False, highlevel=False)
+            output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
             output = numpy.concatenate(trimmed)
 
@@ -376,7 +377,7 @@ loop
         ``self``.
         """
         if self._branch is not None:
-            try:
+            with contextlib.suppress(CannotBeStrided):
                 return self._model.strided_interpretation(
                     self._branch.file,
                     header=False,
@@ -384,8 +385,6 @@ loop
                     breadcrumbs=(),
                     original=self._model,
                 )
-            except CannotBeStrided:
-                pass
 
         if isinstance(self._model, uproot.containers.AsString):
             header_bytes = 0
@@ -427,7 +426,7 @@ loop
                 )
 
             if self._branch is not None:
-                try:
+                with contextlib.suppress(CannotBeStrided):
                     content = self._model.values.strided_interpretation(
                         self._branch.file,
                         header=False,
@@ -450,8 +449,6 @@ loop
                         self._model.typename,
                         original=self._model,
                     )
-                except CannotBeStrided:
-                    pass
 
         return self
 
@@ -477,7 +474,7 @@ def _strided_awkward_form(awkward, classname, members, file, context):
             )
         else:
             contents[name] = uproot._util.awkward_form(member, file, context)
-    return awkward._v2.forms.RecordForm(
+    return awkward.forms.RecordForm(
         list(contents.values()),
         list(contents.keys()),
         parameters={"__record__": classname},
@@ -579,7 +576,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         cname = uproot.model.classname_decode(self._model.__name__)[0]
         form = _strided_awkward_form(awkward, cname, self._members, file, context)
         for dim in reversed(self.inner_shape):
-            form = awkward._v2.forms.RegularForm(form, dim)
+            form = awkward.forms.RegularForm(form, dim)
         return form
 
     @property

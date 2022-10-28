@@ -84,7 +84,7 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
         contents["fDatime"] = uproot._util.awkward_form(
             numpy.dtype(">u4"), file, context
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TDatime"},
