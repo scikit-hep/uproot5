@@ -57,7 +57,7 @@ in file {}""".format(
                 forth_obj.add_form(json.loads(temp_aform))
             forth_obj.add_node(
                 "TObjext",
-                helper_obj.get_attrs(),
+                forth_stash.get_attrs(),
                 "i64",
                 0,
                 {},

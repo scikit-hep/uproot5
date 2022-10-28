@@ -167,7 +167,7 @@ in file {}""".format(
                 )
             forth_obj.add_node(
                 f"node{form_keys[0]}",
-                helper_obj.get_attrs(),
+                forth_stash.get_attrs(),
                 "i64",
                 1,
                 None,

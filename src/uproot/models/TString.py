@@ -70,7 +70,7 @@ in file {}""".format(
             forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
-                helper_obj.get_attrs(),
+                forth_stash.get_attrs(),
                 "i64",
                 0,
                 None,
