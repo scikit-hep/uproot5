@@ -847,7 +847,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                 '            forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")'
             )
             read_members.append(
-                f'            content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
+                f'            content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
             )
             read_members.append(
                 f'            forth_stash.add_to_pre(f" var_{self.count_name} @ dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")'
@@ -866,10 +866,7 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
         )
 
         awkward_form.append(
-            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], uproot._util.awkward_form(cls._dtype{len(dtypes)}, file, context),"
-        )
-        awkward_form.append(
-            f"            parameters={{'uproot': {{'as': 'TStreamerBasicPointer', 'count_name': {self.count_name!r}}}}},)"
+            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], uproot._util.awkward_form(cls._dtype{len(dtypes)}, file, context))"
         )
 
         member_names.append(self.name)
@@ -969,7 +966,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                         f'            forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[-1][0])}\\n")'
                     )
                     read_members.append(
-                        f'            content[{fields[-1][0]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}'
+                        f'            content[{fields[-1][0]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[-1][0])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}'
                     )
                     if fields[-1][0] in COUNT_NAMES:
                         read_members.append(
@@ -1001,7 +998,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                         )
                         # read_members.append('           forth_stash.add_to_init(f"0 node{key}-offsets <- stack\\n")')
                         read_members.append(
-                            f'           content[{fields[0][i]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}'
+                            f'           content[{fields[0][i]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}'
                         )
                         read_members.append(
                             f'           forth_stash.add_to_pre(f"stream !{formats[0][i]}-> node{{key}}-data\\n")'
@@ -1043,7 +1040,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                 '            forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")'
             )
             read_members.append(
-                f'            content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "has_identifier": False, "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
+                f'            content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}'
             )
             read_members.append(
                 f'            forth_stash.add_to_pre(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")\n'
@@ -1070,12 +1067,12 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
         if self.array_length == 0:
             if self.typename == "Double32_t":
                 awkward_form.append(
-                    f"        contents[{self.name!r}] = NumpyForm('float64', parameters={{'uproot': {{'as': 'Double32'}}}})"
+                    f"        contents[{self.name!r}] = NumpyForm('float64')"
                 )
 
             elif self.typename == "Float16_t":
                 awkward_form.append(
-                    f"        contents[{self.name!r}] = NumpyForm('float32', parameters={{'uproot': {{'as': 'Float16'}}}})"
+                    f"        contents[{self.name!r}] = NumpyForm('float32')"
                 )
 
             else:
@@ -1225,7 +1222,7 @@ class Model_TStreamerLoop(Model_TStreamerElement):
             f"        tmp = file.class_named({self.typename.rstrip('*')!r}, 'max').awkward_form(file, context)"
         )
         awkward_form.append(
-            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], tmp, parameters={{'uproot': {{'as': TStreamerLoop, 'count_name': {self.count_name!r}}}}})"
+            f"        contents[{self.name!r}] = ListOffsetForm(context['index_format'], tmp)"
         )
 
         member_names.append(self.name)

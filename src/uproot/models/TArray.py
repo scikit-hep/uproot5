@@ -80,7 +80,6 @@ in file {}""".format(
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls.dtype, file, context),
-            parameters={"uproot": {"as": "TArray"}},
         )
 
     writable = True

@@ -337,7 +337,6 @@ class AsDynamic(AsContainer):
             return awkward.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
-                parameters={"uproot": {"as": "dynamic"}},
             )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -462,14 +461,7 @@ class AsString(AsContainer):
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
-            parameters={
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": self._header,
-                    "length_bytes": self._length_bytes,
-                },
-            },
+            parameters={"__array__": "string"},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -524,11 +516,7 @@ class AsString(AsContainer):
 
         if forth_stash is not None:
             if forth_obj.should_add_form():
-                if self._header:
-                    temp_header = "true"
-                else:
-                    temp_header = "false"
-                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "has_identifier": false, "parameters": {{"__array__": "string" ,"uproot": {{"as": "vector", "header": {temp_header}}}}}, "form_key": "node{offsets_num}"}}'
+                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{offsets_num}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
 
                 form_keys = [
@@ -703,17 +691,7 @@ class AsArray(AsContainer):
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
             values_form = awkward.forms.RegularForm(values_form, dim)
-        return awkward.forms.ListOffsetForm(
-            context["index_format"],
-            values_form,
-            parameters={
-                "uproot": {
-                    "as": "array",
-                    "header": self._header,
-                    "speedbump": self._speedbump,
-                }
-            },
-        )
+        return awkward.forms.ListOffsetForm(context["index_format"], values_form)
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's 01,02,23,24,25,26,27,28,30,51,52
@@ -769,15 +747,11 @@ in file {}""".format(
                         )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
-                        if self._header:
-                            temp_bool = "true"
-                        else:
-                            temp_bool = "false"
                         if len(self.inner_shape) > 0:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform), traverse=2)
                         else:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
@@ -847,15 +821,11 @@ in file {}""".format(
                         )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
-                        if self._header:
-                            temp_bool = "true"
-                        else:
-                            temp_bool = "false"
                         if len(self.inner_shape) > 0:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform), traverse=2)
                         else:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
@@ -937,7 +907,6 @@ class AsRVec(AsContainer):
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
-            parameters={"uproot": {"as": "RVec", "header": self._header}},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -1084,7 +1053,6 @@ class AsVector(AsContainer):
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
-            parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -1172,7 +1140,7 @@ class AsVector(AsContainer):
                 # forth_stash.add_to_post("loop\n")
                 if forth_obj.should_add_form():
                     forth_obj.add_form_key(form_key)
-                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "form_key": "node{key}"}}'
+                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{key}"}}'
                     forth_obj.add_form(json.loads(temp_aform))
                 if not isinstance(self._values, numpy.dtype):
                     forth_stash.add_to_pre("0 do\n")
@@ -1282,10 +1250,7 @@ class AsSet(AsContainer):
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._keys, file, context),
-            parameters={
-                "__array__": "set",
-                "uproot": {"as": "set", "header": self._header},
-            },
+            parameters={"__array__": "set"},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
@@ -1331,11 +1296,7 @@ in file {}""".format(
             # forth_stash.add_to_post("loop\n")
             if forth_obj.should_add_form():
                 forth_obj.add_form_key(form_key)
-                if self._header:
-                    temp_bool = "true"
-                else:
-                    temp_bool = "false"
-                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"__array__": "set","uproot": {{"as": "set", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"__array__": "set"}}, "form_key": "node{key}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             if not isinstance(self._keys, numpy.dtype):
                 forth_stash.add_to_pre("0 do\n")
@@ -1479,10 +1440,7 @@ class AsMap(AsContainer):
                 ),
                 None,
             ),
-            parameters={
-                "__array__": "sorted_map",
-                "uproot": {"as": "map", "header": self._header},
-            },
+            parameters={"__array__": "sorted_map"},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
