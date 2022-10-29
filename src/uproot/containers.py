@@ -1439,6 +1439,7 @@ class AsMap(AsContainer):
                     uproot._util.awkward_form(self._values, file, context),
                 ),
                 None,
+                parameters={"__array__": "sorted_map"}
             ),
             parameters={"__array__": "sorted_map"},
         )
