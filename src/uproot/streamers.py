@@ -282,7 +282,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             [
                 "        if forth_stash is not None:",
                 "            if forth_obj.should_add_form():",
-                "                forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {}}, len(content))",
+                f"                forth_obj.add_form({{'class': 'RecordArray', 'contents': content, 'parameters': {{'record': {self.name!r}}}}}, len(content))",
                 "            temp = forth_obj.add_node('dynamic', forth_stash.get_attrs(), \"i64\", 0, None)",
             ]
         )
