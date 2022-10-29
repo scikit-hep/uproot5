@@ -5,7 +5,6 @@ This module defines models for ``TStreamerInfo`` and its elements, as well as
 routines for generating Python code for new classes from streamer data.
 """
 
-
 import re
 import struct
 import sys
@@ -871,7 +870,6 @@ class Model_TStreamerBasicPointer(Model_TStreamerElement):
                     "                forth_obj.add_form_key(form_key2)",
                 ]
             )
-
             read_member_n.extend(
                 [
                     "            if context.get('speedbump', True):",
