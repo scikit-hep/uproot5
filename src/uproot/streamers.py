@@ -5,7 +5,6 @@ This module defines models for ``TStreamerInfo`` and its elements, as well as
 routines for generating Python code for new classes from streamer data.
 """
 
-
 import re
 import struct
 import sys
