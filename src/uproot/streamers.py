@@ -279,7 +279,7 @@ class Model_TStreamerInfo(uproot.model.Model):
                 class_flags,
             )
         read_members.append(
-            "        if forth_stash is not None:\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {'record': 'TVector2'}}, len(content))\n            temp = forth_obj.add_node('dynamic', forth_stash.get_attrs(), \"i64\", 0, None)\n"
+            "        if forth_stash is not None:\n            if forth_obj.should_add_form():\n                    forth_obj.add_form({'class': 'RecordArray', 'contents': content, 'parameters': {}}, len(content))\n            temp = forth_obj.add_node('dynamic', forth_stash.get_attrs(), \"i64\", 0, None)\n"
         )
         if len(read_members) == 1:
             # untested as of PR #629
