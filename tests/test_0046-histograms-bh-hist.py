@@ -2850,11 +2850,15 @@ def test_hist_categorical():
         [numpy.arange(10, 20), ["these", "are", "labels"]],
         [hist.axis.IntCategory, hist.axis.StrCategory],
     ):
-        cat_axis = category_type(labels, label=axis_title)
+        cat_axis = category_type(
+            labels, label=axis_title, name="This name will be overwritten"
+        )
         h = hist.Hist(cat_axis)
         th1d = uproot.writing.identify.to_writable(h)  # convert to uproot object (TH1D)
         assert len(th1d.axes) == 1
         xaxis = th1d.axes[0]
+        assert xaxis.member("fTitle") == axis_title
+        assert xaxis.member("fName") == "xaxis"
         assert [str(s) for s in xaxis.member("fLabels")] == [str(x) for x in labels]
         # labels are stored as a THashList of TObjStrings and their 'fUniqueID' is set to the bin index
         assert [s.member("@fUniqueID") for s in xaxis.member("fLabels")] == list(
