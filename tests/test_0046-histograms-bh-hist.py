@@ -2840,3 +2840,23 @@ def test_hist_2d():
     hist = pytest.importorskip("hist")
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpxpy"].to_hist()
+
+
+def test_hist_categorical():
+    # https://github.com/scikit-hep/uproot5/issues/672
+    hist = pytest.importorskip("hist")
+    axis_title = "Category"
+    for labels, category_type in zip(
+        [numpy.arange(10, 20), ["these", "are", "labels"]],
+        [hist.axis.IntCategory, hist.axis.StrCategory],
+    ):
+        cat_axis = category_type(labels, label=axis_title)
+        h = hist.Hist(cat_axis)
+        th1d = uproot.writing.identify.to_writable(h)  # convert to uproot object (TH1D)
+        assert len(th1d.axes) == 1
+        xaxis = th1d.axes[0]
+        assert [str(s) for s in xaxis.member("fLabels")] == [str(x) for x in labels]
+        # labels are stored as a THashList of TObjStrings and their 'fUniqueID' is set to the bin index
+        assert [s.member("@fUniqueID") for s in xaxis.member("fLabels")] == list(
+            numpy.arange(len(labels)) + 1
+        )
