@@ -29,7 +29,7 @@ def test_regular_1d(tmp_path):
         assert h1.values(flow=True).tolist() == pytest.approx(
             [0, 0, 0, 0, 1, 0, 0, 5, 0, 6, 0, 3]
         )
-        assert h1.axis().member("fName") == "wow"
+        assert h1.axis().member("fName") == "xaxis"
         assert h1.axis().member("fTitle") == "wee"
         assert h1.axis().member("fXmin") == -5
         assert h1.axis().member("fXmax") == 5
@@ -61,7 +61,7 @@ def test_variable_1d(tmp_path):
         h1 = fin["h1"]
         assert h1.member("fEntries") == 15
         assert h1.values(flow=True).tolist() == pytest.approx([0, 0, 1, 0, 5, 6, 3])
-        assert h1.axis().member("fName") == "wow"
+        assert h1.axis().member("fName") == "xaxis"
         assert h1.axis().member("fTitle") == "wee"
         assert h1.axis().member("fXmin") == -5
         assert h1.axis().member("fXmax") == 10
@@ -97,7 +97,7 @@ def test_regular_2d(tmp_path):
     with uproot.open(newfile) as fin:
         h1 = fin["h1"]
         assert h1.member("fEntries") == 15
-        assert h1.axis(0).member("fName") == "wow"
+        assert h1.axis(0).member("fName") == "xaxis"
         assert h1.axis(0).member("fTitle") == "wee"
         assert h1.axis(0).member("fXmin") == -5
         assert h1.axis(0).member("fXmax") == 5
@@ -139,7 +139,7 @@ def test_regular_3d(tmp_path):
     with uproot.open(newfile) as fin:
         h1 = fin["h1"]
         assert h1.member("fEntries") == 15
-        assert h1.axis(0).member("fName") == "wow"
+        assert h1.axis(0).member("fName") == "xaxis"
         assert h1.axis(0).member("fTitle") == "wee"
         assert h1.axis(0).member("fXmin") == -5
         assert h1.axis(0).member("fXmax") == 5
