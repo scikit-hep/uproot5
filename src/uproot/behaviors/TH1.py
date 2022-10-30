@@ -220,7 +220,7 @@ class Histogram:
             metadata = boost_metadata
 
         return uproot.extras.hist().Hist(
-            self.to_boost(metadata=boost_metadata, axis_metadata=boost_axis_metadata)
+            self.to_boost(metadata=metadata, axis_metadata=axis_metadata)
         )
 
     # Support direct conversion to histograms, such as bh.Histogram(self) or hist.Hist(self)
