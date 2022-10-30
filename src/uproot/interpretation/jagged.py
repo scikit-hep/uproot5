@@ -120,7 +120,6 @@ class AsJagged(uproot.interpretation.Interpretation):
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._content, file, context),
-            parameters={"uproot": {"as": "jagged", "header_bytes": self._header_bytes}},
         )
 
     @property

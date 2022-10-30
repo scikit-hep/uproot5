@@ -166,14 +166,7 @@ class AsStrings(uproot.interpretation.Interpretation):
         return awkward.forms.ListOffsetForm(
             context["index_format"],
             awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
-            parameters={
-                "__array__": "string",
-                "uproot": {
-                    "as": "strings",
-                    "header_bytes": self._header_bytes,
-                    "length_bytes": self._length_bytes,
-                },
-            },
+            parameters={"__array__": "string"},
         )
 
     @property
