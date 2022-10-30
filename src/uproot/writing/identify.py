@@ -320,8 +320,7 @@ def to_writable(obj):
         # convert all axes in one list comprehension
         axes = [
             to_TAxis(
-                fName=getattr(axis, "name", default_name)
-                or default_name,  # if empty string, it will still use default
+                fName=default_name,
                 fTitle=getattr(axis, "label", getattr(obj, "name", "")),
                 fNbins=len(axis),
                 fXmin=axis.edges[0],
