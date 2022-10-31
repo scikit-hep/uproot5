@@ -54,10 +54,6 @@ jobs:
           mamba install xrootd
           conda list
 
-      - name: "debug pipeline"
-        run: |
-          cat tests/test_0422-hist-integration.py
-
       - name: "Pip install the package"
         run: python -m pip install .[test,dev]
 
