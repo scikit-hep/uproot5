@@ -229,3 +229,35 @@ def test_issue_722(tmp_path):
         h3 = fin2["h"]
 
     assert len(h3.member("fSumw2")) == 0
+
+
+def test_hist_weights_from_root(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h = ROOT.TH1D("h", "h", 20, 0.0, 5.0)
+    for _ in range(1000):
+        # fill with random values and random weights
+        h.Fill(5.0 * np.random.random(), np.random.random())
+
+    assert len(h.GetSumw2()) == 22  # 20 bins + 2, should not be 0 since we have weights
+
+    fout = ROOT.TFile(newfile, "RECREATE")
+    h.Write()
+    fout.Close()
+
+    with uproot.open(newfile) as fin:
+        h1 = fin["h"]
+
+    assert len(h1.member("fSumw2")) == 22
+
+    h2 = h1.to_hist()
+    assert str(h2.storage_type) == "<class 'boost_histogram.storage.Weight'>"
+
+    # write and read again
+    with uproot.recreate(newfile) as fout2:
+        fout2["h"] = h2
+
+    with uproot.open(newfile) as fin2:
+        h3 = fin2["h"]
+
+    assert len(h3.member("fSumw2")) == 22
