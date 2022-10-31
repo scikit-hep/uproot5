@@ -195,21 +195,38 @@ def test_issue_0659(tmp_path):
     f.Close()
 
 
-def test_hist_weights_from_root(tmp_path):
+def test_issue_722(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
-    h = ROOT.TH1D("h", "h", 20, 0.0, 5.0)
-    for _ in range(1000):
-        # fill with random values and random weights
-        h.Fill(5.0 * np.random.random(), np.random.random())
+    h = ROOT.TH1D("h", "h", 10, 0.0, 1.0)
+    h.FillRandom("gaus", 10000)
 
-    assert len(h.GetSumw2()) == 22  # 20 bins + 2, should not be 0 since we have weights
+    assert len(h.GetSumw2()) == 0
 
     fout = ROOT.TFile(newfile, "RECREATE")
     h.Write()
     fout.Close()
 
+    # open with uproot
     with uproot.open(newfile) as fin:
         h1 = fin["h"]
 
-    assert len(h1.member("fSumw2")) == 22
+    assert len(h1.axes) == 1
+    assert h1.axis(0).edges().tolist() == pytest.approx(
+        [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    )
+    assert len(h1.member("fSumw2")) == 0
+
+    # convert to hist
+    h2 = h1.to_hist()
+    assert str(h2.storage_type) == "<class 'boost_histogram.storage.Double'>"
+
+    # write and read again
+    with uproot.recreate(newfile) as fout2:
+        fout2["h"] = h2
+
+    with uproot.open(newfile) as fin2:
+        h3 = fin2["h"]
+
+    # ERROR
+    assert len(h3.member("fSumw2")) == 0, "this should be 0, but it's not!"
