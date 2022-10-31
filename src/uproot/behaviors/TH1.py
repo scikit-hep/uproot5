@@ -209,7 +209,7 @@ class Histogram:
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
         # TODO: this is a temporary fix
-        if sumw2 is not None and len(sumw2) == self.member("fNcells") and False:
+        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
             storage = boost_histogram.storage.Weight()
@@ -246,7 +246,7 @@ class Histogram:
 
         view = out.view(flow=True)
         # TODO: this is a temporary fix
-        if sumw2 is not None and len(sumw2) == len(values) and False:
+        if sumw2 is not None and len(sumw2) == len(values):
             view.value = values
             view.variance = sumw2
         else:
