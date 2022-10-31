@@ -228,5 +228,4 @@ def test_issue_722(tmp_path):
     with uproot.open(newfile) as fin2:
         h3 = fin2["h"]
 
-    # ERROR
-    assert len(h3.member("fSumw2")) == 0, "this should be 0, but it's not!"
+    assert len(h3.member("fSumw2")) == 0
