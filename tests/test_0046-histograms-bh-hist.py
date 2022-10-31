@@ -2845,13 +2845,12 @@ def test_hist_2d():
 def test_hist_categorical():
     # https://github.com/scikit-hep/uproot5/issues/672
     hist = pytest.importorskip("hist")
-    axis_title = "Category"
     for labels, category_type in zip(
         [numpy.arange(10, 20), ["these", "are", "labels"]],
         [hist.axis.IntCategory, hist.axis.StrCategory],
     ):
         cat_axis = category_type(
-            labels, label=axis_title, name="This name will be overwritten"
+            labels, label="Category", name="This name will be overwritten"
         )
         h_hist = hist.Hist(cat_axis)
 
@@ -2859,7 +2858,7 @@ def test_hist_categorical():
         th1d = uproot.writing.identify.to_writable(h_hist)
         assert len(th1d.axes) == 1
         th1d_xaxis = th1d.axes[0]
-        assert th1d_xaxis.member("fTitle") == axis_title
+        assert th1d_xaxis.member("fTitle") == cat_axis.label
         assert th1d_xaxis.member("fName") == "xaxis"
         assert [str(s) for s in th1d_xaxis.member("fLabels")] == [
             str(x) for x in labels
