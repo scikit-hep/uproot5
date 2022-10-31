@@ -1687,10 +1687,6 @@ class HasBranches(Mapping):
     def __getitem__(self, where):
         original_where = where
 
-        got = self._lookup.get(original_where)
-        if got is not None:
-            return got
-
         if uproot._util.isint(where):
             return self.branches[where]
         elif uproot._util.isstr(where):
@@ -1704,24 +1700,28 @@ class HasBranches(Mapping):
         else:
             recursive = True
 
+        got = self._lookup.get(where)
+        if got is not None:
+            return got
+
         if "/" in where:
-            where = "/".join([x for x in where.split("/") if x != ""])
-            for k, v in self.iteritems(recursive=True, full_paths=True):
-                if where == k:
-                    self._lookup[original_where] = v
-                    return v
-            else:
+            this = self
+            try:
+                for piece in where.split("/"):
+                    if piece != "":
+                        this = this[piece]
+            except uproot.KeyInFileError:
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
                     file_path=self._file.file_path,
                     object_path=self.object_path,
-                )
+                ) from None
+            return this
 
         elif recursive:
             got = _get_recursive(self, where)
             if got is not None:
-                self._lookup[original_where] = got
                 return got
             else:
                 raise uproot.KeyInFileError(
@@ -1732,17 +1732,12 @@ class HasBranches(Mapping):
                 )
 
         else:
-            for branch in self.branches:
-                if branch.name == where:
-                    self._lookup[original_where] = branch
-                    return branch
-            else:
-                raise uproot.KeyInFileError(
-                    original_where,
-                    keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
-                )
+            raise uproot.KeyInFileError(
+                original_where,
+                keys=self.keys(recursive=recursive),
+                file_path=self._file.file_path,
+                object_path=self.object_path,
+            )
 
     def __iter__(self):
         yield from self.branches
@@ -2499,6 +2494,11 @@ in file {}""".format(
         fWriteBasket = self.member("fWriteBasket")
 
         self._lookup = {}
+        for branch in self.member("fBranches"):
+            name = branch.member("fName")
+            if name not in self._lookup:
+                self._lookup[name] = branch
+
         self._interpretation = None
         self._typename = None
         self._streamer = None
@@ -2670,9 +2670,10 @@ def _keys_deep(hasbranches):
 
 
 def _get_recursive(hasbranches, where):
+    got = hasbranches._lookup.get(where)
+    if got is not None:
+        return got
     for branch in hasbranches.branches:
-        if branch.name == where:
-            return branch
         got = _get_recursive(branch, where)
         if got is not None:
             return got
