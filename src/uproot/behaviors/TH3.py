@@ -149,7 +149,8 @@ class TH3(uproot.behaviors.TH1.Histogram):
             values = values[:, :, 1:]
 
         view = out.view(flow=True)
-        if sumw2 is not None and len(sumw2) == len(values):
+        # TODO: this is a temporary fix
+        if sumw2 is not None and len(sumw2) == len(values) and False:
             view.value = values
             view.variance = sumw2
         else:
