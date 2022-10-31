@@ -261,7 +261,11 @@ def to_writable(obj):
         try:
             # using flow=True if supported
             data = obj.values(flow=True)
-            fSumw2 = obj.variances(flow=True)
+            fSumw2 = (
+                obj.variances(flow=True)
+                if isinstance(obj.storage_type, boost_histogram.storage.Weight)
+                else None
+            )
 
             # and flow=True is different from flow=False (obj actually has flow bins)
             data_noflow = obj.values(flow=False)
