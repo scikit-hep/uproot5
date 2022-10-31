@@ -39,7 +39,7 @@ def test_regular_1d(tmp_path):
     assert h2.GetEntries() == 15
     assert h2.GetBinContent(9) == 6
     assert h2.GetBinContent(11) == 3
-    assert h2.GetXaxis().GetName() == "wow"
+    assert h2.GetXaxis().GetName() == "xaxis"
     assert h2.GetXaxis().GetTitle() == "wee"
     assert h2.GetBinLowEdge(1) == pytest.approx(-5)
     assert h2.GetBinWidth(1) == pytest.approx(1)
@@ -71,7 +71,7 @@ def test_variable_1d(tmp_path):
     assert h2.GetEntries() == 15
     assert h2.GetBinContent(5) == 6
     assert h2.GetBinContent(6) == 3
-    assert h2.GetXaxis().GetName() == "wow"
+    assert h2.GetXaxis().GetName() == "xaxis"
     assert h2.GetXaxis().GetTitle() == "wee"
     assert h2.GetBinLowEdge(1) == pytest.approx(-5)
     assert h2.GetBinWidth(1) == pytest.approx(2)
