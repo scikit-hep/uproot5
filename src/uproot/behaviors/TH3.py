@@ -117,7 +117,8 @@ class TH3(uproot.behaviors.TH1.Histogram):
 
         sumw2 = self.member("fSumw2", none_if_missing=True)
 
-        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+        # TODO: this is a temporary fix
+        if sumw2 is not None and len(sumw2) == self.member("fNcells") and False:
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.transpose(numpy.reshape(sumw2, values.shape[::-1]))
             storage = boost_histogram.storage.Weight()
