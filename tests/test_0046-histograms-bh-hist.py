@@ -2853,14 +2853,26 @@ def test_hist_categorical():
         cat_axis = category_type(
             labels, label=axis_title, name="This name will be overwritten"
         )
-        h = hist.Hist(cat_axis)
-        th1d = uproot.writing.identify.to_writable(h)  # convert to uproot object (TH1D)
+        h_hist = hist.Hist(cat_axis)
+
+        # convert to uproot object (TH1D)
+        th1d = uproot.writing.identify.to_writable(h_hist)
         assert len(th1d.axes) == 1
-        xaxis = th1d.axes[0]
-        assert xaxis.member("fTitle") == axis_title
-        assert xaxis.member("fName") == "xaxis"
-        assert [str(s) for s in xaxis.member("fLabels")] == [str(x) for x in labels]
+        th1d_xaxis = th1d.axes[0]
+        assert th1d_xaxis.member("fTitle") == axis_title
+        assert th1d_xaxis.member("fName") == "xaxis"
+        assert [str(s) for s in th1d_xaxis.member("fLabels")] == [
+            str(x) for x in labels
+        ]
         # labels are stored as a THashList of TObjStrings and their 'fUniqueID' is set to the bin index
-        assert [s.member("@fUniqueID") for s in xaxis.member("fLabels")] == list(
+        assert [s.member("@fUniqueID") for s in th1d_xaxis.member("fLabels")] == list(
             numpy.arange(len(labels)) + 1
         )
+
+        # convert back to hist
+        h_hist_back = th1d.to_hist()
+        assert len(h_hist_back.axes) == 1
+        h_hist_back_axis = h_hist_back.axes[0]
+        assert list(h_hist_back_axis) == list(cat_axis)  # compare values
+        assert h_hist_back_axis.name == "xaxis"
+        assert h_hist_back_axis.label == cat_axis.label
