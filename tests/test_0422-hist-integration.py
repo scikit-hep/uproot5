@@ -193,3 +193,23 @@ def test_issue_0659(tmp_path):
     assert h_opened2.GetBinContent(0) == 0.0
     assert h2_opened2.GetBinContent(0) == 0.0
     f.Close()
+
+
+def test_hist_weights_from_root(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h = ROOT.TH1D("h", "h", 20, 0.0, 5.0)
+    for _ in range(1000):
+        # fill with random values and random weights
+        h.Fill(5.0 * np.random.random(), np.random.random())
+
+    assert len(h.GetSumw2()) == 22  # 20 bins + 2, should not be 0 since we have weights
+
+    fout = ROOT.TFile(newfile, "RECREATE")
+    h.Write()
+    fout.Close()
+
+    with uproot.open(newfile) as fin:
+        h1 = fin["h"]
+
+    assert len(h1.member("fSumw2")) == 22
