@@ -8,6 +8,7 @@ from uproot.behaviors.TBranch import (
     HasBranches,
     TBranch,
     _regularize_entries_start_stop,
+    _regularize_step_size,
 )
 
 
@@ -648,11 +649,14 @@ def _get_dak_array(
         entry_start, entry_stop = _regularize_entries_start_stop(
             ttree.num_entries, None, None
         )
-        entry_step = 0
-        if uproot._util.isint(step_size):
-            entry_step = step_size
-        else:
-            entry_step = ttree.num_entries_for(step_size, expressions=common_keys)
+
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = ttree[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        entry_step = _regularize_step_size(
+            ttree, step_size, entry_start, entry_stop, branchid_interpretation
+        )
 
         def foreach(start):
             stop = min(start + entry_step, entry_stop)  # noqa: B023
