@@ -263,7 +263,7 @@ def to_writable(obj):
             data = obj.values(flow=True)
             fSumw2 = (
                 obj.variances(flow=True)
-                if isinstance(obj.storage_type, boost_histogram.storage.Weight)
+                if obj.storage_type == boost_histogram.storage.Weight
                 else None
             )
 
@@ -292,7 +292,7 @@ def to_writable(obj):
             # 'variances' appears to always be defined regardless of whether the histogram uses weights or not
             tmp = (
                 obj.variances()
-                if isinstance(obj.storage_type, boost_histogram.storage.Weight)
+                if obj.storage_type == boost_histogram.storage.Weight
                 else None
             )
             fSumw2 = None
