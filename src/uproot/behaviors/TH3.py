@@ -134,11 +134,17 @@ class TH3(uproot.behaviors.TH1.Histogram):
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
 
-        if isinstance(xaxis, boost_histogram.axis.StrCategory):
+        if isinstance(
+            xaxis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+        ):
             values = values[1:, :, :]
-        if isinstance(yaxis, boost_histogram.axis.StrCategory):
+        if isinstance(
+            yaxis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+        ):
             values = values[:, 1:, :]
-        if isinstance(zaxis, boost_histogram.axis.StrCategory):
+        if isinstance(
+            zaxis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+        ):
             values = values[:, :, 1:]
 
         view = out.view(flow=True)
