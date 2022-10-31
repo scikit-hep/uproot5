@@ -285,19 +285,24 @@ def to_writable(obj):
                 data = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=d)
                 data[1:-1, 1:-1, 1:-1] = tmp
 
-            tmp = obj.variances()
-            s = tmp.shape
-            if tmp is None:
-                fSumw2 = None
-            elif ndim == 1:
-                fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
-                fSumw2[1:-1] = tmp
-            elif ndim == 2:
-                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
-                fSumw2[1:-1, 1:-1] = tmp
-            elif ndim == 3:
-                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
-                fSumw2[1:-1, 1:-1, 1:-1] = tmp
+            # 'variances' appears to always be defined regardless of whether the histogram uses weights or not
+            tmp = (
+                obj.variances()
+                if isinstance(obj.storage_type, boost_histogram.storage.Weight)
+                else None
+            )
+            fSumw2 = None
+            if tmp is not None:
+                s = tmp.shape
+                if ndim == 1:
+                    fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
+                    fSumw2[1:-1] = tmp
+                elif ndim == 2:
+                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
+                    fSumw2[1:-1, 1:-1] = tmp
+                elif ndim == 3:
+                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
+                    fSumw2[1:-1, 1:-1, 1:-1] = tmp
 
         else:
             # continuing to use flow=True, because it is supported
