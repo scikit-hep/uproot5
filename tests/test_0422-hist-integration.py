@@ -211,29 +211,3 @@ def test_issue_0659(tmp_path):
     assert h2_opened2.GetBinContent(0) == 0.0
     assert h3_opened2.GetBinContent(0) == 0.0
     f.Close()
-
-
-def test_categorical(tmp_path):
-    newfile = os.path.join(tmp_path, "newfile.root")
-
-    axis_values = [2, 5, 10]
-    axis_label = "Category"
-    with uproot.recreate(newfile) as f1:
-        h1 = hist.Hist(
-            hist.axis.IntCategory(axis_values, label=axis_label, name="test")
-        )
-        f1["h"] = h1
-
-    with uproot.open(newfile) as f2:
-        h2 = f2["h"]
-
-        axis = h2.axis()
-        assert axis.member("fName") == "xaxis"
-        assert axis.member("fTitle") == axis_label
-
-        h2hist = h2.to_hist()
-        assert len(h2hist.axes) == 1
-        xaxis = h2hist.axes[0]
-        assert list(xaxis) == axis_values
-        assert xaxis.name == "xaxis"
-        assert xaxis.label == axis_label
