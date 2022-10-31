@@ -135,18 +135,9 @@ class TH3(uproot.behaviors.TH1.Histogram):
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
 
-        if isinstance(
-            xaxis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
-        ):
-            values = values[1:, :, :]
-        if isinstance(
-            yaxis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
-        ):
-            values = values[:, 1:, :]
-        if isinstance(
-            zaxis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
-        ):
-            values = values[:, :, 1:]
+        values = uproot.behaviors.TH1._slice_values_if_categorical_axis(
+            values, [xaxis, yaxis, zaxis]
+        )
 
         view = out.view(flow=True)
         # TODO: this is a temporary fix

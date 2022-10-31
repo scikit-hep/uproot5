@@ -47,6 +47,27 @@ def _boost_axis(axis, metadata):
     return out
 
 
+def _slice_values_if_categorical_axis(values, axes):
+    # returns updated values if any axis is categorical
+    assert len(axes) <= 3, "Only 1D, 2D, and 3D histograms are supported"
+    assert len(values.shape) == len(
+        axes
+    ), "Number of dimensions must match number of axes"
+    boost_histogram = uproot.extras.boost_histogram()
+    for i, axis in enumerate(axes):
+        if not isinstance(
+            axis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+        ):
+            continue
+        if i == 0:
+            values = values[1:]
+        elif i == 1:
+            values = values[:, 1:]
+        elif i == 2:
+            values = values[:, :, 1:]
+    return values
+
+
 class Histogram:
     """
     Abstract class for histograms.
@@ -337,10 +358,7 @@ class TH1(Histogram):
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
 
-        if isinstance(
-            xaxis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
-        ):
-            values = values[1:]
+        values = _slice_values_if_categorical_axis(values, [xaxis])
 
         view = out.view(flow=True)
         # TODO: this is a temporary fix
