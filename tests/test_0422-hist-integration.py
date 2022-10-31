@@ -159,6 +159,7 @@ def test_regular_3d(tmp_path):
 
 
 def test_issue_0659(tmp_path):
+    # https://github.com/scikit-hep/uproot5/issues/659
     newfile = os.path.join(tmp_path, "newfile.root")
 
     cat_axis = hist.axis.IntCategory([10, 11, 12], label="Category")
