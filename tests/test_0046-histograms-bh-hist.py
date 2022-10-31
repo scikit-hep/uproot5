@@ -2842,9 +2842,11 @@ def test_hist_2d():
         f["hpxpy"].to_hist()
 
 
-def test_hist_categorical():
+def test_hist_boost_categorical():
     # https://github.com/scikit-hep/uproot5/issues/672
     hist = pytest.importorskip("hist")
+    boost = pytest.importorskip("boost")
+
     for labels, category_type in zip(
         [numpy.arange(10, 20), ["these", "are", "labels"]],
         [hist.axis.IntCategory, hist.axis.StrCategory],
@@ -2875,3 +2877,11 @@ def test_hist_categorical():
         assert list(h_hist_back_axis) == list(cat_axis)  # compare values
         assert h_hist_back_axis.name == "xaxis"
         assert h_hist_back_axis.label == cat_axis.label
+
+        # convert to boost (redundant?)
+        h_boost = th1d.to_boost()
+        assert len(h_boost.axes) == 1
+        h_boost_axis = h_boost.axes[0]
+        assert list(h_boost_axis) == list(cat_axis)  # compare values
+        assert h_boost_axis.name == "xaxis"
+        assert h_boost_axis.label == cat_axis.label
