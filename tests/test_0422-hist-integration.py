@@ -190,6 +190,6 @@ def test_issue_0659(tmp_path):
     f = ROOT.TFile(newfile)
     h_opened2 = f.Get("h")
     h2_opened2 = f.Get("h2")
-    h_opened2.GetBinContent(0) == 0.0
-    h2_opened2.GetBinContent(0) == 0.0
+    assert h_opened2.GetBinContent(0) == 0.0
+    assert h2_opened2.GetBinContent(0) == 0.0
     f.Close()
