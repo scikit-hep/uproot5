@@ -570,6 +570,7 @@ def _get_dak_array(
     real_options=None,
 ):
     dask_awkward = uproot.extras.dask_awkward()
+    awkward = uproot.extras.awkward()
 
     hasbranches = []
     common_keys = None
@@ -660,7 +661,15 @@ def _get_dak_array(
         for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
-    empty_arr = hasbranches[0].arrays(common_keys, entry_start=0, entry_stop=0)
+    form = awkward.forms.RecordForm(
+        [
+            hasbranches[0][key].interpretation.awkward_form(hasbranches[0].file)
+            for key in common_keys
+        ],
+        common_keys,
+    )
+    empty_arr = _form_to_empty_array(awkward, form)
+
     meta = dask_awkward.core.typetracer_array(empty_arr)
 
     if len(partition_args) == 0:
@@ -670,6 +679,12 @@ def _get_dak_array(
         partition_args,
         label="from-uproot",
         meta=meta,
+    )
+
+
+def _form_to_empty_array(awkward, form):
+    return awkward.from_buffers(
+        form, 0, {"": b"\x00\x00\x00\x00\x00\x00\x00\x00"}, buffer_key=""
     )
 
 
