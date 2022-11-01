@@ -110,7 +110,7 @@ class Histogram:
         True if the histogram has weights (``fSumw2``); False otherwise.
         """
         sumw2 = self.member("fSumw2")
-        return len(sumw2) > 0 and len(sumw2) == self.member("fNcells")
+        return sumw2 is not None and len(sumw2) == self.member("fNcells")
 
     @property
     def kind(self):
@@ -200,9 +200,8 @@ class Histogram:
 
         values = self.values(flow=True)
 
-        # 'fSumw2' will never be missing, if weights are not defined it is an array of length 0
         sumw2 = None
-        if self.weighted:
+        if self.weighted:   # ensures self.member("fSumw2") exists
             sumw2 = self.member("fSumw2")
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
@@ -232,18 +231,10 @@ class Histogram:
             ):
                 continue
             # TODO: simplify this code (save multidim slice into a variable?)
-            if i == 0:
-                values = values[1:]
-                if sumw2 is not None:
-                    sumw2 = sumw2[1:]
-            elif i == 1:
-                values = values[:, 1:]
-                if sumw2 is not None:
-                    sumw2 = sumw2[:, 1:]
-            elif i == 2:
-                values = values[:, :, 1:]
-                if sumw2 is not None:
-                    sumw2 = sumw2[:, :, 1:]
+            ix = (numpy.s_[:],)*i + (numpy.s_[1:],)
+            values = values[ix]
+            if sumw2 is not None:
+                sumw2 = sumw2[ix]
 
         view = out.view(flow=True)
         if sumw2 is not None:
