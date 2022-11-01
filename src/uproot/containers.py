@@ -1441,7 +1441,6 @@ class AsMap(AsContainer):
                 None,
                 parameters={"__array__": "sorted_map"},
             ),
-            parameters={"__array__": "sorted_map"},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
