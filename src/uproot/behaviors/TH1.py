@@ -287,10 +287,6 @@ class TH1(Histogram):
             raise ValueError("axis must be 0 (-1) or 'x' for a TH1")
 
     @property
-    def weighted(self):
-        return super().weighted
-
-    @property
     def kind(self):
         return "COUNT"
 
@@ -349,6 +345,3 @@ class TH1(Histogram):
             return values, (xedges,)
         else:
             return values, xedges
-
-    def to_boost(self, metadata=None, axis_metadata=None):
-        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)

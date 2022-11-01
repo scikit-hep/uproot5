@@ -32,10 +32,6 @@ class TH2(uproot.behaviors.TH1.Histogram):
             raise ValueError("axis must be 0 (-2), 1 (-1) or 'x', 'y' for a TH2")
 
     @property
-    def weighted(self):
-        return super().weighted
-
-    @property
     def kind(self):
         return "COUNT"
 
@@ -98,6 +94,3 @@ class TH2(uproot.behaviors.TH1.Histogram):
             return values, (xedges, yedges)
         else:
             return values, xedges, yedges
-
-    def to_boost(self, metadata=None, axis_metadata=None):
-        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)

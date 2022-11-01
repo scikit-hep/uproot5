@@ -36,10 +36,6 @@ class TH3(uproot.behaviors.TH1.Histogram):
             )
 
     @property
-    def weighted(self):
-        return super().weighted
-
-    @property
     def kind(self):
         return "COUNT"
 
@@ -107,6 +103,3 @@ class TH3(uproot.behaviors.TH1.Histogram):
             return values, (xedges, yedges, zedges)
         else:
             return values, xedges, yedges, zedges
-
-    def to_boost(self, metadata=None, axis_metadata=None):
-        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)
