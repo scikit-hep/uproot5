@@ -316,3 +316,187 @@ def test_hist_weights_labels_from_root(tmp_path):
         str(h_noweights_nolabels2.storage_type)
         == "<class 'boost_histogram.storage.Double'>"
     )
+
+
+def test_hist_weights_2D(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h_2D_noweights_nolabels = ROOT.TH2D(
+        "h_2D_noweights_nolabels", "2D", 20, 0.0, 5.0, 10, -10.0, 10.0
+    )
+    h_2D_weights_nolabels = ROOT.TH2D(
+        "h_2D_weights_nolabels", "2D", 20, 0.0, 5.0, 10, -10.0, 10.0
+    )
+    h_2D_noweights_labels = ROOT.TH2D(
+        "h_2D_noweights_labels", "2D", 20, 0.0, 5.0, 10, -10.0, 10.0
+    )
+    h_2D_weights_labels = ROOT.TH2D(
+        "h_2D_weights_labels", "2D", 20, 0.0, 5.0, 10, -10.0, 10.0
+    )
+
+    for _ in range(1000):
+        # fill with random values and random weights
+        h_2D_noweights_nolabels.Fill(
+            5.0 * np.random.random(), 10.0 * np.random.random()
+        )
+        h_2D_weights_nolabels.Fill(
+            5.0 * np.random.random(), 10.0 * np.random.random(), np.random.random()
+        )
+        h_2D_noweights_labels.Fill(5.0 * np.random.random(), 10.0 * np.random.random())
+        h_2D_weights_labels.Fill(
+            5.0 * np.random.random(), 10.0 * np.random.random(), np.random.random()
+        )
+
+    assert (
+        h_2D_noweights_nolabels.GetNbinsX()
+        == h_2D_weights_nolabels.GetNbinsX()
+        == h_2D_noweights_labels.GetNbinsX()
+        == h_2D_weights_labels.GetNbinsX()
+        == 20
+    )
+    assert (
+        h_2D_noweights_nolabels.GetNbinsY()
+        == h_2D_weights_nolabels.GetNbinsY()
+        == h_2D_noweights_labels.GetNbinsY()
+        == h_2D_weights_labels.GetNbinsY()
+        == 10
+    )
+    for i in range(h_2D_weights_labels.GetNbinsX()):
+        h_2D_weights_labels.GetXaxis().SetBinLabel(i + 1, f"label_{i}")
+        h_2D_noweights_labels.GetXaxis().SetBinLabel(i + 1, f"label_{i}")
+    for i in range(h_2D_noweights_labels.GetNbinsY()):
+        # add y labels to this one
+        h_2D_noweights_labels.GetYaxis().SetBinLabel(i + 1, f"label_{i}")
+
+    assert (
+        len(h_2D_weights_nolabels.GetSumw2())
+        == len(h_2D_weights_labels.GetSumw2())
+        == 264
+    )
+    assert (
+        len(h_2D_noweights_nolabels.GetSumw2())
+        == len(h_2D_noweights_labels.GetSumw2())
+        == 0
+    )
+
+    assert (
+        h_2D_weights_labels.GetXaxis().GetLabels().GetSize()
+        == h_2D_noweights_labels.GetXaxis().GetLabels().GetSize()
+        == 20
+    )
+    assert h_2D_noweights_labels.GetYaxis().GetLabels().GetSize() == 10
+
+    fout = ROOT.TFile(newfile, "RECREATE")
+    h_2D_noweights_nolabels.Write()
+    h_2D_weights_nolabels.Write()
+    h_2D_noweights_labels.Write()
+    h_2D_weights_labels.Write()
+    fout.Close()
+
+    with uproot.open(newfile) as fin:
+        h_2D_noweights_nolabels = fin["h_2D_noweights_nolabels"]
+        h_2D_weights_nolabels = fin["h_2D_weights_nolabels"]
+        h_2D_noweights_labels = fin["h_2D_noweights_labels"]
+        h_2D_weights_labels = fin["h_2D_weights_labels"]
+
+    h_2D_noweights_nolabels.to_hist()
+    h_2D_weights_nolabels.to_hist()
+    h_2D_noweights_labels.to_hist()
+    h_2D_weights_labels.to_hist()
+
+
+def test_hist_weights_3D(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h_3D_noweights_nolabels = ROOT.TH3D(
+        "h_3D_noweights_nolabels", "3D", 20, 0.0, 5.0, 10, -10.0, 10.0, 5, -5.0, 5.0
+    )
+    h_3D_weights_nolabels = ROOT.TH3D(
+        "h_3D_weights_nolabels", "3D", 20, 0.0, 5.0, 10, -10.0, 10.0, 5, -5.0, 5.0
+    )
+    h_3D_noweights_labels = ROOT.TH3D(
+        "h_3D_noweights_labels", "3D", 20, 0.0, 5.0, 10, -10.0, 10.0, 5, -5.0, 5.0
+    )
+    h_3D_weights_labels = ROOT.TH3D(
+        "h_3D_weights_labels", "3D", 20, 0.0, 5.0, 10, -10.0, 10.0, 5, -5.0, 5.0
+    )
+
+    for _ in range(1000):
+        # fill with random values and random weights
+        h_3D_noweights_nolabels.Fill(
+            5.0 * np.random.random(), 10.0 * np.random.random(), 2 * np.random.random()
+        )
+        h_3D_weights_nolabels.Fill(
+            5.0 * np.random.random(),
+            10.0 * np.random.random(),
+            2 * np.random.random(),
+            np.random.random(),
+        )
+        h_3D_noweights_labels.Fill(
+            5.0 * np.random.random(), 10.0 * np.random.random(), 2 * np.random.random()
+        )
+        h_3D_weights_labels.Fill(
+            5.0 * np.random.random(),
+            10.0 * np.random.random(),
+            2 * np.random.random(),
+            np.random.random(),
+        )
+
+    assert (
+        h_3D_noweights_nolabels.GetNbinsX()
+        == h_3D_weights_nolabels.GetNbinsX()
+        == h_3D_noweights_labels.GetNbinsX()
+        == h_3D_weights_labels.GetNbinsX()
+        == 20
+    )
+    assert (
+        h_3D_noweights_nolabels.GetNbinsY()
+        == h_3D_weights_nolabels.GetNbinsY()
+        == h_3D_noweights_labels.GetNbinsY()
+        == h_3D_weights_labels.GetNbinsY()
+        == 10
+    )
+    assert (
+        h_3D_noweights_nolabels.GetNbinsZ()
+        == h_3D_weights_nolabels.GetNbinsZ()
+        == h_3D_noweights_labels.GetNbinsZ()
+        == h_3D_weights_labels.GetNbinsZ()
+        == 5
+    )
+    for i in range(h_3D_noweights_labels.GetNbinsX()):
+        h_3D_weights_labels.GetXaxis().SetBinLabel(i + 1, f"label_{i}")
+    for i in range(h_3D_noweights_labels.GetNbinsZ()):
+        # add z labels to this one
+        h_3D_noweights_labels.GetZaxis().SetBinLabel(i + 1, f"label_{i}")
+
+    assert (
+        len(h_3D_weights_nolabels.GetSumw2())
+        == len(h_3D_weights_labels.GetSumw2())
+        == 1848
+    )
+    assert (
+        len(h_3D_noweights_nolabels.GetSumw2())
+        == len(h_3D_noweights_labels.GetSumw2())
+        == 0
+    )
+
+    assert h_3D_weights_labels.GetXaxis().GetLabels().GetSize() == 20
+    assert h_3D_noweights_labels.GetZaxis().GetLabels().GetSize() == 5
+
+    fout = ROOT.TFile(newfile, "RECREATE")
+    h_3D_noweights_nolabels.Write()
+    h_3D_weights_nolabels.Write()
+    h_3D_noweights_labels.Write()
+    h_3D_weights_labels.Write()
+    fout.Close()
+
+    with uproot.open(newfile) as fin:
+        h_3D_noweights_nolabels = fin["h_3D_noweights_nolabels"]
+        h_3D_weights_nolabels = fin["h_3D_weights_nolabels"]
+        h_3D_noweights_labels = fin["h_3D_noweights_labels"]
+        h_3D_weights_labels = fin["h_3D_weights_labels"]
+
+    h_3D_noweights_nolabels.to_hist()
+    h_3D_weights_nolabels.to_hist()
+    h_3D_noweights_labels.to_hist()
+    h_3D_weights_labels.to_hist()
