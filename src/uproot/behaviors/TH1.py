@@ -293,8 +293,8 @@ class TH1(Histogram):
 
     @property
     def weighted(self):
-        sumw2 = self.member("fSumw2", none_if_missing=True)
-        return sumw2 is not None and len(sumw2) == self.member("fNcells")
+        sumw2 = self.member("fSumw2")
+        return len(sumw2) > 0 and len(sumw2) == self.member("fNcells")
 
     @property
     def kind(self):
