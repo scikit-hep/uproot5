@@ -33,7 +33,7 @@ class TH2(uproot.behaviors.TH1.Histogram):
 
     @property
     def weighted(self):
-        return super().weighted()
+        return super().weighted
 
     @property
     def kind(self):
