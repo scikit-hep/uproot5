@@ -150,6 +150,7 @@ def test_boost_2():
         # assert f["cutflow"].to_boost().axes[0].title == ""
 
 
+@pytest.mark.skip(reason="test file not yet available")
 def test_issue_0722():
     boost_histogram = pytest.importorskip("boost_histogram")
 
