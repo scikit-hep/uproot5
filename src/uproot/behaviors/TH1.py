@@ -257,7 +257,7 @@ class Histogram:
 
         return out
 
-    def to_hist(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
+    def to_hist(self, metadata=None, axis_metadata=None):
         """
         Args:
             metadata (dict of str \u2192 str): Metadata to collect (keys) and
@@ -268,7 +268,7 @@ class Histogram:
         Converts the histogram into a ``hist`` object.
         """
         return uproot.extras.hist().Hist(
-            self.to_boost(metadata=boost_metadata, axis_metadata=boost_axis_metadata)
+            self.to_boost(metadata=metadata, axis_metadata=axis_metadata)
         )
 
     # Support direct conversion to histograms, such as bh.Histogram(self) or hist.Hist(self)
