@@ -109,7 +109,8 @@ class Histogram:
         """
         True if the histogram has weights (``fSumw2``); False otherwise.
         """
-        raise NotImplementedError(repr(self))
+        sumw2 = self.member("fSumw2")
+        return len(sumw2) > 0 and len(sumw2) == self.member("fNcells")
 
     @property
     def kind(self):
@@ -293,8 +294,7 @@ class TH1(Histogram):
 
     @property
     def weighted(self):
-        sumw2 = self.member("fSumw2")
-        return len(sumw2) > 0 and len(sumw2) == self.member("fNcells")
+        return super().weighted()
 
     @property
     def kind(self):

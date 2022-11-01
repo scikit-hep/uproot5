@@ -37,8 +37,7 @@ class TH3(uproot.behaviors.TH1.Histogram):
 
     @property
     def weighted(self):
-        sumw2 = self.member("fSumw2")
-        return len(sumw2) > 0 and len(sumw2) == self.member("fNcells")
+        return super().weighted()
 
     @property
     def kind(self):
