@@ -289,7 +289,6 @@ def to_writable(obj):
                 data = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=d)
                 data[1:-1, 1:-1, 1:-1] = tmp
 
-            # 'variances' appears to always be defined regardless of whether the histogram uses weights or not
             tmp = (
                 obj.variances()
                 if obj.storage_type == boost_histogram.storage.Weight
