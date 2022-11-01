@@ -261,3 +261,58 @@ def test_hist_weights_from_root(tmp_path):
         h3 = fin2["h"]
 
     assert len(h3.member("fSumw2")) == 22
+
+
+def test_hist_weights_labels_from_root(tmp_path):
+    newfile = os.path.join(tmp_path, "newfile.root")
+
+    h_weights = ROOT.TH1D(
+        "h_weights", "histogram with weights with labels", 12, 0.0, 5.0
+    )
+    h_noweights = ROOT.TH1D(
+        "h_noweights", "histogram without weights with labels", 12, 0.0, 5.0
+    )
+    h_noweights_nolabels = ROOT.TH1D(
+        "h_noweights_nolabels", "histogram without weights", 12, 0.0, 5.0
+    )
+    for _ in range(1000):
+        # fill with random values and random weights
+        h_weights.Fill(5.0 * np.random.random(), np.random.random())
+        h_noweights.Fill(5.0 * np.random.random())
+        h_noweights_nolabels.Fill(5.0 * np.random.random())
+
+    assert h_weights.GetNbinsX() == h_noweights.GetNbinsX()
+    for i in range(h_weights.GetNbinsX()):
+        h_weights.GetXaxis().SetBinLabel(i + 1, f"label_{i}")
+        h_noweights.GetXaxis().SetBinLabel(i + 1, f"label_{i}")
+
+    assert len(h_weights.GetSumw2()) == 14  # 12 bins + 2
+    assert len(h_noweights.GetSumw2()) == 0
+    assert len(h_noweights_nolabels.GetSumw2()) == 0
+    assert h_weights.GetXaxis().GetLabels().GetSize() == 12
+    assert h_noweights.GetXaxis().GetLabels().GetSize() == 12
+
+    fout = ROOT.TFile(newfile, "RECREATE")
+    h_weights.Write()
+    h_noweights.Write()
+    h_noweights_nolabels.Write()
+    fout.Close()
+
+    with uproot.open(newfile) as fin:
+        h_weights1 = fin["h_weights"]
+        h_noweights1 = fin["h_noweights"]
+        h_noweights_nolabels1 = fin["h_noweights_nolabels"]
+
+    assert len(h_weights1.member("fSumw2")) == 14
+    assert len(h_noweights1.member("fSumw2")) == 0
+    assert len(h_noweights_nolabels1.member("fSumw2")) == 0
+
+    h_weights2 = h_weights1.to_hist()
+    h_noweights2 = h_noweights1.to_hist()
+    h_noweights_nolabels2 = h_noweights_nolabels1.to_hist()
+    assert str(h_weights2.storage_type) == "<class 'boost_histogram.storage.Weight'>"
+    assert str(h_noweights2.storage_type) == "<class 'boost_histogram.storage.Double'>"
+    assert (
+        str(h_noweights_nolabels2.storage_type)
+        == "<class 'boost_histogram.storage.Double'>"
+    )
