@@ -201,7 +201,7 @@ class Histogram:
         values = self.values(flow=True)
 
         sumw2 = None
-        if self.weighted:   # ensures self.member("fSumw2") exists
+        if self.weighted:  # ensures self.member("fSumw2") exists
             sumw2 = self.member("fSumw2")
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
@@ -231,7 +231,7 @@ class Histogram:
             ):
                 continue
             # TODO: simplify this code (save multidim slice into a variable?)
-            ix = (numpy.s_[:],)*i + (numpy.s_[1:],)
+            ix = (numpy.s_[:],) * i + (numpy.s_[1:],)
             values = values[ix]
             if sumw2 is not None:
                 sumw2 = sumw2[ix]
