@@ -230,11 +230,10 @@ class Histogram:
                 (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory),
             ):
                 continue
-            # TODO: simplify this code (save multidim slice into a variable?)
-            ix = (numpy.s_[:],) * i + (numpy.s_[1:],)
-            values = values[ix]
+            slicer = (slice(None),) * i + (slice(1, None),)
+            values = values[slicer]
             if sumw2 is not None:
-                sumw2 = sumw2[ix]
+                sumw2 = sumw2[slicer]
 
         view = out.view(flow=True)
         if sumw2 is not None:
