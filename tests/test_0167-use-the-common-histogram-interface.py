@@ -148,3 +148,10 @@ def test_boost_2():
         # assert f["cutflow"].to_boost().title == "dijethad"
         # assert f["cutflow"].to_boost().axes[0].name == "xaxis"
         # assert f["cutflow"].to_boost().axes[0].title == ""
+
+
+def test_issue_0722():
+    boost_histogram = pytest.importorskip("boost_histogram")
+
+    with uproot.open(skhep_testdata.data_path("uproot-issue722.root")) as f:
+        f["hist"].to_boost()
