@@ -297,13 +297,15 @@ class TH1(Histogram):
 
         values = self.values(flow=True)
 
-        sumw2 = self.member("fSumw2", none_if_missing=True)
-
-        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+        sumw2 = self.member(
+            "fSumw2"
+        )  # It will never be missing, if weights are not defined it is an array of length 0
+        if len(sumw2) > 0 and len(sumw2) == self.member("fNcells"):
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
             storage = boost_histogram.storage.Weight()
         else:
+            sumw2 = None
             if issubclass(values.dtype.type, numpy.integer):
                 storage = boost_histogram.storage.Int64()
             else:
@@ -316,9 +318,14 @@ class TH1(Histogram):
 
         if isinstance(xaxis, boost_histogram.axis.StrCategory):
             values = values[1:]
+            if sumw2 is not None:
+                sumw2 = sumw2[1:]
 
         view = out.view(flow=True)
-        if sumw2 is not None and len(sumw2) == len(values):
+        if sumw2 is not None:
+            assert (
+                sumw2.shape == values.shape
+            ), "weights (fSumw2) and values should have same shape"
             view.value = values
             view.variance = sumw2
         else:
