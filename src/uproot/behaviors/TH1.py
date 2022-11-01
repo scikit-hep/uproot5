@@ -110,7 +110,11 @@ class Histogram:
         True if the histogram has weights (``fSumw2``); False otherwise.
         """
         sumw2 = self.member("fSumw2")
-        return sumw2 is not None and len(sumw2) == self.member("fNcells")
+        return (
+            sumw2 is not None
+            and len(sumw2) > 0
+            and len(sumw2) == self.member("fNcells")
+        )
 
     @property
     def kind(self):
