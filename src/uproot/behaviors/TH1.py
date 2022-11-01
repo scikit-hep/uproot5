@@ -180,7 +180,7 @@ class Histogram:
         """
         return self.values(flow=flow)
 
-    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
+    def to_boost(self, metadata=None, axis_metadata=None):
         """
         Args:
             metadata (dict of str \u2192 str): Metadata to collect (keys) and
@@ -190,7 +190,71 @@ class Histogram:
 
         Converts the histogram into a ``boost-histogram`` object.
         """
-        raise NotImplementedError(repr(self))
+        if axis_metadata is None:
+            axis_metadata = boost_axis_metadata
+        if metadata is None:
+            metadata = boost_metadata
+
+        boost_histogram = uproot.extras.boost_histogram()
+
+        values = self.values(flow=True)
+
+        # 'fSumw2' will never be missing, if weights are not defined it is an array of length 0
+        sumw2 = self.member("fSumw2")
+        if len(sumw2) > 0 and len(sumw2) == self.member("fNcells"):
+            sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
+            sumw2 = numpy.reshape(sumw2, values.shape)
+            storage = boost_histogram.storage.Weight()
+        else:
+            sumw2 = None
+            if issubclass(values.dtype.type, numpy.integer):
+                storage = boost_histogram.storage.Int64()
+            else:
+                storage = boost_histogram.storage.Double()
+
+        axes = [
+            _boost_axis(self.member(name), axis_metadata)
+            for name in ["fXaxis", "fYaxis", "fZaxis"][0 : len(self.axes)]
+        ]
+        out = boost_histogram.Histogram(*axes, storage=storage)
+        for k, v in metadata.items():
+            setattr(out, k, self.member(v))
+
+        assert len(axes) <= 3, "Only 1D, 2D, and 3D histograms are supported"
+        assert len(values.shape) == len(
+            axes
+        ), "Number of dimensions must match number of axes"
+        for i, axis in enumerate(axes):
+            if not isinstance(
+                axis,
+                (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory),
+            ):
+                continue
+            # TODO: simplify this code (save multidim slice into a variable?)
+            if i == 0:
+                values = values[1:]
+                if sumw2 is not None:
+                    sumw2 = sumw2[1:]
+            elif i == 1:
+                values = values[:, 1:]
+                if sumw2 is not None:
+                    sumw2 = sumw2[:, 1:]
+            elif i == 2:
+                values = values[:, :, 1:]
+                if sumw2 is not None:
+                    sumw2 = sumw2[:, :, 1:]
+
+        view = out.view(flow=True)
+        if sumw2 is not None:
+            assert (
+                sumw2.shape == values.shape
+            ), "weights (fSumw2) and values should have same shape"
+            view.value = values
+            view.variance = sumw2
+        else:
+            view[...] = values
+
+        return out
 
     def to_hist(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
         """
@@ -292,43 +356,5 @@ class TH1(Histogram):
         else:
             return values, xedges
 
-    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        boost_histogram = uproot.extras.boost_histogram()
-
-        values = self.values(flow=True)
-
-        sumw2 = self.member(
-            "fSumw2"
-        )  # It will never be missing, if weights are not defined it is an array of length 0
-        if len(sumw2) > 0 and len(sumw2) == self.member("fNcells"):
-            sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-            sumw2 = numpy.reshape(sumw2, values.shape)
-            storage = boost_histogram.storage.Weight()
-        else:
-            sumw2 = None
-            if issubclass(values.dtype.type, numpy.integer):
-                storage = boost_histogram.storage.Int64()
-            else:
-                storage = boost_histogram.storage.Double()
-
-        xaxis = _boost_axis(self.member("fXaxis"), axis_metadata)
-        out = boost_histogram.Histogram(xaxis, storage=storage)
-        for k, v in metadata.items():
-            setattr(out, k, self.member(v))
-
-        if isinstance(xaxis, boost_histogram.axis.StrCategory):
-            values = values[1:]
-            if sumw2 is not None:
-                sumw2 = sumw2[1:]
-
-        view = out.view(flow=True)
-        if sumw2 is not None:
-            assert (
-                sumw2.shape == values.shape
-            ), "weights (fSumw2) and values should have same shape"
-            view.value = values
-            view.variance = sumw2
-        else:
-            view[...] = values
-
-        return out
+    def to_boost(self, metadata=None, axis_metadata=None):
+        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)

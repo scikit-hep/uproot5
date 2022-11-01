@@ -9,7 +9,6 @@ This module defines the behaviors of ``TH3`` and its subclasses (not including
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
 
 
 class TH3(uproot.behaviors.TH1.Histogram):
@@ -110,42 +109,5 @@ class TH3(uproot.behaviors.TH1.Histogram):
         else:
             return values, xedges, yedges, zedges
 
-    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        boost_histogram = uproot.extras.boost_histogram()
-
-        values = self.values(flow=True)
-
-        sumw2 = self.member("fSumw2", none_if_missing=True)
-
-        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
-            sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-            sumw2 = numpy.transpose(numpy.reshape(sumw2, values.shape[::-1]))
-            storage = boost_histogram.storage.Weight()
-        else:
-            if issubclass(values.dtype.type, numpy.integer):
-                storage = boost_histogram.storage.Int64()
-            else:
-                storage = boost_histogram.storage.Double()
-
-        xaxis = uproot.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
-        yaxis = uproot.behaviors.TH1._boost_axis(self.member("fYaxis"), axis_metadata)
-        zaxis = uproot.behaviors.TH1._boost_axis(self.member("fZaxis"), axis_metadata)
-        out = boost_histogram.Histogram(xaxis, yaxis, zaxis, storage=storage)
-        for k, v in metadata.items():
-            setattr(out, k, self.member(v))
-
-        if isinstance(xaxis, boost_histogram.axis.StrCategory):
-            values = values[1:, :, :]
-        if isinstance(yaxis, boost_histogram.axis.StrCategory):
-            values = values[:, 1:, :]
-        if isinstance(zaxis, boost_histogram.axis.StrCategory):
-            values = values[:, :, 1:]
-
-        view = out.view(flow=True)
-        if sumw2 is not None and len(sumw2) == len(values):
-            view.value = values
-            view.variance = sumw2
-        else:
-            view[...] = values
-
-        return out
+    def to_boost(self, metadata=None, axis_metadata=None):
+        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)
