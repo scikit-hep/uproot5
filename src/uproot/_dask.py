@@ -432,6 +432,21 @@ def _get_dask_array(
 
     dask_dict = {}
 
+    start_stop_step_map = {}
+    for i, ttree in enumerate(hasbranches):
+        entry_start, entry_stop = _regularize_entries_start_stop(
+            ttree.num_entries, None, None
+        )
+
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = ttree[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        entry_step = _regularize_step_size(
+            ttree, step_size, entry_start, entry_stop, branchid_interpretation
+        )
+        start_stop_step_map[i] = (entry_start, entry_stop, entry_step)
+
     for key in common_keys:
         dt = hasbranches[0][key].interpretation.numpy_dtype
         if dt.subdtype is None:
@@ -441,15 +456,8 @@ def _get_dask_array(
 
         chunks = []
         chunk_args = []
-        for i, ttree in enumerate(hasbranches):
-            entry_start, entry_stop = _regularize_entries_start_stop(
-                ttree.tree.num_entries, None, None
-            )
-            entry_step = 0
-            if uproot._util.isint(step_size):
-                entry_step = step_size
-            else:
-                entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
+        for i, _ttree in enumerate(hasbranches):
+            entry_start, entry_stop, entry_step = start_stop_step_map[i]
 
             def foreach(start):
                 stop = min(start + entry_step, entry_stop)  # noqa: B023
