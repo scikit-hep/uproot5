@@ -201,13 +201,13 @@ class Histogram:
         values = self.values(flow=True)
 
         # 'fSumw2' will never be missing, if weights are not defined it is an array of length 0
-        sumw2 = self.member("fSumw2")
-        if len(sumw2) > 0 and len(sumw2) == self.member("fNcells"):
+        sumw2 = None
+        if self.weighted:
+            sumw2 = self.member("fSumw2")
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
             storage = boost_histogram.storage.Weight()
         else:
-            sumw2 = None
             if issubclass(values.dtype.type, numpy.integer):
                 storage = boost_histogram.storage.Int64()
             else:
