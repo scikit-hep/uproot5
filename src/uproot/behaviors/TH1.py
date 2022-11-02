@@ -116,7 +116,12 @@ class Histogram:
         """
         True if the histogram has weights (``fSumw2``); False otherwise.
         """
-        raise NotImplementedError(repr(self))
+        sumw2 = self.member("fSumw2")
+        return (
+            sumw2 is not None
+            and len(sumw2) > 0
+            and len(sumw2) == self.member("fNcells")
+        )
 
     @property
     def kind(self):
@@ -206,10 +211,9 @@ class Histogram:
 
         values = self.values(flow=True)
 
-        sumw2 = self.member("fSumw2", none_if_missing=True)
-
-        # TODO: this is a temporary fix
-        if sumw2 is not None and len(sumw2) == self.member("fNcells"):
+        sumw2 = None
+        if self.weighted:  # ensures self.member("fSumw2") exists
+            sumw2 = self.member("fSumw2")
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
             sumw2 = numpy.reshape(sumw2, values.shape)
             storage = boost_histogram.storage.Weight()
@@ -237,16 +241,16 @@ class Histogram:
                 (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory),
             ):
                 continue
-            if i == 0:
-                values = values[1:]
-            elif i == 1:
-                values = values[:, 1:]
-            elif i == 2:
-                values = values[:, :, 1:]
+            slicer = (slice(None),) * i + (slice(1, None),)
+            values = values[slicer]
+            if sumw2 is not None:
+                sumw2 = sumw2[slicer]
 
         view = out.view(flow=True)
-        # TODO: this is a temporary fix
-        if sumw2 is not None and len(sumw2) == len(values):
+        if sumw2 is not None:
+            assert (
+                sumw2.shape == values.shape
+            ), "weights (fSumw2) and values should have same shape"
             view.value = values
             view.variance = sumw2
         else:
@@ -293,11 +297,6 @@ class TH1(Histogram):
             return self.member("fXaxis")
         else:
             raise ValueError("axis must be 0 (-1) or 'x' for a TH1")
-
-    @property
-    def weighted(self):
-        sumw2 = self.member("fSumw2", none_if_missing=True)
-        return sumw2 is not None and len(sumw2) == self.member("fNcells")
 
     @property
     def kind(self):
@@ -358,6 +357,3 @@ class TH1(Histogram):
             return values, (xedges,)
         else:
             return values, xedges
-
-    def to_boost(self, metadata=None, axis_metadata=None):
-        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)

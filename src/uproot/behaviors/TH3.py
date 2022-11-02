@@ -9,7 +9,6 @@ This module defines the behaviors of ``TH3`` and its subclasses (not including
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
 
 
 class TH3(uproot.behaviors.TH1.Histogram):
@@ -35,11 +34,6 @@ class TH3(uproot.behaviors.TH1.Histogram):
             raise ValueError(
                 "axis must be 0 (-3), 1 (-2), 2 (-1) or 'x', 'y', 'z' for a TH3"
             )
-
-    @property
-    def weighted(self):
-        sumw2 = self.member("fSumw2", none_if_missing=True)
-        return sumw2 is not None and len(sumw2) == self.member("fNcells")
 
     @property
     def kind(self):
@@ -109,6 +103,3 @@ class TH3(uproot.behaviors.TH1.Histogram):
             return values, (xedges, yedges, zedges)
         else:
             return values, xedges, yedges, zedges
-
-    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)

@@ -9,7 +9,6 @@ This module defines the behaviors of ``TH2`` and its subclasses (not including
 import numpy
 
 import uproot
-from uproot.behaviors.TH1 import boost_axis_metadata, boost_metadata
 
 
 class TH2(uproot.behaviors.TH1.Histogram):
@@ -31,11 +30,6 @@ class TH2(uproot.behaviors.TH1.Histogram):
             return self.member("fYaxis")
         else:
             raise ValueError("axis must be 0 (-2), 1 (-1) or 'x', 'y' for a TH2")
-
-    @property
-    def weighted(self):
-        sumw2 = self.member("fSumw2", none_if_missing=True)
-        return sumw2 is not None and len(sumw2) == self.member("fNcells")
 
     @property
     def kind(self):
@@ -100,6 +94,3 @@ class TH2(uproot.behaviors.TH1.Histogram):
             return values, (xedges, yedges)
         else:
             return values, xedges, yedges
-
-    def to_boost(self, metadata=boost_metadata, axis_metadata=boost_axis_metadata):
-        return super().to_boost(metadata=metadata, axis_metadata=axis_metadata)
