@@ -26,8 +26,6 @@ def test_write_compare_tlist(tmp_path):
         f1["thashlist"] = thashlist
 
     with uproot.open(filename) as f2:
-        assert f2["tlist"] != f2["thashlist"]
-
         tlist_out = []
         uproot.serialization._serialize_object_any(tlist_out, f2["tlist"], "test")
 
