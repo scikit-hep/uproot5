@@ -328,12 +328,13 @@ def to_writable(obj):
         # convert all axes in one list comprehension
         axes = [
             to_TAxis(
-                fName=getattr(axis, "name", default_name),
+                fName=default_name,
                 fTitle=getattr(axis, "label", getattr(obj, "name", "")),
                 fNbins=len(axis),
                 fXmin=axis.edges[0],
                 fXmax=axis.edges[-1],
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
+                fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
             for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
         ]
@@ -667,6 +668,34 @@ def _fXbins_maybe_regular(axis, boost_histogram):
             return axis.edges
 
 
+def _fLabels_maybe_categorical(axis, boost_histogram):
+    if boost_histogram is None:
+        return None
+
+    if not isinstance(
+        axis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+    ):
+        return None
+
+    labels = [str(label) for label in axis]
+    if isinstance(axis, boost_histogram.axis.IntCategory):
+        # Check labels are valid integers (this may be redundant)
+        for label in labels:
+            try:
+                int(label)
+            except ValueError:
+                raise ValueError(
+                    f"IntCategory labels must be valid integers. Found {label!r} on axis {axis!r}"
+                ) from None
+
+    labels = to_THashList([to_TObjString(label) for label in labels])
+    # we need to set the TObject.fUniqueID to the index of the bin as done by TAxis::SetBinLabel
+    for i, label in enumerate(labels):
+        label._bases[0]._members["@fUniqueID"] = i + 1
+
+    return labels
+
+
 def _root_stats_1d(entries, edges):
     centers = (edges[:-1] + edges[1:]) / 2.0
 
@@ -783,6 +812,30 @@ def to_TList(data, name=""):
         tlist._deeply_writable = True
 
     return tlist
+
+
+def to_THashList(data, name=""):
+    """
+    Args:
+        data (:doc:`uproot.model.Model`): Python iterable to convert into a THashList.
+        name (str): Name of the list (usually empty: ``""``).
+
+    This function is for developers to create THashList objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+
+    if not all(isinstance(x, uproot.model.Model) for x in data):
+        raise TypeError(
+            "list to convert to THashList must only contain ROOT objects (uproot.Model)"
+        )
+
+    tlist = to_TList(data, name)
+
+    thashlist = uproot.models.THashList.Model_THashList.empty()
+
+    thashlist._bases.append(tlist)
+
+    return thashlist
 
 
 def to_TArray(data):

@@ -28,7 +28,7 @@ def test_regular_1d(tmp_path):
         assert h1.values(flow=True).tolist() == pytest.approx(
             [0, 0, 0, 0, 1, 0, 0, 5, 0, 6, 0, 3]
         )
-        assert h1.axis().member("fName") == "wow"
+        assert h1.axis().member("fName") == "xaxis"
         assert h1.axis().member("fTitle") == "wee"
         assert h1.axis().member("fXmin") == -5
         assert h1.axis().member("fXmax") == 5
@@ -39,7 +39,7 @@ def test_regular_1d(tmp_path):
     assert h2.GetEntries() == 15
     assert h2.GetBinContent(9) == 6
     assert h2.GetBinContent(11) == 3
-    assert h2.GetXaxis().GetName() == "wow"
+    assert h2.GetXaxis().GetName() == "xaxis"
     assert h2.GetXaxis().GetTitle() == "wee"
     assert h2.GetBinLowEdge(1) == pytest.approx(-5)
     assert h2.GetBinWidth(1) == pytest.approx(1)
@@ -60,7 +60,7 @@ def test_variable_1d(tmp_path):
         h1 = fin["h1"]
         assert h1.member("fEntries") == 15
         assert h1.values(flow=True).tolist() == pytest.approx([0, 0, 1, 0, 5, 6, 3])
-        assert h1.axis().member("fName") == "wow"
+        assert h1.axis().member("fName") == "xaxis"
         assert h1.axis().member("fTitle") == "wee"
         assert h1.axis().member("fXmin") == -5
         assert h1.axis().member("fXmax") == 10
@@ -71,7 +71,7 @@ def test_variable_1d(tmp_path):
     assert h2.GetEntries() == 15
     assert h2.GetBinContent(5) == 6
     assert h2.GetBinContent(6) == 3
-    assert h2.GetXaxis().GetName() == "wow"
+    assert h2.GetXaxis().GetName() == "xaxis"
     assert h2.GetXaxis().GetTitle() == "wee"
     assert h2.GetBinLowEdge(1) == pytest.approx(-5)
     assert h2.GetBinWidth(1) == pytest.approx(2)
@@ -96,7 +96,7 @@ def test_regular_2d(tmp_path):
     with uproot.open(newfile) as fin:
         h1 = fin["h1"]
         assert h1.member("fEntries") == 15
-        assert h1.axis(0).member("fName") == "wow"
+        assert h1.axis(0).member("fName") == "xaxis"
         assert h1.axis(0).member("fTitle") == "wee"
         assert h1.axis(0).member("fXmin") == -5
         assert h1.axis(0).member("fXmax") == 5
@@ -138,7 +138,7 @@ def test_regular_3d(tmp_path):
     with uproot.open(newfile) as fin:
         h1 = fin["h1"]
         assert h1.member("fEntries") == 15
-        assert h1.axis(0).member("fName") == "wow"
+        assert h1.axis(0).member("fName") == "xaxis"
         assert h1.axis(0).member("fTitle") == "wee"
         assert h1.axis(0).member("fXmin") == -5
         assert h1.axis(0).member("fXmax") == 5
@@ -159,18 +159,27 @@ def test_regular_3d(tmp_path):
 
 
 def test_issue_0659(tmp_path):
+    # https://github.com/scikit-hep/uproot5/issues/659
     newfile = os.path.join(tmp_path, "newfile.root")
 
     cat_axis = hist.axis.IntCategory([10, 11, 12], label="Category")
     reg_axis = hist.axis.Regular(100, 0, 100, label="Random")
+    reg_axis_z = hist.axis.Regular(50, 20, 30, label="RandomZ")
     h = hist.Hist(cat_axis)
     h2 = hist.Hist(cat_axis, reg_axis)
+    h3 = hist.Hist(cat_axis, reg_axis, reg_axis_z)
     h.fill(np.random.randint(1, 4, 1000))
     h2.fill(np.random.randint(1, 4, 1000), np.random.normal(20, 5, 1000))
+    h3.fill(
+        np.random.randint(1, 4, 1000),
+        np.random.normal(20, 5, 1000),
+        np.random.normal(25, 2, 1000),
+    )
 
     with uproot.recreate(newfile) as fout:
         fout["h"] = h
         fout["h2"] = h2
+        fout["h3"] = h3
 
     with uproot.open(newfile) as fin:
         h_opened = fin["h"]
@@ -184,14 +193,26 @@ def test_issue_0659(tmp_path):
         assert h2_opened.axis(0).edges().tolist() == [0.0, 1.0, 2.0, 3.0]
         assert h2_opened.axis(1).edges().tolist() == list(map(float, range(101)))
 
+        h3_opened = fin["h3"]
+        assert h3_opened.values(flow=False).shape == (3, 100, 50)
+        assert h3_opened.values(flow=True).shape == (5, 102, 52)
+        assert h3_opened.axis(0).edges().tolist() == [0.0, 1.0, 2.0, 3.0]
+        assert h3_opened.axis(1).edges().tolist() == list(map(float, range(101)))
+        assert h3_opened.axis(2).edges().tolist() == list(np.linspace(20, 30, 51))
+
         h_opened.to_hist()
         h2_opened.to_hist()
+        h3_opened.to_hist()
 
     f = ROOT.TFile(newfile)
     h_opened2 = f.Get("h")
     h2_opened2 = f.Get("h2")
+    h3_opened2 = f.Get("h3")
+
     assert h_opened2.GetBinContent(0) == 0.0
     assert h2_opened2.GetBinContent(0) == 0.0
+    assert h3_opened2.GetBinContent(0) == 0.0
+
     f.Close()
 
 

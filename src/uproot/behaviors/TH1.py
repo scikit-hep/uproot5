@@ -21,7 +21,14 @@ def _boost_axis(axis, metadata):
     fXbins = axis.member("fXbins", none_if_missing=True)
 
     if axis.member("fLabels") is not None:
-        out = boost_histogram.axis.StrCategory([str(x) for x in axis.member("fLabels")])
+        fLabels = axis.member("fLabels")
+        try:
+            labels = [int(x) for x in fLabels]
+            category_cls = boost_histogram.axis.IntCategory
+        except ValueError:
+            labels = [str(x) for x in fLabels]
+            category_cls = boost_histogram.axis.StrCategory
+        out = category_cls(labels)
 
     elif fXbins is None or len(fXbins) != fNbins + 1:
         out = boost_histogram.axis.Regular(
@@ -261,6 +268,11 @@ class Histogram:
 
         Converts the histogram into a ``hist`` object.
         """
+        if axis_metadata is None:
+            axis_metadata = boost_axis_metadata
+        if metadata is None:
+            metadata = boost_metadata
+
         return uproot.extras.hist().Hist(
             self.to_boost(metadata=metadata, axis_metadata=axis_metadata)
         )
