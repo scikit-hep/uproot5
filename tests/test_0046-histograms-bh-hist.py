@@ -2877,6 +2877,7 @@ def test_hist_boost_categorical():
         assert list(h_hist_back_axis) == list(cat_axis)  # compare values
         assert h_hist_back_axis.name == "xaxis"
         assert h_hist_back_axis.label == cat_axis.label
+        assert isinstance(h_hist_back_axis, category_type)
 
         # convert to boost (redundant?)
         h_boost = th1d.to_boost()
