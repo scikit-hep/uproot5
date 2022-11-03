@@ -5,8 +5,11 @@ This module defines Uproot-specific exceptions, such as
 :doc:`uproot.exceptions.KeyInFileError`.
 """
 
-
 import uproot
+
+
+class NameConflictWarning(Warning):
+    pass
 
 
 class KeyInFileError(KeyError):
