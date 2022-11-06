@@ -35,7 +35,7 @@ in file {}""".format(
             )
         if forth_stash is not None:
             forth_stash.add_to_pre(
-                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
+                f" stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
             )
             if forth_obj.should_add_form():
                 temp_aform = {

@@ -60,6 +60,10 @@ class ForthGenerator:
         return temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form
 
     def get_code_recursive(self, node):
+        pre,post,init,header = self.tree_walk(node)
+        return pre,post,init,header
+
+    def tree_walk(self, node):
         if "content" in node.keys():
             if node["content"] is None:
                 return (
@@ -69,14 +73,14 @@ class ForthGenerator:
                     node["header_code"],
                 )
             else:
-                pre, post, init, header = self.get_code_recursive(node["content"])
+                pre, post, init, header = self.tree_walk(node["content"])
                 pre2 = "".join(node["pre_code"])
                 pre2 = pre2 + pre
                 post2 = "".join(node["post_code"])
                 post2 = post2 + post
                 init = node["init_code"] + init
                 header = node["header_code"] + header
-                return pre2, post2, init, header
+                return pre2+post2, "", init, header
         elif self.var_set:
             return "", "", "", ""
 
