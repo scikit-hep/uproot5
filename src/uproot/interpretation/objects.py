@@ -213,7 +213,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                 ) from err
 
         # get data using Forth
-        print(self._complete_forth_code)
         byte_start = byte_offsets[0]
         byte_stop = byte_offsets[-1]
         temp_data = data[byte_start:byte_stop]
@@ -270,7 +269,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                 context["forth"].gen.awkward_model = context["forth"].gen.top_node
                 if not context["forth"].gen.var_set:
                     context["forth"].prereaddone = True
-                    print(context["forth"].gen.top_node["content"])
                     self._assemble_forth(
                         context["forth"].gen, context["forth"].gen.top_node["content"]
                     )
