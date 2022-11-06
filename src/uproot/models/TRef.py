@@ -120,10 +120,10 @@ class Model_TRefArray(uproot.model.Model, Sequence):
         return self._members["fName"]
 
     def read_members(self, chunk, cursor, context, file):
-        helper_obj = uproot._awkward_forth.GenHelper(context)
-        if helper_obj.is_forth():
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
             awkward = uproot.extras.awkward()  # noqa:F841
-            forth_obj = helper_obj.get_gen_obj()
+            forth_obj = forth_stash.get_gen_obj()
             # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
@@ -132,18 +132,18 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             form_keys = forth_obj.get_keys(6)
 
-            helper_obj.add_to_pre("10 stream skip\n")
-            helper_obj.add_to_pre(
+            forth_stash.add_to_pre("10 stream skip\n")
+            forth_stash.add_to_pre(
                 f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{form_keys[1]}-offsets +<- stack stream #!B-> node{form_keys[2]}-data\n"
             )
-            helper_obj.add_to_pre(
+            forth_stash.add_to_pre(
                 f"stream !I-> stack dup node{form_keys[3]}-data <- stack\n"
             )
-            helper_obj.add_to_pre("6 stream skip\n")
-            helper_obj.add_to_pre(
+            forth_stash.add_to_pre("6 stream skip\n")
+            forth_stash.add_to_pre(
                 f"dup node{form_keys[4]}-offsets +<- stack stream #!I-> node{form_keys[5]}-data\n"
             )
             keys = [
@@ -156,17 +156,17 @@ in file {}""".format(
             if forth_obj.should_add_form():
                 for elem in keys:
                     forth_obj.add_form_key(elem)
-                temp_aform = f'{{"class": "RecordArray", "contents": {{"fname": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "parameters": {{}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "parameters": {{}}, "form_key": "node{form_keys[0]}"}}'
+                temp_aform = f'{{"class": "RecordArray", "contents": {{"fName": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "parameters": {{}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "parameters": {{}}, "form_key": "node{form_keys[0]}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
-                helper_obj.add_to_header(
+                forth_stash.add_to_header(
                     f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int64\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int64\n"
                 )
-                helper_obj.add_to_init(
+                forth_stash.add_to_init(
                     f"0 node{form_keys[1]}-offsets <- stack\n0 node{form_keys[4]}-offsets <- stack\n"
                 )
             forth_obj.add_node(
                 f"node{form_keys[0]}",
-                helper_obj.get_attrs(),
+                forth_stash.get_attrs(),
                 "i64",
                 1,
                 None,
