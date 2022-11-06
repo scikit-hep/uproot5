@@ -1415,7 +1415,7 @@ def test_awkward_nosplit_file():
             [3, 3, 3],
             [4, 4, 4, 4],
         ]
-        assert awkward.to_list(result["StlVecStr"]) == [ 
+        assert awkward.to_list(result["StlVecStr"]) == [
             [],
             ["vec-001"],
             ["vec-002", "vec-002"],
