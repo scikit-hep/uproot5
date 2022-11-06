@@ -2840,3 +2840,49 @@ def test_hist_2d():
     hist = pytest.importorskip("hist")
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
         f["hpxpy"].to_hist()
+
+
+def test_hist_boost_categorical():
+    # https://github.com/scikit-hep/uproot5/issues/672
+    hist = pytest.importorskip("hist")
+    boost = pytest.importorskip("boost")
+
+    for labels, category_type in zip(
+        [numpy.arange(10, 20), ["these", "are", "labels"]],
+        [hist.axis.IntCategory, hist.axis.StrCategory],
+    ):
+        cat_axis = category_type(
+            labels, label="Category", name="This name will be overwritten"
+        )
+        h_hist = hist.Hist(cat_axis)
+
+        # convert to uproot object (TH1D)
+        th1d = uproot.writing.identify.to_writable(h_hist)
+        assert len(th1d.axes) == 1
+        th1d_xaxis = th1d.axes[0]
+        assert th1d_xaxis.member("fTitle") == cat_axis.label
+        assert th1d_xaxis.member("fName") == "xaxis"
+        assert [str(s) for s in th1d_xaxis.member("fLabels")] == [
+            str(x) for x in labels
+        ]
+        # labels are stored as a THashList of TObjStrings and their 'fUniqueID' is set to the bin index
+        assert [s.member("@fUniqueID") for s in th1d_xaxis.member("fLabels")] == list(
+            numpy.arange(len(labels)) + 1
+        )
+
+        # convert back to hist
+        h_hist_back = th1d.to_hist()
+        assert len(h_hist_back.axes) == 1
+        h_hist_back_axis = h_hist_back.axes[0]
+        assert list(h_hist_back_axis) == list(cat_axis)  # compare values
+        assert h_hist_back_axis.name == "xaxis"
+        assert h_hist_back_axis.label == cat_axis.label
+        assert isinstance(h_hist_back_axis, category_type)
+
+        # convert to boost (redundant?)
+        h_boost = th1d.to_boost()
+        assert len(h_boost.axes) == 1
+        h_boost_axis = h_boost.axes[0]
+        assert list(h_boost_axis) == list(cat_axis)  # compare values
+        assert h_boost_axis.name == "xaxis"
+        assert h_boost_axis.label == cat_axis.label
