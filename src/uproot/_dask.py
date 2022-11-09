@@ -4,12 +4,7 @@ import numpy
 
 import uproot
 from uproot._util import no_filter
-from uproot.behaviors.TBranch import (
-    HasBranches,
-    TBranch,
-    _regularize_entries_start_stop,
-    _regularize_step_size,
-)
+from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 
 def dask(
@@ -432,20 +427,21 @@ def _get_dask_array(
 
     dask_dict = {}
 
-    start_stop_step_map = {}
-    for i, ttree in enumerate(hasbranches):
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            ttree.num_entries, None, None
-        )
+    step_sum = 0
+    for ttree in hasbranches:
+        entry_start = 0
+        entry_stop = ttree.num_entries
 
         branchid_interpretation = {}
         for key in common_keys:
             branch = ttree[key]
             branchid_interpretation[branch.cache_key] = branch.interpretation
-        entry_step = _regularize_step_size(
+        ttree_step = _regularize_step_size(
             ttree, step_size, entry_start, entry_stop, branchid_interpretation
         )
-        start_stop_step_map[i] = (entry_start, entry_stop, entry_step)
+        step_sum += int(ttree_step)
+
+    entry_step = int(round(step_sum / len(hasbranches)))
 
     for key in common_keys:
         dt = hasbranches[0][key].interpretation.numpy_dtype
@@ -456,8 +452,9 @@ def _get_dask_array(
 
         chunks = []
         chunk_args = []
-        for i, _ttree in enumerate(hasbranches):
-            entry_start, entry_stop, entry_step = start_stop_step_map[i]
+        for i, ttree in enumerate(hasbranches):
+            entry_start = 0
+            entry_stop = ttree.num_entries
 
             def foreach(start):
                 stop = min(start + entry_step, entry_stop)  # noqa: B023
@@ -566,6 +563,22 @@ class _UprootOpenAndRead:
         )
 
 
+def _get_meta_array(
+    awkward,
+    dask_awkward,
+    ttree,
+    common_keys,
+):
+    form = awkward.forms.RecordForm(
+        [ttree[key].interpretation.awkward_form(ttree.file) for key in common_keys],
+        common_keys,
+    )
+    empty_arr = awkward.from_buffers(
+        form, 0, {"": b"\x00\x00\x00\x00\x00\x00\x00\x00"}, buffer_key=""
+    )
+    return dask_awkward.core.typetracer_array(empty_arr)
+
+
 def _get_dak_array(
     files,
     filter_name=no_filter,
@@ -652,19 +665,26 @@ def _get_dak_array(
             )
         )
 
-    partition_args = []
-    for i, ttree in enumerate(hasbranches):
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            ttree.num_entries, None, None
-        )
+    step_sum = 0
+    for ttree in hasbranches:
+        entry_start = 0
+        entry_stop = ttree.num_entries
 
         branchid_interpretation = {}
         for key in common_keys:
             branch = ttree[key]
             branchid_interpretation[branch.cache_key] = branch.interpretation
-        entry_step = _regularize_step_size(
+        ttree_step = _regularize_step_size(
             ttree, step_size, entry_start, entry_stop, branchid_interpretation
         )
+        step_sum += int(ttree_step)
+
+    entry_step = int(round(step_sum / len(hasbranches)))
+
+    partition_args = []
+    for i, ttree in enumerate(hasbranches):
+        entry_start = 0
+        entry_stop = ttree.num_entries
 
         def foreach(start):
             stop = min(start + entry_step, entry_stop)  # noqa: B023
@@ -673,16 +693,7 @@ def _get_dak_array(
         for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
-    form = awkward.forms.RecordForm(
-        [
-            hasbranches[0][key].interpretation.awkward_form(hasbranches[0].file)
-            for key in common_keys
-        ],
-        common_keys,
-    )
-    empty_arr = _form_to_empty_array(awkward, form)
-
-    meta = dask_awkward.core.typetracer_array(empty_arr)
+    meta = _get_meta_array(awkward, dask_awkward, hasbranches[0], common_keys)
 
     if len(partition_args) == 0:
         partition_args.append((0, 0, 0))
@@ -691,12 +702,6 @@ def _get_dak_array(
         partition_args,
         label="from-uproot",
         meta=meta,
-    )
-
-
-def _form_to_empty_array(awkward, form):
-    return awkward.from_buffers(
-        form, 0, {"": b"\x00\x00\x00\x00\x00\x00\x00\x00"}, buffer_key=""
     )
 
 
@@ -712,6 +717,7 @@ def _get_dak_array_delay_open(
     real_options=None,
 ):
     dask_awkward = uproot.extras.dask_awkward()
+    awkward = uproot.extras.awkward()
 
     ffile_path, fobject_path = files[0]
     obj = uproot._util.regularize_object_path(
@@ -725,8 +731,7 @@ def _get_dak_array_delay_open(
         full_paths=full_paths,
     )
 
-    empty_arr = obj.arrays(common_keys, entry_start=0, entry_stop=0)
-    meta = dask_awkward.core.typetracer_array(empty_arr)
+    meta = _get_meta_array(awkward, dask_awkward, obj, common_keys)
 
     return dask_awkward.from_map(
         _UprootOpenAndRead(custom_classes, allow_missing, real_options, common_keys),
