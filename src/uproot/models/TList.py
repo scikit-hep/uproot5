@@ -19,6 +19,7 @@ class Model_TList(uproot.model.Model, Sequence):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -81,7 +82,7 @@ in file {}""".format(
             "_typename": "TList",
             "name": "TList",
             "arr": [x.tojson() for x in self._data],
-            "opt": ["" for _ in self._data],
+            "opt": [""] * len(self._data),
         }
 
     writable = True

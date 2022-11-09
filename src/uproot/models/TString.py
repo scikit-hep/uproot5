@@ -20,9 +20,9 @@ class Model_TString(uproot.model.Model, str):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        helper_obj = uproot._awkward_forth.GenHelper(context)
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
             keys = forth_obj.get_keys(2)
             offsets_num = keys[0]
             data_num = keys[1]
@@ -33,9 +33,9 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
-        if helper_obj.is_forth():
-            helper_obj.add_to_pre(
-                f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
+        if forth_stash is not None:
+            forth_stash.add_to_pre(
+                f" stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
             )
             if forth_obj.should_add_form():
                 temp_aform = {
@@ -59,13 +59,13 @@ in file {}""".format(
                 ]
                 for elem in form_keys:
                     forth_obj.add_form_key(elem)
-            helper_obj.add_to_header(
+            forth_stash.add_to_header(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
-                helper_obj.get_attrs(),
+                forth_stash.get_attrs(),
                 "i64",
                 0,
                 None,

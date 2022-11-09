@@ -60,6 +60,10 @@ class ForthGenerator:
         return temp_node, temp_node_top, temp_form, temp_form_top, temp_prev_form
 
     def get_code_recursive(self, node):
+        pre, post, init, header = self.tree_walk(node)
+        return pre, post, init, header
+
+    def tree_walk(self, node):
         if "content" in node.keys():
             if node["content"] is None:
                 return (
@@ -69,14 +73,14 @@ class ForthGenerator:
                     node["header_code"],
                 )
             else:
-                pre, post, init, header = self.get_code_recursive(node["content"])
+                pre, post, init, header = self.tree_walk(node["content"])
                 pre2 = "".join(node["pre_code"])
                 pre2 = pre2 + pre
                 post2 = "".join(node["post_code"])
                 post2 = post2 + post
                 init = node["init_code"] + init
                 header = node["header_code"] + header
-                return pre2, post2, init, header
+                return pre2 + post2, "", init, header
         elif self.var_set:
             return "", "", "", ""
 
@@ -273,21 +277,28 @@ class ForthGenerator:
         self.final_init.append(code)
 
 
-class GenHelper:
+def forth_stash(context):
     """
-    Helper class to aid Forth code generation within one read/read_members function call.
+    Returns a ForthLevelStash object if ForthGeneration is to be done, else None.
+    """
+    if hasattr(context.get("forth"), "gen"):
+        return ForthLevelStash(context["forth"].gen)
+    else:
+        return None
+
+
+class ForthLevelStash:
+    """
+    Helper class to stash code at one level of Forth code generation. Keeps the code generation clean and maintains order for the code snippets.
     """
 
     def __init__(self, context):
-        self.forth_present = False
         self._pre_code = []
         self._post_code = []
         self._header = ""
         self._init = ""
         self._form_key = []
-        if hasattr(context.get("forth"), "gen"):
-            self.forth_present = True
-            self._gen_obj = context["forth"].gen
+        self._gen_obj = context
 
     def is_forth(self):
         return self.forth_present

@@ -261,7 +261,11 @@ def to_writable(obj):
         try:
             # using flow=True if supported
             data = obj.values(flow=True)
-            fSumw2 = obj.variances(flow=True)
+            fSumw2 = (
+                obj.variances(flow=True)
+                if obj.storage_type == boost_histogram.storage.Weight
+                else None
+            )
 
             # and flow=True is different from flow=False (obj actually has flow bins)
             data_noflow = obj.values(flow=False)
@@ -285,19 +289,23 @@ def to_writable(obj):
                 data = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=d)
                 data[1:-1, 1:-1, 1:-1] = tmp
 
-            tmp = obj.variances()
-            s = tmp.shape
-            if tmp is None:
-                fSumw2 = None
-            elif ndim == 1:
-                fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
-                fSumw2[1:-1] = tmp
-            elif ndim == 2:
-                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
-                fSumw2[1:-1, 1:-1] = tmp
-            elif ndim == 3:
-                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
-                fSumw2[1:-1, 1:-1, 1:-1] = tmp
+            tmp = (
+                obj.variances()
+                if obj.storage_type == boost_histogram.storage.Weight
+                else None
+            )
+            fSumw2 = None
+            if tmp is not None:
+                s = tmp.shape
+                if ndim == 1:
+                    fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
+                    fSumw2[1:-1] = tmp
+                elif ndim == 2:
+                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
+                    fSumw2[1:-1, 1:-1] = tmp
+                elif ndim == 3:
+                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
+                    fSumw2[1:-1, 1:-1, 1:-1] = tmp
 
         else:
             # continuing to use flow=True, because it is supported
@@ -320,12 +328,13 @@ def to_writable(obj):
         # convert all axes in one list comprehension
         axes = [
             to_TAxis(
-                fName=getattr(axis, "name", default_name),
+                fName=default_name,
                 fTitle=getattr(axis, "label", getattr(obj, "name", "")),
                 fNbins=len(axis),
                 fXmin=axis.edges[0],
                 fXmax=axis.edges[-1],
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
+                fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
             for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
         ]
@@ -659,6 +668,34 @@ def _fXbins_maybe_regular(axis, boost_histogram):
             return axis.edges
 
 
+def _fLabels_maybe_categorical(axis, boost_histogram):
+    if boost_histogram is None:
+        return None
+
+    if not isinstance(
+        axis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+    ):
+        return None
+
+    labels = [str(label) for label in axis]
+    if isinstance(axis, boost_histogram.axis.IntCategory):
+        # Check labels are valid integers (this may be redundant)
+        for label in labels:
+            try:
+                int(label)
+            except ValueError:
+                raise ValueError(
+                    f"IntCategory labels must be valid integers. Found {label!r} on axis {axis!r}"
+                ) from None
+
+    labels = to_THashList([to_TObjString(label) for label in labels])
+    # we need to set the TObject.fUniqueID to the index of the bin as done by TAxis::SetBinLabel
+    for i, label in enumerate(labels):
+        label._bases[0]._members["@fUniqueID"] = i + 1
+
+    return labels
+
+
 def _root_stats_1d(entries, edges):
     centers = (edges[:-1] + edges[1:]) / 2.0
 
@@ -775,6 +812,30 @@ def to_TList(data, name=""):
         tlist._deeply_writable = True
 
     return tlist
+
+
+def to_THashList(data, name=""):
+    """
+    Args:
+        data (:doc:`uproot.model.Model`): Python iterable to convert into a THashList.
+        name (str): Name of the list (usually empty: ``""``).
+
+    This function is for developers to create THashList objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+
+    if not all(isinstance(x, uproot.model.Model) for x in data):
+        raise TypeError(
+            "list to convert to THashList must only contain ROOT objects (uproot.Model)"
+        )
+
+    tlist = to_TList(data, name)
+
+    thashlist = uproot.models.THashList.Model_THashList.empty()
+
+    thashlist._bases.append(tlist)
+
+    return thashlist
 
 
 def to_TArray(data):
