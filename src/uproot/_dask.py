@@ -4,11 +4,7 @@ import numpy
 
 import uproot
 from uproot._util import no_filter
-from uproot.behaviors.TBranch import (
-    HasBranches,
-    TBranch,
-    _regularize_entries_start_stop,
-)
+from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 
 def dask(
@@ -316,13 +312,13 @@ def _dask_array_from_map(
 
 
 class _UprootReadNumpy:
-    def __init__(self, hasbranches, key) -> None:
-        self.hasbranches = hasbranches
+    def __init__(self, ttrees, key) -> None:
+        self.ttrees = ttrees
         self.key = key
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
-        return self.hasbranches[i][self.key].array(
+        return self.ttrees[i][self.key].array(
             entry_start=start, entry_stop=stop, library="np"
         )
 
@@ -358,7 +354,7 @@ def _get_dask_array(
     allow_missing=False,
     real_options=None,
 ):
-    hasbranches = []
+    ttrees = []
     common_keys = None
     is_self = []
 
@@ -383,7 +379,7 @@ def _get_dask_array(
                 is_self.append(False)
                 real_filter_branch = filter_branch
 
-            hasbranches.append(obj)
+            ttrees.append(obj)
 
             new_keys = obj.keys(
                 recursive=recursive,
@@ -431,8 +427,25 @@ def _get_dask_array(
 
     dask_dict = {}
 
+    step_sum = 0
+    for ttree in ttrees:
+        entry_start = 0
+        entry_stop = ttree.num_entries
+
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = ttree[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        ttree_step = _regularize_step_size(
+            ttree, step_size, entry_start, entry_stop, branchid_interpretation
+        )
+        step_sum += int(ttree_step)
+
+    entry_step = int(round(step_sum / len(ttrees)))
+    assert entry_step >= 1
+
     for key in common_keys:
-        dt = hasbranches[0][key].interpretation.numpy_dtype
+        dt = ttrees[0][key].interpretation.numpy_dtype
         if dt.subdtype is None:
             inner_shape = ()
         else:
@@ -440,15 +453,9 @@ def _get_dask_array(
 
         chunks = []
         chunk_args = []
-        for i, ttree in enumerate(hasbranches):
-            entry_start, entry_stop = _regularize_entries_start_stop(
-                ttree.tree.num_entries, None, None
-            )
-            entry_step = 0
-            if uproot._util.isint(step_size):
-                entry_step = step_size
-            else:
-                entry_step = ttree.num_entries_for(step_size, expressions=f"{key}")
+        for i, ttree in enumerate(ttrees):
+            entry_start = 0
+            entry_stop = ttree.num_entries
 
             def foreach(start):
                 stop = min(start + entry_step, entry_stop)  # noqa: B023
@@ -464,7 +471,7 @@ def _get_dask_array(
             chunk_args.append((0, 0, 0))
 
         dask_dict[key] = _dask_array_from_map(
-            _UprootReadNumpy(hasbranches, key),
+            _UprootReadNumpy(ttrees, key),
             chunk_args,
             chunks=(tuple(chunks),),
             dtype=dt,
@@ -517,18 +524,16 @@ def _get_dask_array_delay_open(
 
 
 class _UprootRead:
-    def __init__(self, hasbranches, branches) -> None:
-        self.hasbranches = hasbranches
+    def __init__(self, ttrees, branches) -> None:
+        self.ttrees = ttrees
         self.branches = branches
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
-        return self.hasbranches[i].arrays(
-            self.branches, entry_start=start, entry_stop=stop
-        )
+        return self.ttrees[i].arrays(self.branches, entry_start=start, entry_stop=stop)
 
     def project_columns(self, branches):
-        return _UprootRead(self.hasbranches, branches)
+        return _UprootRead(self.ttrees, branches)
 
 
 class _UprootOpenAndRead:
@@ -557,6 +562,22 @@ class _UprootOpenAndRead:
         )
 
 
+def _get_meta_array(
+    awkward,
+    dask_awkward,
+    ttree,
+    common_keys,
+):
+    form = awkward.forms.RecordForm(
+        [ttree[key].interpretation.awkward_form(ttree.file) for key in common_keys],
+        common_keys,
+    )
+    empty_arr = awkward.from_buffers(
+        form, 0, {"": b"\x00\x00\x00\x00\x00\x00\x00\x00"}, buffer_key=""
+    )
+    return dask_awkward.core.typetracer_array(empty_arr)
+
+
 def _get_dak_array(
     files,
     filter_name=no_filter,
@@ -570,8 +591,9 @@ def _get_dak_array(
     real_options=None,
 ):
     dask_awkward = uproot.extras.dask_awkward()
+    awkward = uproot.extras.awkward()
 
-    hasbranches = []
+    ttrees = []
     common_keys = None
     is_self = []
 
@@ -596,7 +618,7 @@ def _get_dak_array(
                 is_self.append(False)
                 real_filter_branch = filter_branch
 
-            hasbranches.append(obj)
+            ttrees.append(obj)
 
             new_keys = obj.keys(
                 recursive=recursive,
@@ -642,16 +664,26 @@ def _get_dak_array(
             )
         )
 
-    partition_args = []
-    for i, ttree in enumerate(hasbranches):
-        entry_start, entry_stop = _regularize_entries_start_stop(
-            ttree.num_entries, None, None
+    step_sum = 0
+    for ttree in ttrees:
+        entry_start = 0
+        entry_stop = ttree.num_entries
+
+        branchid_interpretation = {}
+        for key in common_keys:
+            branch = ttree[key]
+            branchid_interpretation[branch.cache_key] = branch.interpretation
+        ttree_step = _regularize_step_size(
+            ttree, step_size, entry_start, entry_stop, branchid_interpretation
         )
-        entry_step = 0
-        if uproot._util.isint(step_size):
-            entry_step = step_size
-        else:
-            entry_step = ttree.num_entries_for(step_size, expressions=common_keys)
+        step_sum += int(ttree_step)
+
+    entry_step = int(round(step_sum / len(ttrees)))
+
+    partition_args = []
+    for i, ttree in enumerate(ttrees):
+        entry_start = 0
+        entry_stop = ttree.num_entries
 
         def foreach(start):
             stop = min(start + entry_step, entry_stop)  # noqa: B023
@@ -660,13 +692,12 @@ def _get_dak_array(
         for start in range(entry_start, entry_stop, entry_step):
             foreach(start)
 
-    empty_arr = hasbranches[0].arrays(common_keys, entry_start=0, entry_stop=0)
-    meta = dask_awkward.core.typetracer_array(empty_arr)
+    meta = _get_meta_array(awkward, dask_awkward, ttrees[0], common_keys)
 
     if len(partition_args) == 0:
         partition_args.append((0, 0, 0))
     return dask_awkward.from_map(
-        _UprootRead(hasbranches, common_keys),
+        _UprootRead(ttrees, common_keys),
         partition_args,
         label="from-uproot",
         meta=meta,
@@ -685,6 +716,7 @@ def _get_dak_array_delay_open(
     real_options=None,
 ):
     dask_awkward = uproot.extras.dask_awkward()
+    awkward = uproot.extras.awkward()
 
     ffile_path, fobject_path = files[0]
     obj = uproot._util.regularize_object_path(
@@ -698,8 +730,7 @@ def _get_dak_array_delay_open(
         full_paths=full_paths,
     )
 
-    empty_arr = obj.arrays(common_keys, entry_start=0, entry_stop=0)
-    meta = dask_awkward.core.typetracer_array(empty_arr)
+    meta = _get_meta_array(awkward, dask_awkward, obj, common_keys)
 
     return dask_awkward.from_map(
         _UprootOpenAndRead(custom_classes, allow_missing, real_options, common_keys),
