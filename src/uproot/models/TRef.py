@@ -15,8 +15,8 @@ import uproot
 
 _tref_format1 = struct.Struct(">xxIxxxxxx")
 
-# Note: https://github.com/root-project/root/blob/master/io/doc/TFile/TRef.txt
-#       https://github.com/root-project/root/blob/master/io/doc/TFile/TRefArray.txt
+# Note: https://github.com/root-project/root/blob/master/io/doc/TFile/tref.md
+#       https://github.com/root-project/root/blob/master/io/doc/TFile/trefarray.md
 
 
 class Model_TRef(uproot.model.Model):
