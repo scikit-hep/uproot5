@@ -22,6 +22,7 @@ from collections.abc import Mapping
 import numpy
 
 import uproot.compression
+import uproot.extras
 import uproot.pyroot
 import uproot.writing._cascadetree
 
@@ -88,23 +89,21 @@ def add_to_directory(obj, name, directory, streamers):
             if isinstance(branch_array, Mapping) and all(
                 uproot._util.isstr(x) for x in branch_array
             ):
-                okay = True
                 datum = {}
                 metadatum = {}
                 for kk, vv in branch_array.items():
                     try:
                         vv = uproot._util.ensure_numpy(vv)
                     except TypeError:
-                        okay = False
+                        raise TypeError(
+                            f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                        ) from None
                     datum[kk] = vv
                     branch_dtype = vv.dtype
                     branch_shape = vv.shape[1:]
                     if branch_shape != ():
                         branch_dtype = numpy.dtype((branch_dtype, branch_shape))
                     metadatum[kk] = branch_dtype
-
-                if not okay:
-                    break
 
                 data[branch_name] = datum
                 metadata[branch_name] = metadatum
@@ -118,14 +117,13 @@ def add_to_directory(obj, name, directory, streamers):
                     try:
                         branch_array = uproot._util.ensure_numpy(branch_array)
                     except TypeError:
-                        try:
-                            import awkward
-                        except ImportError:
-                            break
+                        awkward = uproot.extras.awkward()
                         try:
                             branch_array = awkward.from_iter(branch_array)
                         except Exception:
-                            break
+                            raise TypeError(
+                                f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                            ) from None
                         else:
                             data[branch_name] = branch_array
                             metadata[branch_name] = awkward.type(branch_array)
