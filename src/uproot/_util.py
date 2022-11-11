@@ -583,9 +583,6 @@ def awkward_form(model, file, context):
         return model.awkward_form(file, context)
 
 
-# FIXME: Until we get Awkward reading these bytes directly, rather than
-# going through ak.from_iter, the integer dtypes will be int64 and the
-# floating dtypes will be float64 because that's what ak.from_iter makes.
 def recursively_fix_awkward_form_of_iter(awkward, interpretation, form):
     """
     Given an interpretation of a TBranch, fixup any form corresponding to

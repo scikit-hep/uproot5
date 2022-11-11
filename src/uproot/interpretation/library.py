@@ -286,10 +286,6 @@ def _strided_to_awkward(awkward, path, interpretation, data):
     return out
 
 
-# FIXME: _object_to_awkward_json and _awkward_json_to_array are slow functions
-# with the right outputs to be replaced by compiled versions in awkward._io.
-
-
 def _object_to_awkward_json(form, obj):
     if form["class"] == "NumpyArray":
         return obj
@@ -308,7 +304,7 @@ def _object_to_awkward_json(form, obj):
         if form["parameters"].get("__array__") == "string":
             return obj
 
-        elif form["parameters"].get("__array__") == "sorted_map":
+        elif form["content"]["parameters"].get("__array__") == "sorted_map":
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
             return [
@@ -404,7 +400,7 @@ def _awkward_json_to_array(awkward, form, array):
                     array.offsets, content, parameters=form["parameters"]
                 )
 
-        elif form["parameters"].get("__array__") == "sorted_map":
+        elif form["content"]["parameters"].get("__array__") == "sorted_map":
             offsets = _awkward_offsets(awkward, form, array)
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
