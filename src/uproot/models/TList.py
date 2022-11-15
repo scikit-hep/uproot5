@@ -19,6 +19,7 @@ class Model_TList(uproot.model.Model, Sequence):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -81,7 +82,7 @@ in file {}""".format(
             "_typename": "TList",
             "name": "TList",
             "arr": [x.tojson() for x in self._data],
-            "opt": [],
+            "opt": [""] * len(self._data),
         }
 
     writable = True
@@ -91,6 +92,10 @@ in file {}""".format(
         self._options = original._options
 
     def _serialize(self, out, header, name, tobject_flags):
+        assert (
+            self._members["fSize"] == len(self._data) == len(self._options)
+        ), "Fatal error in TList serialization."
+
         import uproot.writing._cascade
 
         where = len(out)
@@ -102,7 +107,7 @@ in file {}""".format(
 
         for datum, option in zip(self._data, self._options):
             uproot.serialization._serialize_object_any(out, datum, None)
-            out.append(option)
+            out.append(uproot.serialization.bytestring(option))
 
         if header:
             num_bytes = sum(len(x) for x in out[where:])

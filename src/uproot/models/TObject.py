@@ -25,10 +25,10 @@ class Model_TObject(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        helper_obj = uproot._awkward_forth.GenHelper(context)
+        forth_stash = uproot._awkward_forth.forth_stash(context)
         start_index = cursor._index
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
             # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
@@ -49,18 +49,15 @@ in file {}""".format(
         if self._members["@fBits"] & uproot.const.kIsReferenced:
             cursor.skip(2)
         self._members["@fBits"] = int(self._members["@fBits"])
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             skip_length = cursor._index - start_index
-            helper_obj.add_to_pre(f"{skip_length} stream skip \n")
+            forth_stash.add_to_pre(f"{skip_length} stream skip \n")
             if forth_obj.should_add_form():
                 temp_aform = '{"class": "RecordArray", "contents":[], "parameters": {"__record__": "TObject"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             forth_obj.add_node(
                 "TObjext",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                forth_stash.get_attrs(),
                 "i64",
                 0,
                 {},
@@ -69,7 +66,10 @@ in file {}""".format(
     writable = True
 
     def _serialize(self, out, header, name, tobject_flags):
-        out.append(b"\x00\x01" + _tobject_format2.pack(0, tobject_flags))
+        out.append(
+            b"\x00\x01"
+            + _tobject_format2.pack(self.member("@fUniqueID"), tobject_flags)
+        )
 
     @classmethod
     def strided_interpretation(
@@ -106,7 +106,7 @@ in file {}""".format(
             contents["@pidf"] = uproot._util.awkward_form(
                 numpy.dtype("u2"), file, context
             )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TObject"},
@@ -114,7 +114,7 @@ in file {}""".format(
 
     def __repr__(self):
         return "<TObject {} {} at 0x{:012x}>".format(
-            self._members.get("fUniqueID"), self._members.get("fBits"), id(self)
+            self.member("@fUniqueID"), self.member("@fBits"), id(self)
         )
 
     def tojson(self):
@@ -123,6 +123,13 @@ in file {}""".format(
             "fUniqueID": self.member("@fUniqueID"),
             "fBits": self.member("@fBits"),
         }
+
+    @classmethod
+    def empty(cls):
+        self = super().empty()
+        self._members["@fUniqueID"] = 0
+        self._members["@fBits"] = 0
+        return self
 
 
 uproot.classes["TObject"] = Model_TObject

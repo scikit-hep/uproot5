@@ -709,7 +709,7 @@ def test_jagged_awkward():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample/Ai2"] as branch:
         result = branch.array(interpretation)
-        assert awkward._v2.to_list(result) == [
+        assert awkward.to_list(result) == [
             [],
             [-15],
             [-15, -13],

@@ -210,6 +210,7 @@ class Model_TBasket(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         assert isinstance(self._parent, uproot.behaviors.TBranch.TBranch)
         self._basket_num = context.get("basket_num")
 

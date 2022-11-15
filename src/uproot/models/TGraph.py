@@ -35,6 +35,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
     behaviors = (uproot.behaviors.TGraph.TGraph,)
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(
@@ -242,7 +243,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import ListOffsetForm, RecordForm
+        from awkward.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -271,16 +272,10 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
         contents["fX"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         contents["fY"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype1, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         contents["fMinimum"] = uproot._util.awkward_form(
             numpy.dtype(">f8"), file, context
@@ -454,7 +449,7 @@ class Model_TGraphErrors_v3(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import ListOffsetForm, RecordForm
+        from awkward.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -474,16 +469,10 @@ class Model_TGraphErrors_v3(
         contents["fEX"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         contents["fEY"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype1, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         return RecordForm(
             list(contents.values()),
@@ -671,7 +660,7 @@ class Model_TGraphAsymmErrors_v3(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import ListOffsetForm, RecordForm
+        from awkward.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -691,30 +680,18 @@ class Model_TGraphAsymmErrors_v3(
         contents["fEXlow"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         contents["fEXhigh"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype1, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         contents["fEYlow"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype2, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         contents["fEYhigh"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype3, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fNpoints"}
-            },
         )
         return RecordForm(
             list(contents.values()),

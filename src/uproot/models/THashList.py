@@ -17,6 +17,7 @@ class Model_THashList(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -53,6 +54,13 @@ in file {}""".format(
 
     def __len__(self):
         return len(self._bases[0])
+
+    writable = True
+
+    def _serialize(self, out, header, name, tobject_flags):
+        assert len(self._bases) == 1, "Fatal error on THashList serialization."
+        for x in self._bases:
+            x._serialize(out, True, None, tobject_flags)
 
 
 uproot.classes["THashList"] = Model_THashList

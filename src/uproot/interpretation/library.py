@@ -270,7 +270,7 @@ def _strided_to_awkward(awkward, path, interpretation, data):
                 contents.append(_strided_to_awkward(awkward, p, member, data))
             else:
                 contents.append(
-                    awkward._v2.from_numpy(
+                    awkward.from_numpy(
                         numpy.array(data[p]), regulararray=True, highlevel=False
                     )
                 )
@@ -279,16 +279,10 @@ def _strided_to_awkward(awkward, path, interpretation, data):
         "__record__": uproot.model.classname_decode(interpretation.model.__name__)[0]
     }
     length = len(data) if len(contents) == 0 else None
-    out = awkward._v2.contents.RecordArray(
-        contents, names, length, parameters=parameters
-    )
+    out = awkward.contents.RecordArray(contents, names, length, parameters=parameters)
     for dim in reversed(interpretation.inner_shape):
-        out = awkward._v2.contents.RegularArray(out, dim)
+        out = awkward.contents.RegularArray(out, dim)
     return out
-
-
-# FIXME: _object_to_awkward_json and _awkward_json_to_array are slow functions
-# with the right outputs to be replaced by compiled versions in awkward._io.
 
 
 def _object_to_awkward_json(form, obj):
@@ -297,7 +291,7 @@ def _object_to_awkward_json(form, obj):
 
     elif form["class"] == "RecordArray":
         out = {}
-        for name, subform in form["contents"].items():
+        for name, subform in zip(form["fields"], form["contents"]):
             if not name.startswith("@"):
                 if obj.has_member(name):
                     out[name] = _object_to_awkward_json(subform, obj.member(name))
@@ -309,7 +303,7 @@ def _object_to_awkward_json(form, obj):
         if form["parameters"].get("__array__") == "string":
             return obj
 
-        elif form["parameters"].get("__array__") == "sorted_map":
+        elif form["content"]["parameters"].get("__array__") == "sorted_map":
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
             return [
@@ -332,33 +326,27 @@ def _object_to_awkward_json(form, obj):
         raise AssertionError(form["class"])
 
 
-def _awkward_p(form):
-    out = form["parameters"]
-    out.pop("uproot", None)
-    return out
-
-
 def _awkward_offsets(awkward, form, array):
-    if isinstance(array, awkward._v2.contents.EmptyArray):
+    if isinstance(array, awkward.contents.EmptyArray):
         if form["offsets"] == "i32":
-            return awkward._v2.index.Index32(numpy.zeros(1, dtype=numpy.int32))
+            return awkward.index.Index32(numpy.zeros(1, dtype=numpy.int32))
         elif form["offsets"] == "u32":
-            return awkward._v2.index.IndexU32(numpy.zeros(1, dtype=numpy.uint32))
+            return awkward.index.IndexU32(numpy.zeros(1, dtype=numpy.uint32))
         elif form["offsets"] == "i64":
-            return awkward._v2.index.Index64(numpy.zeros(1, dtype=numpy.int64))
+            return awkward.index.Index64(numpy.zeros(1, dtype=numpy.int64))
         else:
             raise AssertionError(form["offsets"])
     else:
         if form["offsets"] == "i32":
-            return awkward._v2.index.Index32(
+            return awkward.index.Index32(
                 numpy.asarray(array.offsets, dtype=numpy.int32)
             )
         elif form["offsets"] == "u32":
-            return awkward._v2.index.IndexU32(
+            return awkward.index.IndexU32(
                 numpy.asarray(array.offsets, dtype=numpy.uint32)
             )
         elif form["offsets"] == "i64":
-            return awkward._v2.index.Index64(
+            return awkward.index.Index64(
                 numpy.asarray(array.offsets, dtype=numpy.int64)
             )
         else:
@@ -367,19 +355,19 @@ def _awkward_offsets(awkward, form, array):
 
 def _awkward_json_to_array(awkward, form, array):
     if form["class"] == "NumpyArray":
-        if isinstance(array, awkward._v2.contents.EmptyArray):
-            form = awkward._v2.forms.from_json(json.dumps(form))
-            dtype = awkward._v2.types.numpytype.primitive_to_dtype(form.primitive)
-            return awkward._v2.contents.NumpyArray(numpy.empty(0, dtype=dtype))
+        if isinstance(array, awkward.contents.EmptyArray):
+            form = awkward.forms.from_json(json.dumps(form))
+            dtype = awkward.types.numpytype.primitive_to_dtype(form.primitive)
+            return awkward.contents.NumpyArray(numpy.empty(0, dtype=dtype))
         else:
             return array
 
     elif form["class"] == "RecordArray":
         contents = []
         names = []
-        for name, subform in form["contents"].items():
+        for name, subform in zip(form["fields"], form["contents"]):
             if not name.startswith("@"):
-                if isinstance(array, awkward._v2.contents.EmptyArray):
+                if isinstance(array, awkward.contents.EmptyArray):
                     contents.append(_awkward_json_to_array(awkward, subform, array))
                 else:
                     contents.append(
@@ -387,72 +375,74 @@ def _awkward_json_to_array(awkward, form, array):
                     )
                 names.append(name)
         length = len(array) if len(contents) == 0 else None
-        return awkward._v2.contents.RecordArray(
-            contents, names, length, parameters=_awkward_p(form)
+        return awkward.contents.RecordArray(
+            contents, names, length, parameters=form["parameters"]
         )
 
     elif form["class"][:15] == "ListOffsetArray":
         if form["parameters"].get("__array__") == "string":
-            if isinstance(array, awkward._v2.contents.EmptyArray):
-                content = awkward._v2.contents.NumpyArray(
+            if isinstance(array, awkward.contents.EmptyArray):
+                content = awkward.contents.NumpyArray(
                     numpy.empty(0, dtype=numpy.uint8),
-                    parameters=_awkward_p(form["content"]),
+                    parameters=form["content"]["parameters"],
                 )
-                return awkward._v2.contents.ListOffsetArray(
-                    awkward._v2.index.Index64(numpy.array([0], dtype=numpy.uint8)),
+                return awkward.contents.ListOffsetArray(
+                    awkward.index.Index64(numpy.array([0], dtype=numpy.uint8)),
                     content,
-                    parameters=_awkward_p(form),
+                    parameters=form["parameters"],
                 )
             else:
                 content = _awkward_json_to_array(
                     awkward, form["content"], array.content
                 )
-                return type(array)(array.offsets, content, parameters=_awkward_p(form))
+                return type(array)(
+                    array.offsets, content, parameters=form["parameters"]
+                )
 
-        elif form["parameters"].get("__array__") == "sorted_map":
+        elif form["content"]["parameters"].get("__array__") == "sorted_map":
             offsets = _awkward_offsets(awkward, form, array)
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
-            if isinstance(array, awkward._v2.contents.EmptyArray):
+            if isinstance(array, awkward.contents.EmptyArray):
                 keys = _awkward_json_to_array(awkward, key_form, array)
                 values = _awkward_json_to_array(awkward, value_form, array)
-                content = awkward._v2.contents.RecordArray(
+                content = awkward.contents.RecordArray(
                     (keys, values),
                     None,
                     0,
-                    parameters=_awkward_p(form["content"]),
+                    parameters=form["content"]["parameters"],
                 )
             else:
                 keys = _awkward_json_to_array(awkward, key_form, array.content["0"])
                 values = _awkward_json_to_array(awkward, value_form, array.content["1"])
                 length = len(array.content) if len(keys) == 0 else None
-                content = awkward._v2.contents.RecordArray(
+                content = awkward.contents.RecordArray(
                     (keys, values),
                     None,
                     length,
-                    parameters=_awkward_p(form["content"]),
+                    parameters=form["content"]["parameters"],
                 )
             cls = uproot._util._content_cls_from_name(awkward, form["class"])
-            return cls(offsets, content, parameters=_awkward_p(form))
+            return cls(offsets, content, parameters=form["parameters"])
 
         else:
             offsets = _awkward_offsets(awkward, form, array)
-            if isinstance(array, awkward._v2.contents.EmptyArray):
+            if isinstance(array, awkward.contents.EmptyArray):
                 content = _awkward_json_to_array(awkward, form["content"], array)
             else:
                 content = _awkward_json_to_array(
                     awkward, form["content"], array.content
                 )
             cls = uproot._util._content_cls_from_name(awkward, form["class"])
-            return cls(offsets, content, parameters=_awkward_p(form))
+            return cls(offsets, content, parameters=form["parameters"])
 
     elif form["class"] == "RegularArray":
-        if isinstance(array, awkward._v2.contents.EmptyArray):
+        if isinstance(array, awkward.contents.EmptyArray):
             content = _awkward_json_to_array(awkward, form["content"], array)
         else:
             content = _awkward_json_to_array(awkward, form["content"], array.content)
-        return awkward._v2.contents.RegularArray(
-            content, form["size"], parameters=_awkward_p(form)
+        return awkward.contents.RegularArray(
+            content, form["size"], parameters=form["parameters"]
         )
 
     else:
@@ -495,11 +485,11 @@ class Awkward(Library):
     def finalize(self, array, branch, interpretation, entry_start, entry_stop):
         awkward = self.imported
 
-        if isinstance(array, awkward._v2.contents.Content):
-            return awkward._v2.Array(array)
+        if isinstance(array, awkward.contents.Content):
+            return awkward.Array(array)
 
         elif isinstance(array, uproot.interpretation.objects.StridedObjectArray):
-            return awkward._v2.Array(
+            return awkward.Array(
                 _strided_to_awkward(awkward, "", array.interpretation, array.array)
             )
 
@@ -510,48 +500,48 @@ class Awkward(Library):
                 awkward, "", array.content.interpretation, array.content.array
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
-                offsets = awkward._v2.index.Index32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray32(offsets, content)
+                offsets = awkward.index.Index32(array.offsets)
+                layout = awkward.contents.ListOffsetArray32(offsets, content)
             else:
-                offsets = awkward._v2.index.Index64(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray(offsets, content)
-            return awkward._v2.Array(layout)
+                offsets = awkward.index.Index64(array.offsets)
+                layout = awkward.contents.ListOffsetArray(offsets, content)
+            return awkward.Array(layout)
 
         elif isinstance(array, uproot.interpretation.jagged.JaggedArray):
-            content = awkward._v2.from_numpy(
+            content = awkward.from_numpy(
                 array.content, regulararray=True, highlevel=False
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
-                offsets = awkward._v2.index.Index32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray32(offsets, content)
+                offsets = awkward.index.Index32(array.offsets)
+                layout = awkward.contents.ListOffsetArray32(offsets, content)
             else:
-                offsets = awkward._v2.index.Index64(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray(offsets, content)
-            return awkward._v2.Array(layout)
+                offsets = awkward.index.Index64(array.offsets)
+                layout = awkward.contents.ListOffsetArray(offsets, content)
+            return awkward.Array(layout)
 
         elif isinstance(array, uproot.interpretation.strings.StringArray):
-            content = awkward._v2.contents.NumpyArray(
+            content = awkward.contents.NumpyArray(
                 numpy.frombuffer(array.content, dtype=numpy.dtype(numpy.uint8)),
                 parameters={"__array__": "char"},
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
-                offsets = awkward._v2.index.Index32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray32(
+                offsets = awkward.index.Index32(array.offsets)
+                layout = awkward.contents.ListOffsetArray32(
                     offsets, content, parameters={"__array__": "string"}
                 )
             elif issubclass(array.offsets.dtype.type, numpy.uint32):
-                offsets = awkward._v2.index.IndexU32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArrayU32(
+                offsets = awkward.index.IndexU32(array.offsets)
+                layout = awkward.contents.ListOffsetArrayU32(
                     offsets, content, parameters={"__array__": "string"}
                 )
             elif issubclass(array.offsets.dtype.type, numpy.int64):
-                offsets = awkward._v2.index.Index64(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray(
+                offsets = awkward.index.Index64(array.offsets)
+                layout = awkward.contents.ListOffsetArray(
                     offsets, content, parameters={"__array__": "string"}
                 )
             else:
                 raise AssertionError(repr(array.offsets.dtype))
-            return awkward._v2.Array(layout)
+            return awkward.Array(layout)
 
         elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
             try:
@@ -575,10 +565,10 @@ in object {}""".format(
                     )
                 ) from err
 
-            unlabeled = awkward._v2.from_iter(
+            unlabeled = awkward.from_iter(
                 (_object_to_awkward_json(form, x) for x in array), highlevel=False
             )
-            return awkward._v2.Array(_awkward_json_to_array(awkward, form, unlabeled))
+            return awkward.Array(_awkward_json_to_array(awkward, form, unlabeled))
 
         elif array.dtype.names is not None:
             length, shape = array.shape[0], array.shape[1:]
@@ -586,19 +576,19 @@ in object {}""".format(
             contents = []
             for name in array.dtype.names:
                 contents.append(
-                    awkward._v2.from_numpy(
+                    awkward.from_numpy(
                         numpy.array(array[name]), regulararray=True, highlevel=False
                     )
                 )
             if len(contents) != 0:
                 length = None
-            out = awkward._v2.contents.RecordArray(contents, array.dtype.names, length)
+            out = awkward.contents.RecordArray(contents, array.dtype.names, length)
             for size in shape[::-1]:
-                out = awkward._v2.contents.RegularArray(out, size)
-            return awkward._v2.Array(out)
+                out = awkward.contents.RegularArray(out, size)
+            return awkward.Array(out)
 
         else:
-            return awkward._v2.from_numpy(array, regulararray=True)
+            return awkward.from_numpy(array, regulararray=True)
 
     def group(self, arrays, expression_context, how):
         awkward = self.imported
@@ -611,11 +601,11 @@ in object {}""".format(
             return {_rename(name, c): arrays[name] for name, c in expression_context}
         elif how is None:
             if len(expression_context) == 0:
-                return awkward._v2.Array(
-                    awkward._v2.contents.RecordArray([], fields=[], length=0)
+                return awkward.Array(
+                    awkward.contents.RecordArray([], fields=[], length=0)
                 )
             else:
-                return awkward._v2.Array(
+                return awkward.Array(
                     {_rename(name, c): arrays[name] for name, c in expression_context}
                 )
         elif how == "zip":
@@ -627,7 +617,7 @@ in object {}""".format(
                 array = renamed_arrays[_rename(name, context)] = arrays[name]
                 if context["is_jagged"]:
                     if (
-                        isinstance(array.layout, awkward._v2.contents.ListArray)
+                        isinstance(array.layout, awkward.contents.ListArray)
                         or array.layout.offsets[0] != 0
                     ):
                         array_layout = array.layout.toListOffsetArray64(True)
@@ -650,11 +640,11 @@ in object {}""".format(
             out = None
             if len(nonjagged) != 0:
                 if len(nonjagged) == 0:
-                    out = awkward._v2.Array(
-                        awkward._v2.contents.RecordArray([], fields=[], length=0)
+                    out = awkward.Array(
+                        awkward.contents.RecordArray([], fields=[], length=0)
                     )
                 else:
-                    out = awkward._v2.Array(
+                    out = awkward.Array(
                         {name: renamed_arrays[name] for name in nonjagged},
                     )
             for number, jagged in enumerate(jaggeds):
@@ -671,36 +661,36 @@ in object {}""".format(
                 if (
                     out is not None
                     and cut != 0
-                    and jagged[0][:cut].strip("_./") in awkward._v2.fields(out)
+                    and jagged[0][:cut].strip("_./") in awkward.fields(out)
                 ):
                     cut = 0
                 if cut == 0:
                     common = f"jagged{number}"
                     if len(jagged) == 0:
-                        subarray = awkward._v2.Array(
-                            awkward._v2.contents.RecordArray([], fields=[], length=0)
+                        subarray = awkward.Array(
+                            awkward.contents.RecordArray([], fields=[], length=0)
                         )
                     else:
-                        subarray = awkward._v2.zip(
+                        subarray = awkward.zip(
                             {name: renamed_arrays[name] for name in jagged}
                         )
                 else:
                     common = jagged[0][:cut].strip("_./")
                     if len(jagged) == 0:
-                        subarray = awkward._v2.Array(
-                            awkward._v2.contents.RecordArray([], fields=[], length=0)
+                        subarray = awkward.Array(
+                            awkward.contents.RecordArray([], fields=[], length=0)
                         )
                     else:
-                        subarray = awkward._v2.zip(
+                        subarray = awkward.zip(
                             {
                                 name[cut:].strip("_./"): renamed_arrays[name]
                                 for name in jagged
                             }
                         )
                 if out is None:
-                    out = awkward._v2.Array({common: subarray})
+                    out = awkward.Array({common: subarray})
                 else:
-                    out = awkward._v2.with_field(out, subarray, common)
+                    out = awkward.with_field(out, subarray, common)
 
             return out
         else:
@@ -721,14 +711,14 @@ in object {}""".format(
         elif isinstance(all_arrays[0], dict):
             keys = list(all_arrays[0])
         else:
-            return awkward._v2.concatenate(all_arrays)
+            return awkward.concatenate(all_arrays)
 
         to_concatenate = {k: [] for k in keys}
         for arrays in all_arrays:
             for k in keys:
                 to_concatenate[k].append(arrays[k])
 
-        concatenated = {k: awkward._v2.concatenate(to_concatenate[k]) for k in keys}
+        concatenated = {k: awkward.concatenate(to_concatenate[k]) for k in keys}
 
         if isinstance(all_arrays[0], tuple):
             return tuple(concatenated[k] for k in keys)

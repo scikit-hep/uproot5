@@ -150,6 +150,7 @@ class Model_TAxis_v10(uproot.behaviors.TAxis.TAxis, uproot.model.VersionedModel)
     """
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -331,7 +332,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -807,7 +808,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import ListOffsetForm, RecordForm
+        from awkward.forms import ListOffsetForm, RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -890,9 +891,6 @@ in file {}""".format(
         contents["fBuffer"] = ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls._dtype0, file, context),
-            parameters={
-                "uproot": {"as": "TStreamerBasicPointer", "count_name": "fBufferSize"}
-            },
         )
         contents["fBinStatErrOpt"] = uproot._util.awkward_form(
             numpy.dtype(">i4"), file, context
@@ -1115,7 +1113,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1324,7 +1322,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1513,7 +1511,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1675,7 +1673,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1832,7 +1830,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -1989,7 +1987,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2151,7 +2149,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2313,7 +2311,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2476,7 +2474,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2634,7 +2632,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2797,7 +2795,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -2960,7 +2958,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3123,7 +3121,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3287,7 +3285,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3446,7 +3444,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3610,7 +3608,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3774,7 +3772,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -3974,7 +3972,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -4213,7 +4211,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
@@ -4454,7 +4452,7 @@ in file {}""".format(
 
     @classmethod
     def awkward_form(cls, file, context):
-        from awkward._v2.forms import RecordForm
+        from awkward.forms import RecordForm
 
         if cls in context["breadcrumbs"]:
             raise uproot.interpretation.objects.CannotBeAwkward(
