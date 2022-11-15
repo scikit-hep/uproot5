@@ -317,6 +317,9 @@ def awkward_pandas():
     try:
         import awkward_pandas
     except ModuleNotFoundError as err:
-        raise ModuleNotFoundError("""TODO""") from err
+        raise ModuleNotFoundError(
+            """install the 'awkward-pandas' package with:
+    pip install awkward-pandas # not on conda-forge yet"""
+        ) from err
     else:
         return awkward_pandas

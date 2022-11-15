@@ -1438,8 +1438,8 @@ def test_pandas_TVector2():
     ] as tree:
         result = tree["MET"].array(library="pd")
 
-        assert result["fX"].values[0] == 5.912771224975586
-        assert result["fY"].values[0] == 2.5636332035064697
+        assert result.ak["fX"][0] == 5.912771224975586
+        assert result.ak["fY"][0] == 2.5636332035064697
 
 
 def test_pandas_vector_TLorentzVector():
@@ -1449,19 +1449,19 @@ def test_pandas_vector_TLorentzVector():
     ] as tree:
         result = tree["muonp4"].array(library="pd")
 
-        assert result["fP", "fX"][0].values.tolist() == [
+        assert result.ak["fP", "fX"][0].tolist() == [
             -52.89945602416992,
             37.7377815246582,
         ]
-        assert result["fP", "fY"][0].values.tolist() == [
+        assert result.ak["fP", "fY"][0].tolist() == [
             -11.654671669006348,
             0.6934735774993896,
         ]
-        assert result["fP", "fZ"][0].values.tolist() == [
+        assert result.ak["fP", "fZ"][0].tolist() == [
             -8.16079330444336,
             -11.307581901550293,
         ]
-        assert result["fE"][0].values.tolist() == [
+        assert result.ak["fE"][0].tolist() == [
             54.77949905395508,
             39.401695251464844,
         ]
