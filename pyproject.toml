@@ -55,6 +55,7 @@ dev = [
     "dask[array];python_version >= \"3.8\"",
     "hist>=1.2",
     "pandas",
+    "awkward-pandas"
 ]
 test = [
     "awkward>=2.0.0rc2",
