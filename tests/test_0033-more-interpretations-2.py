@@ -109,16 +109,15 @@ def test_fixed_width_pandas():
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:
         result = tree["ai4"].array(library="pd").ak.array
-        assert list(result.fields) == ["[0]", "[1]", "[2]"]
-        assert result["[0]"].tolist() == list(range(-14, 16))
-        assert result["[1]"].tolist() == list(range(-13, 17))
-        assert result["[2]"].tolist() == list(range(-12, 18))
+        assert result[:, 0].tolist() == list(range(-14, 16))
+        assert result[:, 1].tolist() == list(range(-13, 17))
+        assert result[:, 2].tolist() == list(range(-12, 18))
 
         result = tree.arrays("ai4", library="pd")
-        assert list(result.columns) == ["ai4[0]", "ai4[1]", "ai4[2]"]
-        assert result["ai4[0]"].ak.array.tolist() == list(range(-14, 16))
-        assert result["ai4[1]"].ak.array.tolist() == list(range(-13, 17))
-        assert result["ai4[2]"].ak.array.tolist() == list(range(-12, 18))
+        assert list(result.columns) == ["ai4"]
+        assert result["ai4"].ak.array[:, 0].tolist() == list(range(-14, 16))
+        assert result["ai4"].ak.array[:, 1].tolist() == list(range(-13, 17))
+        assert result["ai4"].ak.array[:, 2].tolist() == list(range(-12, 18))
 
 
 def test_fixed_width_pandas_2():
@@ -126,17 +125,10 @@ def test_fixed_width_pandas_2():
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
         "tree"
     ] as tree:
-        result = tree["ArrayI32[10]"].array(library="pd")
-        assert list(result.columns) == ["[" + str(i) + "]" for i in range(10)]
-        for i in range(10):
-            assert result["[" + str(i) + "]"].values.tolist() == list(range(100))
-
         result = tree.arrays(
             "xyz", aliases={"xyz": "get('ArrayI32[10]')"}, library="pd"
         )
-        assert list(result.columns) == ["xyz[" + str(i) + "]" for i in range(10)]
-        for i in range(10):
-            assert result["xyz[" + str(i) + "]"].values.tolist() == list(range(100))
+        assert list(result.columns) == ["xyz"]
 
 
 def hook(self, **kwargs):
