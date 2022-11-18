@@ -113,7 +113,15 @@ class AsObjects(uproot.interpretation.Interpretation):
             return self._model.awkward_form(self._branch.file, context)
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         self.hook_before_basket_array(
             data=data,
@@ -123,12 +131,20 @@ class AsObjects(uproot.interpretation.Interpretation):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
         assert basket.byte_offsets is not None
 
         if self._forth and isinstance(library, uproot.interpretation.library.Awkward):
             output = self.basket_array_forth(
-                data, byte_offsets, basket, branch, context, cursor_offset, library
+                data,
+                byte_offsets,
+                basket,
+                branch,
+                context,
+                cursor_offset,
+                library,
+                options,
             )
         else:
             output = ObjectArray(
@@ -144,12 +160,21 @@ class AsObjects(uproot.interpretation.Interpretation):
             output=output,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         return output
 
     def basket_array_forth(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         awkward = uproot.extras.awkward()
         import awkward.forth
@@ -162,6 +187,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
         assert basket.byte_offsets is not None
 
@@ -193,6 +219,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                             output=output,
                             cursor_offset=cursor_offset,
                             library=library,
+                            options=options,
                         )
                         return output
 
@@ -238,6 +265,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             output=output,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         return output
@@ -304,7 +332,14 @@ class AsObjects(uproot.interpretation.Interpretation):
         forth_obj.add_to_final(awkward_model["post_code"])
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
     ):
         self.hook_before_final_array(
             basket_arrays=basket_arrays,
@@ -313,6 +348,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             entry_offsets=entry_offsets,
             library=library,
             branch=branch,
+            options=options,
         )
         trimmed = []
         start = entry_offsets[0]
@@ -358,7 +394,9 @@ class AsObjects(uproot.interpretation.Interpretation):
             output=output,
         )
 
-        output = library.finalize(output, branch, self, entry_start, entry_stop)
+        output = library.finalize(
+            output, branch, self, entry_start, entry_stop, options
+        )
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -368,6 +406,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             library=library,
             branch=branch,
             output=output,
+            options=options,
         )
 
         return output

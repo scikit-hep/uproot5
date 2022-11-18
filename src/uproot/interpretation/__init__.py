@@ -101,7 +101,15 @@ class Interpretation:
         raise AssertionError
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         """
         Args:
@@ -120,6 +128,8 @@ class Interpretation:
                 (:doc:`uproot.deserialization.read_object_any`).
             library (:doc:`uproot.interpretation.library.Library`): The
                 requested library for output.
+            options (dict): Flags and other options passed through the
+                interpretation process.
 
         Performs the first step of interpretation, from uncompressed ``TBasket``
         data to a temporary array.
@@ -127,7 +137,14 @@ class Interpretation:
         raise AssertionError
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
     ):
         """
         Args:
@@ -146,6 +163,8 @@ class Interpretation:
                 requested library for output.
             branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch``
                 that is being interpreted.
+            options (dict): Flags and other options passed through the
+                interpretation process.
 
         Performs the last steps of interpretation, from a collection of
         temporary arrays, one for each ``TBasket``, to a trimmed, finalized,
