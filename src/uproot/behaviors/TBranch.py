@@ -666,6 +666,12 @@ class Report:
         )
 
 
+def _ak_add_doc(array, hasbranches, ak_add_doc):
+    if ak_add_doc and type(array).__module__ == "awkward.highlevel":
+        array.layout.parameters["__doc__"] = hasbranches.title
+    return array
+
+
 class HasBranches(Mapping):
     """
     Abstract class of behaviors for anything that "has branches," namely
@@ -971,7 +977,12 @@ class HasBranches(Mapping):
         del ranges_or_baskets
 
         _fix_asgrouped(
-            arrays, expression_context, branchid_interpretation, library, how
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            library,
+            how,
+            ak_add_doc,
         )
 
         if array_cache is not None:
@@ -1009,7 +1020,9 @@ class HasBranches(Mapping):
             (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
         ]
 
-        return library.group(output, expression_context, how)
+        return _ak_add_doc(
+            library.group(output, expression_context, how), self, ak_add_doc
+        )
 
     def iterate(
         self,
@@ -1204,7 +1217,12 @@ class HasBranches(Mapping):
                 )
 
                 _fix_asgrouped(
-                    arrays, expression_context, branchid_interpretation, library, how
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    library,
+                    how,
+                    ak_add_doc,
                 )
 
                 output = language.compute_expressions(
@@ -1226,7 +1244,11 @@ class HasBranches(Mapping):
                     if c["is_primary"] and not c["is_cut"]
                 ]
 
-                out = library.group(output, minimized_expression_context, how)
+                out = _ak_add_doc(
+                    library.group(output, minimized_expression_context, how),
+                    self,
+                    ak_add_doc,
+                )
 
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
@@ -1924,7 +1946,12 @@ class TBranch(HasBranches):
         )
 
         _fix_asgrouped(
-            arrays, expression_context, branchid_interpretation, library, None
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            library,
+            None,
+            ak_add_doc,
         )
 
         if array_cache is not None:
@@ -3218,7 +3245,9 @@ def _ranges_or_baskets_to_arrays(
         obj = None  # release before blocking
 
 
-def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library, how):
+def _fix_asgrouped(
+    arrays, expression_context, branchid_interpretation, library, how, ak_add_doc
+):
     index_start = 0
     for index_stop, (_, context) in enumerate(expression_context):
         if context["is_branch"]:
@@ -3236,7 +3265,9 @@ def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library,
                     subarrays[subname] = arrays[subbranch.cache_key]
                     subcontext.append((subname, limited_context[subname]))
 
-                arrays[branch.cache_key] = library.group(subarrays, subcontext, how)
+                arrays[branch.cache_key] = _ak_add_doc(
+                    library.group(subarrays, subcontext, how), branch, ak_add_doc
+                )
 
                 index_start = index_stop
 

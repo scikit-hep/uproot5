@@ -87,7 +87,9 @@ class Library:
         """
         return numpy.zeros(shape, dtype)
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
+    def finalize(
+        self, array, branch, interpretation, entry_start, entry_stop, interp_options
+    ):
         """
         Args:
             array (array): Internal, temporary, trimmed array. If this is a
@@ -99,7 +101,7 @@ class Library:
             entry_start (int): First entry that is included in the output.
             entry_stop (int): FIrst entry that is excluded (one greater than
                 the last entry that is included) in the output.
-            options (dict): Flags and other options passed through the
+            interp_options (dict): Flags and other options passed through the
                 interpretation process.
 
         Create a library-appropriate output array for this temporary ``array``.

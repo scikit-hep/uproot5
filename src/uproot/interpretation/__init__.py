@@ -109,7 +109,7 @@ class Interpretation:
         context,
         cursor_offset,
         library,
-        options,
+        interp_options,
     ):
         """
         Args:
@@ -128,7 +128,7 @@ class Interpretation:
                 (:doc:`uproot.deserialization.read_object_any`).
             library (:doc:`uproot.interpretation.library.Library`): The
                 requested library for output.
-            options (dict): Flags and other options passed through the
+            interp_options (dict): Flags and other options passed through the
                 interpretation process.
 
         Performs the first step of interpretation, from uncompressed ``TBasket``
@@ -144,7 +144,7 @@ class Interpretation:
         entry_offsets,
         library,
         branch,
-        options,
+        interp_options,
     ):
         """
         Args:
@@ -163,7 +163,7 @@ class Interpretation:
                 requested library for output.
             branch (:doc:`uproot.behaviors.TBranch.TBranch`): The ``TBranch``
                 that is being interpreted.
-            options (dict): Flags and other options passed through the
+            interp_options (dict): Flags and other options passed through the
                 interpretation process.
 
         Performs the last steps of interpretation, from a collection of
