@@ -176,7 +176,15 @@ class AsStrings(uproot.interpretation.Interpretation):
         )
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         self.hook_before_basket_array(
             data=data,
@@ -186,6 +194,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
         if (
             isinstance(library, uproot.interpretation.library.Awkward)
@@ -306,12 +315,20 @@ class AsStrings(uproot.interpretation.Interpretation):
             output=output,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         return output
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
     ):
         self.hook_before_final_array(
             basket_arrays=basket_arrays,
@@ -320,6 +337,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             entry_offsets=entry_offsets,
             library=library,
             branch=branch,
+            options=options,
         )
 
         if any(not isinstance(x, StringArray) for x in basket_arrays.values()):
@@ -342,7 +360,9 @@ class AsStrings(uproot.interpretation.Interpretation):
                 branch=branch,
                 output=output,
             )
-            output = library.finalize(output, branch, self, entry_start, entry_stop)
+            output = library.finalize(
+                output, branch, self, entry_start, entry_stop, options
+            )
 
         else:
             basket_offsets = {}
@@ -444,7 +464,9 @@ class AsStrings(uproot.interpretation.Interpretation):
                 output=output,
             )
 
-            output = library.finalize(output, branch, self, entry_start, entry_stop)
+            output = library.finalize(
+                output, branch, self, entry_start, entry_stop, options
+            )
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -454,6 +476,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             library=library,
             branch=branch,
             output=output,
+            options=options,
         )
 
         return output

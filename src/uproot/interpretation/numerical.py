@@ -43,7 +43,14 @@ class Numerical(uproot.interpretation.Interpretation):
         return array
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
     ):
         self.hook_before_final_array(
             basket_arrays=basket_arrays,
@@ -111,7 +118,9 @@ class Numerical(uproot.interpretation.Interpretation):
 
         output = self._wrap_almost_finalized(output)
 
-        output = library.finalize(output, branch, self, entry_start, entry_stop)
+        output = library.finalize(
+            output, branch, self, entry_start, entry_stop, options
+        )
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -323,7 +332,15 @@ class AsDtype(Numerical):
             )
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         self.hook_before_basket_array(
             data=data,
@@ -333,6 +350,7 @@ class AsDtype(Numerical):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         dtype, shape = _dtype_shape(self._from_dtype)
@@ -360,6 +378,7 @@ in file {}""".format(
             output=output,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         return output
@@ -526,7 +545,15 @@ class TruncatedNumerical(Numerical):
         )
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         self.hook_before_basket_array(
             data=data,
@@ -536,6 +563,7 @@ class TruncatedNumerical(Numerical):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         try:
@@ -589,6 +617,7 @@ in file {}""".format(
             library=library,
             raw=raw,
             output=output,
+            options=options,
         )
 
         return output

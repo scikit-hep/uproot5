@@ -87,7 +87,9 @@ class Library:
         """
         return numpy.zeros(shape, dtype)
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(
+        self, array, branch, interpretation, entry_start, entry_stop, interp_options
+    ):
         """
         Args:
             array (array): Internal, temporary, trimmed array. If this is a
@@ -99,6 +101,8 @@ class Library:
             entry_start (int): First entry that is included in the output.
             entry_stop (int): FIrst entry that is excluded (one greater than
                 the last entry that is included) in the output.
+            interp_options (dict): Flags and other options passed through the
+                interpretation process.
 
         Create a library-appropriate output array for this temporary ``array``.
 
@@ -195,7 +199,7 @@ class NumPy(Library):
 
         return numpy
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         if isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
             array.content,
             uproot.interpretation.objects.StridedObjectArray,
@@ -450,6 +454,13 @@ def _awkward_json_to_array(awkward, form, array):
         raise AssertionError(form["class"])
 
 
+def _awkward_add_doc(awkward, array, branch, ak_add_doc):
+    if ak_add_doc:
+        return awkward.with_parameter(array, "__doc__", branch.title)
+    else:
+        return array
+
+
 class Awkward(Library):
     """
     A :doc:`uproot.interpretation.library.Library` that presents ``TBranch``
@@ -483,15 +494,22 @@ class Awkward(Library):
     def imported(self):
         return uproot.extras.awkward()
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported
 
+        ak_add_doc = options.get("ak_add_doc", False)
+
         if isinstance(array, awkward.contents.Content):
-            return awkward.Array(array)
+            return _awkward_add_doc(awkward, awkward.Array(array), branch, ak_add_doc)
 
         elif isinstance(array, uproot.interpretation.objects.StridedObjectArray):
-            return awkward.Array(
-                _strided_to_awkward(awkward, "", array.interpretation, array.array)
+            return _awkward_add_doc(
+                awkward,
+                awkward.Array(
+                    _strided_to_awkward(awkward, "", array.interpretation, array.array)
+                ),
+                branch,
+                ak_add_doc,
             )
 
         elif isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
@@ -506,7 +524,7 @@ class Awkward(Library):
             else:
                 offsets = awkward.index.Index64(array.offsets)
                 layout = awkward.contents.ListOffsetArray(offsets, content)
-            return awkward.Array(layout)
+            return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(array, uproot.interpretation.jagged.JaggedArray):
             content = awkward.from_numpy(
@@ -518,7 +536,7 @@ class Awkward(Library):
             else:
                 offsets = awkward.index.Index64(array.offsets)
                 layout = awkward.contents.ListOffsetArray(offsets, content)
-            return awkward.Array(layout)
+            return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(array, uproot.interpretation.strings.StringArray):
             content = awkward.contents.NumpyArray(
@@ -542,7 +560,7 @@ class Awkward(Library):
                 )
             else:
                 raise AssertionError(repr(array.offsets.dtype))
-            return awkward.Array(layout)
+            return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
             try:
@@ -569,7 +587,12 @@ in object {}""".format(
             unlabeled = awkward.from_iter(
                 (_object_to_awkward_json(form, x) for x in array), highlevel=False
             )
-            return awkward.Array(_awkward_json_to_array(awkward, form, unlabeled))
+            return _awkward_add_doc(
+                awkward,
+                awkward.Array(_awkward_json_to_array(awkward, form, unlabeled)),
+                branch,
+                ak_add_doc,
+            )
 
         elif array.dtype.names is not None:
             length, shape = array.shape[0], array.shape[1:]
@@ -586,10 +609,15 @@ in object {}""".format(
             out = awkward.contents.RecordArray(contents, array.dtype.names, length)
             for size in shape[::-1]:
                 out = awkward.contents.RegularArray(out, size)
-            return awkward.Array(out)
+            return _awkward_add_doc(awkward, awkward.Array(out), branch, ak_add_doc)
 
         else:
-            return awkward.from_numpy(array, regulararray=True)
+            return _awkward_add_doc(
+                awkward,
+                awkward.from_numpy(array, regulararray=True),
+                branch,
+                ak_add_doc,
+            )
 
     def group(self, arrays, expression_context, how):
         awkward = self.imported
@@ -828,7 +856,7 @@ class Pandas(Library):
     def imported(self):
         return uproot.extras.pandas()
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         pandas = self.imported
 
         if isinstance(array, uproot.interpretation.objects.StridedObjectArray):
