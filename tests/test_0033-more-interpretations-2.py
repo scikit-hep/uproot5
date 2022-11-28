@@ -26,6 +26,7 @@ def test_awkward_strings():
 
 def test_pandas_strings():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward_pandas")
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -72,48 +73,16 @@ def test_leaflist_awkward():
 
 def test_leaflist_pandas():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward_pandas")
     with uproot.open(skhep_testdata.data_path("uproot-leaflist.root"))["tree"] as tree:
         result = tree["leaflist"].array(library="pd")
 
-        if uproot._util.parse_version(pandas.__version__) < uproot._util.parse_version(
-            "0.21"
-        ):
-            assert list(result.columns) == ["x", "y", "z"]
-            assert result["x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
-            assert result["y"].values.tolist() == [1, 2, 3, 4, 5]
-            assert result["z"].values.tolist() == [97, 98, 99, 100, 101]
+        assert result.ak["x"].tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
+        assert result.ak["y"].tolist() == [1, 2, 3, 4, 5]
+        assert result.ak["z"].tolist() == [97, 98, 99, 100, 101]
 
-            result = tree.arrays("leaflist", library="pd")
-            assert list(result.columns) == [
-                ("leaflist", "x"),
-                ("leaflist", "y"),
-                ("leaflist", "z"),
-            ]
-            assert result["leaflist", "x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
-            assert result["leaflist", "y"].values.tolist() == [1, 2, 3, 4, 5]
-            assert result["leaflist", "z"].values.tolist() == [97, 98, 99, 100, 101]
-
-        else:
-            assert list(result.columns) == [("x",), ("y",), ("z",)]
-            assert result[
-                "x",
-            ].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
-            assert result[
-                "y",
-            ].values.tolist() == [1, 2, 3, 4, 5]
-            assert result[
-                "z",
-            ].values.tolist() == [97, 98, 99, 100, 101]
-
-            result = tree.arrays("leaflist", library="pd")
-            assert list(result.columns) == [
-                ("leaflist", "x"),
-                ("leaflist", "y"),
-                ("leaflist", "z"),
-            ]
-            assert result["leaflist", "x"].values.tolist() == [1.1, 2.2, 3.3, 4.0, 5.5]
-            assert result["leaflist", "y"].values.tolist() == [1, 2, 3, 4, 5]
-            assert result["leaflist", "z"].values.tolist() == [97, 98, 99, 100, 101]
+        result = tree.arrays("leaflist", library="pd")
+        assert list(result.columns) == ["leaflist"]
 
 
 def test_fixed_width():
@@ -138,38 +107,32 @@ def test_fixed_width_awkward():
 
 def test_fixed_width_pandas():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward_pandas")
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root")
     )["sample"] as tree:
-        result = tree["ai4"].array(library="pd")
-        assert list(result.columns) == ["[0]", "[1]", "[2]"]
-        assert result["[0]"].values.tolist() == list(range(-14, 16))
-        assert result["[1]"].values.tolist() == list(range(-13, 17))
-        assert result["[2]"].values.tolist() == list(range(-12, 18))
+        result = tree["ai4"].array(library="pd").ak.array
+        assert result[:, 0].tolist() == list(range(-14, 16))
+        assert result[:, 1].tolist() == list(range(-13, 17))
+        assert result[:, 2].tolist() == list(range(-12, 18))
 
         result = tree.arrays("ai4", library="pd")
-        assert list(result.columns) == ["ai4[0]", "ai4[1]", "ai4[2]"]
-        assert result["ai4[0]"].values.tolist() == list(range(-14, 16))
-        assert result["ai4[1]"].values.tolist() == list(range(-13, 17))
-        assert result["ai4[2]"].values.tolist() == list(range(-12, 18))
+        assert list(result.columns) == ["ai4"]
+        assert result["ai4"].ak.array[:, 0].tolist() == list(range(-14, 16))
+        assert result["ai4"].ak.array[:, 1].tolist() == list(range(-13, 17))
+        assert result["ai4"].ak.array[:, 2].tolist() == list(range(-12, 18))
 
 
 def test_fixed_width_pandas_2():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward_pandas")
     with uproot.open(skhep_testdata.data_path("uproot-small-evnt-tree-fullsplit.root"))[
         "tree"
     ] as tree:
-        result = tree["ArrayI32[10]"].array(library="pd")
-        assert list(result.columns) == ["[" + str(i) + "]" for i in range(10)]
-        for i in range(10):
-            assert result["[" + str(i) + "]"].values.tolist() == list(range(100))
-
         result = tree.arrays(
             "xyz", aliases={"xyz": "get('ArrayI32[10]')"}, library="pd"
         )
-        assert list(result.columns) == ["xyz[" + str(i) + "]" for i in range(10)]
-        for i in range(10):
-            assert result["xyz[" + str(i) + "]"].values.tolist() == list(range(100))
+        assert list(result.columns) == ["xyz"]
 
 
 def hook(self, **kwargs):
