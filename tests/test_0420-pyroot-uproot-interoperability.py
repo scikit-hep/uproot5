@@ -50,7 +50,8 @@ def test_write_pyroot_TLorentzVector(tmp_path):
     with uproot.recreate(newfile, compression=None) as fout:
         fout["something"] = ROOT.TLorentzVector(1, 2, 3, 4)
 
-    with uproot.open(newfile) as fin:
+    classes = dict(uproot.classes)
+    with uproot.open(newfile, custom_classes=classes) as fin:
         uproot_vec = fin["something"]
         assert uproot_vec.member("fP").member("fX") == 1
         assert uproot_vec.member("fP").member("fY") == 2
