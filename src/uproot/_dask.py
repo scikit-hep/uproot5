@@ -130,8 +130,8 @@ def dask(
       contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
       concatenated array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
-      read array from ``TTrees``.
+    * :doc:`uproot._dask.dask` (this function): returns an unevaluated Dask
+      array from ``TTrees``.
     """
 
     files = uproot._util.regularize_files(files)
