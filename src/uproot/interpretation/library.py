@@ -856,7 +856,7 @@ class Pandas(Library):
             awkward_pandas = uproot.extras.awkward_pandas()
             ak_lib = _libraries[Awkward.name]
             ak_arr = ak_lib.finalize(
-                array, branch, interpretation, entry_start, entry_stop
+                array, branch, interpretation, entry_start, entry_stop, options
             )
             return pandas.Series(
                 awkward_pandas.AwkwardExtensionArray(ak_arr), index=index
