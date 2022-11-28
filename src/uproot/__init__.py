@@ -18,10 +18,10 @@ Typical entry points for file-reading are
 * :doc:`uproot.reading.open`
 * :doc:`uproot.behaviors.TBranch.iterate`
 * :doc:`uproot.behaviors.TBranch.concatenate`
-* :doc:`uproot.behaviors.TBranch.lazy`
+* :doc:`uproot._dask.dask`
 
 though they would usually be accessed as ``uproot.iterate``,
-``uproot.concatenate``, and ``uproot.lazy``.
+``uproot.concatenate``, and ``uproot.dask``.
 
 The most useful classes are
 
@@ -180,7 +180,6 @@ from uproot.behaviors.TTree import TTree
 from uproot.behaviors.TBranch import TBranch
 from uproot.behaviors.TBranch import iterate
 from uproot.behaviors.TBranch import concatenate
-from uproot.behaviors.TBranch import lazy
 
 from uproot.behavior import behavior_of
 

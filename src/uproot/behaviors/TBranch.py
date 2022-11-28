@@ -169,8 +169,7 @@ def iterate(
       chunks of contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single concatenated
       array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
-      ``TTrees``.
+    * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
     files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -333,8 +332,7 @@ def concatenate(
       contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate` (this function): returns a
       single concatenated array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
-      ``TTrees``.
+    * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
     files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -376,136 +374,6 @@ def concatenate(
                 global_start += hasbranches.num_entries
 
     return library.concatenate(all_arrays)
-
-
-def lazy(
-    files,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    recursive=True,
-    full_paths=False,
-    step_size="100 MB",
-    decompression_executor=None,
-    interpretation_executor=None,
-    array_cache="100 MB",
-    library="ak",
-    custom_classes=None,
-    allow_missing=False,
-    **options,  # NOTE: a comma after **options breaks Python 2
-):
-    """
-    .. warning::
-        Deprecated. This function will be removed in Uproot 5 (target date: Dec 2022). Please use :doc:`uproot.behaviors.TBranch.dask` instead.
-    Args:
-        files: See below.
-        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-            filter to select ``TBranches`` by name.
-        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-            filter to select ``TBranches`` by type.
-        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
-            filter to select ``TBranches`` using the full
-            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
-            returns False or None, the ``TBranch`` is excluded; if the function
-            returns True, it is included with its standard
-            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
-            :doc:`uproot.interpretation.Interpretation`, this interpretation
-            overrules the standard one.
-        recursive (bool): If True, include all subbranches of branches as
-            separate fields; otherwise, only search one level deep.
-        full_paths (bool): If True, include the full path to each subbranch
-            with slashes (``/``); otherwise, use the descendant's name as
-            the field name.
-        step_size (int or str): If an integer, the maximum number of entries to
-            include in each iteration step; if a string, the maximum memory size
-            to include. The string must be a number followed by a memory unit,
-            such as "100 MB".
-        decompression_executor (None or Executor with a ``submit`` method): The
-            executor that is used to decompress ``TBaskets``; if None, a
-            :doc:`uproot.source.futures.TrivialExecutor` is created.
-        interpretation_executor (None or Executor with a ``submit`` method): The
-            executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
-            is created.
-        array_cache (None, MutableMapping, or memory size): Cache of arrays;
-            if None, do not use a cache; if a memory size, create a new cache
-            of this size.
-        library (str or :doc:`uproot.interpretation.library.Library`): The library
-            that is used to represent arrays. For lazy arrays, only ``"ak"``
-            for Awkward Array is allowed.
-        custom_classes (None or dict): If a dict, override the classes from
-            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
-        allow_missing (bool): If True, skip over any files that do not contain
-            the specified ``TTree``.
-        options: See below.
-
-    Returns a lazy array, which loads data on demand. Only the files and
-    ``TTree`` metadata are opened when this function is invoked.
-
-    For example:
-
-    .. code-block:: python
-
-        >>> lazyarray = uproot.lazy("files*.root:tree")
-        >>> # all files*.root have been opened and the "tree" from each is examined
-
-        >>> lazyarray
-        <Array [{Type: 'GT', Run: 148031, ... M: 96.7}] type='23047295 * {"Type": string...'>
-        >>> # the first TBasket of "Type" and "Run" have now been read, as well as the last
-        >>> # TBasket of "M", to print these values on the screen.
-
-        >>> np.sqrt(lazyarray.px1**2 + lazyarray.py1**2)
-        <Array [44.7, 38.8, 38.8, ... 32.4, 32.4, 32.5] type='23047295 * float64'>
-        >>> # the entirety of "px1" and "py1" have now been read, to perform a calculation.
-
-    If the size of the fields used in a calculation do not fit into ``array_cache``,
-    lazy arrays may be inefficient, repeatedly rereading data that could be read
-    once by iterating through the calculation with
-    :doc:`uproot.behaviors.TBranch.iterate`.
-
-    Allowed types for the ``files`` parameter:
-
-    * str/bytes: relative or absolute filesystem path or URL, without any colons
-      other than Windows drive letter or URL schema.
-      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
-    * str/bytes: same with an object-within-ROOT path, separated by a colon.
-      Example: ``"rel/file.root:tdirectory/ttree"``
-    * pathlib.Path: always interpreted as a filesystem path or URL only (no
-      object-within-ROOT path), regardless of whether there are any colons.
-      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
-    * glob syntax in str/bytes and pathlib.Path.
-      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
-    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
-      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
-    * already-open TTree objects.
-    * iterables of the above.
-
-    Options (type; default):
-
-    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-    * num_workers (int; 1)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 512)
-    * minimal_ttree_metadata (bool; True)
-
-    Other file entry points:
-
-    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
-    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
-      contiguous entries in ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
-      concatenated array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
-      read array from ``TTrees``.
-    """
-    raise NotImplementedError(
-        "uproot.lazy is removed in Uproot5 (only here for the deprecation message in the online docs)"
-    )
 
 
 class Report:

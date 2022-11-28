@@ -108,8 +108,7 @@ def open(
       contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single concatenated
       array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
-      ``TTrees``.
+    * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
 
     For remote ROOT files served over HTTP(S), basic authentication is supported.
     In this case, the credentials may be provided part of the URL in, as in
