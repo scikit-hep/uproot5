@@ -27,6 +27,7 @@ class Model_TObjString(uproot.model.Model, str):
     writable = True
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -64,6 +65,12 @@ in file {}""".format(
 
     writable = True
 
+    def tojson(self):
+        out = self._bases[0].tojson()  # TObject
+        out["_typename"] = self.classname
+        out["fString"] = str(self)
+        return out
+
     def _serialize(self, out, header, name, tobject_flags):
         where = len(out)
         for x in self._bases:
@@ -89,13 +96,10 @@ in file {}""".format(
     @classmethod
     def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
-            parameters={
-                "__array__": "string",
-                "uproot": {"as": "TObjString", "header": True, "length_bytes": "1-5"},
-            },
+            awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
+            parameters={"__array__": "string"},
         )
 
 

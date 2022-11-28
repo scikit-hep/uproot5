@@ -103,10 +103,18 @@ class AsGrouped(uproot.interpretation.Interpretation):
             if y is not None:
                 names.append(x)
                 fields.append(y.awkward_form(file, context))
-        return awkward._v2.forms.RecordForm(fields, names)
+        return awkward.forms.RecordForm(fields, names)
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         raise ValueError(
             """grouping branches like {} should not be read directly; instead read the subbranches:
@@ -123,7 +131,14 @@ in object {}""".format(
         )
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
     ):
         raise ValueError(
             """grouping branches like {} should not be read directly; instead read the subbranches:

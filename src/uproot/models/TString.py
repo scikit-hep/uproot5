@@ -6,6 +6,7 @@ This module defines a versionless model of ``TString``.
 
 
 import uproot
+import uproot._awkward_forth
 
 
 class Model_TString(uproot.model.Model, str):
@@ -19,6 +20,12 @@ class Model_TString(uproot.model.Model, str):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
+            keys = forth_obj.get_keys(2)
+            offsets_num = keys[0]
+            data_num = keys[1]
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -26,6 +33,44 @@ in file {}""".format(
                     type(self).__name__, self.file.file_path
                 )
             )
+        if forth_stash is not None:
+            forth_stash.add_to_pre(
+                f" stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
+            )
+            if forth_obj.should_add_form():
+                temp_aform = {
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "content": {
+                        "class": "NumpyArray",
+                        "primitive": "uint8",
+                        "inner_shape": [],
+                        "parameters": {"__array__": "char"},
+                        "form_key": f"node{data_num}",
+                    },
+                    "parameters": {"__array__": "string"},
+                    "form_key": f"node{offsets_num}",
+                }
+                forth_obj.add_form(temp_aform)
+
+                form_keys = [
+                    f"node{data_num}-data",
+                    f"node{offsets_num}-offsets",
+                ]
+                for elem in form_keys:
+                    forth_obj.add_form_key(elem)
+            forth_stash.add_to_header(
+                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
+            )
+            forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            temp_form = forth_obj.add_node(
+                f"node{offsets_num}",
+                forth_stash.get_attrs(),
+                "i64",
+                0,
+                None,
+            )
+            forth_obj.go_to(temp_form)
         self._data = cursor.string(chunk, context)
 
     def postprocess(self, chunk, cursor, context, file):

@@ -70,7 +70,7 @@ def test_stitching_arrays():
     for start in range(16):
         for stop in range(15, -1, -1):
             actual = interpretation.final_array(
-                basket_arrays, start, stop, entry_offsets, library, None
+                basket_arrays, start, stop, entry_offsets, library, None, {}
             )
             assert expectation[start:stop] == actual.tolist()
 
@@ -128,6 +128,7 @@ def test_ranges_or_baskets_to_arrays():
             library,
             arrays,
             False,
+            {},
         )
         assert arrays[branch.cache_key].tolist() == [
             -15,

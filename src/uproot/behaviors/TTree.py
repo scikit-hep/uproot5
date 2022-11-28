@@ -158,4 +158,8 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
     def postprocess(self, chunk, cursor, context, file):
         self._chunk = chunk
         self._lookup = {}
+        for branch in self.member("fBranches"):
+            name = branch.member("fName")
+            if name not in self._lookup:
+                self._lookup[name] = branch
         return self

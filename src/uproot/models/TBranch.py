@@ -42,6 +42,7 @@ class Model_TBranch_v10(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     behaviors = (uproot.behaviors.TBranch.TBranch,)
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}

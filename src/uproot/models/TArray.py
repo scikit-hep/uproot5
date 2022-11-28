@@ -26,6 +26,7 @@ class Model_TArray(uproot.model.Model, Sequence):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}
@@ -76,10 +77,9 @@ in file {}""".format(
     @classmethod
     def awkward_form(cls, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(cls.dtype, file, context),
-            parameters={"uproot": {"as": "TArray"}},
         )
 
     writable = True

@@ -117,10 +117,9 @@ class AsJagged(uproot.interpretation.Interpretation):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._content, file, context),
-            parameters={"uproot": {"as": "jagged", "header_bytes": self._header_bytes}},
         )
 
     @property
@@ -142,7 +141,15 @@ class AsJagged(uproot.interpretation.Interpretation):
             return self._typename
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         self.hook_before_basket_array(
             data=data,
@@ -152,6 +159,7 @@ class AsJagged(uproot.interpretation.Interpretation):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         if byte_offsets is None:
@@ -174,7 +182,7 @@ class AsJagged(uproot.interpretation.Interpretation):
         if self._header_bytes == 0:
             offsets = fast_divide(byte_offsets, self._content.itemsize)
             content = self._content.basket_array(
-                data, None, basket, branch, context, cursor_offset, library
+                data, None, basket, branch, context, cursor_offset, library, options
             )
             output = JaggedArray(offsets, content)
 
@@ -190,7 +198,7 @@ class AsJagged(uproot.interpretation.Interpretation):
             data = data[mask]
 
             content = self._content.basket_array(
-                data, None, basket, branch, context, cursor_offset, library
+                data, None, basket, branch, context, cursor_offset, library, options
             )
 
             byte_counts = byte_stops - byte_starts
@@ -210,12 +218,20 @@ class AsJagged(uproot.interpretation.Interpretation):
             output=output,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         return output
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
     ):
         self.hook_before_final_array(
             basket_arrays=basket_arrays,
@@ -224,6 +240,7 @@ class AsJagged(uproot.interpretation.Interpretation):
             entry_offsets=entry_offsets,
             library=library,
             branch=branch,
+            options=options,
         )
 
         basket_offsets = {}
@@ -317,7 +334,9 @@ class AsJagged(uproot.interpretation.Interpretation):
                 output=output,
             )
 
-        output = library.finalize(output, branch, self, entry_start, entry_stop)
+        output = library.finalize(
+            output, branch, self, entry_start, entry_stop, options
+        )
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -327,6 +346,7 @@ class AsJagged(uproot.interpretation.Interpretation):
             library=library,
             branch=branch,
             output=output,
+            options=options,
         )
 
         return output

@@ -57,6 +57,7 @@ def iterate(
     decompression_executor=None,
     interpretation_executor=None,
     library="ak",
+    ak_add_doc=False,
     how=None,
     report=False,
     custom_classes=None,
@@ -104,6 +105,8 @@ def iterate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+            to the Awkward ``__doc__`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -198,6 +201,7 @@ def iterate(
                         decompression_executor=decompression_executor,
                         interpretation_executor=interpretation_executor,
                         library=library,
+                        ak_add_doc=ak_add_doc,
                         how=how,
                         report=report,
                     ):
@@ -230,6 +234,7 @@ def concatenate(
     decompression_executor=None,
     interpretation_executor=None,
     library="ak",
+    ak_add_doc=False,
     how=None,
     custom_classes=None,
     allow_missing=False,
@@ -272,6 +277,8 @@ def concatenate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+            to the Awkward ``__doc__`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -361,6 +368,7 @@ def concatenate(
                         interpretation_executor=interpretation_executor,
                         array_cache=None,
                         library=library,
+                        ak_add_doc=ak_add_doc,
                         how=how,
                     )
                     arrays = library.global_index(arrays, global_start)
@@ -526,6 +534,12 @@ class Report:
         )
 
 
+def _ak_add_doc(array, hasbranches, ak_add_doc):
+    if ak_add_doc and type(array).__module__ == "awkward.highlevel":
+        array.layout.parameters["__doc__"] = hasbranches.title
+    return array
+
+
 class HasBranches(Mapping):
     """
     Abstract class of behaviors for anything that "has branches," namely
@@ -669,6 +683,7 @@ class HasBranches(Mapping):
         interpretation_executor=None,
         array_cache="inherit",
         library="ak",
+        ak_add_doc=False,
         how=None,
     ):
         """
@@ -717,6 +732,8 @@ class HasBranches(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -809,6 +826,7 @@ class HasBranches(Mapping):
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
+        interp_options = {"ak_add_doc": ak_add_doc}
         _ranges_or_baskets_to_arrays(
             self,
             ranges_or_baskets,
@@ -820,13 +838,19 @@ class HasBranches(Mapping):
             library,
             arrays,
             False,
+            interp_options,
         )
 
         # no longer needed; save memory
         del ranges_or_baskets
 
         _fix_asgrouped(
-            arrays, expression_context, branchid_interpretation, library, how
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            library,
+            how,
+            ak_add_doc,
         )
 
         if array_cache is not None:
@@ -864,7 +888,9 @@ class HasBranches(Mapping):
             (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
         ]
 
-        return library.group(output, expression_context, how)
+        return _ak_add_doc(
+            library.group(output, expression_context, how), self, ak_add_doc
+        )
 
     def iterate(
         self,
@@ -881,6 +907,7 @@ class HasBranches(Mapping):
         decompression_executor=None,
         interpretation_executor=None,
         library="ak",
+        ak_add_doc=False,
         how=None,
         report=False,
     ):
@@ -931,6 +958,8 @@ class HasBranches(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1040,6 +1069,7 @@ class HasBranches(Mapping):
                                     )
 
                 arrays = {}
+                interp_options = {"ak_add_doc": ak_add_doc}
                 _ranges_or_baskets_to_arrays(
                     self,
                     ranges_or_baskets,
@@ -1051,10 +1081,16 @@ class HasBranches(Mapping):
                     library,
                     arrays,
                     True,
+                    interp_options,
                 )
 
                 _fix_asgrouped(
-                    arrays, expression_context, branchid_interpretation, library, how
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    library,
+                    how,
+                    ak_add_doc,
                 )
 
                 output = language.compute_expressions(
@@ -1076,7 +1112,11 @@ class HasBranches(Mapping):
                     if c["is_primary"] and not c["is_cut"]
                 ]
 
-                out = library.group(output, minimized_expression_context, how)
+                out = _ak_add_doc(
+                    library.group(output, minimized_expression_context, how),
+                    self,
+                    ak_add_doc,
+                )
 
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
@@ -1555,10 +1595,6 @@ class HasBranches(Mapping):
     def __getitem__(self, where):
         original_where = where
 
-        got = self._lookup.get(original_where)
-        if got is not None:
-            return got
-
         if uproot._util.isint(where):
             return self.branches[where]
         elif uproot._util.isstr(where):
@@ -1572,24 +1608,28 @@ class HasBranches(Mapping):
         else:
             recursive = True
 
+        got = self._lookup.get(where)
+        if got is not None:
+            return got
+
         if "/" in where:
-            where = "/".join([x for x in where.split("/") if x != ""])
-            for k, v in self.iteritems(recursive=True, full_paths=True):
-                if where == k:
-                    self._lookup[original_where] = v
-                    return v
-            else:
+            this = self
+            try:
+                for piece in where.split("/"):
+                    if piece != "":
+                        this = this[piece]
+            except uproot.KeyInFileError:
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
                     file_path=self._file.file_path,
                     object_path=self.object_path,
-                )
+                ) from None
+            return this
 
         elif recursive:
             got = _get_recursive(self, where)
             if got is not None:
-                self._lookup[original_where] = got
                 return got
             else:
                 raise uproot.KeyInFileError(
@@ -1600,17 +1640,12 @@ class HasBranches(Mapping):
                 )
 
         else:
-            for branch in self.branches:
-                if branch.name == where:
-                    self._lookup[original_where] = branch
-                    return branch
-            else:
-                raise uproot.KeyInFileError(
-                    original_where,
-                    keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
-                )
+            raise uproot.KeyInFileError(
+                original_where,
+                keys=self.keys(recursive=recursive),
+                file_path=self._file.file_path,
+                object_path=self.object_path,
+            )
 
     def __iter__(self):
         yield from self.branches
@@ -1657,6 +1692,7 @@ class TBranch(HasBranches):
         interpretation_executor=None,
         array_cache="inherit",
         library="ak",
+        ak_add_doc=False,
     ):
         """
         Args:
@@ -1685,6 +1721,8 @@ class TBranch(HasBranches):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
 
         Returns the ``TBranch`` data as an array.
 
@@ -1760,6 +1798,7 @@ class TBranch(HasBranches):
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
+        interp_options = {"ak_add_doc": ak_add_doc}
         _ranges_or_baskets_to_arrays(
             self,
             ranges_or_baskets,
@@ -1771,10 +1810,16 @@ class TBranch(HasBranches):
             library,
             arrays,
             False,
+            interp_options,
         )
 
         _fix_asgrouped(
-            arrays, expression_context, branchid_interpretation, library, None
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            library,
+            None,
+            ak_add_doc,
         )
 
         if array_cache is not None:
@@ -2367,6 +2412,11 @@ in file {}""".format(
         fWriteBasket = self.member("fWriteBasket")
 
         self._lookup = {}
+        for branch in self.member("fBranches"):
+            name = branch.member("fName")
+            if name not in self._lookup:
+                self._lookup[name] = branch
+
         self._interpretation = None
         self._typename = None
         self._streamer = None
@@ -2538,9 +2588,10 @@ def _keys_deep(hasbranches):
 
 
 def _get_recursive(hasbranches, where):
+    got = hasbranches._lookup.get(where)
+    if got is not None:
+        return got
     for branch in hasbranches.branches:
-        if branch.name == where:
-            return branch
         got = _get_recursive(branch, where)
         if got is not None:
             return got
@@ -2921,6 +2972,7 @@ def _ranges_or_baskets_to_arrays(
     library,
     arrays,
     update_ranges_or_baskets,
+    interp_options,
 ):
     notifications = queue.Queue()
 
@@ -2954,7 +3006,7 @@ def _ranges_or_baskets_to_arrays(
         if branchid_num_baskets[cache_key] == 0:
             if cache_key not in arrays:
                 arrays[cache_key] = interpretation.final_array(
-                    {}, 0, 0, [0], library, None
+                    {}, 0, 0, [0], library, None, interp_options
                 )
 
     hasbranches._file.source.chunks(ranges, notifications=notifications)
@@ -2982,6 +3034,9 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(basket)
 
+    # all threads (if multithreaded) share a thread-local context for Forth
+    forth_context = threading.local()
+
     def basket_to_array(basket):
         try:
             assert basket.basket_num is not None
@@ -2989,14 +3044,18 @@ def _ranges_or_baskets_to_arrays(
             interpretation = branchid_interpretation[branch.cache_key]
             basket_arrays = branchid_arrays[branch.cache_key]
 
+            context = dict(branch.context)
+            context["forth"] = forth_context
+
             basket_arrays[basket.basket_num] = interpretation.basket_array(
                 basket.data,
                 basket.byte_offsets,
                 basket,
                 branch,
-                branch.context,
+                context,
                 basket.member("fKeylen"),
                 library,
+                interp_options,
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(
@@ -3022,6 +3081,7 @@ def _ranges_or_baskets_to_arrays(
                     branch.entry_offsets,
                     library,
                     branch,
+                    interp_options,
                 )
                 # no longer needed, save memory
                 basket_arrays.clear()
@@ -3053,7 +3113,9 @@ def _ranges_or_baskets_to_arrays(
         obj = None  # release before blocking
 
 
-def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library, how):
+def _fix_asgrouped(
+    arrays, expression_context, branchid_interpretation, library, how, ak_add_doc
+):
     index_start = 0
     for index_stop, (_, context) in enumerate(expression_context):
         if context["is_branch"]:
@@ -3071,7 +3133,9 @@ def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library,
                     subarrays[subname] = arrays[subbranch.cache_key]
                     subcontext.append((subname, limited_context[subname]))
 
-                arrays[branch.cache_key] = library.group(subarrays, subcontext, how)
+                arrays[branch.cache_key] = _ak_add_doc(
+                    library.group(subarrays, subcontext, how), branch, ak_add_doc
+                )
 
                 index_start = index_stop
 

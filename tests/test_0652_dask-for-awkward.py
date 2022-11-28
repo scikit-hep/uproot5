@@ -8,7 +8,9 @@ import uproot
 
 dask = pytest.importorskip("dask")
 dask_awkward = pytest.importorskip("dask_awkward")
-from dask_awkward.testutils import assert_eq
+
+pytest.importorskip("pyarrow")  # dask_awkward.lib.testutils needs pyarrow
+from dask_awkward.lib.testutils import assert_eq
 
 
 def test_single_dask_awkward_array():
@@ -72,7 +74,7 @@ def test_chunking_multiple_string():
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root") + ":events"
     assert (
         uproot.dask([filename1, filename2], step_size="500B", library="ak").npartitions
-        == 1098
+        == 922
     )
 
 

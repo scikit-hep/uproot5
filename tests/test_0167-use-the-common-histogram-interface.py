@@ -9,7 +9,12 @@ import uproot
 
 def test_axis():
     with uproot.open(skhep_testdata.data_path("uproot-hepdata-example.root")) as f:
-        f["hpx"].axes[0] == f["hpx"].axis(0) == f["hpx"].axis(-1) == f["hpx"].axis("x")
+        assert (
+            f["hpx"].axes[0]
+            == f["hpx"].axis(0)
+            == f["hpx"].axis(-1)
+            == f["hpx"].axis("x")
+        )
         axis = f["hpx"].axis()
         assert len(axis) == 100
         assert axis[0] == (-4.0, -3.92)
@@ -52,7 +57,7 @@ def test_axis():
         )
 
     with uproot.open(skhep_testdata.data_path("uproot-issue33.root")) as f:
-        f["cutflow"].axes[0] == f["cutflow"].axis(0) == f["cutflow"].axis("x")
+        assert f["cutflow"].axes[0] == f["cutflow"].axis(0) == f["cutflow"].axis("x")
         axis = f["cutflow"].axis()
         assert len(axis) == 7
         assert axis[0] == "Dijet"
@@ -143,3 +148,10 @@ def test_boost_2():
         # assert f["cutflow"].to_boost().title == "dijethad"
         # assert f["cutflow"].to_boost().axes[0].name == "xaxis"
         # assert f["cutflow"].to_boost().axes[0].title == ""
+
+
+def test_issue_0722():
+    boost_histogram = pytest.importorskip("boost_histogram")
+
+    with uproot.open(skhep_testdata.data_path("uproot-issue-722.root")) as f:
+        f["hist"].to_boost()
