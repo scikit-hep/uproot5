@@ -87,6 +87,7 @@ def test_iterate_pandas_1():
 
 def test_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward-pandas")
     with uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
         for i, arrays in enumerate(
             events.iterate("Muon_Px", step_size=1000, library="pd")
@@ -206,6 +207,7 @@ def test_function_iterate_pandas():
 
 def test_function_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward-pandas")
     files = [
         skhep_testdata.data_path("uproot-HZZ.root") + ":events",
         skhep_testdata.data_path("uproot-HZZ-uncompressed.root") + ":events",
