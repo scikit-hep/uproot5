@@ -429,6 +429,55 @@ For Pandas, a group is a `pandas.DataFrame <https://pandas.pydata.org/pandas-doc
 
 Even though you can extract individual arrays from these objects, they're read, decompressed, and interpreted as soon as you ask for them. Unless you're working with small files, be sure not to read everything when you only want a few of the arrays!
 
+Reading TBranches into Dask collections
+---------------------------------------
+
+Uproot supports reading TBranches into `Dask <https://www.dask.org/>`__ collections with the :doc:`uproot._dask.dask` function. If ``library='np'``, the array will be a `dask.array <https://docs.dask.org/en/stable/array.html>`__, and if ``library='ak'``, the array will be a `dak.Array <https://dask-awkward.readthedocs.io/en/latest/>`__. (``library='pd'`` is in development, but the target would be `dask.dataframe <https://docs.dask.org/en/stable/dataframe.html>`__.)
+
+.. code-block:: python
+
+    >>> uproot.dask(root_file)
+    dask.awkward<from-uproot, npartitions=1>
+    >>> dak_arr = uproot.dask(root_file)
+    >>> ak_arr = dak_arr.compute() # TBranches are not read until compute is called
+    >>> ak_arr.show()
+    [{one: 1, two: 1.1, three: 'uno'},
+    {one: 2, two: 2.2, three: 'dos'},
+    {one: 3, two: 3.3, three: 'tres'},
+    {one: 4, two: 4.4, three: 'quatro'}]
+    >>> uproot.dask(root_file,library='np') # now with library='np'
+    {
+    'one': dask.array<one-from-uproot, shape=(4,), dtype=int32, chunksize=(4,), chunktype=numpy.ndarray>,
+    'two': dask.array<two-from-uproot, shape=(4,), dtype=float32, chunksize=(4,), chunktype=numpy.ndarray>,
+    'three': dask.array<three-from-uproot, shape=(4,), dtype=object, chunksize=(4,), chunktype=numpy.ndarray>
+    }
+    >>> branch_dict = uproot.dask(root_file,library='np')
+    >>> branch_dict['one'].compute() # again, TBranch data isn't read until compute is called
+    array([1, 2, 3, 4], dtype=int32)
+
+Eager workflows can be converted to dask graphs that encode the order and interdependacies of computations that need to be performed. Consider the following workflow:
+
+.. code-block:: python
+
+    >>> dask_dict = uproot.dask(root_file, library='np')
+    >>> px = dask_dict['px1']
+    >>> py = dask_dict['py1']
+    >>> import numpy as np
+    >>> pt = np.sqrt(px**2 + py**2)
+    >>> pt # no data has been read yet
+    dask.array<sqrt, shape=(2304,), dtype=float64, chunksize=(2304,), chunktype=numpy.ndarray>
+    >>> pt.compute() # Only after compute is called, the TBranch data is read and further computations are executed.
+    array([44.7322, 38.8311, 38.8311, ..., 32.3997, 32.3997, 32.5076])
+
+The dask graph for this can be visualized with ``pt.visualize()``. The resultant image is shown below.
+
+.. image:: https://github.com/scikit-hep/uproot4/raw/main/docs-img/diagrams/example-dask-graph.png
+    :alt: dask-graph-example
+    :width: 300px
+    :align: center
+
+All Dask arrays have a "chunk" size that determines how many entries are read at a time, or how many entries each Dask worker reads in each Dask task. The size of these chunks can be controlled with the ``step_size`` parameter.
+
 Filtering TBranches
 -------------------
 
@@ -804,99 +853,6 @@ The arrays of all files have been entirely read into memory. In general, this is
 If your computer has enough memory to do this, then it will likely be the fastest way to process the data, and it's certainly easier than accumulating partial results in a loop. However, if you're working on a small subsample that will be scaled up to a bigger analysis, then it would be a bad idea to develop your analysis with this interface. You would likely need to restructure it as a loop later.
 
 (As a multi-file function, :doc:`uproot.behaviors.TBranch.concatenate` specifies file paths and TTree object paths just like :doc:`uproot.behaviors.TBranch.iterate`.)
-
-Reading on demand with lazy arrays
-----------------------------------
-
-Lazy-loading is a third way to access multi-file datasets, like :doc:`uproot.behaviors.TBranch.iterate` and :doc:`uproot.behaviors.TBranch.concatenate` above. As such, it's a third analogy with `ROOT's TChain <https://root.cern.ch/doc/master/classTChain.html>`__.
-
-The interface to :doc:`uproot.behaviors.TBranch.lazy` is like :doc:`uproot.behaviors.TBranch.concatenate` in that it returns a single object, not an iterator that you have to iterate through, but it is like :doc:`uproot.behaviors.TBranch.iterate` in that the data are not loaded immediately and do not need to reside in memory all at once.
-
-.. code-block:: python
-
-    >>> array = uproot.lazy(["dir1/*.root:events", "dir2/*.root:events"])
-    >>> array
-    <Array [{Type: 'GT', Run: 148031, ... M: 96.7}] type='23040 * {"Type": string, "R...'>
-
-When :doc:`uproot.behaviors.TBranch.lazy` is called, it opens all of the specified files and TTree metadata, but none of the TBranch data. It uses the TBranch names and types, as well as the TTree :ref:`uproot.behaviors.TTree.TTree.num_entries`, to define the data type and prepare batches for reading. Only when you access items in the array, such as printing them to the screen or performing a calculation on them, are the relevant TBranches read (in batches).
-
-This lazy-loading uses an Awkward Array feature, so ``library="ak"`` is the only library option.
-
-The fact that the data are being loaded on demand is (intentionally) hidden; one of the few ways to demonstrate that it is happening is by watching its cache fill up. When we first open a lazy array, the cache is empty.
-
-.. code-block:: python
-
-    >>> cache = uproot.LRUArrayCache("1 GB")
-    >>> array = uproot.lazy("https://scikit-hep.org/uproot3/examples/Zmumu.root:events",
-    ...                      step_size=100,
-    ...                      array_cache=cache)
-    >>> cache
-    <LRUArrayCache (0/100000000 bytes full) at 0x7faf787abd00>
-
-If we then ask for a single element from a single field, it loads one TBranch-batch. Since we specified the ``step_size=100`` (much too small for a real case; the default is ``"100 MB"``), this TBranch-bath is 100 entries, or 800 bytes.
-
-.. code-block:: python
-
-    >>> array["px1", 0]
-    -41.1952876442
-    >>> cache
-    <LRUArrayCache (800/100000000 bytes full) at 0x7faf787abd00>
-
-Requesting another element from the same TBranch-batch doesn't load anything else. The whole batch is already in memory.
-
-.. code-block:: python
-
-    >>> array["px1", 1]
-    35.1180497674
-    >>> cache
-    <LRUArrayCache (800/100000000 bytes full) at 0x7faf787abd00>
-
-Requesting an element from the next TBranch-batch loads the next batch.
-
-.. code-block:: python
-
-    >>> array["px1", 100]
-    27.3430272161
-    >>> cache
-    <LRUArrayCache (1600/100000000 bytes full) at 0x7faf787abd00>
-
-Requesting a different TBranch also loads a batch.
-
-.. code-block:: python
-
-    >>> array["py1", 100]
-    11.351229626
-    >>> cache
-    <LRUArrayCache (2400/100000000 bytes full) at 0x7faf787abd00>
-
-Performing a calculation on these two fields, ``array.px1`` and ``array.py1``, loads all batches for these two TBranches. Derived quantities, such as the result of the square root operation, are normal arrays (not lazy).
-
-.. code-block:: python
-
-    >>> import numpy as np
-    >>> np.sqrt(array.px1**2 + array.py1**2)
-    <Array [44.7, 38.8, 38.8, ... 32.4, 32.4, 32.5] type='2304 * float64'>
-    >>> cache
-    <LRUArrayCache (36864/100000000 bytes full) at 0x7faf787abd00>
-
-Although lazy arrays combine the convenience of :doc:`uproot.behaviors.TBranch.concatenate` with the gradual loading of :doc:`uproot.behaviors.TBranch.iterate`, it is not always the most efficient way to process data. Derived quantities are fully resident in memory, and most data analyses compute more quantities than they read.
-
-Moreover, if a lazy array is larger than its cache, reading the last batches will cause the first batches to be evicted from the cache. If it is accessed again, the first batches will need to be fully re-read, which evicts the last batches, guaranteeing that data will never be found in the cache when it's needed.
-
-For example, in a calculation like this:
-
-.. code-block:: python
-
-    >>> p = np.sqrt(array.px1**2 + array.py1**2 + array.pz1**2)
-    >>> pt = np.sqrt(array.px1**2 + array.py1**2)
-
-if the three TBranches ``px1``, ``py1``, ``pz1`` don't entirely fit into their shared cache or individual caches, then none of the data loaded while computing ``p`` will be available to compute ``pt``. Small enough caches can guarantee file re-reading, which would be the slowest step in simple calculations like the above.
-
-On the other hand, if you make the cache(s) large enough to accommodate all the arrays you'll be loading, then you might as well load them entirely into memory (with :doc:`uproot.behaviors.TBranch.concatenate`). Avoiding the overhead of managing lazy batch-loading can only streamline a workflow.
-
-So when are lazy arrays useful?
-
-Lazy arrays are especially useful for exploring a large dataset in a convenient way. If you don't know which TBranches you will be looking at, lazy arrays save you the upfront cost of reading them all, if that were even possible. You can perform calculations interactively without having to set up iterative loops, developing the pieces of a data analysis that will later be incorporated into an efficient loop based on :doc:`uproot.behaviors.TBranch.iterate`.
 
 Caching and memory management
 -----------------------------

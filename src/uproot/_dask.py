@@ -47,16 +47,51 @@ def dask(
             in each chunk. The string must be a number followed by a memory unit,
             such as "100 MB".
         library (str or :doc:`uproot.interpretation.library.Library`): The library
-            that is used to represent arrays.
+            that is used to represent arrays. If ``library='np'`` it returns a dict
+            of dask arrays and if ``library='ak'`` it returns a single dask-awkward
+            array. ``library='pd'`` has not been implemented yet and will raise a
+            ``NotImplementedError``.
         ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
             to the Awkward ``__doc__`` parameter of the array.
         custom_classes (None or dict): If a dict, override the classes from
             the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
         allow_missing (bool): If True, skip over any files that do not contain
             the specified ``TTree``.
+        open_files (bool): If True (default), the function will open the files to read file
+            metadata, i.e. only the main data read is delayed till the compute call on
+            the dask collections. If False, the opening of the files and reading the
+            metadata is also delayed till the compute call. In this case, branch-names
+            are inferred by opening only the first file.
         options: See below.
 
-    Returns dask equivalents of the backends supported by uproot.
+    Returns dask equivalents of the backends supported by uproot. If ``library='np'``,
+    the function returns a Python dict of dask arrays. If ``library='ak'``, the
+    function returns a single dask-awkward array.
+
+    For example:
+
+    .. code-block:: python
+
+        >>> uproot.dask(root_file)
+        dask.awkward<from-uproot, npartitions=1>
+        >>> uproot.dask(root_file,library='np')
+        {'Type': dask.array<Type-from-uproot, shape=(2304,), dtype=object, chunksize=(2304,), chunktype=numpy.ndarray>, ...}
+
+
+    This function (naturally) depends on Dask. To use it with ``library="np"``:
+
+    .. code-block:: bash
+
+        # with pip
+        pip install "dask[complete]"
+        # or with conda
+        conda install dask
+
+    For using ``library='ak'``
+
+    .. code-block:: bash
+
+        pip install dask-awkward   # not on conda-forge yet
 
     Allowed types for the ``files`` parameter:
 
@@ -95,8 +130,8 @@ def dask(
       contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
       concatenated array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
-      read array from ``TTrees``.
+    * :doc:`uproot._dask.dask` (this function): returns an unevaluated Dask
+      array from ``TTrees``.
     """
 
     files = uproot._util.regularize_files(files)
@@ -202,7 +237,7 @@ class _PackedArgCallable:
         )
 
 
-class LazyInputsDict(Mapping):
+class _LazyInputsDict(Mapping):
     """Dictionary with lazy key value pairs
     Parameters
     ----------
@@ -303,7 +338,7 @@ def _dask_array_from_map(
         io_func = func
 
     io_arg_map = dask.blockwise.BlockwiseDepDict(
-        mapping=LazyInputsDict(inputs),  # type: ignore
+        mapping=_LazyInputsDict(inputs),  # type: ignore
         produces_tasks=produces_tasks,
     )
 
