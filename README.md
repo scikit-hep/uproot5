@@ -1,10 +1,10 @@
-<img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/logo/logo.svg" width="300px">
+<img src="https://raw.githubusercontent.com/scikit-hep/uproot5/main/docs-img/logo/logo.svg" width="300px">
 
 [![PyPI version](https://badge.fury.io/py/uproot.svg)](https://pypi.org/project/uproot)
 [![Conda-Forge](https://img.shields.io/conda/vn/conda-forge/uproot)](https://github.com/conda-forge/uproot-feedstock)
 [![Python 3.7‒3.11](https://img.shields.io/badge/python-3.7%E2%80%923.11-blue)](https://www.python.org)
 [![BSD-3 Clause License](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Continuous integration tests](https://img.shields.io/github/workflow/status/scikit-hep/uproot4/Test%20build/main?label=tests)](https://github.com/scikit-hep/uproot4/actions)
+[![Continuous integration tests](https://img.shields.io/github/workflow/status/scikit-hep/uproot5/Test%20build/main?label=tests)](https://github.com/scikit-hep/uproot5/actions)
 
 [![Scikit-HEP](https://scikit-hep.org/assets/images/Scikit--HEP-Project-blue.svg)](https://scikit-hep.org/)
 [![NSF-1836650](https://img.shields.io/badge/NSF-1836650-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1836650)
@@ -16,17 +16,17 @@ Uproot is a library for reading and writing [ROOT files](https://root.cern/) in 
 
 Unlike the standard C++ ROOT implementation, Uproot is only an I/O library, primarily intended to stream data into machine learning libraries in Python. Unlike PyROOT and root_numpy, Uproot does not depend on C++ ROOT. Instead, it uses Numpy to cast blocks of data from the ROOT file as Numpy arrays.
 
-<p align="center"><img src="https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/abstraction-layers.svg" width="700px"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/scikit-hep/uproot5/main/docs-img/diagrams/abstraction-layers.svg" width="700px"></p>
 
 # Installation
 
-Uproot can be installed [from PyPI](https://pypi.org/project/uproot) using pip. [Awkward Array](https://pypi.org/project/awkward) is optional but highly recommended:
+Uproot can be installed [from PyPI](https://pypi.org/project/uproot) using pip.
 
 ```bash
-pip install uproot awkward
+pip install uproot
 ```
 
-Uproot is also available using [conda](https://anaconda.org/conda-forge/uproot) (in this case, [Awkward Array](https://anaconda.org/conda-forge/awkward) is automatically installed):
+Uproot is also available using [conda](https://anaconda.org/conda-forge/uproot).
 
 ```bash
 conda install -c conda-forge uproot
@@ -43,8 +43,8 @@ conda update --all
 
 **Start with the [tutorials and reference documentation](https://uproot.readthedocs.io/).**
 
-   * Report bugs, request features, and ask for additional documentation on [GitHub Issues](https://github.com/scikit-hep/uproot4/issues).
-   * If you have a "How do I...?" question, start a [GitHub Discussion](https://github.com/scikit-hep/uproot4/discussions) with category "Q&A".
+   * Report bugs, request features, and ask for additional documentation on [GitHub Issues](https://github.com/scikit-hep/uproot5/issues).
+   * If you have a "How do I...?" question, start a [GitHub Discussion](https://github.com/scikit-hep/uproot5/discussions) with category "Q&A".
    * Alternatively, ask about it on [StackOverflow with the [uproot] tag](https://stackoverflow.com/questions/tagged/uproot). Be sure to include tags for any other libraries that you use, such as Pandas or PyTorch.
    * To ask questions in real time, try the Gitter [Scikit-HEP/uproot](https://gitter.im/Scikit-HEP/uproot) chat room.
 
@@ -53,10 +53,10 @@ conda update --all
 Uproot is an ordinary Python library; you can get a copy of the code with
 
 ```bash
-git clone https://github.com/scikit-hep/uproot4.git
+git clone https://github.com/scikit-hep/uproot5.git
 ```
 
-and install it locally by calling `pip install .` in the repository directory.
+and install it locally by calling `pip install -e .` in the repository directory.
 
 If you need to develop Awkward Array as well, see its [installation for developers](https://github.com/scikit-hep/awkward-1.0#installation-for-developers).
 
@@ -64,27 +64,32 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 **Uproot's only strict dependencies are NumPy and packaging.** You'll also need `importlib_metadata` if you are on Python 3.7. These will be automatically installed when you install uproot.
 
-**Awkward Array is highly recommended.** It is not a strict dependency, but is included in the dependencies to help most users; install without dependencies (`--no-deps` with pip) if you want to avoid `awkward`. If you're using Uproot without Awkward Array, you'll have to use the `library="np"` option or globally set `uproot.default_library` to return arrays as NumPy arrays (see documentation).
+**Awkward Array is highly recommended.** It is _possible_ to use Uproot without [Awkward Array](https://anaconda.org/conda-forge/awkward). If you want to try it, pass `--no-deps` to pip and pass `library="np"` to every array-fetching function, or globally set `uproot.default_library` to get NumPy arrays instead of Awkward Arrays.
 
-   * `awkward`: be sure to use Awkward Array 2.x.
+   * `awkward`: Uproot 5.x requires Awkward 2.x.
 
 The following libraries are also useful in conjunction with Uproot, but are not necessary. If you call a function that needs one, you'll be prompted to install it. (Conda installs most of these automatically.)
 
 **For ROOT files, compressed different ways:**
 
-   * `lz4` and `xxhash`: only if reading ROOT files that have been LZ4-compressed.
-   * `zstandard`: only if reading ROOT files that have been ZSTD-compressed.
+   * `lz4` and `xxhash`: if reading ROOT files that have been LZ4-compressed.
+   * `zstandard`: if reading ROOT files that have been ZSTD-compressed.
 
 **For remote data:**
 
-   * `xrootd`: only if reading files with `root://` URLs.
+   * `xrootd`: if reading files with `root://` URLs.
 
 **For exporting data to other libraries:**
 
-   * `pandas`: only if `library="pd"`.
-   * `cupy`: only if `library="cp"` (reads arrays onto GPUs).
-   * `boost-histogram`: only if converting histograms to [boost-histogram](https://github.com/scikit-hep/boost-histogram) with `histogram.to_boost()`.
-   * `hist`: only if converting histograms to [hist](https://github.com/scikit-hep/hist) with `histogram.to_hist()`.
+   * `pandas`: if `library="pd"`.
+   * `awkward-pandas`: if `library="pd"` and the data have irregular structure ("jagged" arrays), see [awkward-pandas](https://github.com/intake/awkward-pandas).
+   * `boost-histogram`: if converting histograms to [boost-histogram](https://github.com/scikit-hep/boost-histogram) with `histogram.to_boost()`.
+   * `hist`: if converting histograms to [hist](https://github.com/scikit-hep/hist) with `histogram.to_hist()`.
+
+**For distributed computing with [Dask](https://www.dask.org/):**
+
+   * `dask`: see [uproot.dask](https://uproot.readthedocs.io/en/latest/uproot._dask.dask.html).
+   * `dask-awkward`: for data with irregular structure ("jagged" arrays), see [dask-awkward](https://github.com/dask-contrib/dask-awkward).
 
 # Acknowledgements
 
