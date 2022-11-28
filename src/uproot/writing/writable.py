@@ -109,7 +109,7 @@ def recreate(file_path, **options):
         "initial_streamers_bytes", create.defaults["initial_streamers_bytes"]
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
-    if len(options) != 0:
+    if options:
         raise TypeError(
             "unrecognized options for uproot.create or uproot.recreate: "
             + ", ".join(repr(x) for x in options)
@@ -157,7 +157,7 @@ def update(file_path, **options):
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
     )
     uuid_function = options.pop("uuid_function", create.defaults["uuid_function"])
-    if len(options) != 0:
+    if options:
         raise TypeError(
             "unrecognized options for uproot.update: "
             + ", ".join(repr(x) for x in options)

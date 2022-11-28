@@ -105,7 +105,29 @@ def reset_classes():
     reload(uproot.models.TMatrixT)
 
 
-_classname_regularize = re.compile(r"\s*(<|>|::)\s*")
+_root_alias_to_c_primitive = {
+    "Bool_t": "bool",
+    "Char_t": "char",
+    "UChar_t": "unsigned char",
+    "Short_t": "short",
+    "UShort_t": "unsigned short",
+    "Int_t": "int",
+    "UInt_t": "unsigned int",
+    "Long_t": "long",
+    "ULong_t": "unsigned long",
+    "Long64_t": "long long",
+    "ULong64_t": "unsigned long long",
+    "Size_t": "size_t",
+    "Float_t": "float",
+    "Double_t": "double",
+    "LongDouble_t": "long double",
+}
+
+_classname_regularize = re.compile(r"\s*(<|>|,|::)\s*")
+_classname_regularize_type = re.compile(
+    r"[<,](" + "|".join([re.escape(p) for p in _root_alias_to_c_primitive]) + r")[>,]"
+)
+
 _classname_encode_pattern = re.compile(rb"[^a-zA-Z0-9]+")
 _classname_decode_antiversion = re.compile(rb".*_([0-9a-f][0-9a-f])+_v([0-9]+)$")
 _classname_decode_version = re.compile(rb".*_v([0-9]+)$")
@@ -130,10 +152,20 @@ def classname_regularize(classname):
     If ``classname`` is None, this function returns None. Otherwise, it must be
     a string and it returns a string.
     """
-    if classname is None:
-        return classname
-    else:
-        return re.sub(_classname_regularize, r"\1", classname)
+    if classname is not None:
+        classname = re.sub(_classname_regularize, r"\1", classname)
+
+        m = _classname_regularize_type.search(classname)
+
+        while m is not None:
+            start, stop = m.span(1)
+            token = classname[start:stop]
+            replacement = _root_alias_to_c_primitive[token]
+            classname = classname[:start] + replacement + classname[stop:]
+
+            m = _classname_regularize_type.search(classname)
+
+    return classname
 
 
 def classname_decode(encoded_classname):
@@ -764,8 +796,8 @@ class Model:
         context["breadcrumbs"] = old_breadcrumbs + (self,)
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
-        helper_obj = uproot._awkward_forth.GenHelper(context)
-        if helper_obj.is_forth():
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
             forth_obj = context["forth"].gen
 
         if context.get("reading", True):
@@ -773,7 +805,8 @@ class Model:
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
             if length != 0:
-                helper_obj.add_to_pre(f"{length} stream skip\n")
+                if forth_stash is not None:
+                    forth_stash.add_to_pre(f"{length} stream skip\n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -783,13 +816,10 @@ class Model:
                 if classname_version(correct_cls.__name__) != classname_version(
                     cls.__name__
                 ):
-                    if helper_obj.is_forth():
+                    if forth_stash is not None:
                         forth_obj.add_node(
                             "pass",
-                            helper_obj.get_pre(),
-                            helper_obj.get_post(),
-                            helper_obj.get_init(),
-                            helper_obj.get_header(),
+                            forth_stash.get_attrs(),
                             "i64",
                             1,
                             {},
@@ -805,33 +835,31 @@ class Model:
                         parent,
                         concrete=concrete,
                     )
-                    # if helper_obj.is_forth():
+                    # if forth_stash is not None:
                     #    forth_obj.go_to(temp)
                     return temp_var
 
         if context.get("in_TBranch", False):
-            # @aryan26roy: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,38,39,44,45,46,47,49,50,52,56
+            # AwkwardForth testing: test_0637's 01,02,05,08,09,11,12,13,15,16,29,35,38,39,44,45,46,47,49,50,52,56
             if self._num_bytes is None and self._instance_version != self.class_version:
                 self._instance_version = None
                 cursor = self._cursor
-                if helper_obj.is_forth():
-                    helper_obj._pre_code.pop(-1)
+                if forth_stash is not None and not context["cancel_forth"]:
+                    forth_stash._pre_code.pop(-1)
 
             elif self._instance_version == 0:
-                helper_obj.add_to_pre("4 stream skip\n")
+                if forth_stash is not None:
+                    forth_stash.add_to_pre("4 stream skip\n")
                 cursor.skip(4)
 
         if context.get("reading", True):
             self.hook_before_read_members(
                 chunk=chunk, cursor=cursor, context=context, file=file
             )
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 forth_obj.add_node(
                     "model828",
-                    helper_obj.get_pre(),
-                    helper_obj.get_post(),
-                    helper_obj.get_init(),
-                    helper_obj.get_header(),
+                    forth_stash.get_attrs(),
                     "i64",
                     1,
                     {},
@@ -1295,10 +1323,10 @@ class DispatchByVersion:
         """
         import uproot.deserialization
 
-        helper_obj = uproot._awkward_forth.GenHelper(context)
+        forth_stash = uproot._awkward_forth.forth_stash(context)
 
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
         # Ignores context["reading"], because otherwise, there would be nothing to do.
         start_index = cursor._index
         (
@@ -1309,15 +1337,12 @@ class DispatchByVersion:
 
         versioned_cls = cls.class_of_version(version)
         bytes_skipped = cursor._index - start_index
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             # raise NotImplementedError
-            helper_obj.add_to_pre(f"{bytes_skipped} stream skip \n")
+            forth_stash.add_to_pre(f"{bytes_skipped} stream skip \n")
             forth_obj.add_node(
                 "Model1319",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                forth_stash.get_attrs(),
                 "i64",
                 1,
                 {},
@@ -1343,7 +1368,7 @@ class DispatchByVersion:
             )
 
         # versioned_cls.read starts with numbytes_version again because move=False (above)
-        # if helper_obj.is_forth():
+        # if forth_stash is not None:
         temp_var = cls.postprocess(
             versioned_cls.read(
                 chunk, cursor, context, file, selffile, parent, concrete=concrete
@@ -1353,7 +1378,7 @@ class DispatchByVersion:
             context,
             file,
         )
-        # if helper_obj.is_forth():
+        # if forth_stash is not None:
         #    if "no_go_to" not in context.keys():
         # raise NotImplementedError
         # forth_obj.go_to(temp_node)

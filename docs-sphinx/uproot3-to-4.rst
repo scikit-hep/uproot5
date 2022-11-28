@@ -1,5 +1,5 @@
-Uproot 3 → 4 cheat-sheet
-========================
+Uproot 3 → 4+ cheat-sheet
+=========================
 
 The Uproot 3 → 4 transition was primarily motivated by Awkward Array 0 → 1. The interface of Awkward Array significantly changed and Awkward Arrays are output by Uproot functions, so this difference would be visible to you as a user of Uproot.
 
@@ -12,7 +12,9 @@ Fundamental changes were also required to streamline remote reading (HTTP and XR
 
 On December 1, 2020, however, Awkward 0 and Uproot 3 were deprecated, moved to PyPI packages `awkward0 <https://pypi.org/project/awkward0/>`__ and `uproot3 <https://pypi.org/project/uproot3/>`__, while Awkward 1 and Uproot 4 became unqualified as `awkward <https://pypi.org/project/awkward/>`__ and `uproot <https://pypi.org/project/uproot/>`__.
 
-This document is to help users of Uproot 3 get started on Uproot 4.
+This document is to help users of Uproot 3 get started on Uproot 4 or later.
+
+(The differences between Uproot 4 and Uproot 5 are much smaller; some functions were added, many bugs fixed, and ``uproot.lazy`` was replaced by :doc:`uproot._dask.dask`. A similar document is not needed if you're upgrading from Uproot 4 to 5, but if you're upgrading from 3 to 5, read on!)
 
 Opening a file
 --------------

@@ -87,19 +87,20 @@ def test_iterate_pandas_1():
 
 def test_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward_pandas")
     with uproot.open(skhep_testdata.data_path("uproot-HZZ.root"))["events"] as events:
         for i, arrays in enumerate(
             events.iterate("Muon_Px", step_size=1000, library="pd")
         ):
             if i == 0:
-                assert arrays.index.values[0] == (0, 0)
-                assert arrays.index.values[-1] == (999, 0)
+                assert arrays.index.values[0] == 0
+                assert arrays.index.values[-1] == 999
             elif i == 1:
-                assert arrays.index.values[0] == (1000, 0)
-                assert arrays.index.values[-1] == (1999, 1)
+                assert arrays.index.values[0] == 1000
+                assert arrays.index.values[-1] == 1999
             elif i == 2:
-                assert arrays.index.values[0] == (2000, 0)
-                assert arrays.index.values[-1] == (2420, 0)
+                assert arrays.index.values[0] == 2000
+                assert arrays.index.values[-1] == 2420
             else:
                 assert False
 
@@ -206,6 +207,7 @@ def test_function_iterate_pandas():
 
 def test_function_iterate_pandas_2():
     pandas = pytest.importorskip("pandas")
+    pytest.importorskip("awkward_pandas")
     files = [
         skhep_testdata.data_path("uproot-HZZ.root") + ":events",
         skhep_testdata.data_path("uproot-HZZ-uncompressed.root") + ":events",
@@ -214,5 +216,5 @@ def test_function_iterate_pandas_2():
     ]
     expect = 0
     for arrays, report in uproot.iterate(files, "Muon_Px", report=True, library="pd"):
-        assert arrays["Muon_Px"].index.values[0] == (expect, 0)
+        assert arrays["Muon_Px"].index.values[0] == expect
         expect += report.tree.num_entries

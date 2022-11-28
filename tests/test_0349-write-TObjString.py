@@ -2,7 +2,6 @@
 
 import os
 
-import numpy as np
 import pytest
 
 import uproot
@@ -78,3 +77,22 @@ def test_update(tmp_path):
         assert f6["subdir/wowie"] == "wowie"
         assert f6["subdir/zowie"] == "zowie"
         assert list(f6.file.streamers) == ["TObjString"]
+
+
+def test_serialization(tmp_path):
+    filename = os.path.join(tmp_path, "whatever.root")
+
+    string = "hey"
+    tobjstring = uproot.writing.identify.to_TObjString(string)
+    assert (
+        tobjstring.tojson()["_typename"] == "TObjString"
+    )  # https://github.com/scikit-hep/uproot5/issues/762
+    assert tobjstring.tojson()["fString"] == str(tobjstring)
+
+    with uproot.recreate(filename) as f1:
+        f1["first"] = tobjstring
+        f1["second"] = str(tobjstring)  # also checks conversion to "str"
+
+    with uproot.open(filename) as f2:
+        assert f2["first"] == f2["second"]
+        assert str(f2["first"]) == string

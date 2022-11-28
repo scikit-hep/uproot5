@@ -48,23 +48,23 @@ def _content_cache_key(content):
 def _read_nested(
     model, length, chunk, cursor, context, file, selffile, parent, header=True
 ):
-    helper_obj = uproot._awkward_forth.GenHelper(context)
+    forth_stash = uproot._awkward_forth.forth_stash(context)
 
-    if helper_obj.is_forth():
-        forth_obj = helper_obj.get_gen_obj()
+    if forth_stash is not None:
+        forth_obj = forth_stash.get_gen_obj()
 
     if isinstance(model, numpy.dtype):
         symbol = uproot._awkward_forth.symbol_dict.get(model)
 
-        if symbol is None and helper_obj.is_forth():
+        if symbol is None and forth_stash is not None:
             raise TypeError("Cannot be awkward")
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             key = forth_obj.get_keys(1)
             form_key = f"node{key}-data"
-            helper_obj.add_to_header(
+            forth_stash.add_to_header(
                 f"output node{key}-data {uproot._awkward_forth.convert_dtype(symbol)}\n"
             )
-            helper_obj.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
+            forth_stash.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
             if forth_obj.should_add_form():
                 forth_obj.add_form_key(form_key)
                 forth_obj.add_form(
@@ -76,10 +76,7 @@ def _read_nested(
                 )
             temp = forth_obj.add_node(
                 f"node{key}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                forth_stash.get_attrs(),
                 "i64",
                 1,
                 None,
@@ -90,26 +87,26 @@ def _read_nested(
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 if length == 0:
                     forth_obj.var_set = True
                 temp_count = context["forth"].gen.count_obj
             for i in range(length):
-                if helper_obj.is_forth():
+                if forth_stash is not None:
                     context["forth"].gen.count_obj = temp_count
                 values[i] = model.read(
                     chunk, cursor, context, file, selffile, parent, header=header
                 )
         else:
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 temp_count = context["forth"].gen.count_obj
             for i in range(length):
-                if helper_obj.is_forth():
+                if forth_stash is not None:
                     if "temp_ref" in context.keys():
                         context["forth"].gen.go_to(context["temp_ref"])
                     context["forth"].gen.count_obj = temp_count
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             if "temp_ref" in context.keys():
                 del context["temp_ref"]
         return values
@@ -154,7 +151,7 @@ def _str_with_ellipsis(tostring, length, lbracket, rbracket, limit):
         return lbracket + rbracket
     elif done:
         return lbracket + "".join(left) + "".join(right) + rbracket
-    elif len(left) == 0 and len(right) == 0:
+    elif len(left) == len(right) == 0:
         return lbracket + f"{tostring(0)}, ..." + rbracket
     elif len(right) == 0:
         return lbracket + "".join(left) + "..." + rbracket
@@ -337,15 +334,14 @@ class AsDynamic(AsContainer):
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
-            return awkward._v2.forms.ListOffsetForm(
+            return awkward.forms.ListOffsetForm(
                 context["index_format"],
                 uproot._util.awkward_form(self._model, file, context),
-                parameters={"uproot": {"as": "dynamic"}},
             )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's tests aren't expected to enter here
-
+        # AwkwardForth testing: test_0637's tests aren't expected to enter here
+        context["cancel_forth"] = True
         classname = cursor.string(chunk, context)
         cursor.skip(1)
         cls = file.class_named(classname)
@@ -462,27 +458,20 @@ class AsString(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
-            parameters={
-                "__array__": "string",
-                "uproot": {
-                    "as": "string",
-                    "header": self._header,
-                    "length_bytes": self._length_bytes,
-                },
-            },
+            awkward.forms.NumpyForm("uint8", parameters={"__array__": "char"}),
+            parameters={"__array__": "string"},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
+        # AwkwardForth testing: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
 
-        helper_obj = uproot._awkward_forth.GenHelper(context)
+        forth_stash = uproot._awkward_forth.forth_stash(context)
 
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             # raise NotImplementedError
-            forth_obj = helper_obj.get_gen_obj()
+            forth_obj = forth_stash.get_gen_obj()
             keys = forth_obj.get_keys(2)
             offsets_num = keys[0]
             data_num = keys[1]
@@ -493,22 +482,22 @@ class AsString(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 temp_jump = cursor._index - start_cursor._index
                 if temp_jump != 0:
-                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
+                    forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
-            if helper_obj.is_forth():
-                helper_obj.add_to_pre(
+            if forth_stash is not None:
+                forth_stash.add_to_pre(
                     f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
                 )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
-            if helper_obj.is_forth():
-                helper_obj.add_to_pre(
+            if forth_stash is not None:
+                forth_stash.add_to_pre(
                     f"stream !I-> stack dup node{offsets_num}-offsets +<- stack stream #B-> node{data_num}-data\n"
                 )
         else:
@@ -525,13 +514,9 @@ class AsString(AsContainer):
                 file.file_path,
             )
 
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             if forth_obj.should_add_form():
-                if self._header:
-                    temp_header = "true"
-                else:
-                    temp_header = "false"
-                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "has_identifier": false, "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "has_identifier": false, "parameters": {{"__array__": "string" ,"uproot": {{"as": "vector", "header": {temp_header}}}}}, "form_key": "node{offsets_num}"}}'
+                temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{offsets_num}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
 
                 form_keys = [
@@ -540,16 +525,13 @@ class AsString(AsContainer):
                 ]
                 for elem in form_keys:
                     forth_obj.add_form_key(elem)
-            helper_obj.add_to_header(
+            forth_stash.add_to_header(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
-            helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
             temp_form = forth_obj.add_node(
                 f"node{offsets_num}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                forth_stash.get_attrs(),
                 "i64",
                 0,
                 None,
@@ -623,7 +605,7 @@ class AsPointer(AsContainer):
         raise uproot.interpretation.objects.CannotBeAwkward("arbitrary pointer")
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 29,45,46,49,50 (Awkward Form discovered at read-time)
+        # AwkwardForth testing: test_0637's 29,45,46,49,50 (Awkward Form discovered at read-time)
 
         return uproot.deserialization.read_object_any(
             chunk, cursor, context, file, selffile, parent
@@ -708,26 +690,16 @@ class AsArray(AsContainer):
         awkward = uproot.extras.awkward()
         values_form = uproot._util.awkward_form(self._values, file, context)
         for dim in reversed(self.inner_shape):
-            values_form = awkward._v2.forms.RegularForm(values_form, dim)
-        return awkward._v2.forms.ListOffsetForm(
-            context["index_format"],
-            values_form,
-            parameters={
-                "uproot": {
-                    "as": "array",
-                    "header": self._header,
-                    "speedbump": self._speedbump,
-                }
-            },
-        )
+            values_form = awkward.forms.RegularForm(values_form, dim)
+        return awkward.forms.ListOffsetForm(context["index_format"], values_form)
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 01,02,23,24,25,26,27,28,30,51,52
+        # AwkwardForth testing: test_0637's 01,02,23,24,25,26,27,28,30,51,52
 
-        helper_obj = uproot._awkward_forth.GenHelper(context)
+        forth_stash = uproot._awkward_forth.forth_stash(context)
 
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
             offsets_num = forth_obj.get_keys(1)
 
         if self._header and header:
@@ -737,10 +709,10 @@ class AsArray(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 temp_jump = cursor._index - start_cursor._index
                 if temp_jump != 0:
-                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
+                    forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
             if is_memberwise:
                 raise NotImplementedError(
                     """memberwise serialization of {}
@@ -756,60 +728,53 @@ in file {}""".format(
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
-                if helper_obj.is_forth():
-                    helper_obj.add_to_header(
+                if forth_stash is not None:
+                    forth_stash.add_to_header(
                         f"output node{offsets_num}-offsets int64\n"
                     )
                     form_key = f"node{offsets_num}-offsets"
-                    helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-                    helper_obj.add_to_pre(
+                    forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+                    forth_stash.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
                     if len(self.inner_shape) > 0:
-                        helper_obj.add_to_post(
+                        forth_stash.add_to_post(
                             f"repeat\nswap {self.inner_shape[0]} / node{offsets_num}-offsets +<- stack drop\n"
                         )
                     else:
-                        helper_obj.add_to_post(
+                        forth_stash.add_to_post(
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
-                        if self._header:
-                            temp_bool = "true"
-                        else:
-                            temp_bool = "false"
                         if len(self.inner_shape) > 0:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform), traverse=2)
                         else:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
-                        helper_obj.get_pre(),
-                        helper_obj.get_post(),
-                        helper_obj.get_init(),
-                        helper_obj.get_header(),
+                        forth_stash.get_attrs(),
                         "i64",
                         1,
                         {},
                     )
 
-                if cursor.index >= chunk.stop and helper_obj.is_forth():
+                if cursor.index >= chunk.stop and forth_stash is not None:
                     forth_obj.var_set = True
                 out = []
-                if helper_obj.is_forth():
+                if forth_stash is not None:
                     temp_count = forth_obj.count_obj
                 while cursor.displacement(start_cursor) < num_bytes:
-                    if helper_obj.is_forth():
+                    if forth_stash is not None:
                         forth_obj.count_obj = temp_count
                     out.append(
                         self._values.read(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
-                    if helper_obj.is_forth():
+                    if forth_stash is not None:
                         forth_obj.go_to(temp["content"])
 
                 if self._header and header:
@@ -827,8 +792,8 @@ in file {}""".format(
         else:
 
             if self._speedbump:
-                if helper_obj.is_forth():
-                    helper_obj.add_to_pre("1 stream skip\n")
+                if forth_stash is not None:
+                    forth_stash.add_to_pre("1 stream skip\n")
                 cursor.skip(1)
 
             if isinstance(self._values, numpy.dtype):
@@ -837,63 +802,56 @@ in file {}""".format(
 
             else:
 
-                if helper_obj.is_forth():
-                    helper_obj.add_to_header(
+                if forth_stash is not None:
+                    forth_stash.add_to_header(
                         f"output node{offsets_num}-offsets int64\n"
                     )
                     form_key = f"node{offsets_num}-offsets"
-                    helper_obj.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-                    helper_obj.add_to_pre(
+                    forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+                    forth_stash.add_to_pre(
                         "0 bytestops I-> stack \nbegin\ndup stream pos <>\nwhile\nswap 1 + swap\n"
                     )
                     if len(self.inner_shape) > 0:
-                        helper_obj.add_to_post(
+                        forth_stash.add_to_post(
                             f"repeat\nswap {self.inner_shape[0]} / node{offsets_num}-offsets +<- stack drop\n"
                         )
                     else:
-                        helper_obj.add_to_post(
+                        forth_stash.add_to_post(
                             f"repeat\nswap node{offsets_num}-offsets +<- stack drop\n"
                         )
                     if forth_obj.should_add_form():
                         forth_obj.add_form_key(form_key)
-                        if self._header:
-                            temp_bool = "true"
-                        else:
-                            temp_bool = "false"
                         if len(self.inner_shape) > 0:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": {{"class": "RegularArray", "content": "NULL", "size": {self.inner_shape[0]}}}, "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform), traverse=2)
                         else:
-                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{offsets_num}"}}'
+                            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{offsets_num}"}}'
                             forth_obj.add_form(json.loads(temp_aform))
                     temp = forth_obj.add_node(
                         f"node{offsets_num}",
-                        helper_obj.get_pre(),
-                        helper_obj.get_post(),
-                        helper_obj.get_init(),
-                        helper_obj.get_header(),
+                        forth_stash.get_attrs(),
                         "i64",
                         1,
                         {},
                     )
 
-                if cursor.index >= chunk.stop and helper_obj.is_forth():
+                if cursor.index >= chunk.stop and forth_stash is not None:
                     forth_obj.var_set = True
                 out = []
-                if helper_obj.is_forth():
+                if forth_stash is not None:
                     temp_count = forth_obj.count_obj
                 while cursor.index < chunk.stop:
-                    if helper_obj.is_forth():
+                    if forth_stash is not None:
                         forth_obj.count_obj = temp_count
                     out.append(
                         self._values.read(
                             chunk, cursor, context, file, selffile, parent
                         )
                     )
-                    if helper_obj.is_forth():
+                    if forth_stash is not None:
                         forth_obj.go_to(temp)
 
-                # if helper_obj.is_forth():
+                # if forth_stash is not None:
                 #    forth_obj.go_to(temp)
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
@@ -946,15 +904,14 @@ class AsRVec(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
-            parameters={"uproot": {"as": "RVec", "header": self._header}},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's (none! untested! but it's just like AsVector)
-
+        # AwkwardForth testing: test_0637's (none! untested! but it's just like AsVector)
+        context["cancel_forth"] = True
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1093,17 +1050,16 @@ class AsVector(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._values, file, context),
-            parameters={"uproot": {"as": "vector", "header": self._header}},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
-        helper_obj = uproot._awkward_forth.GenHelper(context)
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        # AwkwardForth testing: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
 
         if self._header and header:
             start_cursor = cursor.copy()
@@ -1112,10 +1068,10 @@ class AsVector(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 temp_jump = cursor._index - start_cursor._index
                 if temp_jump != 0:
-                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
+                    forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
 
@@ -1124,10 +1080,8 @@ class AsVector(AsContainer):
         _value_typename = _content_typename(self._values)
 
         if is_memberwise:
-            if helper_obj.is_forth():
-                raise NotImplementedError(
-                    "Forth Reader does not support memberwise serialization."
-                )
+            if forth_stash is not None:
+                context["cancel_forth"] = True
             # let's hard-code in logic for std::pair<T1,T2> for now
             if not _value_typename.startswith("pair"):
                 raise NotImplementedError(
@@ -1175,46 +1129,39 @@ class AsVector(AsContainer):
                         )
         else:
             length = cursor.field(chunk, _stl_container_size, context)
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 key = forth_obj.get_keys(1)
                 form_key = f"node{key}-offsets"
-                helper_obj.add_to_header(f"output node{key}-offsets int64\n")
-                helper_obj.add_to_init(f"0 node{key}-offsets <- stack\n")
-                helper_obj.add_to_pre(
+                forth_stash.add_to_header(f"output node{key}-offsets int64\n")
+                forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
+                forth_stash.add_to_pre(
                     f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
-                # helper_obj.add_to_post("loop\n")
+                # forth_stash.add_to_post("loop\n")
                 if forth_obj.should_add_form():
                     forth_obj.add_form_key(form_key)
-                    if self._header:
-                        temp_bool = "true"
-                    else:
-                        temp_bool = "false"
-                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"uproot": {{"as": "vector", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{key}"}}'
                     forth_obj.add_form(json.loads(temp_aform))
                 if not isinstance(self._values, numpy.dtype):
-                    helper_obj.add_to_pre("0 do\n")
-                    helper_obj.add_to_post("loop\n")
+                    forth_stash.add_to_pre("0 do\n")
+                    forth_stash.add_to_post("loop\n")
                 temp = forth_obj.add_node(
                     f"node{key}",
-                    helper_obj.get_pre(),
-                    helper_obj.get_post(),
-                    helper_obj.get_init(),
-                    helper_obj.get_header(),
+                    forth_stash.get_attrs(),
                     "i64",
                     1,
                     {},
                 )
                 context["temp_ref"] = temp
 
-            if length == 0 and helper_obj.is_forth():
+            if length == 0 and forth_stash is not None:
                 forth_obj.var_set = True
 
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
 
-        if helper_obj.is_forth():
+        if forth_stash is not None and not context["cancel_forth"]:
 
             forth_obj.go_to(temp)
 
@@ -1300,22 +1247,19 @@ class AsSet(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
             uproot._util.awkward_form(self._keys, file, context),
-            parameters={
-                "__array__": "set",
-                "uproot": {"as": "set", "header": self._header},
-            },
+            parameters={"__array__": "set"},
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 62,63,64,65,69,70,74,75,77
+        # AwkwardForth testing: test_0637's 62,63,64,65,69,70,74,75,77
 
-        helper_obj = uproot._awkward_forth.GenHelper(context)
+        forth_stash = uproot._awkward_forth.forth_stash(context)
 
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
 
         if self._header and header:
             start_cursor = cursor.copy()
@@ -1324,10 +1268,10 @@ class AsSet(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 temp_jump = cursor._index - start_cursor._index
                 if temp_jump != 0:
-                    helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
+                    forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
 
@@ -1340,43 +1284,36 @@ in file {}""".format(
             )
 
         length = cursor.field(chunk, _stl_container_size, context)
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             key = forth_obj.get_keys(1)
 
             form_key = f"node{key}-offsets"
-            helper_obj.add_to_header(f"output node{key}-offsets int64\n")
-            helper_obj.add_to_init(f"0 node{key}-offsets <- stack\n")
-            helper_obj.add_to_pre(
+            forth_stash.add_to_header(f"output node{key}-offsets int64\n")
+            forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
+            forth_stash.add_to_pre(
                 f"stream !I-> stack\ndup node{key}-offsets +<- stack\n"
             )
-            # helper_obj.add_to_post("loop\n")
+            # forth_stash.add_to_post("loop\n")
             if forth_obj.should_add_form():
                 forth_obj.add_form_key(form_key)
-                if self._header:
-                    temp_bool = "true"
-                else:
-                    temp_bool = "false"
-                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "has_identifier": false, "parameters": {{"__array__": "set","uproot": {{"as": "set", "header": {temp_bool}}}}}, "form_key": "node{key}"}}'
+                temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"__array__": "set"}}, "form_key": "node{key}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
             if not isinstance(self._keys, numpy.dtype):
-                helper_obj.add_to_pre("0 do\n")
-                helper_obj.add_to_post("loop\n")
+                forth_stash.add_to_pre("0 do\n")
+                forth_stash.add_to_post("loop\n")
             temp = forth_obj.add_node(
                 f"node{key}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                forth_stash.get_attrs(),
                 "i64",
                 1,
                 {},
             )
-        if length == 0 and helper_obj.is_forth():
+        if length == 0 and forth_stash is not None:
             forth_obj.var_set = True
         keys = _read_nested(
             self._keys, length, chunk, cursor, context, file, selffile, parent
         )
-        if helper_obj.is_forth():
+        if forth_stash is not None:
             forth_obj.go_to(temp)
         out = STLSet(keys)
 
@@ -1494,27 +1431,24 @@ class AsMap(AsContainer):
 
     def awkward_form(self, file, context):
         awkward = uproot.extras.awkward()
-        return awkward._v2.forms.ListOffsetForm(
+        return awkward.forms.ListOffsetForm(
             context["index_format"],
-            awkward._v2.forms.RecordForm(
+            awkward.forms.RecordForm(
                 (
                     uproot._util.awkward_form(self._keys, file, context),
                     uproot._util.awkward_form(self._values, file, context),
                 ),
                 None,
+                parameters={"__array__": "sorted_map"},
             ),
-            parameters={
-                "__array__": "sorted_map",
-                "uproot": {"as": "map", "header": self._header},
-            },
         )
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
-        # @aryan26roy: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
-        helper_obj = uproot._awkward_forth.GenHelper(context)
+        # AwkwardForth testing: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
+        forth_stash = uproot._awkward_forth.forth_stash(context)
 
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1522,33 +1456,34 @@ class AsMap(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
-            cursor.skip(6)
-            if helper_obj.is_forth():
-                temp_jump = cursor._index - start_cursor._index
-                helper_obj.add_to_pre(f"{temp_jump} stream skip\n")
         else:
             is_memberwise = False
-        # raise NotImplementedError
+
         if is_memberwise:
+            if self._header and header:
+                cursor.skip(6)
+                if forth_stash is not None:
+                    temp_jump = cursor._index - start_cursor._index
+                    forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
             length = cursor.field(chunk, _stl_container_size, context)
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 key = forth_obj.get_keys(1)
                 form_key = f"node{key}-offsets"
-                helper_obj.add_to_header(f"output node{key}-offsets int64\n")
-                helper_obj.add_to_init(f"0 node{key}-offsets <- stack\n")
-                helper_obj.add_to_pre(
+                forth_stash.add_to_header(f"output node{key}-offsets int64\n")
+                forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
+                forth_stash.add_to_pre(
                     f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
             if _has_nested_header(self._keys) and header:
-                if helper_obj.is_forth():
-                    helper_obj.add_to_pre("6 stream skip\n")
+                if forth_stash is not None:
+                    forth_stash.add_to_pre("6 stream skip\n")
                 cursor.skip(6)
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 if not isinstance(self._keys, numpy.dtype):
-                    helper_obj.add_to_pre("dup 0 do\n")
+                    forth_stash.add_to_pre("dup 0 do\n")
                 else:
-                    helper_obj.add_to_pre("dup\n")
-            if helper_obj.is_forth():
+                    forth_stash.add_to_pre("dup\n")
+            if forth_stash is not None:
                 temp = {"name": "TOP", "content": {}}
                 (
                     temp_node,
@@ -1569,10 +1504,10 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 temp = {"name": "TOP", "content": {}}
                 keys_form = forth_obj.top_form
-                keys_model = forth_obj._prev_node
+                keys_model = forth_obj.top_node
                 (
                     temp_node1,
                     temp_node_top1,
@@ -1581,14 +1516,14 @@ class AsMap(AsContainer):
                     temp_prev_form1,
                 ) = forth_obj.replace_form_and_model(None, temp)
                 context["temp_ref"] = temp
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 if not isinstance(self._keys, numpy.dtype):
                     keys_model["content"]["post_code"].append("loop\n")
             if _has_nested_header(self._values) and header:
                 cursor.skip(6)
-                if helper_obj.is_forth():
+                if forth_stash is not None:
                     keys_model["content"]["post_code"].append("6 stream skip\n")
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 if not isinstance(self._values, numpy.dtype):
                     keys_model["content"]["post_code"].append("0 do\n")
             values = _read_nested(
@@ -1602,13 +1537,13 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-            if helper_obj.is_forth():
+            if forth_stash is not None:
                 values_form = forth_obj.top_form
-                values_model = forth_obj._prev_node
+                values_model = forth_obj.top_node
                 if not isinstance(self._values, numpy.dtype):
                     values_model["content"]["post_code"].append("loop \n")
                 forth_obj.awkward_model = temp_node
-                forth_obj._prev_node = temp_node_top
+                forth_obj.top_node = temp_node_top
                 forth_obj.aform = temp_form
                 forth_obj.top_form = temp_form_top
                 forth_obj.prev_form = temp_prev_form
@@ -1627,10 +1562,7 @@ class AsMap(AsContainer):
                     forth_obj.add_form(aform)
                 temp = forth_obj.add_node(
                     "nodeMap",
-                    helper_obj.get_pre(),
-                    helper_obj.get_post(),
-                    helper_obj.get_init(),
-                    helper_obj.get_header(),
+                    forth_stash.get_attrs(),
                     "i64",
                     1,
                     [keys_model["content"], values_model["content"]],
@@ -1651,12 +1583,38 @@ class AsMap(AsContainer):
             return out
 
         else:
-            raise NotImplementedError(
-                """non-memberwise serialization of {}
+            if forth_stash is not None:
+                raise NotImplementedError(
+                    """non-memberwise serialization of {}
 in file {}""".format(
-                    type(self).__name__, selffile.file_path
+                        type(self).__name__, selffile.file_path
+                    )
                 )
-            )
+            length = cursor.field(chunk, _stl_container_size, context)
+            keys, values = [], []
+            for _ in range(length):
+                keys.append(
+                    _read_nested(
+                        self._keys, 1, chunk, cursor, context, file, selffile, parent
+                    )
+                )
+                values.append(
+                    _read_nested(
+                        self._values, 1, chunk, cursor, context, file, selffile, parent
+                    )
+                )
+            out = STLMap(numpy.concatenate(keys), numpy.concatenate(values))
+            if self._header and header:
+                uproot.deserialization.numbytes_check(
+                    chunk,
+                    start_cursor,
+                    cursor,
+                    num_bytes,
+                    self.typename,
+                    context,
+                    file.file_path,
+                )
+            return out
 
     def __eq__(self, other):
         if not isinstance(other, AsMap):

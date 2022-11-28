@@ -20,5 +20,5 @@ def test_awkward():
 
     with uproot.open(skhep_testdata.data_path("uproot-HZZ.root")) as f:
         a = f["events/Muon_Px"].array(entry_start=1, entry_stop=1)
-        assert isinstance(a, awkward._v2.Array)
+        assert isinstance(a, awkward.Array)
         assert len(a) == 0

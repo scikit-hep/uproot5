@@ -69,7 +69,7 @@ class Model_TBasket(uproot.model.Model):
         """
         return self._byte_offsets
 
-    def array(self, interpretation=None, library="ak"):
+    def array(self, interpretation=None, library="ak", ak_add_doc=False):
         """
         The ``TBasket`` data and entry offsets as an array, given an
         :doc:`uproot.interpretation.Interpretation` (or the ``TBranch`` parent's
@@ -80,6 +80,8 @@ class Model_TBasket(uproot.model.Model):
             interpretation = self._parent.interpretation
         library = uproot.interpretation.library._regularize_library(library)
 
+        interp_options = {"ak_add_doc": ak_add_doc}
+
         basket_array = interpretation.basket_array(
             self.data,
             self.byte_offsets,
@@ -88,6 +90,7 @@ class Model_TBasket(uproot.model.Model):
             self._parent.context,
             self._members["fKeylen"],
             library,
+            interp_options,
         )
 
         return interpretation.final_array(
@@ -97,6 +100,7 @@ class Model_TBasket(uproot.model.Model):
             [0, self.num_entries],
             library,
             self._parent,
+            interp_options,
         )
 
     @property
@@ -210,6 +214,7 @@ class Model_TBasket(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         assert isinstance(self._parent, uproot.behaviors.TBranch.TBranch)
         self._basket_num = context.get("basket_num")
 
@@ -272,7 +277,10 @@ class Model_TBasket(uproot.model.Model):
             cursor.skip(self._members["fKeylen"])
 
             self._raw_data = None
-            self._data = cursor.bytes(chunk, self.border, context)
+            if self.border == 0:
+                self._data = numpy.empty(0, dtype=numpy.uint8)
+            else:
+                self._data = cursor.bytes(chunk, self.border, context)
 
         else:
             compressed_bytes = self._members["fNbytes"] - self._members["fKeylen"]

@@ -24,7 +24,6 @@ Lazy arrays (:doc:`uproot.behaviors.TBranch.lazy`) can only use the
 
 
 import gc
-import itertools
 import json
 
 import numpy
@@ -87,7 +86,9 @@ class Library:
         """
         return numpy.zeros(shape, dtype)
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(
+        self, array, branch, interpretation, entry_start, entry_stop, interp_options
+    ):
         """
         Args:
             array (array): Internal, temporary, trimmed array. If this is a
@@ -99,6 +100,8 @@ class Library:
             entry_start (int): First entry that is included in the output.
             entry_stop (int): FIrst entry that is excluded (one greater than
                 the last entry that is included) in the output.
+            interp_options (dict): Flags and other options passed through the
+                interpretation process.
 
         Create a library-appropriate output array for this temporary ``array``.
 
@@ -195,7 +198,7 @@ class NumPy(Library):
 
         return numpy
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         if isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
             array.content,
             uproot.interpretation.objects.StridedObjectArray,
@@ -271,7 +274,7 @@ def _strided_to_awkward(awkward, path, interpretation, data):
                 contents.append(_strided_to_awkward(awkward, p, member, data))
             else:
                 contents.append(
-                    awkward._v2.from_numpy(
+                    awkward.from_numpy(
                         numpy.array(data[p]), regulararray=True, highlevel=False
                     )
                 )
@@ -280,16 +283,10 @@ def _strided_to_awkward(awkward, path, interpretation, data):
         "__record__": uproot.model.classname_decode(interpretation.model.__name__)[0]
     }
     length = len(data) if len(contents) == 0 else None
-    out = awkward._v2.contents.RecordArray(
-        contents, names, length, parameters=parameters
-    )
+    out = awkward.contents.RecordArray(contents, names, length, parameters=parameters)
     for dim in reversed(interpretation.inner_shape):
-        out = awkward._v2.contents.RegularArray(out, dim)
+        out = awkward.contents.RegularArray(out, dim)
     return out
-
-
-# FIXME: _object_to_awkward_json and _awkward_json_to_array are slow functions
-# with the right outputs to be replaced by compiled versions in awkward._io.
 
 
 def _object_to_awkward_json(form, obj):
@@ -298,7 +295,7 @@ def _object_to_awkward_json(form, obj):
 
     elif form["class"] == "RecordArray":
         out = {}
-        for name, subform in form["contents"].items():
+        for name, subform in zip(form["fields"], form["contents"]):
             if not name.startswith("@"):
                 if obj.has_member(name):
                     out[name] = _object_to_awkward_json(subform, obj.member(name))
@@ -310,7 +307,7 @@ def _object_to_awkward_json(form, obj):
         if form["parameters"].get("__array__") == "string":
             return obj
 
-        elif form["parameters"].get("__array__") == "sorted_map":
+        elif form["content"]["parameters"].get("__array__") == "sorted_map":
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
             return [
@@ -333,33 +330,27 @@ def _object_to_awkward_json(form, obj):
         raise AssertionError(form["class"])
 
 
-def _awkward_p(form):
-    out = form["parameters"]
-    out.pop("uproot", None)
-    return out
-
-
 def _awkward_offsets(awkward, form, array):
-    if isinstance(array, awkward._v2.contents.EmptyArray):
+    if isinstance(array, awkward.contents.EmptyArray):
         if form["offsets"] == "i32":
-            return awkward._v2.index.Index32(numpy.zeros(1, dtype=numpy.int32))
+            return awkward.index.Index32(numpy.zeros(1, dtype=numpy.int32))
         elif form["offsets"] == "u32":
-            return awkward._v2.index.IndexU32(numpy.zeros(1, dtype=numpy.uint32))
+            return awkward.index.IndexU32(numpy.zeros(1, dtype=numpy.uint32))
         elif form["offsets"] == "i64":
-            return awkward._v2.index.Index64(numpy.zeros(1, dtype=numpy.int64))
+            return awkward.index.Index64(numpy.zeros(1, dtype=numpy.int64))
         else:
             raise AssertionError(form["offsets"])
     else:
         if form["offsets"] == "i32":
-            return awkward._v2.index.Index32(
+            return awkward.index.Index32(
                 numpy.asarray(array.offsets, dtype=numpy.int32)
             )
         elif form["offsets"] == "u32":
-            return awkward._v2.index.IndexU32(
+            return awkward.index.IndexU32(
                 numpy.asarray(array.offsets, dtype=numpy.uint32)
             )
         elif form["offsets"] == "i64":
-            return awkward._v2.index.Index64(
+            return awkward.index.Index64(
                 numpy.asarray(array.offsets, dtype=numpy.int64)
             )
         else:
@@ -368,19 +359,19 @@ def _awkward_offsets(awkward, form, array):
 
 def _awkward_json_to_array(awkward, form, array):
     if form["class"] == "NumpyArray":
-        if isinstance(array, awkward._v2.contents.EmptyArray):
-            form = awkward._v2.forms.from_json(json.dumps(form))
-            dtype = awkward._v2.types.numpytype.primitive_to_dtype(form.primitive)
-            return awkward._v2.contents.NumpyArray(numpy.empty(0, dtype=dtype))
+        if isinstance(array, awkward.contents.EmptyArray):
+            form = awkward.forms.from_json(json.dumps(form))
+            dtype = awkward.types.numpytype.primitive_to_dtype(form.primitive)
+            return awkward.contents.NumpyArray(numpy.empty(0, dtype=dtype))
         else:
             return array
 
     elif form["class"] == "RecordArray":
         contents = []
         names = []
-        for name, subform in form["contents"].items():
+        for name, subform in zip(form["fields"], form["contents"]):
             if not name.startswith("@"):
-                if isinstance(array, awkward._v2.contents.EmptyArray):
+                if isinstance(array, awkward.contents.EmptyArray):
                     contents.append(_awkward_json_to_array(awkward, subform, array))
                 else:
                     contents.append(
@@ -388,76 +379,85 @@ def _awkward_json_to_array(awkward, form, array):
                     )
                 names.append(name)
         length = len(array) if len(contents) == 0 else None
-        return awkward._v2.contents.RecordArray(
-            contents, names, length, parameters=_awkward_p(form)
+        return awkward.contents.RecordArray(
+            contents, names, length, parameters=form["parameters"]
         )
 
     elif form["class"][:15] == "ListOffsetArray":
         if form["parameters"].get("__array__") == "string":
-            if isinstance(array, awkward._v2.contents.EmptyArray):
-                content = awkward._v2.contents.NumpyArray(
+            if isinstance(array, awkward.contents.EmptyArray):
+                content = awkward.contents.NumpyArray(
                     numpy.empty(0, dtype=numpy.uint8),
-                    parameters=_awkward_p(form["content"]),
+                    parameters=form["content"]["parameters"],
                 )
-                return awkward._v2.contents.ListOffsetArray(
-                    awkward._v2.index.Index64(numpy.array([0], dtype=numpy.uint8)),
+                return awkward.contents.ListOffsetArray(
+                    awkward.index.Index64(numpy.array([0], dtype=numpy.uint8)),
                     content,
-                    parameters=_awkward_p(form),
+                    parameters=form["parameters"],
                 )
             else:
                 content = _awkward_json_to_array(
                     awkward, form["content"], array.content
                 )
-                return type(array)(array.offsets, content, parameters=_awkward_p(form))
+                return type(array)(
+                    array.offsets, content, parameters=form["parameters"]
+                )
 
-        elif form["parameters"].get("__array__") == "sorted_map":
+        elif form["content"]["parameters"].get("__array__") == "sorted_map":
             offsets = _awkward_offsets(awkward, form, array)
             key_form = form["content"]["contents"][0]
             value_form = form["content"]["contents"][1]
-            if isinstance(array, awkward._v2.contents.EmptyArray):
+            if isinstance(array, awkward.contents.EmptyArray):
                 keys = _awkward_json_to_array(awkward, key_form, array)
                 values = _awkward_json_to_array(awkward, value_form, array)
-                content = awkward._v2.contents.RecordArray(
+                content = awkward.contents.RecordArray(
                     (keys, values),
                     None,
                     0,
-                    parameters=_awkward_p(form["content"]),
+                    parameters=form["content"]["parameters"],
                 )
             else:
                 keys = _awkward_json_to_array(awkward, key_form, array.content["0"])
                 values = _awkward_json_to_array(awkward, value_form, array.content["1"])
                 length = len(array.content) if len(keys) == 0 else None
-                content = awkward._v2.contents.RecordArray(
+                content = awkward.contents.RecordArray(
                     (keys, values),
                     None,
                     length,
-                    parameters=_awkward_p(form["content"]),
+                    parameters=form["content"]["parameters"],
                 )
             cls = uproot._util._content_cls_from_name(awkward, form["class"])
-            return cls(offsets, content, parameters=_awkward_p(form))
+            return cls(offsets, content, parameters=form["parameters"])
 
         else:
             offsets = _awkward_offsets(awkward, form, array)
-            if isinstance(array, awkward._v2.contents.EmptyArray):
+            if isinstance(array, awkward.contents.EmptyArray):
                 content = _awkward_json_to_array(awkward, form["content"], array)
             else:
                 content = _awkward_json_to_array(
                     awkward, form["content"], array.content
                 )
             cls = uproot._util._content_cls_from_name(awkward, form["class"])
-            return cls(offsets, content, parameters=_awkward_p(form))
+            return cls(offsets, content, parameters=form["parameters"])
 
     elif form["class"] == "RegularArray":
-        if isinstance(array, awkward._v2.contents.EmptyArray):
+        if isinstance(array, awkward.contents.EmptyArray):
             content = _awkward_json_to_array(awkward, form["content"], array)
         else:
             content = _awkward_json_to_array(awkward, form["content"], array.content)
-        return awkward._v2.contents.RegularArray(
-            content, form["size"], parameters=_awkward_p(form)
+        return awkward.contents.RegularArray(
+            content, form["size"], parameters=form["parameters"]
         )
 
     else:
         raise AssertionError(form["class"])
+
+
+def _awkward_add_doc(awkward, array, branch, ak_add_doc):
+    if ak_add_doc:
+        return awkward.with_parameter(array, "__doc__", branch.title)
+    else:
+        return array
 
 
 class Awkward(Library):
@@ -493,15 +493,22 @@ class Awkward(Library):
     def imported(self):
         return uproot.extras.awkward()
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         awkward = self.imported
 
-        if isinstance(array, awkward._v2.contents.Content):
-            return awkward._v2.Array(array)
+        ak_add_doc = options.get("ak_add_doc", False)
+
+        if isinstance(array, awkward.contents.Content):
+            return _awkward_add_doc(awkward, awkward.Array(array), branch, ak_add_doc)
 
         elif isinstance(array, uproot.interpretation.objects.StridedObjectArray):
-            return awkward._v2.Array(
-                _strided_to_awkward(awkward, "", array.interpretation, array.array)
+            return _awkward_add_doc(
+                awkward,
+                awkward.Array(
+                    _strided_to_awkward(awkward, "", array.interpretation, array.array)
+                ),
+                branch,
+                ak_add_doc,
             )
 
         elif isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
@@ -511,48 +518,48 @@ class Awkward(Library):
                 awkward, "", array.content.interpretation, array.content.array
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
-                offsets = awkward._v2.index.Index32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray32(offsets, content)
+                offsets = awkward.index.Index32(array.offsets)
+                layout = awkward.contents.ListOffsetArray32(offsets, content)
             else:
-                offsets = awkward._v2.index.Index64(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray(offsets, content)
-            return awkward._v2.Array(layout)
+                offsets = awkward.index.Index64(array.offsets)
+                layout = awkward.contents.ListOffsetArray(offsets, content)
+            return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(array, uproot.interpretation.jagged.JaggedArray):
-            content = awkward._v2.from_numpy(
+            content = awkward.from_numpy(
                 array.content, regulararray=True, highlevel=False
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
-                offsets = awkward._v2.index.Index32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray32(offsets, content)
+                offsets = awkward.index.Index32(array.offsets)
+                layout = awkward.contents.ListOffsetArray32(offsets, content)
             else:
-                offsets = awkward._v2.index.Index64(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray(offsets, content)
-            return awkward._v2.Array(layout)
+                offsets = awkward.index.Index64(array.offsets)
+                layout = awkward.contents.ListOffsetArray(offsets, content)
+            return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(array, uproot.interpretation.strings.StringArray):
-            content = awkward._v2.contents.NumpyArray(
+            content = awkward.contents.NumpyArray(
                 numpy.frombuffer(array.content, dtype=numpy.dtype(numpy.uint8)),
                 parameters={"__array__": "char"},
             )
             if issubclass(array.offsets.dtype.type, numpy.int32):
-                offsets = awkward._v2.index.Index32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray32(
+                offsets = awkward.index.Index32(array.offsets)
+                layout = awkward.contents.ListOffsetArray32(
                     offsets, content, parameters={"__array__": "string"}
                 )
             elif issubclass(array.offsets.dtype.type, numpy.uint32):
-                offsets = awkward._v2.index.IndexU32(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArrayU32(
+                offsets = awkward.index.IndexU32(array.offsets)
+                layout = awkward.contents.ListOffsetArrayU32(
                     offsets, content, parameters={"__array__": "string"}
                 )
             elif issubclass(array.offsets.dtype.type, numpy.int64):
-                offsets = awkward._v2.index.Index64(array.offsets)
-                layout = awkward._v2.contents.ListOffsetArray(
+                offsets = awkward.index.Index64(array.offsets)
+                layout = awkward.contents.ListOffsetArray(
                     offsets, content, parameters={"__array__": "string"}
                 )
             else:
                 raise AssertionError(repr(array.offsets.dtype))
-            return awkward._v2.Array(layout)
+            return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
             try:
@@ -576,10 +583,15 @@ in object {}""".format(
                     )
                 ) from err
 
-            unlabeled = awkward._v2.from_iter(
+            unlabeled = awkward.from_iter(
                 (_object_to_awkward_json(form, x) for x in array), highlevel=False
             )
-            return awkward._v2.Array(_awkward_json_to_array(awkward, form, unlabeled))
+            return _awkward_add_doc(
+                awkward,
+                awkward.Array(_awkward_json_to_array(awkward, form, unlabeled)),
+                branch,
+                ak_add_doc,
+            )
 
         elif array.dtype.names is not None:
             length, shape = array.shape[0], array.shape[1:]
@@ -587,19 +599,24 @@ in object {}""".format(
             contents = []
             for name in array.dtype.names:
                 contents.append(
-                    awkward._v2.from_numpy(
+                    awkward.from_numpy(
                         numpy.array(array[name]), regulararray=True, highlevel=False
                     )
                 )
             if len(contents) != 0:
                 length = None
-            out = awkward._v2.contents.RecordArray(contents, array.dtype.names, length)
+            out = awkward.contents.RecordArray(contents, array.dtype.names, length)
             for size in shape[::-1]:
-                out = awkward._v2.contents.RegularArray(out, size)
-            return awkward._v2.Array(out)
+                out = awkward.contents.RegularArray(out, size)
+            return _awkward_add_doc(awkward, awkward.Array(out), branch, ak_add_doc)
 
         else:
-            return awkward._v2.from_numpy(array, regulararray=True)
+            return _awkward_add_doc(
+                awkward,
+                awkward.from_numpy(array, regulararray=True),
+                branch,
+                ak_add_doc,
+            )
 
     def group(self, arrays, expression_context, how):
         awkward = self.imported
@@ -612,11 +629,11 @@ in object {}""".format(
             return {_rename(name, c): arrays[name] for name, c in expression_context}
         elif how is None:
             if len(expression_context) == 0:
-                return awkward._v2.Array(
-                    awkward._v2.contents.RecordArray([], fields=[], length=0)
+                return awkward.Array(
+                    awkward.contents.RecordArray([], fields=[], length=0)
                 )
             else:
-                return awkward._v2.Array(
+                return awkward.Array(
                     {_rename(name, c): arrays[name] for name, c in expression_context}
                 )
         elif how == "zip":
@@ -628,7 +645,7 @@ in object {}""".format(
                 array = renamed_arrays[_rename(name, context)] = arrays[name]
                 if context["is_jagged"]:
                     if (
-                        isinstance(array.layout, awkward._v2.contents.ListArray)
+                        isinstance(array.layout, awkward.contents.ListArray)
                         or array.layout.offsets[0] != 0
                     ):
                         array_layout = array.layout.toListOffsetArray64(True)
@@ -651,11 +668,11 @@ in object {}""".format(
             out = None
             if len(nonjagged) != 0:
                 if len(nonjagged) == 0:
-                    out = awkward._v2.Array(
-                        awkward._v2.contents.RecordArray([], fields=[], length=0)
+                    out = awkward.Array(
+                        awkward.contents.RecordArray([], fields=[], length=0)
                     )
                 else:
-                    out = awkward._v2.Array(
+                    out = awkward.Array(
                         {name: renamed_arrays[name] for name in nonjagged},
                     )
             for number, jagged in enumerate(jaggeds):
@@ -672,36 +689,36 @@ in object {}""".format(
                 if (
                     out is not None
                     and cut != 0
-                    and jagged[0][:cut].strip("_./") in awkward._v2.fields(out)
+                    and jagged[0][:cut].strip("_./") in awkward.fields(out)
                 ):
                     cut = 0
                 if cut == 0:
                     common = f"jagged{number}"
                     if len(jagged) == 0:
-                        subarray = awkward._v2.Array(
-                            awkward._v2.contents.RecordArray([], fields=[], length=0)
+                        subarray = awkward.Array(
+                            awkward.contents.RecordArray([], fields=[], length=0)
                         )
                     else:
-                        subarray = awkward._v2.zip(
+                        subarray = awkward.zip(
                             {name: renamed_arrays[name] for name in jagged}
                         )
                 else:
                     common = jagged[0][:cut].strip("_./")
                     if len(jagged) == 0:
-                        subarray = awkward._v2.Array(
-                            awkward._v2.contents.RecordArray([], fields=[], length=0)
+                        subarray = awkward.Array(
+                            awkward.contents.RecordArray([], fields=[], length=0)
                         )
                     else:
-                        subarray = awkward._v2.zip(
+                        subarray = awkward.zip(
                             {
                                 name[cut:].strip("_./"): renamed_arrays[name]
                                 for name in jagged
                             }
                         )
                 if out is None:
-                    out = awkward._v2.Array({common: subarray})
+                    out = awkward.Array({common: subarray})
                 else:
-                    out = awkward._v2.with_field(out, subarray, common)
+                    out = awkward.with_field(out, subarray, common)
 
             return out
         else:
@@ -722,14 +739,14 @@ in object {}""".format(
         elif isinstance(all_arrays[0], dict):
             keys = list(all_arrays[0])
         else:
-            return awkward._v2.concatenate(all_arrays)
+            return awkward.concatenate(all_arrays)
 
         to_concatenate = {k: [] for k in keys}
         for arrays in all_arrays:
             for k in keys:
                 to_concatenate[k].append(arrays[k])
 
-        concatenated = {k: awkward._v2.concatenate(to_concatenate[k]) for k in keys}
+        concatenated = {k: awkward.concatenate(to_concatenate[k]) for k in keys}
 
         if isinstance(all_arrays[0], tuple):
             return tuple(concatenated[k] for k in keys)
@@ -774,21 +791,8 @@ def _pandas_only_series(pandas, original_arrays, expression_context):
     arrays = {}
     names = []
     for name, context in expression_context:
-        if isinstance(original_arrays[name], pandas.Series):
-            arrays[_rename(name, context)] = original_arrays[name]
-            names.append(_rename(name, context))
-        else:
-            df = original_arrays[name]
-            for subname in df.columns:
-                if df.leaflist:
-                    if isinstance(subname, tuple):
-                        path = (_rename(name, context),) + subname
-                    else:
-                        path = (_rename(name, context), subname)
-                else:
-                    path = _rename(name, context) + subname
-                arrays[path] = df[subname]
-                names.append(path)
+        arrays[_rename(name, context)] = original_arrays[name]
+        names.append(_rename(name, context))
     return arrays, names
 
 
@@ -838,108 +842,25 @@ class Pandas(Library):
     def imported(self):
         return uproot.extras.pandas()
 
-    def finalize(self, array, branch, interpretation, entry_start, entry_stop):
+    def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         pandas = self.imported
+        index = _pandas_basic_index(pandas, entry_start, entry_stop)
 
-        if isinstance(array, uproot.interpretation.objects.StridedObjectArray):
-            arrays = []
-            columns = []
-            _strided_to_pandas((), array.interpretation, array.array, arrays, columns)
-            maxlen = max(len(x) for x in columns)
-            if maxlen == 1:
-                columns = [x[0] for x in columns]
-            else:
-                columns = pandas.MultiIndex.from_tuples(
-                    [x + ("",) * (maxlen - len(x)) for x in columns]
-                )
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(
-                dict(zip(columns, arrays)), columns=columns, index=index
-            )
-            out.leaflist = maxlen != 1
-            return out
-
-        elif isinstance(array, uproot.interpretation.jagged.JaggedArray) and isinstance(
-            array.content, uproot.interpretation.objects.StridedObjectArray
+        if (
+            isinstance(array, numpy.ndarray)
+            and array.dtype.names is None
+            and len(array.shape) == 1
         ):
-            index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(entry_start, entry_stop),
-                names=["entry", "subentry"],
-            )
-            arrays = []
-            columns = []
-            _strided_to_pandas(
-                (), array.content.interpretation, array.content.array, arrays, columns
-            )
-            maxlen = max(len(x) for x in columns)
-            if maxlen == 1:
-                columns = [x[0] for x in columns]
-            else:
-                columns = pandas.MultiIndex.from_tuples(
-                    [x + ("",) * (maxlen - len(x)) for x in columns]
-                )
-            out = pandas.DataFrame(
-                dict(zip(columns, arrays)), columns=columns, index=index
-            )
-            out.leaflist = maxlen != 1
-            return out
-
-        elif isinstance(array, uproot.interpretation.jagged.JaggedArray):
-            index = pandas.MultiIndex.from_arrays(
-                array.parents_localindex(entry_start, entry_stop),
-                names=["entry", "subentry"],
-            )
-            return pandas.Series(array.content, index=index)
-
-        elif isinstance(
-            array,
-            (
-                uproot.interpretation.strings.StringArray,
-                uproot.interpretation.objects.ObjectArray,
-            ),
-        ):
-            out = numpy.zeros(len(array), dtype=object)
-            for i, x in enumerate(array):
-                out[i] = x
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            return pandas.Series(out, index=index)
-
-        elif array.dtype.names is not None and len(array.shape) != 1:
-            names = []
-            arrays = {}
-            for n in array.dtype.names:
-                for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
-                    name = (n + "".join("[" + str(x) + "]" for x in tup),)
-                    names.append(name)
-                    arrays[name] = array[n][(slice(None),) + tup]
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(arrays, columns=names, index=index)
-            out.leaflist = True
-            return out
-
-        elif array.dtype.names is not None:
-            columns = pandas.MultiIndex.from_tuples([(x,) for x in array.dtype.names])
-            arrays = {y: array[x] for x, y in zip(array.dtype.names, columns)}
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(arrays, columns=columns, index=index)
-            out.leaflist = True
-            return out
-
-        elif len(array.shape) != 1:
-            names = []
-            arrays = {}
-            for tup in itertools.product(*[range(d) for d in array.shape[1:]]):
-                name = "".join("[" + str(x) + "]" for x in tup)
-                names.append(name)
-                arrays[name] = array[(slice(None),) + tup]
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
-            out = pandas.DataFrame(arrays, columns=names, index=index)
-            out.leaflist = False
-            return out
-
-        else:
-            index = _pandas_basic_index(pandas, entry_start, entry_stop)
             return pandas.Series(array, index=index)
+        else:
+            awkward_pandas = uproot.extras.awkward_pandas()
+            ak_lib = _libraries[Awkward.name]
+            ak_arr = ak_lib.finalize(
+                array, branch, interpretation, entry_start, entry_stop, options
+            )
+            return pandas.Series(
+                awkward_pandas.AwkwardExtensionArray(ak_arr), index=index
+            )
 
     def group(self, arrays, expression_context, how):
         pandas = self.imported
@@ -955,130 +876,7 @@ class Pandas(Library):
 
         elif uproot._util.isstr(how) or how is None:
             arrays, names = _pandas_only_series(pandas, arrays, expression_context)
-
-            if any(isinstance(x, tuple) for x in names):
-                longest = max(len(x) for x in names if isinstance(x, tuple))
-                newarrays, newnames = {}, []
-                for x in names:
-                    if not isinstance(x, tuple):
-                        y = (x,) + ("",) * (longest - 1)
-                    else:
-                        y = x + ("",) * (longest - len(x))
-                    newarrays[y] = arrays[x]
-                    newnames.append(y)
-                arrays = newarrays
-                names = pandas.MultiIndex.from_tuples(newnames)
-
-            if all(_is_pandas_rangeindex(pandas, x.index) for x in arrays.values()):
-                return _pandas_memory_efficient(pandas, arrays, names)
-
-            indexes = []
-            groups = []
-            for name in names:
-                array = arrays[name]
-                if isinstance(array.index, pandas.MultiIndex):
-                    for index, group in zip(indexes, groups):
-                        if numpy.array_equal(array.index, index):
-                            group.append(name)
-                            break
-                    else:
-                        indexes.append(array.index)
-                        groups.append([name])
-            if how is None:
-                flat_index = None
-                dfs = [[] for x in indexes]
-                group_names = [[] for x in indexes]
-                for index, group, df, gn in zip(indexes, groups, dfs, group_names):
-                    for name in names:
-                        array = arrays[name]
-                        if _is_pandas_rangeindex(pandas, array.index):
-                            if flat_index is None or len(flat_index) != len(
-                                array.index
-                            ):
-                                flat_index = pandas.MultiIndex.from_arrays(
-                                    [array.index]
-                                )
-                            # Old versions of Pandas handle the following line poorly:
-                            # should we support them?
-                            #
-                            # >>> pandas.__version__
-                            # '0.22.0'
-                            # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
-                            # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
-                            # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
-                            # 0  0   NaN
-                            #    1   NaN
-                            #    2   NaN
-                            # 1  0   NaN
-                            #    1   NaN
-                            # dtype: float64
-                            #
-                            # >>> pandas.__version__
-                            # '1.3.2'
-                            # >>> from_index = pandas.MultiIndex.from_tuples([(0,), (1,)])
-                            # >>> to_index = pandas.MultiIndex.from_tuples([(0, 0), (0, 1), (0, 2), (1, 0), (1, 1)])
-                            # >>> pandas.Series([1.1, 4.4], index=from_index).reindex(to_index)
-                            # 0  0    1.1
-                            #    1    1.1
-                            #    2    1.1
-                            # 1  0    4.4
-                            #    1    4.4
-                            # dtype: float64
-                            df.append(
-                                pandas.Series(array.values, index=flat_index).reindex(
-                                    index
-                                )
-                            )
-                            gn.append(name)
-                        elif name in group:
-                            df.append(array)
-                            gn.append(name)
-                out = []
-                for index, df, gn in zip(indexes, dfs, group_names):
-                    out.append(
-                        pandas.DataFrame(
-                            data=dict(zip(gn, df)), index=index, columns=gn
-                        )
-                    )
-                if len(out) == 1:
-                    return out[0]
-                else:
-                    return tuple(out)
-            else:
-                out = None
-                for index, group in zip(indexes, groups):
-                    only = {name: arrays[name] for name in group}
-                    df = pandas.DataFrame(data=only, index=index, columns=group)
-                    if out is None:
-                        out = df
-                    else:
-                        out = pandas.merge(
-                            out, df, how=how, left_index=True, right_index=True
-                        )
-                flat_names = [
-                    name
-                    for name in names
-                    if _is_pandas_rangeindex(pandas, arrays[name].index)
-                ]
-                if len(flat_names) > 0:
-                    flat_index = pandas.MultiIndex.from_arrays(
-                        [arrays[flat_names[0]].index]
-                    )
-                    only = {
-                        name: pandas.Series(arrays[name].values, index=flat_index)
-                        for name in flat_names
-                    }
-                    df = pandas.DataFrame(
-                        data=only, index=flat_index, columns=flat_names
-                    )
-                    out = pandas.merge(
-                        df.reindex(out.index),
-                        out,
-                        how=how,
-                        left_index=True,
-                        right_index=True,
-                    )
-                return out
+            return _pandas_memory_efficient(pandas, arrays, names)
 
         else:
             raise TypeError(
@@ -1090,30 +888,18 @@ class Pandas(Library):
     def global_index(self, arrays, global_offset):
         if isinstance(arrays, tuple):
             return tuple(self.global_index(x, global_offset) for x in arrays)
+        elif isinstance(arrays, list):
+            return list(self.global_index(x, global_offset) for x in arrays)
 
-        if type(arrays.index).__name__ == "MultiIndex":
-            if hasattr(arrays.index.levels[0], "arrays"):
-                index = arrays.index.levels[0].arrays  # pandas>=0.24.0
-            else:
-                index = arrays.index.levels[0].values  # pandas<0.24.0
-            numpy.add(index, global_offset, out=index)
-
-        elif type(arrays.index).__name__ == "RangeIndex":
-            if hasattr(arrays.index, "start") and hasattr(arrays.index, "stop"):
-                index_start = arrays.index.start  # pandas>=0.25.0
-                index_stop = arrays.index.stop
-            else:
-                index_start = arrays.index._start  # pandas<0.25.0
-                index_stop = arrays.index._stop
+        if type(arrays.index).__name__ == "RangeIndex":
+            index_start = arrays.index.start
+            index_stop = arrays.index.stop
             arrays.index = type(arrays.index)(
                 index_start + global_offset, index_stop + global_offset
             )
 
         else:
-            if hasattr(arrays.index, "arrays"):
-                index = arrays.index.arrays  # pandas>=0.24.0
-            else:
-                index = arrays.index.values  # pandas<0.24.0
+            index = arrays.index.arrays
             numpy.add(index, global_offset, out=index)
 
         return arrays
@@ -1197,47 +983,5 @@ def _regularize_library(library):
             raise ValueError(
                 """library {} not recognized (for this function); """
                 """try "np" (NumPy), "ak" (Awkward Array), or "pd" (Pandas) """
-                """instead""".format(repr(library))
-            ) from err
-
-
-_libraries_lazy = {Awkward.name: _libraries[Awkward.name]}
-
-_libraries_lazy["awkward1"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["Awkward1"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["AWKWARD1"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["awkward"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["Awkward"] = _libraries_lazy[Awkward.name]
-_libraries_lazy["AWKWARD"] = _libraries_lazy[Awkward.name]
-
-
-def _regularize_library_lazy(library):
-    if isinstance(library, Library):
-        if library.name in _libraries_lazy:
-            return _libraries_lazy[library.name]
-        else:
-            raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    type(library).__name__, repr(library.name)
-                )
-            )
-
-    elif isinstance(library, type) and issubclass(library, Library):
-        if library().name in _libraries_lazy:
-            return _libraries_lazy[library().name]
-        else:
-            raise ValueError(
-                "library {} ({}) cannot be used in this function".format(
-                    library.__name__, repr(library().name)
-                )
-            )
-
-    else:
-        try:
-            return _libraries_lazy[library]
-        except KeyError as err:
-            raise ValueError(
-                """library {} not recognized (for this function); """
-                """try "ak" (Awkward Array) """
                 """instead""".format(repr(library))
             ) from err

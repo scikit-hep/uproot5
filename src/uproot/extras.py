@@ -308,3 +308,18 @@ or
         ) from err
     else:
         return dask_awkward
+
+
+def awkward_pandas():
+    """
+    Imports and returns ``awkward_pandas``.
+    """
+    try:
+        import awkward_pandas
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'awkward-pandas' package with:
+    pip install awkward-pandas # not on conda-forge yet"""
+        ) from err
+    else:
+        return awkward_pandas

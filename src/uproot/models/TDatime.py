@@ -25,13 +25,13 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        helper_obj = uproot._awkward_forth.GenHelper(context)
-        if helper_obj.is_forth():
-            forth_obj = helper_obj.get_gen_obj()
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            forth_obj = forth_stash.get_gen_obj()
             key = forth_obj.get_keys(1)
             form_key = f"node{key}-data"
-            helper_obj.add_to_header(f"output node{key}-data int32\n")
-            helper_obj.add_to_pre(f"stream !I-> node{key}-data\n")
+            forth_stash.add_to_header(f"output node{key}-data int32\n")
+            forth_stash.add_to_pre(f"stream !I-> node{key}-data\n")
             form_key = f"node{key}-data"
             if forth_obj.should_add_form():
                 forth_obj.add_form_key(form_key)
@@ -49,10 +49,7 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
                 forth_obj.add_form(temp_aform)
             temp_form = forth_obj.add_node(
                 f"node{key}",
-                helper_obj.get_pre(),
-                helper_obj.get_post(),
-                helper_obj.get_init(),
-                helper_obj.get_header(),
+                forth_stash.get_attrs(),
                 "i64",
                 0,
                 None,
@@ -87,7 +84,7 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
         contents["fDatime"] = uproot._util.awkward_form(
             numpy.dtype(">u4"), file, context
         )
-        return awkward._v2.forms.RecordForm(
+        return awkward.forms.RecordForm(
             list(contents.values()),
             list(contents.keys()),
             parameters={"__record__": "TDatime"},

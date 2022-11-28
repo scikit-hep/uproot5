@@ -25,6 +25,7 @@ class Model_TLeaf_v2(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
+        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 """memberwise serialization of {}

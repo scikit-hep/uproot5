@@ -10,6 +10,7 @@ the default language.
 
 
 import ast
+import warnings
 
 import numpy
 
@@ -402,15 +403,26 @@ class PythonLanguage(uproot.language.Language):
             arrays (dict of arrays): Inputs to the computation.
             expression_context (list of (str, dict) tuples): Expression strings
                 and a dict of metadata about each.
-            keys (list of str): Names of branches or aliases (for aliases that
+            keys (set of str): Names of branches or aliases (for aliases that
                 refer to aliases).
-            aliases (list of str): Names of aliases.
+            aliases (dict of str \u2192 str): Names of aliases and their definitions.
             file_path (str): File path for error messages.
             object_path (str): Object path for error messages.
 
         Computes an array for each expression.
         """
         values = {}
+
+        if len(aliases) < len(keys):
+            shorter, longer = aliases, keys
+        else:
+            shorter, longer = keys, aliases
+        for x in shorter:
+            if x in longer:
+                warnings.warn(
+                    f"{x!r} is both an alias and a branch name",
+                    uproot.exceptions.NameConflictWarning,
+                )
 
         def getter(name):
             if name not in values:

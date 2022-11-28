@@ -22,6 +22,7 @@ from collections.abc import Mapping
 import numpy
 
 import uproot.compression
+import uproot.extras
 import uproot.pyroot
 import uproot.writing._cascadetree
 
@@ -58,7 +59,7 @@ def add_to_directory(obj, name, directory, streamers):
     if uproot._util.from_module(obj, "awkward"):
         import awkward
 
-        if isinstance(obj, awkward._v2.Array):
+        if isinstance(obj, awkward.Array):
             obj = {"": obj}
 
     if isinstance(obj, numpy.ndarray) and obj.dtype.fields is not None:
@@ -88,23 +89,21 @@ def add_to_directory(obj, name, directory, streamers):
             if isinstance(branch_array, Mapping) and all(
                 uproot._util.isstr(x) for x in branch_array
             ):
-                okay = True
                 datum = {}
                 metadatum = {}
                 for kk, vv in branch_array.items():
                     try:
                         vv = uproot._util.ensure_numpy(vv)
                     except TypeError:
-                        okay = False
+                        raise TypeError(
+                            f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                        ) from None
                     datum[kk] = vv
                     branch_dtype = vv.dtype
                     branch_shape = vv.shape[1:]
                     if branch_shape != ():
                         branch_dtype = numpy.dtype((branch_dtype, branch_shape))
                     metadatum[kk] = branch_dtype
-
-                if not okay:
-                    break
 
                 data[branch_name] = datum
                 metadata[branch_name] = metadatum
@@ -118,17 +117,16 @@ def add_to_directory(obj, name, directory, streamers):
                     try:
                         branch_array = uproot._util.ensure_numpy(branch_array)
                     except TypeError:
+                        awkward = uproot.extras.awkward()
                         try:
-                            import awkward
-                        except ImportError:
-                            break
-                        try:
-                            branch_array = awkward._v2.from_iter(branch_array)
+                            branch_array = awkward.from_iter(branch_array)
                         except Exception:
-                            break
+                            raise TypeError(
+                                f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
+                            ) from None
                         else:
                             data[branch_name] = branch_array
-                            metadata[branch_name] = awkward._v2.type(branch_array)
+                            metadata[branch_name] = awkward.type(branch_array)
 
                     else:
                         data[branch_name] = branch_array
@@ -261,7 +259,11 @@ def to_writable(obj):
         try:
             # using flow=True if supported
             data = obj.values(flow=True)
-            fSumw2 = obj.variances(flow=True)
+            fSumw2 = (
+                obj.variances(flow=True)
+                if obj.storage_type == boost_histogram.storage.Weight
+                else None
+            )
 
             # and flow=True is different from flow=False (obj actually has flow bins)
             data_noflow = obj.values(flow=False)
@@ -285,19 +287,23 @@ def to_writable(obj):
                 data = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=d)
                 data[1:-1, 1:-1, 1:-1] = tmp
 
-            tmp = obj.variances()
-            s = tmp.shape
-            if tmp is None:
-                fSumw2 = None
-            elif ndim == 1:
-                fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
-                fSumw2[1:-1] = tmp
-            elif ndim == 2:
-                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
-                fSumw2[1:-1, 1:-1] = tmp
-            elif ndim == 3:
-                fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
-                fSumw2[1:-1, 1:-1, 1:-1] = tmp
+            tmp = (
+                obj.variances()
+                if obj.storage_type == boost_histogram.storage.Weight
+                else None
+            )
+            fSumw2 = None
+            if tmp is not None:
+                s = tmp.shape
+                if ndim == 1:
+                    fSumw2 = numpy.zeros(s[0] + 2, dtype=">f8")
+                    fSumw2[1:-1] = tmp
+                elif ndim == 2:
+                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2), dtype=">f8")
+                    fSumw2[1:-1, 1:-1] = tmp
+                elif ndim == 3:
+                    fSumw2 = numpy.zeros((s[0] + 2, s[1] + 2, s[2] + 2), dtype=">f8")
+                    fSumw2[1:-1, 1:-1, 1:-1] = tmp
 
         else:
             # continuing to use flow=True, because it is supported
@@ -320,12 +326,13 @@ def to_writable(obj):
         # convert all axes in one list comprehension
         axes = [
             to_TAxis(
-                fName=getattr(axis, "name", default_name),
+                fName=default_name,
                 fTitle=getattr(axis, "label", getattr(obj, "name", "")),
                 fNbins=len(axis),
                 fXmin=axis.edges[0],
                 fXmax=axis.edges[-1],
                 fXbins=_fXbins_maybe_regular(axis, boost_histogram),
+                fLabels=_fLabels_maybe_categorical(axis, boost_histogram),
             )
             for axis, default_name in zip(obj.axes, ["xaxis", "yaxis", "zaxis"])
         ]
@@ -659,6 +666,34 @@ def _fXbins_maybe_regular(axis, boost_histogram):
             return axis.edges
 
 
+def _fLabels_maybe_categorical(axis, boost_histogram):
+    if boost_histogram is None:
+        return None
+
+    if not isinstance(
+        axis, (boost_histogram.axis.IntCategory, boost_histogram.axis.StrCategory)
+    ):
+        return None
+
+    labels = [str(label) for label in axis]
+    if isinstance(axis, boost_histogram.axis.IntCategory):
+        # Check labels are valid integers (this may be redundant)
+        for label in labels:
+            try:
+                int(label)
+            except ValueError:
+                raise ValueError(
+                    f"IntCategory labels must be valid integers. Found {label!r} on axis {axis!r}"
+                ) from None
+
+    labels = to_THashList([to_TObjString(label) for label in labels])
+    # we need to set the TObject.fUniqueID to the index of the bin as done by TAxis::SetBinLabel
+    for i, label in enumerate(labels):
+        label._bases[0]._members["@fUniqueID"] = i + 1
+
+    return labels
+
+
 def _root_stats_1d(entries, edges):
     centers = (edges[:-1] + edges[1:]) / 2.0
 
@@ -735,12 +770,14 @@ def to_TObjString(string):
     This function is for developers to create TObjString objects that can be
     written to ROOT files, to implement conversion routines.
     """
+    tobject = uproot.models.TObject.Model_TObject.empty()
+
     tobjstring = uproot.models.TObjString.Model_TObjString(str(string))
     tobjstring._deeply_writable = True
     tobjstring._cursor = None
     tobjstring._parent = None
     tobjstring._members = {}
-    tobjstring._bases = (uproot.models.TObject.Model_TObject(),)
+    tobjstring._bases = (tobject,)
     tobjstring._num_bytes = len(string) + (1 if len(string) < 255 else 5) + 16
     tobjstring._instance_version = 1
     return tobjstring
@@ -761,8 +798,6 @@ def to_TList(data, name=""):
         )
 
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tlist = uproot.models.TList.Model_TList.empty()
     tlist._bases.append(tobject)
@@ -775,6 +810,30 @@ def to_TList(data, name=""):
         tlist._deeply_writable = True
 
     return tlist
+
+
+def to_THashList(data, name=""):
+    """
+    Args:
+        data (:doc:`uproot.model.Model`): Python iterable to convert into a THashList.
+        name (str): Name of the list (usually empty: ``""``).
+
+    This function is for developers to create THashList objects that can be
+    written to ROOT files, to implement conversion routines.
+    """
+
+    if not all(isinstance(x, uproot.model.Model) for x in data):
+        raise TypeError(
+            "list to convert to THashList must only contain ROOT objects (uproot.Model)"
+        )
+
+    tlist = to_TList(data, name)
+
+    thashlist = uproot.models.THashList.Model_THashList.empty()
+
+    thashlist._bases.append(tlist)
+
+    return thashlist
 
 
 def to_TArray(data):
@@ -874,8 +933,6 @@ def to_TAxis(
     written to ROOT files, to implement conversion routines.
     """
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True
@@ -1018,8 +1075,6 @@ def to_TH1x(
     TH1C, TH1D, TH1F, TH1I, or TH1S depends on the dtype of the ``data`` array.
     """
     tobject = uproot.models.TObject.Model_TObject.empty()
-    tobject._members["@fUniqueID"] = 0
-    tobject._members["@fBits"] = 0
 
     tnamed = uproot.models.TNamed.Model_TNamed.empty()
     tnamed._deeply_writable = True

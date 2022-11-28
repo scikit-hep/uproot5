@@ -57,6 +57,7 @@ def iterate(
     decompression_executor=None,
     interpretation_executor=None,
     library="ak",
+    ak_add_doc=False,
     how=None,
     report=False,
     custom_classes=None,
@@ -104,6 +105,8 @@ def iterate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+            to the Awkward ``__doc__`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -169,8 +172,7 @@ def iterate(
       chunks of contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single concatenated
       array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
-      ``TTrees``.
+    * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
     files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -199,6 +201,7 @@ def iterate(
                         decompression_executor=decompression_executor,
                         interpretation_executor=interpretation_executor,
                         library=library,
+                        ak_add_doc=ak_add_doc,
                         how=how,
                         report=report,
                     ):
@@ -231,6 +234,7 @@ def concatenate(
     decompression_executor=None,
     interpretation_executor=None,
     library="ak",
+    ak_add_doc=False,
     how=None,
     custom_classes=None,
     allow_missing=False,
@@ -273,6 +277,8 @@ def concatenate(
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. Options are ``"np"`` for NumPy,
             ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+        ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+            to the Awkward ``__doc__`` parameter of the array.
         how (None, str, or container type): Library-dependent instructions
             for grouping. The only recognized container types are ``tuple``,
             ``list``, and ``dict``. Note that the container *type itself*
@@ -333,8 +339,7 @@ def concatenate(
       contiguous entries in ``TTrees``.
     * :doc:`uproot.behaviors.TBranch.concatenate` (this function): returns a
       single concatenated array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy`: returns a lazily read array from
-      ``TTrees``.
+    * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
     files = uproot._util.regularize_files(files)
     decompression_executor, interpretation_executor = _regularize_executors(
@@ -363,6 +368,7 @@ def concatenate(
                         interpretation_executor=interpretation_executor,
                         array_cache=None,
                         library=library,
+                        ak_add_doc=ak_add_doc,
                         how=how,
                     )
                     arrays = library.global_index(arrays, global_start)
@@ -376,136 +382,6 @@ def concatenate(
                 global_start += hasbranches.num_entries
 
     return library.concatenate(all_arrays)
-
-
-def lazy(
-    files,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    recursive=True,
-    full_paths=False,
-    step_size="100 MB",
-    decompression_executor=None,
-    interpretation_executor=None,
-    array_cache="100 MB",
-    library="ak",
-    custom_classes=None,
-    allow_missing=False,
-    **options,  # NOTE: a comma after **options breaks Python 2
-):
-    """
-    .. warning::
-        Deprecated. This function will be removed in Uproot 5 (target date: Dec 2022). Please use :doc:`uproot.behaviors.TBranch.dask` instead.
-    Args:
-        files: See below.
-        filter_name (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-            filter to select ``TBranches`` by name.
-        filter_typename (None, glob string, regex string in ``"/pattern/i"`` syntax, function of str \u2192 bool, or iterable of the above): A
-            filter to select ``TBranches`` by type.
-        filter_branch (None or function of :doc:`uproot.behaviors.TBranch.TBranch` \u2192 bool, :doc:`uproot.interpretation.Interpretation`, or None): A
-            filter to select ``TBranches`` using the full
-            :doc:`uproot.behaviors.TBranch.TBranch` object. If the function
-            returns False or None, the ``TBranch`` is excluded; if the function
-            returns True, it is included with its standard
-            :ref:`uproot.behaviors.TBranch.TBranch.interpretation`; if an
-            :doc:`uproot.interpretation.Interpretation`, this interpretation
-            overrules the standard one.
-        recursive (bool): If True, include all subbranches of branches as
-            separate fields; otherwise, only search one level deep.
-        full_paths (bool): If True, include the full path to each subbranch
-            with slashes (``/``); otherwise, use the descendant's name as
-            the field name.
-        step_size (int or str): If an integer, the maximum number of entries to
-            include in each iteration step; if a string, the maximum memory size
-            to include. The string must be a number followed by a memory unit,
-            such as "100 MB".
-        decompression_executor (None or Executor with a ``submit`` method): The
-            executor that is used to decompress ``TBaskets``; if None, a
-            :doc:`uproot.source.futures.TrivialExecutor` is created.
-        interpretation_executor (None or Executor with a ``submit`` method): The
-            executor that is used to interpret uncompressed ``TBasket`` data as
-            arrays; if None, a :doc:`uproot.source.futures.TrivialExecutor`
-            is created.
-        array_cache (None, MutableMapping, or memory size): Cache of arrays;
-            if None, do not use a cache; if a memory size, create a new cache
-            of this size.
-        library (str or :doc:`uproot.interpretation.library.Library`): The library
-            that is used to represent arrays. For lazy arrays, only ``"ak"``
-            for Awkward Array is allowed.
-        custom_classes (None or dict): If a dict, override the classes from
-            the :doc:`uproot.reading.ReadOnlyFile` or ``uproot.classes``.
-        allow_missing (bool): If True, skip over any files that do not contain
-            the specified ``TTree``.
-        options: See below.
-
-    Returns a lazy array, which loads data on demand. Only the files and
-    ``TTree`` metadata are opened when this function is invoked.
-
-    For example:
-
-    .. code-block:: python
-
-        >>> lazyarray = uproot.lazy("files*.root:tree")
-        >>> # all files*.root have been opened and the "tree" from each is examined
-
-        >>> lazyarray
-        <Array [{Type: 'GT', Run: 148031, ... M: 96.7}] type='23047295 * {"Type": string...'>
-        >>> # the first TBasket of "Type" and "Run" have now been read, as well as the last
-        >>> # TBasket of "M", to print these values on the screen.
-
-        >>> np.sqrt(lazyarray.px1**2 + lazyarray.py1**2)
-        <Array [44.7, 38.8, 38.8, ... 32.4, 32.4, 32.5] type='23047295 * float64'>
-        >>> # the entirety of "px1" and "py1" have now been read, to perform a calculation.
-
-    If the size of the fields used in a calculation do not fit into ``array_cache``,
-    lazy arrays may be inefficient, repeatedly rereading data that could be read
-    once by iterating through the calculation with
-    :doc:`uproot.behaviors.TBranch.iterate`.
-
-    Allowed types for the ``files`` parameter:
-
-    * str/bytes: relative or absolute filesystem path or URL, without any colons
-      other than Windows drive letter or URL schema.
-      Examples: ``"rel/file.root"``, ``"C:\\abs\\file.root"``, ``"http://where/what.root"``
-    * str/bytes: same with an object-within-ROOT path, separated by a colon.
-      Example: ``"rel/file.root:tdirectory/ttree"``
-    * pathlib.Path: always interpreted as a filesystem path or URL only (no
-      object-within-ROOT path), regardless of whether there are any colons.
-      Examples: ``Path("rel:/file.root")``, ``Path("/abs/path:stuff.root")``
-    * glob syntax in str/bytes and pathlib.Path.
-      Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
-    * dict: keys are filesystem paths, values are objects-within-ROOT paths.
-      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
-    * already-open TTree objects.
-    * iterables of the above.
-
-    Options (type; default):
-
-    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
-    * timeout (float for HTTP, int for XRootD; 30)
-    * max_num_elements (None or int; None)
-    * num_workers (int; 1)
-    * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 512)
-    * minimal_ttree_metadata (bool; True)
-
-    Other file entry points:
-
-    * :doc:`uproot.reading.open`: opens one file to read any of its objects.
-    * :doc:`uproot.behaviors.TBranch.iterate`: iterates through chunks of
-      contiguous entries in ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.concatenate`: returns a single
-      concatenated array from ``TTrees``.
-    * :doc:`uproot.behaviors.TBranch.lazy` (this function): returns a lazily
-      read array from ``TTrees``.
-    """
-    raise NotImplementedError(
-        "uproot.lazy is removed in Uproot5 (only here for the deprecation message in the online docs)"
-    )
 
 
 class Report:
@@ -658,6 +534,12 @@ class Report:
         )
 
 
+def _ak_add_doc(array, hasbranches, ak_add_doc):
+    if ak_add_doc and type(array).__module__ == "awkward.highlevel":
+        array.layout.parameters["__doc__"] = hasbranches.title
+    return array
+
+
 class HasBranches(Mapping):
     """
     Abstract class of behaviors for anything that "has branches," namely
@@ -801,6 +683,7 @@ class HasBranches(Mapping):
         interpretation_executor=None,
         array_cache="inherit",
         library="ak",
+        ak_add_doc=False,
         how=None,
     ):
         """
@@ -849,6 +732,8 @@ class HasBranches(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -941,6 +826,7 @@ class HasBranches(Mapping):
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
+        interp_options = {"ak_add_doc": ak_add_doc}
         _ranges_or_baskets_to_arrays(
             self,
             ranges_or_baskets,
@@ -952,13 +838,19 @@ class HasBranches(Mapping):
             library,
             arrays,
             False,
+            interp_options,
         )
 
         # no longer needed; save memory
         del ranges_or_baskets
 
         _fix_asgrouped(
-            arrays, expression_context, branchid_interpretation, library, how
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            library,
+            how,
+            ak_add_doc,
         )
 
         if array_cache is not None:
@@ -996,7 +888,9 @@ class HasBranches(Mapping):
             (e, c) for e, c in expression_context if c["is_primary"] and not c["is_cut"]
         ]
 
-        return library.group(output, expression_context, how)
+        return _ak_add_doc(
+            library.group(output, expression_context, how), self, ak_add_doc
+        )
 
     def iterate(
         self,
@@ -1013,6 +907,7 @@ class HasBranches(Mapping):
         decompression_executor=None,
         interpretation_executor=None,
         library="ak",
+        ak_add_doc=False,
         how=None,
         report=False,
     ):
@@ -1063,6 +958,8 @@ class HasBranches(Mapping):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
             how (None, str, or container type): Library-dependent instructions
                 for grouping. The only recognized container types are ``tuple``,
                 ``list``, and ``dict``. Note that the container *type itself*
@@ -1172,6 +1069,7 @@ class HasBranches(Mapping):
                                     )
 
                 arrays = {}
+                interp_options = {"ak_add_doc": ak_add_doc}
                 _ranges_or_baskets_to_arrays(
                     self,
                     ranges_or_baskets,
@@ -1183,10 +1081,16 @@ class HasBranches(Mapping):
                     library,
                     arrays,
                     True,
+                    interp_options,
                 )
 
                 _fix_asgrouped(
-                    arrays, expression_context, branchid_interpretation, library, how
+                    arrays,
+                    expression_context,
+                    branchid_interpretation,
+                    library,
+                    how,
+                    ak_add_doc,
                 )
 
                 output = language.compute_expressions(
@@ -1208,7 +1112,11 @@ class HasBranches(Mapping):
                     if c["is_primary"] and not c["is_cut"]
                 ]
 
-                out = library.group(output, minimized_expression_context, how)
+                out = _ak_add_doc(
+                    library.group(output, minimized_expression_context, how),
+                    self,
+                    ak_add_doc,
+                )
 
                 next_baskets = {}
                 for branch, basket_num, basket in ranges_or_baskets:
@@ -1687,10 +1595,6 @@ class HasBranches(Mapping):
     def __getitem__(self, where):
         original_where = where
 
-        got = self._lookup.get(original_where)
-        if got is not None:
-            return got
-
         if uproot._util.isint(where):
             return self.branches[where]
         elif uproot._util.isstr(where):
@@ -1704,24 +1608,28 @@ class HasBranches(Mapping):
         else:
             recursive = True
 
+        got = self._lookup.get(where)
+        if got is not None:
+            return got
+
         if "/" in where:
-            where = "/".join([x for x in where.split("/") if x != ""])
-            for k, v in self.iteritems(recursive=True, full_paths=True):
-                if where == k:
-                    self._lookup[original_where] = v
-                    return v
-            else:
+            this = self
+            try:
+                for piece in where.split("/"):
+                    if piece != "":
+                        this = this[piece]
+            except uproot.KeyInFileError:
                 raise uproot.KeyInFileError(
                     original_where,
                     keys=self.keys(recursive=recursive),
                     file_path=self._file.file_path,
                     object_path=self.object_path,
-                )
+                ) from None
+            return this
 
         elif recursive:
             got = _get_recursive(self, where)
             if got is not None:
-                self._lookup[original_where] = got
                 return got
             else:
                 raise uproot.KeyInFileError(
@@ -1732,17 +1640,12 @@ class HasBranches(Mapping):
                 )
 
         else:
-            for branch in self.branches:
-                if branch.name == where:
-                    self._lookup[original_where] = branch
-                    return branch
-            else:
-                raise uproot.KeyInFileError(
-                    original_where,
-                    keys=self.keys(recursive=recursive),
-                    file_path=self._file.file_path,
-                    object_path=self.object_path,
-                )
+            raise uproot.KeyInFileError(
+                original_where,
+                keys=self.keys(recursive=recursive),
+                file_path=self._file.file_path,
+                object_path=self.object_path,
+            )
 
     def __iter__(self):
         yield from self.branches
@@ -1789,6 +1692,7 @@ class TBranch(HasBranches):
         interpretation_executor=None,
         array_cache="inherit",
         library="ak",
+        ak_add_doc=False,
     ):
         """
         Args:
@@ -1817,6 +1721,8 @@ class TBranch(HasBranches):
             library (str or :doc:`uproot.interpretation.library.Library`): The library
                 that is used to represent arrays. Options are ``"np"`` for NumPy,
                 ``"ak"`` for Awkward Array, and ``"pd"`` for Pandas.
+            ak_add_doc (bool): If True and ``library="ak"``, add the TBranch ``title``
+                to the Awkward ``__doc__`` parameter of the array.
 
         Returns the ``TBranch`` data as an array.
 
@@ -1892,6 +1798,7 @@ class TBranch(HasBranches):
                     ) in branch.entries_to_ranges_or_baskets(entry_start, entry_stop):
                         ranges_or_baskets.append((branch, basket_num, range_or_basket))
 
+        interp_options = {"ak_add_doc": ak_add_doc}
         _ranges_or_baskets_to_arrays(
             self,
             ranges_or_baskets,
@@ -1903,10 +1810,16 @@ class TBranch(HasBranches):
             library,
             arrays,
             False,
+            interp_options,
         )
 
         _fix_asgrouped(
-            arrays, expression_context, branchid_interpretation, library, None
+            arrays,
+            expression_context,
+            branchid_interpretation,
+            library,
+            None,
+            ak_add_doc,
         )
 
         if array_cache is not None:
@@ -2499,6 +2412,11 @@ in file {}""".format(
         fWriteBasket = self.member("fWriteBasket")
 
         self._lookup = {}
+        for branch in self.member("fBranches"):
+            name = branch.member("fName")
+            if name not in self._lookup:
+                self._lookup[name] = branch
+
         self._interpretation = None
         self._typename = None
         self._streamer = None
@@ -2670,9 +2588,10 @@ def _keys_deep(hasbranches):
 
 
 def _get_recursive(hasbranches, where):
+    got = hasbranches._lookup.get(where)
+    if got is not None:
+        return got
     for branch in hasbranches.branches:
-        if branch.name == where:
-            return branch
         got = _get_recursive(branch, where)
         if got is not None:
             return got
@@ -3053,6 +2972,7 @@ def _ranges_or_baskets_to_arrays(
     library,
     arrays,
     update_ranges_or_baskets,
+    interp_options,
 ):
     notifications = queue.Queue()
 
@@ -3086,7 +3006,7 @@ def _ranges_or_baskets_to_arrays(
         if branchid_num_baskets[cache_key] == 0:
             if cache_key not in arrays:
                 arrays[cache_key] = interpretation.final_array(
-                    {}, 0, 0, [0], library, None
+                    {}, 0, 0, [0], library, None, interp_options
                 )
 
     hasbranches._file.source.chunks(ranges, notifications=notifications)
@@ -3135,6 +3055,7 @@ def _ranges_or_baskets_to_arrays(
                 context,
                 basket.member("fKeylen"),
                 library,
+                interp_options,
             )
             if basket.num_entries != len(basket_arrays[basket.basket_num]):
                 raise ValueError(
@@ -3160,6 +3081,7 @@ def _ranges_or_baskets_to_arrays(
                     branch.entry_offsets,
                     library,
                     branch,
+                    interp_options,
                 )
                 # no longer needed, save memory
                 basket_arrays.clear()
@@ -3191,7 +3113,9 @@ def _ranges_or_baskets_to_arrays(
         obj = None  # release before blocking
 
 
-def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library, how):
+def _fix_asgrouped(
+    arrays, expression_context, branchid_interpretation, library, how, ak_add_doc
+):
     index_start = 0
     for index_stop, (_, context) in enumerate(expression_context):
         if context["is_branch"]:
@@ -3209,7 +3133,9 @@ def _fix_asgrouped(arrays, expression_context, branchid_interpretation, library,
                     subarrays[subname] = arrays[subbranch.cache_key]
                     subcontext.append((subname, limited_context[subname]))
 
-                arrays[branch.cache_key] = library.group(subarrays, subcontext, how)
+                arrays[branch.cache_key] = _ak_add_doc(
+                    library.group(subarrays, subcontext, how), branch, ak_add_doc
+                )
 
                 index_start = index_stop
 

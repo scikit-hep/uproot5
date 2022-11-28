@@ -43,7 +43,14 @@ class Numerical(uproot.interpretation.Interpretation):
         return array
 
     def final_array(
-        self, basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+        self,
+        basket_arrays,
+        entry_start,
+        entry_stop,
+        entry_offsets,
+        library,
+        branch,
+        options,
     ):
         self.hook_before_final_array(
             basket_arrays=basket_arrays,
@@ -111,7 +118,9 @@ class Numerical(uproot.interpretation.Interpretation):
 
         output = self._wrap_almost_finalized(output)
 
-        output = library.finalize(output, branch, self, entry_start, entry_stop)
+        output = library.finalize(
+            output, branch, self, entry_start, entry_stop, options
+        )
 
         self.hook_after_final_array(
             basket_arrays=basket_arrays,
@@ -182,11 +191,9 @@ class AsDtype(Numerical):
 
     def __repr__(self):
         if self._to_dtype == self._from_dtype.newbyteorder("="):
-            return f"AsDtype({repr(str(self._from_dtype))})"
+            return f"AsDtype({str(self._from_dtype)!r})"
         else:
-            return "AsDtype({}, {})".format(
-                repr(str(self._from_dtype)), repr(str(self._to_dtype))
-            )
+            return f"AsDtype({str(self._from_dtype)!r}, {str(self._to_dtype)!r})"
 
     def __eq__(self, other):
         return (
@@ -265,7 +272,7 @@ class AsDtype(Numerical):
         d, s = _dtype_shape(self._to_dtype)
         out = uproot._util.awkward_form(d, file, context)
         for size in s[::-1]:
-            out = awkward._v2.forms.RegularForm(out, size)
+            out = awkward.forms.RegularForm(out, size)
         return out
 
     @property
@@ -325,7 +332,15 @@ class AsDtype(Numerical):
             )
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         self.hook_before_basket_array(
             data=data,
@@ -335,6 +350,7 @@ class AsDtype(Numerical):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         dtype, shape = _dtype_shape(self._from_dtype)
@@ -362,6 +378,7 @@ in file {}""".format(
             output=output,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         return output
@@ -500,7 +517,7 @@ class TruncatedNumerical(Numerical):
         and :ref:`uproot.interpretation.numerical.TruncatedNumerical.high` are
         both ``0``), the data are truly truncated.
         """
-        return self._low == 0.0 and self._high == 0.0
+        return self._low == self._high == 0.0
 
     def __repr__(self):
         args = [repr(self._low), repr(self._high), repr(self._num_bits)]
@@ -528,7 +545,15 @@ class TruncatedNumerical(Numerical):
         )
 
     def basket_array(
-        self, data, byte_offsets, basket, branch, context, cursor_offset, library
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
     ):
         self.hook_before_basket_array(
             data=data,
@@ -538,6 +563,7 @@ class TruncatedNumerical(Numerical):
             context=context,
             cursor_offset=cursor_offset,
             library=library,
+            options=options,
         )
 
         try:
@@ -591,6 +617,7 @@ in file {}""".format(
             library=library,
             raw=raw,
             output=output,
+            options=options,
         )
 
         return output
@@ -648,19 +675,9 @@ class AsDouble32(TruncatedNumerical):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        out = awkward._v2.forms.NumpyForm(
-            "float64",
-            parameters={
-                "uproot": {
-                    "as": "Double32",
-                    "low": self._low,
-                    "high": self._high,
-                    "num_bits": self._num_bits,
-                }
-            },
-        )
+        out = awkward.forms.NumpyForm("float64")
         for size in self._to_dims[::-1]:
-            out = awkward._v2.forms.RegularForm(out, size)
+            out = awkward.forms.RegularForm(out, size)
         return out
 
 
@@ -716,17 +733,7 @@ class AsFloat16(TruncatedNumerical):
             context, index_format, header, tobject_header, breadcrumbs
         )
         awkward = uproot.extras.awkward()
-        out = awkward._v2.forms.NumpyForm(
-            "float32",
-            parameters={
-                "uproot": {
-                    "as": "Float16",
-                    "low": self._low,
-                    "high": self._high,
-                    "num_bits": self._num_bits,
-                }
-            },
-        )
+        out = awkward.forms.NumpyForm("float32")
         for size in self._to_dims[::-1]:
-            out = awkward._v2.forms.RegularForm(out, size)
+            out = awkward.forms.RegularForm(out, size)
         return out

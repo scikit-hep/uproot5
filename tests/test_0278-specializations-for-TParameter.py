@@ -14,3 +14,9 @@ def test():
         assert p
         assert int(p) == 500
         assert float(p) == 500.0
+
+
+def test_issue_707():
+    with uproot.open(skhep_testdata.data_path("uproot-issue-707.root")) as file:
+        p = file["NumberOfPrimariesEdep"]
+        assert p.value == 100000004
