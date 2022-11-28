@@ -7,7 +7,7 @@ import skhep_testdata
 import uproot
 
 pytest.importorskip("pandas")
-pytest.importorskip("awkward-pandas")
+pytest.importorskip("awkward_pandas")
 
 
 def test():

@@ -1433,7 +1433,7 @@ def test_awkward_nosplit_file():
 
 def test_pandas_TVector2():
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward-pandas")
+    pytest.importorskip("awkward_pandas")
     with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
         "events"
     ] as tree:
@@ -1445,7 +1445,7 @@ def test_pandas_TVector2():
 
 def test_pandas_vector_TLorentzVector():
     pandas = pytest.importorskip("pandas")
-    pytest.importorskip("awkward-pandas")
+    pytest.importorskip("awkward_pandas")
     with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
         "events"
     ] as tree:
