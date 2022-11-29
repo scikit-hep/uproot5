@@ -571,6 +571,7 @@ class HasBranches(Mapping):
 
     def show(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
