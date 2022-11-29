@@ -22,6 +22,7 @@ from uproot._util import no_filter
 
 def open(
     path,
+    *,
     object_cache=100,
     array_cache="100 MB",
     custom_classes=None,
@@ -549,6 +550,7 @@ class ReadOnlyFile(CommonFileMethods):
     def __init__(
         self,
         file_path,
+        *,
         object_cache=100,
         array_cache="100 MB",
         custom_classes=None,
@@ -1598,6 +1600,7 @@ class ReadOnlyDirectory(Mapping):
 
     def keys(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -1630,6 +1633,7 @@ class ReadOnlyDirectory(Mapping):
 
     def values(
         self,
+        *,
         recursive=True,
         filter_name=no_filter,
         filter_classname=no_filter,
@@ -1660,6 +1664,7 @@ class ReadOnlyDirectory(Mapping):
 
     def items(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -1693,6 +1698,7 @@ class ReadOnlyDirectory(Mapping):
 
     def classnames(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -1725,6 +1731,7 @@ class ReadOnlyDirectory(Mapping):
 
     def iterkeys(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -1774,6 +1781,7 @@ class ReadOnlyDirectory(Mapping):
 
     def itervalues(
         self,
+        *,
         recursive=True,
         filter_name=no_filter,
         filter_classname=no_filter,
@@ -1804,6 +1812,7 @@ class ReadOnlyDirectory(Mapping):
 
     def iteritems(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -1854,6 +1863,7 @@ class ReadOnlyDirectory(Mapping):
 
     def iterclassnames(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,

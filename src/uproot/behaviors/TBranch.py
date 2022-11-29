@@ -48,6 +48,7 @@ def iterate(
     files,
     expressions=None,
     cut=None,
+    *,
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
@@ -226,6 +227,7 @@ def concatenate(
     files,
     expressions=None,
     cut=None,
+    *,
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
@@ -672,6 +674,7 @@ class HasBranches(Mapping):
         self,
         expressions=None,
         cut=None,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -896,6 +899,7 @@ class HasBranches(Mapping):
         self,
         expressions=None,
         cut=None,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1133,6 +1137,7 @@ class HasBranches(Mapping):
 
     def keys(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1170,6 +1175,7 @@ class HasBranches(Mapping):
 
     def values(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1206,6 +1212,7 @@ class HasBranches(Mapping):
 
     def items(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1244,6 +1251,7 @@ class HasBranches(Mapping):
 
     def typenames(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1282,6 +1290,7 @@ class HasBranches(Mapping):
 
     def iterkeys(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1318,6 +1327,7 @@ class HasBranches(Mapping):
 
     def itervalues(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1354,6 +1364,7 @@ class HasBranches(Mapping):
 
     def iteritems(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1423,6 +1434,7 @@ class HasBranches(Mapping):
 
     def itertypenames(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1469,6 +1481,7 @@ class HasBranches(Mapping):
         memory_size,
         expressions=None,
         cut=None,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1553,6 +1566,7 @@ class HasBranches(Mapping):
 
     def common_entry_offsets(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
@@ -1688,6 +1702,7 @@ class TBranch(HasBranches):
         interpretation=None,
         entry_start=None,
         entry_stop=None,
+        *,
         decompression_executor=None,
         interpretation_executor=None,
         array_cache="inherit",
