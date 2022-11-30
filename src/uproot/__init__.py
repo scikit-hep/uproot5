@@ -187,3 +187,4 @@ from uproot._util import no_filter
 from uproot._dask import dask
 
 from uproot.pyroot import from_pyroot
+from uproot.pyroot import to_pyroot

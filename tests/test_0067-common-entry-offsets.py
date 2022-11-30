@@ -27,8 +27,14 @@ def test_common_offsets():
 
     with uproot.open(skhep_testdata.data_path("uproot-small-dy-nooffsets.root")) as f:
         assert f["tree;1"].common_entry_offsets() == [0, 200, 400, 501]
-        assert f["tree;1"].common_entry_offsets(["Jet_pt"]) == [0, 200, 397, 400, 501]
-        assert f["tree;1"].common_entry_offsets(["Jet_pt", "nJet"]) == [
+        assert f["tree;1"].common_entry_offsets(filter_name=["Jet_pt"]) == [
+            0,
+            200,
+            397,
+            400,
+            501,
+        ]
+        assert f["tree;1"].common_entry_offsets(filter_name=["Jet_pt", "nJet"]) == [
             0,
             200,
             400,

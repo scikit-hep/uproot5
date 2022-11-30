@@ -611,6 +611,7 @@ class WritableDirectory(MutableMapping):
 
     def keys(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -643,6 +644,7 @@ class WritableDirectory(MutableMapping):
 
     def values(
         self,
+        *,
         recursive=True,
         filter_name=no_filter,
         filter_classname=no_filter,
@@ -673,6 +675,7 @@ class WritableDirectory(MutableMapping):
 
     def items(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -706,6 +709,7 @@ class WritableDirectory(MutableMapping):
 
     def classnames(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -738,6 +742,7 @@ class WritableDirectory(MutableMapping):
 
     def iterkeys(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -784,6 +789,7 @@ class WritableDirectory(MutableMapping):
 
     def itervalues(
         self,
+        *,
         recursive=True,
         filter_name=no_filter,
         filter_classname=no_filter,
@@ -814,6 +820,7 @@ class WritableDirectory(MutableMapping):
 
     def iteritems(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -849,6 +856,7 @@ class WritableDirectory(MutableMapping):
 
     def iterclassnames(
         self,
+        *,
         recursive=True,
         cycle=True,
         filter_name=no_filter,
@@ -1152,7 +1160,7 @@ class WritableDirectory(MutableMapping):
 
         return self._subdirs[name]
 
-    def mkdir(self, name, initial_directory_bytes=None):
+    def mkdir(self, name, *, initial_directory_bytes=None):
         """
         Args:
             name (str): Name of the new subdirectory.
@@ -1221,6 +1229,7 @@ in file {} in directory {}""".format(
         name,
         branch_types,
         title="",
+        *,
         counter_name=lambda counted: "n" + counted,
         field_name=lambda outer, inner: inner if outer == "" else outer + "_" + inner,
         initial_basket_capacity=10,
@@ -1315,6 +1324,7 @@ in file {} in directory {}""".format(
     def copy_from(
         self,
         source,
+        *,
         filter_name=no_filter,
         filter_classname=no_filter,
         rename=no_rename,
@@ -1414,7 +1424,12 @@ in file {} in directory {}""".format(
             )
 
         for name, allocation in new_dirs.items():
-            self.mkdir(name, max(self._file.initial_directory_bytes, allocation))
+            self.mkdir(
+                name,
+                initial_directory_bytes=max(
+                    self._file.initial_directory_bytes, allocation
+                ),
+            )
 
         for _ in range(len(ranges)):
             chunk = notifications.get()
@@ -1463,7 +1478,10 @@ in file {} in directory {}""".format(
             path, name = fullpath[:-1], fullpath[-1]
 
             if len(path) != 0:
-                self.mkdir("/".join(path), self._file.initial_directory_bytes)
+                self.mkdir(
+                    "/".join(path),
+                    initial_directory_bytes=self._file.initial_directory_bytes,
+                )
 
             directory = self
             for item in path:
@@ -1752,6 +1770,7 @@ class WritableTree:
 
     def show(
         self,
+        *,
         filter_name=no_filter,
         filter_typename=no_filter,
         filter_branch=no_filter,
