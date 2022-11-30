@@ -359,12 +359,18 @@ def _awkward_offsets(awkward, form, array):
 
 def _awkward_json_to_array(awkward, form, array):
     if form["class"] == "NumpyArray":
+        form = awkward.forms.from_json(json.dumps(form))
+        dtype = awkward.types.numpytype.primitive_to_dtype(form.primitive)
         if isinstance(array, awkward.contents.EmptyArray):
-            form = awkward.forms.from_json(json.dumps(form))
-            dtype = awkward.types.numpytype.primitive_to_dtype(form.primitive)
-            return awkward.contents.NumpyArray(numpy.empty(0, dtype=dtype))
+            return awkward.contents.NumpyArray(
+                numpy.empty(0, dtype=dtype),
+                parameters=form.parameters,
+            )
         else:
-            return array
+            return awkward.contents.NumpyArray(
+                numpy.asarray(array.data, dtype=dtype),
+                parameters=form.parameters,
+            )
 
     elif form["class"] == "RecordArray":
         contents = []

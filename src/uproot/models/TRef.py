@@ -156,10 +156,10 @@ in file {}""".format(
             if forth_obj.should_add_form():
                 for elem in keys:
                     forth_obj.add_form_key(elem)
-                temp_aform = f'{{"class": "RecordArray", "contents": {{"fName": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "parameters": {{}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int64", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "parameters": {{}}, "form_key": "node{form_keys[0]}"}}'
+                temp_aform = f'{{"class": "RecordArray", "contents": {{"fName": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{form_keys[2]}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{form_keys[1]}"}}, "fSize": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[3]}"}}, "refs": {{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "int32", "inner_shape": [], "parameters": {{}}, "form_key": "node{form_keys[5]}"}}, "parameters": {{}}, "form_key": "node{form_keys[4]}"}}}}, "parameters": {{"__record__": "TRefArray"}}, "form_key": "node{form_keys[0]}"}}'
                 forth_obj.add_form(json.loads(temp_aform))
                 forth_stash.add_to_header(
-                    f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int64\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int64\n"
+                    f"output node{form_keys[1]}-offsets int64\noutput node{form_keys[2]}-data uint8\noutput node{form_keys[3]}-data int32\noutput node{form_keys[4]}-offsets int64\noutput node{form_keys[5]}-data int32\n"
                 )
                 forth_stash.add_to_init(
                     f"0 node{form_keys[1]}-offsets <- stack\n0 node{form_keys[4]}-offsets <- stack\n"
