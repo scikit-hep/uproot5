@@ -262,7 +262,7 @@ class AsDtype(Numerical):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(
@@ -668,7 +668,7 @@ class AsDouble32(TruncatedNumerical):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(
@@ -726,7 +726,7 @@ class AsFloat16(TruncatedNumerical):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(

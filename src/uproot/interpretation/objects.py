@@ -101,7 +101,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(
@@ -609,7 +609,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(
