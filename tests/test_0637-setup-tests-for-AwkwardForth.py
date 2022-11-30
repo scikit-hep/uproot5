@@ -63,7 +63,7 @@ def test_03(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False])
+@pytest.mark.parametrize("is_forth", [False, True])
 def test_04(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["POOLContainerForm/DataHeaderForm/m_uints"]
