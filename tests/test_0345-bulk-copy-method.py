@@ -33,7 +33,7 @@ def test_bulk_copy(tmp_path):
 
     with uproot.open(source_filename) as source:
         with uproot.recreate(dest_filename) as dest:
-            dest.copy_from(source, "subdir/hist")
+            dest.copy_from(source, filter_name="subdir/hist")
 
     with uproot.open(dest_filename) as dest:
         assert dest.keys() == ["subdir;1", "subdir/hist;1"]

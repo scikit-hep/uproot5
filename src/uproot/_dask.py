@@ -9,6 +9,7 @@ from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 def dask(
     files,
+    *,
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
