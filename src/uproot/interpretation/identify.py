@@ -1193,7 +1193,7 @@ in object {}""".format(
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         raise self

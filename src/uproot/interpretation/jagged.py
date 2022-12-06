@@ -110,7 +110,7 @@ class AsJagged(uproot.interpretation.Interpretation):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(

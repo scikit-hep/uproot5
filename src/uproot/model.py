@@ -679,10 +679,9 @@ class Model:
             index_format (str): Format to use for indexes of the
                 ``awkward.forms.Form``; may be ``"i32"``, ``"u32"``, or
                 ``"i64"``.
-            header (bool): If True, include headers in the Form's ``"uproot"``
-                parameters.
-            tobject_header (bool): If True, include headers for ``TObject``
-                classes in the Form's ``"uproot"`` parameters.
+            header (bool): If True, include header fields of each C++ class.
+            tobject_header (bool): If True, include header fields of each ``TObject``
+                base class.
             breadcrumbs (tuple of class objects): Used to check for recursion.
                 Types that contain themselves cannot be Awkward Arrays because the
                 depth of instances is unknown.

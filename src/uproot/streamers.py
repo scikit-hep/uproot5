@@ -1064,7 +1064,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     f'            forth_stash.add_to_header(f"output node{{key}}-data {{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}\\n")',
                     '            forth_stash.add_to_header(f"output node{key2}-offsets int64\\n")',
                     '            forth_stash.add_to_init(f"0 node{key2}-offsets <- stack\\n")',
-                    f'            content[{self.name!r}] = {{"class": "ListOffsetArray", "offsets": "i64", "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}',
+                    f'            content[{self.name!r}] = {{"class": "RegularArray", "size": {self.array_length}, "content": {{ "class": "NumpyArray", "primitive": f"{{uproot._awkward_forth.convert_dtype(uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}])}}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}, "form_key": f"node{{key2}}"}}',
                     f'            forth_stash.add_to_pre(f"{self.array_length} dup node{{key2}}-offsets +<- stack \\n stream #!{{uproot._awkward_forth.symbol_dict[self._dtype{len(dtypes)}]}}-> node{{key}}-data\\n")\n',
                     "            if forth_obj.should_add_form():",
                     "                forth_obj.add_form_key(form_key)",
