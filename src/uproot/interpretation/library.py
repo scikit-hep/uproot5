@@ -654,7 +654,7 @@ in object {}""".format(
                         isinstance(array.layout, awkward.contents.ListArray)
                         or array.layout.offsets[0] != 0
                     ):
-                        array_layout = array.layout.toListOffsetArray64(True)
+                        array_layout = array.layout.to_ListOffsetArray64(True)
                     else:
                         array_layout = array.layout
                     if len(offsets) == 0:

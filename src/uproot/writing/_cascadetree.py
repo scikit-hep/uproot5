@@ -702,7 +702,7 @@ class Tree:
                         layout = layout.project()
 
                     elif isinstance(layout, awkward.contents.ListArray):
-                        layout = layout.toListOffsetArray64(False)
+                        layout = layout.to_ListOffsetArray64(False)
 
                     else:
                         raise AssertionError(
@@ -724,7 +724,7 @@ class Tree:
                         content = content.project()
 
                     elif isinstance(content, awkward.contents.EmptyArray):
-                        content = content.toNumpyArray()
+                        content = content.to_NumpyArray()
 
                     elif isinstance(content, awkward.contents.RegularArray):
                         shape.append(content.size)
