@@ -49,9 +49,9 @@ dynamic = [
 
 [project.optional-dependencies]
 dev = [
-    "awkward>=2.0.0r",
+    "awkward>=2.0.0",
     "boost_histogram>=0.13",
-    "dask-awkward>=2022.12a2;python_version >= \"3.8\"",
+    "dask-awkward>=2022.12a3;python_version >= \"3.8\"",
     "dask[array];python_version >= \"3.8\"",
     "hist>=1.2",
     "pandas",
