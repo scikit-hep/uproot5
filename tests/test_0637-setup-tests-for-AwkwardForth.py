@@ -430,7 +430,7 @@ def test_35(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[0]["1"][0]["name"] == "anti_alpha"
+        assert py[0, "1", 0, "name"] == "anti_alpha"
         # py[-1] == <STLMap {-1000020040: <BDSOutputROOTGeant4Data::ParticleInfo (version 1) at 0x7fb557996df0>, ...} at 0x7fb557a012e0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
@@ -932,7 +932,7 @@ def test_78(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]["1"] == "TWO"
+        assert py[1, 1, "1"] == "TWO"
         # py[-1] == <STLMap {'one': 'ONE', 'two': 'TWO'} at 0x7f887b27cb20>
         assert py.layout.form == interp.awkward_form(branch.file)
 
@@ -944,7 +944,7 @@ def test_79(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
-        assert py[1][1]["1"] == "TWO"
+        assert py[1, 1, "1"] == "TWO"
         # py[-1] == <STLMap {'one': 'ONE', 'two': 'TWO'} at 0x7f4c4e527610>
         assert py.layout.form == interp.awkward_form(branch.file)
 
