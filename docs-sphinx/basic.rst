@@ -657,44 +657,49 @@ These "nested" NumPy arrays are not slicable as multidimensional arrays because 
     # File "<stdin>", line 1, in <module>
     # IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed
 
-The Pandas form for this type of data is a `DataFrame with MultiIndex rows <https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html>`__.
+The Pandas form for this type of data is a DataFrame with Awkward Dtype, provided by the `awkward-pandas <https://github.com/intake/awkward-pandas>`__ package.
 
 .. code-block:: python
 
     >>> events.arrays(filter_name="/(Jet|Muon)_P[xyz]/", library="pd")
-    (
-                           Jet_Px     Jet_Py      Jet_Pz
-        entry subentry
-        1     0        -38.874714  19.863453   -0.894942
-        3     0        -71.695213  93.571579  196.296432
-              1         36.606369  21.838793   91.666283
-              2        -28.866419   9.320708   51.243221
-        4     0          3.880162 -75.234055 -359.601624
-        ...                   ...        ...         ...
-        2417  0        -33.196457 -59.664749  -29.040150
-              1        -26.086025 -19.068407   26.774284
-        2418  0         -3.714818 -37.202377   41.012222
-        2419  0        -36.361286  10.173571  226.429214
-              1        -15.256871 -27.175364   12.119683
+                                                     Jet_Px  ...                                   Muon_Pz
+    0                                                    []  ...  [-8.16079330444336, -11.307581901550293]
+    1                                  [-38.87471389770508]  ...                      [20.199968338012695]
+    2                                                    []  ...   [11.168285369873047, 36.96519088745117]
+    3     [-71.6952133178711, 36.60636901855469, -28.866...  ...   [403.84844970703125, 335.0942077636719]
+    4                [3.880161762237549, 4.979579925537109]  ...  [-89.69573211669922, 20.115053176879883]
+    ...                                                 ...  ...                                       ...
+    2416                                [37.07146453857422]  ...                      [61.715789794921875]
+    2417           [-33.19645690917969, -26.08602523803711]  ...                       [160.8179168701172]
+    2418                              [-3.7148184776306152]  ...                      [-52.66374969482422]
+    2419          [-36.36128616333008, -15.256871223449707]  ...                       [162.1763153076172]
+    2420                                                 []  ...                       [54.71943664550781]
 
-        [2773 rows x 3 columns],
+    [2421 rows x 6 columns]
 
-                           Muon_Px    Muon_Py     Muon_Pz
-        entry subentry
-        0     0        -52.899456 -11.654672   -8.160793
-              1         37.737782   0.693474  -11.307582
-        1     0         -0.816459 -24.404259   20.199968
-        2     0         48.987831 -21.723139   11.168285
-              1          0.827567  29.800508   36.965191
-        ...                   ...        ...         ...
-        2416  0        -39.285824 -14.607491   61.715790
-        2417  0         35.067146 -14.150043  160.817917
-        2418  0        -29.756786 -15.303859  -52.663750
-        2419  0          1.141870  63.609570  162.176315
-        2420  0         23.913206 -35.665077   54.719437
+You can operate on Awkward Array data in Pandas using the ``.ak`` accessor; see the [awkward-pandas documentation](https://awkward-pandas.readthedocs.io/en/latest/quickstart.html).
 
-        [3825 rows x 3 columns]
-    )
+Before Uproot 5.0, Uproot exploded this data with a `MultiIndex <https://pandas.pydata.org/pandas-docs/stable/user_guide/advanced.html>`__, such that each Pandas cell contains a number, not a list or other type. You can still do this using Awkward Array and `ak.to_dataframe <https://awkward-array.org/doc/main/reference/generated/ak.to_dataframe.html>`__:
+
+.. code-block:: python
+
+    >>> import awkward as ak
+    >>> ak.to_dataframe(events.arrays(filter_name="/(Jet|Muon)_P[xyz]/", library="ak"))
+                       Jet_Px     Jet_Py      Jet_Pz    Muon_Px    Muon_Py     Muon_Pz
+    entry subentry                                                                    
+    1     0        -38.874714  19.863453   -0.894942  -0.816459 -24.404259   20.199968
+    3     0        -71.695213  93.571579  196.296432  22.088331 -85.835464  403.848450
+          1         36.606369  21.838793   91.666283  76.691917 -13.956494  335.094208
+    4     0          3.880162 -75.234055 -359.601624  45.171322  67.248787  -89.695732
+          1          4.979580 -39.231731   68.456718  39.750957  25.403667   20.115053
+    ...                   ...        ...         ...        ...        ...         ...
+    2414  0         33.961163  58.900467  -17.006561  -9.204197 -42.204014  -64.264900
+    2416  0         37.071465  20.131996  225.669037 -39.285824 -14.607491   61.715790
+    2417  0        -33.196457 -59.664749  -29.040150  35.067146 -14.150043  160.817917
+    2418  0         -3.714818 -37.202377   41.012222 -29.756786 -15.303859  -52.663750
+    2419  0        -36.361286  10.173571  226.429214   1.141870  63.609570  162.176315
+
+    [2038 rows x 6 columns]
 
 Each row of the DataFrame represents one particle and the row index is broken down into "entry" and "subentry" levels. If the selected TBranches include data with different numbers of values per entry, then the return value is not a DataFrame, but a tuple of DataFrames, one for each multiplicity. See the `Pandas documentation on joining <https://pandas.pydata.org/pandas-docs/stable/user_guide/merging.html>`__ for tips on how to analyze DataFrames with partially shared keys ("entry" but not "subentry").
 
