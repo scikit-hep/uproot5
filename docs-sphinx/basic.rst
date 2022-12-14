@@ -686,7 +686,7 @@ Before Uproot 5.0, Uproot exploded this data with a `MultiIndex <https://pandas.
     >>> import awkward as ak
     >>> ak.to_dataframe(events.arrays(filter_name="/(Jet|Muon)_P[xyz]/", library="ak"))
                        Jet_Px     Jet_Py      Jet_Pz    Muon_Px    Muon_Py     Muon_Pz
-    entry subentry                                                                    
+    entry subentry
     1     0        -38.874714  19.863453   -0.894942  -0.816459 -24.404259   20.199968
     3     0        -71.695213  93.571579  196.296432  22.088331 -85.835464  403.848450
           1         36.606369  21.838793   91.666283  76.691917 -13.956494  335.094208
