@@ -597,7 +597,11 @@ class _UprootRead:
         )
 
     def project_columns(self, branches):
-        return _UprootRead(self.ttrees, branches, self.interp_options)
+        return _UprootRead(
+            self.ttrees,
+            [x for x in branches if x in self.branches],
+            self.interp_options,
+        )
 
 
 class _UprootOpenAndRead:
@@ -628,7 +632,7 @@ class _UprootOpenAndRead:
             self.custom_classes,
             self.allow_missing,
             self.real_options,
-            common_keys,
+            [x for x in common_keys if x in self.common_keys],
             self.interp_options,
         )
 
