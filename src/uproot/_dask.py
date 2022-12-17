@@ -630,14 +630,14 @@ class _UprootOpenAndRead:
         )
 
     def project_columns(self, common_keys):
-        if branches is not None:
-            branches = [x for x in branches if x in self.branches]
+        if common_keys is not None:
+            common_keys = [x for x in branches if x in self.common_keys]
 
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,
             self.real_options,
-            branches,
+            common_keys,
             self.interp_options,
         )
 
