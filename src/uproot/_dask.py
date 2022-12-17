@@ -597,9 +597,11 @@ class _UprootRead:
         )
 
     def project_columns(self, branches):
+        if branches is not None:
+            branches = [x for x in branches if x in self.branches]
         return _UprootRead(
             self.ttrees,
-            [x for x in branches if x in self.branches],
+            branches,
             self.interp_options,
         )
 
@@ -628,11 +630,14 @@ class _UprootOpenAndRead:
         )
 
     def project_columns(self, common_keys):
+        if branches is not None:
+            branches = [x for x in branches if x in self.branches]
+
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,
             self.real_options,
-            [x for x in common_keys if x in self.common_keys],
+            branches,
             self.interp_options,
         )
 
