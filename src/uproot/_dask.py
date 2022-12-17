@@ -631,7 +631,7 @@ class _UprootOpenAndRead:
 
     def project_columns(self, common_keys):
         if common_keys is not None:
-            common_keys = [x for x in branches if x in self.common_keys]
+            common_keys = [x for x in common_keys if x in self.common_keys]
 
         return _UprootOpenAndRead(
             self.custom_classes,
