@@ -229,7 +229,7 @@ in file {}""".format(
         else:  # offset index column
             return form_key
 
-    def col_form(self, field_id, type_name=None):
+    def col_form(self, field_id):
         # FIXME remove this ugly logic
         rel_crs = []
         rel_crs_idxs = []
@@ -241,12 +241,10 @@ in file {}""".format(
                 break
         if len(rel_crs) == 1:  # base case
             return self.base_col_form(rel_crs[0], rel_crs_idxs[0])
-        elif type_name == "std::string":  # string field splits->2 in col records
-            assert len(rel_crs_idxs) == 2
-            cr_char = rel_crs[-1]
-            assert cr_char.type == uproot.const.rntuple_col_type_to_num_dict["char"]
+        elif len(rel_crs_idxs) == 2 and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]:
+        # string field splits->2 in col records
             inner = self.base_col_form(
-                cr_char, rel_crs_idxs[-1], parameters={"__array__": "char"}
+                rel_crs[1], rel_crs_idxs[-1], parameters={"__array__": "char"}
             )
             form_key = f"column-{rel_crs_idxs[0]}"
             return ak.forms.ListOffsetForm(
@@ -260,10 +258,20 @@ in file {}""".format(
         this_record = field_records[this_id]
         seen.append(this_id)
         structural_role = this_record.struct_role
-        if structural_role == uproot.const.rntuple_role_leaf:
+        if structural_role == uproot.const.rntuple_role_leaf and this_record.repetition==0:
             # base case of recursion
             # n.b. the split may happen in column
-            return self.col_form(this_id, this_record.type_name)
+            return self.col_form(this_id)
+        elif structural_role == uproot.const.rntuple_role_leaf:
+            # std::array
+            child_id = next(
+                filter(
+                    lambda i: field_records[i].parent_field_id == this_id,
+                    range(this_id + 1, len(field_records)),
+                )
+            )
+            inner = self.field_form(child_id, seen)
+            return ak.forms.RegularForm(inner, this_record.repetition)
         elif structural_role == uproot.const.rntuple_role_vector:
             keyname = self.col_form(this_id)
             child_id = next(
@@ -550,6 +558,10 @@ class FieldRecordReader:
             out.struct_role,
             out.flags,
         ) = cursor.fields(chunk, _rntuple_field_description, context)
+        if out.flags == 0x0001:
+            out.repetition = cursor.field(chunk, struct.Struct("Q"), context)
+        else:
+            out.repetition = 0
 
         out.field_name, out.type_name, out.type_alias, out.field_desc = (
             cursor.rntuple_string(chunk, context) for i in range(4)
