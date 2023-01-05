@@ -9,6 +9,7 @@ from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 def dask(
     files,
+    *,
     filter_name=no_filter,
     filter_typename=no_filter,
     filter_branch=no_filter,
@@ -596,7 +597,13 @@ class _UprootRead:
         )
 
     def project_columns(self, branches):
-        return _UprootRead(self.ttrees, branches, self.interp_options)
+        if branches is not None:
+            branches = [x for x in branches if x in self.branches]
+        return _UprootRead(
+            self.ttrees,
+            branches,
+            self.interp_options,
+        )
 
 
 class _UprootOpenAndRead:
@@ -623,6 +630,9 @@ class _UprootOpenAndRead:
         )
 
     def project_columns(self, common_keys):
+        if common_keys is not None:
+            common_keys = [x for x in common_keys if x in self.common_keys]
+
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,

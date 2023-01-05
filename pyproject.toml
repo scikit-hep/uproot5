@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "awkward>=2.0.0rc2",
+    "awkward>=2.0.0",
     "importlib-metadata;python_version<\"3.8\"",
     "numpy",
     "packaging",
@@ -49,16 +49,16 @@ dynamic = [
 
 [project.optional-dependencies]
 dev = [
-    "awkward>=2.0.0rc2",
+    "awkward>=2.0.0",
     "boost_histogram>=0.13",
-    "dask-awkward>=2022.10a0;python_version >= \"3.8\"",
+    "dask-awkward>=2022.12a3;python_version >= \"3.8\"",
     "dask[array];python_version >= \"3.8\"",
     "hist>=1.2",
     "pandas",
     "awkward-pandas;python_version >= \"3.8\"",
 ]
 test = [
-    "awkward>=2.0.0rc2",
+    "awkward>=2.0.0",
     "lz4",
     "pytest>=6",
     "pytest-timeout",

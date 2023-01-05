@@ -62,9 +62,9 @@ If you need to develop Awkward Array as well, see its [installation for develope
 
 # Dependencies
 
-**Uproot's only strict dependencies are NumPy and packaging.** You'll also need `importlib_metadata` if you are on Python 3.7. These will be automatically installed when you install uproot.
+**Uproot's only strict dependencies are NumPy and packaging.** Strict dependencies are automatically installed by pip (or conda).
 
-**Awkward Array is highly recommended.** It is _possible_ to use Uproot without [Awkward Array](https://anaconda.org/conda-forge/awkward). If you want to try it, pass `--no-deps` to pip and pass `library="np"` to every array-fetching function, or globally set `uproot.default_library` to get NumPy arrays instead of Awkward Arrays.
+**[Awkward Array](https://anaconda.org/conda-forge/awkward) is highly recommended** and is automatically installed by pip (or conda), though it is _possible_ to use Uproot without it. If you need a minimal installation, pass `--no-deps` to pip and pass `library="np"` to every array-fetching function, or globally set `uproot.default_library` to get NumPy arrays instead of Awkward Arrays.
 
    * `awkward`: Uproot 5.x requires Awkward 2.x.
 
@@ -74,22 +74,27 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
    * `lz4` and `xxhash`: if reading ROOT files that have been LZ4-compressed.
    * `zstandard`: if reading ROOT files that have been ZSTD-compressed.
+   * ZLIB and LZMA are built in (Python standard library).
 
-**For remote data:**
+**For accessing remote files:**
 
    * `xrootd`: if reading files with `root://` URLs.
-
-**For exporting data to other libraries:**
-
-   * `pandas`: if `library="pd"`.
-   * `awkward-pandas`: if `library="pd"` and the data have irregular structure ("jagged" arrays), see [awkward-pandas](https://github.com/intake/awkward-pandas).
-   * `boost-histogram`: if converting histograms to [boost-histogram](https://github.com/scikit-hep/boost-histogram) with `histogram.to_boost()`.
-   * `hist`: if converting histograms to [hist](https://github.com/scikit-hep/hist) with `histogram.to_hist()`.
+   * HTTP/S access is built in (Python standard library).
 
 **For distributed computing with [Dask](https://www.dask.org/):**
 
    * `dask`: see [uproot.dask](https://uproot.readthedocs.io/en/latest/uproot._dask.dask.html).
    * `dask-awkward`: for data with irregular structure ("jagged" arrays), see [dask-awkward](https://github.com/dask-contrib/dask-awkward).
+
+**For exporting TTrees to [Pandas](https://pandas.pydata.org/):**
+
+   * `pandas`: if `library="pd"`.
+   * `awkward-pandas`: if `library="pd"` and the data have irregular structure ("jagged" arrays), see [awkward-pandas](https://github.com/intake/awkward-pandas).
+
+**For exporting histograms:**
+
+   * `boost-histogram`: if converting histograms to [boost-histogram](https://github.com/scikit-hep/boost-histogram) with `histogram.to_boost()`.
+   * `hist`: if converting histograms to [hist](https://github.com/scikit-hep/hist) with `histogram.to_hist()`.
 
 # Acknowledgements
 

@@ -101,7 +101,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(
@@ -510,13 +510,25 @@ def _unravel_members(members):
 def _strided_awkward_form(awkward, classname, members, file, context):
     contents = {}
     for name, member in members:
-        if isinstance(member, AsStridedObjects):
-            cname = uproot.model.classname_decode(member._model.__name__)[0]
-            contents[name] = _strided_awkward_form(
-                awkward, cname, member._members, file, context
-            )
+        if not context["header"] and name in ("@num_bytes", "@instance_version"):
+            pass
+        elif not context["tobject_header"] and name in (
+            "@num_bytes",
+            "@instance_version",
+            "@fUniqueID",
+            "@fBits",
+            "@pidf",
+        ):
+            pass
         else:
-            contents[name] = uproot._util.awkward_form(member, file, context)
+            if isinstance(member, AsStridedObjects):
+                cname = uproot.model.classname_decode(member._model.__name__)[0]
+                contents[name] = _strided_awkward_form(
+                    awkward, cname, member._members, file, context
+                )
+            else:
+                contents[name] = uproot._util.awkward_form(member, file, context)
+
     return awkward.forms.RecordForm(
         list(contents.values()),
         list(contents.keys()),
@@ -609,7 +621,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         context=None,
         index_format="i64",
         header=False,
-        tobject_header=True,
+        tobject_header=False,
         breadcrumbs=(),
     ):
         context = self._make_context(
