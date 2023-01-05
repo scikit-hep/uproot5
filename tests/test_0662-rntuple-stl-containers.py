@@ -74,3 +74,13 @@ def test_rntuple_stl_containers():
 
         assert ak.all(r["array_float"][0] == [1, 1, 1])
         assert ak.all(r["array_float"][-1] == [5, 5, 5])
+
+        assert ak.all(r["array_lv"][0].pt == [1.0, 1.0, 1.0])
+        assert ak.all(r["array_lv"][0].eta == [1.0, 1.0, 1.0])
+        assert ak.all(r["array_lv"][0].phi == [1.0, 1.0, 1.0])
+        assert ak.all(r["array_lv"][0].mass == [1.0, 1.0, 1.0])
+
+        assert ak.all(r["array_lv"][-1].pt == [5.0, 5.0, 5.0])
+        assert ak.all(r["array_lv"][-1].eta == [5.0, 5.0, 5.0])
+        assert ak.all(r["array_lv"][-1].phi == [5.0, 5.0, 5.0])
+        assert ak.all(r["array_lv"][-1].mass == [5.0, 5.0, 5.0])
