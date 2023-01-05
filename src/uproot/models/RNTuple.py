@@ -241,8 +241,11 @@ in file {}""".format(
                 break
         if len(rel_crs) == 1:  # base case
             return self.base_col_form(rel_crs[0], rel_crs_idxs[0])
-        elif len(rel_crs_idxs) == 2 and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]:
-        # string field splits->2 in col records
+        elif (
+            len(rel_crs_idxs) == 2
+            and rel_crs[1].type == uproot.const.rntuple_col_type_to_num_dict["char"]
+        ):
+            # string field splits->2 in col records
             inner = self.base_col_form(
                 rel_crs[1], rel_crs_idxs[-1], parameters={"__array__": "char"}
             )
@@ -258,7 +261,10 @@ in file {}""".format(
         this_record = field_records[this_id]
         seen.append(this_id)
         structural_role = this_record.struct_role
-        if structural_role == uproot.const.rntuple_role_leaf and this_record.repetition==0:
+        if (
+            structural_role == uproot.const.rntuple_role_leaf
+            and this_record.repetition == 0
+        ):
             # base case of recursion
             # n.b. the split may happen in column
             return self.col_form(this_id)
