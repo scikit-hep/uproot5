@@ -259,7 +259,7 @@ class NTuple_Header(CascadeLeaf):
         column_records = []
 
         for field_id, (field_name, ak_col) in enumerate(zip(field_names, contents)):
-            if not isinstance(ak_col, awkward._v2.forms.NumpyForm):
+            if not isinstance(ak_col, awkward.forms.NumpyForm):
                 raise NotImplementedError("only flat column is supported")
             ak_primitive = ak_col.primitive
             type_name = _ak_primitive_to_typename_dict[ak_primitive]
@@ -647,26 +647,26 @@ class NTuple(CascadeNode):
         # print(f"using {array!r}")
 
     def array_to_type(self, array, type):
-        if isinstance(type, awkward._v2.types.ArrayType):
+        if isinstance(type, awkward.types.ArrayType):
             type = type.content
         # type is unknown
-        if isinstance(type, awkward._v2.types.UnknownType):
+        if isinstance(type, awkward.types.UnknownType):
             raise TypeError("cannot write data of unknown type to RNTuple")
 
         # type is primitive (e.g. "float32")
-        elif isinstance(type, awkward._v2.types.NumpyType):
-            if isinstance(array, awkward._v2.contents.IndexedArray):
+        elif isinstance(type, awkward.types.NumpyType):
+            if isinstance(array, awkward.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
                 return
-            elif isinstance(array, awkward._v2.contents.EmptyArray):
+            elif isinstance(array, awkward.contents.EmptyArray):
                 self.array_to_type(
                     array.to_NumpyArray(
-                        awkward._v2.types.numpytype.primitive_to_dtype(type.primitive)
+                        awkward.types.numpytype.primitive_to_dtype(type.primitive)
                     ),
                     type,
                 )
                 return
-            elif isinstance(array, awkward._v2.contents.NumpyArray):
+            elif isinstance(array, awkward.contents.NumpyArray):
                 if array.form.type != type:
                     raise TypeError(f"expected {type!s}, found {array.form.type!s}")
                 else:
@@ -676,11 +676,11 @@ class NTuple(CascadeNode):
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
         # type is regular-length lists (e.g. "3 * float32")
-        elif isinstance(type, awkward._v2.types.RegularType):
-            if isinstance(array, awkward._v2.contents.IndexedArray):
+        elif isinstance(type, awkward.types.RegularType):
+            if isinstance(array, awkward.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
                 return
-            elif isinstance(array, awkward._v2.contents.RegularArray):
+            elif isinstance(array, awkward.contents.RegularArray):
                 if array.size != type.size:
                     raise TypeError(f"expected {type!s}, found {array.form.type!s}")
                 else:
@@ -695,14 +695,14 @@ class NTuple(CascadeNode):
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
         # type is variable-length lists (e.g. "var * float32")
-        elif isinstance(type, awkward._v2.types.ListType):
-            if isinstance(array, awkward._v2.contents.IndexedArray):
+        elif isinstance(type, awkward.types.ListType):
+            if isinstance(array, awkward.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
                 return
-            elif isinstance(array, awkward._v2.contents.ListArray):
+            elif isinstance(array, awkward.contents.ListArray):
                 self.array_to_type(array.toListOffsetArray64(True), type)
                 return
-            elif isinstance(array, awkward._v2.contents.ListOffsetArray):
+            elif isinstance(array, awkward.contents.ListOffsetArray):
                 if type.parameter("__array__") == "string":
                     # maybe the fact that this is a string changes how it's used
                     self.actually_use("variable-length strings")
@@ -715,15 +715,15 @@ class NTuple(CascadeNode):
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
         # type is potentially missing data (e.g. "?float32")
-        elif isinstance(type, awkward._v2.types.OptionType):
+        elif isinstance(type, awkward.types.OptionType):
             raise NotImplementedError("RNTuple does not yet have an option-type")
 
         # type is struct-like records (e.g. "{x: float32, y: var * int64}")
-        elif isinstance(type, awkward._v2.types.RecordType):
-            if isinstance(array, awkward._v2.contents.IndexedArray):
+        elif isinstance(type, awkward.types.RecordType):
+            if isinstance(array, awkward.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
                 return
-            elif isinstance(array, awkward._v2.contents.RecordArray):
+            elif isinstance(array, awkward.contents.RecordArray):
                 self.actually_use("begin record")
                 for field, subtype in zip(type.fields, type.contents):
                     self.actually_use(f"field {field}")
@@ -734,11 +734,11 @@ class NTuple(CascadeNode):
                 raise TypeError(f"expected {type!s}, found {array.form.type!s}")
 
         # type is heterogeneous unions/variants (e.g. "union[float32, var * int64]")
-        elif isinstance(type, awkward._v2.types.UnionType):
-            if isinstance(array, awkward._v2.contents.IndexedArray):
+        elif isinstance(type, awkward.types.UnionType):
+            if isinstance(array, awkward.contents.IndexedArray):
                 self.array_to_type(array.project(), type)  # always project IndexedArray
                 return
-            elif isinstance(array, awkward._v2.contents.UnionArray):
+            elif isinstance(array, awkward.contents.UnionArray):
                 self.actually_use("begin union")
                 self.actually_use(array.tags.data)
                 self.actually_use(array.index.data)

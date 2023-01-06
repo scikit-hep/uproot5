@@ -1801,7 +1801,7 @@ class Directory(CascadeNode):
         tree.write_anew(sink)
         return tree
 
-    def add_ntuple(self, sink, name, title, akform):
+    def add_rntuple(self, sink, name, title, akform):
         import uproot.writing._cascadentuple
 
         anchor = uproot.writing._cascadentuple.NTuple_Anchor(

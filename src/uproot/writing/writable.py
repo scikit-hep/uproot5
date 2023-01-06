@@ -1338,7 +1338,7 @@ in file {} in directory {}""".format(
 
         return tree
 
-    def mkntuple(
+    def mkrntuple(
         self,
         name,
         branch_types,
@@ -1370,7 +1370,7 @@ in file {} in directory {}""".format(
         ntuple = WritableNTuple(
             path,
             directory._file,
-            directory._cascading.add_ntuple(
+            directory._cascading.add_rntuple(
                 directory._file.sink,
                 treename,
                 title,
@@ -1948,7 +1948,7 @@ class WritableNTuple:
 
     .. code-block:: python
 
-        my_directory.mkntuple("tuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
+        my_directory.mkrntuple("tuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
 
     The ``numpy_dtype`` is any data that NumPy recognizes as a ``np.dtype``, and the
     ``awkward_type`` is an `ak.types.Type <https://awkward-array.readthedocs.io/en/latest/ak.types.Type.html>`__ from
@@ -2129,7 +2129,7 @@ class WritableNTuple:
             data (dict of str \u2192 arrays): More array data to add to the RNTuple.
 
         This method adds data to an existing RNTuple, whether it was created through
-        assignment or :doc:`uproot.writing.writable.WritableDirectory.mkntuple`.
+        assignment or :doc:`uproot.writing.writable.WritableDirectory.mkrntuple`.
 
         The arrays must be a dict, but the values of the dict can be any of the
         array/DataFrame types described in :doc:`uproot.writing.writable.WritableTree`.
@@ -2141,7 +2141,7 @@ class WritableNTuple:
 
         .. code-block:: python
 
-            my_directory.mkntuple("ntuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
+            my_directory.mkrntuple("ntuple6", {"branch1": numpy_dtype, "branch2": awkward_type})
 
             my_directory["ntuple6"].extend({"branch1": another_numpy_array,
                                           "branch2": another_awkward_array})
