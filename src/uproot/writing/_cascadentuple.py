@@ -770,9 +770,7 @@ class NTuple(CascadeNode):
         self._num_entries += len(data)
         self._footer.cluster_summary_record_frames.append(cluster_summary)
         data_bytes = data.view("uint8")
-        page_key = self.add_rblob(
-            sink, data_bytes, len(data_bytes), big=False
-        )
+        page_key = self.add_rblob(sink, data_bytes, len(data_bytes), big=False)
         page_locator = NTuple_Locator(
             len(data_bytes), page_key.location + page_key.allocation
         )
