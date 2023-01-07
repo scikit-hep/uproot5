@@ -762,25 +762,26 @@ class NTuple(CascadeNode):
         5. update anchor's foot metadata values in-place
         """
 
+        # DUMMY, replace with real `data` later
+        data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
+        #######################################
+
         cluster_summary = NTuple_ClusterSummary(self._num_entries, len(data))
         self._num_entries += len(data)
         self._footer.cluster_summary_record_frames.append(cluster_summary)
-
-        # page (actual column content)
-        dummy_data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
-        dummy_data_bytes = dummy_data.view("uint8")
+        data_bytes = data.view("uint8")
         page_key = self.add_rblob(
-            sink, dummy_data_bytes, len(dummy_data_bytes), big=False
+            sink, data_bytes, len(data_bytes), big=False
         )
         page_locator = NTuple_Locator(
-            len(dummy_data_bytes), page_key.location + page_key.allocation
+            len(data_bytes), page_key.location + page_key.allocation
         )
         # FIXME use this
         # self.array_to_type(data.layout, data.type)
 
         # we always add one more `list of list` into the `footer.cluster_group_records`, because we always make a new
         # cluster
-        page_desc = NTuple_PageDescription(len(dummy_data), page_locator)
+        page_desc = NTuple_PageDescription(len(data), page_locator)
         inner_page_list = NTuple_InnerListLocator([page_desc])
         inner_page_list_bytes = _serialize_rntuple_list_frame([inner_page_list], False)
         inner_size_bytes = struct.Struct("<i").pack(
@@ -805,7 +806,7 @@ class NTuple(CascadeNode):
         new_page_list_envlink = NTuple_EnvLink(len(pagelist_bytes), pagelist_locator)
 
         new_cluster_group_record = NTuple_ClusterGroupRecord(1, new_page_list_envlink)
-        self._footer.cluster_group_record_frames.append(new_cluster_group_record)
+        self._footer.cluster_group_record_frames[0] = new_cluster_group_record
 
         #### relocate Footer ##############################
         old_footer_key = self._footer_key
