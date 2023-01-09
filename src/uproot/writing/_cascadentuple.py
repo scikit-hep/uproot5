@@ -118,6 +118,18 @@ def _record_frame_wrap(payload, includeself=True):
     return raw_bytes
 
 
+def _serialize_rntuple_page_innerlist(items):
+    n_items = len(items)
+    payload_bytes = b"".join([x.serialize() for x in items])
+    offset = (0).to_bytes(8, "little")
+    compression_setting = (0).to_bytes(4, "little")
+    payload_bytes = b"".join([payload_bytes, offset, compression_setting])
+    size = 4 + 4 + len(payload_bytes)
+    size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
+    # n.b last byte of `n_item bytes` is reserved as of Sep 2022
+    raw_bytes = b"".join([size_bytes, n_items.to_bytes(4, "little"), payload_bytes])
+    return raw_bytes
+
 def _serialize_rntuple_list_frame(items, wrap=True):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
@@ -446,7 +458,7 @@ class NTuple_InnerListLocator:
     def serialize(self):
         # from RNTuple spec:
         # to save space, the page descriptions (inner items) are not in a record frame.
-        raw_bytes = _serialize_rntuple_list_frame(self.page_descs, wrap=False)
+        raw_bytes = _serialize_rntuple_page_innerlist(self.page_descs)
         return raw_bytes
 
     def __repr__(self):
@@ -763,7 +775,7 @@ class NTuple(CascadeNode):
         """
 
         # DUMMY, replace with real `data` later
-        data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
+        data = numpy.array([5, 4, 3, 2, 1], dtype="int32")
         #######################################
 
         cluster_summary = NTuple_ClusterSummary(self._num_entries, len(data))
