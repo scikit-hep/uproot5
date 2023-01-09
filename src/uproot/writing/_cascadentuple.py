@@ -548,7 +548,7 @@ class NTuple_Anchor(CascadeLeaf):
         crc32 = zlib.crc32(out)
         self.fCheckSum = crc32
         out = _rntuple_format1.pack(*self._fields)
-        return b"@\x00\x006\x00\x00" + out
+        return b"@\x00\x006\x00\x03" + out
 
 
 class Ntuple_PageLink:
