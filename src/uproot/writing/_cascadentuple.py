@@ -130,6 +130,7 @@ def _serialize_rntuple_page_innerlist(items):
     raw_bytes = b"".join([size_bytes, n_items.to_bytes(4, "little"), payload_bytes])
     return raw_bytes
 
+
 def _serialize_rntuple_list_frame(items, wrap=True):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
