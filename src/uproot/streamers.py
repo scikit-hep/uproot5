@@ -1673,7 +1673,6 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
-
         start = cursor.index
 
         self._bases.append(
