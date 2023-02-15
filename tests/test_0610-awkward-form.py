@@ -13,7 +13,6 @@ awkward = pytest.importorskip("awkward")
 
 
 def test_awkward_strings():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -27,7 +26,6 @@ def test_awkward_strings():
 
 
 def test_awkward_tstring():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -41,7 +39,6 @@ def test_awkward_tstring():
 
 
 def test_awkward_vector_int32():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -55,7 +52,6 @@ def test_awkward_vector_int32():
 
 
 def test_awkward_vector_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -69,7 +65,6 @@ def test_awkward_vector_string():
 
 
 def test_awkward_vector_string_forth():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -85,7 +80,6 @@ def test_awkward_vector_string_forth():
 
 
 def test_awkward_array_tref_array_forth():
-
     awk_data = None
 
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root"))[
@@ -101,7 +95,6 @@ def test_awkward_array_tref_array_forth():
 
 
 def test_awkward_array_tvector2_array_forth():
-
     awk_data = None
 
     with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root"))[
@@ -116,7 +109,6 @@ def test_awkward_array_tvector2_array_forth():
 
 
 def test_awkward_vector_tstring():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -130,7 +122,6 @@ def test_awkward_vector_tstring():
 
 
 def test_awkward_vector_vector_int32():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -144,7 +135,6 @@ def test_awkward_vector_vector_int32():
 
 
 def test_awkward_vector_vector_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -169,7 +159,6 @@ def test_awkward_vector_vector_string():
 
 
 def test_awkward_vector_vector_tstring():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -194,7 +183,6 @@ def test_awkward_vector_vector_tstring():
 
 
 def test_awkward_set_int32():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -208,7 +196,6 @@ def test_awkward_set_int32():
 
 
 def test_awkward_vector_set_int32():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -222,7 +209,6 @@ def test_awkward_vector_set_int32():
 
 
 def test_awkward_vector_set_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -247,7 +233,6 @@ def test_awkward_vector_set_string():
 
 
 def test_awkward_set_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -261,7 +246,6 @@ def test_awkward_set_string():
 
 
 def test_awkward_map_int32_int16():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -283,7 +267,6 @@ def test_awkward_map_int32_int16():
 
 
 def test_awkward_map_int32_vector_int16():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -305,7 +288,6 @@ def test_awkward_map_int32_vector_int16():
 
 
 def test_awkward_map_int32_vector_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -340,7 +322,6 @@ def test_awkward_map_int32_vector_string():
 
 
 def test_awkward_map_int32_set_int16():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -362,7 +343,6 @@ def test_awkward_map_int32_set_int16():
 
 
 def test_awkward_map_int32_set_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -395,7 +375,6 @@ def test_awkward_map_int32_set_string():
 
 
 def test_awkward_map_string_int16():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -417,7 +396,6 @@ def test_awkward_map_string_int16():
 
 
 def test_awkward_map_string_vector_int16():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -441,7 +419,6 @@ def test_awkward_map_string_vector_int16():
 
 
 def test_awkward_map_string_vector_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -476,7 +453,6 @@ def test_awkward_map_string_vector_string():
 
 
 def test_awkward_map_string_set_int16():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -498,7 +474,6 @@ def test_awkward_map_string_set_int16():
 
 
 def test_awkward_map_string_set_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -531,7 +506,6 @@ def test_awkward_map_string_set_string():
 
 
 def test_awkward_map_int32_vector_vector_int16():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -566,7 +540,6 @@ def test_awkward_map_int32_vector_vector_int16():
 
 
 def test_awkward_map_string_string():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:
@@ -588,7 +561,6 @@ def test_awkward_map_string_string():
 
 
 def test_awkward_map_string_tstring():
-
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root"))[
         "tree"
     ] as tree:

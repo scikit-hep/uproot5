@@ -8,7 +8,6 @@ import uproot
 
 
 def test_read_TProfile2D():
-
     file = skhep_testdata.data_path("uproot-issue-227a.root")
 
     with uproot.open(file) as h:
@@ -22,7 +21,6 @@ def test_read_TProfile2D():
 
 
 def test_read_TProfile3D():
-
     file = skhep_testdata.data_path("uproot-issue-227b.root")
 
     with uproot.open(file) as h:

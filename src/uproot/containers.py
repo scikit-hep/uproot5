@@ -789,7 +789,6 @@ in file {}""".format(
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
         else:
-
             if self._speedbump:
                 if forth_stash is not None:
                     forth_stash.add_to_pre("1 stream skip\n")
@@ -800,7 +799,6 @@ in file {}""".format(
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
-
                 if forth_stash is not None:
                     forth_stash.add_to_header(
                         f"output node{offsets_num}-offsets int64\n"
@@ -1161,7 +1159,6 @@ class AsVector(AsContainer):
             )
 
         if forth_stash is not None and not context["cancel_forth"]:
-
             forth_obj.go_to(temp)
 
         out = STLVector(values)
