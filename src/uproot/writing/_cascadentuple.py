@@ -247,7 +247,6 @@ class NTuple_Column_Description:
 
 class NTuple_Header(CascadeLeaf):
     def __init__(self, location, name, ntuple_description, akform):
-
         self._name = name
         self._ntuple_description = ntuple_description
         self._akform = akform
@@ -341,7 +340,6 @@ class NTuple_Header(CascadeLeaf):
 
 class NTuple_Footer(CascadeLeaf):
     def __init__(self, location, feature_flags, header_crc32, akform):
-
         self._feature_flags = feature_flags
         self._header_crc32 = header_crc32
         self._akform = akform
@@ -503,7 +501,6 @@ class NTuple_Anchor(CascadeLeaf):
         fLenFooter,
         fReserved,
     ):
-
         aloc = _rntuple_format1.size
         super().__init__(location, aloc)
         self.fCheckSum = fCheckSum
@@ -852,7 +849,6 @@ class NTuple(CascadeNode):
         uncompressed_bytes,
         big=None,
     ):
-
         strings_size = 8
 
         location = None
