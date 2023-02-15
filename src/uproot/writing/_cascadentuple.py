@@ -118,6 +118,19 @@ def _record_frame_wrap(payload, includeself=True):
     return raw_bytes
 
 
+def _serialize_rntuple_page_innerlist(items):
+    n_items = len(items)
+    payload_bytes = b"".join([x.serialize() for x in items])
+    offset = (0).to_bytes(8, "little")
+    compression_setting = (0).to_bytes(4, "little")
+    payload_bytes = b"".join([payload_bytes, offset, compression_setting])
+    size = 4 + 4 + len(payload_bytes)
+    size_bytes = struct.Struct("<i").pack(-size)  # negative size means list
+    # n.b last byte of `n_item bytes` is reserved as of Sep 2022
+    raw_bytes = b"".join([size_bytes, n_items.to_bytes(4, "little"), payload_bytes])
+    return raw_bytes
+
+
 def _serialize_rntuple_list_frame(items, wrap=True):
     # when items is [], b'\xf8\xff\xff\xff\x00\x00\x00\x00'
     n_items = len(items)
@@ -444,7 +457,7 @@ class NTuple_InnerListLocator:
     def serialize(self):
         # from RNTuple spec:
         # to save space, the page descriptions (inner items) are not in a record frame.
-        raw_bytes = _serialize_rntuple_list_frame(self.page_descs, wrap=False)
+        raw_bytes = _serialize_rntuple_page_innerlist(self.page_descs)
         return raw_bytes
 
     def __repr__(self):
@@ -532,7 +545,7 @@ class NTuple_Anchor(CascadeLeaf):
         crc32 = zlib.crc32(out)
         self.fCheckSum = crc32
         out = _rntuple_format1.pack(*self._fields)
-        return b"@\x00\x006\x00\x00" + out
+        return b"@\x00\x006\x00\x03" + out
 
 
 class Ntuple_PageLink:
@@ -759,25 +772,24 @@ class NTuple(CascadeNode):
         5. update anchor's foot metadata values in-place
         """
 
+        # DUMMY, replace with real `data` later
+        data = numpy.array([5, 4, 3, 2, 1], dtype="int32")
+        #######################################
+
         cluster_summary = NTuple_ClusterSummary(self._num_entries, len(data))
         self._num_entries += len(data)
         self._footer.cluster_summary_record_frames.append(cluster_summary)
-
-        # page (actual column content)
-        dummy_data = numpy.array([9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype="int32")
-        dummy_data_bytes = dummy_data.view("uint8")
-        page_key = self.add_rblob(
-            sink, dummy_data_bytes, len(dummy_data_bytes), big=False
-        )
+        data_bytes = data.view("uint8")
+        page_key = self.add_rblob(sink, data_bytes, len(data_bytes), big=False)
         page_locator = NTuple_Locator(
-            len(dummy_data_bytes), page_key.location + page_key.allocation
+            len(data_bytes), page_key.location + page_key.allocation
         )
         # FIXME use this
         # self.array_to_type(data.layout, data.type)
 
         # we always add one more `list of list` into the `footer.cluster_group_records`, because we always make a new
         # cluster
-        page_desc = NTuple_PageDescription(len(dummy_data), page_locator)
+        page_desc = NTuple_PageDescription(len(data), page_locator)
         inner_page_list = NTuple_InnerListLocator([page_desc])
         inner_page_list_bytes = _serialize_rntuple_list_frame([inner_page_list], False)
         inner_size_bytes = struct.Struct("<i").pack(
@@ -802,7 +814,7 @@ class NTuple(CascadeNode):
         new_page_list_envlink = NTuple_EnvLink(len(pagelist_bytes), pagelist_locator)
 
         new_cluster_group_record = NTuple_ClusterGroupRecord(1, new_page_list_envlink)
-        self._footer.cluster_group_record_frames.append(new_cluster_group_record)
+        self._footer.cluster_group_record_frames[0] = new_cluster_group_record
 
         #### relocate Footer ##############################
         old_footer_key = self._footer_key
