@@ -7,16 +7,17 @@ This module defines utilities for adding components to the forth reader.
 import numpy as np
 
 symbol_dict = {
-    np.dtype(">f4"): "f",
-    np.dtype(">f8"): "d",
-    np.dtype(">i8"): "q",
-    np.dtype(">i4"): "i",
-    np.dtype(">i2"): "h",
+    np.dtype("bool"): "?",
     np.dtype(">u1"): "B",
     np.dtype(">u2"): "H",
     np.dtype(">u4"): "I",
     np.dtype(">u8"): "Q",
-    np.dtype("bool"): "?",
+    np.dtype(">i1"): "b",
+    np.dtype(">i2"): "h",
+    np.dtype(">i4"): "i",
+    np.dtype(">i8"): "q",
+    np.dtype(">f4"): "f",
+    np.dtype(">f8"): "d",
 }
 
 
