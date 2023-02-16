@@ -50,10 +50,7 @@ class Cursor:
         self._refs = refs
 
     def __repr__(self):
-        if self._origin == 0:
-            o = ""
-        else:
-            o = f", origin={self._origin}"
+        o = "" if self._origin == 0 else f", origin={self._origin}"
 
         if self._refs is None or len(self._refs) == 0:
             r = ""

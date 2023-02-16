@@ -110,9 +110,8 @@ def _from_leaves_one(leaf, title):
     m = _title_has_dims.match(title)
     if m is not None:
         dims = tuple(int(x) for x in re.findall(_item_dim_pattern, title))
-        if dims == ():
-            if leaf.member("fLen") > 1:
-                dims = (leaf.member("fLen"),)
+        if dims == () and leaf.member("fLen") > 1:
+            dims = (leaf.member("fLen"),)
 
         if any(
             _item_dim_pattern.match(x) is None
@@ -508,10 +507,7 @@ _simplify_token_4 = re.compile(r"\s*>\s*")
 
 
 def _simplify_token(token, is_token=True):
-    if is_token:
-        text = token.group(0)
-    else:
-        text = token
+    text = token.group(0) if is_token else token
     text = _simplify_token_1.sub("*", text)
     text = _simplify_token_2.sub("::", text)
     text = _simplify_token_3.sub("<", text)
@@ -1142,8 +1138,6 @@ class NotNumerical(Exception):
     :doc:`uproot.interpretation.identify.interpretation_of` as soon as a
     non-conforming type is found.
     """
-
-    pass
 
 
 class UnknownInterpretation(Exception):

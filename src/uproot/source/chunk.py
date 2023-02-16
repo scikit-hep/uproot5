@@ -57,7 +57,6 @@ class Source:
         Request a byte range of data from the file as a
         :doc:`uproot.source.chunk.Chunk`.
         """
-        pass
 
     def chunks(self, ranges, notifications):
         """
@@ -87,7 +86,6 @@ class Source:
         it is triggered by already-filled chunks, rather than waiting for
         chunks to be filled.
         """
-        pass
 
     @property
     def file_path(self):
@@ -209,7 +207,7 @@ class MultithreadedSource(Source):
         self._executor.__exit__(exception_type, exception_value, traceback)
 
 
-def notifier(chunk, notifications):  # noqa: D103
+def notifier(chunk, notifications):
     def notify():
         notifications.put(chunk)
 

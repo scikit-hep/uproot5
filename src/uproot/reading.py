@@ -134,8 +134,8 @@ def open(
     ):
         raise ValueError(
             "'path' must be a string, pathlib.Path, an object with 'read' and "
-            "'seek' methods, or a length-1 dict of {{file_path: object_path}}, "
-            "not {0}".format(repr(path))
+            "'seek' methods, or a length-1 dict of {file_path: object_path}, "
+            f"not {path!r}"
         )
 
     file = ReadOnlyFile(
@@ -1217,7 +1217,6 @@ in file {}""".format(
         This is the first hook called in the :doc:`uproot.reading.ReadOnlyFile`
         constructor.
         """
-        pass
 
     def hook_before_get_chunks(self, **kwargs):
         """
@@ -1226,7 +1225,6 @@ in file {}""".format(
         get any :doc:`uproot.source.chunk.Chunk`, specifically the
         :ref:`uproot.reading.ReadOnlyFile.begin_chunk`.
         """
-        pass
 
     def hook_before_interpret(self, **kwargs):
         """
@@ -1234,7 +1232,6 @@ in file {}""".format(
         loading the :ref:`uproot.reading.ReadOnlyFile.begin_chunk` and before
         interpreting its ``TFile`` header.
         """
-        pass
 
     def hook_after_interpret(self, **kwargs):
         """
@@ -1245,7 +1242,6 @@ in file {}""".format(
         This is the last hook called in the :doc:`uproot.reading.ReadOnlyFile`
         constructor.
         """
-        pass
 
     def hook_before_read_streamer_key(self, **kwargs):
         """
@@ -1255,7 +1251,6 @@ in file {}""".format(
         This is the first hook called in
         :ref:`uproot.reading.ReadOnlyFile.streamers`.
         """
-        pass
 
     def hook_before_read_decompress_streamers(self, **kwargs):
         """
@@ -1263,7 +1258,6 @@ in file {}""".format(
         the ``TKey`` associated with the ``TStreamerInfo`` and before reading
         and decompressing the ``TStreamerInfo`` data.
         """
-        pass
 
     def hook_before_interpret_streamers(self, **kwargs):
         """
@@ -1271,7 +1265,6 @@ in file {}""".format(
         and decompressing the ``TStreamerInfo`` data, but before interpreting
         it.
         """
-        pass
 
     def hook_after_interpret_streamers(self, **kwargs):
         """
@@ -1281,7 +1274,6 @@ in file {}""".format(
         This is the last hook called in
         :ref:`uproot.reading.ReadOnlyFile.streamers`.
         """
-        pass
 
 
 _directory_format_small = struct.Struct(">hIIiiiii")
@@ -1492,7 +1484,7 @@ class ReadOnlyDirectory(Mapping):
         See :ref:`uproot.reading.ReadOnlyDirectory.path` for the path as a
         tuple of strings.
         """
-        return "/".join(("",) + self._path + ("",)).replace("//", "/")
+        return "/".join(("", *self._path) + ("",)).replace("//", "/")
 
     @property
     def file_path(self):
@@ -2187,14 +2179,12 @@ class ReadOnlyDirectory(Mapping):
         This is the first hook called in the
         :doc:`uproot.reading.ReadOnlyDirectory` constructor.
         """
-        pass
 
     def hook_before_interpret(self, **kwargs):
         """
         Called in the :doc:`uproot.reading.ReadOnlyDirectory` constructor after
         reading the ``TDirectory`` header fields and before interpreting them.
         """
-        pass
 
     def hook_before_read_keys(self, **kwargs):
         """
@@ -2202,14 +2192,12 @@ class ReadOnlyDirectory(Mapping):
         interpreting the ``TDirectory`` header fields and before reading the
         chunk of ``TKeys``.
         """
-        pass
 
     def hook_before_header_key(self, **kwargs):
         """
         Called in the :doc:`uproot.reading.ReadOnlyDirectory` constructor after
         reading the chunk of ``TKeys`` and before interpreting the header ``TKey``.
         """
-        pass
 
     def hook_before_keys(self, **kwargs):
         """
@@ -2217,7 +2205,6 @@ class ReadOnlyDirectory(Mapping):
         interpreting the header ``TKey`` and number of keys, and before
         interpeting the object ``TKeys``.
         """
-        pass
 
     def hook_after_keys(self, **kwargs):
         """
@@ -2227,7 +2214,6 @@ class ReadOnlyDirectory(Mapping):
         This is the last hook called in the
         :doc:`uproot.reading.ReadOnlyDirectory` constructor.
         """
-        pass
 
 
 _key_format_small = struct.Struct(">ihiIhhii")
@@ -2502,7 +2488,7 @@ class ReadOnlyKey:
             "TDirectoryFile",
         ):
             out = ReadOnlyDirectory(
-                self._parent.path + (self.fName,),
+                (*self._parent.path, self.fName),
                 self.data_cursor,
                 {},
                 self._file,
@@ -2686,7 +2672,6 @@ class ReadOnlyKey:
         This is the first hook called in the
         :doc:`uproot.reading.ReadOnlyKey` constructor.
         """
-        pass
 
     def hook_before_strings(self, **kwargs):
         """
@@ -2698,7 +2683,6 @@ class ReadOnlyKey:
 
         Only called if ``read_strings=True`` is passed to the constructor.
         """
-        pass
 
     def hook_after_interpret(self, **kwargs):
         """
@@ -2708,4 +2692,3 @@ class ReadOnlyKey:
         This is the last hook called in the
         :doc:`uproot.reading.ReadOnlyKey` constructor.
         """
-        pass

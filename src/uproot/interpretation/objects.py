@@ -654,8 +654,6 @@ class CannotBeStrided(Exception):
     non-conforming type is found.
     """
 
-    pass
-
 
 class CannotBeAwkward(Exception):
     """
@@ -873,7 +871,7 @@ class StridedObjectArray:
 
     @property
     def shape(self):
-        assert self._array.shape == (len(self),) + self._interpretation.inner_shape
+        assert self._array.shape == (len(self), *self._interpretation.inner_shape)
         return self._array.shape
 
     def __repr__(self):

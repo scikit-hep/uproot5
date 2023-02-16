@@ -91,10 +91,7 @@ class ForthGenerator:
             else:
                 if len(self.awkward_model["content"].keys()) == 0:
                     return True
-                elif self.awkward_model["content"]["name"] == "dynamic":
-                    return True
-                else:
-                    return False
+                return self.awkward_model["content"]["name"] == "dynamic"
 
     def get_temp_form_top(self):
         return self.top_dummy
@@ -169,9 +166,11 @@ class ForthGenerator:
         return self.ref_list[index]
 
     def enable_adding(self):
-        if "content" in self.awkward_model.keys():
-            if self.awkward_model["content"] is None:
-                self.awkward_model["content"] = {}
+        if (
+            "content" in self.awkward_model.keys()
+            and self.awkward_model["content"] is None
+        ):
+            self.awkward_model["content"] = {}
 
     def add_node_whole(self, new_node, ref_latest):
         if "content" in self.awkward_model.keys():

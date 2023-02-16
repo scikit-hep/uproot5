@@ -22,4 +22,4 @@ repos:
   rev: "v0.0.246"
   hooks:
     - id: ruff
-      #      args: ["--fix", "--show-fixes"]
+      args: ["--fix", "--show-fixes"]

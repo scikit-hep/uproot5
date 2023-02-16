@@ -197,7 +197,7 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
             raise uproot.interpretation.objects.CannotBeStrided(
                 "classes that can contain members of the same type cannot be strided because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        breadcrumbs = (*breadcrumbs, cls)
         members = []
         if header:
             members.append(("@num_bytes", numpy.dtype(">u4")))
@@ -427,7 +427,7 @@ class Model_TGraphErrors_v3(
             raise uproot.interpretation.objects.CannotBeStrided(
                 "classes that can contain members of the same type cannot be strided because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        breadcrumbs = (*breadcrumbs, cls)
         members = []
         if header:
             members.append(("@num_bytes", numpy.dtype(">u4")))
@@ -632,7 +632,7 @@ class Model_TGraphAsymmErrors_v3(
             raise uproot.interpretation.objects.CannotBeStrided(
                 "classes that can contain members of the same type cannot be strided because the depth of instances is unbounded"
             )
-        breadcrumbs = breadcrumbs + (cls,)
+        breadcrumbs = (*breadcrumbs, cls)
         members = []
         if header:
             members.append(("@num_bytes", numpy.dtype(">u4")))

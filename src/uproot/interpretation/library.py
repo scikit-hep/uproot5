@@ -778,7 +778,7 @@ def _is_pandas_rangeindex(pandas, index):
 def _strided_to_pandas(path, interpretation, data, arrays, columns):
     for name, member in interpretation.members:
         if not name.startswith("@"):
-            p = path + (name,)
+            p = (*path, name)
             if isinstance(member, uproot.interpretation.objects.AsStridedObjects):
                 _strided_to_pandas(p, member, data, arrays, columns)
             else:
@@ -895,7 +895,7 @@ class Pandas(Library):
         if isinstance(arrays, tuple):
             return tuple(self.global_index(x, global_offset) for x in arrays)
         elif isinstance(arrays, list):
-            return list(self.global_index(x, global_offset) for x in arrays)
+            return [self.global_index(x, global_offset) for x in arrays]
 
         if type(arrays.index).__name__ == "RangeIndex":
             index_start = arrays.index.start
