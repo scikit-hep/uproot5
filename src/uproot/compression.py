@@ -235,12 +235,12 @@ class _DecompressZSTD:
     _method = b"\x01"
 
     def __init__(self):
+        # ZstdDecompressor resource is not thread-safe
         self._decompressor = threading.local()
-        self._decompressor.obj = None
 
     @property
     def decompressor(self):
-        if self._decompressor.obj is None:
+        if not hasattr(self._decompressor, "obj"):
             zstandard = uproot.extras.zstandard()
             self._decompressor.obj = zstandard.ZstdDecompressor()
         return self._decompressor.obj
