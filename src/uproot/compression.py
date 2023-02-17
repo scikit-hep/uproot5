@@ -464,11 +464,11 @@ in file {}""".format(
     return uproot.source.chunk.Chunk.wrap(chunk.source, output)
 
 
-def hook_before_block(**kwargs):  # noqa: D103
+def hook_before_block(**kwargs):
     pass
 
 
-def hook_after_block(**kwargs):  # noqa: D103
+def hook_after_block(**kwargs):
     pass
 
 

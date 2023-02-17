@@ -24,5 +24,3 @@ class TBranchElement(uproot.behaviors.TBranch.TBranch):
         my_branchelement["subbranch"]["subsubbranch"]
         my_branchelement["subbranch/subsubbranch"]
     """
-
-    pass

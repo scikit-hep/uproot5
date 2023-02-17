@@ -1424,10 +1424,7 @@ class HasBranches(Mapping):
                     filter_branch=filter_branch,
                     full_paths=full_paths,
                 ):
-                    if full_paths:
-                        k2 = f"{branch.name}/{k1}"
-                    else:
-                        k2 = k1
+                    k2 = f"{branch.name}/{k1}" if full_paths else k1
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
@@ -1881,10 +1878,7 @@ class TBranch(HasBranches):
         """
         Object path of the ``TBranch``.
         """
-        if isinstance(self._parent, uproot.behaviors.TTree.TTree):
-            sep = ":"
-        else:
-            sep = "/"
+        sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
         return f"{self.parent.object_path}{sep}{self.name}"
 
     @property
@@ -1894,10 +1888,7 @@ class TBranch(HasBranches):
         part of object and array cache keys.
         """
         if self._cache_key is None:
-            if isinstance(self._parent, uproot.behaviors.TTree.TTree):
-                sep = ":"
-            else:
-                sep = "/"
+            sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
             self._cache_key = "{}{}{}({})".format(
                 self.parent.cache_key, sep, self.name, self.index
             )
@@ -2779,10 +2770,7 @@ def _regularize_expression(
         )
 
     else:
-        if expression in aliases:
-            to_compute = aliases[expression]
-        else:
-            to_compute = expression
+        to_compute = aliases[expression] if expression in aliases else expression
 
         is_jagged = False
         expression_branches = []
@@ -2817,7 +2805,7 @@ in file {} at {}""".format(
                 arrays,
                 expression_context,
                 branchid_interpretation,
-                symbol_path + (symbol,),
+                (*symbol_path, symbol),
                 False,
                 None,
             )
@@ -3019,11 +3007,10 @@ def _ranges_or_baskets_to_arrays(
         original_index += 1
 
     for cache_key, interpretation in branchid_interpretation.items():
-        if branchid_num_baskets[cache_key] == 0:
-            if cache_key not in arrays:
-                arrays[cache_key] = interpretation.final_array(
-                    {}, 0, 0, [0], library, None, interp_options
-                )
+        if branchid_num_baskets[cache_key] == 0 and cache_key not in arrays:
+            arrays[cache_key] = interpretation.final_array(
+                {}, 0, 0, [0], library, None, interp_options
+            )
 
     hasbranches._file.source.chunks(ranges, notifications=notifications)
 

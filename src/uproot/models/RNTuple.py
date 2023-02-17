@@ -361,10 +361,7 @@ in file {}""".format(
         pagelist = linklist[ncol]
         dtype_byte = self.column_records[ncol].type
         dtype_str = uproot.const.rntuple_col_num_to_dtype_dict[dtype_byte]
-        if dtype_str == "bit":
-            dtype = numpy.dtype("bool")
-        else:
-            dtype = numpy.dtype(dtype_str)
+        dtype = numpy.dtype("bool") if dtype_str == "bit" else numpy.dtype(dtype_str)
 
         # FIXME vector read
         # n.b. it's possible pagelist is empty
@@ -450,9 +447,8 @@ def _recursive_find(form, res):
     if hasattr(form, "contents"):
         for c in form.contents:
             _recursive_find(c, res)
-    if hasattr(form, "content"):
-        if issubclass(type(form.content), ak.forms.Form):
-            _recursive_find(form.content, res)
+    if hasattr(form, "content") and issubclass(type(form.content), ak.forms.Form):
+        _recursive_find(form.content, res)
 
 
 class PageDescription:

@@ -76,7 +76,6 @@ class TrivialExecutor:
         """
         Does nothing, since this object does not have threads to stop.
         """
-        pass
 
 
 ##################### use-case 2: Python-like Futures/Executor for compute

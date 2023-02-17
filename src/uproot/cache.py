@@ -210,10 +210,7 @@ class LRUArrayCache(LRUCache):
         return cls.default_nbytes
 
     def __init__(self, limit_bytes):
-        if limit_bytes is None:
-            limit = None
-        else:
-            limit = uproot._util.memory_size(limit_bytes)
+        limit = None if limit_bytes is None else uproot._util.memory_size(limit_bytes)
         super().__init__(limit)
 
     def __repr__(self):

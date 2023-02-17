@@ -43,16 +43,15 @@ def behavior_of(classname):
             name = name[: -len(param)]
             break
 
-    if name not in globals():
-        if name in behavior_of._module_names:
-            exec(
-                compile(f"import uproot.behaviors.{name}", "<dynamic>", "exec"),
-                globals(),
-            )
-            module = eval(f"uproot.behaviors.{name}")
-            behavior_cls = getattr(module, name, None)
-            if behavior_cls is not None:
-                globals()[name] = behavior_cls
+    if name not in globals() and name in behavior_of._module_names:
+        exec(
+            compile(f"import uproot.behaviors.{name}", "<dynamic>", "exec"),
+            globals(),
+        )
+        module = eval(f"uproot.behaviors.{name}")
+        behavior_cls = getattr(module, name, None)
+        if behavior_cls is not None:
+            globals()[name] = behavior_cls
 
     cls = globals().get(name)
 

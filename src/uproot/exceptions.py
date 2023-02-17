@@ -44,10 +44,7 @@ class KeyInFileError(KeyError):
         self.object_path = object_path
 
     def __str__(self):
-        if self.because == "":
-            because = ""
-        else:
-            because = " because " + self.because
+        because = "" if self.because == "" else " because " + self.because
 
         with_keys = ""
         if self.keys is not None:

@@ -18,5 +18,3 @@ class Language:
 
     The default is :doc:`uproot.language.python.PythonLanguage`.
     """
-
-    pass

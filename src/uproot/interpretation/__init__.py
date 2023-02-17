@@ -185,7 +185,6 @@ class Interpretation:
         This is the first hook called in
         :ref:`uproot.interpretation.Interpretation.basket_array`.
         """
-        pass
 
     def hook_after_basket_array(self, *args, **kwargs):
         """
@@ -195,7 +194,6 @@ class Interpretation:
         This is the last hook called in
         :ref:`uproot.interpretation.Interpretation.basket_array`.
         """
-        pass
 
     def hook_before_final_array(self, *args, **kwargs):
         """
@@ -205,7 +203,6 @@ class Interpretation:
         This is the first hook called in
         :ref:`uproot.interpretation.Interpretation.final_array`.
         """
-        pass
 
     def hook_before_library_finalize(self, *args, **kwargs):
         """
@@ -213,7 +210,6 @@ class Interpretation:
         after trimming but before calling the
         :ref:`uproot.interpretation.library.Library.finalize` routine.
         """
-        pass
 
     def hook_after_final_array(self, *args, **kwargs):
         """
@@ -223,4 +219,3 @@ class Interpretation:
         This is the last hook called in
         :ref:`uproot.interpretation.Interpretation.final_array`.
         """
-        pass
