@@ -7,7 +7,6 @@ This module defines a versionless model for ``ROOT::Experimental::RNTuple``.
 import struct
 import zlib
 
-import awkward as ak
 import numpy
 
 import uproot
@@ -213,6 +212,8 @@ in file {}""".format(
         return self._page_list_envelopes
 
     def base_col_form(self, cr, col_id, parameters=None):
+        ak = uproot.extras.awkward()
+
         form_key = f"column-{col_id}"
         dtype_byte = cr.type
         if dtype_byte == uproot.const.rntuple_role_union:
@@ -230,6 +231,8 @@ in file {}""".format(
             return form_key
 
     def col_form(self, field_id):
+        ak = uproot.extras.awkward()
+
         # FIXME remove this ugly logic
         rel_crs = []
         rel_crs_idxs = []
@@ -257,6 +260,8 @@ in file {}""".format(
             raise (RuntimeError(f"Missing special case: {field_id}"))
 
     def field_form(self, this_id, seen):
+        ak = uproot.extras.awkward()
+
         field_records = self.header.field_records
         this_record = field_records[this_id]
         seen.append(this_id)
@@ -310,6 +315,8 @@ in file {}""".format(
             raise AssertionError("this should be unreachable")
 
     def to_akform(self):
+        ak = uproot.extras.awkward()
+
         field_records = self.header.field_records
         recordlist = []
         topnames = self.keys()
@@ -385,6 +392,8 @@ in file {}""".format(
         decompression_executor=None,
         array_cache=None,
     ):
+        ak = uproot.extras.awkward()
+
         entry_stop = entry_stop or self._length
 
         clusters = self.cluster_summaries
@@ -434,6 +443,8 @@ def _split_switch_bits(content):
 
 
 def _recursive_find(form, res):
+    ak = uproot.extras.awkward()
+
     if hasattr(form, "form_key"):
         res.append(form.form_key)
     if hasattr(form, "contents"):
