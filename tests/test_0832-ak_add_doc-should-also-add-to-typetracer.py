@@ -7,6 +7,7 @@ import skhep_testdata
 import uproot
 
 pytest.importorskip("awkward")
+pytest.importorskip("dask_awkward")
 
 
 def test():
