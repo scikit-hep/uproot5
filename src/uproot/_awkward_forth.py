@@ -337,23 +337,27 @@ def convert_dtype(format):
     Returns:
         string: The datatype in words.
     """
-    if format == "d":
-        return "float64"
-    elif format == "f":
-        return "float32"
-    elif format == "q":
-        return "int64"
-    elif format == "i":
-        return "int32"
-    elif format == "I":
-        return "uint32"
-    elif format == "?":
+    if format == "?":
         return "bool"
-    elif format == "h":
-        return "int16"
-    elif format == "H":
-        return "uint16"
-    elif format == "Q":
-        return "uint64"
     elif format == "B":
         return "uint8"
+    elif format == "H":
+        return "uint16"
+    elif format == "I":
+        return "uint32"
+    elif format == "Q":
+        return "uint64"
+    elif format == "b":
+        return "int8"
+    elif format == "h":
+        return "int16"
+    elif format == "i":
+        return "int32"
+    elif format == "q":
+        return "int64"
+    elif format == "f":
+        return "float32"
+    elif format == "d":
+        return "float64"
+    else:
+        raise AssertionError(f"unexpected format type: {format!r}")
