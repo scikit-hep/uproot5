@@ -199,7 +199,7 @@ def to_writable(obj):
         and all(len(x.shape) == 1 for x in obj[1])
         and len(obj[0].shape) == len(obj[1])
     ):
-        obj = (obj[0],) + tuple(obj[1]) + tuple(obj[2:])
+        obj = (obj[0], *tuple(obj[1]), *tuple(obj[2:]))
 
     # This is the big if-elif-else chain of rules
     if isinstance(obj, uproot.model.Model):

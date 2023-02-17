@@ -60,12 +60,11 @@ def create(file_path, **options):
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
     file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
-        if os.path.exists(file_path):
-            raise OSError(
-                "path exists and refusing to overwrite (use 'uproot.recreate' to "
-                "overwrite)\n\nfor path {}".format(file_path)
-            )
+    if uproot._util.isstr(file_path) and os.path.exists(file_path):
+        raise OSError(
+            "path exists and refusing to overwrite (use 'uproot.recreate' to "
+            "overwrite)\n\nfor path {}".format(file_path)
+        )
     return recreate(file_path, **options)
 
 
@@ -95,7 +94,8 @@ def recreate(file_path, **options):
     file_path = uproot._util.regularize_path(file_path)
     if uproot._util.isstr(file_path):
         # Truncate file
-        open(file_path, "w").close()
+        with open(file_path, "w"):
+            pass
         sink = uproot.sink.file.FileSink(file_path)
     else:
         sink = uproot.sink.file.FileSink.from_object(file_path)
@@ -534,7 +534,7 @@ class WritableDirectory(MutableMapping):
         Path of directory names to this subdirectory as a single string, delimited
         by slashes.
         """
-        return "/".join(("",) + self._path + ("",)).replace("//", "/")
+        return "/".join(("", *self._path) + ("",)).replace("//", "/")
 
     @property
     def file_path(self):
@@ -605,10 +605,7 @@ class WritableDirectory(MutableMapping):
     def __contains__(self, where):
         if self._cascading.data.haskey(where):
             return True
-        for x in self._cascading.data.dir_names:
-            if where in self._subdir(x):
-                return True
-        return False
+        return any(where in self._subdir(x) for x in self._cascading.data.dir_names)
 
     def __iter__(self):
         return self.iterkeys()
@@ -1063,7 +1060,7 @@ class WritableDirectory(MutableMapping):
                     and tree._cascading.directory is not sub._cascading
                 ):
                     self._subdirs[name] = WritableDirectory(
-                        self._path + (name,), self._file, tree._cascading.directory
+                        (*self._path, name), self._file, tree._cascading.directory
                     )
                     break
 
@@ -1145,7 +1142,7 @@ class WritableDirectory(MutableMapping):
                 self._file.sink.flush()
 
                 self._subdirs[name] = WritableDirectory(
-                    self._path + (name,), self._file, subdirectory
+                    (*self._path, name), self._file, subdirectory
                 )
 
             else:
@@ -1172,7 +1169,7 @@ class WritableDirectory(MutableMapping):
                 )
 
                 self._subdirs[name] = WritableDirectory(
-                    self._path + (name,), self._file, subdirectory
+                    (*self._path, name), self._file, subdirectory
                 )
 
         return self._subdirs[name]
@@ -1214,7 +1211,7 @@ class WritableDirectory(MutableMapping):
             if initial_directory_bytes is None:
                 initial_directory_bytes = self._file.initial_directory_bytes
             directory = WritableDirectory(
-                self._path + (head,),
+                (*self._path, head),
                 self._file,
                 self._cascading.add_directory(
                     self._file.sink,
@@ -1292,7 +1289,7 @@ in file {} in directory {}""".format(
             dirpath, treename = name[:at], name[at + 1 :]
             directory = self.mkdir(dirpath)
 
-        path = directory._path + (treename,)
+        path = (*directory._path, treename)
 
         tree = WritableTree(
             path,
@@ -1365,7 +1362,7 @@ in file {} in directory {}""".format(
             dirpath, treename = name[:at], name[at + 1 :]
             directory = self.mkdir(dirpath)
 
-        path = directory._path + (treename,)
+        path = (*directory._path, treename)
 
         ntuple = WritableNTuple(
             path,
@@ -1654,7 +1651,7 @@ class WritableTree:
         Path of directory names to this TTree as a single string, delimited by
         slashes.
         """
-        return "/".join(("",) + self._path + ("",)).replace("//", "/")
+        return "/".join(("", *self._path) + ("",)).replace("//", "/")
 
     @property
     def file_path(self):
@@ -1997,7 +1994,7 @@ class WritableNTuple:
         Path of directory names to this RNTuple as a single string, delimited by
         slashes.
         """
-        return "/".join(("",) + self._path + ("",)).replace("//", "/")
+        return "/".join(("", *self._path) + ("",)).replace("//", "/")
 
     @property
     def file_path(self):

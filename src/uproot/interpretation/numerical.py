@@ -355,7 +355,7 @@ class AsDtype(Numerical):
 
         dtype, shape = _dtype_shape(self._from_dtype)
         try:
-            output = data.view(dtype).reshape((-1,) + shape)
+            output = data.view(dtype).reshape((-1, *shape))
         except ValueError as err:
             raise ValueError(
                 """basket {} in tree/branch {} has the wrong number of bytes ({}) """
@@ -595,11 +595,11 @@ in file {}""".format(
             output = exponent.view(numpy.float32) * sign
 
             d, s = _dtype_shape(self.to_dtype)
-            output = output.astype(d).reshape((-1,) + s)
+            output = output.astype(d).reshape((-1, *s))
 
         else:
             d, s = _dtype_shape(self.to_dtype)
-            output = raw.astype(d).reshape((-1,) + s)
+            output = raw.astype(d).reshape((-1, *s))
             numpy.multiply(
                 output,
                 float(self._high - self._low) / (1 << self._num_bits),

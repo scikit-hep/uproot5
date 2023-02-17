@@ -90,11 +90,7 @@ class TAxis:
         Returns True if ``x`` is one of the labels or intervals for this axis;
         False otherwise.
         """
-        for y in self:
-            if x == y:
-                return True
-        else:
-            return False
+        return any(x == y for y in self)
 
     def __eq__(self, other):
         """
@@ -187,7 +183,7 @@ class TAxis:
         if fLabels is not None and len(fLabels) == fNbins:
             out = [str(x) for x in fLabels]
             if flow:
-                return ["underflow"] + out + ["overflow"]
+                return ["underflow", *out] + ["overflow"]
             else:
                 return out
         else:

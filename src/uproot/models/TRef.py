@@ -122,7 +122,6 @@ class Model_TRefArray(uproot.model.Model, Sequence):
     def read_members(self, chunk, cursor, context, file):
         forth_stash = uproot._awkward_forth.forth_stash(context)
         if forth_stash is not None:
-            awkward = uproot.extras.awkward()  # noqa:F841
             forth_obj = forth_stash.get_gen_obj()
             # raise NotImplementedError
         if self.is_memberwise:

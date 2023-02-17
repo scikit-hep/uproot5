@@ -218,17 +218,11 @@ def classname_encode(classname, version=None, unknown=False):
     by underscores. Additionally, Python models of C++ classes are prepended
     with ``Model_`` (or ``Unknown_`` if a streamer isn't found).
     """
-    if unknown:
-        prefix = "Unknown_"
-    else:
-        prefix = "Model_"
+    prefix = "Unknown_" if unknown else "Model_"
     if classname.startswith(prefix):
         raise ValueError(f"classname is already encoded: {classname}")
 
-    if version is None:
-        v = ""
-    else:
-        v = "_v" + str(version)
+    v = "" if version is None else "_v" + str(version)
 
     raw = classname.encode()
     out = _classname_encode_pattern.sub(_classname_encode_convert, raw)
@@ -792,7 +786,7 @@ class Model:
         self._instance_version = None
         self._is_memberwise = False
         old_breadcrumbs = context.get("breadcrumbs", ())
-        context["breadcrumbs"] = old_breadcrumbs + (self,)
+        context["breadcrumbs"] = (*old_breadcrumbs, self)
 
         self.hook_before_read(chunk=chunk, cursor=cursor, context=context, file=file)
         forth_stash = uproot._awkward_forth.forth_stash(context)
@@ -803,9 +797,8 @@ class Model:
             temp_index = cursor._index
             self.read_numbytes_version(chunk, cursor, context)
             length = cursor._index - temp_index
-            if length != 0:
-                if forth_stash is not None:
-                    forth_stash.add_to_pre(f"{length} stream skip\n")
+            if length != 0 and forth_stash is not None:
+                forth_stash.add_to_pre(f"{length} stream skip\n")
             if (
                 issubclass(cls, VersionedModel)
                 and self._instance_version != classname_version(cls.__name__)
@@ -921,7 +914,6 @@ class Model:
         :doc:`uproot.model.Model` has an empty ``read_members`` method; this
         *must* be overridden by subclasses.
         """
-        pass
 
     def check_numbytes(self, chunk, cursor, context):
         """
@@ -987,7 +979,6 @@ class Model:
         Called in :ref:`uproot.model.Model.read`, before any data have been
         read.
         """
-        pass
 
     def hook_before_read_members(self, **kwargs):
         """
@@ -995,7 +986,6 @@ class Model:
         :ref:`uproot.model.Model.read_numbytes_version` and before
         :ref:`uproot.model.Model.read_members`.
         """
-        pass
 
     def hook_after_read_members(self, **kwargs):
         """
@@ -1003,7 +993,6 @@ class Model:
         :ref:`uproot.model.Model.read_members` and before
         :ref:`uproot.model.Model.check_numbytes`.
         """
-        pass
 
     def hook_before_postprocess(self, **kwargs):
         """
@@ -1011,7 +1000,6 @@ class Model:
         :ref:`uproot.model.Model.check_numbytes` and before
         :ref:`uproot.model.Model.postprocess`.
         """
-        pass
 
     def _to_writable_postprocess(self, original):
         pass
@@ -1028,9 +1016,8 @@ class Model:
                         cls = versioned_cls
                         break
 
-            elif unversioned is not None:
-                if unversioned.writable:
-                    cls = unversioned
+            elif unversioned is not None and unversioned.writable:
+                cls = unversioned
 
         if cls is None:
             raise NotImplementedError(

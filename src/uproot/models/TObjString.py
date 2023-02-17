@@ -63,8 +63,6 @@ in file {}""".format(
     def fTitle(self):
         return "Collectable string class"
 
-    writable = True
-
     def tojson(self):
         out = self._bases[0].tojson()  # TObject
         out["_typename"] = self.classname

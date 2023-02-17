@@ -739,7 +739,7 @@ class FreeSegments(CascadeNode):
                 )
 
         # The FreeSegments record will have to grow.
-        return tuple(sorted(slices + ((original_start, original_stop),)))
+        return tuple(sorted((*slices, (original_start, original_stop))))
 
     @staticmethod
     def _slices_bytes(slices):
@@ -1595,10 +1595,7 @@ class Directory(CascadeNode):
         replaces=None,
         big=None,
     ):
-        if replaces is None:
-            cycle = self._data.next_cycle(name)
-        else:
-            cycle = replaces.cycle
+        cycle = self._data.next_cycle(name) if replaces is None else replaces.cycle
 
         classname_asbytes = classname.encode(errors="surrogateescape")
         name_asbytes = name.encode(errors="surrogateescape")
@@ -2354,10 +2351,7 @@ def create_empty(
     Function to create an empty ROOT file, returning a :doc:`uproot.writing._cascade.CascadingFile`.
     """
     filename = sink.file_path
-    if filename is None:
-        filename = "dynamic.root"
-    else:
-        filename = os.path.split(filename)[-1]
+    filename = "dynamic.root" if filename is None else os.path.split(filename)[-1]
     if len(filename) >= 256:
         raise ValueError("ROOT file names must be less than 256 bytes")
 

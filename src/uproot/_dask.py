@@ -260,9 +260,8 @@ class _LazyInputsDict(Mapping):
         return self.inputs[i[0]]
 
     def __contains__(self, k):
-        if isinstance(k, tuple):
-            if isinstance(k[0], int):
-                return k[0] >= 0 and k[0] < len(self)
+        if isinstance(k, tuple) and isinstance(k[0], int):
+            return k[0] >= 0 and k[0] < len(self)
         return False
 
     def keys(self):
