@@ -64,7 +64,7 @@ def dask(
             the dask collections. If False, the opening of the files and reading the
             metadata is also delayed till the compute call. In this case, branch-names
             are inferred by opening only the first file.
-        form_mapping (Callable[awkward.forms.form] -> awkward.forms.form | None): If not none
+        form_mapping (Callable[awkward.forms.Form] -> awkward.forms.Form | None): If not none
             and library="ak" then apply this remapping function to the awkward form of the input
             data. The form keys of the desired form should be available data in the input form.
         options: See below.
