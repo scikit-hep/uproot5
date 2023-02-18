@@ -201,7 +201,6 @@ def dask(
                 real_options,
                 interp_options,
                 form_mapping,
-                ak_add_doc,
             )
         else:
             return _get_dak_array_delay_open(
@@ -216,7 +215,6 @@ def dask(
                 real_options,
                 interp_options,
                 form_mapping,
-                ak_add_doc,
             )
     else:
         raise NotImplementedError()
@@ -801,7 +799,6 @@ def _get_dak_array(
     real_options=None,
     interp_options=None,
     form_mapping=None,
-    ak_add_doc=None,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -906,7 +903,12 @@ def _get_dak_array(
             foreach(start)
 
     meta, form = _get_meta_array(
-        awkward, dask_awkward, ttrees[0], common_keys, form_mapping, ak_add_doc
+        awkward,
+        dask_awkward,
+        ttrees[0],
+        common_keys,
+        form_mapping,
+        interp_options.get("ak_add_doc"),
     )
 
     if len(partition_args) == 0:
@@ -938,7 +940,6 @@ def _get_dak_array_delay_open(
     real_options=None,
     interp_options=None,
     form_mapping=None,
-    ak_add_doc=None,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -956,7 +957,12 @@ def _get_dak_array_delay_open(
     )
 
     meta, form = _get_meta_array(
-        awkward, dask_awkward, obj, common_keys, form_mapping, ak_add_doc
+        awkward,
+        dask_awkward,
+        obj,
+        common_keys,
+        form_mapping,
+        interp_options.get("ak_add_doc"),
     )
 
     return dask_awkward.from_map(
