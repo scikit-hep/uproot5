@@ -770,7 +770,7 @@ def _get_meta_array(
         common_keys,
     )
     if form_mapping is not None:
-        form = form_mapping(form)
+        form = form_mapping(form, docstr=ttree.title)
     empty_arr = awkward.from_buffers(
         form, 0, {"": b"\x00\x00\x00\x00\x00\x00\x00\x00"}, buffer_key=""
     )
