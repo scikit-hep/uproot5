@@ -406,16 +406,16 @@ class _UprootOpenAndReadNumpy:
 
 def _get_dask_array(
     files,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    recursive=True,
-    full_paths=False,
-    step_size="100 MB",
-    custom_classes=None,
-    allow_missing=False,
-    real_options=None,
-    interp_options=None,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    step_size,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
 ):
     ttrees = []
     common_keys = None
@@ -546,15 +546,15 @@ def _get_dask_array(
 
 def _get_dask_array_delay_open(
     files,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    recursive=True,
-    full_paths=False,
-    custom_classes=None,
-    allow_missing=False,
-    real_options=None,
-    interp_options=None,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
 ):
     ffile_path, fobject_path = files[0]
     obj = uproot._util.regularize_object_path(
@@ -788,17 +788,17 @@ def _get_meta_array(
 
 def _get_dak_array(
     files,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    recursive=True,
-    full_paths=False,
-    step_size="100 MB",
-    custom_classes=None,
-    allow_missing=False,
-    real_options=None,
-    interp_options=None,
-    form_mapping=None,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    step_size,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
+    form_mapping,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -930,16 +930,16 @@ def _get_dak_array(
 
 def _get_dak_array_delay_open(
     files,
-    filter_name=no_filter,
-    filter_typename=no_filter,
-    filter_branch=no_filter,
-    recursive=True,
-    full_paths=False,
-    custom_classes=None,
-    allow_missing=False,
-    real_options=None,
-    interp_options=None,
-    form_mapping=None,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
+    form_mapping,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
