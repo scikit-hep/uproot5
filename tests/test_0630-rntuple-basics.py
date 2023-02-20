@@ -10,6 +10,8 @@ import skhep_testdata
 
 import uproot
 
+pytest.importorskip("awkward")
+
 
 def test_flat():
     filename = skhep_testdata.data_path("test_ntuple_int_float.root")

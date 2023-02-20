@@ -6,6 +6,8 @@ import skhep_testdata
 
 import uproot
 
+pytest.importorskip("awkward")
+
 
 @pytest.mark.parametrize("do_hack", [False, True])
 def test(do_hack):
