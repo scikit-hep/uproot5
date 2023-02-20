@@ -568,27 +568,9 @@ class Awkward(Library):
             return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
-            try:
-                form = json.loads(
-                    interpretation.awkward_form(interpretation.branch.file).to_json()
-                )
-            except uproot.interpretation.objects.CannotBeAwkward as err:
-                raise ValueError(
-                    """cannot produce Awkward Arrays for interpretation {} because
-
-    {}
-
-instead, try library="np" instead of library="ak" or globally set uproot.default_library
-
-in file {}
-in object {}""".format(
-                        repr(interpretation),
-                        err.because,
-                        interpretation.branch.file.file_path,
-                        interpretation.branch.object_path,
-                    )
-                ) from err
-
+            form = json.loads(
+                interpretation.awkward_form(interpretation.branch.file).to_json()
+            )
             unlabeled = awkward.from_iter(
                 (_object_to_awkward_json(form, x) for x in array), highlevel=False
             )

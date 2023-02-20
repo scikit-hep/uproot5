@@ -2479,6 +2479,26 @@ in file {}""".format(
 
         return self
 
+    def _awkward_check(self, interpretation):
+        try:
+            interpretation.awkward_form(self.file)
+        except uproot.interpretation.objects.CannotBeAwkward as err:
+            raise ValueError(
+                """cannot produce Awkward Arrays for interpretation {} because
+
+    {}
+
+instead, try library="np" instead of library="ak" or globally set uproot.default_library
+
+in file {}
+in object {}""".format(
+                    repr(interpretation),
+                    err.because,
+                    self.file.file_path,
+                    self.object_path,
+                )
+            ) from err
+
     def debug(
         self,
         entry,
@@ -2986,6 +3006,7 @@ def _ranges_or_baskets_to_arrays(
     range_args = {}
     range_original_index = {}
     original_index = 0
+    branchid_to_branch = {}
 
     for cache_key in branchid_interpretation:
         branchid_num_baskets[cache_key] = 0
@@ -3006,11 +3027,19 @@ def _ranges_or_baskets_to_arrays(
 
         original_index += 1
 
+        branchid_to_branch[branch.cache_key] = branch
+
     for cache_key, interpretation in branchid_interpretation.items():
         if branchid_num_baskets[cache_key] == 0 and cache_key not in arrays:
             arrays[cache_key] = interpretation.final_array(
                 {}, 0, 0, [0], library, None, interp_options
             )
+
+        # check for CannotBeAwkward errors on the main thread before reading any data
+        if isinstance(library, uproot.interpretation.library.Awkward) and isinstance(
+            interpretation, uproot.interpretation.objects.AsObjects
+        ):
+            branchid_to_branch[cache_key]._awkward_check(interpretation)
 
     hasbranches._file.source.chunks(ranges, notifications=notifications)
 
