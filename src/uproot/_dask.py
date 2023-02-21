@@ -774,7 +774,9 @@ def _get_meta_array(
             content_form = content_form.copy(parameters={"__doc__": branch.title})
         contents.append(content_form)
 
-    form = awkward.forms.RecordForm(contents, common_keys)
+    parameters = {"__doc__": ttree.title} if ak_add_doc else None
+
+    form = awkward.forms.RecordForm(contents, common_keys, parameters=parameters)
 
     if form_mapping is not None:
         form = form_mapping(form)
