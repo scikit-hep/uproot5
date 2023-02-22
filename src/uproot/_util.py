@@ -570,6 +570,14 @@ def awkward_form(model, file, context):
                 _primitive_awkward_form[model] = awkward.forms.from_json('"float32"')
             elif model == numpy.dtype(numpy.float64):
                 _primitive_awkward_form[model] = awkward.forms.from_json('"float64"')
+            elif model.fields is not None:
+                fields = []
+                contents = []
+                for field, (dtype, _) in model.fields.items():
+                    fields.append(field)
+                    contents.append(awkward_form(dtype, file, context))
+                # directly return; don't cache RecordForms in _primitive_awkward_form
+                return awkward.forms.RecordForm(contents, fields)
             else:
                 raise AssertionError(f"{model!r}: {type(model)}")
 
