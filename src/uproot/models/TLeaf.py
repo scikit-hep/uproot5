@@ -321,6 +321,52 @@ class Model_TLeafI(uproot.model.DispatchByVersion):
 
 _tleafl1_format0 = struct.Struct(">qq")
 
+class Model_TLeafG_v1(uproot.model.VersionedModel):
+    """
+    A :doc:`uproot.model.VersionedModel` for ``TLeafG`` version 1
+    (``numpy.int64``).
+    """
+
+    def read_members(self, chunk, cursor, context, file):
+        if self.is_memberwise:
+            raise NotImplementedError(
+                """memberwise serialization of {}
+in file {}""".format(
+                    type(self).__name__, self.file.file_path
+                )
+            )
+        self._bases.append(
+            file.class_named("TLeaf", 2).read(
+                chunk,
+                cursor,
+                context,
+                file,
+                self._file,
+                self._parent,
+                concrete=self.concrete,
+            )
+        )
+        self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
+            chunk, _tleafl1_format0, context
+        )
+
+    base_names_versions = [("TLeaf", 2)]
+    member_names = ["fMinimum", "fMaximum"]
+    class_flags = {}
+    class_code = None
+    class_rawstreamers = None
+
+
+class Model_TLeafG(uproot.model.DispatchByVersion):
+    """
+    A :doc:`uproot.model.DispatchByVersion` for ``TLeafG`` (``numpy.int64``).
+    """
+
+    known_versions = {1: Model_TLeafG_v1}
+
+
+_tleaff1_format1 = struct.Struct(">ff")
+
 
 class Model_TLeafL_v1(uproot.model.VersionedModel):
     """

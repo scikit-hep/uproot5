@@ -959,6 +959,8 @@ class Tree:
                 special_struct = uproot.models.TLeaf._tleafs1_format1
             elif letter_upper == "I":
                 special_struct = uproot.models.TLeaf._tleafi1_format1
+            elif letter_upper == "G":
+                special_struct = uproot.models.TLeaf._tleafl1_format0
             elif letter_upper == "L":
                 special_struct = uproot.models.TLeaf._tleafl1_format0
             elif letter_upper == "F":
