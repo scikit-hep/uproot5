@@ -1,5 +1,6 @@
-import os
 from array import array
+import os
+import pytest
 import numpy as np
 import uproot
 
