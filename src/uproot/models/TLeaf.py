@@ -321,6 +321,7 @@ class Model_TLeafI(uproot.model.DispatchByVersion):
 
 _tleafl1_format0 = struct.Struct(">qq")
 
+
 class Model_TLeafG_v1(uproot.model.VersionedModel):
     """
     A :doc:`uproot.model.VersionedModel` for ``TLeafG`` version 1
