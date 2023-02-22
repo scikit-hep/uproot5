@@ -6,6 +6,8 @@ import skhep_testdata
 
 import uproot
 
+pytest.importorskip("awkward")
+
 
 def test():
     path = skhep_testdata.data_path("uproot-HZZ-objects.root")

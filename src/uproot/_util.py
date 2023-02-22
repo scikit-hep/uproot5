@@ -234,7 +234,7 @@ def regularize_rename(rename):
             def applyrules(x):
                 for matcher, trans in rules:
                     if matcher.search(x) is not None:
-                        return matcher.sub(trans, x)  # noqa: B023
+                        return matcher.sub(trans, x)
                 else:
                     return x
 
@@ -305,7 +305,7 @@ def file_object_path_split(path):
 
 
 _remote_schemes = ["ROOT", "HTTP", "HTTPS"]
-_schemes = ["FILE"] + _remote_schemes
+_schemes = ["FILE", *_remote_schemes]
 
 
 def file_path_to_source_class(file_path, options):
@@ -330,9 +330,8 @@ def file_path_to_source_class(file_path, options):
         return out, file_path
 
     windows_absolute_path = None
-    if win:
-        if _windows_absolute_path_pattern.match(file_path) is not None:
-            windows_absolute_path = file_path
+    if win and _windows_absolute_path_pattern.match(file_path) is not None:
+        windows_absolute_path = file_path
 
     parsed_url = urlparse(file_path)
     if parsed_url.scheme.upper() == "FILE":
@@ -402,15 +401,12 @@ else:
 
 
 def _file_not_found(files, message=None):
-    if message is None:
-        message = ""
-    else:
-        message = " (" + message + ")"
+    message = "" if message is None else " (" + message + ")"
 
     return _FileNotFoundError(
-        """file not found{0}
+        """file not found{}
 
-    {1}
+    {}
 
 Files may be specified as:
    * str/bytes: relative or absolute filesystem path or URL, without any colons
@@ -574,6 +570,14 @@ def awkward_form(model, file, context):
                 _primitive_awkward_form[model] = awkward.forms.from_json('"float32"')
             elif model == numpy.dtype(numpy.float64):
                 _primitive_awkward_form[model] = awkward.forms.from_json('"float64"')
+            elif model.fields is not None:
+                fields = []
+                contents = []
+                for field, (dtype, _) in model.fields.items():
+                    fields.append(field)
+                    contents.append(awkward_form(dtype, file, context))
+                # directly return; don't cache RecordForms in _primitive_awkward_form
+                return awkward.forms.RecordForm(contents, fields)
             else:
                 raise AssertionError(f"{model!r}: {type(model)}")
 
@@ -870,8 +874,8 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches):
         raise TypeError(
             "'files' must be a file path/URL (string or Path), possibly with "
             "a glob pattern (for local files), a dict of "
-            "{{path/URL: TTree/TBranch name}}, actual TTree/TBranch objects, or "
-            "an iterable of such things, not {0}".format(repr(files))
+            "{path/URL: TTree/TBranch name}, actual TTree/TBranch objects, or "
+            f"an iterable of such things, not {files!r}"
         )
 
 
@@ -927,25 +931,19 @@ def regularize_object_path(
                 if allow_missing:
                     return None
                 else:
-                    raise ValueError(
-                        """no TTrees found
-in file {}""".format(
-                            file_path
-                        )
-                    )
+                    raise ValueError(f"no TTrees found\nin file {file_path}")
             elif len(trees) == 1:
                 return file[trees[0]]
             else:
+                ttree_str = ", ".join(repr(x) for x in trees)
                 raise ValueError(
                     """TTree object paths must be specified in the 'files' """
-                    """as {{\"filenames*.root\": \"path\"}} if any files have """
-                    """more than one TTree
+                    """as {"filenames*.root": "path"} if any files have """
+                    f"""more than one TTree
 
-    TTrees: {0}
+    TTrees: {ttree_str}
 
-in file {1}""".format(
-                        ", ".join(repr(x) for x in trees), file_path
-                    )
+in file {file_path}"""
                 )
 
         else:
@@ -955,11 +953,11 @@ in file {1}""".format(
 
 
 def _content_cls_from_name(awkward, name):
-    if name.endswith("32") or name.endswith("64"):
+    if name.endswith(("32", "64")):
         name = name[-2:]
     elif name.endswith("U32"):
         name = name[-3:]
-    elif name.endswith("8_32") or name.endswith("8_64"):
+    elif name.endswith(("8_32", "8_64")):
         name = name[-4:]
     elif name.endswith("8_U32"):
         name = name[-5:]

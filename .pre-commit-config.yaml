@@ -1,15 +1,4 @@
 repos:
-- repo: https://github.com/asottile/pyupgrade
-  rev: v3.3.1
-  hooks:
-  - id: pyupgrade
-    args: ["--py37-plus"]
-
-- repo: https://github.com/psf/black
-  rev: 22.12.0
-  hooks:
-  - id: black
-
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.4.0
   hooks:
@@ -24,22 +13,13 @@ repos:
   - id: requirements-txt-fixer
   - id: trailing-whitespace
 
-- repo: https://github.com/PyCQA/isort
-  rev: v5.11.3
+- repo: https://github.com/psf/black
+  rev: 23.1.0
   hooks:
-  - id: isort
+  - id: black
 
-- repo: https://github.com/asottile/yesqa
-  rev: v1.4.0
+- repo: https://github.com/charliermarsh/ruff-pre-commit
+  rev: "v0.0.249"
   hooks:
-  - id: yesqa
-    additional_dependencies: &flake8-dependencies
-    - flake8-bugbear==22.7.1
-    - flake8-docstrings==1.6.0
-    - flake8-print==5.0.0
-
-- repo: https://github.com/PyCQA/flake8
-  rev: 6.0.0
-  hooks:
-  - id: flake8
-    additional_dependencies: *flake8-dependencies
+    - id: ruff
+      args: ["--fix", "--show-fixes"]

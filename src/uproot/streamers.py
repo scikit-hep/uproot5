@@ -164,10 +164,7 @@ class Model_TStreamerInfo(uproot.model.Model):
         for element in self.elements:
             if isinstance(element, Model_TStreamerBase):
                 bases.append(f"{element.name} (v{element.base_version})")
-        if len(bases) == 0:
-            bases = ""
-        else:
-            bases = ": " + ", ".join(bases)
+        bases = "" if len(bases) == 0 else ": " + ", ".join(bases)
         stream.write(f"{self.name} (v{self.class_version}){bases}\n")
         for element in self.elements:
             element.show(stream=stream)
@@ -340,12 +337,14 @@ class Model_TStreamerInfo(uproot.model.Model):
 
         classname = uproot.model.classname_encode(self.name, self.class_version)
         return "\n".join(
-            [f"class {classname}(uproot.model.VersionedModel):"]
-            + read_members
-            + read_member_n
-            + strided_interpretation
-            + awkward_form
-            + class_data
+            [
+                f"class {classname}(uproot.model.VersionedModel):",
+                *read_members,
+                *read_member_n,
+                *strided_interpretation,
+                *awkward_form,
+                *class_data,
+            ]
         )
 
     def new_class(self, file):
@@ -1673,7 +1672,6 @@ class Model_TStreamerObject(TStreamerObjectTypes, Model_TStreamerElement):
     """
 
     def read_members(self, chunk, cursor, context, file):
-
         start = cursor.index
 
         self._bases.append(

@@ -86,7 +86,7 @@ def compile_class(file, classes, class_code, class_name):
     out.behaviors = behaviors
 
     if len(behaviors) != 0:
-        out = uproot._util.new_class(out.__name__, behaviors + (out,), {})
+        out = uproot._util.new_class(out.__name__, (*behaviors, out), {})
 
     return out
 

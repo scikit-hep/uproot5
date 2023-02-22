@@ -106,9 +106,8 @@ def _read_nested(
                         context["forth"].gen.go_to(context["temp_ref"])
                     context["forth"].gen.count_obj = temp_count
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
-        if forth_stash is not None:
-            if "temp_ref" in context.keys():
-                del context["temp_ref"]
+        if forth_stash is not None and "temp_ref" in context.keys():
+            del context["temp_ref"]
         return values
 
 
@@ -789,7 +788,6 @@ in file {}""".format(
                 return uproot._util.objectarray1d(out).reshape(-1, *self.inner_shape)
 
         else:
-
             if self._speedbump:
                 if forth_stash is not None:
                     forth_stash.add_to_pre("1 stream skip\n")
@@ -800,7 +798,6 @@ in file {}""".format(
                 return remainder.view(self._values).reshape(-1, *self.inner_shape)
 
             else:
-
                 if forth_stash is not None:
                     forth_stash.add_to_header(
                         f"output node{offsets_num}-offsets int64\n"
@@ -1161,7 +1158,6 @@ class AsVector(AsContainer):
             )
 
         if forth_stash is not None and not context["cancel_forth"]:
-
             forth_obj.go_to(temp)
 
         out = STLVector(values)
@@ -1230,10 +1226,7 @@ class AsSet(AsContainer):
         return self._keys
 
     def __repr__(self):
-        if isinstance(self._keys, type):
-            keys = self._keys.__name__
-        else:
-            keys = repr(self._keys)
+        keys = self._keys.__name__ if isinstance(self._keys, type) else repr(self._keys)
         return f"AsSet({self._header}, {keys})"
 
     @property
@@ -1404,10 +1397,7 @@ class AsMap(AsContainer):
         return self._values
 
     def __repr__(self):
-        if isinstance(self._keys, type):
-            keys = self._keys.__name__
-        else:
-            keys = repr(self._keys)
+        keys = self._keys.__name__ if isinstance(self._keys, type) else repr(self._keys)
         if isinstance(self._values, type):
             values = self._values.__name__
         else:
@@ -1515,16 +1505,14 @@ class AsMap(AsContainer):
                     temp_prev_form1,
                 ) = forth_obj.replace_form_and_model(None, temp)
                 context["temp_ref"] = temp
-            if forth_stash is not None:
-                if not isinstance(self._keys, numpy.dtype):
-                    keys_model["content"]["post_code"].append("loop\n")
+            if forth_stash is not None and not isinstance(self._keys, numpy.dtype):
+                keys_model["content"]["post_code"].append("loop\n")
             if _has_nested_header(self._values) and header:
                 cursor.skip(6)
                 if forth_stash is not None:
                     keys_model["content"]["post_code"].append("6 stream skip\n")
-            if forth_stash is not None:
-                if not isinstance(self._values, numpy.dtype):
-                    keys_model["content"]["post_code"].append("0 do\n")
+            if forth_stash is not None and not isinstance(self._values, numpy.dtype):
+                keys_model["content"]["post_code"].append("0 do\n")
             values = _read_nested(
                 self._values,
                 length,
@@ -1817,10 +1805,7 @@ class STLSet(Container, Set):
         index = numpy.searchsorted(self._keys.astype(where.dtype), where, side="left")
 
         if uproot._util.isint(index):
-            if index < len(self._keys) and self._keys[index] == where:
-                return True
-            else:
-                return False
+            return bool(index < len(self._keys) and self._keys[index] == where)
 
         else:
             return False
@@ -1974,10 +1959,7 @@ class STLMap(Container, Mapping):
         index = numpy.searchsorted(self._keys.astype(where.dtype), where, side="left")
 
         if uproot._util.isint(index):
-            if index < len(self._keys) and self._keys[index] == where:
-                return True
-            else:
-                return False
+            return bool(index < len(self._keys) and self._keys[index] == where)
 
         else:
             return False

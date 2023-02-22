@@ -5,12 +5,13 @@ import os
 import queue
 import sys
 
-import awkward as ak
 import numpy
 import pytest
 import skhep_testdata
 
 import uproot
+
+ak = pytest.importorskip("awkward")
 
 
 def test_header(tmp_path):

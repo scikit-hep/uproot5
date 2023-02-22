@@ -568,27 +568,9 @@ class Awkward(Library):
             return _awkward_add_doc(awkward, awkward.Array(layout), branch, ak_add_doc)
 
         elif isinstance(interpretation, uproot.interpretation.objects.AsObjects):
-            try:
-                form = json.loads(
-                    interpretation.awkward_form(interpretation.branch.file).to_json()
-                )
-            except uproot.interpretation.objects.CannotBeAwkward as err:
-                raise ValueError(
-                    """cannot produce Awkward Arrays for interpretation {} because
-
-    {}
-
-instead, try library="np" instead of library="ak" or globally set uproot.default_library
-
-in file {}
-in object {}""".format(
-                        repr(interpretation),
-                        err.because,
-                        interpretation.branch.file.file_path,
-                        interpretation.branch.object_path,
-                    )
-                ) from err
-
+            form = json.loads(
+                interpretation.awkward_form(interpretation.branch.file).to_json()
+            )
             unlabeled = awkward.from_iter(
                 (_object_to_awkward_json(form, x) for x in array), highlevel=False
             )
@@ -778,7 +760,7 @@ def _is_pandas_rangeindex(pandas, index):
 def _strided_to_pandas(path, interpretation, data, arrays, columns):
     for name, member in interpretation.members:
         if not name.startswith("@"):
-            p = path + (name,)
+            p = (*path, name)
             if isinstance(member, uproot.interpretation.objects.AsStridedObjects):
                 _strided_to_pandas(p, member, data, arrays, columns)
             else:
@@ -895,7 +877,7 @@ class Pandas(Library):
         if isinstance(arrays, tuple):
             return tuple(self.global_index(x, global_offset) for x in arrays)
         elif isinstance(arrays, list):
-            return list(self.global_index(x, global_offset) for x in arrays)
+            return [self.global_index(x, global_offset) for x in arrays]
 
         if type(arrays.index).__name__ == "RangeIndex":
             index_start = arrays.index.start

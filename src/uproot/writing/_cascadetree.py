@@ -336,7 +336,7 @@ class Tree:
                 dtype, shape = content, ()
             else:
                 dtype, shape = content.subdtype
-            return numpy.dtype((dtype, (branch_datashape.size,) + shape))
+            return numpy.dtype((dtype, (branch_datashape.size, *shape)))
         else:
             return None
 
@@ -588,22 +588,16 @@ class Tree:
                     ):
                         kk = self._counter_name(k)
                         vv = numpy.asarray(awkward.num(v, axis=1), dtype=">u4")
-                        if kk in provided:
-                            if not numpy.array_equal(vv, provided[kk]):
-                                raise ValueError(
-                                    "branch {} provided both as an explicit array and generated as a counter, and they disagree".format(
-                                        repr(kk)
-                                    )
-                                )
+                        if kk in provided and not numpy.array_equal(vv, provided[kk]):
+                            raise ValueError(
+                                f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
+                            )
                         provided[kk] = vv
 
-                if k in provided:
-                    if not numpy.array_equal(v, provided[k]):
-                        raise ValueError(
-                            "branch {} provided both as an explicit array and generated as a counter, and they disagree".format(
-                                repr(kk)
-                            )
-                        )
+                if k in provided and not numpy.array_equal(v, provided[k]):
+                    raise ValueError(
+                        f"branch {kk!r} provided both as an explicit array and generated as a counter, and they disagree"
+                    )
                 provided[k] = v
 
         actual_branches = {}
@@ -817,8 +811,8 @@ class Tree:
         # TAttMarker v2, fMarkerColor: 1, fMarkerStyle: 1, fMarkerSize: 1.0
         out.append(
             b"@\x00\x00\x08\x00\x02\x02Z\x00\x01\x00\x01"
-            + b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9"
-            + b"@\x00\x00\n\x00\x02\x00\x01\x00\x01?\x80\x00\x00"
+            b"@\x00\x00\x06\x00\x02\x00\x00\x03\xe9"
+            b"@\x00\x00\n\x00\x02\x00\x01\x00\x01?\x80\x00\x00"
         )
 
         metadata_out_index = len(out)

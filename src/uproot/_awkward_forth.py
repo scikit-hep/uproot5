@@ -7,16 +7,17 @@ This module defines utilities for adding components to the forth reader.
 import numpy as np
 
 symbol_dict = {
-    np.dtype(">f4"): "f",
-    np.dtype(">f8"): "d",
-    np.dtype(">i8"): "q",
-    np.dtype(">i4"): "i",
-    np.dtype(">i2"): "h",
+    np.dtype("bool"): "?",
     np.dtype(">u1"): "B",
     np.dtype(">u2"): "H",
     np.dtype(">u4"): "I",
     np.dtype(">u8"): "Q",
-    np.dtype("bool"): "?",
+    np.dtype(">i1"): "b",
+    np.dtype(">i2"): "h",
+    np.dtype(">i4"): "i",
+    np.dtype(">i8"): "q",
+    np.dtype(">f4"): "f",
+    np.dtype(">f8"): "d",
 }
 
 
@@ -91,10 +92,7 @@ class ForthGenerator:
             else:
                 if len(self.awkward_model["content"].keys()) == 0:
                     return True
-                elif self.awkward_model["content"]["name"] == "dynamic":
-                    return True
-                else:
-                    return False
+                return self.awkward_model["content"]["name"] == "dynamic"
 
     def get_temp_form_top(self):
         return self.top_dummy
@@ -169,9 +167,11 @@ class ForthGenerator:
         return self.ref_list[index]
 
     def enable_adding(self):
-        if "content" in self.awkward_model.keys():
-            if self.awkward_model["content"] is None:
-                self.awkward_model["content"] = {}
+        if (
+            "content" in self.awkward_model.keys()
+            and self.awkward_model["content"] is None
+        ):
+            self.awkward_model["content"] = {}
 
     def add_node_whole(self, new_node, ref_latest):
         if "content" in self.awkward_model.keys():
@@ -336,23 +336,27 @@ def convert_dtype(format):
     Returns:
         string: The datatype in words.
     """
-    if format == "d":
-        return "float64"
-    elif format == "f":
-        return "float32"
-    elif format == "q":
-        return "int64"
-    elif format == "i":
-        return "int32"
-    elif format == "I":
-        return "uint32"
-    elif format == "?":
+    if format == "?":
         return "bool"
-    elif format == "h":
-        return "int16"
-    elif format == "H":
-        return "uint16"
-    elif format == "Q":
-        return "uint64"
     elif format == "B":
         return "uint8"
+    elif format == "H":
+        return "uint16"
+    elif format == "I":
+        return "uint32"
+    elif format == "Q":
+        return "uint64"
+    elif format == "b":
+        return "int8"
+    elif format == "h":
+        return "int16"
+    elif format == "i":
+        return "int32"
+    elif format == "q":
+        return "int64"
+    elif format == "f":
+        return "float32"
+    elif format == "d":
+        return "float64"
+    else:
+        raise AssertionError(f"unexpected format type: {format!r}")

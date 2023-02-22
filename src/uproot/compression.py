@@ -7,6 +7,7 @@ as functions for compressing and decompressing a :doc:`uproot.source.chunk.Chunk
 
 
 import struct
+import threading
 
 import numpy
 
@@ -234,14 +235,15 @@ class _DecompressZSTD:
     _method = b"\x01"
 
     def __init__(self):
-        self._decompressor = None
+        # ZstdDecompressor resource is not thread-safe
+        self._decompressor = threading.local()
 
     @property
     def decompressor(self):
-        if self._decompressor is None:
+        if not hasattr(self._decompressor, "obj"):
             zstandard = uproot.extras.zstandard()
-            self._decompressor = zstandard.ZstdDecompressor()
-        return self._decompressor
+            self._decompressor.obj = zstandard.ZstdDecompressor()
+        return self._decompressor.obj
 
     def decompress(self, data, uncompressed_bytes=None):
         return self.decompressor.decompress(data)
@@ -462,11 +464,11 @@ in file {}""".format(
     return uproot.source.chunk.Chunk.wrap(chunk.source, output)
 
 
-def hook_before_block(**kwargs):  # noqa: D103
+def hook_before_block(**kwargs):
     pass
 
 
-def hook_after_block(**kwargs):  # noqa: D103
+def hook_after_block(**kwargs):
     pass
 
 

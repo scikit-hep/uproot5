@@ -1424,10 +1424,7 @@ class HasBranches(Mapping):
                     filter_branch=filter_branch,
                     full_paths=full_paths,
                 ):
-                    if full_paths:
-                        k2 = f"{branch.name}/{k1}"
-                    else:
-                        k2 = k1
+                    k2 = f"{branch.name}/{k1}" if full_paths else k1
                     if filter_name is no_filter or _filter_name_deep(
                         filter_name, self, v
                     ):
@@ -1881,10 +1878,7 @@ class TBranch(HasBranches):
         """
         Object path of the ``TBranch``.
         """
-        if isinstance(self._parent, uproot.behaviors.TTree.TTree):
-            sep = ":"
-        else:
-            sep = "/"
+        sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
         return f"{self.parent.object_path}{sep}{self.name}"
 
     @property
@@ -1894,10 +1888,7 @@ class TBranch(HasBranches):
         part of object and array cache keys.
         """
         if self._cache_key is None:
-            if isinstance(self._parent, uproot.behaviors.TTree.TTree):
-                sep = ":"
-            else:
-                sep = "/"
+            sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
             self._cache_key = "{}{}{}({})".format(
                 self.parent.cache_key, sep, self.name, self.index
             )
@@ -2488,6 +2479,26 @@ in file {}""".format(
 
         return self
 
+    def _awkward_check(self, interpretation):
+        try:
+            interpretation.awkward_form(self.file)
+        except uproot.interpretation.objects.CannotBeAwkward as err:
+            raise ValueError(
+                """cannot produce Awkward Arrays for interpretation {} because
+
+    {}
+
+instead, try library="np" instead of library="ak" or globally set uproot.default_library
+
+in file {}
+in object {}""".format(
+                    repr(interpretation),
+                    err.because,
+                    self.file.file_path,
+                    self.object_path,
+                )
+            ) from err
+
     def debug(
         self,
         entry,
@@ -2779,10 +2790,7 @@ def _regularize_expression(
         )
 
     else:
-        if expression in aliases:
-            to_compute = aliases[expression]
-        else:
-            to_compute = expression
+        to_compute = aliases[expression] if expression in aliases else expression
 
         is_jagged = False
         expression_branches = []
@@ -2817,7 +2825,7 @@ in file {} at {}""".format(
                 arrays,
                 expression_context,
                 branchid_interpretation,
-                symbol_path + (symbol,),
+                (*symbol_path, symbol),
                 False,
                 None,
             )
@@ -2998,6 +3006,7 @@ def _ranges_or_baskets_to_arrays(
     range_args = {}
     range_original_index = {}
     original_index = 0
+    branchid_to_branch = {}
 
     for cache_key in branchid_interpretation:
         branchid_num_baskets[cache_key] = 0
@@ -3018,12 +3027,19 @@ def _ranges_or_baskets_to_arrays(
 
         original_index += 1
 
+        branchid_to_branch[branch.cache_key] = branch
+
     for cache_key, interpretation in branchid_interpretation.items():
-        if branchid_num_baskets[cache_key] == 0:
-            if cache_key not in arrays:
-                arrays[cache_key] = interpretation.final_array(
-                    {}, 0, 0, [0], library, None, interp_options
-                )
+        if branchid_num_baskets[cache_key] == 0 and cache_key not in arrays:
+            arrays[cache_key] = interpretation.final_array(
+                {}, 0, 0, [0], library, None, interp_options
+            )
+
+        # check for CannotBeAwkward errors on the main thread before reading any data
+        if isinstance(library, uproot.interpretation.library.Awkward) and isinstance(
+            interpretation, uproot.interpretation.objects.AsObjects
+        ):
+            branchid_to_branch[cache_key]._awkward_check(interpretation)
 
     hasbranches._file.source.chunks(ranges, notifications=notifications)
 
@@ -3050,8 +3066,8 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(basket)
 
-    # all threads (if multithreaded) share a thread-local context for Forth
-    forth_context = threading.local()
+    # all threads (if multithreaded), per branch, share a thread-local context for Forth
+    forth_context = {x: threading.local() for x in branchid_interpretation}
 
     def basket_to_array(basket):
         try:
@@ -3061,7 +3077,7 @@ def _ranges_or_baskets_to_arrays(
             basket_arrays = branchid_arrays[branch.cache_key]
 
             context = dict(branch.context)
-            context["forth"] = forth_context
+            context["forth"] = forth_context[branch.cache_key]
 
             basket_arrays[basket.basket_num] = interpretation.basket_array(
                 basket.data,

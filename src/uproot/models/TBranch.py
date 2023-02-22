@@ -114,9 +114,8 @@ in file {}""".format(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch10_dtype3
-        if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1, context)[0] == 2:
-                tmp = numpy.dtype(">i8")
+        if context.get("speedbump", True) and cursor.bytes(chunk, 1, context)[0] == 2:
+            tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
@@ -245,9 +244,8 @@ in file {}""".format(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch11_dtype3
-        if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1, context)[0] == 2:
-                tmp = numpy.dtype(">i8")
+        if context.get("speedbump", True) and cursor.bytes(chunk, 1, context)[0] == 2:
+            tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
@@ -377,9 +375,8 @@ in file {}""".format(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch12_dtype3
-        if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1, context)[0] == 2:
-                tmp = numpy.dtype(">i8")
+        if context.get("speedbump", True) and cursor.bytes(chunk, 1, context)[0] == 2:
+            tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
@@ -515,9 +512,8 @@ in file {}""".format(
             chunk, self.member("fMaxBaskets"), tmp, context
         )
         tmp = _tbranch13_dtype3
-        if context.get("speedbump", True):
-            if cursor.bytes(chunk, 1, context)[0] == 2:
-                tmp = numpy.dtype(">i8")
+        if context.get("speedbump", True) and cursor.bytes(chunk, 1, context)[0] == 2:
+            tmp = numpy.dtype(">i8")
         self._members["fBasketSeek"] = cursor.array(
             chunk, self.member("fMaxBaskets"), tmp, context
         )

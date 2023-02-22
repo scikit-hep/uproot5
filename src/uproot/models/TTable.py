@@ -235,12 +235,12 @@ in file {}""".format(
             return dtype
 
         dtype = numpy.dtype(
-            dict(
-                names=[col.fColumnName for col in ioDescriptor._columns],
-                formats=[getFormat(col) for col in ioDescriptor._columns],
-                offsets=[col.fOffset for col in ioDescriptor._columns],
-                itemsize=self._members["fSize"],
-            )
+            {
+                "names": [col.fColumnName for col in ioDescriptor._columns],
+                "formats": [getFormat(col) for col in ioDescriptor._columns],
+                "offsets": [col.fOffset for col in ioDescriptor._columns],
+                "itemsize": self._members["fSize"],
+            }
         )
         self._data = numpy.frombuffer(buf, dtype=dtype)
 
