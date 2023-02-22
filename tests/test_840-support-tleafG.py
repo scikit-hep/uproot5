@@ -1,9 +1,9 @@
 import os
 from array import array
 import numpy as np
-import ROOT
 import uproot
 
+ROOT = pytest.importorskip("ROOT")
 
 def test_support_leafG(tmp_path):
     filename = os.path.join(tmp_path, "testy.root")
