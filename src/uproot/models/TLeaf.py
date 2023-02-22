@@ -355,7 +355,7 @@ in file {}""".format(
     member_names = ["fMinimum", "fMaximum"]
     class_flags = {}
     class_code = None
-    class_rawstreamers = None
+    class_rawstreamers = ()
 
 
 class Model_TLeafG(uproot.model.DispatchByVersion):
