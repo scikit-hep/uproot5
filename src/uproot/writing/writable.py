@@ -1313,7 +1313,6 @@ in file {} in directory {}""".format(
             uproot.models.TLeaf.Model_TLeafB_v1,
             uproot.models.TLeaf.Model_TLeafS_v1,
             uproot.models.TLeaf.Model_TLeafI_v1,
-            uproot.models.TLeaf.Model_TLeafG_v1,
             uproot.models.TLeaf.Model_TLeafL_v1,
             uproot.models.TLeaf.Model_TLeafF_v1,
             uproot.models.TLeaf.Model_TLeafD_v1,
