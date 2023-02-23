@@ -2,7 +2,6 @@
 import os
 import numpy
 import pytest
-import ROOT
 import uproot
 
 pytest.importorskip("ROOT")
