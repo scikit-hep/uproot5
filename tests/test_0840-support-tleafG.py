@@ -5,34 +5,36 @@ import numpy as np
 import uproot
 
 ROOT = pytest.importorskip("ROOT")
-
-
+    
 def test_support_leafG(tmp_path):
     filename = os.path.join(tmp_path, "testy.root")
+    f = ROOT.TFile(filename, 'recreate')
+    t = ROOT.TTree('mytree', 'example tree')
 
-    f = ROOT.TFile(filename, "recreate")
-    tree = ROOT.TTree("tree", "tree")
-    nr_elems = 10
-    myvarL = array("i", [0])
-    myvarG = array("i", [0])
+    n = np.array(2, dtype=np.int32)
+    t.Branch('mynum', n, 'mynum/I')
+    x = np.array([[1, 2, 3], [4, 5, 6]])
+    t.Branch('myarrayG', x, 'myarrayG[mynum][3]/G')
+    t.Branch('myarrayL', x, 'myarrayL[mynum][3]/L')
 
-    tree.Branch("myvarL", myvarL, "myvarL/L")
-    tree.Branch("myvarG", myvarG, "myvarG/G")
+    nentries = 25
+    for i in range(nentries):
+        t.Fill()
 
-    for i in range(nr_elems):
-        myvarL[0] = int(i * 2)
-        myvarG[0] = int(i * 3)
-        tree.Fill()
     f.Write()
 
-    t2 = f.Get("tree")
+    assert t.GetLeaf("myarrayG").Class_Name() == "TLeafG"
+    assert t.GetLeaf("myarrayL").Class_Name() == "TLeafL"
+    
 
-    assert t2.GetName() == "tree"
-    assert t2.GetLeaf("myvarL").Class_Name() == "TLeafL"
-    assert t2.GetLeaf("myvarG").Class_Name() == "TLeafG"
-
-    with uproot.open(filename) as f2:
-        assert len(f2["tree"]["myvarL"].array(library="np").tolist()) == nr_elems
-        assert len(f2["tree"]["myvarG"].array(library="np").tolist()) == nr_elems
-
-    f.Close()
+    with uproot.open(filename)["mytree"] as t:
+        assert t["myarrayG"].array(library="np").tolist()[0].tolist() == [[1, 2, 3], [4, 5, 6]]
+        assert t["myarrayL"].array(library="np").tolist()[0].tolist() == [[1, 2, 3], [4, 5, 6]]
+        assert (
+            repr(t["myarrayG"].interpretation)
+            == "AsJagged(AsDtype(\"('>i8', (3,))\"))"
+        )
+        assert (
+            repr(t["myarrayL"].interpretation)
+            == "AsJagged(AsDtype(\"('>i8', (3,))\"))"
+        )
