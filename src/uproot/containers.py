@@ -332,10 +332,8 @@ class AsDynamic(AsContainer):
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
-            return awkward.forms.ListOffsetForm(
-                context["index_format"],
-                uproot._util.awkward_form(self._model, file, context),
-            )
+            return uproot._util.awkward_form(self._model, file, context)
+            
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's tests aren't expected to enter here
