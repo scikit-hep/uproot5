@@ -319,7 +319,7 @@ class Model_TLeafI(uproot.model.DispatchByVersion):
     known_versions = {1: Model_TLeafI_v1}
 
 
-_tleafl1_format0 = struct.Struct(">qq")
+_tleafg1_format0 = struct.Struct(">qq")
 
 
 class Model_TLeafG_v1(uproot.model.VersionedModel):
