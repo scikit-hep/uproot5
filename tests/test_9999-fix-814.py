@@ -7,6 +7,7 @@ import uproot
 
 pytest.importorskip("ROOT")
 
+
 def test_1(tmp_path):
     filename = os.path.join(tmp_path, "tfile_with_tvector3_1.root")
     tfile = ROOT.TFile(filename, "RECREATE")

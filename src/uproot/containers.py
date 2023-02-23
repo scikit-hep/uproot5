@@ -328,12 +328,11 @@ class AsDynamic(AsContainer):
             return uproot.model.classname_decode(self._model.__name__)[0]
 
     def awkward_form(self, file, context):
-        awkward = uproot.extras.awkward()
+        uproot.extras.awkward()
         if self._model is None:
             raise uproot.interpretation.objects.CannotBeAwkward("dynamic type")
         else:
             return uproot._util.awkward_form(self._model, file, context)
-            
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's tests aren't expected to enter here
