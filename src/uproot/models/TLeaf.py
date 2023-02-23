@@ -348,7 +348,7 @@ in file {}""".format(
             )
         )
         self._members["fMinimum"], self._members["fMaximum"] = cursor.fields(
-            chunk, _tleafl1_format0, context
+            chunk, _tleafg1_format0, context
         )
 
     base_names_versions = [("TLeaf", 2)]
