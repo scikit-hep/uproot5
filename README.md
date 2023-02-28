@@ -98,7 +98,8 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
 # Acknowledgements
 
-Support for this work was provided by NSF cooperative agreement OAC-1836650 (IRIS-HEP), grant OAC-1450377 (DIANA/HEP) and PHY-1520942 (US-CMS LHC Ops).
+Support for this work was provided by NSF cooperative agreement [OAC-1836650](https://www.nsf.gov/awardsearch/showAward?AWD_ID=1836650) (IRIS-HEP), grant [OAC-1450377](https://nsf.gov/awardsearch/showAward?AWD_ID=1450377) (DIANA/HEP), and [PHY-2121686](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2121686) (US-CMS LHC Ops).
+
 
 Thanks especially to the gracious help of Uproot contributors (including the [original repository](https://github.com/scikit-hep/uproot)).
 
