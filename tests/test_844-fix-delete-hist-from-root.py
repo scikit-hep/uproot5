@@ -6,6 +6,7 @@ import uproot
 
 pytest.importorskip("ROOT")
 
+
 def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
     c1 = ROOT.TCanvas("c1", "The FillRandom example", 200, 10, 700, 900)
     c1.SetFillColor(18)
