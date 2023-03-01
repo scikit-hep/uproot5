@@ -4,7 +4,7 @@ import numpy
 import pytest
 import uproot
 
-pytest.importorskip("ROOT")
+ROOT = pytest.importorskip("ROOT")
 
 
 def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
