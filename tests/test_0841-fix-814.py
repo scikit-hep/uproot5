@@ -4,10 +4,10 @@ import numpy
 import pytest
 import uproot
 
-pytest.importorskip("ROOT")
+ROOT = pytest.importorskip("ROOT")
 
 
-def test_1(tmp_path):
+def test_check_file_after_snapshot(tmp_path):
     filename = os.path.join(tmp_path, "tfile_with_tvector3_1.root")
     tfile = ROOT.TFile(filename, "RECREATE")
     tree = ROOT.TTree("tree", "tree")
