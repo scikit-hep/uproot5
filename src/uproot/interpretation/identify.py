@@ -84,6 +84,11 @@ def _leaf_to_dtype(leaf, getdims):
             return numpy.dtype((numpy.uint32, dims))
         else:
             return numpy.dtype((numpy.int32, dims))
+    elif leaf.classname == "TLeafG":
+        if leaf.member("fIsUnsigned"):
+            return numpy.dtype((numpy.uint64, dims))
+        else:
+            return numpy.dtype((numpy.int64, dims))
     elif leaf.classname == "TLeafL":
         if leaf.member("fIsUnsigned"):
             return numpy.dtype((numpy.uint64, dims))
