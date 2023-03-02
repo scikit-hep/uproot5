@@ -470,6 +470,24 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "lgray",
+      "name": "Lindsey Gray",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1068089?v=4",
+      "profile": "https://github.com/lgray",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ioanaif",
+      "name": "ioanaif",
+      "avatar_url": "https://avatars.githubusercontent.com/u/9751871?v=4",
+      "profile": "https://github.com/ioanaif",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
