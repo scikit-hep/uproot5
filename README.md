@@ -173,6 +173,8 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
     </tr>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/renyhp"><img src="https://avatars.githubusercontent.com/u/20142663?v=4?s=100" width="100px;" alt="renyhp"/><br /><sub><b>renyhp</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=renyhp" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/lgray"><img src="https://avatars.githubusercontent.com/u/1068089?v=4?s=100" width="100px;" alt="Lindsey Gray"/><br /><sub><b>Lindsey Gray</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=lgray" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ioanaif"><img src="https://avatars.githubusercontent.com/u/9751871?v=4?s=100" width="100px;" alt="ioanaif"/><br /><sub><b>ioanaif</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ioanaif" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>
