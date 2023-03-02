@@ -82,7 +82,7 @@ with open("changelog.rst", "w") as outfile:
     for taghash, subject in subjects:
         if taghash in tagslist:
             tag = tagslist[taghash].decode()
-            tagurl = f"https://github.com/scikit-hep/uproot4/releases/tag/{tag}"
+            tagurl = f"https://github.com/scikit-hep/uproot5/releases/tag/{tag}"
 
             if numprs == 0:
                 outfile.write("*(no pull requests)*\n")
@@ -128,7 +128,7 @@ with open("changelog.rst", "w") as outfile:
                 )
                 text = re.sub(
                     r"([^a-zA-Z0-9\-_])#([1-9][0-9]*)",
-                    r"\1`#\2 <https://github.com/scikit-hep/uproot4/issues/\2>`__",
+                    r"\1`#\2 <https://github.com/scikit-hep/uproot5/issues/\2>`__",
                     text,
                 )
                 outfile.write(text + "\n\n")
@@ -142,13 +142,13 @@ with open("changelog.rst", "w") as outfile:
             numprs += 1
 
             if first:
-                header_text = "\nUnreleased (`main branch <https://github.com/scikit-hep/uproot4>`__ on GitHub)\n"
+                header_text = "\nUnreleased (`main branch <https://github.com/scikit-hep/uproot5>`__ on GitHub)\n"
                 outfile.write(header_text)
                 outfile.write("=" * len(header_text) + "\n\n")
 
             text = m.group(1).decode().strip()
             prnum = m.group(2).decode()
-            prurl = f"https://github.com/scikit-hep/uproot4/pull/{prnum}"
+            prurl = f"https://github.com/scikit-hep/uproot5/pull/{prnum}"
 
             known = [prnum]
             for issue in re.findall(
@@ -166,7 +166,7 @@ with open("changelog.rst", "w") as outfile:
             )
             text = re.sub(
                 r"([^a-zA-Z0-9\-_])#([1-9][0-9]*)",
-                r"\1`#\2 <https://github.com/scikit-hep/uproot4/issues/\2>`__",
+                r"\1`#\2 <https://github.com/scikit-hep/uproot5/issues/\2>`__",
                 text,
             )
             if re.match(r".*[a-zA-Z0-9_]$", text):
@@ -189,7 +189,7 @@ with open("changelog.rst", "w") as outfile:
             for issue in re.findall(r"([^a-zA-Z0-9\-_])#([1-9][0-9]*)", body_text):
                 if issue[1] not in known:
                     addresses.append(
-                        "`#{0} <https://github.com/scikit-hep/uproot4/issues/{0}>`__".format(
+                        "`#{0} <https://github.com/scikit-hep/uproot5/issues/{0}>`__".format(
                             issue[1]
                         )
                     )

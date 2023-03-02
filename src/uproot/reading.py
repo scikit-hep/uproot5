@@ -157,7 +157,7 @@ def open(
 class _OpenDefaults(dict):
     def __getitem__(self, where):
         if where == "xrootd_handler" and where not in self:
-            # See https://github.com/scikit-hep/uproot4/issues/294
+            # See https://github.com/scikit-hep/uproot5/issues/294
             if uproot.extras.older_xrootd("5.2.0"):
                 message = (
                     "XRootD {} is not fully supported; ".format(
