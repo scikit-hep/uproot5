@@ -88,8 +88,6 @@ def _read_nested(
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             if forth_stash is not None:
-                if length == 0:
-                    forth_obj.var_set = True
                 temp_count = context["forth"].gen.count_obj
             for i in range(length):
                 if forth_stash is not None:
@@ -756,8 +754,6 @@ in file {}""".format(
                         {},
                     )
 
-                if cursor.index >= chunk.stop and forth_stash is not None:
-                    forth_obj.var_set = True
                 out = []
                 if forth_stash is not None:
                     temp_count = forth_obj.count_obj
@@ -828,8 +824,6 @@ in file {}""".format(
                         {},
                     )
 
-                if cursor.index >= chunk.stop and forth_stash is not None:
-                    forth_obj.var_set = True
                 out = []
                 if forth_stash is not None:
                     temp_count = forth_obj.count_obj
@@ -1147,9 +1141,6 @@ class AsVector(AsContainer):
                 )
                 context["temp_ref"] = temp
 
-            if length == 0 and forth_stash is not None:
-                forth_obj.var_set = True
-
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )
@@ -1297,8 +1288,6 @@ in file {}""".format(
                 1,
                 {},
             )
-        if length == 0 and forth_stash is not None:
-            forth_obj.var_set = True
         keys = _read_nested(
             self._keys, length, chunk, cursor, context, file, selffile, parent
         )
