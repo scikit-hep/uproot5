@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 """
 This module defines an :doc:`uproot.interpretation.Interpretation` and
@@ -270,9 +270,28 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         return output
 
+    def _any_NULL(self, form):
+        if form == "NULL":
+            return True
+        else:
+            content = form.get("content")
+            if content is not None:
+                return self._any_NULL(content)
+            contents = form.get("contents")
+            if isinstance(contents, list):
+                for content in contents:
+                    if self._any_NULL(content):
+                        return True
+            elif isinstance(contents, dict):
+                for content in contents.values():
+                    if self._any_NULL(content):
+                        return True
+            return False
+
     def _discover_forth(self, data, byte_offsets, branch, context, cursor_offset):
         output = numpy.empty(len(byte_offsets) - 1, dtype=numpy.dtype(object))
         context["cancel_forth"] = False
+
         for i in range(len(byte_offsets) - 1):
             byte_start = byte_offsets[i]
             byte_stop = byte_offsets[i + 1]
@@ -281,8 +300,10 @@ class AsObjects(uproot.interpretation.Interpretation):
             cursor = uproot.source.cursor.Cursor(
                 0, origin=-(byte_start + cursor_offset)
             )
+
             if "forth" in context.keys():
-                context["forth"].gen.var_set = False
+                context["forth"].gen.count_obj = 0
+
             output[i] = self._model.read(
                 chunk,
                 cursor,
@@ -291,11 +312,15 @@ class AsObjects(uproot.interpretation.Interpretation):
                 branch.file.detached,
                 branch,
             )
+
             if context["cancel_forth"] and "forth" in context.keys():
                 del context["forth"]
+
             if "forth" in context.keys():
                 context["forth"].gen.awkward_model = context["forth"].gen.top_node
-                if not context["forth"].gen.var_set:
+
+                discovered_form = context["forth"].gen.top_form
+                if not self._any_NULL(discovered_form):
                     context["forth"].prereaddone = True
                     self._assemble_forth(
                         context["forth"].gen, context["forth"].gen.top_node["content"]
@@ -312,8 +337,9 @@ class AsObjects(uproot.interpretation.Interpretation):
     loop
     """
                     self._forth_form_keys = tuple(context["forth"].gen.form_keys)
-                    self._form = context["forth"].gen.top_form
+                    self._form = discovered_form
                     return None  # we should re-read all the data with Forth
+
         return output  # Forth-generation was unsuccessful: this is Python output
 
     def _assemble_forth(self, forth_obj, awkward_model):
