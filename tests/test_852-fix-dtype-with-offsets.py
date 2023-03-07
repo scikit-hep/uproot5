@@ -14,7 +14,7 @@ def test_fix_interpreting_dtype_with_offsets(tmp_path):
     tree = ROOT.TTree("tree", "tree")
     tvector3 = ROOT.TVector3()
     tree.Branch("tvector3", tvector3)
-    
+
     ROOT.gInterpreter.Declare(
         "struct fCoordinates {float fX; float fY; float fZ; fCoordinates(){} public: fCoordinates(float xc, float yc, float zc) : fX(xc), fY(yc), fZ(zc) {}}; "
     )
@@ -28,7 +28,6 @@ def test_fix_interpreting_dtype_with_offsets(tmp_path):
         tvector3.SetX(i)
         mys[0] = ROOT.fCoordinates(i + 0.1, i + 0.2, i + 0.3)
         tree.Fill()
-
 
     tree.AutoSave()
     tfile.Write()
