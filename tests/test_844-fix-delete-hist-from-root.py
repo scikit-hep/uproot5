@@ -10,7 +10,7 @@ ROOT = pytest.importorskip("ROOT")
 def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
     c1 = ROOT.TCanvas("c1", "The FillRandom example", 200, 10, 700, 900)
     c1.SetFillColor(18)
-    
+
     pad0 = ROOT.TPad("pad0", "The pad with the histogram", 0.05, 0.05, 0.95, 0.45, 21)
     pad1 = ROOT.TPad("pad1", "The pad with the histogram", 0.05, 0.05, 0.95, 0.45, 21)
     pad2 = ROOT.TPad("pad2", "The pad with the histogram", 0.05, 0.05, 0.95, 0.45, 21)
@@ -41,7 +41,6 @@ def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
     h0f.FillRandom("sqroot", 10000)
     h0f.Draw()
     c1.Update()
-
 
     pad1.cd()
     pad1.GetFrame().SetFillColor(42)
@@ -77,7 +76,7 @@ def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
     file_size_equal_hists = os.path.getsize(filename)
 
     # file with 2 equal and one larger histogram
-    filename2= os.path.join(tmp_path, "hist_del_test_non_equal.root")
+    filename2 = os.path.join(tmp_path, "hist_del_test_non_equal.root")
     tfile2 = ROOT.TFile(filename2, "RECREATE")
 
     pad2.cd()
@@ -115,21 +114,17 @@ def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
 
         updated_size2 = os.path.getsize(filename)
         assert updated_size < updated_size2
-        
-        assert f.keys() == ['form1;1', 'sqroot;1', 'h1f;1', 'h2f;1', 'hnf;1']
-        del f['form1;1']
+
+        assert f.keys() == ["form1;1", "sqroot;1", "h1f;1", "h2f;1", "hnf;1"]
+        del f["form1;1"]
         del f["hnf;1"]
         del f["sqroot;1"]
 
         updated_size3 = os.path.getsize(filename)
         assert updated_size2 > updated_size3
-        
+
         assert f.keys() == ["h1f;1", "h2f;1"]
         del f["h1f;1"]
-        
+
         assert f.keys() == ["h2f;1"]
         del f["h2f;1"]
-        
-
-    
-    
