@@ -1,4 +1,4 @@
-# BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 """
 This module defines utilities for adding components to the forth reader.
@@ -26,7 +26,7 @@ class ForthGenerator:
     This class is passed through the Forth code generation, collecting Forth snippets and concatenating them at the end.
     """
 
-    def __init__(self, aform=None, count_obj=0, var_set=False):
+    def __init__(self, aform=None, count_obj=0):
         self.dummy_form = False
         self.top_dummy = None
         self.dummy_aform = None
@@ -42,7 +42,6 @@ class ForthGenerator:
         self.final_header = []
         self.final_init = []
         self.form_keys = []
-        self.var_set = var_set
         self.count_obj = count_obj
 
     def traverse_aform(self):
@@ -82,7 +81,7 @@ class ForthGenerator:
                 init = node["init_code"] + init
                 header = node["header_code"] + header
                 return pre2 + post2, "", init, header
-        elif self.var_set:
+        else:
             return "", "", "", ""
 
     def should_add_form(self):
