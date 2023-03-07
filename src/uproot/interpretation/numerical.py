@@ -355,7 +355,16 @@ class AsDtype(Numerical):
 
         dtype, shape = _dtype_shape(self._from_dtype)
         try:
-            output = data.view(dtype).reshape((-1, *shape))
+            if byte_offsets is not None and len(data) % dtype.itemsize != 0:
+                data_without_headers = []
+                for j in range(byte_offsets[1], len(data)+1, byte_offsets[1]):
+                    data_without_headers.extend(data[j-dtype.itemsize:j])
+
+                output = numpy.asarray(data_without_headers).view(dtype).reshape((-1, *shape))
+                data = data_without_headers
+            else:
+                output = data.view(dtype).reshape((-1, *shape))
+
         except ValueError as err:
             raise ValueError(
                 """basket {} in tree/branch {} has the wrong number of bytes ({}) """
