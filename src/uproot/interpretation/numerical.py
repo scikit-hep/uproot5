@@ -357,10 +357,14 @@ class AsDtype(Numerical):
         try:
             if byte_offsets is not None and len(data) % dtype.itemsize != 0:
                 data_without_headers = []
-                for j in range(byte_offsets[1], len(data)+1, byte_offsets[1]):
-                    data_without_headers.extend(data[j-dtype.itemsize:j])
+                for j in range(byte_offsets[1], len(data) + 1, byte_offsets[1]):
+                    data_without_headers.extend(data[j - dtype.itemsize : j])
 
-                output = numpy.asarray(data_without_headers).view(dtype).reshape((-1, *shape))
+                output = (
+                    numpy.asarray(data_without_headers)
+                    .view(dtype)
+                    .reshape((-1, *shape))
+                )
                 data = data_without_headers
             else:
                 output = data.view(dtype).reshape((-1, *shape))
