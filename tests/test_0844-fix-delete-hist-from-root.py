@@ -22,7 +22,7 @@ def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
     tfile.Close()
 
     with uproot.update(filename) as f:
-        assert f.keys() == ['h0f;1', 'h1f;1', 'h2f;1'] 
+        assert f.keys() == ["h0f;1", "h1f;1", "h2f;1"]
         del f["h2f;1"]
         del f["h1f;1"]
         del f["h0f;1"]
@@ -31,9 +31,8 @@ def test_delete_from_file_with_deleted_histogram_at_the_end(tmp_path):
 
 def test_locations_recreate_update(tmp_path):
     filename = os.path.join(tmp_path, "uproot_test_locations.root")
-    
-    with uproot.recreate(filename) as f:
 
+    with uproot.recreate(filename) as f:
         file_size = os.path.getsize(filename)
         f["hnf0"] = numpy.histogram(numpy.random.normal(0, 1, 100000))
         f["hnf1"] = numpy.histogram(numpy.random.normal(0, 1, 100000))
@@ -46,13 +45,21 @@ def test_locations_recreate_update(tmp_path):
         seek_location_recreate_0 = f._cascading.data.get_key("hnf0", 1).seek_location
         seek_location_recreate_1 = f._cascading.data.get_key("hnf1", 1).seek_location
         seek_location_recreate_2 = f._cascading.data.get_key("hnf2", 1).seek_location
-        
-    with uproot.update(filename) as g:
 
+    with uproot.update(filename) as g:
         assert location_recreate_0 == g._cascading.data.get_key("hnf0", 1).location
         assert location_recreate_1 == g._cascading.data.get_key("hnf1", 1).location
         assert location_recreate_2 == g._cascading.data.get_key("hnf2", 1).location
 
-        assert seek_location_recreate_0 == g._cascading.data.get_key("hnf0", 1).seek_location
-        assert seek_location_recreate_1 == g._cascading.data.get_key("hnf1", 1).seek_location
-        assert seek_location_recreate_2 == g._cascading.data.get_key("hnf2", 1).seek_location
+        assert (
+            seek_location_recreate_0
+            == g._cascading.data.get_key("hnf0", 1).seek_location
+        )
+        assert (
+            seek_location_recreate_1
+            == g._cascading.data.get_key("hnf1", 1).seek_location
+        )
+        assert (
+            seek_location_recreate_2
+            == g._cascading.data.get_key("hnf2", 1).seek_location
+        )
