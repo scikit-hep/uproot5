@@ -55,26 +55,22 @@ def test_hist_del_uproot_equal(tmp_path):
         f["hnf1"] = numpy.histogram(numpy.random.normal(0, 1, 10000))
         f["hnf2"] = numpy.histogram(numpy.random.normal(0, 1, 10000))
         f["hnf3"] = numpy.histogram(numpy.random.normal(0, 1, 10000))
-        assert f.keys() == ['hnf1;1', 'hnf2;1', 'hnf3;1']
+        assert f.keys() == ["hnf1;1", "hnf2;1", "hnf3;1"]
 
         del f["hnf1;1"]
-        assert f.keys() == ['hnf2;1', 'hnf3;1']
+        assert f.keys() == ["hnf2;1", "hnf3;1"]
         assert file_size < os.path.getsize(filename)
         file_size = os.path.getsize(filename)
 
         f["hnf4"] = numpy.histogram(numpy.random.normal(0, 1, 10000))
 
-        assert f.keys() == ['hnf2;1', 'hnf3;1', 'hnf4;1']
+        assert f.keys() == ["hnf2;1", "hnf3;1", "hnf4;1"]
         assert file_size == os.path.getsize(filename)
         file_size = os.path.getsize(filename)
 
-        del f['hnf4;1']
+        del f["hnf4;1"]
         f["hnf5"] = numpy.histogram(numpy.random.normal(0, 1, 50000))
-        
-        assert f.keys() == ['hnf2;1', 'hnf3;1', 'hnf5;1']
+
+        assert f.keys() == ["hnf2;1", "hnf3;1", "hnf5;1"]
         assert file_size < os.path.getsize(filename)
         file_size = os.path.getsize(filename)
-
-
-
-    
