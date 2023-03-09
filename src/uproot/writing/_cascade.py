@@ -1762,7 +1762,6 @@ class Directory(CascadeNode):
             next_key = subdirectory_key.copy_to(self._data.next_location)
         next_key._location = self._data.next_location
         self._data.add_key(next_key, incremental=True)
-        next_key._location = self._data.next_location
         self._header.modified_on = datetime.datetime.now()
 
         if flush:
