@@ -1037,7 +1037,7 @@ class WritableDirectory(MutableMapping):
 
     def _del(self, name, cycle):
         key = self._cascading.data.get_key(name, cycle)
-        start = key.location
+        start = key.seek_location
         stop = start + key.num_bytes + key.compressed_bytes
         self._cascading.freesegments.release(start, stop)
 
