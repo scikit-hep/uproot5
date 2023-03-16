@@ -553,7 +553,7 @@ class Tree:
                                 warnings.simplefilter(
                                     "error", category=numpy.VisibleDeprecationWarning
                                 )
-                                v = numpy.array(v)
+                                v = numpy.array(v)  # noqa: PLW2901 (overwriting v)
                             if v.dtype == numpy.dtype("O"):
                                 raise Exception
                         except (numpy.VisibleDeprecationWarning, Exception):
@@ -563,7 +563,7 @@ class Tree:
                                 raise TypeError(
                                     f"NumPy dtype would be dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
                                 ) from err
-                            v = awkward.from_iter(v)
+                            v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
 
                     if getattr(v, "dtype", None) == numpy.dtype("O"):
                         try:
@@ -572,7 +572,7 @@ class Tree:
                             raise TypeError(
                                 f"NumPy dtype is dtype('O'), so we won't use NumPy, but 'awkward' cannot be imported: {k}: {type(v)}"
                             ) from err
-                        v = awkward.from_iter(v)
+                        v = awkward.from_iter(v)  # noqa: PLW2901 (overwriting v)
 
                 if uproot._util.from_module(v, "awkward"):
                     try:

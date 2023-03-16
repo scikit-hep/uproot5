@@ -663,7 +663,9 @@ class HasBranches(Mapping):
             interp = repr(branch.interpretation)
 
             if len(name) > name_width:
-                name = name[: name_width - 3] + "..."
+                name = (  # noqa: PLW2901 (overwriting name)
+                    name[: name_width - 3] + "..."
+                )
             if len(typename) > typename_width:
                 typename = typename[: typename_width - 3] + "..."
             if len(interp) > interpretation_width:
@@ -2606,7 +2608,7 @@ def _keys_deep(hasbranches):
         name = branch.name
         out.add(name)
         while branch is not hasbranches:
-            branch = branch.parent
+            branch = branch.parent  # noqa: PLW2901 (overwriting branch)
             if branch is not hasbranches:
                 name = branch.name + "/" + name
         out.add(name)
@@ -2942,7 +2944,9 @@ def _regularize_expressions(
                 )
             else:
                 branch = hasbranches[expression]
-                interp = _regularize_interpretation(interp)
+                interp = (  # noqa: PLW2901 (overwriting interp)
+                    _regularize_interpretation(interp)
+                )
                 _regularize_branchname(
                     hasbranches,
                     expression,
@@ -3018,7 +3022,10 @@ def _ranges_or_baskets_to_arrays(
             branchid_arrays[branch.cache_key] = {}
 
         if isinstance(range_or_basket, tuple) and len(range_or_basket) == 2:
-            range_or_basket = (int(range_or_basket[0]), int(range_or_basket[1]))
+            range_or_basket = (  # noqa: PLW2901 (overwriting range_or_basket)
+                int(range_or_basket[0]),
+                int(range_or_basket[1]),
+            )
             ranges.append(range_or_basket)
             range_args[range_or_basket] = (branch, basket_num)
             range_original_index[range_or_basket] = original_index
