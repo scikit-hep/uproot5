@@ -86,7 +86,7 @@
    :alt: BSD-3 Clause License
    :target: https://opensource.org/licenses/BSD-3-Clause
 
-.. image:: https://img.shields.io/github/workflow/status/scikit-hep/uproot5/Test%20build/main?label=tests
+.. image:: https://github.com/scikit-hep/uproot5/actions/workflows/build-test.yml/badge.svg
    :alt: Continuous integration tests
    :target: https://github.com/scikit-hep/uproot5/actions
 
