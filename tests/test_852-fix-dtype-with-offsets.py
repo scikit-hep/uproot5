@@ -7,8 +7,8 @@ import uproot
 
 ROOT = pytest.importorskip("ROOT")
 
-def test_xyz_vector_with_headers():
-    file = uproot.open('./TAtest2.root')
-    trkana = file['TrkAnaNeg/trkana']
-    trkana['demcent/_mom'].array()
 
+def test_xyz_vector_with_headers():
+    file = uproot.open("./TAtest2.root")
+    trkana = file["TrkAnaNeg/trkana"]
+    trkana["demcent/_mom"].array()

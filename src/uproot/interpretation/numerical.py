@@ -188,7 +188,7 @@ class AsDtype(Numerical):
             for i in range(len(from_dtype)):
                 member, value = from_dtype[i]
                 if member is not None and not self._all_headers_prepended:
-                    self._all_headers_prepended = True 
+                    self._all_headers_prepended = True
                     first_value_loc = i
                 if member is None and self._all_headers_prepended:
                     self._all_headers_prepended = False
@@ -214,7 +214,7 @@ class AsDtype(Numerical):
             and self._from_dtype == other._from_dtype
             and self._to_dtype == other._to_dtype
         )
-    
+
     @property
     def from_dtype(self):
         """

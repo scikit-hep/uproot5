@@ -540,7 +540,7 @@ def _strided_awkward_form(awkward, classname, members, file, context):
         if not context["header"] and name in (None, "@num_bytes", "@instance_version"):
             pass
         elif not context["tobject_header"] and name in (
-            None, 
+            None,
             "@num_bytes",
             "@instance_version",
             "@fUniqueID",
@@ -698,10 +698,15 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
         dtype, shape = uproot.interpretation.numerical._dtype_shape(self._from_dtype)
 
-        if byte_offsets is not None and dtype.itemsize != byte_offsets[1] - byte_offsets[0]:
-            dtype = numpy.dtype([('@headers', 'u1', byte_offsets[1] - byte_offsets[0] - dtype.itemsize)] + self._list_type)
+        if (
+            byte_offsets is not None
+            and dtype.itemsize != byte_offsets[1] - byte_offsets[0]
+        ):
+            dtype = numpy.dtype(
+                [("@headers", "u1", byte_offsets[1] - byte_offsets[0] - dtype.itemsize), *self._list_type]
+            )
             self._to_dtype = dtype
-        try:    
+        try:
             output = data.view(dtype).reshape((-1, *shape))
 
         except ValueError as err:
@@ -908,9 +913,8 @@ def _strided_object(path, interpretation, data):
     out = interpretation._model.empty()
     for name, member in interpretation._members:
         p = name
-        if len(path) != 0:
-            if name is not None:
-                p = path + "/" + name
+        if len(path) != 0 and name is not None:
+            p = path + "/" + name
         if isinstance(member, AsStridedObjects):
             out._members[name] = _strided_object(p, member, data)
         else:
