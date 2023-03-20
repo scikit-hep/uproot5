@@ -703,7 +703,14 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
             and dtype.itemsize != byte_offsets[1] - byte_offsets[0]
         ):
             dtype = numpy.dtype(
-                [("@headers", "u1", byte_offsets[1] - byte_offsets[0] - dtype.itemsize), *self._list_type]
+                [
+                    (
+                        "@headers",
+                        "u1",
+                        byte_offsets[1] - byte_offsets[0] - dtype.itemsize,
+                    ),
+                    *self._list_type,
+                ]
             )
             self._to_dtype = dtype
         try:
