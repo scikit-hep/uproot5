@@ -527,7 +527,8 @@ def _unravel_members(members):
     for name, member in members:
         if isinstance(member, AsStridedObjects):
             for n, m in _unravel_members(member.members):
-                out.append((name + "/" + n, m))
+                if n is not None:
+                    out.append((name + "/" + n, m))
         else:
             out.append((name, member))
     return out
@@ -536,9 +537,10 @@ def _unravel_members(members):
 def _strided_awkward_form(awkward, classname, members, file, context):
     contents = {}
     for name, member in members:
-        if not context["header"] and name in ("@num_bytes", "@instance_version"):
+        if not context["header"] and name in (None, "@num_bytes", "@instance_version"):
             pass
         elif not context["tobject_header"] and name in (
+            None, 
             "@num_bytes",
             "@instance_version",
             "@fUniqueID",
@@ -597,6 +599,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         self._model = model
         self._members = members
         self._original = original
+        self._all_headers_prepended = False
         super().__init__(_unravel_members(members))
 
     @property
@@ -670,6 +673,61 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def _wrap_almost_finalized(self, array):
         return StridedObjectArray(self, array)
+
+    def basket_array(
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
+    ):
+        self.hook_before_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            cursor_offset=cursor_offset,
+            library=library,
+            options=options,
+        )
+
+        dtype, shape = uproot.interpretation.numerical._dtype_shape(self._from_dtype)
+
+        if byte_offsets is not None and dtype.itemsize != byte_offsets[1] - byte_offsets[0]:
+            dtype = numpy.dtype([('@headers', 'u1', byte_offsets[1] - byte_offsets[0] - dtype.itemsize)] + self._list_type)
+            self._to_dtype = dtype
+        try:    
+            output = data.view(dtype).reshape((-1, *shape))
+
+        except ValueError as err:
+            raise ValueError(
+                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
+                """for interpretation {}
+in file {}""".format(
+                    basket.basket_num,
+                    branch.object_path,
+                    len(data),
+                    self,
+                    branch.file.file_path,
+                )
+            ) from err
+        self.hook_after_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            output=output,
+            cursor_offset=cursor_offset,
+            library=library,
+            options=options,
+        )
+        return output
 
 
 class CannotBeStrided(Exception):
@@ -851,7 +909,8 @@ def _strided_object(path, interpretation, data):
     for name, member in interpretation._members:
         p = name
         if len(path) != 0:
-            p = path + "/" + name
+            if name is not None:
+                p = path + "/" + name
         if isinstance(member, AsStridedObjects):
             out._members[name] = _strided_object(p, member, data)
         else:

@@ -61,7 +61,7 @@ class Model_TDatime(uproot.behaviors.TDatime.TDatime, uproot.model.Model):
     def strided_interpretation(
         cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):
-        members = []
+        members = [(None, None)]
         if header:
             members.append(("@num_bytes", numpy.dtype(">u4")))
             members.append(("@instance_version", numpy.dtype(">u2")))

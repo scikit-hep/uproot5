@@ -266,7 +266,7 @@ def _strided_to_awkward(awkward, path, interpretation, data):
     names = []
     data = data.flatten()
     for name, member in interpretation.members:
-        if not name.startswith("@"):
+        if name is not None and not name.startswith("@"): 
             p = name
             if len(path) != 0:
                 p = path + "/" + name
@@ -296,7 +296,7 @@ def _object_to_awkward_json(form, obj):
     elif form["class"] == "RecordArray":
         out = {}
         for name, subform in zip(form["fields"], form["contents"]):
-            if not name.startswith("@"):
+            if name is not None and not name.startswith("@"): 
                 if obj.has_member(name):
                     out[name] = _object_to_awkward_json(subform, obj.member(name))
                 else:
@@ -376,7 +376,7 @@ def _awkward_json_to_array(awkward, form, array):
         contents = []
         names = []
         for name, subform in zip(form["fields"], form["contents"]):
-            if not name.startswith("@"):
+            if name is not None and not name.startswith("@"): 
                 if isinstance(array, awkward.contents.EmptyArray):
                     contents.append(_awkward_json_to_array(awkward, subform, array))
                 else:
@@ -759,7 +759,7 @@ def _is_pandas_rangeindex(pandas, index):
 
 def _strided_to_pandas(path, interpretation, data, arrays, columns):
     for name, member in interpretation.members:
-        if not name.startswith("@"):
+        if name is not None and not name.startswith("@"): 
             p = (*path, name)
             if isinstance(member, uproot.interpretation.objects.AsStridedObjects):
                 _strided_to_pandas(p, member, data, arrays, columns)

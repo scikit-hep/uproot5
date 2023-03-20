@@ -183,7 +183,20 @@ class AsDtype(Numerical):
     """
 
     def __init__(self, from_dtype, to_dtype=None):
-        self._from_dtype = numpy.dtype(from_dtype)
+        first_value_loc = 0
+        if type(from_dtype) == list:
+            for i in range(len(from_dtype)):
+                member, value = from_dtype[i]
+                if member is not None and not self._all_headers_prepended:
+                    self._all_headers_prepended = True 
+                    first_value_loc = i
+                if member is None and self._all_headers_prepended:
+                    self._all_headers_prepended = False
+            if self._all_headers_prepended:
+                self._from_dtype = numpy.dtype(from_dtype[first_value_loc:])
+            self._list_type = from_dtype[first_value_loc:]
+        else:
+            self._from_dtype = numpy.dtype(from_dtype)
         if to_dtype is None:
             self._to_dtype = self._from_dtype.newbyteorder("=")
         else:
@@ -201,7 +214,7 @@ class AsDtype(Numerical):
             and self._from_dtype == other._from_dtype
             and self._to_dtype == other._to_dtype
         )
-
+    
     @property
     def from_dtype(self):
         """
@@ -354,20 +367,9 @@ class AsDtype(Numerical):
         )
 
         dtype, shape = _dtype_shape(self._from_dtype)
-        try:
-            if byte_offsets is not None and len(data) % dtype.itemsize != 0:
-                data_without_headers = []
-                for j in range(byte_offsets[1], len(data) + 1, byte_offsets[1]):
-                    data_without_headers.extend(data[j - dtype.itemsize : j])
 
-                output = (
-                    numpy.asarray(data_without_headers)
-                    .view(dtype)
-                    .reshape((-1, *shape))
-                )
-                data = data_without_headers
-            else:
-                output = data.view(dtype).reshape((-1, *shape))
+        try:
+            output = data.view(dtype).reshape((-1, *shape))
 
         except ValueError as err:
             raise ValueError(
