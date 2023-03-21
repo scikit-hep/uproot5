@@ -74,7 +74,7 @@ def add_to_directory(obj, name, directory, streamers):
                 import pandas
 
                 if isinstance(branch_array, pandas.DataFrame):
-                    branch_array = uproot.writing._cascadetree.dataframe_to_dict(
+                    branch_array = uproot.writing._cascadetree.dataframe_to_dict(  # noqa: PLW2901 (overwriting branch_array)
                         branch_array
                     )
 
@@ -82,7 +82,7 @@ def add_to_directory(obj, name, directory, streamers):
                 isinstance(branch_array, numpy.ndarray)
                 and branch_array.dtype.fields is not None
             ):
-                branch_array = uproot.writing._cascadetree.recarray_to_dict(
+                branch_array = uproot.writing._cascadetree.recarray_to_dict(  # noqa: PLW2901 (overwriting branch_array)
                     branch_array
                 )
 
@@ -93,7 +93,9 @@ def add_to_directory(obj, name, directory, streamers):
                 metadatum = {}
                 for kk, vv in branch_array.items():
                     try:
-                        vv = uproot._util.ensure_numpy(vv)
+                        vv = (  # noqa: PLW2901 (overwriting vv)
+                            uproot._util.ensure_numpy(vv)
+                        )
                     except TypeError:
                         raise TypeError(
                             f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"
@@ -115,11 +117,15 @@ def add_to_directory(obj, name, directory, streamers):
 
                 else:
                     try:
-                        branch_array = uproot._util.ensure_numpy(branch_array)
+                        branch_array = uproot._util.ensure_numpy(  # noqa: PLW2901 (overwriting branch_array)
+                            branch_array
+                        )
                     except TypeError:
                         awkward = uproot.extras.awkward()
                         try:
-                            branch_array = awkward.from_iter(branch_array)
+                            branch_array = awkward.from_iter(  # noqa: PLW2901 (overwriting branch_array)
+                                branch_array
+                            )
                         except Exception:
                             raise TypeError(
                                 f"unrecognizable array type {type(branch_array)} associated with {branch_name!r}"

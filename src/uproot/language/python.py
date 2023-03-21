@@ -446,7 +446,7 @@ class PythonLanguage(uproot.language.Language):
                 while branch is not hasbranches:
                     if name in keys:
                         values[name] = array
-                    branch = branch.parent
+                    branch = branch.parent  # noqa: PLW2901 (overwriting branch)
                     if branch is not hasbranches:
                         name = branch.name + "/" + name
                 name = "/" + name

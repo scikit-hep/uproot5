@@ -121,6 +121,7 @@ ignore = [
     "PGH003",  # too-broad type ignore
     "SIM114",  # Combine `if` branches using logical `or` operator
     "PGH001",  # No eval allowed
+    "PLC1901", # empty string is falsey (but I don't want to rely on such weak typing)
 ]
 exclude = [
     "tests/*.py",

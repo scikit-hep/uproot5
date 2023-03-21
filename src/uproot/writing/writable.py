@@ -858,7 +858,7 @@ class WritableDirectory(MutableMapping):
         ):
             if not cycle:
                 at = keyname.index(";")
-                keyname = keyname[:at]
+                keyname = keyname[:at]  # noqa: PLW2901 (overwriting keyname)
             yield keyname, self[keyname]
 
     def iterclassnames(
