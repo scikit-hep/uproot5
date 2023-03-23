@@ -168,7 +168,7 @@ class _OpenDefaults(dict):
     open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
 """
                 )
-                warnings.warn(message, FutureWarning)
+                warnings.warn(message, FutureWarning, stacklevel=1)
 
             # The key should still be set, regardless of whether we see the warning.
             self["xrootd_handler"] = uproot.source.xrootd.XRootDSource
