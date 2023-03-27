@@ -184,20 +184,7 @@ class AsDtype(Numerical):
     """
 
     def __init__(self, from_dtype, to_dtype=None):
-        first_value_loc = 0
-        if type(from_dtype) == list:
-            for i in range(len(from_dtype)):
-                member, value = from_dtype[i]
-                if member is not None and not self._all_headers_prepended:
-                    self._all_headers_prepended = True
-                    first_value_loc = i
-                if member is None and self._all_headers_prepended:
-                    self._all_headers_prepended = False
-            if self._all_headers_prepended:
-                self._from_dtype = numpy.dtype(from_dtype[first_value_loc:])
-            self._list_type = from_dtype[first_value_loc:]
-        else:
-            self._from_dtype = numpy.dtype(from_dtype)
+        self._from_dtype = numpy.dtype(from_dtype)
         if to_dtype is None:
             self._to_dtype = self._from_dtype.newbyteorder("=")
         else:

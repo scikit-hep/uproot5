@@ -537,7 +537,7 @@ def _unravel_members(members):
 def _strided_awkward_form(awkward, classname, members, file, context):
     contents = {}
     for name, member in members:
-        if not context["header"] and name in (None, "@num_bytes", "@instance_version"):
+        if not context["header"] and name in ("@num_bytes", "@instance_version"):
             pass
         elif not context["tobject_header"] and name in (
             None,
@@ -596,11 +596,24 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     """
 
     def __init__(self, model, members, original=None):
+        all_headers_prepended = False
+        first_value_loc = 0
+        while members[first_value_loc] == (None, None):
+            first_value_loc += 1
+        
+        for i in range(first_value_loc, len(members)):
+            member, value = members[i]
+            if member is not None and not all_headers_prepended:
+                all_headers_prepended = True
+            if member is None and all_headers_prepended:
+                all_headers_prepended = False
+                del(members[i])
+        
         self._model = model
-        self._members = members
+        self._members = members[first_value_loc:]
         self._original = original
-        self._all_headers_prepended = False
-        super().__init__(_unravel_members(members))
+        self._all_headers_prepended = all_headers_prepended
+        super().__init__(_unravel_members(self._members))
 
     @property
     def model(self):
@@ -643,6 +656,10 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     @property
     def numpy_dtype(self):
         return numpy.dtype(object)
+    
+    @property
+    def all_headers_prepended(self):
+        return self._all_headers_prepended
 
     def awkward_form(
         self,
@@ -700,19 +717,11 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
         if (
             byte_offsets is not None
-            and dtype.itemsize != byte_offsets[1] - byte_offsets[0]
+            and dtype.itemsize != byte_offsets[1] - byte_offsets[0] 
+            and self.all_headers_prepended
         ):
-            dtype = numpy.dtype(
-                [
-                    (
-                        "@headers",
-                        "u1",
-                        byte_offsets[1] - byte_offsets[0] - dtype.itemsize,
-                    ),
-                    *self._list_type,
-                ]
-            )
-            self._to_dtype = dtype
+            dtype = [("@headers", "u1", byte_offsets[1] - byte_offsets[0] - dtype.itemsize)] + [(x,str(y[0])) for x,y in sorted(dtype.fields.items(),key=lambda k: k[1])]
+            self._to_dtype = numpy.dtype(dtype)
         try:
             output = data.view(dtype).reshape((-1, *shape))
 
@@ -920,7 +929,7 @@ def _strided_object(path, interpretation, data):
     out = interpretation._model.empty()
     for name, member in interpretation._members:
         p = name
-        if len(path) != 0 and name is not None:
+        if len(path) != 0:
             p = path + "/" + name
         if isinstance(member, AsStridedObjects):
             out._members[name] = _strided_object(p, member, data)
