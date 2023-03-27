@@ -600,15 +600,15 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
         first_value_loc = 0
         while members[first_value_loc] == (None, None):
             first_value_loc += 1
-        
+
         for i in range(first_value_loc, len(members)):
             member, value = members[i]
             if member is not None and not all_headers_prepended:
                 all_headers_prepended = True
             if member is None and all_headers_prepended:
                 all_headers_prepended = False
-                del(members[i])
-        
+                del members[i]
+
         self._model = model
         self._members = members[first_value_loc:]
         self._original = original
@@ -656,7 +656,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     @property
     def numpy_dtype(self):
         return numpy.dtype(object)
-    
+
     @property
     def all_headers_prepended(self):
         return self._all_headers_prepended
@@ -717,10 +717,15 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
         if (
             byte_offsets is not None
-            and dtype.itemsize != byte_offsets[1] - byte_offsets[0] 
+            and dtype.itemsize != byte_offsets[1] - byte_offsets[0]
             and self.all_headers_prepended
         ):
-            dtype = [("@headers", "u1", byte_offsets[1] - byte_offsets[0] - dtype.itemsize)] + [(x,str(y[0])) for x,y in sorted(dtype.fields.items(),key=lambda k: k[1])]
+            dtype = [
+                ("@headers", "u1", byte_offsets[1] - byte_offsets[0] - dtype.itemsize)
+            ] + [
+                (x, str(y[0]))
+                for x, y in sorted(dtype.fields.items(), key=lambda k: k[1])
+            ]
             self._to_dtype = numpy.dtype(dtype)
         try:
             output = data.view(dtype).reshape((-1, *shape))
