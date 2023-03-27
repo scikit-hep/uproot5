@@ -422,6 +422,7 @@ class PythonLanguage(uproot.language.Language):
                 warnings.warn(
                     f"{x!r} is both an alias and a branch name",
                     uproot.exceptions.NameConflictWarning,
+                    stacklevel=1,
                 )
 
         def getter(name):
