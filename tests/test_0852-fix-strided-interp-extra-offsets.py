@@ -4,8 +4,6 @@ import pytest
 import uproot
 import skhep_testdata
 
-ROOT = pytest.importorskip("ROOT")
-
 
 def test_xyz_vector_with_headers():
     file = uproot.open(skhep_testdata.data_path("uproot-issue-513.root"))
