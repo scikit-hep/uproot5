@@ -527,8 +527,7 @@ def _unravel_members(members):
     for name, member in members:
         if isinstance(member, AsStridedObjects):
             for n, m in _unravel_members(member.members):
-                if n is not None:
-                    out.append((name + "/" + n, m))
+                out.append((name + "/" + n, m))
         else:
             out.append((name, member))
     return out

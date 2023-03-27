@@ -355,10 +355,8 @@ class AsDtype(Numerical):
         )
 
         dtype, shape = _dtype_shape(self._from_dtype)
-
         try:
             output = data.view(dtype).reshape((-1, *shape))
-
         except ValueError as err:
             raise ValueError(
                 """basket {} in tree/branch {} has the wrong number of bytes ({}) """
