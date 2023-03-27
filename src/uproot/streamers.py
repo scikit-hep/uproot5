@@ -231,7 +231,7 @@ class Model_TStreamerInfo(uproot.model.Model):
             "        if cls in breadcrumbs:",
             "            raise uproot.interpretation.objects.CannotBeStrided('classes that can contain members of the same type cannot be strided because the depth of instances is unbounded')",
             "        breadcrumbs = breadcrumbs + (cls,)",
-            "        members = []",
+            "        members = [(None, None)]",
             "        if header:",
             "            members.append(('@num_bytes', numpy.dtype('>u4')))",
             "            members.append(('@instance_version', numpy.dtype('>u2')))",

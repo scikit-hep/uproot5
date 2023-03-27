@@ -539,6 +539,7 @@ def _strided_awkward_form(awkward, classname, members, file, context):
         if not context["header"] and name in ("@num_bytes", "@instance_version"):
             pass
         elif not context["tobject_header"] and name in (
+            None,
             "@num_bytes",
             "@instance_version",
             "@fUniqueID",
@@ -594,10 +595,24 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     """
 
     def __init__(self, model, members, original=None):
+        all_headers_prepended = False
+        first_value_loc = 0
+        while members[first_value_loc] == (None, None):
+            first_value_loc += 1
+
+        for i in range(first_value_loc, len(members)):
+            member, value = members[i]
+            if member is not None and not all_headers_prepended:
+                all_headers_prepended = True
+            if member is None and all_headers_prepended:
+                all_headers_prepended = False
+                del members[i]
+
         self._model = model
-        self._members = members
+        self._members = members[first_value_loc:]
         self._original = original
-        super().__init__(_unravel_members(members))
+        self._all_headers_prepended = all_headers_prepended
+        super().__init__(_unravel_members(self._members))
 
     @property
     def model(self):
@@ -641,6 +656,10 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
     def numpy_dtype(self):
         return numpy.dtype(object)
 
+    @property
+    def all_headers_prepended(self):
+        return self._all_headers_prepended
+
     def awkward_form(
         self,
         file,
@@ -670,6 +689,70 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def _wrap_almost_finalized(self, array):
         return StridedObjectArray(self, array)
+
+    def basket_array(
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
+    ):
+        self.hook_before_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            cursor_offset=cursor_offset,
+            library=library,
+            options=options,
+        )
+
+        dtype, shape = uproot.interpretation.numerical._dtype_shape(self._from_dtype)
+
+        if (
+            byte_offsets is not None
+            and dtype.itemsize != byte_offsets[1] - byte_offsets[0]
+            and self.all_headers_prepended
+        ):
+            dtype = [
+                ("@headers", "u1", byte_offsets[1] - byte_offsets[0] - dtype.itemsize)
+            ] + [
+                (x, str(y[0]))
+                for x, y in sorted(dtype.fields.items(), key=lambda k: k[1])
+            ]
+            self._to_dtype = numpy.dtype(dtype)
+        try:
+            output = data.view(dtype).reshape((-1, *shape))
+
+        except ValueError as err:
+            raise ValueError(
+                """basket {} in tree/branch {} has the wrong number of bytes ({}) """
+                """for interpretation {}
+in file {}""".format(
+                    basket.basket_num,
+                    branch.object_path,
+                    len(data),
+                    self,
+                    branch.file.file_path,
+                )
+            ) from err
+        self.hook_after_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            output=output,
+            cursor_offset=cursor_offset,
+            library=library,
+            options=options,
+        )
+        return output
 
 
 class CannotBeStrided(Exception):

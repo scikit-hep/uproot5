@@ -75,7 +75,7 @@ in file {}""".format(
     def strided_interpretation(
         cls, file, header=False, tobject_header=True, breadcrumbs=(), original=None
     ):
-        members = []
+        members = [(None, None)]
         if tobject_header:
             members.append(("@instance_version", numpy.dtype(">u2")))
             members.append(("@num_bytes", numpy.dtype(">u4")))

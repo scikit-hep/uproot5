@@ -106,6 +106,7 @@ class Numerical(uproot.interpretation.Interpretation):
 
                 start = stop
 
+        output = output.newbyteorder("=")
         self.hook_before_library_finalize(
             basket_arrays=basket_arrays,
             entry_start=entry_start,
