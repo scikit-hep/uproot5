@@ -564,7 +564,7 @@ class HTTPSource(uproot.source.chunk.Source):
         self._open()
 
     def _open(self):
-        if sys.platform == 'emscripten':
+        if sys.platform == "emscripten":
             self._executor = uproot.source.futures.ResourceTrivialExecutor(
                 HTTPResource(self._file_path, self._timeout)
             )
@@ -670,7 +670,7 @@ class HTTPSource(uproot.source.chunk.Source):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        if sys.platform == 'emscripten':
+        if sys.platform == "emscripten":
             return urlparse(self._file_path)
         else:
             return self._executor.workers[0].resource.parsed_url
@@ -680,7 +680,7 @@ class HTTPSource(uproot.source.chunk.Source):
         """
         Dict containing auth headers, if any
         """
-        if sys.platform == 'emscripten':
+        if sys.platform == "emscripten":
             return basic_auth_headers(self.parsed_url)
         else:
             return self._executor.workers[0].resource.auth_headers
