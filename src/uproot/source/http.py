@@ -564,6 +564,7 @@ class HTTPSource(uproot.source.chunk.Source):
         self._open()
 
     def _open(self):
+        # if running in a jupyter lite environment, then use a TrivialExecutor
         if sys.platform == "emscripten":
             self._executor = uproot.source.futures.ResourceTrivialExecutor(
                 HTTPResource(self._file_path, self._timeout)
