@@ -563,10 +563,24 @@ class HTTPSource(uproot.source.chunk.Source):
         self._fallback_options["num_workers"] = self._num_fallback_workers
         self._open()
 
+    def is_lite_notebook(self):
+        try:
+            shell = get_ipython().__class__.__name__
+            # True if running in a jupyter lite notebook
+            # False if running in a jupyter noteboook ('ZMQInteractiveShell') or IPython ('TerminalInteractiveShell')
+            return shell == "Interpreter"
+        except NameError:
+            return False  # Python interpreter
+
     def _open(self):
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(self._file_path, self._timeout)]
-        )
+        if self.is_lite_notebook():
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                HTTPResource(self._file_path, self._timeout)
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [HTTPResource(self._file_path, self._timeout)]
+            )
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -665,14 +679,20 @@ class HTTPSource(uproot.source.chunk.Source):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        return self._executor.workers[0].resource.parsed_url
+        if self.is_lite_notebook():
+            return urlparse(self._file_path)
+        else:
+            return self._executor.workers[0].resource.parsed_url
 
     @property
     def auth_headers(self):
         """
         Dict containing auth headers, if any
         """
-        return self._executor.workers[0].resource.auth_headers
+        if self.is_lite_notebook():
+            return basic_auth_headers(self.parsed_url)
+        else:
+            return self._executor.workers[0].resource.auth_headers
 
     @property
     def fallback(self):
