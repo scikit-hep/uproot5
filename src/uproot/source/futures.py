@@ -398,3 +398,58 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         for worker in self._workers:
             worker.resource.__exit__(exception_type, exception_value, traceback)
         self._closed = True
+
+
+##################### use-case 4: resources for I/O with trivial executor
+
+
+class ResourceTrivialExecutor(TrivialExecutor):
+    """
+    Args:
+        resource (:doc:`uproot.source.chunk.Resource`): Resource to
+            wrap as :doc:`uproot.source.futures.ResourceFuture` object.
+
+    A :doc:`uproot.source.futures.ResourceTrivialExecutor` is bound
+    to a resource, such as a file handle.
+    """
+
+    def __init__(self, resource):
+        self._resource = resource
+        self._closed = False
+
+    def __repr__(self):
+        return f"<ResourceTrivialExecutor at 0x{id(self):012x}>"
+
+    def submit(self, future):
+        """
+        Pass the ``task`` as a
+        :doc:`uproot.source.futures.ResourceFuture` so that it will be
+        executed with its :ref:`self._resource`.
+        """
+        assert isinstance(future, ResourceFuture)
+        if self.closed:
+            raise OSError(
+                "resource is closed for file {}".format(
+                    self._workers[0].resource.file_path
+                )
+            )
+        future._run(self._resource)
+        return future
+
+    def close(self):
+        """
+        Stops the :doc:`uproot.source.futures.ResourceTrivialExecutor`
+        """
+        self.__exit__(None, None, None)
+
+    @property
+    def closed(self):
+        """
+        True if the :doc:`uproot.source.futures.ResourceTrivialExecutor` has
+        been stopped.
+        """
+        return self._closed
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.shutdown()
+        self._closed = True

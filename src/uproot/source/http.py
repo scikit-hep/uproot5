@@ -564,9 +564,15 @@ class HTTPSource(uproot.source.chunk.Source):
         self._open()
 
     def _open(self):
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(self._file_path, self._timeout)]
-        )
+        # if running in a jupyter lite environment, then use a TrivialExecutor
+        if sys.platform == "emscripten":
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                HTTPResource(self._file_path, self._timeout)
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [HTTPResource(self._file_path, self._timeout)]
+            )
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -665,14 +671,20 @@ class HTTPSource(uproot.source.chunk.Source):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        return self._executor.workers[0].resource.parsed_url
+        if sys.platform == "emscripten":
+            return urlparse(self._file_path)
+        else:
+            return self._executor.workers[0].resource.parsed_url
 
     @property
     def auth_headers(self):
         """
         Dict containing auth headers, if any
         """
-        return self._executor.workers[0].resource.auth_headers
+        if sys.platform == "emscripten":
+            return basic_auth_headers(self.parsed_url)
+        else:
+            return self._executor.workers[0].resource.auth_headers
 
     @property
     def fallback(self):
