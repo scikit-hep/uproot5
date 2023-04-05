@@ -324,6 +324,8 @@ class Tree:
         self._key = None
 
     def _branch_ak_to_np(self, branch_datashape):
+        if type(branch_datashape).__name__ == "UnknownType":
+            return numpy.dtype("float64")
         if type(branch_datashape).__name__ == "NumpyType":
             return numpy.dtype(branch_datashape.primitive)
         elif type(branch_datashape).__name__ == "PrimitiveType":
@@ -718,7 +720,7 @@ class Tree:
                         content = content.project()
 
                     elif isinstance(content, awkward.contents.EmptyArray):
-                        content = content.to_NumpyArray()
+                        content = content.to_NumpyArray(dtype=numpy.float64)
 
                     elif isinstance(content, awkward.contents.RegularArray):
                         shape.append(content.size)
