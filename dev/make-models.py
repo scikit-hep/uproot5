@@ -63,7 +63,7 @@ superclasses = [
 
 
 with uproot.open("example-objects.root") as f:
-    f.file.streamers
+    f.file.streamers  # noqa: B018 (this is not a useless expression; it runs code)
 
     for classname, class_version in superclasses:
         cls = f.file.class_named(classname, class_version)

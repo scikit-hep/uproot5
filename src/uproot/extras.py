@@ -163,7 +163,7 @@ def lz4_block():
     """
     try:
         import lz4.block
-        import xxhash
+        import xxhash  # noqa: F401
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'lz4' and `xxhash` packages with:
@@ -185,7 +185,7 @@ def xxhash():
     Attempts to import ``lz4`` as well.
     """
     try:
-        import lz4.block
+        import lz4.block  # noqa: F401
         import xxhash
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
