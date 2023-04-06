@@ -962,3 +962,14 @@ def _content_cls_from_name(awkward, name):
     elif name.endswith("8_U32"):
         name = name[-5:]
     return getattr(awkward.contents, name)
+
+
+def pandas_has_attr_is_numeric(pandas, index):
+    try:
+        function = pandas.api.types.is_any_real_numeric_dtype
+    except (ImportError, AttributeError):
+
+        def function(x):
+            return x.is_numeric
+
+    return function(index)
