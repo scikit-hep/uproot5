@@ -967,7 +967,7 @@ def _content_cls_from_name(awkward, name):
 def pandas_has_attr_is_numeric(pandas):
     try:
         function = pandas.api.types.is_any_real_numeric_dtype
-    except (ImportError, AttributeError):
+    except AttributeError:
 
         def function(x):
             return x.is_numeric
