@@ -949,7 +949,7 @@ in file {}""".format(
         :ref:`uproot.reading.ReadOnlyFile.streamers`.
         """
         if self._streamer_rules is None:
-            self.streamers
+            self.streamers  # noqa: B018 (this is not a useless expression; it runs code)
         return self._streamer_rules
 
     def streamers_named(self, classname):
