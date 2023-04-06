@@ -508,8 +508,14 @@ class Tree:
         if uproot._util.from_module(data, "pandas"):
             import pandas
 
-            if isinstance(data, pandas.DataFrame) and data.index.is_numeric():
-                provided = dataframe_to_dict(data)
+            if isinstance(data, pandas.DataFrame):
+                is_numeric = (
+                    data.index.is_numeric()
+                    if uproot.writing.identify.pandas_has_attr_is_numeric()
+                    else pandas.api.types.is_any_real_numeric_dtype(data.index)
+                )
+                if is_numeric:
+                    provided = dataframe_to_dict(data)
 
         if uproot._util.from_module(data, "awkward"):
             try:

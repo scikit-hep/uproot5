@@ -27,6 +27,14 @@ import uproot.pyroot
 import uproot.writing._cascadetree
 
 
+def pandas_has_attr_is_numeric():
+    try:
+        pandas.RangeIndex.is_numeric()
+        return True
+    except:
+        return False
+
+
 def add_to_directory(obj, name, directory, streamers):
     """
     Args:
@@ -53,8 +61,14 @@ def add_to_directory(obj, name, directory, streamers):
     if uproot._util.from_module(obj, "pandas"):
         import pandas
 
-        if isinstance(obj, pandas.DataFrame) and obj.index.is_numeric():
-            obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
+        if isinstance(obj, pandas.DataFrame):
+            is_numeric = (
+                obj.index.is_numeric()
+                if pandas_has_attr_is_numeric()
+                else pandas.api.types.is_any_real_numeric_dtype(obj.index)
+            )
+            if is_numeric:
+                obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
 
     if uproot._util.from_module(obj, "awkward"):
         import awkward
