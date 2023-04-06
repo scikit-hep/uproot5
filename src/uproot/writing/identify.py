@@ -55,7 +55,7 @@ def add_to_directory(obj, name, directory, streamers):
 
         if isinstance(
             obj, pandas.DataFrame
-        ) and uproot._util.pandas_has_attr_is_numeric(pandas, obj.index):
+        ) and uproot._util.pandas_has_attr_is_numeric(pandas)(obj.index):
             obj = uproot.writing._cascadetree.dataframe_to_dict(obj)
 
     if uproot._util.from_module(obj, "awkward"):

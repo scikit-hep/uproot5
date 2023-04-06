@@ -964,7 +964,7 @@ def _content_cls_from_name(awkward, name):
     return getattr(awkward.contents, name)
 
 
-def pandas_has_attr_is_numeric(pandas, index):
+def pandas_has_attr_is_numeric(pandas):
     try:
         function = pandas.api.types.is_any_real_numeric_dtype
     except (ImportError, AttributeError):
@@ -972,4 +972,4 @@ def pandas_has_attr_is_numeric(pandas, index):
         def function(x):
             return x.is_numeric
 
-    return function(index)
+    return function
