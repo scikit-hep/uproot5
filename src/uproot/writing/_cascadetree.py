@@ -326,7 +326,7 @@ class Tree:
     def _branch_ak_to_np(self, branch_datashape):
         if type(branch_datashape).__name__ == "UnknownType":
             return numpy.dtype("float64")
-        if type(branch_datashape).__name__ == "NumpyType":
+        elif type(branch_datashape).__name__ == "NumpyType":
             return numpy.dtype(branch_datashape.primitive)
         elif type(branch_datashape).__name__ == "PrimitiveType":
             return numpy.dtype(branch_datashape.dtype)
