@@ -293,6 +293,13 @@ def file_object_path_split(path):
         ):
             return path, None
 
+        # Unfortunately EOS tokens start with zteos:, so we should ignore
+        # the : when preceded by that string as it is part of the URL, and
+        # not a seperator between the file name and the path in the file
+        # Future versions of EOS will accept to have that character escaped.
+        if file_path.endswith(("zteos", "zteos64")):
+            return path, None
+
         file_path = file_path.rstrip()
         object_path = object_path.lstrip()
 
