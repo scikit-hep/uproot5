@@ -16,6 +16,7 @@ def dask(
     recursive=True,
     full_paths=False,
     step_size="100 MB",
+    chunks_per_file=1,
     library="ak",
     ak_add_doc=False,
     custom_classes=None,
@@ -48,6 +49,9 @@ def dask(
             include in each chunk; if a string, the maximum memory_size to include
             in each chunk. The string must be a number followed by a memory unit,
             such as "100 MB".
+        chunks_per_file (int, default 1):
+            In the case of open_files=False, blindly split files into the specified
+            number of chunks.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. If ``library='np'`` it returns a dict
             of dask arrays and if ``library='ak'`` it returns a single dask-awkward
@@ -215,6 +219,7 @@ def dask(
                 real_options,
                 interp_options,
                 form_mapping,
+                chunks_per_file,
             )
     else:
         raise NotImplementedError()
@@ -689,14 +694,19 @@ class _UprootOpenAndRead:
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
 
-    def __call__(self, file_path_object_path):
-        file_path, object_path = file_path_object_path
+    def __call__(self, file_path_object_path_ichunk_nchunks):
+        file_path, object_path, ichunk, nchunks = file_path_object_path_ichunk_nchunks
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
             self.custom_classes,
             self.allow_missing,
             self.real_options,
+        )
+        num_entries = ttree.num_entries
+        events_per_chunk = num_entries // nchunks + 1
+        start, stop = (ichunk * events_per_chunk), min(
+            (ichunk + 1) * events_per_chunk, num_entries
         )
 
         if self.form_mapping is not None:
@@ -705,19 +715,22 @@ class _UprootOpenAndRead:
             actual_form = self.rendered_form.select_columns(self.common_keys)
 
             mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
-                ttree, 0, ttree.num_entries, self.interp_options
+                ttree, start, stop, self.interp_options
             )
 
             return awkward.from_buffers(
                 actual_form,
-                ttree.num_entries,
+                stop - start,
                 mapping,
                 buffer_key=buffer_key,
                 behavior=self.form_mapping.behavior,
             )
 
         return ttree.arrays(
-            self.common_keys, ak_add_doc=self.interp_options["ak_add_doc"]
+            self.common_keys,
+            entry_start=start,
+            entry_stop=stop,
+            ak_add_doc=self.interp_options["ak_add_doc"],
         )
 
     def project_columns(self, common_keys):
@@ -943,6 +956,7 @@ def _get_dak_array_delay_open(
     real_options,
     interp_options,
     form_mapping,
+    chunks_per_file,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -968,6 +982,18 @@ def _get_dak_array_delay_open(
         interp_options.get("ak_add_doc"),
     )
 
+    partition_args = []
+    for ifile_path, iobject_path in files:
+        for ichunk in range(chunks_per_file):
+            partition_args.append(
+                (
+                    ifile_path,
+                    iobject_path,
+                    ichunk,
+                    chunks_per_file,
+                )
+            )
+
     return dask_awkward.from_map(
         _UprootOpenAndRead(
             custom_classes,
@@ -979,7 +1005,7 @@ def _get_dak_array_delay_open(
             form_mapping=form_mapping,
             rendered_form=None if form_mapping is None else form,
         ),
-        files,
+        partition_args,
         label="from-uproot",
         behavior=None if form_mapping is None else form_mapping.behavior,
         meta=meta,
