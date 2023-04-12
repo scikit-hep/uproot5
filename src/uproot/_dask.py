@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable, Iterable, Mapping
 
 import numpy
@@ -704,7 +705,7 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         num_entries = ttree.num_entries
-        events_per_chunk = num_entries // nchunks + 1
+        events_per_chunk = math.ceil(num_entries / nchunks)
         start, stop = (ichunk * events_per_chunk), min(
             (ichunk + 1) * events_per_chunk, num_entries
         )
