@@ -49,10 +49,12 @@ def dask(
         step_size (int or str): If an integer, the maximum number of entries to
             include in each chunk; if a string, the maximum memory_size to include
             in each chunk. The string must be a number followed by a memory unit,
-            such as "100 MB".
+            such as "100 MB". Mutually incompatible with steps_per_file: only set
+            step_size or steps_per_file, not both. Cannot be used with
+            ``open_files=False``.
         steps_per_file (int, default 1):
-            In the case of open_files=False, blindly split files into the specified
-            number of chunks.
+            Subdivide files into the specified number of chunks. Mutually incompatible
+            with step_size: only set step_size or steps_per_file, not both.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. If ``library='np'`` it returns a dict
             of dask arrays and if ``library='ak'`` it returns a single dask-awkward
@@ -149,19 +151,22 @@ def dask(
 
     if step_size is not unset and steps_per_file is not unset:
         raise TypeError(
-            f"Only `step_size` or `steps_per_file` should be set, not both. {step_size, steps_per_file}"
+            f"only 'step_size' or 'steps_per_file' should be set, not both; got {step_size = }, {steps_per_file = }"
         )
-
-    if step_size is not unset and not open_files:
-        raise TypeError(
-            f"`step_size` should not be set when `open_files` is False, got {step_size}"
-        )
-
-    if steps_per_file is not unset and open_files:
-        # FIX ME: compute the size of the file / steps_per_file as the step_size?
-        step_size = int(100000000 / steps_per_file)
-
-    if step_size is unset and steps_per_file is unset:
+    elif step_size is not unset:
+        if not open_files:
+            # the not open_files case FAILS if only step_size is supplied
+            raise TypeError(
+                f"'step_size' should not be set when 'open_files' is False; got {step_size = }"
+            )
+        else:
+            # the open_files case uses step_size (only)
+            pass
+    elif steps_per_file is not unset:
+        # the not open_files case uses steps_per_file (only)
+        # the open_files case converts steps_per_file into step_size
+        pass
+    else:
         steps_per_file = 1
 
     if library.name == "pd":
@@ -194,6 +199,7 @@ def dask(
                 allow_missing,
                 real_options,
                 interp_options,
+                steps_per_file,
             )
         else:
             return _get_dask_array_delay_open(
@@ -224,6 +230,7 @@ def dask(
                 real_options,
                 interp_options,
                 form_mapping,
+                steps_per_file,
             )
         else:
             return _get_dak_array_delay_open(
@@ -449,6 +456,7 @@ def _get_dask_array(
     allow_missing,
     real_options,
     interp_options,
+    steps_per_file,
 ):
     ttrees = []
     common_keys = None
@@ -490,6 +498,13 @@ def _get_dask_array(
             else:
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
+
+    # this is the earliest time we can deal with an unset step_size
+    if step_size is unset:
+        assert steps_per_file is not unset  # either assigned or assumed to be 1
+        total_files = len(ttrees)
+        total_entries = sum(ttree.num_entries for ttree in ttrees)
+        step_size = min(1, int(math.ceil(total_entries / (total_files * steps_per_file))))
 
     if count == 0:
         raise ValueError(
@@ -855,6 +870,7 @@ def _get_dak_array(
     real_options,
     interp_options,
     form_mapping,
+    steps_per_file,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -899,6 +915,13 @@ def _get_dak_array(
             else:
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
+
+    # this is the earliest time we can deal with an unset step_size
+    if step_size is unset:
+        assert steps_per_file is not unset  # either assigned or assumed to be 1
+        total_files = len(ttrees)
+        total_entries = sum(ttree.num_entries for ttree in ttrees)
+        step_size = min(1, int(math.ceil(total_entries / (total_files * steps_per_file))))
 
     if count == 0:
         raise ValueError(
