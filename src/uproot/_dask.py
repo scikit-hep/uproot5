@@ -147,25 +147,21 @@ def dask(
     files = uproot._util.regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
 
-    if not isinstance(step_size, uproot._util._Unset) and not isinstance(
-        steps_per_file, uproot._util._Unset
-    ):
+    if step_size is not unset and steps_per_file is not unset:
         raise TypeError(
             f"Only `step_size` or `steps_per_file` should be set, not both. {step_size, steps_per_file}"
         )
 
-    if not isinstance(step_size, uproot._util._Unset) and open_files is False:
+    if step_size is not unset and not open_files:
         raise TypeError(
             f"`step_size` should not be set when `open_files` is False, got {step_size}"
         )
 
-    if not isinstance(steps_per_file, uproot._util._Unset) and open_files is True:
+    if steps_per_file is not unset and open_files:
         # FIX ME: compute the size of the file / steps_per_file as the step_size?
         step_size = int(100000000 / steps_per_file)
 
-    if isinstance(step_size, uproot._util._Unset) and isinstance(
-        steps_per_file, uproot._util._Unset
-    ):
+    if step_size is unset and steps_per_file is unset:
         steps_per_file = 1
 
     if library.name == "pd":
