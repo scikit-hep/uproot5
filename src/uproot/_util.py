@@ -436,6 +436,9 @@ def memory_size(data, error_message=None):
     Regularizes strings like '## kB' and plain integer number of bytes to
     an integer number of bytes.
     """
+    if isinstance(data, _Unset):
+        return 100000000
+
     if isstr(data):
         m = re.match(
             r"^\s*([+-]?(\d+(\.\d*)?|\.\d+)(e[+-]?\d+)?)\s*([kmgtpezy]?b)\s*$",
@@ -973,3 +976,11 @@ def pandas_has_attr_is_numeric(pandas):
             return x.is_numeric
 
     return function
+
+
+class _Unset:
+    def __repr__(self):
+        return f"{__name__}.unset"
+
+
+unset = _Unset()
