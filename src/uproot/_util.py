@@ -973,3 +973,11 @@ def pandas_has_attr_is_numeric(pandas):
             return x.is_numeric
 
     return function
+
+
+class _Unset:
+    def __repr__(self):
+        return f"{__name__}.unset"
+
+
+unset = _Unset()

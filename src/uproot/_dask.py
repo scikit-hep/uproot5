@@ -1,9 +1,10 @@
+import math
 from collections.abc import Callable, Iterable, Mapping
 
 import numpy
 
 import uproot
-from uproot._util import no_filter
+from uproot._util import no_filter, unset
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 
@@ -15,7 +16,8 @@ def dask(
     filter_branch=no_filter,
     recursive=True,
     full_paths=False,
-    step_size="100 MB",
+    step_size=unset,
+    steps_per_file=unset,
     library="ak",
     ak_add_doc=False,
     custom_classes=None,
@@ -47,7 +49,15 @@ def dask(
         step_size (int or str): If an integer, the maximum number of entries to
             include in each chunk; if a string, the maximum memory_size to include
             in each chunk. The string must be a number followed by a memory unit,
-            such as "100 MB".
+            such as "100 MB". Mutually incompatible with steps_per_file: only set
+            step_size or steps_per_file, not both. Cannot be used with
+            ``open_files=False``.
+        steps_per_file (int, default 1):
+            Subdivide files into the specified number of chunks. Mutually incompatible
+            with step_size: only set step_size or steps_per_file, not both.
+            If both ``step_size`` and ``steps_per_file`` are unset,
+            ``steps_per_file``'s default value of 1 (whole file per chunk) is used,
+            regardless of ``open_files``.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. If ``library='np'`` it returns a dict
             of dask arrays and if ``library='ak'`` it returns a single dask-awkward
@@ -142,6 +152,26 @@ def dask(
     files = uproot._util.regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
 
+    if step_size is not unset and steps_per_file is not unset:
+        raise TypeError(
+            f"only 'step_size' or 'steps_per_file' should be set, not both; got step_size={step_size!r} and steps_per_file={steps_per_file!r}"
+        )
+    elif step_size is not unset:
+        if not open_files:
+            # the not open_files case FAILS if only step_size is supplied
+            raise TypeError(
+                f"'step_size' should not be set when 'open_files' is False; got {step_size!r}"
+            )
+        else:
+            # the open_files case uses step_size (only)
+            pass
+    elif steps_per_file is not unset:
+        # the not open_files case uses steps_per_file (only)
+        # the open_files case converts steps_per_file into step_size
+        pass
+    else:
+        steps_per_file = 1
+
     if library.name == "pd":
         raise NotImplementedError()
 
@@ -172,6 +202,7 @@ def dask(
                 allow_missing,
                 real_options,
                 interp_options,
+                steps_per_file,
             )
         else:
             return _get_dask_array_delay_open(
@@ -185,6 +216,7 @@ def dask(
                 allow_missing,
                 real_options,
                 interp_options,
+                steps_per_file,
             )
     elif library.name == "ak":
         if open_files:
@@ -201,6 +233,7 @@ def dask(
                 real_options,
                 interp_options,
                 form_mapping,
+                steps_per_file,
             )
         else:
             return _get_dak_array_delay_open(
@@ -215,6 +248,7 @@ def dask(
                 real_options,
                 interp_options,
                 form_mapping,
+                steps_per_file,
             )
     else:
         raise NotImplementedError()
@@ -390,8 +424,8 @@ class _UprootOpenAndReadNumpy:
         self.key = key
         self.interp_options = interp_options
 
-    def __call__(self, file_path_object_path):
-        file_path, object_path = file_path_object_path
+    def __call__(self, file_path_object_path_istep_nsteps):
+        file_path, object_path, istep, nsteps = file_path_object_path_istep_nsteps
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
@@ -399,8 +433,17 @@ class _UprootOpenAndReadNumpy:
             self.allow_missing,
             self.real_options,
         )
+        num_entries = ttree.num_entries
+        events_per_steps = math.ceil(num_entries / nsteps)
+        start, stop = (istep * events_per_steps), min(
+            (istep + 1) * events_per_steps, num_entries
+        )
+
         return ttree[self.key].array(
-            library="np", ak_add_doc=self.interp_options["ak_add_doc"]
+            library="np",
+            entry_start=start,
+            entry_stop=stop,
+            ak_add_doc=self.interp_options["ak_add_doc"],
         )
 
 
@@ -416,6 +459,7 @@ def _get_dask_array(
     allow_missing,
     real_options,
     interp_options,
+    steps_per_file,
 ):
     ttrees = []
     common_keys = None
@@ -457,6 +501,15 @@ def _get_dask_array(
             else:
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
+
+    # this is the earliest time we can deal with an unset step_size
+    if step_size is unset:
+        assert steps_per_file is not unset  # either assigned or assumed to be 1
+        total_files = len(ttrees)
+        total_entries = sum(ttree.num_entries for ttree in ttrees)
+        step_size = max(
+            1, int(math.ceil(total_entries / (total_files * steps_per_file)))
+        )
 
     if count == 0:
         raise ValueError(
@@ -555,6 +608,7 @@ def _get_dask_array_delay_open(
     allow_missing,
     real_options,
     interp_options,
+    steps_per_file,
 ):
     ffile_path, fobject_path = files[0]
     obj = uproot._util.regularize_object_path(
@@ -577,12 +631,24 @@ def _get_dask_array_delay_open(
         else:
             dt, inner_shape = dt.subdtype
 
+        partition_args = []
+        for ifile_path, iobject_path in files:
+            for istep in range(steps_per_file):
+                partition_args.append(
+                    (
+                        ifile_path,
+                        iobject_path,
+                        istep,
+                        steps_per_file,
+                    )
+                )
+
         dask_dict[key] = _dask_array_from_map(
             _UprootOpenAndReadNumpy(
                 custom_classes, allow_missing, real_options, key, interp_options
             ),
-            files,
-            chunks=((numpy.nan,) * len(files),),
+            partition_args,
+            chunks=((numpy.nan,) * len(files) * steps_per_file,),
             dtype=dt,
             label=f"{key}-from-uproot",
         )
@@ -689,14 +755,19 @@ class _UprootOpenAndRead:
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
 
-    def __call__(self, file_path_object_path):
-        file_path, object_path = file_path_object_path
+    def __call__(self, file_path_object_path_istep_nsteps):
+        file_path, object_path, istep, nsteps = file_path_object_path_istep_nsteps
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
             self.custom_classes,
             self.allow_missing,
             self.real_options,
+        )
+        num_entries = ttree.num_entries
+        events_per_step = math.ceil(num_entries / nsteps)
+        start, stop = (istep * events_per_step), min(
+            (istep + 1) * events_per_step, num_entries
         )
 
         if self.form_mapping is not None:
@@ -705,19 +776,22 @@ class _UprootOpenAndRead:
             actual_form = self.rendered_form.select_columns(self.common_keys)
 
             mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
-                ttree, 0, ttree.num_entries, self.interp_options
+                ttree, start, stop, self.interp_options
             )
 
             return awkward.from_buffers(
                 actual_form,
-                ttree.num_entries,
+                stop - start,
                 mapping,
                 buffer_key=buffer_key,
                 behavior=self.form_mapping.behavior,
             )
 
         return ttree.arrays(
-            self.common_keys, ak_add_doc=self.interp_options["ak_add_doc"]
+            self.common_keys,
+            entry_start=start,
+            entry_stop=stop,
+            ak_add_doc=self.interp_options["ak_add_doc"],
         )
 
     def project_columns(self, common_keys):
@@ -801,6 +875,7 @@ def _get_dak_array(
     real_options,
     interp_options,
     form_mapping,
+    steps_per_file,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -845,6 +920,15 @@ def _get_dak_array(
             else:
                 new_keys = set(new_keys)
                 common_keys = [key for key in common_keys if key in new_keys]
+
+    # this is the earliest time we can deal with an unset step_size
+    if step_size is unset:
+        assert steps_per_file is not unset  # either assigned or assumed to be 1
+        total_files = len(ttrees)
+        total_entries = sum(ttree.num_entries for ttree in ttrees)
+        step_size = max(
+            1, int(math.ceil(total_entries / (total_files * steps_per_file)))
+        )
 
     if count == 0:
         raise ValueError(
@@ -943,6 +1027,7 @@ def _get_dak_array_delay_open(
     real_options,
     interp_options,
     form_mapping,
+    steps_per_file,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -968,6 +1053,18 @@ def _get_dak_array_delay_open(
         interp_options.get("ak_add_doc"),
     )
 
+    partition_args = []
+    for ifile_path, iobject_path in files:
+        for istep in range(steps_per_file):
+            partition_args.append(
+                (
+                    ifile_path,
+                    iobject_path,
+                    istep,
+                    steps_per_file,
+                )
+            )
+
     return dask_awkward.from_map(
         _UprootOpenAndRead(
             custom_classes,
@@ -979,7 +1076,7 @@ def _get_dak_array_delay_open(
             form_mapping=form_mapping,
             rendered_form=None if form_mapping is None else form,
         ),
-        files,
+        partition_args,
         label="from-uproot",
         behavior=None if form_mapping is None else form_mapping.behavior,
         meta=meta,
