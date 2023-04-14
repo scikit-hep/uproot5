@@ -55,6 +55,9 @@ def dask(
         steps_per_file (int, default 1):
             Subdivide files into the specified number of chunks. Mutually incompatible
             with step_size: only set step_size or steps_per_file, not both.
+            If both ``step_size`` and ``steps_per_file`` are unset,
+            ``steps_per_file``'s default value of 1 (whole file per chunk) is used,
+            regardless of ``open_files``.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. If ``library='np'`` it returns a dict
             of dask arrays and if ``library='ak'`` it returns a single dask-awkward
