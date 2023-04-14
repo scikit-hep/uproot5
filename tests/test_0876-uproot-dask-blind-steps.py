@@ -1,6 +1,6 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
-import numpy 
+import numpy
 import pytest
 import skhep_testdata
 
@@ -22,12 +22,32 @@ def test_uproot_dask_steps(library, step_size, steps_per_file, open_files):
     arrays = ttree.arrays(library=library)
     if not isinstance(step_size, uproot._util._Unset) and not open_files:
         with pytest.raises(TypeError):
-            uproot.dask(test_path, library=library, step_size=step_size, steps_per_file=steps_per_file, open_files=open_files)
-    elif not isinstance(step_size, uproot._util._Unset) and not isinstance(steps_per_file, uproot._util._Unset):
+            uproot.dask(
+                test_path,
+                library=library,
+                step_size=step_size,
+                steps_per_file=steps_per_file,
+                open_files=open_files,
+            )
+    elif not isinstance(step_size, uproot._util._Unset) and not isinstance(
+        steps_per_file, uproot._util._Unset
+    ):
         with pytest.raises(TypeError):
-            uproot.dask(test_path, library=library, step_size=step_size, steps_per_file=steps_per_file, open_files=open_files)
+            uproot.dask(
+                test_path,
+                library=library,
+                step_size=step_size,
+                steps_per_file=steps_per_file,
+                open_files=open_files,
+            )
     else:
-        dask_arrays = uproot.dask(test_path, library=library, step_size=step_size, steps_per_file=steps_per_file, open_files=open_files)
+        dask_arrays = uproot.dask(
+            test_path,
+            library=library,
+            step_size=step_size,
+            steps_per_file=steps_per_file,
+            open_files=open_files,
+        )
 
         if library == "np":
             assert list(dask_arrays.keys()) == list(
@@ -39,7 +59,8 @@ def test_uproot_dask_steps(library, step_size, steps_per_file, open_files):
                 comp.append(numpy.array_equal(dask_arrays[key].compute(), arrays[key]))
             assert all(comp), f"Incorrect array at key {key}"
 
-        else: 
+        else:
             assert_eq(
-                dask_arrays[["px1", "px2", "py1", "py2"]], arrays[["px1", "px2", "py1", "py2"]]
+                dask_arrays[["px1", "px2", "py1", "py2"]],
+                arrays[["px1", "px2", "py1", "py2"]],
             )
