@@ -504,7 +504,7 @@ def _get_dask_array(
         assert steps_per_file is not unset  # either assigned or assumed to be 1
         total_files = len(ttrees)
         total_entries = sum(ttree.num_entries for ttree in ttrees)
-        step_size = min(1, int(math.ceil(total_entries / (total_files * steps_per_file))))
+        step_size = max(1, int(math.ceil(total_entries / (total_files * steps_per_file))))
 
     if count == 0:
         raise ValueError(
@@ -921,7 +921,7 @@ def _get_dak_array(
         assert steps_per_file is not unset  # either assigned or assumed to be 1
         total_files = len(ttrees)
         total_entries = sum(ttree.num_entries for ttree in ttrees)
-        step_size = min(1, int(math.ceil(total_entries / (total_files * steps_per_file))))
+        step_size = max(1, int(math.ceil(total_entries / (total_files * steps_per_file))))
 
     if count == 0:
         raise ValueError(
