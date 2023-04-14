@@ -154,13 +154,13 @@ def dask(
 
     if step_size is not unset and steps_per_file is not unset:
         raise TypeError(
-            f"only 'step_size' or 'steps_per_file' should be set, not both; got {step_size = }, {steps_per_file = }"
+            f"only 'step_size' or 'steps_per_file' should be set, not both; got step_size={step_size!r} and steps_per_file={steps_per_file!r}"
         )
     elif step_size is not unset:
         if not open_files:
             # the not open_files case FAILS if only step_size is supplied
             raise TypeError(
-                f"'step_size' should not be set when 'open_files' is False; got {step_size = }"
+                f"'step_size' should not be set when 'open_files' is False; got {step_size!r}"
             )
         else:
             # the open_files case uses step_size (only)
