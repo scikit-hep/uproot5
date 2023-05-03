@@ -553,7 +553,10 @@ class Model_TStreamerElement(uproot.model.Model):
 
         self._members["fTypeName"] = _canonical_typename(cursor.string(chunk, context))
 
-        if self._members["fType"] == 11 and self._members["fTypeName"] in ("Bool_t"):
+        if self._members["fType"] == 11 and self._members["fTypeName"] in {
+            "Bool_t",
+            "bool",
+        }:
             self._members["fType"] = 18
 
         if self._instance_version <= 2:
