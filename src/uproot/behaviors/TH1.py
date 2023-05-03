@@ -20,8 +20,8 @@ def _boost_axis(axis, metadata):
     fNbins = axis.member("fNbins")
     fXbins = axis.member("fXbins", none_if_missing=True)
 
-    if axis.member("fLabels") is not None:
-        fLabels = axis.member("fLabels")
+    fLabels = axis.member("fLabels", none_if_missing=True)
+    if fLabels is not None:
         try:
             labels = [int(x) for x in fLabels]
             category_cls = boost_histogram.axis.IntCategory
