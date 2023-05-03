@@ -3237,7 +3237,7 @@ class _WrapDict(MutableMapping):
     def __delitem__(self, where):
         del self.dict[where]
 
-    def __iter__(self, where):
+    def __iter__(self):
         yield from self.dict
 
     def __len__(self):
