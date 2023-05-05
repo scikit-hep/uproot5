@@ -2490,7 +2490,7 @@ in file {}""".format(
 
     {}
 
-instead, try library="np" instead of library="ak" or globally set uproot.default_library
+instead, try library="np" rather than library="ak" or globally set uproot.default_library
 
 in file {}
 in object {}""".format(
