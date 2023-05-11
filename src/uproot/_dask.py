@@ -24,6 +24,8 @@ def dask(
     allow_missing=False,
     open_files=True,
     form_mapping=None,
+    entry_start=None,
+    entry_stop=None,
     **options,
 ):
     """
@@ -77,6 +79,8 @@ def dask(
         form_mapping (Callable[awkward.forms.Form] -> awkward.forms.Form | None): If not none
             and library="ak" then apply this remapping function to the awkward form of the input
             data. The form keys of the desired form should be available data in the input form.
+        entry_start (int | None): If not None then start from this entry in the file.
+        entry_stop  (int | None): If not None then stop at this entry in the file.
         options: See below.
 
     Returns dask equivalents of the backends supported by uproot. If ``library='np'``,
@@ -151,6 +155,12 @@ def dask(
 
     files = uproot._util.regularize_files(files)
     library = uproot.interpretation.library._regularize_library(library)
+
+    if entry_start is not None and entry_start < 0:
+        entry_start = None
+
+    if entry_stop is not None and entry_stop < 0:
+        entry_stop = None
 
     if step_size is not unset and steps_per_file is not unset:
         raise TypeError(
@@ -249,6 +259,8 @@ def dask(
                 interp_options,
                 form_mapping,
                 steps_per_file,
+                entry_start,
+                entry_stop,
             )
     else:
         raise NotImplementedError()
@@ -755,8 +767,15 @@ class _UprootOpenAndRead:
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
 
-    def __call__(self, file_path_object_path_istep_nsteps):
-        file_path, object_path, istep, nsteps = file_path_object_path_istep_nsteps
+    def __call__(self, file_path_object_path_istep_nsteps_start_stop):
+        (
+            file_path,
+            object_path,
+            istep,
+            nsteps,
+            entry_start,
+            entry_stop,
+        ) = file_path_object_path_istep_nsteps_start_stop
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
@@ -765,10 +784,20 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         num_entries = ttree.num_entries
-        events_per_step = math.ceil(num_entries / nsteps)
+        entry_span = num_entries
+        if entry_stop is not None and entry_start is not None:
+            entry_span = min(num_entries, entry_stop - entry_start)
+        elif entry_start is not None:
+            entry_span = 0 if entry_start > num_entries else num_entries - entry_start
+        elif entry_stop is not None:
+            entry_span = min(num_entries, entry_stop)
+        events_per_step = math.ceil(entry_span / nsteps)
         start, stop = (istep * events_per_step), min(
-            (istep + 1) * events_per_step, num_entries
+            (istep + 1) * events_per_step, entry_span
         )
+        if entry_start is not None:
+            start += entry_start
+            stop = min(num_entries, stop + entry_start)
 
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
@@ -1028,6 +1057,8 @@ def _get_dak_array_delay_open(
     interp_options,
     form_mapping,
     steps_per_file,
+    entry_start,
+    entry_stop,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1062,6 +1093,8 @@ def _get_dak_array_delay_open(
                     iobject_path,
                     istep,
                     steps_per_file,
+                    entry_start,
+                    entry_stop,
                 )
             )
 
