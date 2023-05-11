@@ -884,8 +884,9 @@ def _get_meta_array(
     if form_mapping is not None:
         form = form_mapping(form)
 
-    empty_arr = form.length_zero_array(
-        behavior=None if form_mapping is None else form_mapping.behavior
+    empty_arr = awkward.Array(
+        form.length_zero_array(highlevel=False),
+        behavior=None if form_mapping is None else form_mapping.behavior,
     )
 
     return dask_awkward.core.typetracer_array(empty_arr), form
