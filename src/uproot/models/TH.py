@@ -338,6 +338,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -814,6 +815,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -1119,6 +1121,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -1328,6 +1331,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -1517,6 +1521,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -1679,6 +1684,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -1836,6 +1842,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -1993,6 +2000,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -2155,6 +2163,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -2317,6 +2326,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -2480,6 +2490,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -2638,6 +2649,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -2801,6 +2813,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -2964,6 +2977,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -3127,6 +3141,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -3291,6 +3306,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -3450,6 +3466,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -3614,6 +3631,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -3778,6 +3796,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -3978,6 +3997,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -4217,6 +4237,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
@@ -4458,6 +4479,7 @@ in file {}""".format(
             raise uproot.interpretation.objects.CannotBeAwkward(
                 "classes that can contain members of the same type cannot be Awkward Arrays because the depth of instances is unbounded"
             )
+        context = context.copy()
         context["breadcrumbs"] = context["breadcrumbs"] + (cls,)
         contents = {}
         if context["header"]:
