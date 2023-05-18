@@ -122,6 +122,10 @@ def dask(
       Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
     * dict: keys are filesystem paths, values are objects-within-ROOT paths.
       Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
+    * dict: keys are filesystem paths, values are dicts containing objects-within-ROOT
+      and chunks as a list of starts and stops or chunks as a list of offsets
+      Example: ``{{"/data_v1/tree1.root": {"objectpath": "ttree_v1", "chunks": [[0, 10000], [15000, 20000], ...]},
+                   "/data_v1/tree2.root": {"objectpath": "ttree_v1", "chunks": [0, 10000, 20000, ...]}}}``
     * already-open TTree objects.
     * iterables of the above.
 
@@ -149,7 +153,8 @@ def dask(
       array from ``TTrees``.
     """
 
-    files = uproot._util.regularize_files(files)
+    files = uproot._util.regularize_files(files, chunks_allowed=True)
+
     library = uproot.interpretation.library._regularize_library(library)
 
     if step_size is not unset and steps_per_file is not unset:
@@ -755,8 +760,14 @@ class _UprootOpenAndRead:
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
 
-    def __call__(self, file_path_object_path_istep_nsteps):
-        file_path, object_path, istep, nsteps = file_path_object_path_istep_nsteps
+    def __call__(self, file_path_object_path_istep_nsteps_ischunk):
+        (
+            file_path,
+            object_path,
+            istep_or_start,
+            nsteps_or_stop,
+            ischunk,
+        ) = file_path_object_path_istep_nsteps_ischunk
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
@@ -765,10 +776,12 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         num_entries = ttree.num_entries
-        events_per_step = math.ceil(num_entries / nsteps)
-        start, stop = (istep * events_per_step), min(
-            (istep + 1) * events_per_step, num_entries
-        )
+        start, stop = istep_or_start, nsteps_or_stop
+        if not ischunk:
+            events_per_step = math.ceil(num_entries / nsteps_or_stop)
+            start, stop = (istep_or_start * events_per_step), min(
+                (istep_or_start + 1) * events_per_step, num_entries
+            )
 
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
@@ -886,7 +899,11 @@ def _get_dak_array(
     is_self = []
 
     count = 0
-    for file_path, object_path in files:
+    for file_object_maybechunks in files:
+        file_path, object_path = file_object_maybechunks[0:2]
+        if len(file_object_maybechunks) == 3:
+            file_object_maybechunks[2]
+
         obj = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, real_options
         )
@@ -1033,7 +1050,8 @@ def _get_dak_array_delay_open(
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
 
-    ffile_path, fobject_path = files[0]
+    ffile_path, fobject_path = files[0][0:2]
+
     obj = uproot._util.regularize_object_path(
         ffile_path, fobject_path, custom_classes, allow_missing, real_options
     )
@@ -1055,16 +1073,34 @@ def _get_dak_array_delay_open(
     )
 
     partition_args = []
-    for ifile_path, iobject_path in files:
-        for istep in range(steps_per_file):
-            partition_args.append(
-                (
-                    ifile_path,
-                    iobject_path,
-                    istep,
-                    steps_per_file,
+    for ifile_iobject_maybeichunks in files:
+        chunks = None
+        ifile_path, iobject_path = ifile_iobject_maybeichunks[0:2]
+        if len(ifile_iobject_maybeichunks) == 3:
+            chunks = ifile_iobject_maybeichunks[2]
+
+        if chunks is not None:
+            for start, stop in chunks:
+                partition_args.append(
+                    (
+                        ifile_path,
+                        iobject_path,
+                        start,
+                        stop,
+                        True,
+                    )
                 )
-            )
+        else:
+            for istep in range(steps_per_file):
+                partition_args.append(
+                    (
+                        ifile_path,
+                        iobject_path,
+                        istep,
+                        steps_per_file,
+                        False,
+                    )
+                )
 
     return dask_awkward.from_map(
         _UprootOpenAndRead(

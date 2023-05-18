@@ -38,3 +38,24 @@ def test_multiple_delay_open():
         == true_val["px1"]
     )
     assert arr.all()
+
+
+def test_supplied_chunks():
+    filename1 = skhep_testdata.data_path("uproot-Zmumu.root")
+    filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
+    true_val = uproot.concatenate([filename1 + ":events", filename2 + ":events"])
+
+    chunks1 = [0, 2305]
+    chunks2 = [[0, 2305]]
+
+    files = {
+        filename1: {"object_path": "events", "chunks": chunks1},
+        filename2: {"object_path": "events", "chunks": chunks2},
+    }
+
+    assert uproot.dask(files, open_files=False)["px1"].divisions == (None, None, None)
+    arr = (
+        uproot.dask([filename1, filename2], open_files=False)["px1"].compute()
+        == true_val["px1"]
+    )
+    assert arr.to_numpy().all()

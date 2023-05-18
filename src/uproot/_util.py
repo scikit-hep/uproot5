@@ -808,8 +808,30 @@ _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
 _regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
 
 
-def _regularize_files_inner(files, parse_colon, counter, HasBranches):
+def regularize_chunks(chunks):
+    if not isinstance(chunks, (list, set)):
+        raise TypeError("The specification of chunks should be a list or a set.")
+
+    out = chunks
+    if isinstance(chunks, set):
+        out = list(chunks)
+    out = numpy.array(chunks)
+
+    if len(out.shape) > 2 or out.dtype not in [numpy.int64, numpy.int32]:
+        raise ValueError(
+            "chunks should be specified as a list of integer offsets or a list of pairs of integer starts and stops."
+        )
+
+    if len(out.shape) == 1:
+        out = numpy.stack((out[:-1], out[1:]), axis=1)
+
+    return out
+
+
+def _regularize_files_inner(files, parse_colon, counter, HasBranches, chunks_allowed):
     files2 = regularize_path(files)
+
+    maybe_chunks = None
 
     if isstr(files2) and not isstr(files):
         parse_colon = False
@@ -824,12 +846,12 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches):
         parsed_url = urlparse(file_path)
 
         if parsed_url.scheme.upper() in _remote_schemes:
-            yield file_path, object_path
+            yield file_path, object_path, maybe_chunks
 
         else:
             expanded = os.path.expanduser(file_path)
             if _regularize_files_isglob.search(expanded) is None:
-                yield file_path, object_path
+                yield file_path, object_path, maybe_chunks
 
             else:
                 matches = list(_regularize_files_braces.finditer(expanded))
@@ -849,26 +871,43 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches):
                 for result in results:
                     for match in glob.glob(result):
                         if match not in seen:
-                            yield match, object_path
+                            yield match, object_path, maybe_chunks
                             seen.add(match)
 
     elif isinstance(files, HasBranches):
-        yield files, None
+        yield files, None, maybe_chunks
 
     elif isinstance(files, dict):
-        for key, object_path in files.items():
-            for file_path, _ in _regularize_files_inner(
-                key, False, counter, HasBranches
+        for key, maybe_object_path in files.items():
+            if not isinstance(maybe_object_path, (type(None), str, dict)):
+                raise TypeError("object_path may only be a string, dict, or None")
+            if isinstance(maybe_object_path, dict):
+                maybe_chunks = maybe_object_path.get("chunks", None)
+                object_path = maybe_object_path.get("object_path", None)
+                if maybe_chunks is not None:
+                    if not chunks_allowed:
+                        raise NotImplementedError(
+                            "chunking is not allowed for this uproot entrypoint!"
+                        )
+                    maybe_chunks = regularize_chunks(maybe_chunks)
+            else:
+                object_path = maybe_object_path
+            for file_path, _, _ in _regularize_files_inner(
+                key,
+                False,
+                counter,
+                HasBranches,
+                chunks_allowed,
             ):
-                yield file_path, object_path
+                yield file_path, object_path, maybe_chunks
 
     elif isinstance(files, Iterable):
         for file in files:
             counter[0] += 1
-            for file_path, object_path in _regularize_files_inner(
-                file, parse_colon, counter, HasBranches
+            for file_path, object_path, maybe_chunks in _regularize_files_inner(
+                file, parse_colon, counter, HasBranches, chunks_allowed
             ):
-                yield file_path, object_path
+                yield file_path, object_path, maybe_chunks
 
     else:
         raise TypeError(
@@ -879,7 +918,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches):
         )
 
 
-def regularize_files(files):
+def regularize_files(files, chunks_allowed=False):
     """
     Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
     """
@@ -888,16 +927,21 @@ def regularize_files(files):
     out = []
     seen = set()
     counter = [0]
-    for file_path, object_path in _regularize_files_inner(
-        files, True, counter, HasBranches
+    for file_path, object_path, maybe_chunks in _regularize_files_inner(
+        files, True, counter, HasBranches, chunks_allowed
     ):
         if isstr(file_path):
             key = (counter[0], file_path, object_path)
             if key not in seen:
                 out.append((file_path, object_path))
+                if maybe_chunks is not None:
+                    out[-1] = (*out[-1], maybe_chunks)
+
                 seen.add(key)
         else:
             out.append((file_path, object_path))
+            if maybe_chunks is not None:
+                out[-1] = (*out[-1], maybe_chunks)
 
     if len(out) == 0:
         raise _file_not_found(files)
