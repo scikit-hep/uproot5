@@ -707,7 +707,7 @@ class _UprootRead:
             (
                 new_meta_labelled,
                 report,
-            ) = awkward._nplikes.typetracer.typetracer_with_report(self.rendered_form)
+            ) = awkward.typetracer.typetracer_with_report(self.rendered_form)
             tt = awkward.Array(new_meta_labelled)
 
             if common_keys is not None:
@@ -802,7 +802,7 @@ class _UprootOpenAndRead:
             (
                 new_meta_labelled,
                 report,
-            ) = awkward._nplikes.typetracer.typetracer_with_report(self.rendered_form)
+            ) = awkward.typetracer.typetracer_with_report(self.rendered_form)
             tt = awkward.Array(new_meta_labelled)
 
             if common_keys is not None:
