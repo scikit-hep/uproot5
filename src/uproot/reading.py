@@ -1484,7 +1484,7 @@ class ReadOnlyDirectory(Mapping):
         See :ref:`uproot.reading.ReadOnlyDirectory.path` for the path as a
         tuple of strings.
         """
-        return "/".join(("", *self._path) + ("",)).replace("//", "/")
+        return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
     def file_path(self):

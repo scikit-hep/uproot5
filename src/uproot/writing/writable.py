@@ -534,7 +534,7 @@ class WritableDirectory(MutableMapping):
         Path of directory names to this subdirectory as a single string, delimited
         by slashes.
         """
-        return "/".join(("", *self._path) + ("",)).replace("//", "/")
+        return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
     def file_path(self):
@@ -1651,7 +1651,7 @@ class WritableTree:
         Path of directory names to this TTree as a single string, delimited by
         slashes.
         """
-        return "/".join(("", *self._path) + ("",)).replace("//", "/")
+        return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
     def file_path(self):
@@ -1994,7 +1994,7 @@ class WritableNTuple:
         Path of directory names to this RNTuple as a single string, delimited by
         slashes.
         """
-        return "/".join(("", *self._path) + ("",)).replace("//", "/")
+        return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
     def file_path(self):

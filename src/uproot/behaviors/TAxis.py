@@ -183,7 +183,7 @@ class TAxis:
         if fLabels is not None and len(fLabels) == fNbins:
             out = [str(x) for x in fLabels]
             if flow:
-                return ["underflow", *out] + ["overflow"]
+                return ["underflow", *out, "overflow"]
             else:
                 return out
         else:
