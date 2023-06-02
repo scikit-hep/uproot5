@@ -983,7 +983,36 @@ class Tree:
             leaf_title_length = (1 if len(leaf_title) < 255 else 5) + len(leaf_title)
 
             leaf_header = numpy.array(
-                [64, 0, 0, 76, 0, 1, 64, 0, 0, 54, 0, 2, 64, 0, 0, 30, 0, 1, 0, 1, 0, 0, 0, 0, 3, 0, 0, 0],
+                [
+                    64,
+                    0,
+                    0,
+                    76,
+                    0,
+                    1,
+                    64,
+                    0,
+                    0,
+                    54,
+                    0,
+                    2,
+                    64,
+                    0,
+                    0,
+                    30,
+                    0,
+                    1,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    3,
+                    0,
+                    0,
+                    0,
+                ],
                 numpy.uint8,
             )
             tmp = leaf_header[0:4].view(">u4")
