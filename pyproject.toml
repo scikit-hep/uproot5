@@ -64,7 +64,6 @@ test = [
     "requests",
     "scikit-hep-testdata",
     "xxhash",
-    "awkward>=2",
 ]
 
 [project.urls]
