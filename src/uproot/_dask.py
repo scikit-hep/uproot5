@@ -124,8 +124,8 @@ def dask(
       Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
     * dict: keys are filesystem paths, values are dicts containing objects-within-ROOT
       and chunks as a list of starts and stops or chunks as a list of offsets
-      Example: ``{{"/data_v1/tree1.root": {"objectpath": "ttree_v1", "chunks": [[0, 10000], [15000, 20000], ...]},
-                   "/data_v1/tree2.root": {"objectpath": "ttree_v1", "chunks": [0, 10000, 20000, ...]}}}``
+      Example: ``{{"/data_v1/tree1.root": {"object_path": "ttree_v1", "chunks": [[0, 10000], [15000, 20000], ...]},
+                   "/data_v1/tree2.root": {"object_path": "ttree_v1", "chunks": [0, 10000, 20000, ...]}}}``
     * already-open TTree objects.
     * iterables of the above.
 
