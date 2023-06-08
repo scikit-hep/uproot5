@@ -956,6 +956,7 @@ def _get_dak_array(
     awkward = uproot.extras.awkward()
 
     ttrees = []
+    explicit_chunks = []
     common_keys = None
     is_self = []
 
@@ -983,6 +984,10 @@ def _get_dak_array(
                 real_filter_branch = filter_branch
 
             ttrees.append(obj)
+            if len(file_object_maybechunks) == 3:
+                explicit_chunks.append(file_object_maybechunks[2])
+            else:
+                explicit_chunks = None  # they all have it or none of them have it
 
             new_keys = obj.keys(
                 recursive=recursive,
@@ -1058,9 +1063,20 @@ def _get_dak_array(
         entry_start = 0
         entry_stop = ttree.num_entries
 
-        for start in range(entry_start, entry_stop, entry_step):
-            stop = min(start + entry_step, entry_stop)
-            partition_args.append((i, start, stop))
+        if explicit_chunks is None:
+            for start in range(entry_start, entry_stop, entry_step):
+                stop = min(start + entry_step, entry_stop)
+                length = stop - start
+                if length > 0:
+                    partition_args.append((i, start, stop))
+        else:
+            for explicit_start, explicit_stop in explicit_chunks[i]:
+                # clip to the end of the TTree
+                start = min(explicit_start, entry_stop)
+                stop = min(explicit_stop, entry_stop)
+                length = stop - start
+                if length > 0:
+                    partition_args.append((i, start, stop))
 
     meta, form = _get_meta_array(
         awkward,
@@ -1073,6 +1089,7 @@ def _get_dak_array(
 
     if len(partition_args) == 0:
         partition_args.append((0, 0, 0))
+
     return dask_awkward.from_map(
         _UprootRead(
             ttrees,
