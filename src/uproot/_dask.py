@@ -126,6 +126,7 @@ def dask(
       and chunks as a list of starts and stops or chunks as a list of offsets
       Example: ``{{"/data_v1/tree1.root": {"object_path": "ttree_v1", "chunks": [[0, 10000], [15000, 20000], ...]},
                    "/data_v1/tree2.root": {"object_path": "ttree_v1", "chunks": [0, 10000, 20000, ...]}}}``
+      (This ``files`` pattern is incompatible with ``step_size`` and ``steps_per_file``.)
     * already-open TTree objects.
     * iterables of the above.
 
@@ -154,6 +155,21 @@ def dask(
     """
 
     files = uproot._util.regularize_files(files, chunks_allowed=True)
+
+    is_3arg = [len(x) == 3 for x in files]
+    if any(is_3arg):
+        if not all(is_3arg):
+            raise TypeError(
+                "partition sizes for some but not all 'files' have been assigned"
+            )
+        if step_size is not unset:
+            raise TypeError(
+                "partition sizes for 'files' is incompatible with 'step_size'"
+            )
+        if steps_per_file is not unset:
+            raise TypeError(
+                "partition sizes for 'files' is incompatible with 'steps_per_file'"
+            )
 
     library = uproot.interpretation.library._regularize_library(library)
 
