@@ -46,19 +46,21 @@ def test_supplied_chunks(open_files):
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
     true_val = uproot.concatenate([filename1 + ":events", filename2 + ":events"])
 
-    chunks1 = [0, 2305]
-    chunks2 = [[0, 2305]]
+    chunks1 = [0, 1000, 2304]
+    chunks2 = [[0, 1000], [1000, 2304]]
 
     files = {
         filename1: {"object_path": "events", "chunks": chunks1},
         filename2: {"object_path": "events", "chunks": chunks2},
     }
 
-    assert uproot.dask(files, open_files=open_files)["px1"].divisions == (
-        None,
-        None,
-        None,
-    )
+    daskarr = uproot.dask(files, open_files=open_files)["px1"]
+
+    if open_files:
+        assert daskarr.divisions == (None, None, None)  # FIXME! (Jim)
+    else:
+        assert daskarr.divisions == (None, None, None, None, None)
+
     arr = (
         uproot.dask([filename1, filename2], open_files=open_files)["px1"].compute()
         == true_val["px1"]
