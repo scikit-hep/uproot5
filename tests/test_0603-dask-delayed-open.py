@@ -44,7 +44,9 @@ def test_multiple_delay_open():
 def test_supplied_chunks(open_files):
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root")
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
-    true_val = uproot.concatenate([filename1 + ":events", filename2 + ":events"])
+    true_val = uproot.concatenate(
+        [filename1 + ":events", filename2 + ":events"], "px1"
+    )["px1"]
 
     chunks1 = [0, 1000, 2304]
     chunks2 = [[0, 1000], [1000, 2304]]
@@ -61,8 +63,4 @@ def test_supplied_chunks(open_files):
     else:
         assert daskarr.divisions == (None, None, None, None, None)
 
-    arr = (
-        uproot.dask([filename1, filename2], open_files=open_files)["px1"].compute()
-        == true_val["px1"]
-    )
-    assert arr.to_numpy().all()
+    assert numpy.all(daskarr.compute() == true_val)
