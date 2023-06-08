@@ -809,21 +809,32 @@ _regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
 
 
 def regularize_steps(steps):
-    if not isinstance(steps, (list, set)):
-        raise TypeError("The specification of steps should be a list or a set.")
-
-    out = steps
-    if isinstance(steps, set):
-        out = list(steps)
     out = numpy.array(steps)
 
-    if len(out.shape) > 2 or out.dtype not in [numpy.int64, numpy.int32]:
-        raise ValueError(
-            "steps should be specified as a list of integer offsets or a list of pairs of integer starts and stops."
+    if isinstance(steps, dict) or not issubclass(out.dtype.type, numpy.integer):
+        raise TypeError(
+            "'files' argument's steps must be an iterable of integer offsets or start-stop pairs."
         )
 
     if len(out.shape) == 1:
-        out = numpy.stack((out[:-1], out[1:]), axis=1)
+        if len(out) == 0 or not numpy.all(out[1:] >= out[:-1]):
+            raise ValueError(
+                "if 'files' argument's steps are (one-dimensional) offsets, they must be non-empty and monotonically increasing"
+            )
+
+    elif len(out.shape) == 2:
+        if not all(out[:, 1] >= out[:, 0]):
+            raise ValueError(
+                "if 'files' argument's steps are (two-dimensional) start-stop pairs, all stops must be greater than or equal to their corresponding starts"
+            )
+
+    else:
+        raise TypeError(
+            "'files' argument's steps must be an iterable of integer offsets or a list of pairs of integer starts and stops."
+        )
+
+    if len(out.shape) == 1:
+        out = numpy.stack((out[:-1], out[1:]), axis=1).tolist()
 
     return out
 
