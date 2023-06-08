@@ -808,18 +808,18 @@ _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
 _regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
 
 
-def regularize_chunks(chunks):
-    if not isinstance(chunks, (list, set)):
-        raise TypeError("The specification of chunks should be a list or a set.")
+def regularize_steps(steps):
+    if not isinstance(steps, (list, set)):
+        raise TypeError("The specification of steps should be a list or a set.")
 
-    out = chunks
-    if isinstance(chunks, set):
-        out = list(chunks)
-    out = numpy.array(chunks)
+    out = steps
+    if isinstance(steps, set):
+        out = list(steps)
+    out = numpy.array(steps)
 
     if len(out.shape) > 2 or out.dtype not in [numpy.int64, numpy.int32]:
         raise ValueError(
-            "chunks should be specified as a list of integer offsets or a list of pairs of integer starts and stops."
+            "steps should be specified as a list of integer offsets or a list of pairs of integer starts and stops."
         )
 
     if len(out.shape) == 1:
@@ -828,10 +828,10 @@ def regularize_chunks(chunks):
     return out
 
 
-def _regularize_files_inner(files, parse_colon, counter, HasBranches, chunks_allowed):
+def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allowed):
     files2 = regularize_path(files)
 
-    maybe_chunks = None
+    maybe_steps = None
 
     if isstr(files2) and not isstr(files):
         parse_colon = False
@@ -846,12 +846,12 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, chunks_all
         parsed_url = urlparse(file_path)
 
         if parsed_url.scheme.upper() in _remote_schemes:
-            yield file_path, object_path, maybe_chunks
+            yield file_path, object_path, maybe_steps
 
         else:
             expanded = os.path.expanduser(file_path)
             if _regularize_files_isglob.search(expanded) is None:
-                yield file_path, object_path, maybe_chunks
+                yield file_path, object_path, maybe_steps
 
             else:
                 matches = list(_regularize_files_braces.finditer(expanded))
@@ -871,25 +871,25 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, chunks_all
                 for result in results:
                     for match in glob.glob(result):
                         if match not in seen:
-                            yield match, object_path, maybe_chunks
+                            yield match, object_path, maybe_steps
                             seen.add(match)
 
     elif isinstance(files, HasBranches):
-        yield files, None, maybe_chunks
+        yield files, None, maybe_steps
 
     elif isinstance(files, dict):
         for key, maybe_object_path in files.items():
             if not isinstance(maybe_object_path, (type(None), str, dict)):
                 raise TypeError("object_path may only be a string, dict, or None")
             if isinstance(maybe_object_path, dict):
-                maybe_chunks = maybe_object_path.get("chunks", None)
+                maybe_steps = maybe_object_path.get("steps", None)
                 object_path = maybe_object_path.get("object_path", None)
-                if maybe_chunks is not None:
-                    if not chunks_allowed:
-                        raise NotImplementedError(
-                            "chunking is not allowed for this uproot entrypoint!"
+                if maybe_steps is not None:
+                    if not steps_allowed:
+                        raise TypeError(
+                            "unrecognized 'files' pattern for this function ('steps' are only allowed in uproot.dask)"
                         )
-                    maybe_chunks = regularize_chunks(maybe_chunks)
+                    maybe_steps = regularize_steps(maybe_steps)
             else:
                 object_path = maybe_object_path
             for file_path, _, _ in _regularize_files_inner(
@@ -897,17 +897,17 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, chunks_all
                 False,
                 counter,
                 HasBranches,
-                chunks_allowed,
+                steps_allowed,
             ):
-                yield file_path, object_path, maybe_chunks
+                yield file_path, object_path, maybe_steps
 
     elif isinstance(files, Iterable):
         for file in files:
             counter[0] += 1
-            for file_path, object_path, maybe_chunks in _regularize_files_inner(
-                file, parse_colon, counter, HasBranches, chunks_allowed
+            for file_path, object_path, maybe_steps in _regularize_files_inner(
+                file, parse_colon, counter, HasBranches, steps_allowed
             ):
-                yield file_path, object_path, maybe_chunks
+                yield file_path, object_path, maybe_steps
 
     else:
         raise TypeError(
@@ -918,7 +918,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, chunks_all
         )
 
 
-def regularize_files(files, chunks_allowed):
+def regularize_files(files, steps_allowed):
     """
     Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
     """
@@ -927,21 +927,21 @@ def regularize_files(files, chunks_allowed):
     out = []
     seen = set()
     counter = [0]
-    for file_path, object_path, maybe_chunks in _regularize_files_inner(
-        files, True, counter, HasBranches, chunks_allowed
+    for file_path, object_path, maybe_steps in _regularize_files_inner(
+        files, True, counter, HasBranches, steps_allowed
     ):
         if isstr(file_path):
             key = (counter[0], file_path, object_path)
             if key not in seen:
                 out.append((file_path, object_path))
-                if maybe_chunks is not None:
-                    out[-1] = (*out[-1], maybe_chunks)
+                if maybe_steps is not None:
+                    out[-1] = (*out[-1], maybe_steps)
 
                 seen.add(key)
         else:
             out.append((file_path, object_path))
-            if maybe_chunks is not None:
-                out[-1] = (*out[-1], maybe_chunks)
+            if maybe_steps is not None:
+                out[-1] = (*out[-1], maybe_steps)
 
     if len(out) == 0:
         raise _file_not_found(files)

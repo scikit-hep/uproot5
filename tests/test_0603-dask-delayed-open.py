@@ -42,7 +42,7 @@ def test_multiple_delay_open():
 
 @pytest.mark.parametrize("open_files", [False, True])
 @pytest.mark.parametrize("library", ["np", "ak"])
-def test_supplied_chunks(open_files, library):
+def test_supplied_steps(open_files, library):
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root")
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
     true_val = uproot.concatenate(
@@ -65,11 +65,11 @@ def test_supplied_chunks(open_files, library):
 
     assert daskarr.compute().tolist() == true_val.tolist()
 
-    chunks1 = [0, 1000, 2304]
-    chunks2 = [[0, 1200], [1200, 2304]]
+    steps1 = [0, 1000, 2304]
+    steps2 = [[0, 1200], [1200, 2304]]
     files = {
-        filename1: {"object_path": "events", "chunks": chunks1},
-        filename2: {"object_path": "events", "chunks": chunks2},
+        filename1: {"object_path": "events", "steps": steps1},
+        filename2: {"object_path": "events", "steps": steps2},
     }
     daskarr = uproot.dask(files, open_files=open_files, library=library)["px1"]
 

@@ -47,16 +47,16 @@ def dask(
             with slashes (``/``); otherwise, use the descendant's name as
             the field name.
         step_size (int or str): If an integer, the maximum number of entries to
-            include in each chunk; if a string, the maximum memory_size to include
-            in each chunk. The string must be a number followed by a memory unit,
+            include in each chunk/partition; if a string, the maximum memory_size to include
+            in each chunk/partition. The string must be a number followed by a memory unit,
             such as "100 MB". Mutually incompatible with steps_per_file: only set
             step_size or steps_per_file, not both. Cannot be used with
             ``open_files=False``.
         steps_per_file (int, default 1):
-            Subdivide files into the specified number of chunks. Mutually incompatible
+            Subdivide files into the specified number of chunks/partitions. Mutually incompatible
             with step_size: only set step_size or steps_per_file, not both.
             If both ``step_size`` and ``steps_per_file`` are unset,
-            ``steps_per_file``'s default value of 1 (whole file per chunk) is used,
+            ``steps_per_file``'s default value of 1 (whole file per chunk/partition) is used,
             regardless of ``open_files``.
         library (str or :doc:`uproot.interpretation.library.Library`): The library
             that is used to represent arrays. If ``library='np'`` it returns a dict
@@ -122,10 +122,10 @@ def dask(
       Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
     * dict: keys are filesystem paths, values are objects-within-ROOT paths.
       Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
-    * dict: keys are filesystem paths, values are dicts containing objects-within-ROOT
-      and chunks as a list of starts and stops or chunks as a list of offsets
-      Example: ``{{"/data_v1/tree1.root": {"object_path": "ttree_v1", "chunks": [[0, 10000], [15000, 20000], ...]},
-                   "/data_v1/tree2.root": {"object_path": "ttree_v1", "chunks": [0, 10000, 20000, ...]}}}``
+    * dict: keys are filesystem paths, values are dicts containing objects-within-ROOT and
+      steps (chunks/partitions) as a list of starts and stops or steps as a list of offsets
+      Example: ``{{"/data_v1/tree1.root": {"object_path": "ttree_v1", "steps": [[0, 10000], [15000, 20000], ...]},
+                   "/data_v1/tree2.root": {"object_path": "ttree_v1", "steps": [0, 10000, 20000, ...]}}}``
       (This ``files`` pattern is incompatible with ``step_size`` and ``steps_per_file``.)
     * already-open TTree objects.
     * iterables of the above.
@@ -154,7 +154,7 @@ def dask(
       array from ``TTrees``.
     """
 
-    files = uproot._util.regularize_files(files, chunks_allowed=True)
+    files = uproot._util.regularize_files(files, steps_allowed=True)
 
     is_3arg = [len(x) == 3 for x in files]
     if any(is_3arg):
