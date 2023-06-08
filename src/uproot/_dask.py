@@ -445,8 +445,14 @@ class _UprootOpenAndReadNumpy:
         self.key = key
         self.interp_options = interp_options
 
-    def __call__(self, file_path_object_path_istep_nsteps):
-        file_path, object_path, istep, nsteps = file_path_object_path_istep_nsteps
+    def __call__(self, file_path_object_path_istep_nsteps_ischunk):
+        (
+            file_path,
+            object_path,
+            istep_or_start,
+            nsteps_or_stop,
+            ischunk,
+        ) = file_path_object_path_istep_nsteps_ischunk
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
@@ -455,10 +461,12 @@ class _UprootOpenAndReadNumpy:
             self.real_options,
         )
         num_entries = ttree.num_entries
-        events_per_steps = math.ceil(num_entries / nsteps)
-        start, stop = (istep * events_per_steps), min(
-            (istep + 1) * events_per_steps, num_entries
-        )
+        start, stop = istep_or_start, nsteps_or_stop
+        if not ischunk:
+            events_per_steps = math.ceil(num_entries / nsteps_or_stop)
+            start, stop = (istep_or_start * events_per_steps), min(
+                (istep_or_start + 1) * events_per_steps, num_entries
+            )
 
         return ttree[self.key].array(
             library="np",
@@ -654,28 +662,46 @@ def _get_dask_array_delay_open(
         else:
             dt, inner_shape = dt.subdtype
 
+        partitions = []
         partition_args = []
         for ifile_iobject_maybeichunks in files:
             ifile_path, iobject_path = ifile_iobject_maybeichunks[0:2]
-            if len(ifile_iobject_maybeichunks) == 3:
-                ifile_iobject_maybeichunks[2]
 
-            for istep in range(steps_per_file):
-                partition_args.append(
-                    (
-                        ifile_path,
-                        iobject_path,
-                        istep,
-                        steps_per_file,
+            chunks = None
+            if len(ifile_iobject_maybeichunks) == 3:
+                chunks = ifile_iobject_maybeichunks[2]
+
+            if chunks is not None:
+                partitions.extend([stop - start for start, stop in chunks])
+                for start, stop in chunks:
+                    partition_args.append(
+                        (
+                            ifile_path,
+                            iobject_path,
+                            start,
+                            stop,
+                            True,
+                        )
                     )
-                )
+            else:
+                partitions.extend([numpy.nan] * steps_per_file)
+                for istep in range(steps_per_file):
+                    partition_args.append(
+                        (
+                            ifile_path,
+                            iobject_path,
+                            istep,
+                            steps_per_file,
+                            False,
+                        )
+                    )
 
         dask_dict[key] = _dask_array_from_map(
             _UprootOpenAndReadNumpy(
                 custom_classes, allow_missing, real_options, key, interp_options
             ),
             partition_args,
-            chunks=((numpy.nan,) * len(files) * steps_per_file,),
+            chunks=(tuple(partitions),),
             dtype=dt,
             label=f"{key}-from-uproot",
         )
