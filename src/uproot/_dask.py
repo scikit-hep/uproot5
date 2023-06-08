@@ -487,7 +487,9 @@ def _get_dask_array(
     is_self = []
 
     count = 0
-    for file_path, object_path in files:
+    for file_object_maybechunks in files:
+        file_path, object_path = file_object_maybechunks[0:2]
+
         obj = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, real_options
         )
@@ -631,7 +633,7 @@ def _get_dask_array_delay_open(
     interp_options,
     steps_per_file,
 ):
-    ffile_path, fobject_path = files[0]
+    ffile_path, fobject_path = files[0][0:2]
     obj = uproot._util.regularize_object_path(
         ffile_path, fobject_path, custom_classes, allow_missing, real_options
     )
@@ -653,7 +655,11 @@ def _get_dask_array_delay_open(
             dt, inner_shape = dt.subdtype
 
         partition_args = []
-        for ifile_path, iobject_path in files:
+        for ifile_iobject_maybeichunks in files:
+            ifile_path, iobject_path = ifile_iobject_maybeichunks[0:2]
+            if len(ifile_iobject_maybeichunks) == 3:
+                ifile_iobject_maybeichunks[2]
+
             for istep in range(steps_per_file):
                 partition_args.append(
                     (
@@ -917,8 +923,6 @@ def _get_dak_array(
     count = 0
     for file_object_maybechunks in files:
         file_path, object_path = file_object_maybechunks[0:2]
-        if len(file_object_maybechunks) == 3:
-            file_object_maybechunks[2]
 
         obj = uproot._util.regularize_object_path(
             file_path, object_path, custom_classes, allow_missing, real_options

@@ -41,11 +41,12 @@ def test_multiple_delay_open():
 
 
 @pytest.mark.parametrize("open_files", [False, True])
-def test_supplied_chunks(open_files):
+@pytest.mark.parametrize("library", ["np", "ak"])
+def test_supplied_chunks(open_files, library):
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root")
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
     true_val = uproot.concatenate(
-        [filename1 + ":events", filename2 + ":events"], "px1"
+        [filename1 + ":events", filename2 + ":events"], "px1", library=library
     )["px1"]
 
     chunks1 = [0, 1000, 2304]
@@ -56,11 +57,12 @@ def test_supplied_chunks(open_files):
         filename2: {"object_path": "events", "chunks": chunks2},
     }
 
-    daskarr = uproot.dask(files, open_files=open_files)["px1"]
+    daskarr = uproot.dask(files, open_files=open_files, library=library)["px1"]
 
-    if open_files:
-        assert daskarr.divisions == (None, None, None)  # FIXME! (Jim)
-    else:
-        assert daskarr.divisions == (None, None, None, None, None)
+    if library == "ak":
+        if open_files:
+            assert daskarr.divisions == (None, None, None)  # FIXME! (Jim)
+        else:
+            assert daskarr.divisions == (None, None, None, None, None)
 
     assert numpy.all(daskarr.compute() == true_val)
