@@ -66,7 +66,7 @@ def test_supplied_chunks(open_files, library):
     assert daskarr.compute().tolist() == true_val.tolist()
 
     chunks1 = [0, 1000, 2304]
-    chunks2 = [[0, 1000], [1000, 2304]]
+    chunks2 = [[0, 1200], [1200, 2304]]
     files = {
         filename1: {"object_path": "events", "chunks": chunks1},
         filename2: {"object_path": "events", "chunks": chunks2},
@@ -75,13 +75,13 @@ def test_supplied_chunks(open_files, library):
 
     if library == "ak":
         if open_files:
-            assert daskarr.divisions == (0, 1000, 2304, 3304, 4608)
+            assert daskarr.divisions == (0, 1000, 2304, 3504, 4608)
         else:
-            assert daskarr.divisions == (0, 1000, 2304, 3304, 4608)
+            assert daskarr.divisions == (0, 1000, 2304, 3504, 4608)
     else:
         if open_files:
-            assert daskarr.chunks == ((1000, 1304, 1000, 1304),)
+            assert daskarr.chunks == ((1000, 1304, 1200, 1104),)
         else:
-            assert daskarr.chunks == ((1000, 1304, 1000, 1304),)
+            assert daskarr.chunks == ((1000, 1304, 1200, 1104),)
 
     assert daskarr.compute().tolist() == true_val.tolist()
