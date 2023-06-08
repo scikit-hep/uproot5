@@ -49,21 +49,35 @@ def test_supplied_chunks(open_files, library):
         [filename1 + ":events", filename2 + ":events"], "px1", library=library
     )["px1"]
 
+    files = [filename1, filename2]
+    daskarr = uproot.dask(files, open_files=open_files, library=library)["px1"]
+
+    if library == "ak":
+        if open_files:
+            assert daskarr.divisions == (0, 2304, 4608)
+        else:
+            assert daskarr.divisions == (None, None, None)
+    else:
+        if open_files:
+            assert daskarr.chunks == ((2304, 2304),)
+        else:
+            assert daskarr.chunks == ((numpy.nan, numpy.nan),)
+
+    assert daskarr.compute().tolist() == true_val.tolist()
+
     chunks1 = [0, 1000, 2304]
     chunks2 = [[0, 1000], [1000, 2304]]
-
     files = {
         filename1: {"object_path": "events", "chunks": chunks1},
         filename2: {"object_path": "events", "chunks": chunks2},
     }
-
     daskarr = uproot.dask(files, open_files=open_files, library=library)["px1"]
 
     if library == "ak":
         if open_files:
             assert daskarr.divisions == (0, 1000, 2304, 3304, 4608)
         else:
-            assert daskarr.divisions == (None, None, None, None, None)
+            assert daskarr.divisions == (0, 1000, 2304, 3304, 4608)
     else:
         if open_files:
             assert daskarr.chunks == ((1000, 1304, 1000, 1304),)

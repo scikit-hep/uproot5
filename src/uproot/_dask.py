@@ -1148,6 +1148,7 @@ def _get_dak_array_delay_open(
         interp_options.get("ak_add_doc"),
     )
 
+    divisions = [0]
     partition_args = []
     for ifile_iobject_maybeichunks in files:
         chunks = None
@@ -1157,6 +1158,7 @@ def _get_dak_array_delay_open(
 
         if chunks is not None:
             for start, stop in chunks:
+                divisions.append(divisions[-1] + (stop - start))
                 partition_args.append(
                     (
                         ifile_path,
@@ -1167,6 +1169,7 @@ def _get_dak_array_delay_open(
                     )
                 )
         else:
+            divisions = None  # they all have it or none of them have it
             for istep in range(steps_per_file):
                 partition_args.append(
                     (
@@ -1190,6 +1193,7 @@ def _get_dak_array_delay_open(
             rendered_form=None if form_mapping is None else form,
         ),
         partition_args,
+        divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
         behavior=None if form_mapping is None else form_mapping.behavior,
         meta=meta,
