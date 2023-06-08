@@ -467,6 +467,18 @@ class _UprootOpenAndReadNumpy:
             start, stop = (istep_or_start * events_per_steps), min(
                 (istep_or_start + 1) * events_per_steps, num_entries
             )
+        elif (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+            raise ValueError(
+                f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
+
+    {ttree.file.file_path}
+
+TTree in path
+
+    {ttree.object_path}
+
+which has {num_entries} entries"""
+            )
 
         return ttree[self.key].array(
             library="np",
@@ -617,10 +629,19 @@ def _get_dask_array(
                         chunks.append(length)
                         chunk_args.append((i, start, stop))
             else:
-                for explicit_start, explicit_stop in explicit_chunks[i]:
-                    # clip to the end of the TTree
-                    start = min(explicit_start, entry_stop)
-                    stop = min(explicit_stop, entry_stop)
+                for start, stop in explicit_chunks[i]:
+                    if (not 0 <= start < entry_stop) or (not 0 <= stop <= entry_stop):
+                        raise ValueError(
+                            f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
+
+    {ttree.file.file_path}
+
+TTree in path
+
+    {ttree.object_path}
+
+which has {entry_stop} entries"""
+                        )
                     length = stop - start
                     if length > 0:
                         chunks.append(length)
@@ -842,6 +863,18 @@ class _UprootOpenAndRead:
             events_per_step = math.ceil(num_entries / nsteps_or_stop)
             start, stop = (istep_or_start * events_per_step), min(
                 (istep_or_start + 1) * events_per_step, num_entries
+            )
+        elif (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+            raise ValueError(
+                f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
+
+    {ttree.file.file_path}
+
+TTree in path
+
+    {ttree.object_path}
+
+which has {num_entries} entries"""
             )
 
         if self.form_mapping is not None:
@@ -1068,16 +1101,27 @@ def _get_dak_array(
             for start in range(entry_start, entry_stop, entry_step):
                 stop = min(start + entry_step, entry_stop)
                 length = stop - start
-                divisions.append(divisions[-1] + length)
-                partition_args.append((i, start, stop))
+                if length > 0:
+                    divisions.append(divisions[-1] + length)
+                    partition_args.append((i, start, stop))
         else:
-            for explicit_start, explicit_stop in explicit_chunks[i]:
-                # clip to the end of the TTree
-                start = min(explicit_start, entry_stop)
-                stop = min(explicit_stop, entry_stop)
+            for start, stop in explicit_chunks[i]:
+                if (not 0 <= start < entry_stop) or (not 0 <= stop <= entry_stop):
+                    raise ValueError(
+                        f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
+
+    {ttree.file.file_path}
+
+TTree in path
+
+    {ttree.object_path}
+
+which has {entry_stop} entries"""
+                    )
                 length = stop - start
-                divisions.append(divisions[-1] + length)
-                partition_args.append((i, start, stop))
+                if length > 0:
+                    divisions.append(divisions[-1] + length)
+                    partition_args.append((i, start, stop))
 
     meta, form = _get_meta_array(
         awkward,
