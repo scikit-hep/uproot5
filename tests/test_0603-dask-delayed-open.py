@@ -40,7 +40,8 @@ def test_multiple_delay_open():
     assert arr.all()
 
 
-def test_supplied_chunks():
+@pytest.mark.parametrize("open_files", [False, True])
+def test_supplied_chunks(open_files):
     filename1 = skhep_testdata.data_path("uproot-Zmumu.root")
     filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
     true_val = uproot.concatenate([filename1 + ":events", filename2 + ":events"])
@@ -53,9 +54,13 @@ def test_supplied_chunks():
         filename2: {"object_path": "events", "chunks": chunks2},
     }
 
-    assert uproot.dask(files, open_files=False)["px1"].divisions == (None, None, None)
+    assert uproot.dask(files, open_files=open_files)["px1"].divisions == (
+        None,
+        None,
+        None,
+    )
     arr = (
-        uproot.dask([filename1, filename2], open_files=False)["px1"].compute()
+        uproot.dask([filename1, filename2], open_files=open_files)["px1"].compute()
         == true_val["px1"]
     )
     assert arr.to_numpy().all()
