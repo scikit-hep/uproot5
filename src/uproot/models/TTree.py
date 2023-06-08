@@ -959,7 +959,7 @@ def num_entries(paths):
     Returns an iterator over the number of entries over each TTree in the input.
     This is a shortcut method and reads lesser data than normal file opening.
     """
-    paths2 = uproot._util.regularize_files(paths)
+    paths2 = uproot._util.regularize_files(paths, chunks_allowed=False)
 
     if isinstance(paths, dict):
         paths = list(paths.items())

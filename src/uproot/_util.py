@@ -918,7 +918,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, chunks_all
         )
 
 
-def regularize_files(files, chunks_allowed=False):
+def regularize_files(files, chunks_allowed):
     """
     Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
     """
