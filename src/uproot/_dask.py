@@ -1058,12 +1058,9 @@ def _get_dak_array(
         entry_start = 0
         entry_stop = ttree.num_entries
 
-        def foreach(start):
-            stop = min(start + entry_step, entry_stop)  # noqa: B023
-            partition_args.append((i, start, stop))  # noqa: B023
-
         for start in range(entry_start, entry_stop, entry_step):
-            foreach(start)
+            stop = min(start + entry_step, entry_stop)
+            partition_args.append((i, start, stop))
 
     meta, form = _get_meta_array(
         awkward,
