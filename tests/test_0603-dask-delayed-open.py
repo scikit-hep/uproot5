@@ -61,7 +61,7 @@ def test_supplied_chunks(open_files, library):
 
     if library == "ak":
         if open_files:
-            assert daskarr.divisions == (None, None, None, None, None)
+            assert daskarr.divisions == (0, 1000, 2304, 3304, 4608)
         else:
             assert daskarr.divisions == (None, None, None, None, None)
     else:

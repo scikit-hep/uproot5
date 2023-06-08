@@ -1058,6 +1058,7 @@ def _get_dak_array(
 
     entry_step = int(round(step_sum / len(ttrees)))
 
+    divisions = [0]
     partition_args = []
     for i, ttree in enumerate(ttrees):
         entry_start = 0
@@ -1067,16 +1068,16 @@ def _get_dak_array(
             for start in range(entry_start, entry_stop, entry_step):
                 stop = min(start + entry_step, entry_stop)
                 length = stop - start
-                if length > 0:
-                    partition_args.append((i, start, stop))
+                divisions.append(divisions[-1] + length)
+                partition_args.append((i, start, stop))
         else:
             for explicit_start, explicit_stop in explicit_chunks[i]:
                 # clip to the end of the TTree
                 start = min(explicit_start, entry_stop)
                 stop = min(explicit_stop, entry_stop)
                 length = stop - start
-                if length > 0:
-                    partition_args.append((i, start, stop))
+                divisions.append(divisions[-1] + length)
+                partition_args.append((i, start, stop))
 
     meta, form = _get_meta_array(
         awkward,
@@ -1088,6 +1089,7 @@ def _get_dak_array(
     )
 
     if len(partition_args) == 0:
+        divisions.append(0)
         partition_args.append((0, 0, 0))
 
     return dask_awkward.from_map(
@@ -1100,6 +1102,7 @@ def _get_dak_array(
             rendered_form=None if form_mapping is None else form,
         ),
         partition_args,
+        divisions=tuple(divisions),
         label="from-uproot",
         behavior=None if form_mapping is None else form_mapping.behavior,
         meta=meta,
