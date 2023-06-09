@@ -948,7 +948,6 @@ which has {num_entries} entries"""
 
         return array
 
-
     def project_columns(self, columns=None, original_form=None):
         common_base_keys = self.common_base_keys
         if self.form_mapping is not None:
@@ -984,7 +983,7 @@ which has {num_entries} entries"""
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
-            original_form=original_form
+            original_form=original_form,
         )
 
 
