@@ -823,7 +823,7 @@ def regularize_steps(steps):
             )
 
     elif len(out.shape) == 2:
-        if not all(out[:, 1] >= out[:, 0]):
+        if not (all(out[:, 1] >= out[:, 0]) and out.shape[1] == 2):
             raise ValueError(
                 "if 'files' argument's steps are (two-dimensional) start-stop pairs, all stops must be greater than or equal to their corresponding starts"
             )
@@ -834,9 +834,9 @@ def regularize_steps(steps):
         )
 
     if len(out.shape) == 1:
-        out = numpy.stack((out[:-1], out[1:]), axis=1).tolist()
+        out = numpy.stack((out[:-1], out[1:]), axis=1)
 
-    return out
+    return out.tolist()
 
 
 def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allowed):
