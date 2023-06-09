@@ -175,7 +175,7 @@ def iterate(
       array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files)
+    files = uproot._util.regularize_files(files, steps_allowed=False)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -343,7 +343,7 @@ def concatenate(
       single concatenated array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files)
+    files = uproot._util.regularize_files(files, steps_allowed=False)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )

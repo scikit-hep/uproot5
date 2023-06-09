@@ -808,8 +808,41 @@ _regularize_files_braces = re.compile(r"{([^}]*,)*([^}]*)}")
 _regularize_files_isglob = re.compile(r"[\*\?\[\]{}]")
 
 
-def _regularize_files_inner(files, parse_colon, counter, HasBranches):
+def regularize_steps(steps):
+    out = numpy.array(steps)
+
+    if isinstance(steps, dict) or not issubclass(out.dtype.type, numpy.integer):
+        raise TypeError(
+            "'files' argument's steps must be an iterable of integer offsets or start-stop pairs."
+        )
+
+    if len(out.shape) == 1:
+        if len(out) == 0 or not numpy.all(out[1:] >= out[:-1]):
+            raise ValueError(
+                "if 'files' argument's steps are (one-dimensional) offsets, they must be non-empty and monotonically increasing"
+            )
+
+    elif len(out.shape) == 2:
+        if not (out.shape[1] == 2 and all(out[:, 1] >= out[:, 0])):
+            raise ValueError(
+                "if 'files' argument's steps are (two-dimensional) start-stop pairs, all stops must be greater than or equal to their corresponding starts"
+            )
+
+    else:
+        raise TypeError(
+            "'files' argument's steps must be an iterable of integer offsets or a list of pairs of integer starts and stops."
+        )
+
+    if len(out.shape) == 1:
+        out = numpy.stack((out[:-1], out[1:]), axis=1)
+
+    return out.tolist()
+
+
+def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allowed):
     files2 = regularize_path(files)
+
+    maybe_steps = None
 
     if isstr(files2) and not isstr(files):
         parse_colon = False
@@ -824,12 +857,12 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches):
         parsed_url = urlparse(file_path)
 
         if parsed_url.scheme.upper() in _remote_schemes:
-            yield file_path, object_path
+            yield file_path, object_path, maybe_steps
 
         else:
             expanded = os.path.expanduser(file_path)
             if _regularize_files_isglob.search(expanded) is None:
-                yield file_path, object_path
+                yield file_path, object_path, maybe_steps
 
             else:
                 matches = list(_regularize_files_braces.finditer(expanded))
@@ -849,26 +882,43 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches):
                 for result in results:
                     for match in glob.glob(result):
                         if match not in seen:
-                            yield match, object_path
+                            yield match, object_path, maybe_steps
                             seen.add(match)
 
     elif isinstance(files, HasBranches):
-        yield files, None
+        yield files, None, maybe_steps
 
     elif isinstance(files, dict):
-        for key, object_path in files.items():
-            for file_path, _ in _regularize_files_inner(
-                key, False, counter, HasBranches
+        for key, maybe_object_path in files.items():
+            if not isinstance(maybe_object_path, (type(None), str, dict)):
+                raise TypeError("object_path may only be a string, dict, or None")
+            if isinstance(maybe_object_path, dict):
+                maybe_steps = maybe_object_path.get("steps", None)
+                object_path = maybe_object_path.get("object_path", None)
+                if maybe_steps is not None:
+                    if not steps_allowed:
+                        raise TypeError(
+                            "unrecognized 'files' pattern for this function ('steps' are only allowed in uproot.dask)"
+                        )
+                    maybe_steps = regularize_steps(maybe_steps)
+            else:
+                object_path = maybe_object_path
+            for file_path, _, _ in _regularize_files_inner(
+                key,
+                False,
+                counter,
+                HasBranches,
+                steps_allowed,
             ):
-                yield file_path, object_path
+                yield file_path, object_path, maybe_steps
 
     elif isinstance(files, Iterable):
         for file in files:
             counter[0] += 1
-            for file_path, object_path in _regularize_files_inner(
-                file, parse_colon, counter, HasBranches
+            for file_path, object_path, maybe_steps in _regularize_files_inner(
+                file, parse_colon, counter, HasBranches, steps_allowed
             ):
-                yield file_path, object_path
+                yield file_path, object_path, maybe_steps
 
     else:
         raise TypeError(
@@ -879,7 +929,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches):
         )
 
 
-def regularize_files(files):
+def regularize_files(files, steps_allowed):
     """
     Common code for regularizing the possible file inputs accepted by uproot so they can be used by uproot internal functions.
     """
@@ -888,16 +938,21 @@ def regularize_files(files):
     out = []
     seen = set()
     counter = [0]
-    for file_path, object_path in _regularize_files_inner(
-        files, True, counter, HasBranches
+    for file_path, object_path, maybe_steps in _regularize_files_inner(
+        files, True, counter, HasBranches, steps_allowed
     ):
         if isstr(file_path):
             key = (counter[0], file_path, object_path)
             if key not in seen:
                 out.append((file_path, object_path))
+                if maybe_steps is not None:
+                    out[-1] = (*out[-1], maybe_steps)
+
                 seen.add(key)
         else:
             out.append((file_path, object_path))
+            if maybe_steps is not None:
+                out[-1] = (*out[-1], maybe_steps)
 
     if len(out) == 0:
         raise _file_not_found(files)
