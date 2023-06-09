@@ -751,6 +751,7 @@ class _UprootRead:
         interp_options,
         form_mapping,
         rendered_form,
+        original_form=None,
     ) -> None:
         self.ttrees = ttrees
         self.common_keys = common_keys
@@ -758,6 +759,7 @@ class _UprootRead:
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
+        self.original_form = original_form
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
@@ -771,22 +773,31 @@ class _UprootRead:
                 self.ttrees[i], start, stop, self.interp_options
             )
 
-            return awkward.from_buffers(
+            array = awkward.from_buffers(
                 actual_form,
                 stop - start,
                 mapping,
                 buffer_key=buffer_key,
                 behavior=self.form_mapping.behavior,
             )
+        else:
+            array = self.ttrees[i].arrays(
+                self.common_keys,
+                entry_start=start,
+                entry_stop=stop,
+                ak_add_doc=self.interp_options["ak_add_doc"],
+            )
+        # print("READ",self.original_form)
+        if self.original_form is not None:
+            dask_awkward = uproot.extras.dask_awkward()
 
-        return self.ttrees[i].arrays(
-            self.common_keys,
-            entry_start=start,
-            entry_stop=stop,
-            ak_add_doc=self.interp_options["ak_add_doc"],
-        )
+            return dask_awkward.lib._utils.make_unused_columns_dataless(
+                array, self.original_form
+            )
+        else:
+            return array
 
-    def project_columns(self, common_keys):
+    def project_columns(self, common_keys=None, original_form=None):
         common_base_keys = self.common_base_keys
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
@@ -818,6 +829,7 @@ class _UprootRead:
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
+            original_form,
         )
 
 
@@ -901,7 +913,7 @@ which has {num_entries} entries"""
             ak_add_doc=self.interp_options["ak_add_doc"],
         )
 
-    def project_columns(self, common_keys):
+    def project_columns(self, columns=None, original_form=None):
         common_base_keys = self.common_base_keys
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
@@ -912,8 +924,8 @@ which has {num_entries} entries"""
             ) = awkward._nplikes.typetracer.typetracer_with_report(self.rendered_form)
             tt = awkward.Array(new_meta_labelled)
 
-            if common_keys is not None:
-                for key in common_keys:
+            if columns is not None:
+                for key in columns:
                     tt[tuple(key.split("."))].layout._touch_data(recursive=True)
 
                 common_base_keys = [
@@ -924,15 +936,15 @@ which has {num_entries} entries"""
                     if x in self.common_base_keys
                 ]
 
-        elif common_keys is not None:
-            common_keys = [x for x in common_keys if x in self.common_keys]
+        elif columns is not None:
+            columns = [x for x in columns if x in self.common_keys]
 
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,
             self.real_options,
-            common_keys,
-            common_keys if self.form_mapping is None else common_base_keys,
+            columns,
+            columns if self.form_mapping is None else common_base_keys,
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
