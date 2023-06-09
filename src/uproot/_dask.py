@@ -921,7 +921,7 @@ which has {num_entries} entries"""
                 behavior=self.form_mapping.behavior,
             )
 
-            return ak.Array(
+            return awkward.Array(
                 dask_awkward.lib.unproject_layout.unproject_layout(
                     self.rendered_form,
                     array.layout,
