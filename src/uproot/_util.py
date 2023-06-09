@@ -823,7 +823,7 @@ def regularize_steps(steps):
             )
 
     elif len(out.shape) == 2:
-        if not (all(out[:, 1] >= out[:, 0]) and out.shape[1] == 2):
+        if not (out.shape[1] == 2 and all(out[:, 1] >= out[:, 0])):
             raise ValueError(
                 "if 'files' argument's steps are (two-dimensional) start-stop pairs, all stops must be greater than or equal to their corresponding starts"
             )
