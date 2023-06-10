@@ -766,6 +766,7 @@ class _UprootRead:
 
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
 
             actual_form = self.rendered_form.select_columns(self.common_keys)
 
@@ -780,22 +781,33 @@ class _UprootRead:
                 buffer_key=buffer_key,
                 behavior=self.form_mapping.behavior,
             )
-        else:
-            array = self.ttrees[i].arrays(
-                self.common_keys,
-                entry_start=start,
-                entry_stop=stop,
-                ak_add_doc=self.interp_options["ak_add_doc"],
+
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.rendered_form,
+                    array.layout,
+                )
             )
-        # print("READ",self.original_form)
+
+        array = self.ttrees[i].arrays(
+            self.common_keys,
+            entry_start=start,
+            entry_stop=stop,
+            ak_add_doc=self.interp_options["ak_add_doc"],
+        )
+
         if self.original_form is not None:
+            awkward = uproot.extras.awkward()
             dask_awkward = uproot.extras.dask_awkward()
 
-            return dask_awkward.lib._utils.make_unused_columns_dataless(
-                array, self.original_form
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.original_form,
+                    array.layout,
+                )
             )
-        else:
-            return array
+
+        return array
 
     def project_columns(self, common_keys=None, original_form=None):
         common_base_keys = self.common_base_keys
@@ -844,6 +856,7 @@ class _UprootOpenAndRead:
         interp_options,
         form_mapping,
         rendered_form,
+        original_form=None,
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
@@ -853,6 +866,7 @@ class _UprootOpenAndRead:
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
+        self.original_form = original_form
 
     def __call__(self, file_path_object_path_istep_nsteps_ischunk):
         (
@@ -891,6 +905,7 @@ which has {num_entries} entries"""
 
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
 
             actual_form = self.rendered_form.select_columns(self.common_keys)
 
@@ -898,7 +913,7 @@ which has {num_entries} entries"""
                 ttree, start, stop, self.interp_options
             )
 
-            return awkward.from_buffers(
+            array = awkward.from_buffers(
                 actual_form,
                 stop - start,
                 mapping,
@@ -906,12 +921,32 @@ which has {num_entries} entries"""
                 behavior=self.form_mapping.behavior,
             )
 
-        return ttree.arrays(
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.rendered_form,
+                    array.layout,
+                )
+            )
+
+        array = ttree.arrays(
             self.common_keys,
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
         )
+
+        if self.original_form is not None:
+            awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
+
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.original_form,
+                    array.layout,
+                )
+            )
+
+        return array
 
     def project_columns(self, columns=None, original_form=None):
         common_base_keys = self.common_base_keys
@@ -948,6 +983,7 @@ which has {num_entries} entries"""
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
+            original_form=original_form,
         )
 
 
