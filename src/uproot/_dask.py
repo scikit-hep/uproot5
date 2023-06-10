@@ -774,19 +774,20 @@ class _UprootRead:
                 self.ttrees[i], start, stop, self.interp_options
             )
 
-            array = awkward.from_buffers(
+            layout = awkward.from_buffers(
                 actual_form,
                 stop - start,
                 mapping,
                 buffer_key=buffer_key,
-                behavior=self.form_mapping.behavior,
+                highlevel=False,
             )
 
             return awkward.Array(
                 dask_awkward.lib.unproject_layout.unproject_layout(
                     self.rendered_form,
-                    array.layout,
-                )
+                    layout,
+                ),
+                behavior=self.form_mapping.behavior,
             )
 
         array = self.ttrees[i].arrays(
@@ -913,19 +914,20 @@ which has {num_entries} entries"""
                 ttree, start, stop, self.interp_options
             )
 
-            array = awkward.from_buffers(
+            layout = awkward.from_buffers(
                 actual_form,
                 stop - start,
                 mapping,
                 buffer_key=buffer_key,
-                behavior=self.form_mapping.behavior,
+                highlevel=False,
             )
 
             return awkward.Array(
                 dask_awkward.lib.unproject_layout.unproject_layout(
                     self.rendered_form,
-                    array.layout,
-                )
+                    layout,
+                ),
+                behavior=self.form_mapping.behavior,
             )
 
         array = ttree.arrays(
