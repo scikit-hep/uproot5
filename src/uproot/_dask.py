@@ -524,7 +524,7 @@ def _get_dask_array(
                 is_self.append(True)
 
                 def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)  # noqa: B023
+                    return branch is original and filter_branch(branch)
 
             else:
                 is_self.append(False)
@@ -1010,7 +1010,7 @@ def _get_dak_array(
                 is_self.append(True)
 
                 def real_filter_branch(branch):
-                    return branch is original and filter_branch(branch)  # noqa: B023
+                    return branch is original and filter_branch(branch)
 
             else:
                 is_self.append(False)
