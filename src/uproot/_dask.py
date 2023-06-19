@@ -1139,7 +1139,7 @@ which has {entry_stop} entries"""
     return dask_awkward.from_map(
         _UprootRead(
             ttrees,
-            common_keys=common_keys if form_mapping is None else form.columns(),
+            common_keys=(common_keys if form_mapping is None else form.columns()),
             common_keys,
             interp_options,
             form_mapping=form_mapping,
@@ -1230,7 +1230,7 @@ def _get_dak_array_delay_open(
             custom_classes,
             allow_missing,
             real_options,
-            common_keys=common_keys if form_mapping is None else form.columns(),
+            common_keys=(common_keys if form_mapping is None else form.columns()),
             common_keys,
             interp_options,
             form_mapping=form_mapping,
