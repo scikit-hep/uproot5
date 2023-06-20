@@ -765,7 +765,10 @@ class _UprootRead:
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            actual_form = self.rendered_form.select_columns(self.common_keys)
+            if set(self.common_keys) != set(self.rendered_form.columns()):
+                actual_form = self.rendered_form.select_columns(self.common_keys)
+            else:
+                actual_form = self.rendered_form
 
             mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
                 self.ttrees[i], start, stop, self.interp_options
@@ -880,7 +883,10 @@ which has {num_entries} entries"""
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            actual_form = self.rendered_form.select_columns(self.common_keys)
+            if set(self.common_keys) != set(self.rendered_form.columns()):
+                actual_form = self.rendered_form.select_columns(self.common_keys)
+            else:
+                actual_form = self.rendered_form
 
             mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
                 ttree, start, stop, self.interp_options
@@ -1139,7 +1145,7 @@ which has {entry_stop} entries"""
     return dask_awkward.from_map(
         _UprootRead(
             ttrees,
-            common_keys,
+            common_keys if form_mapping is None else form.columns(),
             common_keys,
             interp_options,
             form_mapping=form_mapping,
@@ -1230,7 +1236,7 @@ def _get_dak_array_delay_open(
             custom_classes,
             allow_missing,
             real_options,
-            common_keys,
+            common_keys if form_mapping is None else form.columns(),
             common_keys,
             interp_options,
             form_mapping=form_mapping,
