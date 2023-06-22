@@ -25,8 +25,6 @@ import threading
 import numpy
 
 import uproot
-import uproot._awkward_forth
-
 
 class AsObjects(uproot.interpretation.Interpretation):
     """
