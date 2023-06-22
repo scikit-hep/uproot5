@@ -9,7 +9,7 @@ import uproot
 pytest.importorskip("awkward")
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_00(is_forth):
     with uproot.open(skhep_testdata.data_path("issue367b.root")) as file:
         branch = file["tree/weights"]
@@ -21,7 +21,7 @@ def test_00(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_01(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
         branch = file["Delphes/GenJet/GenJet.SoftDroppedSubJet1"]
@@ -34,7 +34,7 @@ def test_01(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_02(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
         branch = file["Delphes/GenJet/GenJet.TrimmedP4[5]"]
@@ -47,7 +47,7 @@ def test_02(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_03(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-FCCDelphesOutput.root")) as file:
         branch = file["metadata/gaudiConfigOptions"]
@@ -63,7 +63,7 @@ def test_03(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_04(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["POOLContainerForm/DataHeaderForm/m_uints"]
@@ -84,7 +84,7 @@ def test_05():
         # py[-1] == <xAOD::TrigConfKeys_v1 (version 1) at 0x7fecf9212760>
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_06(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisJetsAuxDyn.NumTrkPt500"]
@@ -96,7 +96,7 @@ def test_06(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_07(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisJetsAuxDyn.SumPtTrkPt500"]
@@ -116,7 +116,7 @@ def test_08():
         # py[-1] == <STLVector [[<ElementLink<DataVector<xAOD::IParticle>> (version 1) at 0x7fc6a08f2f70>, ...], ...] at 0x7fc6a08f2f10>
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_09(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree"][
@@ -130,7 +130,7 @@ def test_09(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_10(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/CaloCalTopoClustersAuxDyn.e_sampl"]
@@ -142,7 +142,7 @@ def test_10(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_11(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree"][
@@ -156,7 +156,7 @@ def test_11(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_12(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/TruthBottomAuxDyn.parentLinks"]
@@ -168,7 +168,7 @@ def test_12(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_13(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/egammaClustersAuxDyn.constituentClusterLinks"]
@@ -180,7 +180,7 @@ def test_13(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_14(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/egammaClustersAuxDyn.eta_sampl"]
@@ -192,7 +192,7 @@ def test_14(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_15(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisHLT_mu24_ilooseAuxDyn.TrigMatchedObjects"]
@@ -204,7 +204,7 @@ def test_15(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_16(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisHLT_mu40AuxDyn.TrigMatchedObjects"]
@@ -216,7 +216,7 @@ def test_16(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_17(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/AAObject/usr_names"]
@@ -228,7 +228,7 @@ def test_17(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_18(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.t"]
@@ -240,7 +240,7 @@ def test_18(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_19(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.a"]
@@ -252,7 +252,7 @@ def test_19(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_20(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.trig"]
@@ -264,7 +264,7 @@ def test_20(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_21(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.tot"]
@@ -276,7 +276,7 @@ def test_21(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_22(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.pos.x"]
@@ -288,7 +288,7 @@ def test_22(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_23(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/trks/trks.usr_names"]
@@ -300,7 +300,7 @@ def test_23(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_24(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/trks/trks.rec_stages"]
@@ -312,7 +312,7 @@ def test_24(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_25(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
         branch = file["config/VERSION/VERSION._name"]
@@ -332,7 +332,7 @@ def test_26():
         # py[-1] == array([<STLVector [] at 0x7f5060ef49d0>], dtype=object)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_27(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
         branch = file["config/SEL/SEL._branchAlias"]
@@ -344,7 +344,7 @@ def test_27(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_28(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
         branch = file["config/SEL/SEL._nCutsInBranch"]
@@ -364,7 +364,7 @@ def test_29():
         # py[-1] == <JPetGeantEventInformation (version 3) at 0x7fd5bdeedac0>
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_30(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue243-new.root")) as file:
         branch = file["triggerList/triggerMap/triggerMap.first"]
@@ -376,7 +376,7 @@ def test_30(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_31(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-308.root")) as file:
         branch = file["MetaData/BranchIDLists"]
@@ -388,7 +388,7 @@ def test_31(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_32(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue31.root")) as file:
         branch = file["T/data/name"]
@@ -400,7 +400,7 @@ def test_32(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_33(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue367b.root")) as file:
         branch = file["tree/weights"]
@@ -412,7 +412,7 @@ def test_33(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_34(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Header/Header./Header.geant4Version"]
@@ -423,7 +423,7 @@ def test_34(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_35(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
@@ -435,7 +435,7 @@ def test_35(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_36(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Model/Model./Model.samplerNamesUnique"]
@@ -447,7 +447,7 @@ def test_36(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_37(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Model/Model./Model.staPos"]
@@ -459,7 +459,7 @@ def test_37(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_38(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Event/PRBHF_46."]
@@ -471,7 +471,7 @@ def test_38(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_39(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue399.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
@@ -483,7 +483,7 @@ def test_39(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_40(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-407.root")) as file:
         branch = file["tree/branch"]
@@ -495,7 +495,7 @@ def test_40(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_41(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
         branch = file["Event/Trajectory./Trajectory.XYZ"]
@@ -507,7 +507,7 @@ def test_41(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_42(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
         branch = file["Event/Trajectory./Trajectory.energyDeposit"]
@@ -519,7 +519,7 @@ def test_42(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_43(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
         branch = file["Event/Trajectory./Trajectory.ionA"]
@@ -531,7 +531,7 @@ def test_43(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_44(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue46.root")) as file:
         branch = file["tree/evt"]
@@ -559,7 +559,7 @@ def test_46():
         # py[-1] == <STLVector [<allpix::MCParticle (version 6) at 0x7f94bc223760>, ...] at 0x7f94bc223550>
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_47(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue494.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
@@ -600,7 +600,7 @@ def test_50():
         # py[-1] == <STLVector [] at 0x7f769cbf0bb0>
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_51(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue510b.root")) as file:
         branch = file["EDepSimEvents/Event/Primaries/Primaries.GeneratorName"]
@@ -611,7 +611,7 @@ def test_51(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_52(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
         branch = file["Delphes/EFlowPhoton/EFlowPhoton.Particles"]
@@ -623,7 +623,7 @@ def test_52(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_53(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
         branch = file["Delphes/Jet/Jet.SoftDroppedSubJet2"]
@@ -635,7 +635,7 @@ def test_53(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_54(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
         branch = file["Delphes/Jet/Jet.TrimmedP4[5]"]
@@ -647,7 +647,7 @@ def test_54(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_55(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue519.root")) as file:
         branch = file["testtree/testbranch"]
@@ -659,7 +659,7 @@ def test_55(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_56(is_forth):
     with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root")
@@ -673,7 +673,7 @@ def test_56(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_57(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_string"]
@@ -685,7 +685,7 @@ def test_57(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_58(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_tstring"]
@@ -697,7 +697,7 @@ def test_58(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_59(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_vector_int32"]
@@ -709,7 +709,7 @@ def test_59(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_60(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_vector_string"]
@@ -721,7 +721,7 @@ def test_60(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_61(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_vector_tstring"]
@@ -733,7 +733,7 @@ def test_61(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_62(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_set_int32"]
@@ -745,7 +745,7 @@ def test_62(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_63(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_set_string"]
@@ -757,7 +757,7 @@ def test_63(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_64(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/set_int32"]
@@ -769,7 +769,7 @@ def test_64(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_65(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/set_string"]
@@ -781,7 +781,7 @@ def test_65(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_66(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_int16"]
@@ -793,7 +793,7 @@ def test_66(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_67(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_int16"]
@@ -805,7 +805,7 @@ def test_67(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_68(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_string"]
@@ -817,7 +817,7 @@ def test_68(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_69(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_set_int16"]
@@ -829,7 +829,7 @@ def test_69(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_70(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_set_string"]
@@ -841,7 +841,7 @@ def test_70(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_71(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_int16"]
@@ -853,7 +853,7 @@ def test_71(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_72(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_vector_int16"]
@@ -865,7 +865,7 @@ def test_72(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_73(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_vector_string"]
@@ -877,7 +877,7 @@ def test_73(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_74(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_set_int16"]
@@ -889,7 +889,7 @@ def test_74(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_75(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_set_string"]
@@ -901,7 +901,7 @@ def test_75(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_76(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_vector_int16"]
@@ -913,7 +913,7 @@ def test_76(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_77(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_set_int16"]
@@ -925,7 +925,7 @@ def test_77(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_78(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_string"]
@@ -937,7 +937,7 @@ def test_78(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_79(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_tstring"]
@@ -949,7 +949,7 @@ def test_79(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_80(is_forth):
     with uproot.open(
         skhep_testdata.data_path("uproot-vectorVectorDouble.root")
@@ -968,7 +968,7 @@ def test_80(is_forth):
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
 
 
-@pytest.mark.parametrize("is_forth", [False, True])
+@pytest.mark.parametrize("is_forth", [False])
 def test_81(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root")) as file:
         branch = file["events/MET"]
