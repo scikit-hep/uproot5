@@ -68,8 +68,6 @@ class AsStrings(uproot.interpretation.Interpretation):
 
         self._typename = typename
         self._original = original
-        #self._forth_code = None
-        #self._threadlocal = threading.local()
 
     @property
     def header_bytes(self):
@@ -167,7 +165,7 @@ class AsStrings(uproot.interpretation.Interpretation):
             library=library,
             options=options,
         )
-        
+
         if byte_offsets is None:
             counts = numpy.empty(len(data), dtype=numpy.int32)
             outdata = numpy.empty(len(data), dtype=data.dtype)
@@ -281,16 +279,6 @@ class AsStrings(uproot.interpretation.Interpretation):
         
         if any(not isinstance(x, StringArray) for x in basket_arrays.values()):
             
-            trimmed = uproot._util.trim_final(
-                basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
-            )
-            if all(
-                uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
-            ):
-                assert isinstance(library, uproot.interpretation.library.Awkward)
-                awkward = library.imported
-                output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
-
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,
                 entry_start=entry_start,
