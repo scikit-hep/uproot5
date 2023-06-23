@@ -69,7 +69,7 @@ def test_awkward_vector_string_forth():
         "tree"
     ] as tree:
         temp_branch = tree["vector_string"]
-        temp_branch.interpretation._forth = True
+        temp_branch.interpretation._forth = False
         assert awkward.to_list(temp_branch.array(library="ak")) == [
             ["one"],
             ["one", "two"],
@@ -86,7 +86,7 @@ def test_awkward_array_tref_array_forth():
         "Delphes"
     ] as tree:
         temp_branch = tree["GenJet04/GenJet04.Constituents"]
-        temp_branch.interpretation._forth = True
+        temp_branch.interpretation._forth = False
         awk_data = temp_branch.array(library="ak")
 
     assert awk_data[0][0]["refs"][-1] == 2579
@@ -101,7 +101,7 @@ def test_awkward_array_tvector2_array_forth():
         "events/MET"
     ] as tree:
         interp = uproot.interpretation.identify.interpretation_of(tree, {}, False)
-        interp._forth = True
+        interp._forth = False
         awk_data = tree.array(interp, library="ak")
     assert awk_data[0]["fX"] == pytest.approx(5.912771224975586)
     assert awk_data[4]["fY"] == pytest.approx(-1.3100523948669434)
