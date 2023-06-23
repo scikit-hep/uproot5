@@ -25,11 +25,6 @@ class Model_TObject(uproot.model.Model):
         pass
 
     def read_members(self, chunk, cursor, context, file):
-        forth_stash = uproot._awkward_forth.forth_stash(context)
-        start_index = cursor._index
-        if forth_stash is not None:
-            forth_obj = forth_stash.get_gen_obj()
-            # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}
@@ -47,19 +42,6 @@ in file {self.file.file_path}"""
         if self._members["@fBits"] & uproot.const.kIsReferenced:
             cursor.skip(2)
         self._members["@fBits"] = int(self._members["@fBits"])
-        if forth_stash is not None:
-            skip_length = cursor._index - start_index
-            forth_stash.add_to_pre(f"{skip_length} stream skip \n")
-            if forth_obj.should_add_form():
-                temp_aform = '{"class": "RecordArray", "contents":[], "parameters": {"__record__": "TObject"}}'
-                forth_obj.add_form(json.loads(temp_aform))
-            forth_obj.add_node(
-                "TObjext",
-                forth_stash.get_attrs(),
-                "i64",
-                0,
-                {},
-            )
 
     writable = True
 

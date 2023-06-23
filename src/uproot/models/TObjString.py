@@ -27,7 +27,6 @@ class Model_TObjString(uproot.model.Model, str):
     writable = True
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}

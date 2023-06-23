@@ -150,7 +150,6 @@ class Model_TAxis_v10(uproot.behaviors.TAxis.TAxis, uproot.model.VersionedModel)
     """
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 f"""memberwise serialization of {type(self).__name__}

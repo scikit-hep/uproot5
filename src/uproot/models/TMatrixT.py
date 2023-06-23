@@ -22,7 +22,6 @@ class Model_TMatrixTSym_3c_double_3e__v5(uproot.model.VersionedModel):
     """
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(

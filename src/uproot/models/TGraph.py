@@ -35,7 +35,6 @@ class Model_TGraph_v4(uproot.behaviors.TGraph.TGraph, uproot.model.VersionedMode
     behaviors = (uproot.behaviors.TGraph.TGraph,)
 
     def read_members(self, chunk, cursor, context, file):
-        context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
                 "memberwise serialization of {}\nin file {}".format(

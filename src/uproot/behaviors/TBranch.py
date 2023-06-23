@@ -3075,9 +3075,6 @@ def _ranges_or_baskets_to_arrays(
         else:
             notifications.put(basket)
 
-    # all threads (if multithreaded), per branch, share a thread-local context for Forth
-    forth_context = {x: threading.local() for x in branchid_interpretation}
-
     def basket_to_array(basket):
         try:
             assert basket.basket_num is not None
@@ -3086,7 +3083,6 @@ def _ranges_or_baskets_to_arrays(
             basket_arrays = branchid_arrays[branch.cache_key]
 
             context = dict(branch.context)
-            context["forth"] = forth_context[branch.cache_key]
 
             basket_arrays[basket.basket_num] = interpretation.basket_array(
                 basket.data,
