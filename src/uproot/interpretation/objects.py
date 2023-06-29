@@ -596,15 +596,16 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def __init__(self, model, members, original=None):
         all_headers_prepended = False
-        first_value_loc = 0
-        while members[first_value_loc] == (None, None):
-            first_value_loc += 1
+
+        for first_value_loc in range(len(members)):
+            if members[first_value_loc] != (None, None):
+                break
 
         for i in range(first_value_loc, len(members)):
             member, value = members[i]
             if member is not None and not all_headers_prepended:
                 all_headers_prepended = True
-            if member is None and all_headers_prepended:
+            if member is None and all_headers_prepended or len(members) == 1:
                 all_headers_prepended = False
                 del members[i]
 
