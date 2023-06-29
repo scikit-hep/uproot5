@@ -119,9 +119,10 @@ ignore = [
     "PLW0120", # else on loop without break
     "SIM118",  # key in dict, broken since uproot doesn't behave like a dict
     "PGH003",  # too-broad type ignore
-    "SIM114",  # Combine `if` branches using logical `or` operator
-    "PGH001",  # No eval allowed
+    "SIM114",  # combine `if` branches using logical `or` operator
+    "PGH001",  # no eval allowed
     "PLC1901", # empty string is falsey (but I don't want to rely on such weak typing)
+    "RUF012",  # enforces type annotations on a codebase that lacks type annotations
 ]
 exclude = [
     "tests/*.py",
