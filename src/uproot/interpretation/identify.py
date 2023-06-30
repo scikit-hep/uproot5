@@ -480,15 +480,23 @@ def interpretation_of(branch, context, simplify=True):
                 while isinstance(model_cls, uproot.containers.AsPointer):
                     model_cls = model_cls.pointee
 
-            if branch._streamer_isTClonesArray:
-                if isinstance(branch.streamer, uproot.streamers.Model_TStreamerObject):
+            if dims != () or branch._streamer_isTClonesArray:
+                if (
+                    isinstance(branch.streamer, uproot.streamers.Model_TStreamerObject)
+                    or not branch._streamer_isTClonesArray
+                ):
                     model_cls = uproot.containers.AsArray(False, False, model_cls, dims)
                 else:
                     if hasattr(model_cls, "header"):
                         model_cls._header = False
                     model_cls = uproot.containers.AsArray(True, False, model_cls, dims)
 
-            out = uproot.interpretation.objects.AsObjects(model_cls, branch)
+            if dims != () and not branch._streamer_isTClonesArray:
+                out = uproot.interpretation.objects.AsObjects(model_cls, branch)
+                out._forth = False
+            else:
+                out = uproot.interpretation.objects.AsObjects(model_cls, branch)
+
             if simplify:
                 return out.simplify()
             else:
