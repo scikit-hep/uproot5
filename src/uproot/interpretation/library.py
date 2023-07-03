@@ -833,14 +833,9 @@ class Pandas(Library):
     def finalize(self, array, branch, interpretation, entry_start, entry_stop, options):
         pandas = self.imported
         index = _pandas_basic_index(pandas, entry_start, entry_stop)
-
-        if (
-            isinstance(array, numpy.ndarray)
-            and array.dtype.names is None
-            and len(array.shape) == 1
-        ):
-            return pandas.Series(array, index=index)
-        else:
+        try:
+            return pandas.Series(uproot.extras.awkward().to_numpy(array), index=index)
+        except:
             awkward_pandas = uproot.extras.awkward_pandas()
             ak_lib = _libraries[Awkward.name]
             ak_arr = ak_lib.finalize(
