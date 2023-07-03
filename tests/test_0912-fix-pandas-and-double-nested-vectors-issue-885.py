@@ -1,10 +1,12 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 import uproot
+import pytest
 import skhep_testdata, os
 import numpy as np
 import awkward as ak
-import ROOT
+
+ROOT = pytest.importorskip("ROOT")
 
 
 def test_pandas_and_double_nested_vectors_issue_885(tmp_path):
