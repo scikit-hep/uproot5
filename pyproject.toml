@@ -129,7 +129,6 @@ exclude = [
     "src/uproot/__init__.py",
     "docs-sphinx/*.py",
 ]
-target-version = "py37"
 src = ["src"]
 
 [tool.ruff.mccabe]
