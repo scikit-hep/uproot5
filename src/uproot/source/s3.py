@@ -29,11 +29,11 @@ class S3Source(uproot.source.http.HTTPSource):
         Minio = uproot.extras.Minio_client()
 
         if access_key is None:
-            access_key = os.environ.get("AWS_ACCESS_KEY_ID", None)
+            access_key = os.environ.get("S3_ACCESS_KEY", os.environ.get("AWS_ACCESS_KEY_ID", None))
         if secret_key is None:
-            secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+            secret_key = os.environ.get("S3_SECRET_KEY", os.environ.get("AWS_SECRET_ACCESS_KEY", None))
         if session_token is None:
-            session_token = os.environ.get("AWS_SESSION_TOKEN", None)
+            session_token = os.environ.get("S3_SESSION_TOKEN", os.environ.get("AWS_SESSION_TOKEN", None))
         if region is None:
             region = os.environ.get("AWS_DEFAULT_REGION", None)
 
