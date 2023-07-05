@@ -377,8 +377,7 @@ def file_path_to_source_class(file_path, options):
         out = options["s3_handler"]
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'s3' is not a class object inheriting from Source: "
-                + repr(out)
+                "'s3' is not a class object inheriting from Source: " + repr(out)
             )
         return out, file_path
 

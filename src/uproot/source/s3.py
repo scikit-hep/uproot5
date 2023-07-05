@@ -5,7 +5,7 @@ This module defines a physical layer for remote files, accessed via S3.
 """
 
 import os
-from urllib.parse import urlparse, parse_qsl
+from urllib.parse import parse_qsl, urlparse
 
 import uproot.extras
 import uproot.source.http
@@ -25,15 +25,33 @@ class S3Source(uproot.source.http.HTTPSource):
         options: See :doc:`uproot.source.http.HTTPSource.__init__`
     """
 
-    def __init__(self, file_path, endpoint="s3.amazonaws.com", access_key=None, secret_key=None, session_token=None, secure=True, region=None, http_client=None, credentials=None, **options):
+    def __init__(
+        self,
+        file_path,
+        endpoint="s3.amazonaws.com",
+        access_key=None,
+        secret_key=None,
+        session_token=None,
+        secure=True,
+        region=None,
+        http_client=None,
+        credentials=None,
+        **options,
+    ):
         Minio = uproot.extras.Minio_client()
 
         if access_key is None:
-            access_key = os.environ.get("S3_ACCESS_KEY", os.environ.get("AWS_ACCESS_KEY_ID", None))
+            access_key = os.environ.get(
+                "S3_ACCESS_KEY", os.environ.get("AWS_ACCESS_KEY_ID", None)
+            )
         if secret_key is None:
-            secret_key = os.environ.get("S3_SECRET_KEY", os.environ.get("AWS_SECRET_ACCESS_KEY", None))
+            secret_key = os.environ.get(
+                "S3_SECRET_KEY", os.environ.get("AWS_SECRET_ACCESS_KEY", None)
+            )
         if session_token is None:
-            session_token = os.environ.get("S3_SESSION_TOKEN", os.environ.get("AWS_SESSION_TOKEN", None))
+            session_token = os.environ.get(
+                "S3_SESSION_TOKEN", os.environ.get("AWS_SESSION_TOKEN", None)
+            )
         if region is None:
             region = os.environ.get("AWS_DEFAULT_REGION", None)
 
