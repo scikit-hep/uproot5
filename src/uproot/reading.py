@@ -79,6 +79,7 @@ def open(
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
@@ -179,6 +180,7 @@ class _OpenDefaults(dict):
 open.defaults = _OpenDefaults(
     {
         "file_handler": uproot.source.file.MemmapSource,
+        "s3_handler": uproot.source.s3.S3Source,
         "http_handler": uproot.source.http.HTTPSource,
         "object_handler": uproot.source.object.ObjectSource,
         "timeout": 30,
@@ -534,6 +536,7 @@ class ReadOnlyFile(CommonFileMethods):
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)

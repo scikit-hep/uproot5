@@ -272,6 +272,8 @@ _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 _might_be_port = re.compile(r"^[0-9].*")
+_remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
+_schemes = ["FILE", *_remote_schemes]
 
 
 def file_object_path_split(path):
@@ -296,16 +298,12 @@ def file_object_path_split(path):
         file_path = file_path.rstrip()
         object_path = object_path.lstrip()
 
-        if file_path.upper() in ("FILE", "HTTP", "HTTPS", "ROOT"):
+        if file_path.upper() in _schemes:
             return path, None
         elif win and _windows_drive_letter_ending.match(file_path) is not None:
             return path, None
         else:
             return file_path, object_path
-
-
-_remote_schemes = ["ROOT", "HTTP", "HTTPS"]
-_schemes = ["FILE", *_remote_schemes]
 
 
 def file_path_to_source_class(file_path, options):
@@ -371,6 +369,15 @@ def file_path_to_source_class(file_path, options):
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
                 "'xrootd_handler' is not a class object inheriting from Source: "
+                + repr(out)
+            )
+        return out, file_path
+
+    elif parsed_url.scheme.upper() in {"S3"}:
+        out = options["s3_handler"]
+        if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
+            raise TypeError(
+                "'s3' is not a class object inheriting from Source: "
                 + repr(out)
             )
         return out, file_path
