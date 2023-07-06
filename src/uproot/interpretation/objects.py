@@ -407,7 +407,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             output = numpy.array([], dtype=self.numpy_dtype)
         elif (
             all(uproot._util.from_module(x, "awkward") for x in basket_arrays.values())
-            and isinstance(library, (Awkward, Pandas))
+            and isinstance(library, (uproot.interpretation.library.Awkward, uproot.interpretation.library.Pandas))
         ):
             awkward = uproot.extras.awkward()
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
