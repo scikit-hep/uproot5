@@ -137,8 +137,8 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         if (
             self._forth
-            and isinstance(library, uproot.interpretation.library.Awkward)
-            or isinstance(library, uproot.interpretation.library.Pandas)
+            and (isinstance(library, uproot.interpretation.library.Awkward)
+            or isinstance(library, uproot.interpretation.library.Pandas))
         ):
             output = self.basket_array_forth(
                 data,
@@ -407,8 +407,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             output = numpy.array([], dtype=self.numpy_dtype)
         elif (
             all(uproot._util.from_module(x, "awkward") for x in basket_arrays.values())
-            and isinstance(library, uproot.interpretation.library.Awkward)
-            or isinstance(library, uproot.interpretation.library.Pandas)
+            and isinstance(library, (Awkward, Pandas))
         ):
             awkward = uproot.extras.awkward()
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
