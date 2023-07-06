@@ -136,7 +136,13 @@ class AsObjects(uproot.interpretation.Interpretation):
         assert basket.byte_offsets is not None
 
         if self._forth and (
-            isinstance(library, (uproot.interpretation.library.Awkward, uproot.interpretation.library.Pandas))
+            isinstance(
+                library,
+                (
+                    uproot.interpretation.library.Awkward,
+                    uproot.interpretation.library.Pandas,
+                ),
+            )
         ):
             output = self.basket_array_forth(
                 data,

@@ -843,13 +843,14 @@ class Pandas(Library):
         else:
             array = _libraries[Awkward.name].finalize(
                 array, branch, interpretation, entry_start, entry_stop, options
-                ) 
-            if isinstance(array.type.content, uproot.extras.awkward().types.NumpyType) and array.layout.minmax_depth == (1, 1):
+            )
+            if isinstance(
+                array.type.content, uproot.extras.awkward().types.NumpyType
+            ) and array.layout.minmax_depth == (1, 1):
                 array = array.to_numpy()
             else:
                 array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
         return pandas.Series(array, index=index)
-
 
     def group(self, arrays, expression_context, how):
         pandas = self.imported
