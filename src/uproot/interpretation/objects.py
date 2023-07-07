@@ -135,7 +135,15 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
         assert basket.byte_offsets is not None
 
-        if self._forth and isinstance(library, uproot.interpretation.library.Awkward):
+        if self._forth and (
+            isinstance(
+                library,
+                (
+                    uproot.interpretation.library.Awkward,
+                    uproot.interpretation.library.Pandas,
+                ),
+            )
+        ):
             output = self.basket_array_forth(
                 data,
                 byte_offsets,
@@ -403,9 +411,14 @@ class AsObjects(uproot.interpretation.Interpretation):
             output = numpy.array([], dtype=self.numpy_dtype)
         elif all(
             uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        ) and isinstance(
+            library,
+            (
+                uproot.interpretation.library.Awkward,
+                uproot.interpretation.library.Pandas,
+            ),
         ):
-            assert isinstance(library, uproot.interpretation.library.Awkward)
-            awkward = library.imported
+            awkward = uproot.extras.awkward()
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
             output = numpy.concatenate(trimmed)
