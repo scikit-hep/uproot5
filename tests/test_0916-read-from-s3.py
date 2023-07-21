@@ -14,7 +14,6 @@ def test_s3_fail():
             tobytes(source.chunk(0, 100).raw_data)
 
 
-@pytest.mark.xfail
 @pytest.mark.network
 def test_read_s3():
     with uproot.open(

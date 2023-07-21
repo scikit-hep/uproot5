@@ -58,7 +58,8 @@ class S3Source(uproot.source.http.HTTPSource):
         parsed_url = urlparse(file_path)
 
         bucket_name = parsed_url.netloc
-        object_name = parsed_url.path
+        assert parsed_url.path[0] == "/"
+        object_name = parsed_url.path[1:]
 
         parsed_query = dict(parse_qsl(parsed_url.query))
         # There is no standard scheme for s3:// URI query parameters,
