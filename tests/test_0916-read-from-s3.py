@@ -19,5 +19,5 @@ def test_read_s3():
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst"
     ) as f:
-        data = f["Track/Track.mPMomentum"].array(library="np")
-        assert len(data) == 100000
+        data = f["Event/Event.mEventId"].array(library="np")
+        assert len(data) == 8004
