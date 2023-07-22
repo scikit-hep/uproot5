@@ -841,14 +841,16 @@ class Pandas(Library):
         ):
             return pandas.Series(array, index=index)
         else:
-            awkward_pandas = uproot.extras.awkward_pandas()
-            ak_lib = _libraries[Awkward.name]
-            ak_arr = ak_lib.finalize(
+            array = _libraries[Awkward.name].finalize(
                 array, branch, interpretation, entry_start, entry_stop, options
             )
-            return pandas.Series(
-                awkward_pandas.AwkwardExtensionArray(ak_arr), index=index
-            )
+            if isinstance(
+                array.type.content, uproot.extras.awkward().types.NumpyType
+            ) and array.layout.minmax_depth == (1, 1):
+                array = array.to_numpy()
+            else:
+                array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
+        return pandas.Series(array, index=index)
 
     def group(self, arrays, expression_context, how):
         pandas = self.imported
