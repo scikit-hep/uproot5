@@ -78,7 +78,8 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
 **For accessing remote files:**
 
-   * `xrootd`: if reading files with `root://` URLs.
+   * `minio`: if reading files with `s3://` URIs.
+   * `xrootd`: if reading files with `root://` URIs.
    * HTTP/S access is built in (Python standard library).
 
 **For distributed computing with [Dask](https://www.dask.org/):**
