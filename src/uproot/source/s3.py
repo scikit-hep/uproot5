@@ -20,8 +20,8 @@ class S3Source(uproot.source.http.HTTPSource):
         secret_key: Secret key of your S3 account
         session_token: Session token of your S3 account
         secure: Flag to enable use of TLS
-        http_client (urllib3.poolmanager.PoolManager): Instance of `urllib3.poolmanager.PoolManager`
-        credentials (minio.credentials.Provider): Instance of `minio.credentials.Provider`
+        http_client (urllib3.poolmanager.PoolManager): Instance of :doc:`urllib3.poolmanager.PoolManager`
+        credentials (minio.credentials.Provider): Instance of :doc:`minio.credentials.Provider`
         options: See :doc:`uproot.source.http.HTTPSource.__init__`
     """
 
