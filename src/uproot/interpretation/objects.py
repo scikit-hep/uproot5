@@ -146,24 +146,6 @@ class AsObjects(uproot.interpretation.Interpretation):
 
         return output
 
-    def _any_NULL(self, form):
-        if form == "NULL":
-            return True
-        else:
-            content = form.get("content")
-            if content is not None:
-                return self._any_NULL(content)
-            contents = form.get("contents")
-            if isinstance(contents, list):
-                for content in contents:
-                    if self._any_NULL(content):
-                        return True
-            elif isinstance(contents, dict):
-                for content in contents.values():
-                    if self._any_NULL(content):
-                        return True
-            return False
-
     def final_array(
         self,
         basket_arrays,
