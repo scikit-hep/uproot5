@@ -10,5 +10,5 @@ ROOT = pytest.importorskip("ROOT")
 
 def test():
     name = "".join(random.choices(string.ascii_lowercase, k=10))
-    h = ROOT.TH1F(name, "", 100, -5, 5)
-    assert len(__import__("uproot").from_pyroot(h).values()) == 100
+    h = ROOT.TProfile3D()
+    assert __import__("uproot").from_pyroot(h).values().shape == (1, 1, 1)
