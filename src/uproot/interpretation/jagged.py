@@ -89,9 +89,7 @@ class AsJagged(uproot.interpretation.Interpretation):
         if self._header_bytes == 0:
             return f"AsJagged({self._content!r})"
         else:
-            return "AsJagged({}, header_bytes={})".format(
-                repr(self._content), self._header_bytes
-            )
+            return f"AsJagged({self._content!r}, header_bytes={self._header_bytes})"
 
     def __eq__(self, other):
         return (
@@ -124,9 +122,7 @@ class AsJagged(uproot.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        return "{}({},{})".format(
-            type(self).__name__, self._content.cache_key, self._header_bytes
-        )
+        return f"{type(self).__name__}({self._content.cache_key},{self._header_bytes})"
 
     @property
     def typename(self):

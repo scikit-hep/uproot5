@@ -1689,9 +1689,7 @@ class TBranch(HasBranches):
 
     def __repr__(self):
         if len(self) == 0:
-            return "<{} {} at 0x{:012x}>".format(
-                self.classname, repr(self.name), id(self)
-            )
+            return f"<{self.classname} {self.name!r} at 0x{id(self):012x}>"
         else:
             return "<{} {} ({} subbranches) at 0x{:012x}>".format(
                 self.classname, repr(self.name), len(self), id(self)
@@ -1891,9 +1889,7 @@ class TBranch(HasBranches):
         """
         if self._cache_key is None:
             sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
-            self._cache_key = "{}{}{}({})".format(
-                self.parent.cache_key, sep, self.name, self.index
-            )
+            self._cache_key = f"{self.parent.cache_key}{sep}{self.name}({self.index})"
         return self._cache_key
 
     @property

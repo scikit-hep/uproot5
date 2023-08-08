@@ -47,9 +47,7 @@ def make_connection(parsed_url, timeout):
 
     else:
         raise ValueError(
-            "unrecognized URL scheme for HTTP MultipartSource: {}".format(
-                parsed_url.scheme
-            )
+            f"unrecognized URL scheme for HTTP MultipartSource: {parsed_url.scheme}"
         )
 
 
@@ -590,9 +588,7 @@ class HTTPSource(uproot.source.chunk.Source):
         fallback = ""
         if self._fallback is not None:
             fallback = " with fallback"
-        return "<{} {}{} at 0x{:012x}>".format(
-            type(self).__name__, path, fallback, id(self)
-        )
+        return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
     def chunk(self, start, stop):
         self._num_requests += 1

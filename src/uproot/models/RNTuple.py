@@ -55,10 +55,8 @@ class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
 
         (

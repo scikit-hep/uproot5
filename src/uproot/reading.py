@@ -160,9 +160,7 @@ class _OpenDefaults(dict):
             # See https://github.com/scikit-hep/uproot5/issues/294
             if uproot.extras.older_xrootd("5.2.0"):
                 message = (
-                    "XRootD {} is not fully supported; ".format(
-                        uproot.extras.xrootd_version()
-                    )
+                    f"XRootD {uproot.extras.xrootd_version()} is not fully supported; "
                     + """either upgrade to 5.2.0+ or set
 
     open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
@@ -641,10 +639,8 @@ class ReadOnlyFile(CommonFileMethods):
 
         if magic != b"root":
             raise ValueError(
-                """not a ROOT file: first four bytes are {}
-in file {}""".format(
-                    repr(magic), file_path
-                )
+                f"""not a ROOT file: first four bytes are {magic!r}
+in file {file_path}"""
             )
 
     def __repr__(self):
@@ -2388,9 +2384,7 @@ class ReadOnlyKey:
         ``TDirectory``), this returns a message with the raw seek position.
         """
         if isinstance(self._parent, ReadOnlyDirectory):
-            return "{}{};{}".format(
-                self._parent.object_path, self.name(False), self._fCycle
-            )
+            return f"{self._parent.object_path}{self.name(False)};{self._fCycle}"
         else:
             return f"(seek pos {self.data_cursor.index})/{self.name(False)}"
 

@@ -360,22 +360,15 @@ class Chunk:
                 requirement = True
             else:
                 raise TypeError(
-                    """insist must be a bool or an int, not {}
-for file path {}""".format(
-                        repr(insist), self._source.file_path
-                    )
+                    f"""insist must be a bool or an int, not {insist!r}
+for file path {self._source.file_path}"""
                 )
 
             if not requirement:
                 raise OSError(
-                    """expected Chunk of length {},
-received {} bytes from {}
-for file path {}""".format(
-                        self._stop - self._start,
-                        len(self._raw_data),
-                        type(self._source).__name__,
-                        self._source.file_path,
-                    )
+                    f"""expected Chunk of length {self._stop - self._start},
+received {len(self._raw_data)} bytes from {type(self._source).__name__}
+for file path {self._source.file_path}"""
                 )
             self._future = None
 
@@ -421,10 +414,8 @@ for file path {}""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes {}:{}
-outside expected range {}:{} for this Chunk""".format(
-                    start, stop, self._start, self._stop
-                ),
+                f"""attempting to get bytes {start}:{stop}
+outside expected range {self._start}:{self._stop} for this Chunk""",
                 self,
                 cursor.copy(),
                 context,
@@ -459,10 +450,8 @@ outside expected range {}:{} for this Chunk""".format(
 
         else:
             raise uproot.deserialization.DeserializationError(
-                """attempting to get bytes after {}
-outside expected range {}:{} for this Chunk""".format(
-                    start, self._start, self._stop
-                ),
+                f"""attempting to get bytes after {start}
+outside expected range {self._start}:{self._stop} for this Chunk""",
                 self,
                 cursor.copy(),
                 context,

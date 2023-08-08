@@ -657,9 +657,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def __repr__(self):
         if self.inner_shape:
-            return "AsStridedObjects({}, {})".format(
-                self._model.__name__, self.inner_shape
-            )
+            return f"AsStridedObjects({self._model.__name__}, {self.inner_shape})"
         else:
             return f"AsStridedObjects({self._model.__name__})"
 

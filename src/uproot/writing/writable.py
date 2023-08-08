@@ -1420,10 +1420,8 @@ in file {} in directory {}""".format(
         if len(old_names) == 0:
             if require_matches:
                 raise ValueError(
-                    """no objects found with names matching {}
-in file {} in directory {}""".format(
-                        repr(filter_name), source.file_path, source.path
-                    )
+                    f"""no objects found with names matching {filter_name!r}
+in file {source.file_path} in directory {source.path}"""
                 )
             else:
                 return
