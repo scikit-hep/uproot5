@@ -16,6 +16,7 @@ from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
 import numpy
 
 import uproot
+import uproot._awkward_forth
 
 _stl_container_size = struct.Struct(">I")
 _stl_object_type = numpy.dtype(object)
@@ -43,25 +44,71 @@ def _content_cache_key(content):
     else:
         return content.cache_key
 
-
 def _read_nested(
-    model, length, chunk, cursor, context, file, selffile, parent, header=True
+    model, length, chunk, cursor, context, file, selffile, parent, header=True,previous_model=None
 ):  
-    if isinstance(model, numpy.dtype):
-        return cursor.array(chunk, length, model, context)
+    if previous_model is None:
+            previous_model = {}
+    forth_stash = uproot._awkward_forth.forth_stash(context,previous_model=previous_model)
 
+    if isinstance(model, numpy.dtype):
+        symbol = uproot._awkward_forth.symbol_dict.get(model)
+        if forth_stash is not None and symbol is None:
+            raise TypeError("Cannot be awkward")
+        if forth_stash is not None:
+            key = context["forth"].gen.node_count
+            context["forth"].gen.increment_node_count()
+            node_key = f"node{key}"
+            form_key = f"node{key}-data"
+            headercode = f"output node{key}-data {uproot._awkward_forth.convert_dtype(symbol)}\n"
+            precode = f"stream #!{symbol}-> node{key}-data\n"
+            if previous_model["name"] != node_key:
+                forth_stash.add_form_key(form_key)
+                forth_stash.add_form(
+                    {
+                        "class": "NumpyArray",
+                        "primitive": f"{uproot._awkward_forth.convert_dtype(symbol)}",
+                        "form_key": f"node{key}",
+                    }
+                )
+            if previous_model["name"] == node_key:
+                forth_stash.set_node(previous_model)
+            else:
+                forth_stash.set_node(
+                        f"node{key}",
+                        "i64",
+                        precode,
+                        [],
+                        '',
+                        headercode,
+                        1,
+                        None,
+                    )
+            context["forth"].gen.add_forth_stash(forth_stash)
+
+        return cursor.array(chunk, length, model, context)
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
+            if forth_stash is not None:
+                temp_count = context["forth"].gen.node_count
             for i in range(length):
+                context["forth"].gen.node_count = temp_count
                 values[i] = model.read(
-                    chunk, cursor, context, file, selffile, parent, header=header
+                    chunk, cursor, context, file, selffile, parent, header=header,previous_model=previous_model
                 )
         else:
+            if forth_stash is not None:
+                temp_count = context["forth"].gen.node_count
             for i in range(length):
-                values[i] = model.read(chunk, cursor, context, file, selffile, parent)
+                if forth_stash is not None:
+                    if "temp_ref" in context.keys():
+                        forth_stash.set_node(**context["temp_ref"])
+                context["forth"].gen.node_count = temp_count
+                values[i] = model.read(chunk, cursor, context, file, selffile, parent,previous_model=previous_model)
+        if forth_stash is not None and "temp_ref" in context.keys():
+            del context["temp_ref"]
         return values
-
 
 def _tostring(value):
     if uproot._util.isstr(value):
@@ -853,8 +900,11 @@ class AsVector(AsContainer):
             uproot._util.awkward_form(self._values, file, context),
         )
 
-    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True,previous_model=None):
+        if previous_model is None:
+            previous_model = {}
         # AwkwardForth testing: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
+        forth_stash = uproot._awkward_forth.forth_stash(context,previous_model)
 
         if self._header and header:
             start_cursor = cursor.copy()
@@ -918,8 +968,45 @@ class AsVector(AsContainer):
                         )
         else:
             length = cursor.field(chunk, _stl_container_size, context)
+
+            if forth_stash is not None:
+                key = context["forth"].gen.node_count
+                context["forth"].gen.increment_node_count()
+                node_key = f"node{key}"
+                form_key = f"node{key}-offsets"
+                headercode = f"output node{key}-offsets int64\n"
+                initcode = f"0 node{key}-offsets <- stack\n"
+                precode = [f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"]
+                print(previous_model)
+                if previous_model["name"] != node_key:
+                    forth_stash.add_form_key(form_key)
+                    temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{key}"}}'
+                    forth_stash.add_form(json.loads(temp_aform))
+                if not isinstance(self._values, numpy.dtype):
+                    precode.append("0 do\n")
+                    postcode = ["loop\n"]
+                else:
+                    postcode = []
+
+                if previous_model["name"] == node_key:
+                    temp = forth_stash.set_node(previous_model)
+                else:
+                    temp = forth_stash.set_node(
+                        node_key,
+                        "i64",
+                        precode,
+                        postcode,
+                        initcode,
+                        headercode,
+                        1,
+                        {},
+                    )
+            
+                context["forth"].gen.add_forth_stash(forth_stash)
+                context["temp_ref"] = temp
+
             values = _read_nested(
-                self._values, length, chunk, cursor, context, file, selffile, parent
+                self._values, length, chunk, cursor, context, file, selffile, parent, previous_model=forth_stash._node
             )
         out = STLVector(values)
 

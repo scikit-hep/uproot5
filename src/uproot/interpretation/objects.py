@@ -25,6 +25,7 @@ import threading
 import numpy
 
 import uproot
+import uproot._awkward_forth
 
 class AsObjects(uproot.interpretation.Interpretation):
     """
@@ -47,6 +48,9 @@ class AsObjects(uproot.interpretation.Interpretation):
         self._model = model
         self._branch = branch
         self._form = None
+        self._forth = False
+        self._complete_forth_code = None
+        self._forth_lock = threading.Lock()
 
     @property
     def model(self):
@@ -128,9 +132,29 @@ class AsObjects(uproot.interpretation.Interpretation):
             options=options,
         )
         assert basket.byte_offsets is not None
-        output = ObjectArray(
-            self._model, branch, context, byte_offsets, data, cursor_offset
-        ).to_numpy()
+        if self._forth and (
+            isinstance(
+                library,
+                (
+                    uproot.interpretation.library.Awkward,
+                    uproot.interpretation.library.Pandas,
+                ),
+            )
+        ):
+            output = self.basket_array_forth(
+                data,
+                byte_offsets,
+                basket,
+                branch,
+                context,
+                cursor_offset,
+                library,
+                options,
+            )
+        else:
+            output = ObjectArray(
+                self._model, branch, context, byte_offsets, data, cursor_offset
+            ).to_numpy()
 
         self.hook_after_basket_array(
             data=data,
@@ -144,6 +168,188 @@ class AsObjects(uproot.interpretation.Interpretation):
             options=options,
         )
 
+        return output
+    
+    def basket_array_forth(
+        self,
+        data,
+        byte_offsets,
+        basket,
+        branch,
+        context,
+        cursor_offset,
+        library,
+        options,
+    ):
+        awkward = uproot.extras.awkward()
+        import awkward.forth
+
+        self.hook_before_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            cursor_offset=cursor_offset,
+            library=library,
+            options=options,
+        )
+        assert basket.byte_offsets is not None
+
+        if not hasattr(context["forth"], "vm"):
+            # context["forth"] is a threading.local()
+            context["forth"].vm = None
+            context["forth"].gen = uproot._awkward_forth.ForthGenerator()
+        else:
+            context["forth"].gen = None
+
+        if self._complete_forth_code is None:
+            with self._forth_lock:
+                # all threads have to wait until complete_forth_code is ready
+
+                if self._complete_forth_code is None:
+                    # another thread didn't make it while this thread waited
+                    # this thread tries to make it now
+                    output = self._discover_forth(
+                        data, byte_offsets, branch, context, cursor_offset
+                    )
+
+                    if output is not None:
+                        # Forth discovery was unsuccessful; return Python-derived
+                        # output and maybe another basket will be more fruitful
+                        self.hook_after_basket_array(
+                            data=data,
+                            byte_offsets=byte_offsets,
+                            basket=basket,
+                            branch=branch,
+                            context=context,
+                            output=output,
+                            cursor_offset=cursor_offset,
+                            library=library,
+                            options=options,
+                        )
+                        return output
+
+        # if we didn't return already, either this thread generated the
+        # complete_forth_code or another did
+        assert self._complete_forth_code is not None
+
+        if context["forth"].vm is None:
+            try:
+                context["forth"].vm = awkward.forth.ForthMachine64(
+                    self._complete_forth_code
+                )
+            except Exception as err:
+                raise type(err)(
+                    str(err)
+                    + "\n\nForth code generated for this data type:\n\n"
+                    + self._complete_forth_code
+                ) from err
+
+        # get data using Forth
+        temp_data = data[byte_offsets[0]:byte_offsets[-1]]
+        context["forth"].vm.begin(
+            {
+                "stream": numpy.array(temp_data),
+                "byteoffsets": numpy.array(byte_offsets[:-1]),
+                "bytestops": numpy.array(byte_offsets[1:]),
+            }
+        )
+        context["forth"].vm.stack_push(len(byte_offsets) - 1)
+        context["forth"].vm.resume()
+        container = {}
+        container = context["forth"].vm.outputs
+        output = awkward.from_buffers(self._form, len(byte_offsets) - 1, container)
+
+        self.hook_after_basket_array(
+            data=data,
+            byte_offsets=byte_offsets,
+            basket=basket,
+            branch=branch,
+            context=context,
+            output=output,
+            cursor_offset=cursor_offset,
+            library=library,
+            options=options,
+        )
+
+        return output
+    
+    def _any_NULL(self, form):
+        if form == "NULL":
+            return True
+        else:
+            content = form.get("content")
+            if content is not None:
+                return self._any_NULL(content)
+            contents = form.get("contents")
+            if isinstance(contents, list):
+                for content in contents:
+                    if self._any_NULL(content):
+                        return True
+            elif isinstance(contents, dict):
+                for content in contents.values():
+                    if self._any_NULL(content):
+                        return True
+            return False
+    
+    def _assemble_forth(self, forth_obj, awkward_model):
+        forth_obj.add_to_header(awkward_model["header_code"])
+        forth_obj.add_to_init(awkward_model["init_code"])
+        forth_obj.add_to_final(awkward_model["pre_code"])
+        if "content" in awkward_model.keys():
+            temp_content = awkward_model["content"]
+            if isinstance(temp_content, list):
+                for elem in temp_content:
+                    self._assemble_forth(forth_obj, elem)
+            elif isinstance(temp_content, dict):
+                self._assemble_forth(forth_obj, awkward_model["content"])
+            else:
+                pass
+        forth_obj.add_to_final(awkward_model["post_code"])
+    
+    def _discover_forth(self,data,byte_offsets, branch, context, cursor_offset):
+        output = numpy.empty(len(byte_offsets)-1,dtype=numpy.dtype(object))
+        
+        for i in range(len(byte_offsets)-1):
+            chunk = uproot.source.chunk.Chunk.wrap(branch.file.source, data[byte_offsets[i]:byte_offsets[i+1]])
+            cursor = uproot.source.cursor.Cursor(
+                0, origin=-(byte_offsets[i] + cursor_offset)
+            )
+
+            output[i] = self._model.read(
+                chunk,
+                cursor,
+                context,
+                branch.file,
+                branch.file.detached,
+                branch,
+                previous_model = context["forth"].gen.awkward_model,
+                )
+    #         if not self._any_NULL(context["forth"].gen.discovered_form) and not context["cancel_forth"]:
+    #             context["forth"].prereaddone=True
+    #             self._assemble_forth(context["forth"].gen,context["forth"].gen.awkward_model["content"])
+    #             self._complete_forth_code = f"""input stream
+    # input byteoffsets
+    # input bytestops
+    # {"".join(context["forth"].gen.final_header)}
+    # {"".join(context["forth"].gen.final_init)}
+    # 0 do
+    # byteoffsets I-> stack
+    # stream seek
+    # {"".join(context["forth"].gen.final_code)}
+    # loop
+    # """
+    #             self._forth_form_keys = tuple(context["forth"].gen.form_keys)
+    #             self._form = context["forth"].gen.discovered_form
+
+                #return None  # we should re-read all the data with Forth
+        for i in context["forth"].gen.forth_stashes:
+            print(i._node)
+            print(i._form)
+            print()
+        raise Exception
+        #Python output when Forth-Generation not successful    
         return output
 
     def final_array(
