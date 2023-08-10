@@ -790,7 +790,10 @@ def _pandas_memory_efficient(pandas, series, names):
     out = None
     for name in names:
         if out is None:
-            out = series[name].to_frame(name=name)
+            if not isinstance(series[name], pandas.core.series.Series):
+                out = pandas.Series(data=series[name]).to_frame(name=name)
+            else:
+                out = series[name].to_frame(name=name)
         else:
             out[name] = series[name]
         del series[name]
