@@ -58,6 +58,7 @@ dev = [
 ]
 test = [
     "lz4",
+    "minio",
     "pytest>=6",
     "pytest-timeout",
     "pytest-rerunfailures",

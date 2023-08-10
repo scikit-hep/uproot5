@@ -67,6 +67,26 @@ or
         return pandas
 
 
+def Minio_client():
+    """
+    Imports and returns ``minio.Minio``.
+    """
+    try:
+        from minio import Minio
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'minio' package with:
+
+    pip install minio
+
+or
+
+    conda install minio"""
+        ) from err
+    else:
+        return Minio
+
+
 def XRootD_client():
     """
     Imports and returns ``XRootD.client`` (after setting the

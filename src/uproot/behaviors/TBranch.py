@@ -154,6 +154,7 @@ def iterate(
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
@@ -325,6 +326,7 @@ def concatenate(
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
