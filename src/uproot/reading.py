@@ -161,7 +161,7 @@ class _OpenDefaults(dict):
             if uproot.extras.older_xrootd("5.2.0"):
                 message = (
                     f"XRootD {uproot.extras.xrootd_version()} is not fully supported; "
-                    + """either upgrade to 5.2.0+ or set
+                    """either upgrade to 5.2.0+ or set
 
     open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
 """
