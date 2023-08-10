@@ -135,9 +135,7 @@ class MemmapSource(uproot.source.chunk.Source):
         fallback = ""
         if self._fallback is not None:
             fallback = " with fallback"
-        return "<{} {}{} at 0x{:012x}>".format(
-            type(self).__name__, path, fallback, id(self)
-        )
+        return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
     def chunk(self, start, stop):
         if self._fallback is None:

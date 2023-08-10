@@ -19,10 +19,8 @@ class Model_TNamed(uproot.model.Model):
         context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             uproot.models.TObject.Model_TObject.read(

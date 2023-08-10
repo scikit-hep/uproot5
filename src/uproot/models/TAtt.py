@@ -23,10 +23,8 @@ class Model_TAttLine_v1(uproot.model.VersionedModel):
         context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         (
             self._members["fLineColor"],
@@ -89,10 +87,8 @@ class Model_TAttLine_v2(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         (
             self._members["fLineColor"],
@@ -185,10 +181,8 @@ class Model_TAttFill_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._members["fFillColor"], self._members["fFillStyle"] = cursor.fields(
             chunk, _tattfill1_format1, context
@@ -245,10 +239,8 @@ class Model_TAttFill_v2(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._members["fFillColor"], self._members["fFillStyle"] = cursor.fields(
             chunk, _tattfill2_format1, context
@@ -333,10 +325,8 @@ class Model_TAttMarker_v2(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         (
             self._members["fMarkerColor"],
@@ -425,10 +415,8 @@ class Model_TAttAxis_v4(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         (
             self._members["fNdivisions"],
@@ -646,10 +634,8 @@ class Model_TAtt3D_v1(uproot.model.VersionedModel):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
 
     def read_member_n(self, chunk, cursor, context, file, member_index):

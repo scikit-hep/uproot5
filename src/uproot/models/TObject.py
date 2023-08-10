@@ -32,10 +32,8 @@ class Model_TObject(uproot.model.Model):
             # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._instance_version = cursor.field(chunk, _tobject_format1, context)
         if numpy.int64(self._instance_version) & uproot.const.kByteCountVMask:

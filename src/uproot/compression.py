@@ -401,10 +401,8 @@ in file {}""".format(
 
         else:
             raise ValueError(
-                """unrecognized compression algorithm: {}
-in file {}""".format(
-                    algo, chunk.source.file_path
-                )
+                f"""unrecognized compression algorithm: {algo}
+in file {chunk.source.file_path}"""
             )
 
         if block_info is not None:
