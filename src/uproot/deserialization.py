@@ -415,10 +415,8 @@ class DeserializationError(Exception):
             in_parent = "\nin object {}".format(self.context["TKey"].object_path)
 
         if len(lines) == 0:
-            return """{}
-in file {}{}""".format(
-                self.message, self.file_path, in_parent
-            )
+            return f"""{self.message}
+in file {self.file_path}{in_parent}"""
         else:
             return """while reading
 

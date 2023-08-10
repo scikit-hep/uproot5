@@ -28,10 +28,8 @@ class Model_TString(uproot.model.Model, str):
             data_num = keys[1]
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         if forth_stash is not None:
             forth_stash.add_to_pre(
@@ -89,9 +87,7 @@ in file {}""".format(
             version = ""
         else:
             version = f" (version {self.class_version})"
-        return "<{}{} {} at 0x{:012x}>".format(
-            self.classname, version, str.__repr__(self), id(self)
-        )
+        return f"<{self.classname}{version} {str.__repr__(self)} at 0x{id(self):012x}>"
 
     def tojson(self):
         return str(self)

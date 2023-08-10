@@ -151,11 +151,7 @@ class String(CascadeLeaf):
         self._serialization = uproot.serialization.string(self._string)
 
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__,
-            self._location,
-            repr(self._string),
-        )
+        return f"{type(self).__name__}({self._location}, {self._string!r})"
 
     @property
     def string(self):
@@ -439,9 +435,7 @@ class Key(CascadeLeaf):
         assert 0 < fNbytes <= fKeylen + fObjlen
         assert fCycle > 0
         if not is_directory_key:
-            assert fSeekKey == location, "fSeekKey {} location {}".format(
-                fSeekKey, location
-            )
+            assert fSeekKey == location, f"fSeekKey {fSeekKey} location {location}"
             fSeekKey = None
 
         classname, position = String.deserialize(
@@ -484,12 +478,7 @@ class FreeSegmentsData(CascadeLeaf):
         self._end = end
 
     def __repr__(self):
-        return "{}({}, {}, {})".format(
-            type(self).__name__,
-            self._location,
-            self._slices,
-            self._end,
-        )
+        return f"{type(self).__name__}({self._location}, {self._slices}, {self._end})"
 
     @property
     def slices(self):
@@ -640,12 +629,7 @@ class FreeSegments(CascadeNode):
         self._fileheader = fileheader
 
     def __repr__(self):
-        return "{}({}, {}, {})".format(
-            type(self).__name__,
-            self._key,
-            self._data,
-            self._fileheader,
-        )
+        return f"{type(self).__name__}({self._key}, {self._data}, {self._fileheader})"
 
     @property
     def key(self):
@@ -909,11 +893,7 @@ class RawTListOfStrings(CascadeLeaf):
         self._serialization = serialization
 
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__,
-            self._location,
-            self._serialization,
-        )
+        return f"{type(self).__name__}({self._location}, {self._serialization})"
 
     def copy_to(self, location):
         return RawTListOfStrings(location, self._serialization)
@@ -2477,9 +2457,7 @@ def update_existing(sink, initial_directory_bytes, uuid_function):
     )
     if raw_bytes[:4] != b"root":
         raise ValueError(
-            "not a ROOT file: first four bytes are {}{}".format(
-                repr(raw_bytes[:4]), sink.in_path
-            )
+            f"not a ROOT file: first four bytes are {raw_bytes[:4]!r}{sink.in_path}"
         )
     fileheader = FileHeader.deserialize(raw_bytes, 0)
 

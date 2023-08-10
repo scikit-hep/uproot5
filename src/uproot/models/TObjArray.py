@@ -31,10 +31,8 @@ class Model_TObjArray(uproot.model.Model, Sequence):
         context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             uproot.models.TObject.Model_TObject.read(
@@ -87,12 +85,7 @@ in file {}""".format(
             version = ""
         else:
             version = f" (version {self.class_version})"
-        return "<{}{} of {} items at 0x{:012x}>".format(
-            self.classname,
-            version,
-            len(self),
-            id(self),
-        )
+        return f"<{self.classname}{version} of {len(self)} items at 0x{id(self):012x}>"
 
     def __getitem__(self, where):
         return self._data[where]
@@ -119,10 +112,8 @@ class Model_TObjArrayOfTBaskets(Model_TObjArray):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             uproot.models.TObject.Model_TObject.read(
