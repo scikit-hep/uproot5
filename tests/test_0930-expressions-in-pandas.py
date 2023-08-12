@@ -6,6 +6,7 @@ import uproot
 
 
 def test_expressions_in_pandas(tmp_path):
+    pandas = pytest.importorskip("pandas")
     filename = os.path.join(tmp_path, "uproot_test_pandas_expressions.root")
     # create tmp file
     with uproot.recreate(filename) as file:
