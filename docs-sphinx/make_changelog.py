@@ -12,7 +12,7 @@ tagslist_text = subprocess.run(
 ).stdout
 tagslist = {
     k: v
-    for k, v in re.findall(rb"([0-9a-f]{40}) refs/tags/([0-9\.rc]+)", tagslist_text)
+    for k, v in re.findall(rb"([0-9a-f]{40}) refs/tags/(v?[0-9\.rc]+)", tagslist_text)
     if not v.startswith(b"0.")
 }
 
