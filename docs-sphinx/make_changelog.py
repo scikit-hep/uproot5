@@ -28,8 +28,8 @@ for pageid in range(numpages):
     print(f"Requesting GitHub data, page {pageid + 1} of {numpages}")
     github_connection.request(
         "GET",
-        rf"/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30",
-        headers={"User-Agent": "uproot4-changelog"},
+        rf"/repos/scikit-hep/uproot5/releases?page={pageid + 1}&per_page=30",
+        headers={"User-Agent": "uproot5-changelog"},
     )
     github_releases_text = github_connection.getresponse().read()
     try:
@@ -214,7 +214,7 @@ Uproot versions 1 through 3 were in a different GitHub repository: `scikit-hep/u
 
 This was to allow users to transition from Awkward Array 0.x and Uproot 3.x, which had different interfaces (especially Awkward Array). The transition completed on December 1, 2020.
 
-.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/uproot-awkward-timeline.png
+.. image:: https://raw.githubusercontent.com/scikit-hep/uproot5/main/docs-img/diagrams/uproot-awkward-timeline.png
   :width: 100%
 """
     )
