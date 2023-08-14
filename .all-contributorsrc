@@ -497,6 +497,15 @@
       "contributions": [
         "test"
       ]
+    },
+    {
+      "login": "JostMigenda",
+      "name": "Jost Migenda",
+      "avatar_url": "https://avatars.githubusercontent.com/u/16189747?v=4",
+      "profile": "https://github.com/JostMigenda",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
