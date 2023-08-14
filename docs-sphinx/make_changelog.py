@@ -7,6 +7,8 @@ import math
 import re
 import subprocess
 
+from urllib.request import urlopen
+
 tagslist_text = subprocess.run(
     ["git", "show-ref", "--tags"], stdout=subprocess.PIPE
 ).stdout
@@ -21,17 +23,11 @@ subjects_text = subprocess.run(
 ).stdout
 subjects = re.findall(rb"([0-9a-f]{40}) (.*)", subjects_text)
 
-github_connection = http.client.HTTPSConnection("api.github.com")
 github_releases = []
 numpages = int(math.ceil(len(tagslist) / 30.0))
 for pageid in range(numpages):
     print(f"Requesting GitHub data, page {pageid + 1} of {numpages}")
-    github_connection.request(
-        "GET",
-        rf"/repos/scikit-hep/uproot5/releases?page={pageid + 1}&per_page=30",
-        headers={"User-Agent": "uproot5-changelog"},
-    )
-    github_releases_text = github_connection.getresponse().read()
+    github_releases_text = urlopen(rf"https://api.github.com/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30").read()
     try:
         github_releases_page = json.loads(github_releases_text)
     except:
