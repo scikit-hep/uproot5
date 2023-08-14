@@ -27,7 +27,9 @@ github_releases = []
 numpages = int(math.ceil(len(tagslist) / 30.0))
 for pageid in range(numpages):
     print(f"Requesting GitHub data, page {pageid + 1} of {numpages}")
-    github_releases_text = urlopen(rf"https://api.github.com/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30").read()
+    github_releases_text = urlopen(
+        rf"https://api.github.com/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30"
+    ).read()
     try:
         github_releases_page = json.loads(github_releases_text)
     except:
@@ -71,7 +73,9 @@ def pypi_exists(tag):
 with open("changelog.rst", "w") as outfile:
     outfile.write("Release history\n")
     outfile.write("---------------\n")
-    outfile.write("Note: Releases in the 4.3.x series were developed in parallel with v5.0 on a separate branch and are not included here. See the `list of 4.x releases <https://github.com/scikit-hep/uproot5/releases?q=%224.3%22+OR+%22v4.3%22&expanded=true>`__ for details.\n")
+    outfile.write(
+        "Note: Releases in the 4.3.x series were developed in parallel with v5.0 on a separate branch and are not included here. See the `list of 4.x releases <https://github.com/scikit-hep/uproot5/releases?q=%224.3%22+OR+%22v4.3%22&expanded=true>`__ for details.\n"
+    )
 
     first = True
     numprs = None
