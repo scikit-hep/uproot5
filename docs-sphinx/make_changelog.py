@@ -75,6 +75,7 @@ def pypi_exists(tag):
 with open("changelog.rst", "w") as outfile:
     outfile.write("Release history\n")
     outfile.write("---------------\n")
+    outfile.write("Note: Releases in the 4.3.x series were developed in parallel with v5.0 on a separate branch and are not included here. See the `list of 4.x releases <https://github.com/scikit-hep/uproot5/releases?q=%224.3%22+OR+%22v4.3%22&expanded=true>`__ for details.\n")
 
     first = True
     numprs = None
