@@ -2963,7 +2963,7 @@ def _regularize_expressions(
             "expressions must be None (for all branches), a string (single "
             "branch or expression), a list of strings (multiple), or a dict "
             "or list of name, Interpretation pairs (branch names and their "
-            "new Interpretation), not {}".format(repr(expressions))
+            f"new Interpretation), not {expressions!r}"
         )
 
     if cut is None:
@@ -3209,7 +3209,7 @@ def _regularize_step_size(
     target_num_bytes = uproot._util.memory_size(
         step_size,
         "number of entries or memory size string with units "
-        "(such as '100 MB') required, not {}".format(repr(step_size)),
+        f"(such as '100 MB') required, not {step_size!r}",
     )
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation
