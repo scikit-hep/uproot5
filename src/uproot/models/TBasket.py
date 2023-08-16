@@ -311,7 +311,10 @@ class Model_TBasket(uproot.model.Model):
 
             if self.border != uncompressed_bytes:
                 self._data = self._raw_data[: self.border]
-                raw_byte_offsets = self._raw_data[self.border :].view(
+                print("self._raw_data[self.border + 3:] ", self._raw_data[self.border +3 :])
+                print("self._raw_data[self.border :] dtype ", self._raw_data[self.border +3:].dtype)
+                print("_tbasket_offsets_dtype ", _tbasket_offsets_dtype)
+                raw_byte_offsets = self._raw_data[self.border + 3:].view(
                     _tbasket_offsets_dtype
                 )
 
