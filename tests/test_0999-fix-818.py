@@ -17,13 +17,14 @@ ROOT = pytest.importorskip("ROOT")
 #     t.Fill()
 #     assert t.GetLeaf("string").Class_Name()  == 'TLeafC'
 #     tfile.Write()
-   
+
 #     file = uproot.open("tleafc_test.root")["tree"]
 #     print(str(file["string"].array()[0]))
 #     assert file["string"].array() == ["one"]
 #     assert file["string"].member("fLeaves")[0].classname == 'TLeafC'
 #     assert file["string"].interpretation == uproot.interpretation.strings.AsStrings()
-    
+
+
 def test_write_tfleac_uproot(tmp_path):
     filename = os.path.join(tmp_path, "tleafc_test_write.root")
 
@@ -35,8 +36,7 @@ def test_write_tfleac_uproot(tmp_path):
 
     data = rf.Get("tree")
 
-    assert data.GetLeaf("branch").Class_Name() == "TLeafC"   
+    assert data.GetLeaf("branch").Class_Name() == "TLeafC"
 
     with uproot.open(filename) as g:
-        assert g['tree']['branch'].array().tolist() == ["one", "two", "three"]
-
+        assert g["tree"]["branch"].array().tolist() == ["one", "two", "three"]
