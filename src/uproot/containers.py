@@ -45,11 +45,9 @@ def _content_cache_key(content):
         return content.cache_key
 
 def _read_nested(
-    model, length, chunk, cursor, context, file, selffile, parent, header=True,previous_model=None
+    model, length, chunk, cursor, context, file, selffile, parent, header=True
 ):  
-    if previous_model is None:
-            previous_model = {}
-    forth_stash = uproot._awkward_forth.forth_stash(context,previous_model=previous_model)
+    forth_stash = uproot._awkward_forth.forth_stash(context)
 
     if isinstance(model, numpy.dtype):
         symbol = uproot._awkward_forth.symbol_dict.get(model)
@@ -63,17 +61,16 @@ def _read_nested(
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             if forth_stash is not None:
+                #These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
                 temp_count = context["forth"].gen.node_count
+                prev_model = context["forth"].gen.previous_model
             for i in range(length):
                 if forth_stash is not None:
                     context["forth"].gen.update_node_count(temp_count)
-                    values[i] = model.read(
-                        chunk, cursor, context, file, selffile, parent, header=header,previous_model=previous_model
-                    )
-                else:
-                    values[i] = model.read(
-                        chunk, cursor, context, file, selffile, parent, header=header
-                    )
+                    context["forth"].gen.update_previous_model(prev_model)
+                values[i] = model.read(
+                    chunk, cursor, context, file, selffile, parent, header=header,
+                )
         else:
             for i in range(length):
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
@@ -869,11 +866,9 @@ class AsVector(AsContainer):
             uproot._util.awkward_form(self._values, file, context),
         )
 
-    def read(self, chunk, cursor, context, file, selffile, parent, header=True,previous_model=None):
-        if previous_model is None:
-            previous_model = {}
+    def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
-        forth_stash = uproot._awkward_forth.forth_stash(context,previous_model)
+        forth_stash = uproot._awkward_forth.forth_stash(context)
         
         if self._header and header:
             start_cursor = cursor.copy()
@@ -941,14 +936,9 @@ class AsVector(AsContainer):
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_stash is not None:
                 forth_stash.read_forth_AsVector(context["forth"].gen,self._values)
-
-                values = _read_nested(
-                    self._values, length, chunk, cursor, context, file, selffile, parent, previous_model=forth_stash._node
-                )
-            else:
-                values = _read_nested(
-                    self._values, length, chunk, cursor, context, file, selffile, parent
-                )
+            values = _read_nested(
+                self._values, length, chunk, cursor, context, file, selffile, parent
+            )
         out = STLVector(values)
 
         if self._header and header:

@@ -317,7 +317,8 @@ class AsObjects(uproot.interpretation.Interpretation):
             )
 
             context["forth"].gen.update_node_count(value=0)
-            
+            context["forth"].gen.update_previous_model({"name": "TOP", "content": {}})
+
             output[i] = self._model.read(
                 chunk,
                 cursor,
@@ -325,7 +326,6 @@ class AsObjects(uproot.interpretation.Interpretation):
                 branch.file,
                 branch.file.detached,
                 branch,
-                previous_model = {"name": "TOP", "content": {}}
                 )
             
             if context["forth"].gen.node_count == expected_nodes:
