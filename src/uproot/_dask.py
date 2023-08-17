@@ -889,15 +889,11 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         num_entries = ttree.num_entries
-        start, stop = istep_or_start, nsteps_or_stop
-        if not ischunk:
-            events_per_step = math.ceil(num_entries / nsteps_or_stop)
-            start, stop = (istep_or_start * events_per_step), min(
-                (istep_or_start + 1) * events_per_step, num_entries
-            )
-        elif (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
-            raise ValueError(
-                f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
+        if ischunk:
+            start, stop = istep_or_start, nsteps_or_stop
+            if (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+                raise ValueError(
+                    f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
     {ttree.file.file_path}
 
@@ -906,8 +902,14 @@ TTree in path
     {ttree.object_path}
 
 which has {num_entries} entries"""
+                )
+        else:
+            events_per_step = math.ceil(num_entries / nsteps_or_stop)
+            start, stop = min((istep_or_start * events_per_step), num_entries), min(
+                (istep_or_start + 1) * events_per_step, num_entries
             )
 
+        assert start <= stop
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
             dask_awkward = uproot.extras.dask_awkward()
@@ -928,7 +930,6 @@ which has {num_entries} entries"""
                 buffer_key=buffer_key,
                 highlevel=False,
             )
-
             return awkward.Array(
                 dask_awkward.lib.unproject_layout.unproject_layout(
                     self.rendered_form,
