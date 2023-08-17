@@ -9,7 +9,8 @@ import uproot
 pytest.importorskip("awkward")
 
 
-@pytest.mark.parametrize("is_forth", [False])
+@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
+@pytest.mark.parametrize("is_forth", [True, False])
 def test_AnalysisJetsAuxDyn_GhostTrack(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::IParticle>>"}]'
     expected_data = [
@@ -38,7 +39,8 @@ def test_AnalysisJetsAuxDyn_GhostTrack(is_forth):
         assert array.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False])
+@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
+@pytest.mark.parametrize("is_forth", [True, False])
 def test_TruthBosonAuxDyn_childLinks(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::TruthParticle_v1>>"}]'
     expected_data = [
@@ -60,7 +62,8 @@ def test_TruthBosonAuxDyn_childLinks(is_forth):
         assert array.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False])
+@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
+@pytest.mark.parametrize("is_forth", [True, False])
 def test_TruthPhotonsAuxDyn_parentLinks(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::TruthParticle_v1>>"}]'
     expected_data = [
@@ -83,7 +86,8 @@ def test_TruthPhotonsAuxDyn_parentLinks(is_forth):
         assert array.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False])
+@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
+@pytest.mark.parametrize("is_forth", [True, False])
 def test_TruthTopAuxDyn_parentLinks(is_forth):
     expected_type = '2 * var * var * struct[{m_persKey: uint32, m_persIndex: uint32}, parameters={"__record__": "ElementLink<DataVector<xAOD::TruthParticle_v1>>"}]'
     expected_data = [

@@ -8,7 +8,6 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
 
-import json
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
@@ -44,9 +43,10 @@ def _content_cache_key(content):
     else:
         return content.cache_key
 
+
 def _read_nested(
     model, length, chunk, cursor, context, file, selffile, parent, header=True
-):  
+):
     forth_stash = uproot._awkward_forth.forth_stash(context)
 
     if isinstance(model, numpy.dtype):
@@ -54,14 +54,14 @@ def _read_nested(
         if forth_stash is not None and symbol is None:
             raise TypeError("Cannot be awkward")
         if forth_stash is not None:
-            forth_stash.read_nested_forth(context["forth"].gen,symbol)
+            forth_stash.read_nested_forth(context["forth"].gen, symbol)
 
         return cursor.array(chunk, length, model, context)
     else:
         values = numpy.empty(length, dtype=_stl_object_type)
         if isinstance(model, AsContainer):
             if forth_stash is not None:
-                #These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
+                # These two attributes in ForthGenerator need to be the same each iteration, but are changed in .read()
                 temp_count = context["forth"].gen.node_count
                 prev_model = context["forth"].gen.previous_model
             for i in range(length):
@@ -69,12 +69,19 @@ def _read_nested(
                     context["forth"].gen.update_node_count(temp_count)
                     context["forth"].gen.update_previous_model(prev_model)
                 values[i] = model.read(
-                    chunk, cursor, context, file, selffile, parent, header=header,
+                    chunk,
+                    cursor,
+                    context,
+                    file,
+                    selffile,
+                    parent,
+                    header=header,
                 )
         else:
             for i in range(length):
                 values[i] = model.read(chunk, cursor, context, file, selffile, parent)
         return values
+
 
 def _tostring(value):
     if uproot._util.isstr(value):
@@ -869,7 +876,7 @@ class AsVector(AsContainer):
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's 00,03,04,06,07,08,09,10,11,12,13,14,15,16,17,23,24,26,27,28,31,33,36,38,41,42,43,44,45,46,49,50,55,56,57,58,59,60,61,62,63,67,68,72,73,76,77,80
         forth_stash = uproot._awkward_forth.forth_stash(context)
-        
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -878,7 +885,9 @@ class AsVector(AsContainer):
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
             if forth_stash is not None:
-                forth_stash.add_to_pre(f"{cursor._index - start_cursor._index} stream skip\n")
+                forth_stash.add_to_pre(
+                    f"{cursor._index - start_cursor._index} stream skip\n"
+                )
         else:
             is_memberwise = False
 
@@ -935,7 +944,7 @@ class AsVector(AsContainer):
         else:
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_stash is not None:
-                forth_stash.read_forth_AsVector(context["forth"].gen,self._values)
+                forth_stash.read_forth_AsVector(context["forth"].gen, self._values)
             values = _read_nested(
                 self._values, length, chunk, cursor, context, file, selffile, parent
             )

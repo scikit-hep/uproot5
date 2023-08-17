@@ -5,7 +5,6 @@ This module defines a versionless model for ``TObject``.
 """
 
 
-import json
 import struct
 
 import numpy

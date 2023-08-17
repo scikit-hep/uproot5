@@ -56,6 +56,33 @@ class AsStrings(uproot.interpretation.Interpretation):
     :doc:`uproot.interpretation.strings.AsStrings`.)
     """
 
+    _forth_codes = {
+        "1-5": """
+            input stream
+
+            output out-main uint8
+            output out-offsets int64
+
+            0 out-offsets <- stack
+
+            begin
+                stream !B-> stack dup 255 = if drop stream !I-> stack then dup out-offsets +<- stack stream #!B-> out-main
+            again
+        """,
+        "4": """
+            input stream
+
+            output out-main uint8
+            output out-offsets int64
+
+            0 out-offsets <- stack
+
+            begin
+                stream I-> stack dup out-offsets <- stack stream #B-> out-main
+            again
+        """,
+    }
+
     def __init__(
         self, header_bytes=0, length_bytes="1-5", typename=None, original=None
     ):
@@ -68,6 +95,8 @@ class AsStrings(uproot.interpretation.Interpretation):
 
         self._typename = typename
         self._original = original
+        self._forth_code = None
+        self._threadlocal = threading.local()
 
     @property
     def header_bytes(self):
@@ -165,81 +194,113 @@ class AsStrings(uproot.interpretation.Interpretation):
             library=library,
             options=options,
         )
+        if (
+            isinstance(library, uproot.interpretation.library.Awkward)
+            and byte_offsets is None
+        ):
+            uproot.extras.awkward()
+            import awkward.forth
 
-        if byte_offsets is None:
-            counts = numpy.empty(len(data), dtype=numpy.int32)
-            outdata = numpy.empty(len(data), dtype=data.dtype)
+            if self._length_bytes == "1-5" or self._length_bytes == "4":
+                if not hasattr(self._threadlocal, "forth_vm"):
+                    self._threadlocal.forth_vm = awkward.forth.ForthMachine64(
+                        self._forth_codes[self._length_bytes]
+                    )
 
-            pos = 0
-            entry_num = 0
-            len_outdata = 0
+                self._threadlocal.forth_vm.begin({"stream": numpy.array(data)})
+                self._threadlocal.forth_vm.resume(raise_read_beyond=False)
+                offsets = self._threadlocal.forth_vm.output("out-offsets")
+                data = self._threadlocal.forth_vm.output("out-main")
+                self._threadlocal.forth_vm.reset()
 
-            if self._length_bytes == "1-5":
-                while True:
-                    if pos >= len(data):
-                        break
-                    size = data[pos]
-                    pos += 1
-                    if size == 255:
-                        (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
-                        pos += 4
-                    counts[entry_num] = size
-                    entry_num += 1
-                    outdata[len_outdata : len_outdata + size] = data[
-                        pos : pos + size
-                    ]
-                    len_outdata += size
-                    pos += size
-
-            elif self._length_bytes == "4":
-                while True:
-                    if pos >= len(data):
-                        break
-                    (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
-                    pos += 4
-                    counts[entry_num] = size
-                    entry_num += 1
-                    outdata[len_outdata : len_outdata + size] = data[
-                        pos : pos + size
-                    ]
-                    len_outdata += size
-                    pos += size
+                return awkward.Array(
+                    awkward.contents.ListOffsetArray(
+                        awkward.index.Index64(offsets),
+                        awkward.contents.NumpyArray(
+                            data, parameters={"__array__": "char"}
+                        ),
+                        parameters={"__array__": "string"},
+                    )
+                )
 
             else:
                 raise AssertionError(repr(self._length_bytes))
-
-            counts = counts[:entry_num]
-            data = outdata[:len_outdata]
 
         else:
-            byte_starts = byte_offsets[:-1] + self._header_bytes
-            byte_stops = byte_offsets[1:]
+            if byte_offsets is None:
+                counts = numpy.empty(len(data), dtype=numpy.int32)
+                outdata = numpy.empty(len(data), dtype=data.dtype)
 
-            if self._length_bytes == "1-5":
-                length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
-                length_header_size[data[byte_starts] == 255] += 4
-            elif self._length_bytes == "4":
-                length_header_size = numpy.full(
-                    len(byte_starts), 4, dtype=numpy.int32
-                )
+                pos = 0
+                entry_num = 0
+                len_outdata = 0
+
+                if self._length_bytes == "1-5":
+                    while True:
+                        if pos >= len(data):
+                            break
+                        size = data[pos]
+                        pos += 1
+                        if size == 255:
+                            (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
+                            pos += 4
+                        counts[entry_num] = size
+                        entry_num += 1
+                        outdata[len_outdata : len_outdata + size] = data[
+                            pos : pos + size
+                        ]
+                        len_outdata += size
+                        pos += size
+
+                elif self._length_bytes == "4":
+                    while True:
+                        if pos >= len(data):
+                            break
+                        (size,) = _string_4byte_size.unpack(data[pos : pos + 4])
+                        pos += 4
+                        counts[entry_num] = size
+                        entry_num += 1
+                        outdata[len_outdata : len_outdata + size] = data[
+                            pos : pos + size
+                        ]
+                        len_outdata += size
+                        pos += size
+
+                else:
+                    raise AssertionError(repr(self._length_bytes))
+
+                counts = counts[:entry_num]
+                data = outdata[:len_outdata]
+
             else:
-                raise AssertionError(repr(self._length_bytes))
+                byte_starts = byte_offsets[:-1] + self._header_bytes
+                byte_stops = byte_offsets[1:]
 
-            byte_starts += length_header_size
+                if self._length_bytes == "1-5":
+                    length_header_size = numpy.ones(len(byte_starts), dtype=numpy.int32)
+                    length_header_size[data[byte_starts] == 255] += 4
+                elif self._length_bytes == "4":
+                    length_header_size = numpy.full(
+                        len(byte_starts), 4, dtype=numpy.int32
+                    )
+                else:
+                    raise AssertionError(repr(self._length_bytes))
 
-            mask = numpy.zeros(len(data), dtype=numpy.int8)
-            mask[byte_starts[byte_starts < len(data)]] = 1
-            numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
-            numpy.cumsum(mask, out=mask)
-            data = data[mask.view(numpy.bool_)]
+                byte_starts += length_header_size
 
-            counts = byte_stops - byte_starts
+                mask = numpy.zeros(len(data), dtype=numpy.int8)
+                mask[byte_starts[byte_starts < len(data)]] = 1
+                numpy.add.at(mask, byte_stops[byte_stops < len(data)], -1)
+                numpy.cumsum(mask, out=mask)
+                data = data[mask.view(numpy.bool_)]
 
-        offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
-        offsets[0] = 0
-        numpy.cumsum(counts, out=offsets[1:])
+                counts = byte_stops - byte_starts
 
-        data = uproot._util.tobytes(data)
+            offsets = numpy.empty(len(counts) + 1, dtype=numpy.int32)
+            offsets[0] = 0
+            numpy.cumsum(counts, out=offsets[1:])
+
+            data = uproot._util.tobytes(data)
 
         output = StringArray(offsets, data)
 
@@ -276,9 +337,18 @@ class AsStrings(uproot.interpretation.Interpretation):
             branch=branch,
             options=options,
         )
-        
+
         if any(not isinstance(x, StringArray) for x in basket_arrays.values()):
-            
+            trimmed = uproot._util.trim_final(
+                basket_arrays, entry_start, entry_stop, entry_offsets, library, branch
+            )
+            if all(
+                uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+            ):
+                assert isinstance(library, uproot.interpretation.library.Awkward)
+                awkward = library.imported
+                output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
+
             self.hook_before_library_finalize(
                 basket_arrays=basket_arrays,
                 entry_start=entry_start,

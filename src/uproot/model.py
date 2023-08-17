@@ -1287,7 +1287,7 @@ class DispatchByVersion:
         ) = uproot.deserialization.numbytes_version(chunk, cursor, context, move=False)
 
         versioned_cls = cls.class_of_version(version)
-        bytes_skipped = cursor._index - start_index
+        cursor._index - start_index
 
         if versioned_cls is not None:
             pass

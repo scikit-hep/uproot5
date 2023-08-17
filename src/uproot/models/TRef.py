@@ -5,7 +5,6 @@ This module defines versionless models of ``TRef`` and ``TRefArray``.
 """
 
 
-import json
 import struct
 from collections.abc import Sequence
 

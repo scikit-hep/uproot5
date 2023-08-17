@@ -7,6 +7,7 @@ This module defines a versionless model of ``TString``.
 
 import uproot
 
+
 class Model_TString(uproot.model.Model, str):
     """
     A versionless :doc:`uproot.model.Model` for ``TString``.
