@@ -63,7 +63,7 @@ def create(file_path, **options):
     if uproot._util.isstr(file_path) and os.path.exists(file_path):
         raise OSError(
             "path exists and refusing to overwrite (use 'uproot.recreate' to "
-            "overwrite)\n\nfor path {}".format(file_path)
+            f"overwrite)\n\nfor path {file_path}"
         )
     return recreate(file_path, **options)
 

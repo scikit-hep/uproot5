@@ -173,7 +173,7 @@ def regularize_filter(filter):
     else:
         raise TypeError(
             "filter must be None, callable, a regex string between slashes, or a "
-            "glob pattern, not {}".format(repr(filter))
+            f"glob pattern, not {filter!r}"
         )
 
 
@@ -242,7 +242,7 @@ def regularize_rename(rename):
 
     raise TypeError(
         "rename must be None, callable, a '/from/to/' regex, an iterable of "
-        "regex rules, or a dict, not {}".format(repr(rename))
+        f"regex rules, or a dict, not {rename!r}"
     )
 
 

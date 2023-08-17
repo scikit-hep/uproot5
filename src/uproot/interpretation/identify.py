@@ -878,8 +878,8 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot.containers.AsArray(False, {}, "
-                'uproot.containers.AsFIXME("Float16_t in array"))'.format(header),
+                f"uproot.containers.AsArray(False, {header}, "
+                'uproot.containers.AsFIXME("Float16_t in array"))',
                 quote,
             ),
         )
@@ -896,9 +896,9 @@ def _parse_node(tokens, i, typename, file, quote, header, inner_header):
         return (
             i + 1,
             _parse_maybe_quote(
-                "uproot.containers.AsArray(False, {}, "
+                f"uproot.containers.AsArray(False, {header}, "
                 'uproot.containers.AsFIXME("Double32_t in array '
-                '(note: Event.root fClosestDistance has an example)"))'.format(header),
+                '(note: Event.root fClosestDistance has an example)"))',
                 quote,
             ),
         )
