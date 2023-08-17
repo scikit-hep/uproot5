@@ -144,7 +144,7 @@ class Cursor:
         ):
             raise TypeError(
                 "Cursor.skip_after can only be used on an object with a "
-                "`cursor` and `num_bytes`, not {}".format(type(obj))
+                f"`cursor` and `num_bytes`, not {type(obj)}"
             )
         self._index = start_cursor.index + num_bytes
 
@@ -537,7 +537,7 @@ of file path {}""".format(
                 i += dtype.itemsize
                 interpreted[i - 1] = x
 
-            formatter = "{{0:>{0}.{0}s}}".format(dtype.itemsize * 4 - 1)
+            formatter = f"{{0:>{dtype.itemsize * 4 - 1}.{dtype.itemsize * 4 - 1}s}}"
 
         for line_start in range(0, int(numpy.ceil(len(data) / 20.0)) * 20, 20):
             line_data = data[line_start : line_start + 20]
