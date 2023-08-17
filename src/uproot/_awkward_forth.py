@@ -5,6 +5,8 @@ This module defines utilities for adding components to the forth reader.
 """
 
 import numpy as np
+import json
+import numpy
 
 symbol_dict = {
     np.dtype("bool"): "?",
@@ -26,16 +28,54 @@ class ForthGenerator:
         self.final_code = []
         self.final_header = []
         self.final_init = []
-        self.discovered_form = None
+        self.discovered_form = {"form_key": "TOP", "content": {}}
         self.awkward_model = {"name": "TOP", "content": {}}
         self.node_count = 0
-        self.forth_stashes = []
+        self.form_keys = []
     
-    def add_forth_stash(self, ForthStash):
-        self.forth_stashes.append(ForthStash)
+    def add_node_to_model(self, new_node, current_node):
+        if new_node["parent_node"] == current_node["name"]:
+            current_node["content"].update(new_node)
+        else:
+            self.add_node_to_model(new_node,current_node["content"])
     
+    def add_form(self, new_form, current_form, new_form_parent):
+        if new_form_parent == current_form["form_key"]:
+            if current_form["content"] == "NULL":
+                current_form.update({"content":new_form})
+            else:
+                current_form["content"].update(new_form)
+        else:
+            self.add_form(new_form,current_form["content"],new_form_parent)
+    
+    def set_awkward_model(self,dictionary):
+        self.awkward_model = dictionary
+    
+    def get_node_count(self):
+        return self.node_count
+    
+    def update_node_count(self,value):
+        self.node_count = value
+        
     def increment_node_count(self):
         self.node_count += 1
+    
+    def set_expected_nodes(self,awkward_form):
+        self.expected_nodes = awkward_form.branch_depth[1]
+    
+    def add_to_header(self, code):
+        self.final_header += code
+
+    def add_to_init(self, code):
+        self.final_init += code
+    
+    def add_to_final(self, code):
+        self.final_code.extend(code)
+    
+    def append_form_key(self,key):
+        if key not in self.form_keys:
+            self.form_keys.append(key)
+
 
 def should_add_form(awkward_model):
     if "content" in awkward_model.keys():
@@ -85,7 +125,7 @@ class ForthStash:
         if self._form is None:
             self._form = form
     
-    def set_node(self,name,dtype,precode,postcode,initcode,headercode,num_child,content):
+    def set_node(self,name,dtype,precode,postcode,initcode,headercode,num_child,content,parent_node):
         self._node={
         "name": name,
         "type": dtype,
@@ -95,12 +135,89 @@ class ForthStash:
         "header_code": headercode,
         "num_child": num_child,
         "content": content,
+        "parent_node": parent_node,
     }
-        return self._node
-        
     
-    
+    def read_forth_AsVector(self, forthGenerator,values):
+        key = forthGenerator.node_count
+        forthGenerator.increment_node_count()
+        node_key = f"node{key}"
+        form_key = f"node{key}-offsets"
+        self.add_to_header(f"output node{key}-offsets int64\n")
+        self.add_to_init(f"0 node{key}-offsets <- stack\n")
+        self.add_to_pre(f"stream !I-> stack\n dup node{key}-offsets +<- stack\n")
 
+        if (self._previous_model["name"] != node_key):
+            self.add_form_key(form_key)
+            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{key}"}}'
+            self.add_form(json.loads(temp_aform))
+
+        if not isinstance(values, numpy.dtype):
+            self.add_to_pre("0 do\n")
+            self.add_to_post("loop\n")
+
+        if self._previous_model["name"] == node_key:
+            self.set_node(self._previous_model)
+        else:
+            if key != 0:
+                parent_node_name = self._previous_model["name"]
+            else:
+                parent_node_name = "TOP"
+            self.set_node(
+                node_key,
+                "i64",
+                self._pre_code,
+                self._post_code,
+                self._init,
+                self._header,
+                1,
+                {},
+                parent_node_name,
+            )
+        
+        forthGenerator.add_node_to_model(self._node, forthGenerator.awkward_model)
+        forthGenerator.add_form(self._form,forthGenerator.discovered_form,parent_node_name)
+        forthGenerator.append_form_key(self._form_key)
+    
+    def read_nested_forth(self, forthGenerator, symbol):
+        key = forthGenerator.node_count
+        forthGenerator.increment_node_count()
+        node_key = f"node{key}"
+        form_key = f"node{key}-data"
+        self.add_to_header(f"output node{key}-data {convert_dtype(symbol)}\n")
+        self.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
+        if (self._previous_model["name"] != node_key):
+            self.add_form_key(form_key)
+            self.add_form(
+                {
+                    "class": "NumpyArray",
+                    "primitive": f"{convert_dtype(symbol)}",
+                    "form_key": f"node{key}",
+                }
+            )
+        if self._previous_model["name"] == node_key:
+            self.set_node(self._previous_model)
+        else:
+            if key != 0:
+                parent_node_name = self._previous_model["name"]
+            else:
+                parent_node_name = "TOP"
+            self.set_node(
+                    f"node{key}",
+                    "i64",
+                    self._pre_code,
+                    [],
+                    '',
+                    self._header,
+                    1,
+                    None,
+                    parent_node_name,
+                )
+            
+            forthGenerator.add_node_to_model(self._node,forthGenerator.awkward_model)
+            forthGenerator.add_form(self._form,forthGenerator.discovered_form,parent_node_name)
+            forthGenerator.append_form_key(self._form_key)
+        
 
 def convert_dtype(format):
     """Takes datatype codes from classses and returns the full datatype name.

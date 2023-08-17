@@ -949,7 +949,7 @@ def test_79(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.parametrize("is_forth", [False])
+@pytest.mark.parametrize("is_forth", [True,False])
 def test_80(is_forth):
     with uproot.open(
         skhep_testdata.data_path("uproot-vectorVectorDouble.root")
@@ -978,3 +978,37 @@ def test_81(is_forth):
         assert py[0]["fY"] == pytest.approx(2.5636332035064697)
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
         assert py.layout.form == interp.awkward_form(branch.file)
+
+@pytest.mark.parametrize("is_forth", [True])
+def test_82(is_forth):
+    with uproot.open(
+        skhep_testdata.data_path("uproot-vectorVectorDouble.root")
+    ) as file:
+        branch = file["t/x"]
+        interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
+        interp._forth = is_forth
+        branch.array(interp, library="ak")
+        assert interp._complete_forth_code[:-5] == """input stream
+    input byteoffsets
+    input bytestops
+    output node0-offsets int64
+output node1-offsets int64
+output node2-data float64
+
+    0 node0-offsets <- stack
+0 node1-offsets <- stack
+
+    0 do
+    byteoffsets I-> stack
+    stream seek
+    6 stream skip
+stream !I-> stack
+ dup node0-offsets +<- stack
+0 do
+stream !I-> stack
+ dup node1-offsets +<- stack
+stream #!d-> node2-data
+loop
+
+    loop"""
+        # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
