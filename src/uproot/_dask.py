@@ -92,22 +92,6 @@ def dask(
         >>> uproot.dask(root_file,library='np')
         {'Type': dask.array<Type-from-uproot, shape=(2304,), dtype=object, chunksize=(2304,), chunktype=numpy.ndarray>, ...}
 
-
-    This function (naturally) depends on Dask. To use it with ``library="np"``:
-
-    .. code-block:: bash
-
-        # with pip
-        pip install "dask[complete]"
-        # or with conda
-        conda install dask
-
-    For using ``library='ak'``
-
-    .. code-block:: bash
-
-        pip install dask-awkward   # not on conda-forge yet
-
     Allowed types for the ``files`` parameter:
 
     * str/bytes: relative or absolute filesystem path or URL, without any colons
