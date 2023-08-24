@@ -709,6 +709,7 @@ class Tree:
                     big_endian_offsets = (
                         lengths_extension_offsets
                         + numpy.asarray(branch_array.layout.offsets)
+                        + numpy.arange(len(branch_array.layout.offsets))
                     ).astype(">i4", copy=True)
                     tofill.append(
                         (
@@ -810,7 +811,7 @@ class Tree:
                 totbytes, zipbytes, location = self.write_string_basket(
                     sink, branch_name, compression, big_endian, big_endian_offsets
                 )
-                print("totbytes, zipbytes, location ", totbytes, zipbytes, location)
+                datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
 
             elif big_endian_offsets is None:
                 totbytes, zipbytes, location = self.write_np_basket(
@@ -1503,15 +1504,15 @@ class Tree:
         try:
             uproot.extras.awkward()
         except ModuleNotFoundError as err:
-            raise TypeError(f"'awkward' cannot be imported: {branch_type!r}") from err
+            raise TypeError(
+                f"'awkward' cannot be imported: {self._branch_type!r}"
+            ) from err
 
         offsets *= itemsize
         offsets += fKeylen
-        offsets[1] = 77
 
         raw_array = uproot._util.tobytes(array)
         raw_offsets = uproot._util.tobytes(offsets)
-        print("raw array and raw_offsets ", raw_array, raw_offsets, offsets)
         uncompressed_data = (
             raw_array + _tbasket_offsets_length.pack(len(offsets)) + raw_offsets
         )
