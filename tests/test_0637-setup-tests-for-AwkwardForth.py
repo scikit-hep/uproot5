@@ -1039,7 +1039,6 @@ def test_80(is_forth):
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_81(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root")) as file:

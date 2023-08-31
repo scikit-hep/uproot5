@@ -201,7 +201,7 @@ class AsObjects(uproot.interpretation.Interpretation):
         if not hasattr(context["forth"], "vm"):
             # context["forth"] is a threading.local()
             context["forth"].vm = None
-            context["forth"].gen = uproot._awkward_forth.ForthGenerator()
+            context["forth"].gen = uproot._awkward_forth.Forth_Generator()
         else:
             context["forth"].gen = None
 
@@ -306,9 +306,28 @@ class AsObjects(uproot.interpretation.Interpretation):
                 pass
         forth_obj.add_to_final(awkward_model["post_code"])
 
+    def _any_NULL(self, form):
+        # Recursion through form.
+        # If NULL is found anywhere, return False as Forth is not fully discovered.
+        if form == "NULL":
+            return True
+        else:
+            content = form.get("content")
+            if content is not None:
+                return self._any_NULL(content)
+            contents = form.get("contents")
+            if isinstance(contents, list):
+                for content in contents:
+                    if self._any_NULL(content):
+                        return True
+            elif isinstance(contents, dict):
+                for content in contents.values():
+                    if self._any_NULL(content):
+                        return True
+            return False
+
     def _discover_forth(self, data, byte_offsets, branch, context, cursor_offset):
         output = numpy.empty(len(byte_offsets) - 1, dtype=numpy.dtype(object))
-        expected_nodes = self.awkward_form("").branch_depth[1]
 
         for i in range(len(byte_offsets) - 1):
             chunk = uproot.source.chunk.Chunk.wrap(
@@ -330,7 +349,7 @@ class AsObjects(uproot.interpretation.Interpretation):
                 branch,
             )
 
-            if context["forth"].gen.node_count == expected_nodes:
+            if not self._any_NULL(context["forth"].gen.discovered_form):
                 context["forth"].prereaddone = True
                 self._assemble_forth(
                     context["forth"].gen, context["forth"].gen.awkward_model["content"]

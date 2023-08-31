@@ -24,7 +24,7 @@ symbol_dict = {
 }
 
 
-class ForthGenerator:
+class Forth_Generator:
     def __init__(self):
         self.final_code = []
         self.final_header = []
@@ -36,8 +36,13 @@ class ForthGenerator:
         self.previous_model = {"name": "TOP", "content": {}}
 
     def add_node_to_model(self, new_node, current_node):
-        if new_node["parent_node"] == current_node["name"]:
+        if (new_node["parent_node"] == current_node["name"]) and (
+            current_node["content"] is not None
+            and len(current_node["content"].keys()) == 0
+        ):
             current_node["content"].update(new_node)
+        elif new_node["name"] == current_node["name"]:
+            pass
         else:
             self.add_node_to_model(new_node, current_node["content"])
 
@@ -81,15 +86,14 @@ class ForthGenerator:
     def update_previous_model(self, model):
         self.previous_model = model
 
-
-def should_add_form(awkward_model):
-    if "content" in awkward_model.keys():
-        if awkward_model["content"] is None:
-            return False
-        elif len(awkward_model["content"].keys()) == 0:
-            return True
-        else:
-            raise Exception
+    def should_add_form(self):
+        if "content" in self.awkward_model.keys():
+            if self.awkward_model["content"] is None:
+                return False
+            elif len(self.awkward_model["content"].keys()) == 0:
+                return True
+            else:
+                raise Exception
 
 
 def forth_stash(context):
@@ -131,6 +135,24 @@ class ForthStash:
         if self._form is None:
             self._form = form
 
+    def get_pre(self):
+        return self._pre_code
+
+    def get_post(self):
+        return self._post_code
+
+    def get_header(self):
+        return self._header
+
+    def get_init(self):
+        return self._init
+
+    def get_node(self):
+        return self._node
+
+    def get_form(self):
+        return self._form
+
     def set_node(
         self,
         name,
@@ -155,16 +177,16 @@ class ForthStash:
             "parent_node": parent_node,
         }
 
-    def read_forth_AsVector(self, forthGenerator, values):
-        key = forthGenerator.node_count
-        forthGenerator.increment_node_count()
+    def read_forth_AsVector(self, forth_generator, values):
+        key = forth_generator.node_count
+        forth_generator.increment_node_count()
         node_key = f"node{key}"
         form_key = f"node{key}-offsets"
         self.add_to_header(f"output node{key}-offsets int64\n")
         self.add_to_init(f"0 node{key}-offsets <- stack\n")
         self.add_to_pre(f"stream !I-> stack\n dup node{key}-offsets +<- stack\n")
 
-        if forthGenerator.previous_model["name"] != node_key:
+        if forth_generator.previous_model["name"] != node_key:
             self.add_form_key(form_key)
             temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{}}, "form_key": "node{key}"}}'
             self.add_form(json.loads(temp_aform))
@@ -182,26 +204,26 @@ class ForthStash:
             self._header,
             1,
             {},
-            forthGenerator.previous_model["name"],
+            forth_generator.previous_model["name"],
         )
 
-        forthGenerator.add_node_to_model(self._node, forthGenerator.awkward_model)
-        forthGenerator.add_form(
+        forth_generator.add_node_to_model(self._node, forth_generator.awkward_model)
+        forth_generator.add_form(
             self._form,
-            forthGenerator.discovered_form,
-            forthGenerator.previous_model["name"],
+            forth_generator.discovered_form,
+            forth_generator.previous_model["name"],
         )
-        forthGenerator.append_form_key(self._form_key)
-        forthGenerator.update_previous_model(self._node)
+        forth_generator.append_form_key(self._form_key)
+        forth_generator.update_previous_model(self._node)
 
-    def read_nested_forth(self, forthGenerator, symbol):
-        key = forthGenerator.node_count
-        forthGenerator.increment_node_count()
+    def read_nested_forth(self, forth_generator, symbol):
+        key = forth_generator.node_count
+        forth_generator.increment_node_count()
         node_key = f"node{key}"
         form_key = f"node{key}-data"
         self.add_to_header(f"output node{key}-data {convert_dtype(symbol)}\n")
         self.add_to_pre(f"stream #!{symbol}-> node{key}-data\n")
-        if forthGenerator.previous_model["name"] != node_key:
+        if forth_generator.previous_model["name"] != node_key:
             self.add_form_key(form_key)
             self.add_form(
                 {
@@ -220,16 +242,16 @@ class ForthStash:
             self._header,
             1,
             None,
-            forthGenerator.previous_model["name"],
+            forth_generator.previous_model["name"],
         )
 
-        forthGenerator.add_node_to_model(self._node, forthGenerator.awkward_model)
-        forthGenerator.add_form(
+        forth_generator.add_node_to_model(self._node, forth_generator.awkward_model)
+        forth_generator.add_form(
             self._form,
-            forthGenerator.discovered_form,
-            forthGenerator.previous_model["name"],
+            forth_generator.discovered_form,
+            forth_generator.previous_model["name"],
         )
-        forthGenerator.append_form_key(self._form_key)
+        forth_generator.append_form_key(self._form_key)
 
 
 def convert_dtype(format):

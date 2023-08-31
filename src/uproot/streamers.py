@@ -208,10 +208,15 @@ class Model_TStreamerInfo(uproot.model.Model):
                 COUNT_NAMES.append(element.member("fCountName"))
         read_members = [
             "    def read_members(self, chunk, cursor, context, file):",
+            "        import uproot._awkward_forth",
             "        if self.is_memberwise:",
             "            raise NotImplementedError(",
             '                f"memberwise serialization of {type(self).__name__}\\nin file {self.file.file_path}"',
             "            )",
+            "        forth_stash = uproot._awkward_forth.forth_stash(context)",
+            "        if forth_stash is not None:",
+            '            forth_obj = context["forth"].gen',
+            "            content = {}",
         ]
         read_member_n = [
             "    def read_member_n(self, chunk, cursor, context, file, member_index):"
@@ -266,6 +271,16 @@ class Model_TStreamerInfo(uproot.model.Model):
                 member_names,
                 class_flags,
             )
+        read_members.extend(
+            [
+                "        if forth_stash is not None:",
+                f"           forth_stash.add_form({{'class': 'RecordArray', 'contents': content, 'parameters': {{'__record__': {self.name!r}}}}})",
+                "           forth_stash.set_node('dynamic', \"i64\", forth_stash.get_pre(), forth_stash.get_post(), forth_stash.get_init(), forth_stash.get_header(), 0, None, forth_obj.previous_model['name'])",
+                "           forth_obj.add_form(forth_stash.get_form(),forth_obj.discovered_form,'TOP')",
+                "           forth_obj.add_node_to_model(forth_stash.get_node(),forth_obj.awkward_model)",
+                "           forth_obj.update_previous_model(forth_stash.get_node())",
+            ]
+        )
         if len(read_members) == 1:
             # untested as of PR #629
             read_members.append("        pass")
@@ -940,6 +955,20 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                     )
 
                 else:
+                    read_members.append("        if forth_stash is not None:")
+                    for i in range(len(formats[0])):
+                        read_members.extend(
+                            [
+                                "           key = forth_obj.get_node_count()",
+                                '           form_key = f"node{key}-data"',
+                                f'           forth_stash.add_to_header(f"output node{{key}}-data {uproot._awkward_forth.convert_dtype(formats[0][i])}\\n")',
+                                f'           content[{fields[0][i]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}',
+                                f'           forth_stash.add_to_pre(f"stream !{formats[0][i]}-> node{{key}}-data\\n")',
+                                "           forth_stash.add_form_key(form_key)",
+                                "           forth_obj.increment_node_count()",
+                            ]
+                        )
+
                     assign_members = ", ".join(
                         f"self._members[{x!r}]" for x in fields[-1]
                     )
