@@ -326,7 +326,7 @@ or
     conda install -c conda-forge dask dask-awkward"""
         ) from err
     if parse_version("2023.9.0") <= parse_version(dask_awkward.__version__):
-        return awkward
+        return dask_awkward
     else:
         raise ModuleNotFoundError(
             "Uproot 5.x can only be used with dask-awkward 2023.9.0 or newer; you have dask-awkward {}".format(
