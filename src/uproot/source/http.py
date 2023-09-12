@@ -283,13 +283,13 @@ for URL {}""".format(
         ``results`` and ``futures``. Subsequent attempts would immediately
         use the :ref:`uproot.source.http.HTTPSource.fallback`.
         """
-        connection = [make_connection(source.parsed_url, source.timeout)]
+        connection = make_connection(source.parsed_url, source.timeout)
 
         range_strings = []
         for start, stop in ranges:
             range_strings.append(f"{start}-{stop - 1}")
 
-        connection[0].request(
+        connection.request(
             "GET",
             full_path(source.parsed_url),
             headers=dict(
@@ -298,25 +298,24 @@ for URL {}""".format(
         )
 
         def task(resource):
+            nonlocal connection
             try:
-                response = connection[0].getresponse()
+                response = connection.getresponse()
 
                 if 300 <= response.status < 400:
-                    connection[0].close()
+                    connection.close()
 
                     for k, x in response.getheaders():
                         if k.lower() == "location":
                             redirect_url = urlparse(x)
-                            connection[0] = make_connection(
-                                redirect_url, source.timeout
-                            )
-                            connection[0].request(
+                            connection = make_connection(redirect_url, source.timeout)
+                            connection.request(
                                 "GET",
                                 full_path(redirect_url),
-                                headers=dict(
-                                    {"Range": "bytes=" + ", ".join(range_strings)},
+                                headers={
+                                    "Range": "bytes=" + ", ".join(range_strings),
                                     **source.auth_headers,
-                                ),
+                                },
                             )
                             task(resource)
                             return
@@ -343,7 +342,7 @@ for URL {}""".format(
                     future._set_excinfo(excinfo)
 
             finally:
-                connection[0].close()
+                connection.close()
 
         return uproot.source.futures.ResourceFuture(task)
 
