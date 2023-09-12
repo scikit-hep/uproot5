@@ -19,7 +19,6 @@ import base64
 import queue
 import re
 import sys
-from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
 import uproot
@@ -37,6 +36,8 @@ def make_connection(parsed_url, timeout):
     Creates a ``http.client.HTTPConnection`` or a ``http.client.HTTPSConnection``,
     depending on the URL scheme.
     """
+    from http.client import HTTPConnection, HTTPSConnection
+
     if parsed_url.scheme == "https":
         return HTTPSConnection(
             parsed_url.hostname, parsed_url.port, None, None, timeout
@@ -561,15 +562,9 @@ class HTTPSource(uproot.source.chunk.Source):
         self._open()
 
     def _open(self):
-        # if running in a jupyter lite environment, then use a TrivialExecutor
-        if sys.platform == "emscripten":
-            self._executor = uproot.source.futures.ResourceTrivialExecutor(
-                HTTPResource(self._file_path, self._timeout)
-            )
-        else:
-            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-                [HTTPResource(self._file_path, self._timeout)]
-            )
+        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+            [HTTPResource(self._file_path, self._timeout)]
+        )
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -666,20 +661,14 @@ class HTTPSource(uproot.source.chunk.Source):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        if sys.platform == "emscripten":
-            return urlparse(self._file_path)
-        else:
-            return self._executor.workers[0].resource.parsed_url
+        return self._executor.workers[0].resource.parsed_url
 
     @property
     def auth_headers(self):
         """
         Dict containing auth headers, if any
         """
-        if sys.platform == "emscripten":
-            return basic_auth_headers(self.parsed_url)
-        else:
-            return self._executor.workers[0].resource.auth_headers
+        return self._executor.workers[0].resource.auth_headers
 
     @property
     def fallback(self):
