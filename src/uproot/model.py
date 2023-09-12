@@ -288,9 +288,7 @@ def class_named(classname, version=None, custom_classes=None):
             return versioned_cls
         else:
             raise ValueError(
-                "no class named {} with version {} in {}".format(
-                    classname, version, where
-                )
+                f"no class named {classname} with version {version} in {where}"
             )
 
     else:

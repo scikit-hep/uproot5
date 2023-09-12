@@ -101,15 +101,15 @@ public:
 
 char* _uproot_TMessage_reallocate(char* buffer, size_t newsize, size_t oldsize) {
     _Uproot_buffer_sizer* ptr = reinterpret_cast<_Uproot_buffer_sizer*>(
-        (void*)TPython::Eval("uproot.pyroot.pyroot_to_buffer.sizer")
+        (void*)TPython::Eval("__import__('uproot').pyroot.pyroot_to_buffer.sizer")
     );
     ptr->buffer = reinterpret_cast<size_t>(buffer);
     ptr->newsize = newsize;
     ptr->oldsize = oldsize;
 
-    TPython::Exec("uproot.pyroot.pyroot_to_buffer.reallocate()");
+    TPython::Exec("__import__('uproot').pyroot.pyroot_to_buffer.reallocate()");
 
-    TPyReturn out = TPython::Eval("uproot.pyroot.pyroot_to_buffer.buffer.ctypes.data");
+    TPyReturn out = TPython::Eval("__import__('uproot').pyroot.pyroot_to_buffer.buffer.ctypes.data");
     return reinterpret_cast<char*>((size_t)out);
 }
 

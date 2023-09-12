@@ -392,19 +392,15 @@ in file {}""".format(
 
         elif algo == b"CS":
             raise ValueError(
-                """unsupported compression algorithm: {} (according to """
-                """ROOT comments, it hasn't been used in 20 years!
-in file {}""".format(
-                    algo, chunk.source.file_path
-                )
+                f"""unsupported compression algorithm: {algo} (according to """
+                f"""ROOT comments, it hasn't been used in 20 years!
+in file {chunk.source.file_path}"""
             )
 
         else:
             raise ValueError(
-                """unrecognized compression algorithm: {}
-in file {}""".format(
-                    algo, chunk.source.file_path
-                )
+                f"""unrecognized compression algorithm: {algo}
+in file {chunk.source.file_path}"""
             )
 
         if block_info is not None:

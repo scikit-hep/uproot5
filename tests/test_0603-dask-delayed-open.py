@@ -38,3 +38,50 @@ def test_multiple_delay_open():
         == true_val["px1"]
     )
     assert arr.all()
+
+
+@pytest.mark.parametrize("open_files", [False, True])
+@pytest.mark.parametrize("library", ["np", "ak"])
+def test_supplied_steps(open_files, library):
+    filename1 = skhep_testdata.data_path("uproot-Zmumu.root")
+    filename2 = skhep_testdata.data_path("uproot-Zmumu-uncompressed.root")
+    true_val = uproot.concatenate(
+        [filename1 + ":events", filename2 + ":events"], "px1", library=library
+    )["px1"]
+
+    files = [filename1, filename2]
+    daskarr = uproot.dask(files, open_files=open_files, library=library)["px1"]
+
+    if library == "ak":
+        if open_files:
+            assert daskarr.divisions == (0, 2304, 4608)
+        else:
+            assert daskarr.divisions == (None, None, None)
+    else:
+        if open_files:
+            assert daskarr.chunks == ((2304, 2304),)
+        else:
+            assert daskarr.chunks == ((numpy.nan, numpy.nan),)
+
+    assert daskarr.compute().tolist() == true_val.tolist()
+
+    steps1 = [0, 1000, 2304]
+    steps2 = [[0, 1200], [1200, 2304]]
+    files = {
+        filename1: {"object_path": "events", "steps": steps1},
+        filename2: {"object_path": "events", "steps": steps2},
+    }
+    daskarr = uproot.dask(files, open_files=open_files, library=library)["px1"]
+
+    if library == "ak":
+        if open_files:
+            assert daskarr.divisions == (0, 1000, 2304, 3504, 4608)
+        else:
+            assert daskarr.divisions == (0, 1000, 2304, 3504, 4608)
+    else:
+        if open_files:
+            assert daskarr.chunks == ((1000, 1304, 1200, 1104),)
+        else:
+            assert daskarr.chunks == ((1000, 1304, 1200, 1104),)
+
+    assert daskarr.compute().tolist() == true_val.tolist()

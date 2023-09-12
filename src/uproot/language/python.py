@@ -61,8 +61,8 @@ def _walk_ast_yield_symbols(node, keys, aliases, functions, getter):
             yield node.args[0].s
         else:
             raise TypeError(
-                "expected a constant string as the only argument of {}; "
-                "found {}".format(repr(getter), ast.dump(node.args))
+                f"expected a constant string as the only argument of {getter!r}; "
+                f"found {ast.dump(node.args)}"
             )
 
     elif isinstance(node, ast.Name):

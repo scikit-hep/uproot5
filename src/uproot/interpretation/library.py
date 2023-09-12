@@ -132,8 +132,8 @@ class Library:
             return {_rename(name, c): arrays[name] for name, c in expression_context}
         else:
             raise TypeError(
-                "for library {}, how must be tuple, list, dict, or None (for "
-                "dict)".format(self.name)
+                f"for library {self.name}, how must be tuple, list, dict, or None (for "
+                "dict)"
             )
 
     def global_index(self, array, global_offset):
@@ -711,9 +711,9 @@ class Awkward(Library):
             return out
         else:
             raise TypeError(
-                'for library {}, how must be tuple, list, dict, "zip" for '
+                f'for library {self.name}, how must be tuple, list, dict, "zip" for '
                 "a record array with jagged arrays zipped, if possible, or "
-                "None, for an unzipped record array".format(self.name)
+                "None, for an unzipped record array"
             )
 
     def concatenate(self, all_arrays):
@@ -790,7 +790,10 @@ def _pandas_memory_efficient(pandas, series, names):
     out = None
     for name in names:
         if out is None:
-            out = series[name].to_frame(name=name)
+            if not isinstance(series[name], pandas.core.series.Series):
+                out = pandas.Series(data=series[name]).to_frame(name=name)
+            else:
+                out = series[name].to_frame(name=name)
         else:
             out[name] = series[name]
         del series[name]
@@ -841,14 +844,16 @@ class Pandas(Library):
         ):
             return pandas.Series(array, index=index)
         else:
-            awkward_pandas = uproot.extras.awkward_pandas()
-            ak_lib = _libraries[Awkward.name]
-            ak_arr = ak_lib.finalize(
+            array = _libraries[Awkward.name].finalize(
                 array, branch, interpretation, entry_start, entry_stop, options
             )
-            return pandas.Series(
-                awkward_pandas.AwkwardExtensionArray(ak_arr), index=index
-            )
+            if isinstance(
+                array.type.content, uproot.extras.awkward().types.NumpyType
+            ) and array.layout.minmax_depth == (1, 1):
+                array = array.to_numpy()
+            else:
+                array = uproot.extras.awkward_pandas().AwkwardExtensionArray(array)
+        return pandas.Series(array, index=index)
 
     def group(self, arrays, expression_context, how):
         pandas = self.imported
@@ -868,9 +873,9 @@ class Pandas(Library):
 
         else:
             raise TypeError(
-                "for library {}, how must be tuple, list, dict, str (for "
+                f"for library {self.name}, how must be tuple, list, dict, str (for "
                 "pandas.merge's 'how' parameter, or None (for one or more"
-                "DataFrames without merging)".format(self.name)
+                "DataFrames without merging)"
             )
 
     def global_index(self, arrays, global_offset):
@@ -969,7 +974,7 @@ def _regularize_library(library):
             return _libraries[library]
         except KeyError as err:
             raise ValueError(
-                """library {} not recognized (for this function); """
+                f"""library {library!r} not recognized (for this function); """
                 """try "np" (NumPy), "ak" (Awkward Array), or "pd" (Pandas) """
-                """instead""".format(repr(library))
+                """instead"""
             ) from err

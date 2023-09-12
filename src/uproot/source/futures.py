@@ -366,9 +366,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         assert isinstance(future, ResourceFuture)
         if self.closed:
             raise OSError(
-                "resource is closed for file {}".format(
-                    self._workers[0].resource.file_path
-                )
+                f"resource is closed for file {self._workers[0].resource.file_path}"
             )
         self._work_queue.put(future)
         return future
@@ -429,9 +427,7 @@ class ResourceTrivialExecutor(TrivialExecutor):
         assert isinstance(future, ResourceFuture)
         if self.closed:
             raise OSError(
-                "resource is closed for file {}".format(
-                    self._workers[0].resource.file_path
-                )
+                f"resource is closed for file {self._workers[0].resource.file_path}"
             )
         future._run(self._resource)
         return future

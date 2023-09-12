@@ -116,10 +116,8 @@ class XRootDResource(uproot.source.chunk.Resource):
 
         else:
             raise OSError(
-                """XRootD error: {}
-in file {}""".format(
-                    status.message, self._file_path
-                )
+                f"""XRootD error: {status.message}
+in file {self._file_path}"""
             )
 
     @property

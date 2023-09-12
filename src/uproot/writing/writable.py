@@ -63,7 +63,7 @@ def create(file_path, **options):
     if uproot._util.isstr(file_path) and os.path.exists(file_path):
         raise OSError(
             "path exists and refusing to overwrite (use 'uproot.recreate' to "
-            "overwrite)\n\nfor path {}".format(file_path)
+            f"overwrite)\n\nfor path {file_path}"
         )
     return recreate(file_path, **options)
 
@@ -534,7 +534,7 @@ class WritableDirectory(MutableMapping):
         Path of directory names to this subdirectory as a single string, delimited
         by slashes.
         """
-        return "/".join(("", *self._path) + ("",)).replace("//", "/")
+        return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
     def file_path(self):
@@ -1420,10 +1420,8 @@ in file {} in directory {}""".format(
         if len(old_names) == 0:
             if require_matches:
                 raise ValueError(
-                    """no objects found with names matching {}
-in file {} in directory {}""".format(
-                        repr(filter_name), source.file_path, source.path
-                    )
+                    f"""no objects found with names matching {filter_name!r}
+in file {source.file_path} in directory {source.path}"""
                 )
             else:
                 return
@@ -1651,7 +1649,7 @@ class WritableTree:
         Path of directory names to this TTree as a single string, delimited by
         slashes.
         """
-        return "/".join(("", *self._path) + ("",)).replace("//", "/")
+        return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
     def file_path(self):
@@ -1994,7 +1992,7 @@ class WritableNTuple:
         Path of directory names to this RNTuple as a single string, delimited by
         slashes.
         """
-        return "/".join(("", *self._path) + ("",)).replace("//", "/")
+        return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
     def file_path(self):
