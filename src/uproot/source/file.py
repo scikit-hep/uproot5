@@ -13,7 +13,6 @@ If the filesystem or operating system does not support memory-mapped files, the
 """
 
 
-import io
 import os.path
 
 import numpy
@@ -262,92 +261,3 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     def __setstate__(self, state):
         self.__dict__ = state
         self._open()
-
-
-class BufferedFileSource(uproot.source.chunk.Source):
-    """
-    Args:
-        file_path (str): The filesystem path of the file to open.
-        options: Must include ``"num_workers"``.
-
-    A :doc:`uproot.source.chunk.Source` that manages one in-memory file buffer.
-    """
-
-    _dtype = uproot.source.chunk.Chunk._dtype
-
-    def __init__(self, file_path, **options):
-        self._num_requests = 0
-        self._num_requested_chunks = 0
-        self._num_requested_bytes = 0
-
-        self._file_path = file_path
-        self._open()
-
-    def _open(self):
-        with open(self._file_path, mode="rb") as f:
-            self._file = io.BytesIO(f.read())
-        self._num_bytes = os.path.getsize(self._file_path)
-
-    def __reduce__(self):
-        return type(self), (self._file_path,)
-
-    def __repr__(self):
-        path = repr(self._file_path)
-        if len(self._file_path) > 10:
-            path = repr("..." + self._file_path[-10:])
-        return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
-
-    def chunk(self, start, stop):
-        if self.closed:
-            raise OSError(f"file {self._file_path} is closed")
-
-        num_bytes = stop - start
-        self._num_requests += 1
-        self._num_requested_chunks += 1
-        self._num_requested_bytes += num_bytes
-
-        self._file.seek(start, os.SEEK_SET)
-        data = self._file.read(num_bytes)
-
-        future = uproot.source.futures.TrivialFuture(data)
-        return uproot.source.chunk.Chunk(self, start, stop, future, is_memmap=True)
-
-    def chunks(self, ranges, notifications):
-        if self.closed:
-            raise OSError(f"file {self._file_path} is closed")
-
-        self._num_requests += 1
-        self._num_requested_chunks += len(ranges)
-        self._num_requested_bytes += sum(stop - start for start, stop in ranges)
-
-        chunks = []
-        for start, stop in ranges:
-            num_bytes = stop - start
-            self._file.seek(start, os.SEEK_SET)
-            data = self._file.read(num_bytes)
-            future = uproot.source.futures.TrivialFuture(data)
-            chunk = uproot.source.chunk.Chunk(self, start, stop, future, is_memmap=True)
-            notifications.put(chunk)
-            chunks.append(chunk)
-        return chunks
-
-    @property
-    def file(self):
-        """
-        The ``numpy.memmap`` array/file.
-        """
-        return self._file
-
-    @property
-    def closed(self):
-        return self._file.closed  # TODO
-
-    def __enter__(self):
-        self._file.__enter__()
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._file.__exit__(exception_type, exception_value, traceback)
-
-    @property
-    def num_bytes(self):
-        return self._num_bytes
