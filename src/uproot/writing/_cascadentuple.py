@@ -426,9 +426,7 @@ class NTuple_ClusterGroupRecord:
         return header_bytes + page_list_link_bytes
 
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__, self.num_clusters, self.page_list_envlink
-        )
+        return f"{type(self).__name__}({self.num_clusters}, {self.page_list_envlink})"
 
 
 class NTuple_ClusterSummary:
@@ -445,9 +443,7 @@ class NTuple_ClusterSummary:
         return payload_bytes
 
     def __repr__(self):
-        return "{}({}, {})".format(
-            type(self).__name__, self.num_first_entry, self.num_entries
-        )
+        return f"{type(self).__name__}({self.num_first_entry}, {self.num_entries})"
 
 
 class NTuple_InnerListLocator:

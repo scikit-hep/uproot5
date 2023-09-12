@@ -29,10 +29,8 @@ class Model_TArray(uproot.model.Model, Sequence):
         context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._members["fN"] = cursor.field(chunk, _tarray_format1, context)
         self._data = cursor.array(chunk, self._members["fN"], self.dtype, context)

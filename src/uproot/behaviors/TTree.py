@@ -60,9 +60,7 @@ class TTree(uproot.behaviors.TBranch.HasBranches):
         String that uniquely specifies this ``TTree`` in its path, to use as
         part of object and array cache keys.
         """
-        return "{}{};{}".format(
-            self.parent.parent.cache_key, self.name, self.parent.fCycle
-        )
+        return f"{self.parent.parent.cache_key}{self.name};{self.parent.fCycle}"
 
     @property
     def num_entries(self):

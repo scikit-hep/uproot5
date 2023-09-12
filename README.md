@@ -78,7 +78,8 @@ The following libraries are also useful in conjunction with Uproot, but are not 
 
 **For accessing remote files:**
 
-   * `xrootd`: if reading files with `root://` URLs.
+   * `minio`: if reading files with `s3://` URIs.
+   * `xrootd`: if reading files with `root://` URIs.
    * HTTP/S access is built in (Python standard library).
 
 **For distributed computing with [Dask](https://www.dask.org/):**
@@ -175,6 +176,8 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/renyhp"><img src="https://avatars.githubusercontent.com/u/20142663?v=4?s=100" width="100px;" alt="renyhp"/><br /><sub><b>renyhp</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=renyhp" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/lgray"><img src="https://avatars.githubusercontent.com/u/1068089?v=4?s=100" width="100px;" alt="Lindsey Gray"/><br /><sub><b>Lindsey Gray</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=lgray" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ioanaif"><img src="https://avatars.githubusercontent.com/u/9751871?v=4?s=100" width="100px;" alt="ioanaif"/><br /><sub><b>ioanaif</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ioanaif" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/natsukium"><img src="https://avatars.githubusercontent.com/u/25083790?v=4?s=100" width="100px;" alt="OTABI Tomoya"/><br /><sub><b>OTABI Tomoya</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=natsukium" title="Tests">⚠️</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/JostMigenda"><img src="https://avatars.githubusercontent.com/u/16189747?v=4?s=100" width="100px;" alt="Jost Migenda"/><br /><sub><b>Jost Migenda</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=JostMigenda" title="Documentation">📖</a></td>
     </tr>
   </tbody>
 </table>

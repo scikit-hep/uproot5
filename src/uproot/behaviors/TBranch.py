@@ -154,6 +154,7 @@ def iterate(
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
@@ -175,7 +176,7 @@ def iterate(
       array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files)
+    files = uproot._util.regularize_files(files, steps_allowed=False)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -325,6 +326,7 @@ def concatenate(
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
@@ -343,7 +345,7 @@ def concatenate(
       single concatenated array from ``TTrees``.
     * :doc:`uproot._dask.dask`: returns an unevaluated Dask array from ``TTrees``.
     """
-    files = uproot._util.regularize_files(files)
+    files = uproot._util.regularize_files(files, steps_allowed=False)
     decompression_executor, interpretation_executor = _regularize_executors(
         decompression_executor, interpretation_executor, None
     )
@@ -1689,9 +1691,7 @@ class TBranch(HasBranches):
 
     def __repr__(self):
         if len(self) == 0:
-            return "<{} {} at 0x{:012x}>".format(
-                self.classname, repr(self.name), id(self)
-            )
+            return f"<{self.classname} {self.name!r} at 0x{id(self):012x}>"
         else:
             return "<{} {} ({} subbranches) at 0x{:012x}>".format(
                 self.classname, repr(self.name), len(self), id(self)
@@ -1891,9 +1891,7 @@ class TBranch(HasBranches):
         """
         if self._cache_key is None:
             sep = ":" if isinstance(self._parent, uproot.behaviors.TTree.TTree) else "/"
-            self._cache_key = "{}{}{}({})".format(
-                self.parent.cache_key, sep, self.name, self.index
-            )
+            self._cache_key = f"{self.parent.cache_key}{sep}{self.name}({self.index})"
         return self._cache_key
 
     @property
@@ -2965,7 +2963,7 @@ def _regularize_expressions(
             "expressions must be None (for all branches), a string (single "
             "branch or expression), a list of strings (multiple), or a dict "
             "or list of name, Interpretation pairs (branch names and their "
-            "new Interpretation), not {}".format(repr(expressions))
+            f"new Interpretation), not {expressions!r}"
         )
 
     if cut is None:
@@ -3211,7 +3209,7 @@ def _regularize_step_size(
     target_num_bytes = uproot._util.memory_size(
         step_size,
         "number of entries or memory size string with units "
-        "(such as '100 MB') required, not {}".format(repr(step_size)),
+        f"(such as '100 MB') required, not {step_size!r}",
     )
     return _hasbranches_num_entries_for(
         hasbranches, target_num_bytes, entry_start, entry_stop, branchid_interpretation

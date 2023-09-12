@@ -7,12 +7,14 @@ import math
 import re
 import subprocess
 
+from urllib.request import urlopen
+
 tagslist_text = subprocess.run(
     ["git", "show-ref", "--tags"], stdout=subprocess.PIPE
 ).stdout
 tagslist = {
     k: v
-    for k, v in re.findall(rb"([0-9a-f]{40}) refs/tags/([0-9\.rc]+)", tagslist_text)
+    for k, v in re.findall(rb"([0-9a-f]{40}) refs/tags/(v?[0-9\.rc]+)", tagslist_text)
     if not v.startswith(b"0.")
 }
 
@@ -21,17 +23,13 @@ subjects_text = subprocess.run(
 ).stdout
 subjects = re.findall(rb"([0-9a-f]{40}) (.*)", subjects_text)
 
-github_connection = http.client.HTTPSConnection("api.github.com")
 github_releases = []
 numpages = int(math.ceil(len(tagslist) / 30.0))
 for pageid in range(numpages):
     print(f"Requesting GitHub data, page {pageid + 1} of {numpages}")
-    github_connection.request(
-        "GET",
-        rf"/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30",
-        headers={"User-Agent": "uproot4-changelog"},
-    )
-    github_releases_text = github_connection.getresponse().read()
+    github_releases_text = urlopen(
+        rf"https://api.github.com/repos/scikit-hep/uproot4/releases?page={pageid + 1}&per_page=30"
+    ).read()
     try:
         github_releases_page = json.loads(github_releases_text)
     except:
@@ -75,6 +73,9 @@ def pypi_exists(tag):
 with open("changelog.rst", "w") as outfile:
     outfile.write("Release history\n")
     outfile.write("---------------\n")
+    outfile.write(
+        "Note: Releases in the 4.3.x series were developed in parallel with v5.0 on a separate branch and are not included here. See the `list of 4.x releases <https://github.com/scikit-hep/uproot5/releases?q=%224.3%22+OR+%22v4.3%22&expanded=true>`__ for details.\n"
+    )
 
     first = True
     numprs = None
@@ -214,7 +215,7 @@ Uproot versions 1 through 3 were in a different GitHub repository: `scikit-hep/u
 
 This was to allow users to transition from Awkward Array 0.x and Uproot 3.x, which had different interfaces (especially Awkward Array). The transition completed on December 1, 2020.
 
-.. image:: https://raw.githubusercontent.com/scikit-hep/uproot4/main/docs-img/diagrams/uproot-awkward-timeline.png
+.. image:: https://raw.githubusercontent.com/scikit-hep/uproot5/main/docs-img/diagrams/uproot-awkward-timeline.png
   :width: 100%
 """
     )

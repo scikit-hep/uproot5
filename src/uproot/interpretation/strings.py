@@ -171,9 +171,7 @@ class AsStrings(uproot.interpretation.Interpretation):
 
     @property
     def cache_key(self):
-        return "{}({},{})".format(
-            type(self).__name__, self._header_bytes, repr(self._length_bytes)
-        )
+        return f"{type(self).__name__}({self._header_bytes},{self._length_bytes!r})"
 
     def basket_array(
         self,

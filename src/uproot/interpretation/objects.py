@@ -135,7 +135,15 @@ class AsObjects(uproot.interpretation.Interpretation):
         )
         assert basket.byte_offsets is not None
 
-        if self._forth and isinstance(library, uproot.interpretation.library.Awkward):
+        if self._forth and (
+            isinstance(
+                library,
+                (
+                    uproot.interpretation.library.Awkward,
+                    uproot.interpretation.library.Pandas,
+                ),
+            )
+        ):
             output = self.basket_array_forth(
                 data,
                 byte_offsets,
@@ -403,9 +411,14 @@ class AsObjects(uproot.interpretation.Interpretation):
             output = numpy.array([], dtype=self.numpy_dtype)
         elif all(
             uproot._util.from_module(x, "awkward") for x in basket_arrays.values()
+        ) and isinstance(
+            library,
+            (
+                uproot.interpretation.library.Awkward,
+                uproot.interpretation.library.Pandas,
+            ),
         ):
-            assert isinstance(library, uproot.interpretation.library.Awkward)
-            awkward = library.imported
+            awkward = uproot.extras.awkward()
             output = awkward.concatenate(trimmed, mergebool=False, highlevel=False)
         else:
             output = numpy.concatenate(trimmed)
@@ -596,15 +609,16 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def __init__(self, model, members, original=None):
         all_headers_prepended = False
-        first_value_loc = 0
-        while members[first_value_loc] == (None, None):
-            first_value_loc += 1
+
+        for first_value_loc in range(len(members)):
+            if members[first_value_loc] != (None, None):
+                break
 
         for i in range(first_value_loc, len(members)):
             member, value = members[i]
             if member is not None and not all_headers_prepended:
                 all_headers_prepended = True
-            if member is None and all_headers_prepended:
+            if member is None and all_headers_prepended or len(members) == 1:
                 all_headers_prepended = False
                 del members[i]
 
@@ -643,9 +657,7 @@ class AsStridedObjects(uproot.interpretation.numerical.AsDtype):
 
     def __repr__(self):
         if self.inner_shape:
-            return "AsStridedObjects({}, {})".format(
-                self._model.__name__, self.inner_shape
-            )
+            return f"AsStridedObjects({self._model.__name__}, {self.inner_shape})"
         else:
             return f"AsStridedObjects({self._model.__name__})"
 
