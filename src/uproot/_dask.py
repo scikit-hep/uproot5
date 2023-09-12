@@ -704,11 +704,9 @@ class _UprootRead:
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            (
-                new_meta_labelled,
-                report,
-            ) = awkward.typetracer.typetracer_with_report(self.rendered_form)
-            tt = awkward.Array(new_meta_labelled)
+            tt, report = awkward.typetracer.typetracer_with_report(
+                self.rendered_form, highlevel=True
+            )
 
             if common_keys is not None:
                 for key in common_keys:
@@ -799,11 +797,9 @@ class _UprootOpenAndRead:
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            (
-                new_meta_labelled,
-                report,
-            ) = awkward.typetracer.typetracer_with_report(self.rendered_form)
-            tt = awkward.Array(new_meta_labelled)
+            tt, report = awkward.typetracer.typetracer_with_report(
+                self.rendered_form, highlevel=True
+            )
 
             if common_keys is not None:
                 for key in common_keys:
