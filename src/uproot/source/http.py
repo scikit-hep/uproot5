@@ -701,7 +701,6 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = HTTPResource
 
     def __init__(self, file_path, **options):
-        num_workers = options["num_workers"]
         timeout = options["timeout"]
         self._num_requests = 0
         self._num_requested_chunks = 0
@@ -711,7 +710,14 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         self._num_bytes = None
         self._timeout = timeout
 
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+        if options["no_threads"]:
+            num_workers = 1
+            executor_cls = uproot.source.futures.ResourceTrivialExecutor
+        else:
+            num_workers = options["num_workers"]
+            executor_cls = uproot.source.futures.ResourceThreadPoolExecutor
+
+        self._executor = executor_cls(
             [HTTPResource(file_path, timeout) for x in range(num_workers)]
         )
 

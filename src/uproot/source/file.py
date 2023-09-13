@@ -226,7 +226,7 @@ class MemmapSource(uproot.source.chunk.Source):
             return self._fallback.num_bytes
 
 
-class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
+class MultithreadedFileSource(uproot.source.chunk.ExecutorSource):
     """
     Args:
         file_path (str): The filesystem path of the file to open.
@@ -239,7 +239,13 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = FileResource
 
     def __init__(self, file_path, **options):
-        self._num_workers = options["num_workers"]
+        if options["no_threads"]:
+            self._num_workers = 1
+            self._executor_cls = uproot.source.futures.ResourceTrivialExecutor
+        else:
+            self._num_workers = options["num_workers"]
+            self._executor_cls = uproot.source.futures.ResourceThreadPoolExecutor
+
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
@@ -248,7 +254,7 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
         self._open()
 
     def _open(self):
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+        self._executor = self._executor_cls(
             [FileResource(self._file_path) for x in range(self._num_workers)]
         )
         self._num_bytes = os.path.getsize(self._file_path)

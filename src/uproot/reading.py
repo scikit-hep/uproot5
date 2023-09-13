@@ -187,6 +187,7 @@ open.defaults = _OpenDefaults(
         "num_fallback_workers": 10,
         "begin_chunk_size": 403,  # the smallest a ROOT file can be
         "minimal_ttree_metadata": True,
+        "no_threads": sys.platform == "emscripten",
     }
 )
 
