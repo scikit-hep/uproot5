@@ -226,7 +226,7 @@ class MemmapSource(uproot.source.chunk.Source):
             return self._fallback.num_bytes
 
 
-class MultithreadedFileSource(uproot.source.chunk.ExecutorSource):
+class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     """
     Args:
         file_path (str): The filesystem path of the file to open.
