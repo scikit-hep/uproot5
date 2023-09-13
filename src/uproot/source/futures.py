@@ -446,6 +446,10 @@ class ResourceTrivialExecutor(TrivialExecutor):
         """
         return self._closed
 
+    def __enter__(self):
+        self._resource.__enter__()
+
     def __exit__(self, exception_type, exception_value, traceback):
         self.shutdown()
+        self._resource.__exit__(exception_type, exception_value, traceback)
         self._closed = True

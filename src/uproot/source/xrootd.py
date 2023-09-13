@@ -11,6 +11,7 @@ support vector-read requests; if not, it automatically falls back to
 """
 
 
+import contextlib
 import sys
 
 import uproot
@@ -66,6 +67,11 @@ def get_server_config(file):
     readv_iov_max, readv_ior_max = map(int, result.split(b"\n", 1))
 
     return readv_iov_max, readv_ior_max
+
+
+@contextlib.contextmanager
+def trivial_resource():
+    yield
 
 
 class XRootDResource(uproot.source.chunk.Resource):
@@ -260,6 +266,7 @@ class XRootDSource(uproot.source.chunk.Source):
     def __init__(self, file_path, **options):
         self._timeout = options["timeout"]
         self._desired_max_num_elements = options["max_num_elements"]
+        self._no_threads = options["no_threads"]
         self._num_workers = options["num_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
@@ -274,9 +281,14 @@ class XRootDSource(uproot.source.chunk.Source):
 
         # this ThreadPool does not need a resource, it's only used to submit
         # futures that wait for chunks that have been split to merge them.
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [None for i in range(self._num_workers)]
-        )
+        if self._no_threads:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                trivial_resource()
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [trivial_resource() for x in range(self._num_workers)]
+            )
 
         self._max_num_elements, self._max_element_size = get_server_config(
             self._resource.file

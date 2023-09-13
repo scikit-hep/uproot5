@@ -239,24 +239,24 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = FileResource
 
     def __init__(self, file_path, **options):
-        if options["no_threads"]:
-            self._num_workers = 1
-            self._executor_cls = uproot.source.futures.ResourceTrivialExecutor
-        else:
-            self._num_workers = options["num_workers"]
-            self._executor_cls = uproot.source.futures.ResourceThreadPoolExecutor
-
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
+        self._no_threads = options["no_threads"]
+        self._num_workers = options["num_workers"]
 
         self._file_path = file_path
         self._open()
 
     def _open(self):
-        self._executor = self._executor_cls(
-            [FileResource(self._file_path) for x in range(self._num_workers)]
-        )
+        if self._no_threads:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                FileResource(self._file_path)
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [FileResource(self._file_path) for x in range(self._num_workers)]
+            )
         self._num_bytes = os.path.getsize(self._file_path)
 
     def __getstate__(self):
