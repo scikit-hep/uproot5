@@ -692,7 +692,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"num_workers"``, ``"no_threads"``, and ``"timeout"``.
+        options: Must include ``"num_workers"``, ``"use_threads"``, and ``"timeout"``.
 
     A :doc:`uproot.source.chunk.MultithreadedSource` that manages many
     :doc:`uproot.source.http.HTTPResource` objects.
@@ -704,7 +704,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
-        self._no_threads = options["no_threads"]
+        self._use_threads = options["use_threads"]
         self._num_workers = options["num_workers"]
 
         self._file_path = file_path
@@ -723,16 +723,16 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         self._open()
 
     def _open(self):
-        if self._no_threads:
-            self._executor = uproot.source.futures.ResourceTrivialExecutor(
-                HTTPResource(self._file_path, self._timeout)
-            )
-        else:
+        if self._use_threads:
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
                 [
                     HTTPResource(self._file_path, self._timeout)
                     for x in range(self._num_workers)
                 ]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                HTTPResource(self._file_path, self._timeout)
             )
 
     @property

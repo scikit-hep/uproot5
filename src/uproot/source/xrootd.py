@@ -255,7 +255,7 @@ class XRootDSource(uproot.source.chunk.Source):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"timeout"``, ``"max_num_elements"``, ``"no_threads"``, and ``"num_workers"``
+        options: Must include ``"timeout"``, ``"max_num_elements"``, ``"use_threads"``, and ``"num_workers"``
 
     A :doc:`uproot.source.chunk.Source` that uses XRootD's vector-read
     to get many chunks in one request.
@@ -266,7 +266,7 @@ class XRootDSource(uproot.source.chunk.Source):
     def __init__(self, file_path, **options):
         self._timeout = options["timeout"]
         self._desired_max_num_elements = options["max_num_elements"]
-        self._no_threads = options["no_threads"]
+        self._use_threads = options["use_threads"]
         self._num_workers = options["num_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
@@ -281,13 +281,13 @@ class XRootDSource(uproot.source.chunk.Source):
 
         # this ThreadPool does not need a resource, it's only used to submit
         # futures that wait for chunks that have been split to merge them.
-        if self._no_threads:
-            self._executor = uproot.source.futures.ResourceTrivialExecutor(
-                trivial_resource()
-            )
-        else:
+        if self._use_threads:
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
                 [trivial_resource() for x in range(self._num_workers)]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                trivial_resource()
             )
 
         self._max_num_elements, self._max_element_size = get_server_config(
@@ -443,7 +443,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"num_workers"``, ``"no_threads"``, and ``"timeout"``.
+        options: Must include ``"num_workers"``, ``"use_threads"``, and ``"timeout"``.
 
     A :doc:`uproot.source.chunk.MultithreadedSource` that manages many
     :doc:`uproot.source.xrootd.XRootDResource` objects.
@@ -454,6 +454,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
     def __init__(self, file_path, **options):
         self._num_workers = options["num_workers"]
         self._timeout = options["timeout"]
+        self._use_threads = options["use_threads"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
@@ -463,12 +464,17 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         self._open()
 
     def _open(self):
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [
+        if self._use_threads:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [
+                    XRootDResource(self._file_path, self._timeout)
+                    for x in range(self._num_workers)
+                ]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
                 XRootDResource(self._file_path, self._timeout)
-                for x in range(self._num_workers)
-            ]
-        )
+            )
 
     def __getstate__(self):
         state = dict(self.__dict__)

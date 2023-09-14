@@ -113,7 +113,7 @@ class ObjectSource(uproot.source.chunk.MultithreadedSource):
 
         self._file_path = repr(obj)
 
-        if options["no_threads"]:
+        if not options["use_threads"]:
             self._executor = uproot.source.futures.ResourceTrivialExecutor(
                 ObjectResource(obj)
             )
