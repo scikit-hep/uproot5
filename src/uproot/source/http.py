@@ -531,7 +531,7 @@ class HTTPSource(uproot.source.chunk.Source):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"num_fallback_workers"`` and ``"timeout"``.
+        options: Must include ``"num_fallback_workers"``, ``"use_threads"``, and ``"timeout"``.
 
     A :doc:`uproot.source.chunk.Source` that first attempts an HTTP(S)
     multipart GET, but if the server doesn't support it, it falls back to many
@@ -553,6 +553,7 @@ class HTTPSource(uproot.source.chunk.Source):
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
+        self._use_threads = options["use_threads"]
         self._file_path = file_path
         self._num_bytes = None
 
@@ -562,9 +563,14 @@ class HTTPSource(uproot.source.chunk.Source):
         self._open()
 
     def _open(self):
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(self._file_path, self._timeout)]
-        )
+        if self._use_threads:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [HTTPResource(self._file_path, self._timeout)]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                HTTPResource(self._file_path, self._timeout)
+            )
 
     def __getstate__(self):
         state = dict(self.__dict__)
