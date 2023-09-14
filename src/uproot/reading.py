@@ -85,6 +85,7 @@ def open(
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
+    * no_threads (bool; True if emscripten, else False)
     * num_fallback_workers (int; 10)
     * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
     * minimal_ttree_metadata (bool; True)
@@ -184,10 +185,10 @@ open.defaults = _OpenDefaults(
         "timeout": 30,
         "max_num_elements": None,
         "num_workers": 1,
+        "no_threads": sys.platform == "emscripten",
         "num_fallback_workers": 10,
         "begin_chunk_size": 403,  # the smallest a ROOT file can be
         "minimal_ttree_metadata": True,
-        "no_threads": sys.platform == "emscripten",
     }
 )
 
@@ -541,6 +542,7 @@ class ReadOnlyFile(CommonFileMethods):
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
+    * no_threads (bool; True if emscripten, else False)
     * num_fallback_workers (int; 10)
     * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
     * minimal_ttree_metadata (bool; True)

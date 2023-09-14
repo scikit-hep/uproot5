@@ -230,7 +230,7 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     """
     Args:
         file_path (str): The filesystem path of the file to open.
-        options: Must include ``"num_workers"``.
+        options: Must include ``"num_workers"`` and ``"no_threads"``.
 
     A :doc:`uproot.source.chunk.MultithreadedSource` that manages many
     :doc:`uproot.source.file.FileResource` objects.

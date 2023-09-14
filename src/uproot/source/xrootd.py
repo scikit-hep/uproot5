@@ -255,7 +255,7 @@ class XRootDSource(uproot.source.chunk.Source):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"timeout"``, ``"max_num_elements"`` and ``"num_workers"``
+        options: Must include ``"timeout"``, ``"max_num_elements"``, ``"no_threads"``, and ``"num_workers"``
 
     A :doc:`uproot.source.chunk.Source` that uses XRootD's vector-read
     to get many chunks in one request.
@@ -443,7 +443,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"num_workers"`` and ``"timeout"``.
+        options: Must include ``"num_workers"``, ``"no_threads"``, and ``"timeout"``.
 
     A :doc:`uproot.source.chunk.MultithreadedSource` that manages many
     :doc:`uproot.source.xrootd.XRootDResource` objects.

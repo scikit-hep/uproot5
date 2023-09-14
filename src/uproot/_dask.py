@@ -127,6 +127,7 @@ def dask(
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
+    * no_threads (bool; True if emscripten, else False)
     * num_fallback_workers (int; 10)
     * begin_chunk_size (memory_size; 512)
     * minimal_ttree_metadata (bool; True)
