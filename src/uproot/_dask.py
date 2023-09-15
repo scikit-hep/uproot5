@@ -105,11 +105,14 @@ def dask(
     * glob syntax in str/bytes and pathlib.Path.
       Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
     * dict: keys are filesystem paths, values are objects-within-ROOT paths.
-      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
+      Example: ``{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}``
     * dict: keys are filesystem paths, values are dicts containing objects-within-ROOT and
       steps (chunks/partitions) as a list of starts and stops or steps as a list of offsets
-      Example: ``{{"/data_v1/tree1.root": {"object_path": "ttree_v1", "steps": [[0, 10000], [15000, 20000], ...]},
-                   "/data_v1/tree2.root": {"object_path": "ttree_v1", "steps": [0, 10000, 20000, ...]}}}``
+      Example:
+
+          {{"/data_v1/tree1.root": {"object_path": "ttree_v1", "steps": [[0, 10000], [15000, 20000], ...]},
+            "/data_v1/tree2.root": {"object_path": "ttree_v1", "steps": [0, 10000, 20000, ...]}}}
+
       (This ``files`` pattern is incompatible with ``step_size`` and ``steps_per_file``.)
     * already-open TTree objects.
     * iterables of the above.
@@ -803,11 +806,9 @@ class _UprootRead:
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            (
-                new_meta_labelled,
-                report,
-            ) = awkward._nplikes.typetracer.typetracer_with_report(self.rendered_form)
-            tt = awkward.Array(new_meta_labelled)
+            tt, report = awkward.typetracer.typetracer_with_report(
+                self.rendered_form, highlevel=True
+            )
 
             if common_keys is not None:
                 for key in common_keys:
@@ -947,11 +948,9 @@ which has {num_entries} entries"""
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            (
-                new_meta_labelled,
-                report,
-            ) = awkward._nplikes.typetracer.typetracer_with_report(self.rendered_form)
-            tt = awkward.Array(new_meta_labelled)
+            tt, report = awkward.typetracer.typetracer_with_report(
+                self.rendered_form, highlevel=True
+            )
 
             if columns is not None:
                 for key in columns:

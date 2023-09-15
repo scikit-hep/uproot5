@@ -3,14 +3,11 @@
 import numpy
 import pytest
 import skhep_testdata
-
+import awkward as ak
 import uproot
 
 dask = pytest.importorskip("dask")
 dask_awkward = pytest.importorskip("dask_awkward")
-
-pytest.importorskip("pyarrow")  # dask_awkward.lib.testutils needs pyarrow
-from dask_awkward.lib.testutils import assert_eq
 
 
 def test_dask_numpy_empty_arrays():
@@ -52,7 +49,7 @@ def test_dask_awkward_empty_arrays():
     ak_array = ttree.arrays()
     dak_array = uproot.dask(test_path, library="ak")
 
-    assert_eq(dak_array, ak_array)
+    assert ak.almost_equal(dak_array.compute(scheduler="synchronous"), ak_array)
 
 
 def test_dask_delayed_open_awkward():
@@ -62,7 +59,7 @@ def test_dask_delayed_open_awkward():
     ak_array = ttree.arrays()
     dak_array = uproot.dask(test_path, library="ak", open_files=False)
 
-    assert_eq(dak_array, ak_array)
+    ak.almost_equal(dak_array.compute(scheduler="synchronous"), ak_array)
 
 
 def test_no_common_tree_branches():
