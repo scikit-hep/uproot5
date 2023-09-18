@@ -760,7 +760,7 @@ class _UprootRead:
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
             dask_awkward = uproot.extras.dask_awkward()
-            
+
             if all_common_keys != set(self.rendered_form.columns()):
                 actual_form = self.rendered_form.select_columns(all_common_keys)
             else:
@@ -806,7 +806,9 @@ class _UprootRead:
 
         return array
 
-    def project_columns(self, common_data_keys=None, original_form=None, common_shape_keys=None):
+    def project_columns(
+        self, common_data_keys=None, original_form=None, common_shape_keys=None
+    ):
         common_data_base_keys = self.common_data_base_keys
         common_shape_base_keys = self.common_shape_base_keys
         if self.form_mapping is not None:
@@ -839,12 +841,16 @@ class _UprootRead:
                     )
                     if x in self.common_shape_base_keys
                 ]
-        
+
         else:
             if common_data_keys is not None:
-                common_data_keys = [x for x in common_data_keys if x in self.common_data_keys]
+                common_data_keys = [
+                    x for x in common_data_keys if x in self.common_data_keys
+                ]
             if common_shape_keys is not None:
-                common_shape_keys = [x for x in common_shape_keys if x in self.common_shape_keys]
+                common_shape_keys = [
+                    x for x in common_shape_keys if x in self.common_shape_keys
+                ]
 
         return _UprootRead(
             self.ttrees,
@@ -973,7 +979,9 @@ which has {num_entries} entries"""
 
         return array
 
-    def project_columns(self, common_data_keys=None, original_form=None, common_shape_keys=None):
+    def project_columns(
+        self, common_data_keys=None, original_form=None, common_shape_keys=None
+    ):
         common_data_base_keys = self.common_data_base_keys
         common_shape_base_keys = self.common_shape_base_keys
         if self.form_mapping is not None:
@@ -1009,9 +1017,13 @@ which has {num_entries} entries"""
 
         else:
             if common_data_keys is not None:
-                common_data_keys = [x for x in common_data_keys if x in self.common_data_keys]
+                common_data_keys = [
+                    x for x in common_data_keys if x in self.common_data_keys
+                ]
             if common_shape_keys is not None:
-                common_shape_keys = [x for x in common_shape_keys if x in self.common_shape_keys]
+                common_shape_keys = [
+                    x for x in common_shape_keys if x in self.common_shape_keys
+                ]
 
         return _UprootOpenAndRead(
             self.custom_classes,
