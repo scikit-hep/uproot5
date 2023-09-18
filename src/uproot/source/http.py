@@ -560,6 +560,11 @@ class HTTPSource(uproot.source.chunk.Source):
         self._fallback = None
         self._fallback_options = options.copy()
         self._fallback_options["num_workers"] = self._num_fallback_workers
+
+        # Parse the URL here, so that we can expose these fields
+        self._parsed_url = urlparse(file_path)
+        self._auth_headers = basic_auth_headers(self._parsed_url)
+
         self._open()
 
     def _open(self):
@@ -667,14 +672,14 @@ class HTTPSource(uproot.source.chunk.Source):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        return self._executor.workers[0].resource.parsed_url
+        return self._parsed_url
 
     @property
     def auth_headers(self):
         """
         Dict containing auth headers, if any
         """
-        return self._executor.workers[0].resource.auth_headers
+        return self._auth_headers
 
     @property
     def fallback(self):
@@ -716,6 +721,10 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         self._file_path = file_path
         self._num_bytes = None
         self._timeout = options["timeout"]
+
+        # Parse the URL here, so that we can expose these fields
+        self._parsed_url = urlparse(file_path)
+        self._auth_headers = basic_auth_headers(self._parsed_url)
 
         self._open()
 
@@ -761,11 +770,11 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        return self._executor.workers[0].resource.parsed_url
+        return self._parsed_url
 
     @property
     def auth_headers(self):
         """
         Dict containing auth headers, if any
         """
-        return self._executor.workers[0].resource.auth_headers
+        return self._auth_headers
