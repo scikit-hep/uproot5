@@ -95,7 +95,9 @@ def test_memmap_fail(use_threads, tmp_path):
 
     with pytest.raises(Exception):
         with uproot.source.file.MemmapSource(
-            tmp_path / f"{filename.name}-does-not-exist", num_fallback_workers=1, use_threads=use_threads
+            tmp_path / f"{filename.name}-does-not-exist",
+            num_fallback_workers=1,
+            use_threads=use_threads,
         ):
             ...
 
@@ -105,7 +107,10 @@ def test_memmap_fail(use_threads, tmp_path):
 @pytest.mark.network
 def test_http(use_threads):
     with uproot.source.http.HTTPSource(
-        "https://example.com", timeout=10, num_fallback_workers=1, use_threads=use_threads
+        "https://example.com",
+        timeout=10,
+        num_fallback_workers=1,
+        use_threads=use_threads,
     ) as tmp:
         notifications = queue.Queue()
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
@@ -143,7 +148,10 @@ def colons_and_ports():
 @pytest.mark.network
 def test_http_port(use_threads):
     source = uproot.source.http.HTTPSource(
-        "https://example.com:443", timeout=10, num_fallback_workers=1, use_threads=use_threads
+        "https://example.com:443",
+        timeout=10,
+        num_fallback_workers=1,
+        use_threads=use_threads,
     )
     with source as tmp:
         notifications = queue.Queue()
