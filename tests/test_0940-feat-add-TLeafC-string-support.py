@@ -16,6 +16,7 @@ def test_write_tfleac_uproot_1(tmp_path):
     rf = ROOT.TFile(filename)
     data = rf.Get("tree")
     assert data.GetLeaf("branch").Class_Name() == "TLeafC"
+    assert [entry.branch for entry in data] == ["one", "two", "three"]
     rf.Close()
 
     with uproot.open(filename) as g:
@@ -34,6 +35,16 @@ def test_write_tfleac_uproot_2(tmp_path):
     rf = ROOT.TFile(filename)
     data = rf.Get("tree")
     assert data.GetLeaf("branch").Class_Name() == "TLeafC"
+    assert [entry.branch for entry in data] == [
+        "unu",
+        "doi",
+        "trei",
+        "patru",
+        "cinci",
+        "sase",
+        "sapte",
+        "opt",
+    ]
     rf.Close()
 
     with uproot.open(filename) as g:
@@ -59,6 +70,14 @@ def test_write_tfleac_uproot_3(tmp_path):
     rf = ROOT.TFile(filename)
     data = rf.Get("tree")
     assert data.GetLeaf("branch").Class_Name() == "TLeafC"
+    assert [entry.branch for entry in data] == [
+        "zero",
+        "one" * 100,
+        "two",
+        "three" * 100,
+        "four",
+        "five",
+    ]
     rf.Close()
 
     with uproot.open(filename) as g:

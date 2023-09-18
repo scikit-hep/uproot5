@@ -1514,7 +1514,10 @@ class Tree:
         raw_array = uproot._util.tobytes(array)
         raw_offsets = uproot._util.tobytes(offsets)
         uncompressed_data = (
-            raw_array + _tbasket_offsets_length.pack(len(offsets)) + raw_offsets
+            raw_array
+            + _tbasket_offsets_length.pack(len(offsets))
+            + raw_offsets[:-4]
+            + b"\x00\x00\x00\x00"
         )
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
@@ -1548,7 +1551,7 @@ class Tree:
             uproot.models.TBasket._tbasket_format2.pack(
                 3,  # fVersion
                 32000,  # fBufferSize
-                len(offsets) + 1,  # fNevBufSize
+                1000,  # fNevBufSize
                 len(offsets) - 1,  # fNevBuf
                 fLast,
             )
