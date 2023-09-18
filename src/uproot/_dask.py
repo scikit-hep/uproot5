@@ -734,16 +734,20 @@ class _UprootRead:
     def __init__(
         self,
         ttrees,
-        common_keys,
-        common_base_keys,
+        common_data_keys,
+        common_data_base_keys,
+        common_shape_keys,
+        common_shape_base_keys,
         interp_options,
         form_mapping,
         rendered_form,
         original_form=None,
     ) -> None:
         self.ttrees = ttrees
-        self.common_keys = common_keys
-        self.common_base_keys = common_base_keys
+        self.common_data_keys = common_data_keys
+        self.common_data_base_keys = common_data_base_keys
+        self.common_shape_keys = common_shape_keys
+        self.common_shape_base_keys = common_shape_base_keys
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
@@ -752,12 +756,13 @@ class _UprootRead:
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
 
+        all_common_keys = set(self.common_data_keys) + set(self.common_shape_keys)
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
             dask_awkward = uproot.extras.dask_awkward()
-
-            if set(self.common_keys) != set(self.rendered_form.columns()):
-                actual_form = self.rendered_form.select_columns(self.common_keys)
+            
+            if all_common_keys != set(self.rendered_form.columns()):
+                actual_form = self.rendered_form.select_columns(all_common_keys)
             else:
                 actual_form = self.rendered_form
 
@@ -782,7 +787,7 @@ class _UprootRead:
             )
 
         array = self.ttrees[i].arrays(
-            self.common_keys,
+            list(all_common_keys),
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
@@ -801,8 +806,9 @@ class _UprootRead:
 
         return array
 
-    def project_columns(self, common_keys=None, original_form=None):
-        common_base_keys = self.common_base_keys
+    def project_columns(self, common_data_keys=None, original_form=None, common_shape_keys=None):
+        common_data_base_keys = self.common_data_base_keys
+        common_shape_base_keys = self.common_shape_base_keys
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
@@ -810,24 +816,42 @@ class _UprootRead:
                 self.rendered_form, highlevel=True
             )
 
-            if common_keys is not None:
-                for key in common_keys:
+            if common_data_keys is not None:
+                for key in common_data_keys:
                     tt[tuple(key.split("."))].layout._touch_data(recursive=True)
 
-                common_base_keys = [
+                common_data_base_keys = [
                     x
                     for x in self.form_mapping.extract_form_keys_base_columns(
                         set(report.data_touched)
                     )
-                    if x in self.common_base_keys
+                    if x in self.common_data_base_keys
                 ]
-        elif common_keys is not None:
-            common_keys = [x for x in common_keys if x in self.common_keys]
+
+            if common_shape_keys is not None:
+                for key in common_shape_keys:
+                    tt[tuple(key.split("."))].layout._touch_shape(recursive=True)
+
+                common_shape_base_keys = [
+                    x
+                    for x in self.form_mapping.extract_form_keys_base_columns(
+                        set(report.shape_touched)
+                    )
+                    if x in self.common_shape_base_keys
+                ]
+        
+        else:
+            if common_data_keys is not None:
+                common_data_keys = [x for x in common_data_keys if x in self.common_data_keys]
+            if common_shape_keys is not None:
+                common_shape_keys = [x for x in common_shape_keys if x in self.common_shape_keys]
 
         return _UprootRead(
             self.ttrees,
-            common_keys,
-            common_keys if self.form_mapping is None else common_base_keys,
+            common_data_keys,
+            common_data_keys if self.form_mapping is None else common_data_base_keys,
+            common_shape_keys,
+            common_shape_keys if self.form_mapping is None else common_shape_base_keys,
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
@@ -841,8 +865,10 @@ class _UprootOpenAndRead:
         custom_classes,
         allow_missing,
         real_options,
-        common_keys,
-        common_base_keys,
+        common_data_keys,
+        common_data_base_keys,
+        common_shape_keys,
+        common_shape_base_keys,
         interp_options,
         form_mapping,
         rendered_form,
@@ -851,8 +877,10 @@ class _UprootOpenAndRead:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
         self.real_options = real_options
-        self.common_keys = common_keys
-        self.common_base_keys = common_base_keys
+        self.common_data_keys = common_data_keys
+        self.common_data_base_keys = common_data_base_keys
+        self.common_shape_keys = common_shape_keys
+        self.common_shape_base_keys = common_shape_base_keys
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
@@ -895,12 +923,14 @@ which has {num_entries} entries"""
             )
 
         assert start <= stop
+
+        all_common_keys = set(self.common_data_keys) + set(self.common_shape_keys)
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
             dask_awkward = uproot.extras.dask_awkward()
 
-            if set(self.common_keys) != set(self.rendered_form.columns()):
-                actual_form = self.rendered_form.select_columns(self.common_keys)
+            if all_common_keys != set(self.rendered_form.columns()):
+                actual_form = self.rendered_form.select_columns(all_common_keys)
             else:
                 actual_form = self.rendered_form
 
@@ -924,7 +954,7 @@ which has {num_entries} entries"""
             )
 
         array = ttree.arrays(
-            self.common_keys,
+            list(all_common_keys),
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
@@ -943,8 +973,9 @@ which has {num_entries} entries"""
 
         return array
 
-    def project_columns(self, columns=None, original_form=None):
-        common_base_keys = self.common_base_keys
+    def project_columns(self, common_data_keys=None, original_form=None, common_shape_keys=None):
+        common_data_base_keys = self.common_data_base_keys
+        common_shape_base_keys = self.common_shape_base_keys
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
@@ -952,27 +983,44 @@ which has {num_entries} entries"""
                 self.rendered_form, highlevel=True
             )
 
-            if columns is not None:
-                for key in columns:
+            if common_data_keys is not None:
+                for key in common_data_keys:
                     tt[tuple(key.split("."))].layout._touch_data(recursive=True)
 
-                common_base_keys = [
+                common_data_base_keys = [
                     x
                     for x in self.form_mapping.extract_form_keys_base_columns(
                         set(report.data_touched)
                     )
-                    if x in self.common_base_keys
+                    if x in self.common_data_base_keys
                 ]
 
-        elif columns is not None:
-            columns = [x for x in columns if x in self.common_keys]
+            if common_shape_keys is not None:
+                for key in common_shape_keys:
+                    tt[tuple(key.split("."))].layout._touch_shape(recursive=True)
+
+                common_shape_base_keys = [
+                    x
+                    for x in self.form_mapping.extract_form_keys_base_columns(
+                        set(report.shape_touched)
+                    )
+                    if x in self.common_shape_base_keys
+                ]
+
+        else:
+            if common_data_keys is not None:
+                common_data_keys = [x for x in common_data_keys if x in self.common_data_keys]
+            if common_shape_keys is not None:
+                common_shape_keys = [x for x in common_shape_keys if x in self.common_shape_keys]
 
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,
             self.real_options,
-            columns,
-            columns if self.form_mapping is None else common_base_keys,
+            common_data_keys,
+            common_data_keys if self.form_mapping is None else common_data_base_keys,
+            common_shape_keys,
+            common_shape_keys if self.form_mapping is None else common_shape_base_keys,
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
@@ -1182,6 +1230,8 @@ which has {entry_stop} entries"""
             ttrees,
             common_keys if form_mapping is None else form.columns(),
             common_keys,
+            common_keys if form_mapping is None else form.columns(),
+            common_keys,
             interp_options,
             form_mapping=form_mapping,
             rendered_form=None if form_mapping is None else form,
@@ -1271,6 +1321,8 @@ def _get_dak_array_delay_open(
             custom_classes,
             allow_missing,
             real_options,
+            common_keys if form_mapping is None else form.columns(),
+            common_keys,
             common_keys if form_mapping is None else form.columns(),
             common_keys,
             interp_options,
