@@ -762,7 +762,7 @@ class _UprootRead:
             dask_awkward = uproot.extras.dask_awkward()
 
             if all_common_keys != set(self.rendered_form.columns()):
-                actual_form = self.rendered_form.select_columns(all_common_keys)
+                actual_form = self.rendered_form.select_columns(list(all_common_keys))
             else:
                 actual_form = self.rendered_form
 
@@ -936,7 +936,7 @@ which has {num_entries} entries"""
             dask_awkward = uproot.extras.dask_awkward()
 
             if all_common_keys != set(self.rendered_form.columns()):
-                actual_form = self.rendered_form.select_columns(all_common_keys)
+                actual_form = self.rendered_form.select_columns(list(all_common_keys))
             else:
                 actual_form = self.rendered_form
 
