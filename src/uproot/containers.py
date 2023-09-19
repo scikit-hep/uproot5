@@ -668,9 +668,7 @@ class AsArray(AsContainer):
             values = self._values.__name__
         else:
             values = repr(self._values)
-        return "AsArray({}, {}, {}, {})".format(
-            self.header, self.speedbump, values, self.inner_shape
-        )
+        return f"AsArray({self.header}, {self.speedbump}, {values}, {self.inner_shape})"
 
     @property
     def cache_key(self):
@@ -715,10 +713,8 @@ class AsArray(AsContainer):
                     forth_stash.add_to_pre(f"{temp_jump} stream skip\n")
             if is_memberwise:
                 raise NotImplementedError(
-                    """memberwise serialization of {}
-in file {}""".format(
-                        type(self).__name__, selffile.file_path
-                    )
+                    f"""memberwise serialization of {type(self).__name__}
+in file {selffile.file_path}"""
                 )
 
             if isinstance(self._values, numpy.dtype):
@@ -1288,10 +1284,8 @@ class AsSet(AsContainer):
 
         if is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, selffile.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {selffile.file_path}"""
             )
 
         length = cursor.field(chunk, _stl_container_size, context)
@@ -1601,10 +1595,8 @@ class AsMap(AsContainer):
         else:
             if forth_stash is not None:
                 raise NotImplementedError(
-                    """non-memberwise serialization of {}
-in file {}""".format(
-                        type(self).__name__, selffile.file_path
-                    )
+                    f"""non-memberwise serialization of {type(self).__name__}
+in file {selffile.file_path}"""
                 )
             length = cursor.field(chunk, _stl_container_size, context)
             keys, values = [], []
@@ -1703,9 +1695,7 @@ class ROOTRVec(Container, Sequence):
         return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
 
     def __repr__(self, limit=85):
-        return "<ROOTRVec {} at 0x{:012x}>".format(
-            self.__str__(limit=limit - 30), id(self)
-        )
+        return f"<ROOTRVec {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
 
     def __getitem__(self, where):
         return self._values[where]
@@ -1761,9 +1751,7 @@ class STLVector(Container, Sequence):
         return _str_with_ellipsis(tostring, len(self), "[", "]", limit)
 
     def __repr__(self, limit=85):
-        return "<STLVector {} at 0x{:012x}>".format(
-            self.__str__(limit=limit - 30), id(self)
-        )
+        return f"<STLVector {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
 
     def __getitem__(self, where):
         return self._values[where]
@@ -1819,9 +1807,7 @@ class STLSet(Container, Set):
         return _str_with_ellipsis(tostring, len(self), "{", "}", limit)
 
     def __repr__(self, limit=85):
-        return "<STLSet {} at 0x{:012x}>".format(
-            self.__str__(limit=limit - 30), id(self)
-        )
+        return f"<STLSet {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
 
     def __len__(self):
         return len(self._keys)
@@ -1913,9 +1899,7 @@ class STLMap(Container, Mapping):
         return _str_with_ellipsis(tostring, len(self), "{", "}", limit)
 
     def __repr__(self, limit=85):
-        return "<STLMap {} at 0x{:012x}>".format(
-            self.__str__(limit=limit - 30), id(self)
-        )
+        return f"<STLMap {self.__str__(limit=limit - 30)} at 0x{id(self):012x}>"
 
     def keys(self):
         """

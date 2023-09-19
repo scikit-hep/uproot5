@@ -3,12 +3,11 @@
 import numpy
 import pytest
 import skhep_testdata
+import awkward as ak
 
 import uproot
 
 dask_awkward = pytest.importorskip("dask_awkward")
-pytest.importorskip("pyarrow")  # dask_awkward.lib.testutils needs pyarrow
-from dask_awkward.lib.testutils import assert_eq
 
 
 @pytest.mark.parametrize("library", ["np", "ak"])
@@ -60,7 +59,9 @@ def test_uproot_dask_steps(library, step_size, steps_per_file, open_files):
             assert all(comp), f"Incorrect array at key {key}"
 
         else:
-            assert_eq(
-                dask_arrays[["px1", "px2", "py1", "py2"]],
+            assert ak.almost_equal(
+                dask_arrays[["px1", "px2", "py1", "py2"]].compute(
+                    scheduler="synchronous"
+                ),
                 arrays[["px1", "px2", "py1", "py2"]],
             )

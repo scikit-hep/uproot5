@@ -90,6 +90,7 @@ from uproot.source.http import HTTPSource
 from uproot.source.http import MultithreadedHTTPSource
 from uproot.source.xrootd import XRootDSource
 from uproot.source.xrootd import MultithreadedXRootDSource
+from uproot.source.s3 import S3Source
 from uproot.source.object import ObjectSource
 from uproot.source.cursor import Cursor
 from uproot.source.futures import TrivialExecutor

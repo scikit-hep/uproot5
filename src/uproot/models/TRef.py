@@ -39,10 +39,8 @@ class Model_TRef(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._ref = cursor.field(chunk, _tref_format1, context)
 
@@ -126,10 +124,8 @@ class Model_TRefArray(uproot.model.Model, Sequence):
             # raise NotImplementedError
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         if forth_stash is not None:
             form_keys = forth_obj.get_keys(6)

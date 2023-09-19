@@ -67,6 +67,26 @@ or
         return pandas
 
 
+def Minio_client():
+    """
+    Imports and returns ``minio.Minio``.
+    """
+    try:
+        from minio import Minio
+    except ModuleNotFoundError as err:
+        raise ModuleNotFoundError(
+            """install the 'minio' package with:
+
+    pip install minio
+
+or
+
+    conda install minio"""
+        ) from err
+    else:
+        return Minio
+
+
 def XRootD_client():
     """
     Imports and returns ``XRootD.client`` (after setting the
@@ -303,11 +323,16 @@ def dask_awkward():
             """for uproot.dask, install 'dask' and the 'dask-awkward' package with:
     pip install "dask[complete] dask-awkward"
 or
-    conda install dask
-    pip install dask-awkward   # not on conda-forge yet"""
+    conda install -c conda-forge dask dask-awkward"""
         ) from err
-    else:
+    if parse_version("2023.9.0") <= parse_version(dask_awkward.__version__):
         return dask_awkward
+    else:
+        raise ModuleNotFoundError(
+            "Uproot 5.x can only be used with dask-awkward 2023.9.0 or newer; you have dask-awkward {}".format(
+                dask_awkward.__version__
+            )
+        )
 
 
 def awkward_pandas():
@@ -319,7 +344,9 @@ def awkward_pandas():
     except ModuleNotFoundError as err:
         raise ModuleNotFoundError(
             """install the 'awkward-pandas' package with:
-    pip install awkward-pandas # not on conda-forge yet"""
+    pip install awkward-pandas
+or
+    conda install -c conda-forge awkward-pandas"""
         ) from err
     else:
         return awkward_pandas

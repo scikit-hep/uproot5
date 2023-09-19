@@ -92,22 +92,6 @@ def dask(
         >>> uproot.dask(root_file,library='np')
         {'Type': dask.array<Type-from-uproot, shape=(2304,), dtype=object, chunksize=(2304,), chunktype=numpy.ndarray>, ...}
 
-
-    This function (naturally) depends on Dask. To use it with ``library="np"``:
-
-    .. code-block:: bash
-
-        # with pip
-        pip install "dask[complete]"
-        # or with conda
-        conda install dask
-
-    For using ``library='ak'``
-
-    .. code-block:: bash
-
-        pip install dask-awkward   # not on conda-forge yet
-
     Allowed types for the ``files`` parameter:
 
     * str/bytes: relative or absolute filesystem path or URL, without any colons
@@ -121,11 +105,14 @@ def dask(
     * glob syntax in str/bytes and pathlib.Path.
       Examples: ``Path("rel/*.root")``, ``"/abs/*.root:tdirectory/ttree"``
     * dict: keys are filesystem paths, values are objects-within-ROOT paths.
-      Example: ``{{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}}``
+      Example: ``{"/data_v1/*.root": "ttree_v1", "/data_v2/*.root": "ttree_v2"}``
     * dict: keys are filesystem paths, values are dicts containing objects-within-ROOT and
       steps (chunks/partitions) as a list of starts and stops or steps as a list of offsets
-      Example: ``{{"/data_v1/tree1.root": {"object_path": "ttree_v1", "steps": [[0, 10000], [15000, 20000], ...]},
-                   "/data_v1/tree2.root": {"object_path": "ttree_v1", "steps": [0, 10000, 20000, ...]}}}``
+      Example:
+
+          {{"/data_v1/tree1.root": {"object_path": "ttree_v1", "steps": [[0, 10000], [15000, 20000], ...]},
+            "/data_v1/tree2.root": {"object_path": "ttree_v1", "steps": [0, 10000, 20000, ...]}}}
+
       (This ``files`` pattern is incompatible with ``step_size`` and ``steps_per_file``.)
     * already-open TTree objects.
     * iterables of the above.
@@ -134,6 +121,7 @@ def dask(
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
@@ -751,6 +739,7 @@ class _UprootRead:
         interp_options,
         form_mapping,
         rendered_form,
+        original_form=None,
     ) -> None:
         self.ttrees = ttrees
         self.common_keys = common_keys
@@ -758,12 +747,14 @@ class _UprootRead:
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
+        self.original_form = original_form
 
     def __call__(self, i_start_stop):
         i, start, stop = i_start_stop
 
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
 
             if set(self.common_keys) != set(self.rendered_form.columns()):
                 actual_form = self.rendered_form.select_columns(self.common_keys)
@@ -774,31 +765,50 @@ class _UprootRead:
                 self.ttrees[i], start, stop, self.interp_options
             )
 
-            return awkward.from_buffers(
+            layout = awkward.from_buffers(
                 actual_form,
                 stop - start,
                 mapping,
                 buffer_key=buffer_key,
+                highlevel=False,
+            )
+
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.rendered_form,
+                    layout,
+                ),
                 behavior=self.form_mapping.behavior,
             )
 
-        return self.ttrees[i].arrays(
+        array = self.ttrees[i].arrays(
             self.common_keys,
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
         )
 
-    def project_columns(self, common_keys):
+        if self.original_form is not None:
+            awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
+
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.original_form,
+                    array.layout,
+                )
+            )
+
+        return array
+
+    def project_columns(self, common_keys=None, original_form=None):
         common_base_keys = self.common_base_keys
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            (
-                new_meta_labelled,
-                report,
-            ) = awkward._nplikes.typetracer.typetracer_with_report(self.rendered_form)
-            tt = awkward.Array(new_meta_labelled)
+            tt, report = awkward.typetracer.typetracer_with_report(
+                self.rendered_form, highlevel=True
+            )
 
             if common_keys is not None:
                 for key in common_keys:
@@ -821,6 +831,7 @@ class _UprootRead:
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
+            original_form,
         )
 
 
@@ -835,6 +846,7 @@ class _UprootOpenAndRead:
         interp_options,
         form_mapping,
         rendered_form,
+        original_form=None,
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
@@ -844,6 +856,7 @@ class _UprootOpenAndRead:
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.rendered_form = rendered_form
+        self.original_form = original_form
 
     def __call__(self, file_path_object_path_istep_nsteps_ischunk):
         (
@@ -861,15 +874,11 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         num_entries = ttree.num_entries
-        start, stop = istep_or_start, nsteps_or_stop
-        if not ischunk:
-            events_per_step = math.ceil(num_entries / nsteps_or_stop)
-            start, stop = (istep_or_start * events_per_step), min(
-                (istep_or_start + 1) * events_per_step, num_entries
-            )
-        elif (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
-            raise ValueError(
-                f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
+        if ischunk:
+            start, stop = istep_or_start, nsteps_or_stop
+            if (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+                raise ValueError(
+                    f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
     {ttree.file.file_path}
 
@@ -878,10 +887,17 @@ TTree in path
     {ttree.object_path}
 
 which has {num_entries} entries"""
+                )
+        else:
+            events_per_step = math.ceil(num_entries / nsteps_or_stop)
+            start, stop = min((istep_or_start * events_per_step), num_entries), min(
+                (istep_or_start + 1) * events_per_step, num_entries
             )
 
+        assert start <= stop
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
 
             if set(self.common_keys) != set(self.rendered_form.columns()):
                 actual_form = self.rendered_form.select_columns(self.common_keys)
@@ -892,34 +908,52 @@ which has {num_entries} entries"""
                 ttree, start, stop, self.interp_options
             )
 
-            return awkward.from_buffers(
+            layout = awkward.from_buffers(
                 actual_form,
                 stop - start,
                 mapping,
                 buffer_key=buffer_key,
+                highlevel=False,
+            )
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.rendered_form,
+                    layout,
+                ),
                 behavior=self.form_mapping.behavior,
             )
 
-        return ttree.arrays(
+        array = ttree.arrays(
             self.common_keys,
             entry_start=start,
             entry_stop=stop,
             ak_add_doc=self.interp_options["ak_add_doc"],
         )
 
-    def project_columns(self, common_keys):
+        if self.original_form is not None:
+            awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
+
+            return awkward.Array(
+                dask_awkward.lib.unproject_layout.unproject_layout(
+                    self.original_form,
+                    array.layout,
+                )
+            )
+
+        return array
+
+    def project_columns(self, columns=None, original_form=None):
         common_base_keys = self.common_base_keys
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
 
-            (
-                new_meta_labelled,
-                report,
-            ) = awkward._nplikes.typetracer.typetracer_with_report(self.rendered_form)
-            tt = awkward.Array(new_meta_labelled)
+            tt, report = awkward.typetracer.typetracer_with_report(
+                self.rendered_form, highlevel=True
+            )
 
-            if common_keys is not None:
-                for key in common_keys:
+            if columns is not None:
+                for key in columns:
                     tt[tuple(key.split("."))].layout._touch_data(recursive=True)
 
                 common_base_keys = [
@@ -930,18 +964,19 @@ which has {num_entries} entries"""
                     if x in self.common_base_keys
                 ]
 
-        elif common_keys is not None:
-            common_keys = [x for x in common_keys if x in self.common_keys]
+        elif columns is not None:
+            columns = [x for x in columns if x in self.common_keys]
 
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,
             self.real_options,
-            common_keys,
-            common_keys if self.form_mapping is None else common_base_keys,
+            columns,
+            columns if self.form_mapping is None else common_base_keys,
             self.interp_options,
             self.form_mapping,
             self.rendered_form,
+            original_form=original_form,
         )
 
 

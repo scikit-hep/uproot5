@@ -45,10 +45,8 @@ class Model_TBranch_v10(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
         context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -174,10 +172,8 @@ class Model_TBranch_v11(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -305,10 +301,8 @@ class Model_TBranch_v12(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -437,10 +431,8 @@ class Model_TBranch_v13(uproot.behaviors.TBranch.TBranch, uproot.model.Versioned
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -598,10 +590,8 @@ class Model_TBranchElement_v8(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TBranch", 10).read(
@@ -672,10 +662,8 @@ class Model_TBranchElement_v9(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TBranch", 12).read(
@@ -746,10 +734,8 @@ class Model_TBranchElement_v10(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TBranch", 12).read(
@@ -829,10 +815,8 @@ class Model_TBranchObject_v1(
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TBranch", 13).read(

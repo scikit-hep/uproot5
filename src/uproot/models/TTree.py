@@ -49,10 +49,8 @@ class Model_TTree_v16(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
         context["cancel_forth"] = True
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -201,10 +199,8 @@ class Model_TTree_v17(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -354,10 +350,8 @@ class Model_TTree_v18(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -513,10 +507,8 @@ class Model_TTree_v19(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -688,10 +680,8 @@ class Model_TTree_v20(uproot.behaviors.TTree.TTree, uproot.model.VersionedModel)
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         self._bases.append(
             file.class_named("TNamed", 1).read(
@@ -895,10 +885,8 @@ class Model_ROOT_3a3a_TIOFeatures(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         cursor.skip(4)
         self._members["fIOBits"] = cursor.field(chunk, _tiofeatures_format1, context)
@@ -919,10 +907,8 @@ class Model_TTree_NumEntries(uproot.model.Model):
     def read_members(self, chunk, cursor, context, file):
         if self.is_memberwise:
             raise NotImplementedError(
-                """memberwise serialization of {}
-in file {}""".format(
-                    type(self).__name__, self.file.file_path
-                )
+                f"""memberwise serialization of {type(self).__name__}
+in file {self.file.file_path}"""
             )
         cursor.skip_over(chunk, context)  # TNamed
         cursor.skip_over(chunk, context)  # TAttLine

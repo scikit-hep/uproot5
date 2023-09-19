@@ -957,8 +957,14 @@ def test_80(is_forth):
         branch = file["t/x"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
-        py = branch.array(interp, library="np", entry_stop=2)
-        assert len(py[0]) == 0
+        py = branch.array(interp, library="ak")
+        assert py.tolist() == [
+            [],
+            [[], []],
+            [[10.0], [], [10.0, 20.0]],
+            [[20.0, -21.0, -22.0]],
+            [[200.0], [-201.0], [202.0]],
+        ]
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
 
 

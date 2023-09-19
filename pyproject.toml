@@ -50,7 +50,7 @@ dynamic = [
 [project.optional-dependencies]
 dev = [
     "boost_histogram>=0.13",
-    "dask-awkward>=2022.12a3;python_version >= \"3.8\"",
+    "dask-awkward>=2023.9.0;python_version >= \"3.8\"",
     "dask[array];python_version >= \"3.8\"",
     "hist>=1.2",
     "pandas",
@@ -58,6 +58,7 @@ dev = [
 ]
 test = [
     "lz4",
+    "minio",
     "pytest>=6",
     "pytest-timeout",
     "pytest-rerunfailures",
@@ -119,16 +120,16 @@ ignore = [
     "PLW0120", # else on loop without break
     "SIM118",  # key in dict, broken since uproot doesn't behave like a dict
     "PGH003",  # too-broad type ignore
-    "SIM114",  # Combine `if` branches using logical `or` operator
-    "PGH001",  # No eval allowed
+    "SIM114",  # combine `if` branches using logical `or` operator
+    "PGH001",  # no eval allowed
     "PLC1901", # empty string is falsey (but I don't want to rely on such weak typing)
+    "RUF012",  # enforces type annotations on a codebase that lacks type annotations
 ]
 exclude = [
     "tests/*.py",
     "src/uproot/__init__.py",
     "docs-sphinx/*.py",
 ]
-target-version = "py37"
 src = ["src"]
 
 [tool.ruff.mccabe]

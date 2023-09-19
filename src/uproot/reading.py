@@ -79,6 +79,7 @@ def open(
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
@@ -160,10 +161,8 @@ class _OpenDefaults(dict):
             # See https://github.com/scikit-hep/uproot5/issues/294
             if uproot.extras.older_xrootd("5.2.0"):
                 message = (
-                    "XRootD {} is not fully supported; ".format(
-                        uproot.extras.xrootd_version()
-                    )
-                    + """either upgrade to 5.2.0+ or set
+                    f"XRootD {uproot.extras.xrootd_version()} is not fully supported; "
+                    """either upgrade to 5.2.0+ or set
 
     open.defaults["xrootd_handler"] = uproot.MultithreadedXRootDSource
 """
@@ -179,6 +178,7 @@ class _OpenDefaults(dict):
 open.defaults = _OpenDefaults(
     {
         "file_handler": uproot.source.file.MemmapSource,
+        "s3_handler": uproot.source.s3.S3Source,
         "http_handler": uproot.source.http.HTTPSource,
         "object_handler": uproot.source.object.ObjectSource,
         "timeout": 30,
@@ -534,6 +534,7 @@ class ReadOnlyFile(CommonFileMethods):
 
     * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
     * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.S3Source`)
     * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
     * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
     * timeout (float for HTTP, int for XRootD; 30)
@@ -641,10 +642,8 @@ class ReadOnlyFile(CommonFileMethods):
 
         if magic != b"root":
             raise ValueError(
-                """not a ROOT file: first four bytes are {}
-in file {}""".format(
-                    repr(magic), file_path
-                )
+                f"""not a ROOT file: first four bytes are {magic!r}
+in file {file_path}"""
             )
 
     def __repr__(self):
@@ -2388,9 +2387,7 @@ class ReadOnlyKey:
         ``TDirectory``), this returns a message with the raw seek position.
         """
         if isinstance(self._parent, ReadOnlyDirectory):
-            return "{}{};{}".format(
-                self._parent.object_path, self.name(False), self._fCycle
-            )
+            return f"{self._parent.object_path}{self.name(False)};{self._fCycle}"
         else:
             return f"(seek pos {self.data_cursor.index})/{self.name(False)}"
 
