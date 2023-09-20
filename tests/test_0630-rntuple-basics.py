@@ -12,6 +12,7 @@ import uproot
 
 pytest.importorskip("awkward")
 
+
 @pytest.mark.skip(reason="RNTUPLE UPDATE: ignore test with previous file for now.")
 def test_flat():
     filename = skhep_testdata.data_path("test_ntuple_int_float.root")
