@@ -34,8 +34,10 @@ def _envelop_header(chunk, cursor, context):
     )
     return {"env_version": env_version, "min_version": min_version}
 
+
 def from_zigzag(n):
     return n >> 1 ^ -(n & 1)
+
 
 def to_zigzag(n):
     return n << 1 ^ n >> 63
@@ -657,7 +659,7 @@ class HeaderReader:
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
         return out
-    
+
     def read_extension_header(self, out, chunk, cursor, context):
         out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
         out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
