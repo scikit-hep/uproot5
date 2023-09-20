@@ -141,6 +141,9 @@ rntuple_col_num_to_dtype_dict = {
     19: "int64",  # split
     20: "int32",  # split
     21: "int16",  # split
+    22: "int64",  # split + zigzag encoding
+    23: "int32",  # split + zigzag encoding
+    24: "int16",  # split + zigzag encoding
 }
 rntuple_col_num_to_size_dict = {
     1: 64,
@@ -164,6 +167,9 @@ rntuple_col_num_to_size_dict = {
     19: 64,  # split
     20: 32,  # split
     21: 16,  # split
+    22: 64,  # split + zigzag encoding
+    23: 32,  # split + zigzag encoding
+    24: 16,  # split + zigzag encoding
 }
 
 rntuple_col_type_to_num_dict = {
@@ -188,6 +194,9 @@ rntuple_col_type_to_num_dict = {
     "splitin64": 19,
     "splitint32": 20,
     "splitint16": 21,
+    "splitzigzagint64": 22,
+    "splitzigzagint32": 23,
+    "splitzigzagint16": 24,
 }
 
 rntuple_role_leaf = 0

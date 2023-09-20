@@ -34,6 +34,12 @@ def _envelop_header(chunk, cursor, context):
     )
     return {"env_version": env_version, "min_version": min_version}
 
+def from_zigzag(n):
+    return n >> 1 ^ -(n & 1)
+
+def to_zigzag(n):
+    return n << 1 ^ n >> 63
+
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
     """
@@ -376,6 +382,13 @@ in file {self.file.file_path}"""
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
             res = numpy.insert(res, 0, 0)  # for offsets
+        zigzag = 26 <= dtype_byte <= 28
+        delta = 14 <= dtype_byte <= 15
+        if zigzag:
+            for i in range(len(res)):
+                res[i] = from_zigzag(res[i])
+        elif delta:
+            numpy.cumsum(res)
         return res
 
     def arrays(
@@ -644,6 +657,15 @@ class HeaderReader:
         out.crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
         return out
+    
+    def read_extension_header(self, out, chunk, cursor, context):
+        out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
+        out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
+        out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
+        out.extra_type_infos = self.list_extra_type_info_reader.read(
+            chunk, cursor, context
+        )
+        return out
 
 
 class ColumnGroupRecordReader:
@@ -674,6 +696,7 @@ class ClusterGroupRecordReader:
 
 class FooterReader:
     def __init__(self):
+        # self.extension_header_links = HeaderReader()
         self.extension_header_links = ListFrameReader(EnvLinkReader())
         self.column_group_record_frames = ListFrameReader(
             RecordFrameReader(ColumnGroupRecordReader())
@@ -692,6 +715,9 @@ class FooterReader:
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
+        # out.extension_links = self.extension_header_links.read_extension_header(
+        #     out, chunk, cursor, context
+        # )
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
