@@ -7,8 +7,6 @@ import awkward as ak
 
 import uproot
 
-dask_awkward = pytest.importorskip("dask_awkward")
-
 
 @pytest.mark.parametrize("library", ["np", "ak"])
 @pytest.mark.parametrize("step_size", ["100MB", uproot._util.unset])
