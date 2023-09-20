@@ -698,8 +698,8 @@ class ClusterGroupRecordReader:
 
 class FooterReader:
     def __init__(self):
-        # self.extension_header_links = HeaderReader()
-        self.extension_header_links = ListFrameReader(EnvLinkReader())
+        self.extension_header_links = HeaderReader()
+        # self.extension_header_links = ListFrameReader(EnvLinkReader())
         self.column_group_record_frames = ListFrameReader(
             RecordFrameReader(ColumnGroupRecordReader())
         )
@@ -717,10 +717,10 @@ class FooterReader:
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_crc32 = cursor.field(chunk, struct.Struct("<I"), context)
 
-        # out.extension_links = self.extension_header_links.read_extension_header(
-        #     out, chunk, cursor, context
-        # )
-        out.extension_links = self.extension_header_links.read(chunk, cursor, context)
+        out.extension_links = self.extension_header_links.read_extension_header(
+            out, chunk, cursor, context
+        )
+        # out.extension_links = self.extension_header_links.read(chunk, cursor, context)
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
