@@ -5,10 +5,11 @@ import platform
 import queue
 import sys
 from io import StringIO
+import contextlib
 
 import numpy
 import pytest
-
+import threading
 import uproot
 
 
@@ -19,7 +20,23 @@ def tobytes(x):
         return x.tostring()
 
 
-@pytest.mark.parametrize("use_threads,num_workers", [(True, 1), (True, 2), (False, 0)])
+@pytest.fixture
+def use_threads(request):
+    if request.param:
+        yield
+        return
+    else:
+        print("CHECK")
+        n_threads = threading.active_count()
+        yield request.param
+        assert threading.active_count() == n_threads
+
+
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 def test_file(use_threads, num_workers, tmp_path):
     filename = tmp_path / "tmp.raw"
     with open(filename, "wb") as tmp:
@@ -45,7 +62,11 @@ def test_file(use_threads, num_workers, tmp_path):
     assert source.num_bytes == 30
 
 
-@pytest.mark.parametrize("use_threads,num_workers", [(True, 1), (True, 2), (False, 0)])
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 def test_file_fail(use_threads, num_workers, tmp_path):
     filename = tmp_path / "tmp.raw"
 
@@ -60,7 +81,7 @@ def test_file_fail(use_threads, num_workers, tmp_path):
         )
 
 
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_memmap(use_threads, tmp_path):
     filename = tmp_path / "tmp.raw"
 
@@ -86,7 +107,7 @@ def test_memmap(use_threads, tmp_path):
         assert source.num_bytes == 30
 
 
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_memmap_fail(use_threads, tmp_path):
     filename = tmp_path / "tmp.raw"
 
@@ -103,7 +124,7 @@ def test_memmap_fail(use_threads, tmp_path):
 
 
 @pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
 def test_http(use_threads):
     with uproot.source.http.HTTPSource(
@@ -144,7 +165,7 @@ def colons_and_ports():
 
 
 @pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
 def test_http_port(use_threads):
     source = uproot.source.http.HTTPSource(
@@ -170,7 +191,7 @@ def test_http_port(use_threads):
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
 def test_http_size(use_threads):
     with uproot.source.http.HTTPSource(
@@ -192,7 +213,7 @@ def test_http_size(use_threads):
     assert size1 == size2
 
 
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
 def test_http_size_port(use_threads):
     with uproot.source.http.HTTPSource(
@@ -214,7 +235,7 @@ def test_http_size_port(use_threads):
     assert size1 == size2
 
 
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
 def test_http_fail(use_threads):
     source = uproot.source.http.HTTPSource(
@@ -229,7 +250,11 @@ def test_http_fail(use_threads):
         chunks[0].raw_data
 
 
-@pytest.mark.parametrize("use_threads,num_workers", [(True, 1), (True, 2), (False, 0)])
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 @pytest.mark.network
 def test_no_multipart(use_threads, num_workers):
     with uproot.source.http.MultithreadedHTTPSource(
@@ -247,7 +272,11 @@ def test_no_multipart(use_threads, num_workers):
         assert one[:4] == b"root"
 
 
-@pytest.mark.parametrize("use_threads,num_workers", [(True, 1), (True, 2), (False, 0)])
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 @pytest.mark.network
 def test_no_multipart_fail(use_threads, num_workers):
     source = uproot.source.http.MultithreadedHTTPSource(
@@ -262,7 +291,11 @@ def test_no_multipart_fail(use_threads, num_workers):
         chunks[0].raw_data
 
 
-@pytest.mark.parametrize("use_threads,num_workers", [(True, 1), (True, 2), (False, 0)])
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 @pytest.mark.network
 def test_fallback(use_threads, num_workers):
     with uproot.source.http.HTTPSource(
@@ -285,7 +318,7 @@ def test_fallback(use_threads, num_workers):
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.MultithreadedXRootDSource(
@@ -308,7 +341,7 @@ def test_xrootd(use_threads):
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_deadlock(use_threads):
     pytest.importorskip("XRootD")
     # Attach this file to the "test_xrootd_deadlock" function so it leaks
@@ -321,7 +354,7 @@ def test_xrootd_deadlock(use_threads):
 
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_fail(use_threads):
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
@@ -338,7 +371,7 @@ def test_xrootd_fail(use_threads):
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_vectorread(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
@@ -362,7 +395,7 @@ def test_xrootd_vectorread(use_threads):
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_vectorread_max_element_split(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
@@ -384,7 +417,7 @@ def test_xrootd_vectorread_max_element_split(use_threads):
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_vectorread_max_element_split_consistency(use_threads):
     pytest.importorskip("XRootD")
     filename = "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
@@ -412,7 +445,7 @@ def test_xrootd_vectorread_max_element_split_consistency(use_threads):
 
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_vectorread_fail(use_threads):
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
@@ -430,7 +463,7 @@ def test_xrootd_vectorread_fail(use_threads):
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_size(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
@@ -460,7 +493,7 @@ def test_xrootd_size(use_threads):
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.parametrize("use_threads", [True, False])
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 def test_xrootd_numpy_int(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
