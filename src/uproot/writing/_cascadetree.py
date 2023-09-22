@@ -1460,12 +1460,9 @@ class Tree:
         )
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
-        # get size of biggest string
-        self._metadata["fLen"] = max(
-            [offsets[i + 1] - offsets[i] for i in range(len(offsets) - 1)]
-        )
-
         fLast = offsets[-1]
+        offsets[-1] = 0
+        
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
@@ -1545,6 +1542,11 @@ class Tree:
         )
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
+        # get size of biggest string
+        self._metadata["fLen"] = max(
+            [offsets[i + 1] - offsets[i] for i in range(len(offsets) - 1)]
+        )
+        
         fLast = offsets[-1]
         offsets[-1] = 0
 
