@@ -5,10 +5,11 @@ import platform
 import queue
 import sys
 from io import StringIO
+import contextlib
 
 import numpy
 import pytest
-
+import threading
 import uproot
 
 
@@ -19,57 +20,79 @@ def tobytes(x):
         return x.tostring()
 
 
-def test_file(tmpdir):
-    filename = os.path.join(str(tmpdir), "tmp.raw")
+@pytest.fixture
+def use_threads(request):
+    if request.param:
+        yield
+        return
+    else:
+        print("CHECK")
+        n_threads = threading.active_count()
+        yield request.param
+        assert threading.active_count() == n_threads
 
+
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
+def test_file(use_threads, num_workers, tmp_path):
+    filename = tmp_path / "tmp.raw"
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
-    for num_workers in [1, 2]:
-        source = uproot.source.file.MultithreadedFileSource(
-            filename, num_workers=num_workers
-        )
-        with source as tmp:
-            notifications = queue.Queue()
-            chunks = tmp.chunks(
-                [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
-                notifications,
-            )
-            assert [tobytes(chunk.raw_data) for chunk in chunks] == [
-                b"******",
-                b"    ",
-                b"...",
-                b"+++++++",
-                b"!!!!!",
-                b"@@@@@",
-            ]
-
-        assert source.num_bytes == 30
-
-
-def test_file_fail(tmpdir):
-    filename = os.path.join(str(tmpdir), "tmp.raw")
-
-    with open(filename, "wb") as tmp:
-        tmp.write(b"******    ...+++++++!!!!!@@@@@")
-
-    for num_workers in [1, 2]:
-        with pytest.raises(Exception):
-            uproot.source.file.MultithreadedFileSource(
-                filename + "-does-not-exist", num_workers=num_workers
-            )
-
-
-def test_memmap(tmpdir):
-    filename = os.path.join(str(tmpdir), "tmp.raw")
-
-    with open(filename, "wb") as tmp:
-        tmp.write(b"******    ...+++++++!!!!!@@@@@")
-
-    source = uproot.source.file.MemmapSource(filename, num_fallback_workers=1)
-    with source as tmp:
+    with uproot.source.file.MultithreadedFileSource(
+        filename, num_workers=num_workers, use_threads=use_threads
+    ) as source:
         notifications = queue.Queue()
-        chunks = tmp.chunks(
+        chunks = source.chunks(
+            [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
+            notifications,
+        )
+        assert [tobytes(chunk.raw_data) for chunk in chunks] == [
+            b"******",
+            b"    ",
+            b"...",
+            b"+++++++",
+            b"!!!!!",
+            b"@@@@@",
+        ]
+
+    assert source.num_bytes == 30
+
+
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
+def test_file_fail(use_threads, num_workers, tmp_path):
+    filename = tmp_path / "tmp.raw"
+
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
+
+    with pytest.raises(Exception):
+        uproot.source.file.MultithreadedFileSource(
+            filename + "-does-not-exist",
+            num_workers=num_workers,
+            use_threads=use_threads,
+        )
+
+
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_memmap(use_threads, tmp_path):
+    filename = tmp_path / "tmp.raw"
+
+    with open(filename, "wb") as tmp:
+        tmp.write(b"******    ...+++++++!!!!!@@@@@")
+
+    with uproot.source.file.MemmapSource(
+        filename, num_fallback_workers=1, use_threads=use_threads
+    ) as source:
+        notifications = queue.Queue()
+        chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)], notifications
         )
         assert [tobytes(chunk.raw_data) for chunk in chunks] == [
@@ -84,35 +107,43 @@ def test_memmap(tmpdir):
         assert source.num_bytes == 30
 
 
-def test_memmap_fail(tmpdir):
-    filename = os.path.join(str(tmpdir), "tmp.raw")
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_memmap_fail(use_threads, tmp_path):
+    filename = tmp_path / "tmp.raw"
 
     with open(filename, "wb") as tmp:
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     with pytest.raises(Exception):
-        uproot.source.file.MultithreadedFileSource(filename + "-does-not-exist")
+        with uproot.source.file.MemmapSource(
+            tmp_path / f"{filename.name}-does-not-exist",
+            num_fallback_workers=1,
+            use_threads=use_threads,
+        ):
+            ...
 
 
 @pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
-def test_http():
-    source = uproot.source.http.HTTPSource(
-        "https://example.com", timeout=10, num_fallback_workers=1
-    )
-    with source as tmp:
+def test_http(use_threads):
+    with uproot.source.http.HTTPSource(
+        "https://example.com",
+        timeout=10,
+        num_fallback_workers=1,
+        use_threads=use_threads,
+    ) as tmp:
         notifications = queue.Queue()
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
         assert len(one) == 100
         assert len(two) == 5
         assert len(three) == 200
-    assert source.fallback is None
+        assert tmp.fallback is None
 
-    source = uproot.source.http.MultithreadedHTTPSource(
-        "https://example.com", num_workers=1, timeout=10
-    )
-    with source as tmp:
+    with uproot.source.http.MultithreadedHTTPSource(
+        "https://example.com", num_workers=1, timeout=10, use_threads=use_threads
+    ) as tmp:
         notifications = queue.Queue()
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
@@ -134,10 +165,14 @@ def colons_and_ports():
 
 
 @pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
-def test_http_port():
+def test_http_port(use_threads):
     source = uproot.source.http.HTTPSource(
-        "https://example.com:443", timeout=10, num_fallback_workers=1
+        "https://example.com:443",
+        timeout=10,
+        num_fallback_workers=1,
+        use_threads=use_threads,
     )
     with source as tmp:
         notifications = queue.Queue()
@@ -148,7 +183,7 @@ def test_http_port():
         assert len(three) == 200
 
     source = uproot.source.http.MultithreadedHTTPSource(
-        "https://example.com:443", num_workers=1, timeout=10
+        "https://example.com:443", num_workers=1, timeout=10, use_threads=use_threads
     )
     with source as tmp:
         notifications = queue.Queue()
@@ -156,29 +191,36 @@ def test_http_port():
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
-def test_http_size():
+def test_http_size(use_threads):
     with uproot.source.http.HTTPSource(
         "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=1,
+        use_threads=use_threads,
     ) as source:
         size1 = source.num_bytes
 
     with uproot.source.http.MultithreadedHTTPSource(
-        "https://scikit-hep.org/uproot3/examples/Zmumu.root", num_workers=1, timeout=10
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
+        num_workers=1,
+        timeout=10,
+        use_threads=use_threads,
     ) as source:
         size2 = source.num_bytes
 
     assert size1 == size2
 
 
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
-def test_http_size_port():
+def test_http_size_port(use_threads):
     with uproot.source.http.HTTPSource(
         "https://scikit-hep.org:443/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=1,
+        use_threads=use_threads,
     ) as source:
         size1 = source.num_bytes
 
@@ -186,16 +228,21 @@ def test_http_size_port():
         "https://scikit-hep.org:443/uproot3/examples/Zmumu.root",
         num_workers=1,
         timeout=10,
+        use_threads=use_threads,
     ) as source:
         size2 = source.num_bytes
 
     assert size1 == size2
 
 
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
-def test_http_fail():
+def test_http_fail(use_threads):
     source = uproot.source.http.HTTPSource(
-        "https://wonky.cern/does-not-exist", timeout=0.1, num_fallback_workers=1
+        "https://wonky.cern/does-not-exist",
+        timeout=0.1,
+        num_fallback_workers=1,
+        use_threads=use_threads,
     )
     with pytest.raises(Exception) as err:
         notifications = queue.Queue()
@@ -203,50 +250,67 @@ def test_http_fail():
         chunks[0].raw_data
 
 
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 @pytest.mark.network
-def test_no_multipart():
-    for num_workers in [1, 2]:
-        with uproot.source.http.MultithreadedHTTPSource(
-            "https://scikit-hep.org/uproot3/examples/Zmumu.root",
-            num_workers=num_workers,
-            timeout=10,
-        ) as source:
-            notifications = queue.Queue()
-            chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-            one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
-            assert len(one) == 100
-            assert len(two) == 5
-            assert len(three) == 200
-            assert one[:4] == b"root"
+def test_no_multipart(use_threads, num_workers):
+    with uproot.source.http.MultithreadedHTTPSource(
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
+        num_workers=num_workers,
+        timeout=10,
+        use_threads=use_threads,
+    ) as source:
+        notifications = queue.Queue()
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+        assert one[:4] == b"root"
 
 
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 @pytest.mark.network
-def test_no_multipart_fail():
-    for num_workers in [1, 2]:
-        source = uproot.source.http.MultithreadedHTTPSource(
-            "https://wonky.cern/does-not-exist", num_workers=num_workers, timeout=0.1
-        )
-        with pytest.raises(Exception) as err:
-            notifications = queue.Queue()
-            chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-            chunks[0].raw_data
+def test_no_multipart_fail(use_threads, num_workers):
+    source = uproot.source.http.MultithreadedHTTPSource(
+        "https://wonky.cern/does-not-exist",
+        num_workers=num_workers,
+        timeout=0.1,
+        use_threads=use_threads,
+    )
+    with pytest.raises(Exception) as err:
+        notifications = queue.Queue()
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        chunks[0].raw_data
 
 
+@pytest.mark.parametrize(
+    "use_threads,num_workers",
+    [(True, 1), (True, 2), (False, 0)],
+    indirect=["use_threads"],
+)
 @pytest.mark.network
-def test_fallback():
-    for num_workers in [1, 2]:
-        with uproot.source.http.HTTPSource(
-            "https://scikit-hep.org/uproot3/examples/Zmumu.root",
-            timeout=10,
-            num_fallback_workers=num_workers,
-        ) as source:
-            notifications = queue.Queue()
-            chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
-            one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
-            assert len(one) == 100
-            assert len(two) == 5
-            assert len(three) == 200
-            assert one[:4] == b"root"
+def test_fallback(use_threads, num_workers):
+    with uproot.source.http.HTTPSource(
+        "https://scikit-hep.org/uproot3/examples/Zmumu.root",
+        timeout=10,
+        num_fallback_workers=num_workers,
+        use_threads=use_threads,
+    ) as source:
+        notifications = queue.Queue()
+        chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
+        one, two, three = (tobytes(chunk.raw_data) for chunk in chunks)
+        assert len(one) == 100
+        assert len(two) == 5
+        assert len(three) == 200
+        assert one[:4] == b"root"
 
 
 @pytest.mark.skip(
@@ -254,12 +318,14 @@ def test_fallback():
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.MultithreadedXRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=1,
         timeout=20,
+        use_threads=use_threads,
     ) as source:
         notifications = queue.Queue()
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
@@ -275,22 +341,28 @@ def test_xrootd():
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_deadlock():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_deadlock(use_threads):
     pytest.importorskip("XRootD")
     # Attach this file to the "test_xrootd_deadlock" function so it leaks
     pytest.uproot_test_xrootd_deadlock_f = uproot.source.xrootd.XRootDResource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=20,
+        use_threads=use_threads,
     )
 
 
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_fail():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_fail(use_threads):
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
-        source = uproot.source.xrootd.MultithreadedXRootDSource(
-            "root://wonky.cern/does-not-exist", num_workers=1, timeout=1
+        uproot.source.xrootd.MultithreadedXRootDSource(
+            "root://wonky.cern/does-not-exist",
+            num_workers=1,
+            timeout=1,
+            use_threads=use_threads,
         )
 
 
@@ -299,13 +371,15 @@ def test_xrootd_fail():
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_vectorread():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_vectorread(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,
         num_workers=1,
+        use_threads=use_threads,
     ) as source:
         notifications = queue.Queue()
         chunks = source.chunks([(0, 100), (50, 55), (200, 400)], notifications)
@@ -321,13 +395,15 @@ def test_xrootd_vectorread():
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_vectorread_max_element_split():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_vectorread_max_element_split(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,
         num_workers=1,
+        use_threads=use_threads,
     ) as source:
         notifications = queue.Queue()
         max_element_size = 2097136
@@ -341,7 +417,8 @@ def test_xrootd_vectorread_max_element_split():
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_vectorread_max_element_split_consistency():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_vectorread_max_element_split_consistency(use_threads):
     pytest.importorskip("XRootD")
     filename = "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root"
 
@@ -358,6 +435,7 @@ def test_xrootd_vectorread_max_element_split_consistency():
         timeout=10,
         max_num_elements=None,
         num_workers=1,
+        use_threads=use_threads,
     )
     chunk2 = get_chunk(
         uproot.source.xrootd.MultithreadedXRootDSource, timeout=10, num_workers=1
@@ -367,14 +445,16 @@ def test_xrootd_vectorread_max_element_split_consistency():
 
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_vectorread_fail():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_vectorread_fail(use_threads):
     pytest.importorskip("XRootD")
     with pytest.raises(Exception) as err:
-        source = uproot.source.xrootd.XRootDSource(
+        uproot.source.xrootd.XRootDSource(
             "root://wonky.cern/does-not-exist",
             timeout=1,
             max_num_elements=None,
             num_workers=1,
+            use_threads=use_threads,
         )
 
 
@@ -383,13 +463,15 @@ def test_xrootd_vectorread_fail():
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_size():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_size(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,
         num_workers=1,
+        use_threads=use_threads,
     ) as source:
         size1 = source.num_bytes
 
@@ -398,6 +480,7 @@ def test_xrootd_size():
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         num_workers=1,
+        use_threads=use_threads,
     ) as source:
         size2 = source.num_bytes
 
@@ -410,13 +493,15 @@ def test_xrootd_size():
 )
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_xrootd_numpy_int():
+@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
+def test_xrootd_numpy_int(use_threads):
     pytest.importorskip("XRootD")
     with uproot.source.xrootd.XRootDSource(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         timeout=10,
         max_num_elements=None,
         num_workers=1,
+        use_threads=use_threads,
     ) as source:
         chunk = source.chunk(numpy.int64(0), numpy.int64(100))
         assert len(chunk.raw_data) == 100

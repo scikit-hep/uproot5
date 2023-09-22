@@ -112,7 +112,14 @@ class ObjectSource(uproot.source.chunk.MultithreadedSource):
         self._num_requested_bytes = 0
 
         self._file_path = repr(obj)
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [ObjectResource(obj)]
-        )
+
+        if options["use_threads"]:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [ObjectResource(obj)]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                ObjectResource(obj)
+            )
+
         self._num_bytes = None
