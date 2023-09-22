@@ -1462,7 +1462,7 @@ class Tree:
 
         fLast = offsets[-1]
         offsets[-1] = 0
-        
+
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
@@ -1546,7 +1546,7 @@ class Tree:
         self._metadata["fLen"] = max(
             [offsets[i + 1] - offsets[i] for i in range(len(offsets) - 1)]
         )
-        
+
         fLast = offsets[-1]
         offsets[-1] = 0
 
