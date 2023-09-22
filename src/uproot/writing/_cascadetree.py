@@ -1329,6 +1329,26 @@ class Tree:
 
             datum["arrays_write_start"] = datum["arrays_write_stop"]
 
+            if datum["dtype"] == ">U0":
+                position = (
+                    base
+                    + datum["basket_metadata_start"]
+                    - 25  # empty TObjArray of fBaskets (embedded)
+                    - 8   # specialized TLeaf* members (fMinimum, fMaximum)
+                    - 4   # null fLeafCount
+                    - 14  # generic TLeaf members
+                )
+                sink.write(
+                    position,
+                    uproot.models.TLeaf._tleaf2_format0.pack(
+                        self._metadata["fLen"],
+                        datum["dtype"].itemsize,
+                        0,
+                        datum["kind"] == "counter",
+                        _dtype_to_char[datum["dtype"]] != _dtype_to_char[datum["dtype"]].upper()
+                    )
+                )
+
             if datum["kind"] == "counter":
                 position = (
                     base
@@ -1439,9 +1459,10 @@ class Tree:
         )
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
-        fLast = offsets[-1]
-        offsets[-1] = 0
+        #get size of biggest string
+        self._metadata["fLen"] = max( [offsets[i+1]-offsets[i] for i in range(len(offsets)-1)] )
 
+        fLast = offsets[-1]
         fObjlen = len(uncompressed_data)
         fNbytes = fKeylen + len(compressed_data)
 
