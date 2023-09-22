@@ -1334,8 +1334,8 @@ class Tree:
                     base
                     + datum["basket_metadata_start"]
                     - 25  # empty TObjArray of fBaskets (embedded)
-                    - 8   # specialized TLeaf* members (fMinimum, fMaximum)
-                    - 4   # null fLeafCount
+                    - 8  # specialized TLeaf* members (fMinimum, fMaximum)
+                    - 4  # null fLeafCount
                     - 14  # generic TLeaf members
                 )
                 sink.write(
@@ -1345,8 +1345,9 @@ class Tree:
                         datum["dtype"].itemsize,
                         0,
                         datum["kind"] == "counter",
-                        _dtype_to_char[datum["dtype"]] != _dtype_to_char[datum["dtype"]].upper()
-                    )
+                        _dtype_to_char[datum["dtype"]]
+                        != _dtype_to_char[datum["dtype"]].upper(),
+                    ),
                 )
 
             if datum["kind"] == "counter":
@@ -1459,8 +1460,10 @@ class Tree:
         )
         compressed_data = uproot.compression.compress(uncompressed_data, compression)
 
-        #get size of biggest string
-        self._metadata["fLen"] = max( [offsets[i+1]-offsets[i] for i in range(len(offsets)-1)] )
+        # get size of biggest string
+        self._metadata["fLen"] = max(
+            [offsets[i + 1] - offsets[i] for i in range(len(offsets) - 1)]
+        )
 
         fLast = offsets[-1]
         fObjlen = len(uncompressed_data)
