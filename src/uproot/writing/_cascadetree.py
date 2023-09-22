@@ -1111,7 +1111,7 @@ class Tree:
                     )
                 )
 
-            fLen = 1000
+            fLen = 1
             for item in datum["shape"]:
                 fLen *= item
 
