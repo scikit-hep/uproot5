@@ -14,25 +14,26 @@ KNOWN_LENGTH_ATTRIBUTES = frozenset(("mask",))
 UNKNOWN_LENGTH_ATTRIBUTES = frozenset(("offsets", "starts", "stops", "index", "tags"))
 DATA_ATTRIBUTES = frozenset(("data",))
 METADATA_ATTRIBUTES = UNKNOWN_LENGTH_ATTRIBUTES | KNOWN_LENGTH_ATTRIBUTES
+BUFFER_KEY = "{form_key}-{attribute}"
 
 
 def dask(
-        files,
-        *,
-        filter_name=no_filter,
-        filter_typename=no_filter,
-        filter_branch=no_filter,
-        recursive=True,
-        full_paths=False,
-        step_size=unset,
-        steps_per_file=unset,
-        library="ak",
-        ak_add_doc=False,
-        custom_classes=None,
-        allow_missing=False,
-        open_files=True,
-        form_mapping=None,
-        **options,
+    files,
+    *,
+    filter_name=no_filter,
+    filter_typename=no_filter,
+    filter_branch=no_filter,
+    recursive=True,
+    full_paths=False,
+    step_size=unset,
+    steps_per_file=unset,
+    library="ak",
+    ak_add_doc=False,
+    custom_classes=None,
+    allow_missing=False,
+    open_files=True,
+    form_mapping=None,
+    **options,
 ):
     """
     Args:
@@ -278,11 +279,11 @@ class _PackedArgCallable:
     """
 
     def __init__(
-            self,
-            func: Callable,
-            args=None,
-            kwargs=None,
-            packed: bool = False,
+        self,
+        func: Callable,
+        args=None,
+        kwargs=None,
+        packed: bool = False,
     ):
         self.func = func
         self.args = args
@@ -330,14 +331,14 @@ class _LazyInputsDict(Mapping):
 
 
 def _dask_array_from_map(
-        func,
-        *iterables,
-        chunks,
-        dtype,
-        args=None,
-        label=None,
-        token=None,
-        **kwargs,
+    func,
+    *iterables,
+    chunks,
+    dtype,
+    args=None,
+    label=None,
+    token=None,
+    **kwargs,
 ):
     dask = uproot.extras.dask()
     da = uproot.extras.dask_array()
@@ -434,7 +435,7 @@ class _UprootReadNumpy:
 
 class _UprootOpenAndReadNumpy:
     def __init__(
-            self, custom_classes, allow_missing, real_options, key, interp_options
+        self, custom_classes, allow_missing, real_options, key, interp_options
     ):
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
@@ -486,18 +487,18 @@ which has {num_entries} entries"""
 
 
 def _get_dask_array(
-        files,
-        filter_name,
-        filter_typename,
-        filter_branch,
-        recursive,
-        full_paths,
-        step_size,
-        custom_classes,
-        allow_missing,
-        real_options,
-        interp_options,
-        steps_per_file,
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    step_size,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
+    steps_per_file,
 ):
     ttrees = []
     explicit_chunks = []
@@ -660,17 +661,17 @@ which has {entry_stop} entries"""
 
 
 def _get_dask_array_delay_open(
-        files,
-        filter_name,
-        filter_typename,
-        filter_branch,
-        recursive,
-        full_paths,
-        custom_classes,
-        allow_missing,
-        real_options,
-        interp_options,
-        steps_per_file,
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
+    steps_per_file,
 ):
     ffile_path, fobject_path = files[0][0:2]
     obj = uproot._util.regularize_object_path(
@@ -744,19 +745,21 @@ def _annotate_low_level_form(form, key):
     buffer_keys_with_known_shape = set()
 
     def impl(form, key, path, is_known_shape):
+        form.form_key = key
+
         # Set default key
         if form.is_union:
-            form.form_key = key
             for i, entry in enumerate(form.contents):
                 impl(entry, f"{key}#{i}", path=path, is_known_shape=False)
         elif form.is_indexed:
-            form.form_key = key
             impl(form.content, f"{key}.content", path=path, is_known_shape=False)
+        elif form.is_regular:
+            impl(
+                form.content, f"{key}.content", path=path, is_known_shape=is_known_shape
+            )
         elif form.is_list:
-            form.form_key = key
             impl(form.content, f"{key}.content", path=path, is_known_shape=False)
         elif form.is_option:
-            form.form_key = key
             impl(
                 form.content,
                 f"{key}.content",
@@ -764,7 +767,6 @@ def _annotate_low_level_form(form, key):
                 is_known_shape=is_known_shape,
             )
         elif form.is_record:
-            form.form_key = key
             for field in form.fields:
                 full_key = f"{key}.{field}"
                 impl(
@@ -773,16 +775,15 @@ def _annotate_low_level_form(form, key):
                     path=(*path, field),
                     is_known_shape=is_known_shape,
                 )
-        elif form.is_numpy:
-            form.form_key = key
-        elif form.is_unknown:
+        elif form.is_numpy or form.is_unknown:
             pass
         else:
             raise AssertionError(form)
 
         # For any buffer-key, we want to know the column-oriented path
-        # TODO: this needs splitting
-        for buffer_key in form.expected_from_buffers(recursive=False):
+        for buffer_key in form.expected_from_buffers(
+            recursive=False, buffer_key=BUFFER_KEY
+        ):
             buffer_key_to_ttree_key[buffer_key] = path[-1] if path else None
             # Some buffers have shapes that are determined by metadata, e.g.
             # top-level NumpyArray or `ByteMaskedArray` and their content.
@@ -802,10 +803,14 @@ def _annotate_low_level_form(form, key):
 def _translate_low_level_stash(stash, translation_table):
     return {
         "buffer_key_to_ttree_key": {
-            translation_table[k]: v for k, v in stash["buffer_key_to_ttree_key"]
+            translation_table[k]: v
+            for k, v in stash["buffer_key_to_ttree_key"]
+            if k in stash["buffer_key_to_ttree_key"]
         },
         "buffer_keys_with_known_shape": {
-            translation_table[k] for k in stash["buffer_keys_with_known_shape"]
+            translation_table[k]
+            for k in stash["buffer_keys_with_known_shape"]
+            if k in stash["buffer_keys_with_known_shape"]
         },
     }
 
@@ -814,32 +819,35 @@ def _trace_high_level_form(form) -> dict:
     form_key_to_parent_key = {}
     form_key_to_buffer_keys = {}
 
-    def impl_with_parent(parent, child):
-        form_key_to_parent_key[child.form_key] = parent.form_key
+    def impl_with_parent(form, parent_form):
+        # Associate child form key with parent form key
+        form_key_to_parent_key[form.form_key] = parent_form.form_key
+        return impl(form)
 
-    def _impl(form):
+    def impl(form):
+        # Keep track of which buffer keys are associated with which form-keys
         form_key_to_buffer_keys[form.form_key] = form.expected_from_buffers(
-            recursive=False
+            recursive=False, buffer_key=BUFFER_KEY
         )
 
         if form.is_union:
             for i, entry in enumerate(form.contents):
-                impl_with_parent(form, entry)
+                impl_with_parent(entry, form)
         elif form.is_indexed:
-            impl_with_parent(form, form.content)
+            impl_with_parent(form.content, form)
         elif form.is_list:
-            impl_with_parent(form, form.content)
+            impl_with_parent(form.content, form)
         elif form.is_option:
-            impl_with_parent(form, form.content)
+            impl_with_parent(form.content, form)
         elif form.is_record:
             for field in form.fields:
-                impl_with_parent(form, form.content(field))
+                impl_with_parent(form.content(field), form)
         elif form.is_unknown or form.is_numpy:
             pass
         else:
             raise AssertionError(form)
 
-    _impl(form)
+    impl(form)
 
     return {
         "form_key_to_parent_key": form_key_to_parent_key,
@@ -848,12 +856,14 @@ def _trace_high_level_form(form) -> dict:
 
 
 def _touched_metadata_buffers_for_shape(
-        shape_buffers: set[tuple[str, str]],
-        form_key_to_parent_key: dict[str, str],
-        form_key_to_buffer_keys: dict[str, tuple[str, str]],
+    shape_buffers: Iterable[str],
+    form_key_to_parent_key: dict[str, str],
+    form_key_to_buffer_keys: dict[str, str],
 ):
     # Buffers needing known shapes must traverse all the way up the tree.
-    for form_key, attribute in shape_buffers:
+    for buffer_key in shape_buffers:
+        form_key, attribute = buffer_key.rsplit("-", 1)
+
         # Identify impacted form keys above this node
         impacted_form_keys = _iterate_parents(form_key, form_key_to_parent_key)
         # Are we asking for the length of a content buffer?
@@ -865,7 +875,7 @@ def _touched_metadata_buffers_for_shape(
         for impacted_form_key in impacted_form_keys:
             # Identify the associated buffers
             for buffer_key in form_key_to_buffer_keys[impacted_form_key]:
-                _, other_attribute = buffer_key
+                _, other_attribute = buffer_key.rsplit("-", 1)
 
                 # Would the omission of this key lead to unknown lengths?
                 if other_attribute in UNKNOWN_LENGTH_ATTRIBUTES:
@@ -880,62 +890,22 @@ def _iterate_parents(node, parentage):
 
 class _UprootRead:
     def __init__(
-            self,
-            ttrees,
-            common_keys,
-            interp_options,
-            form_mapping,
-            base_form,
-            remapped_form,
-            rehydration_form=None,
+        self,
+        ttrees,
+        common_keys,
+        interp_options,
+        form_mapping,
+        base_form,
     ) -> None:
         self.ttrees = ttrees
         self.common_keys = common_keys
         self.interp_options = interp_options
         self.form_mapping = form_mapping
-        # Low-level TTree Form
         self.base_form = base_form
-        # High-level non-dehydrated form
-        self.rehydration_form = rehydration_form
 
-    def __call__(self, i_start_stop):
-        i, start, stop = i_start_stop
+    def prepare_projection(self):
+        awkward = uproot.extras.awkward()
 
-        array = self.ttrees[i].arrays(
-            self.common_keys,
-            entry_start=start,
-            entry_stop=stop,
-            ak_add_doc=self.interp_options["ak_add_doc"],
-        )
-
-        if self.rehydration_form is not None:
-            awkward = uproot.extras.awkward()
-            dask_awkward = uproot.extras.dask_awkward()
-
-            array = awkward.Array(
-                dask_awkward.lib.unproject_layout.unproject_layout(
-                    self.rehydration_form,
-                    array.layout,
-                )
-            )
-
-        if self.form_mapping is not None:
-            awkward = uproot.extras.awkward()
-            dask_awkward = uproot.extras.dask_awkward()
-
-            mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
-                self.ttrees[i], start, stop, self.interp_options
-            )
-
-            layout = awkward.from_buffers(
-                self.form_mapping(),
-                stop - start,
-                mapping,
-                buffer_key=buffer_key,
-                highlevel=False,
-            )
-
-    def prepare_annotated_form(self):
         # Change form by annotating it with form keys
         low_level_form = copy.deepcopy(self.base_form)
         # Record information about which buffer keys have known shapes
@@ -949,19 +919,27 @@ class _UprootRead:
             low_level_stash = _translate_low_level_stash(
                 low_level_stash, translation_table
             )
+            behavior = self.form_mapping.behavior
         else:
             high_level_form = low_level_form
+            behavior = None
 
         # Build parentage information over high-level form
         high_level_stash = _trace_high_level_form(high_level_form)
-        return {**low_level_stash, **high_level_stash}
+        stash = {**low_level_stash, **high_level_stash}
 
-    def project_buffers(
-            self,
-            *,
-            data_buffers: set[tuple[str, str]],
-            shape_buffers: set[tuple[str, str]],
-            stash,
+        # Build typetracer and associated report object
+        meta, report = awkward.typetracer.typetracer_with_report(
+            high_level_form, highlevel=True, behavior=behavior, buffer_key=BUFFER_KEY
+        )
+
+        return meta, report, stash
+
+    def project(
+        self,
+        *,
+        report,
+        stash,
     ):
         ## Read from stash
         # Form hierarchy information
@@ -970,19 +948,22 @@ class _UprootRead:
         form_key_to_buffer_keys: dict = stash["form_key_to_buffer_keys"]
         # Buffer to TTree column
         buffer_key_to_ttree_key: dict = stash["buffer_key_to_ttree_key"]
-        # Which buffer-keys should be knowable at top level
+        # Which buffer-keys should have knowable shapes at top level
         buffer_keys_with_known_shape: set = stash["buffer_keys_with_known_shape"]
 
         # Require the data of metadata buffers above shape-only requests
-        data_buffers |= _touched_metadata_buffers_for_shape(
-            shape_buffers, form_key_to_parent_key, form_key_to_buffer_keys
-        )
+        data_buffers = {
+            **report.data_touched,
+            **_touched_metadata_buffers_for_shape(
+                report.shape_touched, form_key_to_parent_key, form_key_to_buffer_keys
+            ),
+        }
 
         # Buffer contents are determined only by reading a branch
         keys = {buffer_key_to_ttree_key[buffer_key] for buffer_key in data_buffers}
 
         # Buffer lengths can sometimes be known at the top level
-        for buffer_key in shape_buffers:
+        for buffer_key in report.shape_touched:
             # If the buffer is knowable without reading a branch, then skip!
             if buffer_key in buffer_keys_with_known_shape:
                 pass
@@ -991,47 +972,107 @@ class _UprootRead:
                 keys.add(buffer_key_to_ttree_key[buffer_key])
 
         return _UprootRead(
-            self.ttrees,
-            keys,
-            self.interp_options,
-            self.form_mapping,
-            self.base_form,
-            self.remapped_form,
-            rehydration_form,
+            self.ttrees, keys, self.interp_options, self.form_mapping, self.base_form
         )
+
+    def __call__(self, i_start_stop):
+        i, start, stop = i_start_stop
+
+        array = self.ttrees[i].arrays(
+            self.common_keys,
+            entry_start=start,
+            entry_stop=stop,
+            ak_add_doc=self.interp_options["ak_add_doc"],
+        )
+
+        if self.form_mapping is not None:
+            awkward = uproot.extras.awkward()
+            dask_awkward = uproot.extras.dask_awkward()
+
+            loaded_buffers = {}
+
+            # Populate placeholder dict
+            container = loaded_buffers.copy()
+            for buffer_key, dtype in form.expected_from_buffers().items():
+                form_key, attribute = buffer_key.rsplit("-", 1)
+                if buffer_key not in container:
+                    backend = array.layout.backend
+
+                    container[buffer_key] = awkward.typetracer.PlaceholderArray(
+                        backend.nplike
+                        if attribute in DATA_ATTRIBUTES
+                        else backend.index_nplike,
+                        (awkward.typetracer.unknown_length,),
+                        dtype,
+                    )
+        #
+        #     mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
+        #         self.ttrees[i], start, stop, self.interp_options
+        #     )
+        #
+        #     layout = awkward.from_buffers(
+        #         self.form_mapping(),
+        #         stop - start,
+        #         mapping,
+        #         buffer_key=buffer_key,
+        #         highlevel=False,
+        #     )
+
+        # if self.rehydration_form is not None:
+        #     awkward = uproot.extras.awkward()
+        #     dask_awkward = uproot.extras.dask_awkward()
+        #
+        #     array = awkward.Array(
+        #         dask_awkward.lib.unproject_layout.unproject_layout(
+        #             self.rehydration_form,
+        #             array.layout,
+        #         )
+        #     )
+
+        # if self.form_mapping is not None:
+        #     awkward = uproot.extras.awkward()
+        #     dask_awkward = uproot.extras.dask_awkward()
+        #
+        #     mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
+        #         self.ttrees[i], start, stop, self.interp_options
+        #     )
+        #
+        #     layout = awkward.from_buffers(
+        #         self.form_mapping(),
+        #         stop - start,
+        #         mapping,
+        #         buffer_key=buffer_key,
+        #         highlevel=False,
+        #     )
 
 
 class _UprootOpenAndRead:
     def __init__(
-            self,
-            custom_classes,
-            allow_missing,
-            real_options,
-            common_keys,
-            interp_options,
-            form_mapping,
-            base_form,
-            remapped_form,
-            rehydration_form=None,
+        self,
+        custom_classes,
+        allow_missing,
+        real_options,
+        common_keys,
+        interp_options,
+        form_mapping,
+        base_form,
     ) -> None:
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
         self.real_options = real_options
-        self.common_keys = common_data_keys
+        self.common_keys = common_keys
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.base_form = base_form
-        self.remapped_form = remapped_form
-        self.rehydration_form = rehydration_form
 
-    def __call__(self, file_path_object_path_istep_nsteps_ischunk):
+    def __call__(self, blockwise_args):
         (
             file_path,
             object_path,
-            istep_or_start,
-            nsteps_or_stop,
-            ischunk,
-        ) = file_path_object_path_istep_nsteps_ischunk
+            i_step_or_start,
+            n_steps_or_stop,
+            is_chunk,
+        ) = blockwise_args
         ttree = uproot._util.regularize_object_path(
             file_path,
             object_path,
@@ -1040,8 +1081,8 @@ class _UprootOpenAndRead:
             self.real_options,
         )
         num_entries = ttree.num_entries
-        if ischunk:
-            start, stop = istep_or_start, nsteps_or_stop
+        if is_chunk:
+            start, stop = i_step_or_start, n_steps_or_stop
             if (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
                 raise ValueError(
                     f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
@@ -1055,78 +1096,110 @@ TTree in path
 which has {num_entries} entries"""
                 )
         else:
-            events_per_step = math.ceil(num_entries / nsteps_or_stop)
-            start, stop = min((istep_or_start * events_per_step), num_entries), min(
-                (istep_or_start + 1) * events_per_step, num_entries
+            events_per_step = math.ceil(num_entries / n_steps_or_stop)
+            start, stop = min((i_step_or_start * events_per_step), num_entries), min(
+                (i_step_or_start + 1) * events_per_step, num_entries
             )
 
         assert start <= stop
+        raise NotImplementedError
 
-        if self.form_mapping is not None:
-            awkward = uproot.extras.awkward()
-            dask_awkward = uproot.extras.dask_awkward()
-
-            if all_common_keys != set(self.remapped_form.columns()):
-                actual_form = self.remapped_form.select_columns(list(all_common_keys))
-            else:
-                actual_form = self.remapped_form
-
-            mapping, buffer_key = self.form_mapping.create_column_mapping_and_key(
-                ttree, start, stop, self.interp_options
-            )
-
-            layout = awkward.from_buffers(
-                actual_form,
-                stop - start,
-                mapping,
-                buffer_key=buffer_key,
-                highlevel=False,
-            )
-            return awkward.Array(
-                dask_awkward.lib.unproject_layout.unproject_layout(
-                    self.remapped_form,
-                    layout,
-                ),
-                behavior=self.form_mapping.behavior,
-            )
-
-        array = ttree.arrays(
-            list(all_common_keys),
-            entry_start=start,
-            entry_stop=stop,
-            ak_add_doc=self.interp_options["ak_add_doc"],
+    @property
+    def meta(self):
+        awkward = uproot.extras.awkward()
+        high_level_form = (
+            self.base_form
+            if self.form_mapping is None
+            else self.form_mapping(self.base_form)
+        )
+        behavior = None if self.form_mapping is None else self.form_mapping.behavior
+        return awkward.typetracer.typetracer_from_form(
+            high_level_form, highlevel=True, behavior=behavior
         )
 
-        if self.original_form is not None:
-            awkward = uproot.extras.awkward()
-            dask_awkward = uproot.extras.dask_awkward()
+    def prepare_for_projection(self):
+        awkward = uproot.extras.awkward()
 
-            return awkward.Array(
-                dask_awkward.lib.unproject_layout.unproject_layout(
-                    self.original_form,
-                    array.layout,
-                )
-            )
+        # Change form by annotating it with form keys
+        low_level_form = copy.deepcopy(self.base_form)
+        # Record information about which buffer keys have known shapes
+        # and which key yields a given buffer
+        low_level_stash = _annotate_low_level_form(low_level_form, "root")
 
-        return array
-
-    def annotate_form(self, *, form, name):
+        # If necessary, remap low-level forms into high-level forms, and
+        # adapt the stashes
         if self.form_mapping is not None:
-            raise NotImplementedError
+            # TODO
+            high_level_form, translation_table = self.form_mapping(low_level_form)
+            low_level_stash = _translate_low_level_stash(
+                low_level_stash, translation_table
+            )
+            behavior = self.form_mapping.behavior
         else:
-            ...
+            high_level_form = low_level_form
+            behavior = None
 
-    def project_buffers(
-            self, *, data_buffers: set[str], shape_buffers: set[str], stash
-    ):
-        raise NotImplementedError
+        # Build parentage information over high-level form
+        high_level_stash = _trace_high_level_form(high_level_form)
+
+        # Build typetracer and associated report object
+        meta, report = awkward.typetracer.typetracer_with_report(
+            high_level_form, highlevel=True, behavior=behavior, buffer_key=BUFFER_KEY
+        )
+        state = {**low_level_stash, **high_level_stash, "report": report}
+
+        print("PREAPRE")
+
+        return meta, state
+
+    def project(self, *, state):
+        ## Read from stash
+        # Form hierarchy information
+        form_key_to_parent_key: dict = state["form_key_to_parent_key"]
+        # Buffer hierarchy information
+        form_key_to_buffer_keys: dict = state["form_key_to_buffer_keys"]
+        # Buffer to TTree column
+        buffer_key_to_ttree_key: dict = state["buffer_key_to_ttree_key"]
+        # Which buffer-keys should have knowable shapes at top level
+        buffer_keys_with_known_shape: set = state["buffer_keys_with_known_shape"]
+        report = state["report"]
+
+        # Require the data of metadata buffers above shape-only requests
+        data_buffers = {
+            **report.data_touched,
+            **_touched_metadata_buffers_for_shape(
+                report.shape_touched, form_key_to_parent_key, form_key_to_buffer_keys
+            ),
+        }
+
+        # Buffer contents are determined only by reading a branch
+        keys = {buffer_key_to_ttree_key[buffer_key] for buffer_key in data_buffers}
+
+        # Buffer lengths can sometimes be known at the top level
+        for buffer_key in report.shape_touched:
+            # If the buffer is knowable without reading a branch, then skip!
+            if buffer_key in buffer_keys_with_known_shape:
+                pass
+            # Otherwise, we'll need to include the branch by computation
+            else:
+                keys.add(buffer_key_to_ttree_key[buffer_key])
+
+        return _UprootOpenAndRead(
+            self.custom_classes,
+            self.allow_missing,
+            self.real_options,
+            keys,
+            self.interp_options,
+            self.form_mapping,
+            self.base_form,
+        )
 
 
 def _get_ttree_form(
-        awkward,
-        ttree,
-        common_keys,
-        ak_add_doc,
+    awkward,
+    ttree,
+    common_keys,
+    ak_add_doc,
 ):
     contents = []
     for key in common_keys:
@@ -1142,19 +1215,19 @@ def _get_ttree_form(
 
 
 def _get_dak_array(
-        files,
-        filter_name,
-        filter_typename,
-        filter_branch,
-        recursive,
-        full_paths,
-        step_size,
-        custom_classes,
-        allow_missing,
-        real_options,
-        interp_options,
-        form_mapping,
-        steps_per_file,
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    step_size,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
+    form_mapping,
+    steps_per_file,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1298,17 +1371,6 @@ which has {entry_stop} entries"""
         awkward, ttrees[0], common_keys, interp_options.get("ak_add_doc")
     )
 
-    if form_mapping is not None:
-        form = form_mapping(base_form)
-    else:
-        form = base_form
-
-    meta = awkward.typetracer.typetracer_from_form(
-        form,
-        behavior=None if form_mapping is None else form_mapping.behavior,
-        highlevel=True,
-    )
-
     if len(partition_args) == 0:
         divisions.append(0)
         partition_args.append((0, 0, 0))
@@ -1320,29 +1382,26 @@ which has {entry_stop} entries"""
             interp_options,
             form_mapping=form_mapping,
             base_form=base_form,
-            remapped_form=None if form_mapping is None else form,
         ),
         partition_args,
         divisions=tuple(divisions),
         label="from-uproot",
-        behavior=None if form_mapping is None else form_mapping.behavior,
-        meta=meta,
     )
 
 
 def _get_dak_array_delay_open(
-        files,
-        filter_name,
-        filter_typename,
-        filter_branch,
-        recursive,
-        full_paths,
-        custom_classes,
-        allow_missing,
-        real_options,
-        interp_options,
-        form_mapping,
-        steps_per_file,
+    files,
+    filter_name,
+    filter_typename,
+    filter_branch,
+    recursive,
+    full_paths,
+    custom_classes,
+    allow_missing,
+    real_options,
+    interp_options,
+    form_mapping,
+    steps_per_file,
 ):
     dask_awkward = uproot.extras.dask_awkward()
     awkward = uproot.extras.awkward()
@@ -1362,17 +1421,6 @@ def _get_dak_array_delay_open(
 
     base_form = _get_ttree_form(
         awkward, obj, common_keys, interp_options.get("ak_add_doc")
-    )
-
-    if form_mapping is not None:
-        form = form_mapping(base_form)
-    else:
-        form = base_form
-
-    meta = awkward.typetracer.typetracer_from_form(
-        form,
-        behavior=None if form_mapping is None else form_mapping.behavior,
-        highlevel=True,
     )
 
     divisions = [0]
@@ -1416,12 +1464,9 @@ def _get_dak_array_delay_open(
             common_keys,
             interp_options,
             form_mapping=form_mapping,
-            remapped_form=None if form_mapping is None else form,
-            original_form=form,
+            base_form=base_form,
         ),
         partition_args,
         divisions=None if divisions is None else tuple(divisions),
         label="from-uproot",
-        behavior=None if form_mapping is None else form_mapping.behavior,
-        meta=meta,
     )
