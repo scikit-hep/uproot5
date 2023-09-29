@@ -831,7 +831,7 @@ def _trace_high_level_form(form) -> dict:
         )
 
         if form.is_union:
-            for i, entry in enumerate(form.contents):
+            for _i, entry in enumerate(form.contents):
                 impl_with_parent(entry, form)
         elif form.is_indexed:
             impl_with_parent(form.content, form)
@@ -987,7 +987,7 @@ class _UprootRead:
 
         if self.form_mapping is not None:
             awkward = uproot.extras.awkward()
-            dask_awkward = uproot.extras.dask_awkward()
+            uproot.extras.dask_awkward()
 
             loaded_buffers = {}
 
@@ -1147,8 +1147,6 @@ which has {num_entries} entries"""
             high_level_form, highlevel=True, behavior=behavior, buffer_key=BUFFER_KEY
         )
         state = {**low_level_stash, **high_level_stash, "report": report}
-
-        print("PREAPRE")
 
         return meta, state
 
