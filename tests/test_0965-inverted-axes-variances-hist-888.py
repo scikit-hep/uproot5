@@ -1,9 +1,10 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 import pytest
-import uproot
 import numpy
 import hist
+import uproot
+import skhep_testdata
 
 ROOT = pytest.importorskip("ROOT")
 
@@ -47,3 +48,9 @@ def test_axes_variances_to_hist_3D_weighted():
 
     # check variances are equal before and after to_hist
     assert (vuproot == vhist).all()
+
+
+def test_users_2d_weighted_histogram():
+    with uproot.open(skhep_testdata.data_path("uproot-issue-888.root”)) as f:
+        h = f['hrecoVsgen_ll_cHel_400mttbar']
+        assert (h.variances() == h.to_hist().variances()).all()
