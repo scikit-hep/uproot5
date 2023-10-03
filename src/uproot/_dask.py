@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Iterable, Mapping
-from typing import TYPE_CHECKING, Any, Final, Protocol
+from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
 
 import numpy
 from dask_awkward.lib.utils import (
@@ -743,135 +743,6 @@ def _get_dask_array_delay_open(
     return dask_dict
 
 
-class _UprootRead:
-    def __init__(
-        self,
-        ttrees,
-        common_keys,
-        interp_options,
-        form_mapping: ImplementsFormMapping,
-        base_form,
-    ) -> None:
-        self.ttrees = ttrees
-        self.common_keys = common_keys
-        self.interp_options = interp_options
-        self.form_mapping = form_mapping
-        self.base_form = base_form
-
-    @property
-    def meta(self) -> AwkArray:
-        awkward = uproot.extras.awkward()
-        high_level_form, form_info = self.form_mapping(self.base_form)
-        return awkward.typetracer.typetracer_from_form(
-            high_level_form,
-            highlevel=True,
-            behavior=form_info.behavior,
-        )
-
-    def prepare_for_projection(self) -> tuple[AwkArray, dict]:
-        awkward = uproot.extras.awkward()
-
-        # A form mapping will (may) remap the base form into a new form
-        # The remapped form can be queried for structural information
-        high_level_form, form_info = self.form_mapping(self.base_form)
-
-        # Build typetracer and associated report object
-        meta, report = awkward.typetracer.typetracer_with_report(
-            high_level_form,
-            highlevel=True,
-            behavior=form_info.behavior,
-            buffer_key=form_info.buffer_key,
-        )
-
-        return meta, {
-            "trace": trace_form_structure(
-                high_level_form,
-                buffer_key=form_info.buffer_key,
-            ),
-            "report": report,
-            "form_info": form_info,
-        }
-
-    def project(self, *, state: dict) -> _UprootRead:
-        ## Read from stash
-        # Form hierarchy information
-        form_key_to_parent_key: dict = state["trace"]["form_key_to_parent_key"]
-        # Buffer hierarchy information
-        form_key_to_buffer_keys: dict = state["trace"]["form_key_to_buffer_keys"]
-        # Typetracer report
-        report = state["report"]
-        form_info: ImplementsFormMappingInfo = state["form_info"]
-
-        data_buffers = {
-            # Require the buffers whose data is required
-            *report.data_touched,
-            # Require the data of metadata buffers above shape-only requests
-            *buffer_keys_required_to_compute_shapes(
-                form_info.parse_buffer_key,
-                report.shape_touched,
-                form_key_to_parent_key,
-                form_key_to_buffer_keys,
-            ),
-        }
-
-        # Don't worry about top-level buffers; we know their lengths during
-        # from_buffers
-
-        # Determine which TTree keys need to be read
-        keys = form_info.keys_for_buffer_keys(data_buffers) & set(self.common_keys)
-
-        return _UprootRead(
-            self.ttrees, keys, self.interp_options, self.form_mapping, self.base_form
-        )
-
-    def __call__(self, i_start_stop):
-        i, start, stop = i_start_stop
-
-        from awkward._nplikes.numpy import Numpy
-
-        awkward = uproot.extras.awkward()
-        nplike = Numpy.instance()
-
-        form, form_info = self.form_mapping(self.base_form)
-
-        # The remap implementation should correctly populate the generated
-        # buffer mapping in __call__, such that the high-level form can be
-        # used in `from_buffers`
-        mapping = form_info.load_buffers(
-            self.ttrees[i], self.common_keys, start, stop, self.interp_options
-        )
-
-        # Populate container with placeholders if keys aren't required
-        # Otherwise, read from disk
-        container = {}
-        for buffer_key, dtype in form.expected_from_buffers(
-            buffer_key=form_info.buffer_key
-        ).items():
-            # Which key(s) does this buffer require. This code permits the caller
-            # to require multiple keys to compute a single buffer.
-            keys_for_buffer = form_info.keys_for_buffer_keys({buffer_key})
-            # If reading this buffer loads a permitted key, read from the tree
-            # We might not have _all_ keys if e.g. buffer A requires one
-            # but not two of the keys required for buffer B
-            if all(k in self.common_keys for k in keys_for_buffer):
-                container[buffer_key] = mapping[buffer_key]
-            # Otherwise, introduce a placeholder
-            else:
-                container[buffer_key] = awkward.typetracer.PlaceholderArray(
-                    nplike=nplike,
-                    shape=(awkward.typetracer.unknown_length,),
-                    dtype=dtype,
-                )
-
-        return awkward.from_buffers(
-            form,
-            stop - start,
-            container,
-            behavior=form_info.behavior,
-            buffer_key=form_info.buffer_key,
-        )
-
-
 class ImplementsFormMappingInfo(Protocol):
     @property
     def behavior(self) -> dict | None:
@@ -996,61 +867,16 @@ class TrivialFormMapping(ImplementsFormMapping):
         return new_form, TrivialFormMappingInfo(new_form)
 
 
-class _UprootOpenAndRead:
-    def __init__(
-        self,
-        custom_classes,
-        allow_missing,
-        real_options,
-        common_keys,
-        interp_options,
-        form_mapping: ImplementsFormMapping,
-        base_form: Form,
-    ) -> None:
-        self.custom_classes = custom_classes
-        self.allow_missing = allow_missing
-        self.real_options = real_options
-        self.common_keys = common_keys
-        self.interp_options = interp_options
-        self.form_mapping = form_mapping
-        self.base_form = base_form
+T = TypeVar("T")
 
-    def __call__(self, blockwise_args):
-        (
-            file_path,
-            object_path,
-            i_step_or_start,
-            n_steps_or_stop,
-            is_chunk,
-        ) = blockwise_args
-        ttree = uproot._util.regularize_object_path(
-            file_path,
-            object_path,
-            self.custom_classes,
-            self.allow_missing,
-            self.real_options,
-        )
-        num_entries = ttree.num_entries
-        if is_chunk:
-            start, stop = i_step_or_start, n_steps_or_stop
-            if (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
-                raise ValueError(
-                    f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
 
-    {ttree.file.file_path}
+class UprootReadMixin:
+    form_mapping: ImplementsFormMapping
+    base_form: Form
+    common_keys: set[str]
+    interp_options: dict[str, Any]
 
-TTree in path
-
-    {ttree.object_path}
-
-which has {num_entries} entries"""
-                )
-        else:
-            events_per_step = math.ceil(num_entries / n_steps_or_stop)
-            start, stop = min((i_step_or_start * events_per_step), num_entries), min(
-                (i_step_or_start + 1) * events_per_step, num_entries
-            )
-
+    def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
         assert start <= stop
 
         from awkward._nplikes.numpy import Numpy
@@ -1064,7 +890,7 @@ which has {num_entries} entries"""
         # buffer mapping in __call__, such that the high-level form can be
         # used in `from_buffers`
         mapping = form_info.load_buffers(
-            ttree, self.common_keys, start, stop, self.interp_options
+            tree, self.common_keys, start, stop, self.interp_options
         )
 
         # Populate container with placeholders if keys aren't required
@@ -1131,7 +957,10 @@ which has {num_entries} entries"""
             "form_info": form_info,
         }
 
-    def project(self, *, state: dict) -> _UprootOpenAndRead:
+    def project_keys(self: T, keys: set[str]) -> T:
+        raise NotImplementedError
+
+    def project(self: T, *, state: dict) -> T:
         ## Read from stash
         # Form hierarchy information
         form_key_to_parent_key: dict = state["trace"]["form_key_to_parent_key"]
@@ -1154,7 +983,95 @@ which has {num_entries} entries"""
 
         # Determine which TTree keys need to be read
         keys = form_info.keys_for_buffer_keys(data_buffers) & set(self.common_keys)
+        return self.project_keys(keys)
 
+
+class _UprootRead(UprootReadMixin):
+    def __init__(
+        self,
+        ttrees,
+        common_keys,
+        interp_options,
+        form_mapping: ImplementsFormMapping,
+        base_form,
+    ) -> None:
+        self.ttrees = ttrees
+        self.common_keys = common_keys
+        self.interp_options = interp_options
+        self.form_mapping = form_mapping
+        self.base_form = base_form
+
+    def project_keys(self: T, keys: set[str]) -> T:
+        return _UprootRead(
+            self.ttrees, keys, self.interp_options, self.form_mapping, self.base_form
+        )
+
+    def __call__(self, i_start_stop) -> AwkArray:
+        i, start, stop = i_start_stop
+
+        return self.read_tree(self.ttrees[i], start, stop)
+
+
+class _UprootOpenAndRead(UprootReadMixin):
+    def __init__(
+        self,
+        custom_classes,
+        allow_missing,
+        real_options,
+        common_keys,
+        interp_options,
+        form_mapping: ImplementsFormMapping,
+        base_form: Form,
+    ) -> None:
+        self.custom_classes = custom_classes
+        self.allow_missing = allow_missing
+        self.real_options = real_options
+        self.common_keys = common_keys
+        self.interp_options = interp_options
+        self.form_mapping = form_mapping
+        self.base_form = base_form
+
+    def __call__(self, blockwise_args) -> AwkArray:
+        (
+            file_path,
+            object_path,
+            i_step_or_start,
+            n_steps_or_stop,
+            is_chunk,
+        ) = blockwise_args
+        ttree = uproot._util.regularize_object_path(
+            file_path,
+            object_path,
+            self.custom_classes,
+            self.allow_missing,
+            self.real_options,
+        )
+        num_entries = ttree.num_entries
+        if is_chunk:
+            start, stop = i_step_or_start, n_steps_or_stop
+            if (not 0 <= start < num_entries) or (not 0 <= stop <= num_entries):
+                raise ValueError(
+                    f"""explicit entry start ({start}) or stop ({stop}) from uproot.dask 'files' argument is out of bounds for file
+
+    {ttree.file.file_path}
+
+TTree in path
+
+    {ttree.object_path}
+
+which has {num_entries} entries"""
+                )
+        else:
+            events_per_step = math.ceil(num_entries / n_steps_or_stop)
+            start, stop = min((i_step_or_start * events_per_step), num_entries), min(
+                (i_step_or_start + 1) * events_per_step, num_entries
+            )
+
+        assert start <= stop
+
+        return self.read_tree(ttree, start, stop)
+
+    def project_keys(self: T, keys: set[str]) -> T:
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,
