@@ -202,6 +202,8 @@ class Histogram:
 
         Converts the histogram into a ``boost-histogram`` object.
         """
+        assert len(self.axes) <= 3, "Only 1D, 2D, and 3D histograms are supported"
+
         if axis_metadata is None:
             axis_metadata = boost_axis_metadata
         if metadata is None:
@@ -209,15 +211,12 @@ class Histogram:
 
         boost_histogram = uproot.extras.boost_histogram()
 
-        values = self.values(flow=True)
-
         sumw2 = None
         if self.weighted:  # ensures self.member("fSumw2") exists
-            sumw2 = self.member("fSumw2")
-            sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-            sumw2 = numpy.reshape(sumw2, values.shape)
+            values, sumw2 = self._values_variances(flow=True)
             storage = boost_histogram.storage.Weight()
         else:
+            values = self.values(flow=True)
             if issubclass(values.dtype.type, numpy.integer):
                 storage = boost_histogram.storage.Int64()
             else:
@@ -231,7 +230,6 @@ class Histogram:
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
 
-        assert len(axes) <= 3, "Only 1D, 2D, and 3D histograms are supported"
         assert len(values.shape) == len(
             axes
         ), "Number of dimensions must match number of axes"
