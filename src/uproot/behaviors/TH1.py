@@ -202,6 +202,8 @@ class Histogram:
 
         Converts the histogram into a ``boost-histogram`` object.
         """
+        assert len(self.axes) <= 3, "Only 1D, 2D, and 3D histograms are supported"
+
         if axis_metadata is None:
             axis_metadata = boost_axis_metadata
         if metadata is None:
@@ -215,7 +217,15 @@ class Histogram:
         if self.weighted:  # ensures self.member("fSumw2") exists
             sumw2 = self.member("fSumw2")
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-            sumw2 = numpy.reshape(sumw2, values.shape)
+
+            # the fSumw2 member is read column by column and needs to be swapped for the 2D case
+            if len(values.shape) == 2:
+                sumw2 = numpy.reshape(
+                    sumw2, (values.shape[1], values.shape[0])
+                ).swapaxes(0, 1)
+            else:
+                sumw2 = numpy.reshape(sumw2, values.shape)
+
             storage = boost_histogram.storage.Weight()
         else:
             if issubclass(values.dtype.type, numpy.integer):
@@ -231,7 +241,6 @@ class Histogram:
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
 
-        assert len(axes) <= 3, "Only 1D, 2D, and 3D histograms are supported"
         assert len(values.shape) == len(
             axes
         ), "Number of dimensions must match number of axes"
