@@ -26,10 +26,12 @@ class FSSpecSource(uproot.source.chunk.Source):
                 "file_handler",
                 "xrootd_handler",
                 "http_handler",
+                "s3_handler",
                 "object_handler",
                 "max_num_elements",
                 "num_workers",
                 "num_fallback_workers",
+                "use_threads",
                 "begin_chunk_size",
                 "minimal_ttree_metadata",
             }
