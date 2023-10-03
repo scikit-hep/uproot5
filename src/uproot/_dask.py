@@ -16,6 +16,7 @@ from uproot._util import no_filter, unset
 from uproot.behaviors.TBranch import HasBranches, TBranch, _regularize_step_size
 
 if TYPE_CHECKING:
+    from awkward._nplikes.typetracer import TypeTracerReport
     from awkward.forms import Form
     from awkward.highlevel import Array as AwkArray
 
@@ -932,7 +933,7 @@ class UprootReadMixin:
             behavior=form_info.behavior,
         )
 
-    def prepare_for_projection(self) -> tuple[AwkArray, dict]:
+    def prepare_for_projection(self) -> tuple[AwkArray, TypeTracerReport, dict]:
         awkward = uproot.extras.awkward()
 
         # A form mapping will (may) remap the base form into a new form
@@ -947,26 +948,25 @@ class UprootReadMixin:
             buffer_key=form_info.buffer_key,
         )
 
-        return meta, {
-            "trace": trace_form_structure(
-                high_level_form,
-                buffer_key=form_info.buffer_key,
-            ),
-            "report": report,
-            "form_info": form_info,
-        }
+        return (
+            meta,
+            report,
+            {
+                "trace": trace_form_structure(
+                    high_level_form,
+                    buffer_key=form_info.buffer_key,
+                ),
+                "form_info": form_info,
+            },
+        )
 
-    def project_keys(self: T, keys: set[str]) -> T:
-        raise NotImplementedError
-
-    def project(self: T, *, state: dict) -> T:
+    def project(self: T, *, report: TypeTracerReport, state: dict) -> T:
         ## Read from stash
         # Form hierarchy information
         form_key_to_parent_key: dict = state["trace"]["form_key_to_parent_key"]
         # Buffer hierarchy information
         form_key_to_buffer_keys: dict = state["trace"]["form_key_to_buffer_keys"]
-        # Typetracer report
-        report = state["report"]
+        # Restructured form information
         form_info = state["form_info"]
 
         # Require the data of metadata buffers above shape-only requests
@@ -983,6 +983,9 @@ class UprootReadMixin:
         # Determine which TTree keys need to be read
         keys = form_info.keys_for_buffer_keys(data_buffers) & set(self.common_keys)
         return self.project_keys(keys)
+
+    def project_keys(self: T, keys: set[str]) -> T:
+        raise NotImplementedError
 
 
 class _UprootRead(UprootReadMixin):
