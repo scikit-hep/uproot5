@@ -923,8 +923,7 @@ class UprootReadMixin:
             buffer_key=form_info.buffer_key,
         )
 
-    @property
-    def meta(self) -> AwkArray:
+    def mock(self) -> AwkArray:
         awkward = uproot.extras.awkward()
         high_level_form, form_info = self.form_mapping(self.base_form)
         return awkward.typetracer.typetracer_from_form(
