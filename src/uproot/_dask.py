@@ -909,8 +909,8 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         return None
 
     @staticmethod
-    def build_form_key_to_key(form: Form) -> dict[str, tuple[str, ...]]:
-        form_key_to_path: dict[str, tuple[str, ...]] = {}
+    def build_form_key_to_key(form: Form) -> dict[str, str | None]:
+        form_key_to_path: dict[str, str | None] = {}
 
         def impl(form, column_path):
             # Store columnar path
@@ -942,9 +942,6 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
     def parse_buffer_key(self, buffer_key: str) -> tuple[str, str]:
         form_key, attribute = buffer_key.rsplit("-", maxsplit=1)
         return form_key, attribute
-
-    def keys_for_root_buffer_keys_size(self, buffer_keys: set[str]) -> set[str]:
-        return set()
 
     def keys_for_buffer_keys(self, buffer_keys: set[str]) -> set[str]:
         keys: set[str] = set()
