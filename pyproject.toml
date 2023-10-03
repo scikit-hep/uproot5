@@ -55,11 +55,11 @@ dev = [
     "hist>=1.2",
     "pandas",
     "awkward-pandas;python_version >= \"3.8\"",
-]
-test = [
     "aiohttp",
     "fsspec",
     "fsspec-xrootd",
+]
+test = [
     "lz4",
     "minio",
     "pytest>=6",
