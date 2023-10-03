@@ -8,6 +8,7 @@ import uproot
 
 dask = pytest.importorskip("dask")
 da = pytest.importorskip("dask.array")
+dask_awkward = pytest.importorskip("dask-awkward")
 
 
 def test_single_delay_open():
