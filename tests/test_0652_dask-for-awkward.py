@@ -9,7 +9,6 @@ import uproot
 dask = pytest.importorskip("dask")
 dask_awkward = pytest.importorskip("dask_awkward")
 
-pytest.importorskip("pyarrow")  # dask_awkward.lib.testutils needs pyarrow
 from dask_awkward.lib.testutils import assert_eq
 
 

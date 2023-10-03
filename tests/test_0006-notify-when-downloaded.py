@@ -17,7 +17,9 @@ def test_file(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     notifications = queue.Queue()
-    with uproot.source.file.MultithreadedFileSource(filename, num_workers=1) as source:
+    with uproot.source.file.MultithreadedFileSource(
+        filename, num_workers=1, use_threads=True
+    ) as source:
         chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
@@ -34,7 +36,9 @@ def test_file_workers(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     notifications = queue.Queue()
-    with uproot.source.file.MultithreadedFileSource(filename, num_workers=5) as source:
+    with uproot.source.file.MultithreadedFileSource(
+        filename, num_workers=5, use_threads=True
+    ) as source:
         chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
@@ -51,7 +55,9 @@ def test_memmap(tmpdir):
         tmp.write(b"******    ...+++++++!!!!!@@@@@")
 
     notifications = queue.Queue()
-    with uproot.source.file.MemmapSource(filename, num_fallback_workers=1) as source:
+    with uproot.source.file.MemmapSource(
+        filename, num_fallback_workers=1, use_threads=True
+    ) as source:
         chunks = source.chunks(
             [(0, 6), (6, 10), (10, 13), (13, 20), (20, 25), (25, 30)],
             notifications=notifications,
@@ -67,7 +73,7 @@ def test_memmap(tmpdir):
 def test_http_multipart():
     notifications = queue.Queue()
     with uproot.source.http.HTTPSource(
-        "https://example.com", timeout=10, num_fallback_workers=1
+        "https://example.com", timeout=10, num_fallback_workers=1, use_threads=True
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -83,7 +89,7 @@ def test_http_multipart():
 def test_http():
     notifications = queue.Queue()
     with uproot.source.http.MultithreadedHTTPSource(
-        "https://example.com", timeout=10, num_workers=1
+        "https://example.com", timeout=10, num_workers=1, use_threads=True
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -99,7 +105,7 @@ def test_http():
 def test_http_workers():
     notifications = queue.Queue()
     with uproot.source.http.MultithreadedHTTPSource(
-        "https://example.com", timeout=10, num_workers=2
+        "https://example.com", timeout=10, num_workers=2, use_threads=True
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -117,6 +123,7 @@ def test_http_fallback():
         "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=1,
+        use_threads=True,
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -134,6 +141,7 @@ def test_http_fallback_workers():
         "https://scikit-hep.org/uproot3/examples/Zmumu.root",
         timeout=10,
         num_fallback_workers=5,
+        use_threads=True,
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -156,6 +164,7 @@ def test_xrootd():
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=1,
         timeout=10,
+        use_threads=True,
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -178,6 +187,7 @@ def test_xrootd_workers():
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         num_workers=5,
         timeout=10,
+        use_threads=True,
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
@@ -201,6 +211,7 @@ def test_xrootd_vectorread():
         timeout=10,
         max_num_elements=None,
         num_workers=1,
+        use_threads=True,
     ) as source:
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
