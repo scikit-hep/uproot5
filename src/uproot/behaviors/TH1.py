@@ -215,17 +215,7 @@ class Histogram:
 
         sumw2 = None
         if self.weighted:  # ensures self.member("fSumw2") exists
-            sumw2 = self.member("fSumw2")
-            sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
-
-            # the fSumw2 member is read column by column and needs to be swapped for the 2D case
-            if len(values.shape) > 1:
-                sumw2 = numpy.reshape(sumw2, values.shape[::-1]).swapaxes(
-                    0, len(values.shape) - 1
-                )
-            else:
-                sumw2 = numpy.reshape(sumw2, values.shape)
-
+            sumw2 = self.variances(flow=True)
             storage = boost_histogram.storage.Weight()
         else:
             if issubclass(values.dtype.type, numpy.integer):
