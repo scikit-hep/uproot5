@@ -4,7 +4,8 @@ import pytest
 import uproot
 import numpy
 import hist
-import ROOT
+
+ROOT = pytest.importorskip("ROOT")
 
 
 def test_axes_of_variances_to_hist_2D_weighted():
