@@ -220,9 +220,9 @@ class Histogram:
 
             # the fSumw2 member is read column by column and needs to be swapped for the 2D case
             if len(values.shape) > 1:
-                sumw2 = numpy.reshape(
-                        sumw2, values.shape[::-1]
-                    ).swapaxes(0, len(values.shape) - 1)
+                sumw2 = numpy.reshape(sumw2, values.shape[::-1]).swapaxes(
+                    0, len(values.shape) - 1
+                )
             else:
                 sumw2 = numpy.reshape(sumw2, values.shape)
 
