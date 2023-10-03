@@ -58,6 +58,7 @@ dev = [
 ]
 test = [
     "aiohttp",
+    "fsspec",
     "fsspec-xrootd",
     "lz4",
     "minio",
