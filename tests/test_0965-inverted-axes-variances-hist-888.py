@@ -13,7 +13,11 @@ def test_axes_of_variances_to_hist_2D_weighted():
     hroot2.Sumw2()
 
     for _ in range(1000):
-        hroot2.Fill(5.0 * numpy.random.random(), 5.0 * numpy.random.random(), numpy.random.random())
+        hroot2.Fill(
+            5.0 * numpy.random.random(),
+            5.0 * numpy.random.random(),
+            numpy.random.random(),
+        )
 
     huproot2 = uproot.from_pyroot(hroot2)
     vuproot = huproot2.variances()
@@ -22,14 +26,19 @@ def test_axes_of_variances_to_hist_2D_weighted():
 
     # check variances are equal before and after to_hist
     assert (vuproot == vhist).all()
-   
+
 
 def test_axes_variances_to_hist_3D_weighted():
     hroot3 = ROOT.TH3F("hroot3", "", 3, 0, 1, 2, 0, 1, 5, 0, 1)
     hroot3.Sumw2()
 
     for _ in range(2000):
-        hroot3.Fill(5.0 * numpy.random.random(), 5.0 * numpy.random.random(), 5.0 * numpy.random.random(), numpy.random.random())
+        hroot3.Fill(
+            5.0 * numpy.random.random(),
+            5.0 * numpy.random.random(),
+            5.0 * numpy.random.random(),
+            numpy.random.random(),
+        )
 
     huproot3 = uproot.from_pyroot(hroot3)
     vuproot = huproot3.variances()
@@ -38,4 +47,3 @@ def test_axes_variances_to_hist_3D_weighted():
 
     # check variances are equal before and after to_hist
     assert (vuproot == vhist).all()
-   
