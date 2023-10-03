@@ -211,13 +211,12 @@ class Histogram:
 
         boost_histogram = uproot.extras.boost_histogram()
 
-        values = self.values(flow=True)
-
         sumw2 = None
         if self.weighted:  # ensures self.member("fSumw2") exists
-            sumw2 = self.variances(flow=True)
+            values, sumw2 = self._values_variances(flow=True)
             storage = boost_histogram.storage.Weight()
         else:
+            values = self.values(flow=True)
             if issubclass(values.dtype.type, numpy.integer):
                 storage = boost_histogram.storage.Int64()
             else:
