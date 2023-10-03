@@ -785,7 +785,7 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
 
         def impl(form, column_path):
             # Store columnar path
-            form_key_to_path[form.form_key] = column_path[-1] if column_path else None
+            form_key_to_path[form.form_key] = column_path[0] if column_path else None
 
             if form.is_union:
                 for _i, entry in enumerate(form.contents):
