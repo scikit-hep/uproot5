@@ -3,7 +3,7 @@
 import pytest
 import uproot
 import numpy
-import hist 
+import hist
 import ROOT
 
 
@@ -20,10 +20,10 @@ for i in range(14):
     hroot2.Fill(a[i], b[i], c[i])
 
     # variances with flow:
-    # 0.0 0.0 0.0 0.0 0.0 
-    # 0.0 2329.0 98.0 289.0 0.0 
-    # 0.0 0.0 0.0 50.0 0.0 
-    # 0.0 0.0 0.0 0.0 0.0 
+    # 0.0 0.0 0.0 0.0 0.0
+    # 0.0 2329.0 98.0 289.0 0.0
+    # 0.0 0.0 0.0 50.0 0.0
+    # 0.0 0.0 0.0 0.0 0.0
 
     huproot2 = uproot.from_pyroot(hroot2)
     vuproot = huproot2.variances()
@@ -32,4 +32,3 @@ for i in range(14):
     for i in range(2):
         for j in range(3):
             assert vuproot[i][j] == vhist[i][j]
-
