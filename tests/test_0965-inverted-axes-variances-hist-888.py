@@ -38,10 +38,10 @@ def test_axes_variances_to_hist_3D_weighted():
     hroot3 = ROOT.TH3F("hroot3", "", 3, 0, 1, 2, 0, 1, 5, 0, 1)
     hroot3.Sumw2()
 
-    a = [0.12, 0.32, 0.1, 0.3, 0.4,0.7, 0.12, 0.12, 0.32, 0.1, 0.3, 0.4,0.7, 0.12]
-    b = [0.22, 0.121, 0.8, 0.3, 0.4,0.7, 0.23, 0.12, 0.32, 0.1, 0.3, 0.4,0.7, 0.12]
-    c = [0.22, 0.121, 0.8, 0.3, 0.4,0.7, 0.23, 0.12, 0.32, 0.1, 0.3, 0.4,0.7, 0.12]
-    d = [23, 19, 17, 11 , 7, 5, 3,23, 19, 17, 11 , 7, 5, 3]
+    a = [0.12, 0.32, 0.1, 0.3, 0.4, 0.7, 0.12, 0.12, 0.32, 0.1, 0.3, 0.4, 0.7, 0.12]
+    b = [0.22, 0.121, 0.8, 0.3, 0.4, 0.7, 0.23, 0.12, 0.32, 0.1, 0.3, 0.4, 0.7, 0.12]
+    c = [0.22, 0.121, 0.8, 0.3, 0.4, 0.7, 0.23, 0.12, 0.32, 0.1, 0.3, 0.4, 0.7, 0.12]
+    d = [23, 19, 17, 11, 7, 5, 3, 23, 19, 17, 11, 7, 5, 3]
 
     for i in range(14):
         hroot3.Fill(a[i], b[i], c[i], d[i])
@@ -51,7 +51,7 @@ def test_axes_variances_to_hist_3D_weighted():
     hhist3 = huproot3.to_hist()
     vhist = hhist3.variances()
 
-    #check variances are equal before and after to_hist
+    # check variances are equal before and after to_hist
     for i in range(3):
         for j in range(2):
             for k in range(5):
