@@ -18,24 +18,24 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         # Remove uproot-specific options (should be done earlier)
         # TODO: is timeout always valid?
-        opts = {
-            k: v
-            for k, v in kwargs.items()
-            if k
-            not in {
-                "file_handler",
-                "xrootd_handler",
-                "http_handler",
-                "s3_handler",
-                "object_handler",
-                "max_num_elements",
-                "num_workers",
-                "num_fallback_workers",
-                "use_threads",
-                "begin_chunk_size",
-                "minimal_ttree_metadata",
-            }
+
+        # TODO: import a list of all valid options instead of hardcoding
+        exclude_keys = {
+            "file_handler",
+            "xrootd_handler",
+            "http_handler",
+            "s3_handler",
+            "object_handler",
+            "max_num_elements",
+            "num_workers",
+            "num_fallback_workers",
+            "use_threads",
+            "begin_chunk_size",
+            "minimal_ttree_metadata",
         }
+
+        opts = {k: v for k, v in kwargs.items() if k not in exclude_keys}
+
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
         self._file = self._fs.open(self._file_path, "rb")
         self._fh = None
