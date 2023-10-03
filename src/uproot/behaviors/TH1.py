@@ -219,14 +219,10 @@ class Histogram:
             sumw2 = numpy.asarray(sumw2, dtype=sumw2.dtype.newbyteorder("="))
 
             # the fSumw2 member is read column by column and needs to be swapped for the 2D case
-            if len(values.shape) == 2:
+            if len(values.shape) > 1:
                 sumw2 = numpy.reshape(
-                    sumw2, (values.shape[1], values.shape[0])
-                ).swapaxes(0, 1)
-            elif len(values.shape) == 3:
-                sumw2 = numpy.reshape(
-                    sumw2, (values.shape[2], values.shape[1], values.shape[0])
-                ).swapaxes(0, 2)
+                        sumw2, values.shape[::-1]
+                    ).swapaxes(0, len(values.shape) - 1)
             else:
                 sumw2 = numpy.reshape(sumw2, values.shape)
 
