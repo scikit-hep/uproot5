@@ -5,8 +5,6 @@ import pytest
 import uproot
 import uproot.source.fsspec
 
-pytest.importorskip("fsspec")
-
 
 def validate_coffea_file_0(file):
     data = file["Events/MET_pt"].array(library="np")
