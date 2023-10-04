@@ -28,6 +28,6 @@ def test_issue176_again():
 
 @pytest.mark.network
 def test_issue121():
-    with uproot.open(skhep_testdata.data_path("uproot-issue-121.root")) as f:
+    with uproot.open(skhep_testdata.data_path("uproot-issue121.root")) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
