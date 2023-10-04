@@ -62,6 +62,7 @@ dev = [
 test = [
     "lz4",
     "minio",
+    "s3fs",
     "pytest>=6",
     "pytest-timeout",
     "pytest-rerunfailures",
