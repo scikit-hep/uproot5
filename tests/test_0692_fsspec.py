@@ -10,7 +10,7 @@ import uproot.source.fsspec
 def test_open_fsspec_http():
     with uproot.open(
         "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root",
-        http_handler=uproot.source.fsspec.FSSpecSource,
+        handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
@@ -21,7 +21,7 @@ def test_open_fsspec_github():
     pytest.skip("not working yet")
     with uproot.open(
         "github://CoffeaTeam:coffea@master/tests/samples/nano_dy.root",
-        http_handler=uproot.source.fsspec.FSSpecSource,
+        handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
@@ -41,7 +41,7 @@ def test_open_fsspec_local(tmp_path):
 
     with uproot.open(
         local_path,
-        file_handler=uproot.source.fsspec.FSSpecSource,
+        handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
@@ -54,7 +54,7 @@ def test_open_fsspec_s3():
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
         anon=True,
-        s3_handler=uproot.source.fsspec.FSSpecSource,
+        handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Event/Event.mEventId"].array(library="np")
         assert len(data) == 8004
@@ -66,7 +66,7 @@ def test_open_fsspec_xrootd():
     pytest.importorskip("XRootD")
     with uproot.open(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        xrootd_handler=uproot.source.fsspec.FSSpecSource,
+        handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20

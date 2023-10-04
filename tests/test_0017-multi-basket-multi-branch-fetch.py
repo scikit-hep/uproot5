@@ -165,13 +165,13 @@ def test_ranges_or_baskets_to_arrays():
 
 
 @pytest.mark.parametrize(
-    "file_handler",
+    "handler",
     [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
-def test_branch_array_1(file_handler):
+def test_branch_array_1(handler):
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
-        file_handler=file_handler,
+        handler=handler,
     )["sample/i4"] as branch:
         assert branch.array(
             uproot.interpretation.numerical.AsDtype(">i4"), library="np"
@@ -210,13 +210,13 @@ def test_branch_array_1(file_handler):
 
 
 @pytest.mark.parametrize(
-    "file_handler",
+    "handler",
     [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
-def test_branch_array_2(file_handler):
+def test_branch_array_2(handler):
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
-        file_handler=file_handler,
+        handler=handler,
     )["sample/i4"] as branch:
         assert branch.array(
             uproot.interpretation.numerical.AsDtype(">i4"),
@@ -250,14 +250,14 @@ def test_branch_array_2(file_handler):
 
 
 @pytest.mark.parametrize(
-    "file_handler",
+    "handler",
     [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
-def test_branch_array_3(file_handler):
+def test_branch_array_3(handler):
     executor = uproot.ThreadPoolExecutor()
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
-        file_handler=file_handler,
+        handler=handler,
         interpretation_executor=executor,
         decompression_executor=executor,
     )["sample/i4"] as branch:
@@ -293,13 +293,13 @@ def test_branch_array_3(file_handler):
 
 
 @pytest.mark.parametrize(
-    "file_handler",
+    "handler",
     [uproot.source.file.MultithreadedFileSource, uproot.source.file.MemmapSource],
 )
-def test_branch_array_4(file_handler):
+def test_branch_array_4(handler):
     with uproot.open(
         skhep_testdata.data_path("uproot-sample-6.20.04-uncompressed.root"),
-        file_handler=file_handler,
+        handler=handler,
     )["sample/i4"] as branch:
         with pytest.raises(ValueError):
             branch.array(uproot.interpretation.numerical.AsDtype(">i8"), library="np")
