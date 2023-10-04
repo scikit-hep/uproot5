@@ -59,6 +59,9 @@ dev = [
 test = [
     "lz4",
     "minio",
+    "aiohttp",
+    "fsspec",
+    "fsspec-xrootd",
     "pytest>=6",
     "pytest-timeout",
     "pytest-rerunfailures",
