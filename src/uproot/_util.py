@@ -287,11 +287,11 @@ def file_object_path_split(path):
     except ValueError:
         return path, None
     else:
-        file_path, object_path = path[:index], path[index + 1:]
+        file_path, object_path = path[:index], path[index + 1 :]
 
         if (
-                _might_be_port.match(object_path) is not None
-                and urlparse(file_path).path == ""
+            _might_be_port.match(object_path) is not None
+            and urlparse(file_path).path == ""
         ):
             return path, None
 
@@ -326,9 +326,9 @@ def file_path_to_source_class(file_path, options):
         return out, file_path
 
     if (
-            not isstr(file_path)
-            and hasattr(file_path, "read")
-            and hasattr(file_path, "seek")
+        not isstr(file_path)
+        and hasattr(file_path, "read")
+        and hasattr(file_path, "seek")
     ):
         out = options["object_handler"]
         if out is None:
@@ -336,7 +336,7 @@ def file_path_to_source_class(file_path, options):
         else:
             warnings.warn(
                 f"""In version 5.2.0, the 'object_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={repr(out)})
+uproot.open(..., handler={out!r})
 instead.
 
 To raise these warnings as errors (and get stack traces to find out where they're called), run
@@ -370,9 +370,9 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             windows_absolute_path = parsed_url_path[1:]
 
     if (
-            parsed_url.scheme.upper() == "FILE"
-            or len(parsed_url.scheme) == 0
-            or windows_absolute_path is not None
+        parsed_url.scheme.upper() == "FILE"
+        or len(parsed_url.scheme) == 0
+        or windows_absolute_path is not None
     ):
         if windows_absolute_path is None:
             if parsed_url.netloc.upper() == "LOCALHOST":
@@ -388,9 +388,9 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         else:
             warnings.warn(
                 f"""In version 5.2.0, the 'file_handler' argument will be removed from 'uproot.open'. Use
-    uproot.open(..., handler={repr(out)})
+    uproot.open(..., handler={out!r})
     instead.
-    
+
     To raise these warnings as errors (and get stack traces to find out where they're called), run
     import warnings
     warnings.filterwarnings("error", module="uproot.*")
@@ -411,9 +411,9 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         else:
             warnings.warn(
                 f"""In version 5.2.0, the 'xrootd_handler' argument will be removed from 'uproot.open'. Use
-    uproot.open(..., handler={repr(out)})
+    uproot.open(..., handler={out!r})
     instead.
-    
+
     To raise these warnings as errors (and get stack traces to find out where they're called), run
     import warnings
     warnings.filterwarnings("error", module="uproot.*")
@@ -434,7 +434,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         else:
             warnings.warn(
                 f"""In version 5.2.0, the 's3_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={repr(out)})
+uproot.open(..., handler={out!r})
 instead.
 
 To raise these warnings as errors (and get stack traces to find out where they're called), run
@@ -456,7 +456,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         else:
             warnings.warn(
                 f"""In version 5.2.0, the 'http_handler' argument will be removed from 'uproot.open'. Use
-uproot.open(..., handler={repr(out)})
+uproot.open(..., handler={out!r})
 instead.
 
 To raise these warnings as errors (and get stack traces to find out where they're called), run
@@ -533,35 +533,35 @@ def memory_size(data, error_message=None):
             if unit == "KB":
                 target *= 1000
             elif unit == "MB":
-                target *= 1000 ** 2
+                target *= 1000**2
             elif unit == "GB":
-                target *= 1000 ** 3
+                target *= 1000**3
             elif unit == "TB":
-                target *= 1000 ** 4
+                target *= 1000**4
             elif unit == "PB":
-                target *= 1000 ** 5
+                target *= 1000**5
             elif unit == "EB":
-                target *= 1000 ** 6
+                target *= 1000**6
             elif unit == "ZB":
-                target *= 1000 ** 7
+                target *= 1000**7
             elif unit == "YB":
-                target *= 1000 ** 8
+                target *= 1000**8
             elif unit == "KIB":
                 target *= 1024
             elif unit == "MIB":
-                target *= 1024 ** 2
+                target *= 1024**2
             elif unit == "GIB":
-                target *= 1024 ** 3
+                target *= 1024**3
             elif unit == "TIB":
-                target *= 1024 ** 4
+                target *= 1024**4
             elif unit == "PIB":
-                target *= 1024 ** 5
+                target *= 1024**5
             elif unit == "EIB":
-                target *= 1024 ** 6
+                target *= 1024**6
             elif unit == "ZIB":
-                target *= 1024 ** 7
+                target *= 1024**7
             elif unit == "YIB":
-                target *= 1024 ** 8
+                target *= 1024**8
             return int(target)
 
     if isint(data):
@@ -831,10 +831,10 @@ def damerau_levenshtein(a, b, ratio=False):
 
             # Transposition
             if (
-                    i > 1
-                    and j > 1
-                    and a[i - 1].lower() == b[j - 2].lower()
-                    and a[i - 2].lower() == b[j - 2].lower()
+                i > 1
+                and j > 1
+                and a[i - 1].lower() == b[j - 2].lower()
+                and a[i - 2].lower() == b[j - 2].lower()
             ):
                 if a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
                     # Transpose only
@@ -868,12 +868,12 @@ def datetime_to_code(dt):
     Converts a Python datetime into a ROOT datime code.
     """
     return (
-            ((dt.year - 1995) << 26)
-            | (dt.month << 22)
-            | (dt.day << 17)
-            | (dt.hour << 12)
-            | (dt.minute << 6)
-            | (dt.second)
+        ((dt.year - 1995) << 26)
+        | (dt.month << 22)
+        | (dt.day << 17)
+        | (dt.hour << 12)
+        | (dt.minute << 6)
+        | (dt.second)
     )
 
 
@@ -957,11 +957,11 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
                 else:
                     results = []
                     for combination in itertools.product(
-                            *[match.group(0)[1:-1].split(",") for match in matches]
+                        *[match.group(0)[1:-1].split(",") for match in matches]
                     ):
                         tmp = expanded
                         for c, m in list(zip(combination, matches))[::-1]:
-                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1]:]
+                            tmp = tmp[: m.span()[0]] + c + tmp[m.span()[1] :]
                         results.append(tmp)
 
                 seen = set()
@@ -990,11 +990,11 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
             else:
                 object_path = maybe_object_path
             for file_path, _, _ in _regularize_files_inner(
-                    key,
-                    False,
-                    counter,
-                    HasBranches,
-                    steps_allowed,
+                key,
+                False,
+                counter,
+                HasBranches,
+                steps_allowed,
             ):
                 yield file_path, object_path, maybe_steps
 
@@ -1002,7 +1002,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
         for file in files:
             counter[0] += 1
             for file_path, object_path, maybe_steps in _regularize_files_inner(
-                    file, parse_colon, counter, HasBranches, steps_allowed
+                file, parse_colon, counter, HasBranches, steps_allowed
             ):
                 yield file_path, object_path, maybe_steps
 
@@ -1025,7 +1025,7 @@ def regularize_files(files, steps_allowed):
     seen = set()
     counter = [0]
     for file_path, object_path, maybe_steps in _regularize_files_inner(
-            files, True, counter, HasBranches, steps_allowed
+        files, True, counter, HasBranches, steps_allowed
     ):
         if isstr(file_path):
             key = (counter[0], file_path, object_path)
@@ -1047,7 +1047,7 @@ def regularize_files(files, steps_allowed):
 
 
 def regularize_object_path(
-        file_path, object_path, custom_classes, allow_missing, options
+    file_path, object_path, custom_classes, allow_missing, options
 ):
     """
     Returns the TTree object from given object and file paths.
