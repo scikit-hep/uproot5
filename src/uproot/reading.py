@@ -178,10 +178,11 @@ class _OpenDefaults(dict):
 
 open.defaults = _OpenDefaults(
     {
-        "file_handler": uproot.source.file.MemmapSource,
-        "s3_handler": uproot.source.s3.S3Source,
-        "http_handler": uproot.source.http.HTTPSource,
-        "object_handler": uproot.source.object.ObjectSource,
+        "handler": None,
+        # "file_handler": uproot.source.file.MemmapSource,
+        # "s3_handler": uproot.source.s3.S3Source,
+        # "http_handler": uproot.source.http.HTTPSource,
+        # "object_handler": uproot.source.object.ObjectSource,
         "timeout": 30,
         "max_num_elements": None,
         "num_workers": 1,
