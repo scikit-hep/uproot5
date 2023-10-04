@@ -19,11 +19,11 @@ class FSSpecSource(uproot.source.chunk.Source):
         # TODO: is timeout always valid?
 
         # Remove uproot-specific options (should be done earlier)
-        exclude_keys = uproot.reading.open.defaults.keys()
+        exclude_keys = set(uproot.reading.open.defaults.keys())
         opts = {k: v for k, v in kwargs.items() if k not in exclude_keys}
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
-        self._file = self._fs.open(self._file_path, "rb")
+        self._file = self._fs.open(self._file_path, mode="r")
         self._fh = None
         self._num_requests = 0
         self._num_requested_chunks = 0
