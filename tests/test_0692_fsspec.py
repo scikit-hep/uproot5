@@ -6,18 +6,14 @@ import uproot
 import uproot.source.fsspec
 
 
-def validate_coffea_file_0(file):
-    data = file["Events/MET_pt"].array(library="np")
-    assert len(data) == 40
-
-
 @pytest.mark.network
 def test_open_fsspec_http():
     with uproot.open(
         "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
-        validate_coffea_file_0(f)
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
 
 
 @pytest.mark.network
@@ -27,7 +23,8 @@ def test_open_fsspec_github():
         "github://CoffeaTeam:coffea@master/tests/samples/nano_dy.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
-        validate_coffea_file_0(f)
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
 
 
 @pytest.mark.network
@@ -46,7 +43,8 @@ def test_open_fsspec_local(tmp_path):
         local_path,
         file_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
-        validate_coffea_file_0(f)
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
 
 
 @pytest.mark.network
