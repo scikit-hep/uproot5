@@ -963,7 +963,9 @@ class UprootReadMixin:
     def project(self: T, *, report: TypeTracerReport, state: dict) -> T:
         ## Read from stash
         # Form hierarchy information
-        form_key_to_parent_key: dict = state["trace"]["form_key_to_parent_key"]
+        form_key_to_parent_form_key: dict = state["trace"][
+            "form_key_to_parent_form_key"
+        ]
         # Buffer hierarchy information
         form_key_to_buffer_keys: dict = state["trace"]["form_key_to_buffer_keys"]
         # Restructured form information
@@ -975,7 +977,7 @@ class UprootReadMixin:
             *buffer_keys_required_to_compute_shapes(
                 form_info.parse_buffer_key,
                 report.shape_touched,
-                form_key_to_parent_key,
+                form_key_to_parent_form_key,
                 form_key_to_buffer_keys,
             ),
         }
