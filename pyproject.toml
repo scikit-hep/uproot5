@@ -55,13 +55,13 @@ dev = [
     "hist>=1.2",
     "pandas",
     "awkward-pandas;python_version >= \"3.8\"",
-    "aiohttp",
-    "fsspec",
-    "fsspec-xrootd",
 ]
 test = [
     "lz4",
     "minio",
+    "aiohttp",
+    "fsspec",
+    "fsspec-xrootd",
     "s3fs",
     "pytest>=6",
     "pytest-timeout",
