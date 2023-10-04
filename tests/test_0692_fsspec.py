@@ -5,11 +5,13 @@ import pytest
 import uproot
 import uproot.source.fsspec
 
+import skhep_testdata
+
 
 @pytest.mark.network
 def test_open_fsspec_http():
     with uproot.open(
-        "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root",
+        skhep_testdata.data_path("uproot-issue-121.root"),
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
@@ -20,7 +22,7 @@ def test_open_fsspec_http():
 def test_open_fsspec_github():
     pytest.skip("not working yet")
     with uproot.open(
-        "github://CoffeaTeam:coffea@master/tests/samples/nano_dy.root",
+        "github://scikit-hep:scikit-hep-testdata@main/src/skhep_testdata/data/uproot-issue-121.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
@@ -29,7 +31,7 @@ def test_open_fsspec_github():
 
 @pytest.mark.network
 def test_open_fsspec_local(tmp_path):
-    url = "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root"
+    url = skhep_testdata.data_path("uproot-issue-121.root")
 
     # download file to local
     local_path = str(tmp_path / "nano_dy.root")
