@@ -60,7 +60,7 @@ test = [
     "lz4",
     "minio",
     "aiohttp",
-    # "fsspec",
+    "fsspec",
     "fsspec-xrootd",
     # "s3fs",
     "pytest>=6",
