@@ -8,7 +8,6 @@ and the classes that are too fundamental to be models:
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 
-
 import struct
 import sys
 import uuid
@@ -179,10 +178,10 @@ class _OpenDefaults(dict):
 open.defaults = _OpenDefaults(
     {
         "handler": None,
-        # "file_handler": uproot.source.file.MemmapSource,
-        # "s3_handler": uproot.source.s3.S3Source,
-        # "http_handler": uproot.source.http.HTTPSource,
-        # "object_handler": uproot.source.object.ObjectSource,
+        "file_handler": None,  # Deprecated
+        "s3_handler": None,  # Deprecated
+        "http_handler": None,  # Deprecated
+        "object_handler": None,  # Deprecated
         "timeout": 30,
         "max_num_elements": None,
         "num_workers": 1,
@@ -192,7 +191,6 @@ open.defaults = _OpenDefaults(
         "minimal_ttree_metadata": True,
     }
 )
-
 
 must_be_attached = [
     "TROOT",
