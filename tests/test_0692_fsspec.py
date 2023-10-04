@@ -6,14 +6,61 @@ import uproot
 import uproot.source.fsspec
 
 
+def validate_coffea_file_0(file):
+    data = file["Events/MET_pt"].array(library="np")
+    assert len(data) == 40
+
+
 @pytest.mark.network
 def test_open_fsspec_http():
     with uproot.open(
         "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
-        data = f["Events/MET_pt"].array(library="np")
-        assert len(data) == 40
+        validate_coffea_file_0(f)
+
+
+@pytest.mark.network
+def test_open_fsspec_github():
+    with uproot.open(
+        "github://CoffeaTeam:coffea@master/tests/samples/nano_dy.root",
+        http_handler=uproot.source.fsspec.FSSpecSource,
+    ) as f:
+        validate_coffea_file_0(f)
+
+
+@pytest.mark.network
+def test_open_fsspec_local(tmp_path):
+    pytest.skip("not working yet")
+
+    import fsspec
+
+    url = "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root"
+    # download file to local
+    local_path = str(tmp_path / "nano_dy.root")
+    with fsspec.open(url) as f:
+        with open(local_path, "wb") as fout:
+            fout.write(f.read())
+
+    with uproot.open(
+        local_path,
+        file_handler=uproot.source.fsspec.FSSpecSource,
+    ) as f:
+        validate_coffea_file_0(f)
+
+
+@pytest.mark.network
+def test_open_fsspec_s3():
+    pytest.importorskip("s3fs")
+    pytest.skip("not working yet")
+
+    with uproot.open(
+        "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
+        anon=True,
+        s3_handler=uproot.source.fsspec.FSSpecSource,
+    ) as f:
+        data = f["Event/Event.mEventId"].array(library="np")
+        assert len(data) == 8004
 
 
 @pytest.mark.network
