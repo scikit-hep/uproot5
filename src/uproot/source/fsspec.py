@@ -23,7 +23,8 @@ class FSSpecSource(uproot.source.chunk.Source):
         opts = {k: v for k, v in kwargs.items() if k not in exclude_keys}
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
-        self._file = self._fs.open(self._file_path, mode="r")
+        # TODO: set mode to "read-only" in a way that works for all filesystems
+        self._file = self._fs.open(self._file_path)
         self._fh = None
         self._num_requests = 0
         self._num_requested_chunks = 0

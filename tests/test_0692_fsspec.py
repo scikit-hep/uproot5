@@ -5,6 +5,8 @@ import pytest
 import uproot
 import uproot.source.fsspec
 
+pytest.importorskip("fsspec")
+
 
 def validate_coffea_file_0(file):
     data = file["Events/MET_pt"].array(library="np")
@@ -31,13 +33,12 @@ def test_open_fsspec_github():
 
 @pytest.mark.network
 def test_open_fsspec_local(tmp_path):
-    pytest.skip("not working yet")
-
-    import fsspec
-
     url = "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root"
+
     # download file to local
     local_path = str(tmp_path / "nano_dy.root")
+    import fsspec
+
     with fsspec.open(url) as f:
         with open(local_path, "wb") as fout:
             fout.write(f.read())
@@ -52,7 +53,6 @@ def test_open_fsspec_local(tmp_path):
 @pytest.mark.network
 def test_open_fsspec_s3():
     pytest.importorskip("s3fs")
-    pytest.skip("not working yet")
 
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
