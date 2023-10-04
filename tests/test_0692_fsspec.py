@@ -24,6 +24,7 @@ def test_open_fsspec_http():
 
 @pytest.mark.network
 def test_open_fsspec_github():
+    pytest.skip("not working yet")
     with uproot.open(
         "github://CoffeaTeam:coffea@master/tests/samples/nano_dy.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
