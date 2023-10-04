@@ -330,6 +330,7 @@ def file_path_to_source_class(file_path, options):
             and hasattr(file_path, "read")
             and hasattr(file_path, "seek")
     ):
+        out = uproot.source.object.ObjectSource
         return out, file_path
 
     windows_absolute_path = None
