@@ -897,23 +897,16 @@ class UprootReadMixin:
         # Populate container with placeholders if keys aren't required
         # Otherwise, read from disk
         container = {}
-
-        expected_from_buffers = form.expected_from_buffers(
+        for buffer_key, dtype in form.expected_from_buffers(
             buffer_key=form_info.buffer_key
-        )
-
-        # At this point, we've dispensed with the information pertaining to
-        # which buffer keys were read. Instead, we'll populate the mapping for
-        # each buffer key whose source TTree keys were loaded.
-        keys_to_read = set.intersection(
-            *(form_info.keys_for_buffer_keys({k}) for k in expected_from_buffers)
-        )
-
-        for buffer_key, dtype in expected_from_buffers.items():
+        ).items():
+            # Which key(s) does this buffer require. This code permits the caller
+            # to require multiple keys to compute a single buffer.
+            keys_for_buffer = form_info.keys_for_buffer_keys({buffer_key})
             # If reading this buffer loads a permitted key, read from the tree
             # We might not have _all_ keys if e.g. buffer A requires one
             # but not two of the keys required for buffer B
-            if all(k in self.common_keys for k in keys_to_read):
+            if all(k in self.common_keys for k in keys_for_buffer):
                 container[buffer_key] = mapping[buffer_key]
             # Otherwise, introduce a placeholder
             else:
