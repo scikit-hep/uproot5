@@ -281,6 +281,8 @@ def file_object_path_split(path):
     Split a path with a colon into a file path and an object-in-file path.
     """
 
+    # TODO: once fsspec is added as a dependency, this try/except can be removed and the old function can be deleted
+
     # TODO: rename path for URI or URL (confusing, here the input "path" can also include schema, etc.)
     try:
         import fsspec.utils
