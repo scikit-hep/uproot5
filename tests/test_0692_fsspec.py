@@ -11,7 +11,7 @@ import skhep_testdata
 @pytest.mark.network
 def test_open_fsspec_http():
     with uproot.open(
-        skhep_testdata.data_path("uproot-issue121.root"),
+        "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
@@ -29,17 +29,8 @@ def test_open_fsspec_github():
         assert len(data) == 40
 
 
-@pytest.mark.network
 def test_open_fsspec_local(tmp_path):
-    url = skhep_testdata.data_path("uproot-issue121.root")
-
-    # download file to local
-    local_path = str(tmp_path / "nano_dy.root")
-    import fsspec
-
-    with fsspec.open(url) as f:
-        with open(local_path, "wb") as fout:
-            fout.write(f.read())
+    local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     with uproot.open(
         local_path,
