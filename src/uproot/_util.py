@@ -280,6 +280,44 @@ def file_object_path_split(path):
     """
     Split a path with a colon into a file path and an object-in-file path.
     """
+
+    # TODO: once fsspec is added as a dependency, this try/except can be removed and the old function can be deleted
+
+    # TODO: rename path for URI or URL (confusing, here the input "path" can also include schema, etc.)
+    try:
+        import fsspec.utils
+
+        # remove whitespace
+        path = path.rstrip()
+        path = path.lstrip()
+
+        # split url into parts
+        parsed_url = fsspec.utils.urlsplit(path)
+
+        parts = parsed_url.path.split(":")
+        if len(parts) == 1:
+            obj = None
+        elif len(parts) == 2:
+            obj = parts[1]
+            # remove the object from the path (including the colon)
+            path = path[: -len(obj) - 1]
+            obj.lstrip()
+        else:
+            raise ValueError(
+                f"too many colons in file path: {path} for url {parsed_url}"
+            )
+
+        return path, obj
+        # path does not include the scheme, etc
+
+    except ImportError:
+        return _file_object_path_split_use_when_fsspec_not_installed(path)
+
+
+def _file_object_path_split_use_when_fsspec_not_installed(path):
+    """
+    Split a path with a colon into a file path and an object-in-file path.
+    """
     path = regularize_path(path)
 
     try:
