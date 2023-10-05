@@ -299,7 +299,8 @@ def file_object_path_split(path):
             obj = None
         elif len(parts) == 2:
             obj = parts[1]
-            path = path.rstrip(":" + obj)
+            # remove the object from the path (including the colon)
+            path = path[: -len(obj) - 1]
             obj.lstrip()
         else:
             raise ValueError(
