@@ -20,7 +20,8 @@ def test_open_fsspec_http():
 
 @pytest.mark.network
 def test_open_fsspec_github():
-    pytest.skip("not working yet")
+    pytest.skip("skipping due to API rate limitations")
+    # See https://github.com/scikit-hep/uproot5/pull/973 for details on why this is skipped, but it should work fine
     with uproot.open(
         "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
