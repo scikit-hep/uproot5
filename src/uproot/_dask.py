@@ -754,11 +754,16 @@ class ImplementsFormMappingInfo(Protocol):
     def parse_buffer_key(self, buffer_key: str) -> tuple[str, str]:
         ...
 
-    def keys_for_buffer_keys(self, buffer_keys: set[str]) -> set[str]:
+    def keys_for_buffer_keys(self, buffer_keys: frozenset[str]) -> frozenset[str]:
         ...
 
     def load_buffers(
-        self, tree: HasBranches, keys: set[str], start: int, stop: int, options: Any
+        self,
+        tree: HasBranches,
+        keys: frozenset[str],
+        start: int,
+        stop: int,
+        options: Any,
     ) -> Mapping[str, AwkArray]:
         ...
 
@@ -815,17 +820,22 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
         form_key, attribute = buffer_key.rsplit("-", maxsplit=1)
         return form_key, attribute
 
-    def keys_for_buffer_keys(self, buffer_keys: set[str]) -> set[str]:
+    def keys_for_buffer_keys(self, buffer_keys: frozenset[str]) -> frozenset[str]:
         keys: set[str] = set()
         for buffer_key in buffer_keys:
             # Identify form key
             form_key, attribute = buffer_key.rsplit("-", maxsplit=1)
             # Identify key from form_key
             keys.add(self._form_key_to_key[form_key])
-        return keys
+        return frozenset(keys)
 
     def load_buffers(
-        self, tree: HasBranches, keys: set[str], start: int, stop: int, options: Any
+        self,
+        tree: HasBranches,
+        keys: frozenset[str],
+        start: int,
+        stop: int,
+        options: Any,
     ) -> Mapping[str, AwkArray]:
         # First, let's read the arrays as a tuple (to associate with each key)
         arrays = tree.arrays(
@@ -874,7 +884,7 @@ T = TypeVar("T")
 class UprootReadMixin:
     form_mapping: ImplementsFormMapping
     base_form: Form
-    common_keys: set[str]
+    common_keys: frozenset[str]
     interp_options: dict[str, Any]
 
     def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
@@ -902,7 +912,7 @@ class UprootReadMixin:
         ).items():
             # Which key(s) does this buffer require. This code permits the caller
             # to require multiple keys to compute a single buffer.
-            keys_for_buffer = form_info.keys_for_buffer_keys({buffer_key})
+            keys_for_buffer = form_info.keys_for_buffer_keys(frozenset({buffer_key}))
             # If reading this buffer loads a permitted key, read from the tree
             # We might not have _all_ keys if e.g. buffer A requires one
             # but not two of the keys required for buffer B
@@ -961,6 +971,12 @@ class UprootReadMixin:
         )
 
     def project(self: T, *, report: TypeTracerReport, state: dict) -> T:
+        keys = self.necessary_columns(report=report, state=state)
+        return self.project_keys(keys)
+
+    def necessary_columns(
+        self, *, report: TypeTracerReport, state: dict
+    ) -> frozenset[str]:
         ## Read from stash
         # Form hierarchy information
         form_key_to_parent_form_key: dict = state["trace"][
@@ -983,10 +999,11 @@ class UprootReadMixin:
         }
 
         # Determine which TTree keys need to be read
-        keys = form_info.keys_for_buffer_keys(data_buffers) & set(self.common_keys)
-        return self.project_keys(keys)
+        return form_info.keys_for_buffer_keys(data_buffers) & frozenset(
+            self.common_keys
+        )
 
-    def project_keys(self: T, keys: set[str]) -> T:
+    def project_keys(self: T, keys: frozenset[str]) -> T:
         raise NotImplementedError
 
 
@@ -1000,12 +1017,12 @@ class _UprootRead(UprootReadMixin):
         base_form,
     ) -> None:
         self.ttrees = ttrees
-        self.common_keys = common_keys
+        self.common_keys = frozenset(common_keys)
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.base_form = base_form
 
-    def project_keys(self: T, keys: set[str]) -> T:
+    def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootRead(
             self.ttrees, keys, self.interp_options, self.form_mapping, self.base_form
         )
@@ -1030,7 +1047,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         self.custom_classes = custom_classes
         self.allow_missing = allow_missing
         self.real_options = real_options
-        self.common_keys = common_keys
+        self.common_keys = frozenset(common_keys)
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.base_form = base_form
@@ -1075,7 +1092,7 @@ which has {num_entries} entries"""
 
         return self.read_tree(ttree, start, stop)
 
-    def project_keys(self: T, keys: set[str]) -> T:
+    def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootOpenAndRead(
             self.custom_classes,
             self.allow_missing,
