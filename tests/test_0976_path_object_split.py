@@ -34,6 +34,6 @@ def test_url_split():
             ),
         ),
     ]:
-        url, object = uproot._util.file_object_path_split(input_url)
+        url, obj = uproot._util.file_object_path_split(input_url)
         assert url == result[0]
-        assert object == result[1]
+        assert obj == result[1]
