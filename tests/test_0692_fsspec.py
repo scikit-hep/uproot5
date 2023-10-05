@@ -22,7 +22,7 @@ def test_open_fsspec_http():
 def test_open_fsspec_github():
     pytest.skip("not working yet")
     with uproot.open(
-        "github://scikit-hep:scikit-hep-testdata@main/src/skhep_testdata/data/uproot-issue121.root",
+        "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
