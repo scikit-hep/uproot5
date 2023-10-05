@@ -288,8 +288,7 @@ def file_object_path_split(path):
         import fsspec.utils
 
         # remove whitespace
-        path = path.rstrip()
-        path = path.lstrip()
+        path = path.strip()
 
         # split url into parts
         parsed_url = fsspec.utils.urlsplit(path)
