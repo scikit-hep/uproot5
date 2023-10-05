@@ -5,11 +5,13 @@ import pytest
 import uproot
 import uproot.source.fsspec
 
+import skhep_testdata
+
 
 @pytest.mark.network
 def test_open_fsspec_http():
     with uproot.open(
-        "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root",
+        "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
@@ -18,26 +20,19 @@ def test_open_fsspec_http():
 
 @pytest.mark.network
 def test_open_fsspec_github():
-    pytest.skip("not working yet")
+    pytest.skip(
+        "skipping due to GitHub API rate limitations - this should work fine - see https://github.com/scikit-hep/uproot5/pull/973 for details"
+    )
     with uproot.open(
-        "github://CoffeaTeam:coffea@master/tests/samples/nano_dy.root",
+        "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
 
 
-@pytest.mark.network
 def test_open_fsspec_local(tmp_path):
-    url = "https://github.com/CoffeaTeam/coffea/raw/master/tests/samples/nano_dy.root"
-
-    # download file to local
-    local_path = str(tmp_path / "nano_dy.root")
-    import fsspec
-
-    with fsspec.open(url) as f:
-        with open(local_path, "wb") as fout:
-            fout.write(f.read())
+    local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     with uproot.open(
         local_path,
