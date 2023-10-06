@@ -280,25 +280,30 @@ def file_object_path_split(path):
     """
     Split a path with a colon into a file path and an object-in-file path.
     """
+    path = regularize_path(path)
 
-    # remove whitespace
-    path = path.strip()
-
-    # split url into parts
-    parsed_url = urlparse(path)
-
-    parts = parsed_url.path.split(":")
-    if len(parts) == 1:
-        obj = None
-    elif len(parts) == 2:
-        obj = parts[1]
-        # remove the object from the path (including the colon)
-        path = path[: -len(obj) - 1]
-        obj = obj.strip()
+    try:
+        index = path.rindex(":")
+    except ValueError:
+        return path, None
     else:
-        raise ValueError(f"too many colons in file path: {path} for url {parsed_url}")
+        file_path, object_path = path[:index], path[index + 1 :]
 
-    return path, obj
+        if (
+            _might_be_port.match(object_path) is not None
+            and urlparse(file_path).path == ""
+        ):
+            return path, None
+
+        file_path = file_path.rstrip()
+        object_path = object_path.lstrip()
+
+        if file_path.upper() in _schemes:
+            return path, None
+        elif win and _windows_drive_letter_ending.match(file_path) is not None:
+            return path, None
+        else:
+            return file_path, object_path
 
 
 def file_path_to_source_class(file_path, options):
