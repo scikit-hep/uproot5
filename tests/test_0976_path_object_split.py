@@ -1,6 +1,7 @@
 import pytest
 
 import uproot
+import pathlib
 
 
 def test_url_split():
@@ -41,7 +42,7 @@ def test_url_split():
             ),
         ),
         (
-            "/tmp/test/dir/file.root:Test",
+            pathlib.Path("/tmp/test/dir/file.root:Test"),
             (
                 "/tmp/test/dir/file.root",
                 "Test",

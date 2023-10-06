@@ -289,6 +289,7 @@ def file_object_path_split(path: str) -> tuple[str, str or None]:
         Example: ``("https://localhost:8888/file.root", "tree")``
     """
 
+    path: str = regularize_path(path)
     # remove whitespace
     path = path.strip()
 
