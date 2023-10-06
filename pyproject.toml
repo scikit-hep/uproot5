@@ -42,6 +42,7 @@ dependencies = [
     "importlib-metadata;python_version<\"3.8\"",
     "numpy",
     "packaging",
+    "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
 dynamic = [
     "version",

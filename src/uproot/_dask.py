@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Iterable, Mapping
-from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
+
+try:
+    from typing import TYPE_CHECKING
+
+    from typing_extensions import Any, Final, Protocol, TypeVar
+except ImportError:
+    from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
 
 import numpy
 from dask_awkward.lib.utils import (
