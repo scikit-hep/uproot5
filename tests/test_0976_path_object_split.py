@@ -33,6 +33,27 @@ def test_url_split():
                 None,
             ),
         ),
+        (
+            "http://localhost:8080/dir/test.root:Test",
+            (
+                "http://localhost:8080/dir/test.root",
+                "Test",
+            ),
+        ),
+        (
+            "/tmp/test/dir/file.root:Test",
+            (
+                "/tmp/test/dir/file.root",
+                "Test",
+            ),
+        ),
+        (
+            r"C:\tmp\test\dir\file.root:Test",
+            (
+                r"C:\tmp\test\dir\file.root",
+                "Testall",
+            ),
+        ),
     ]:
         url, obj = uproot._util.file_object_path_split(input_url)
         assert url == result[0]
