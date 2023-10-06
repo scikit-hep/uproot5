@@ -294,7 +294,7 @@ def file_object_path_split(path):
         obj = parts[1]
         # remove the object from the path (including the colon)
         path = path[: -len(obj) - 1]
-        obj.lstrip()
+        obj = obj.strip()
     else:
         raise ValueError(f"too many colons in file path: {path} for url {parsed_url}")
 
