@@ -51,7 +51,7 @@ def test_url_split():
             r"C:\tmp\test\dir\file.root:Test",
             (
                 r"C:\tmp\test\dir\file.root",
-                "Testall",
+                "Test",
             ),
         ),
     ]:
