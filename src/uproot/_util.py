@@ -276,7 +276,7 @@ _remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
 _schemes = ["FILE", *_remote_schemes]
 
 
-def file_object_path_split(path: str) -> tuple[str, str] or tuple[str, None]:
+def file_object_path_split(path):
     """
     Split a path with a colon into a file path and an object-in-file path.
 
