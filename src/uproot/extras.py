@@ -10,15 +10,10 @@ error messages containing instructions on how to install the library.
 
 
 import atexit
+import importlib.metadata as importlib_metadata
 import os
-import sys
 
 from uproot._util import parse_version
-
-if sys.version_info < (3, 8):
-    import importlib_metadata
-else:
-    import importlib.metadata as importlib_metadata
 
 
 def awkward():
