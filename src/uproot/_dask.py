@@ -11,11 +11,6 @@ except ImportError:
     from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
 
 import numpy
-from dask_awkward.lib.utils import (
-    buffer_keys_required_to_compute_shapes,
-    form_with_unique_keys,
-    trace_form_structure,
-)
 
 import uproot
 from uproot._util import no_filter, unset
@@ -880,7 +875,8 @@ class TrivialFormMappingInfo(ImplementsFormMappingInfo):
 
 class TrivialFormMapping(ImplementsFormMapping):
     def __call__(self, form: Form) -> tuple[Form, TrivialFormMappingInfo]:
-        new_form = form_with_unique_keys(form, "<root>")
+        dask_awkward = uproot.extras.dask_awkward()
+        new_form = dask_awkward.lib.utils.form_with_unique_keys(form, "<root>")
         return new_form, TrivialFormMappingInfo(new_form)
 
 
@@ -951,6 +947,7 @@ class UprootReadMixin:
 
     def prepare_for_projection(self) -> tuple[AwkArray, TypeTracerReport, dict]:
         awkward = uproot.extras.awkward()
+        dask_awkward = uproot.extras.dask_awkward()
 
         # A form mapping will (may) remap the base form into a new form
         # The remapped form can be queried for structural information
@@ -968,7 +965,7 @@ class UprootReadMixin:
             meta,
             report,
             {
-                "trace": trace_form_structure(
+                "trace": dask_awkward.lib.utils.trace_form_structure(
                     high_level_form,
                     buffer_key=form_info.buffer_key,
                 ),
@@ -994,9 +991,10 @@ class UprootReadMixin:
         form_info = state["form_info"]
 
         # Require the data of metadata buffers above shape-only requests
+        dask_awkward = uproot.extras.dask_awkward()
         data_buffers = {
             *report.data_touched,
-            *buffer_keys_required_to_compute_shapes(
+            *dask_awkward.lib.utils.buffer_keys_required_to_compute_shapes(
                 form_info.parse_buffer_key,
                 report.shape_touched,
                 form_key_to_parent_form_key,
