@@ -20,10 +20,10 @@ def test_url_split():
             ),
         ),
         (
-            "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root:Events",
+            "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root:Dir/Events",
             (
                 "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
-                "Events",
+                "Dir/Events",
             ),
         ),
         (
@@ -34,7 +34,7 @@ def test_url_split():
             ),
         ),
         (
-            "http://localhost:8080/dir/test.root:Test",
+            "  http://localhost:8080/dir/test.root: Test ",
             (
                 "http://localhost:8080/dir/test.root",
                 "Test",
@@ -48,10 +48,10 @@ def test_url_split():
             ),
         ),
         (
-            r"C:\tmp\test\dir\file.root:Test",
+            r"C:\tmp\test\dir\file.root:Dir/Test",
             (
                 r"C:\tmp\test\dir\file.root",
-                "Test",
+                "Dir/Test",
             ),
         ),
     ]:
