@@ -97,14 +97,13 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
-        data = self._fs.cat_ranges(
-            [self._file_path] * len(ranges),
-            [start for start, _ in ranges],
-            [stop for _, stop in ranges],
-        )
+
         chunks = []
-        for item, (start, stop) in zip(data, ranges):
-            future = uproot.source.futures.TrivialFuture(item)
+        for start, stop in ranges:
+            # TODO: is `cat_file` downloading the whole file THEN slicing?
+            future = uproot.source.futures.Future(
+                self._fs.cat_file, self._file_path, start=start, end=stop
+            )
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             uproot.source.chunk.notifier(chunk, notifications)()
             chunks.append(chunk)
