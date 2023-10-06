@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "awkward>=2.0.0",
+    "awkward>=2.4.5",
     "importlib-metadata;python_version<\"3.8\"",
     "numpy",
     "packaging",

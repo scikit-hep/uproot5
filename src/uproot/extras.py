@@ -37,11 +37,11 @@ Alternatively, you can use ``library="np"`` or globally set ``uproot.default_lib
 to output as NumPy arrays, rather than Awkward arrays.
 """
         ) from err
-    if parse_version("2") <= parse_version(awkward.__version__):
+    if parse_version(awkward.__version__) >= parse_version("2.4.5"):
         return awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.x can only be used with Awkward 2.x; you have Awkward {}".format(
+            "Uproot 5.x can only be used with Awkward 2.4.5 or newer; you have Awkward {}".format(
                 awkward.__version__
             )
         )
