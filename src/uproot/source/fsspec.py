@@ -107,6 +107,11 @@ class FSSpecSource(uproot.source.chunk.Source):
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             uproot.source.chunk.notifier(chunk, notifications)()
             chunks.append(chunk)
+
+        # TODO: Am I using the futures API correctly? Should I use some executor / resource future instead?
+        for chunk in chunks:
+            chunk.future._run()
+
         return chunks
 
     @property
