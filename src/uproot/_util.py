@@ -276,9 +276,17 @@ _remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
 _schemes = ["FILE", *_remote_schemes]
 
 
-def file_object_path_split(path):
+def file_object_path_split(path: str) -> tuple[str, str or None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
+
+    Args:
+        path: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
+
+    Returns:
+        A tuple of the file path and the object-in-file path. If there is no
+        object-in-file path, the second element is ``None``.
+        Example: ``("https://localhost:8888/file.root", "tree")``
     """
 
     # remove whitespace
