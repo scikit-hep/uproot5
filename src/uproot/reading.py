@@ -177,11 +177,12 @@ class _OpenDefaults(dict):
 
 open.defaults = _OpenDefaults(
     {
-        "handler": uproot.source.fsspec.FSSpecSource,
+        "handler": None,
         "file_handler": None,  # Deprecated
         "s3_handler": None,  # Deprecated
         "http_handler": None,  # Deprecated
         "object_handler": None,  # Deprecated
+        "xrootd_handler": None,  # Deprecated
         "timeout": 30,
         "max_num_elements": None,
         "num_workers": 1,
