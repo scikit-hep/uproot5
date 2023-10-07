@@ -100,7 +100,6 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         chunks = []
         for start, stop in ranges:
-            # TODO: is `cat_file` downloading the whole file THEN slicing?
             future = uproot.source.futures.Future(
                 self._fs.cat_file, (self._file_path, start, stop)
             )
