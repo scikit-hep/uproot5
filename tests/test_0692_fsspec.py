@@ -1,9 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import pytest
-
 import uproot
-import uproot.source.fsspec
+
+import queue
 
 import skhep_testdata
 
@@ -66,3 +66,19 @@ def test_open_fsspec_xrootd():
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20
         assert (data == 194778).all()
+
+
+@pytest.mark.network
+def test_fsspec_chunks():
+    # Use the local HTTP server to serve test.root
+    url = "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root"
+
+    notifications = queue.Queue()
+    with uproot.source.fsspec.FSSpecSource(url) as source:
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
