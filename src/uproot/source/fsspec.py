@@ -112,7 +112,6 @@ class FSSpecSource(uproot.source.chunk.Source):
             executor.submit(future)
             chunks.append(chunk)
 
-        executor.shutdown()
         return chunks
 
     @property
