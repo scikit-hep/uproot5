@@ -2,6 +2,7 @@
 
 import pytest
 import uproot
+import uproot.source.fsspec
 
 import queue
 
