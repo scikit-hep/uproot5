@@ -13,16 +13,28 @@ class FSSpecSource(uproot.source.chunk.Source):
     to get many chunks in one request.
     """
 
-    def __init__(self, file_path, **kwargs):
+    def __init__(self, file_path, **options):
         import fsspec.core
+
+        default_options = uproot.reading.open.defaults
+        self._use_threads = options.get("use_threads", default_options["use_threads"])
+        self._num_workers = options.get("num_workers", default_options["num_workers"])
 
         # TODO: is timeout always valid?
 
         # Remove uproot-specific options (should be done earlier)
-        exclude_keys = set(uproot.reading.open.defaults.keys())
-        opts = {k: v for k, v in kwargs.items() if k not in exclude_keys}
+        exclude_keys = set(default_options.keys())
+        opts = {k: v for k, v in options.items() if k not in exclude_keys}
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
+
+        if self._use_threads and self._fs.__class__.__name__ == "HTTPFileSystem":
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [self._fs for _ in range(self._num_workers)]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(self._fs)
+
         # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
         self._fh = None
@@ -98,18 +110,16 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
-        executor = uproot.source.futures.ResourceThreadPoolExecutor(ranges)
-
         chunks = []
         for start, stop in ranges:
 
-            def task(_range: tuple = (start, stop)):
-                return self._fs.cat_file(self._file_path, _range[0], _range[1])
+            def task(resource=self._fs, path=self._file_path, start=start, stop=stop):
+                return resource.cat_file(path, start, stop)
 
             future = uproot.source.futures.ResourceFuture(task)
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             future._set_notify(uproot.source.chunk.notifier(chunk, notifications))
-            executor.submit(future)
+            self._executor.submit(future)
             chunks.append(chunk)
 
         return chunks
