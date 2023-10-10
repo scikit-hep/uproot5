@@ -10,8 +10,8 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 :doc:`uproot.source.chunk.Source`, the primary types of the "physical layer."
 """
 
-
 import numbers
+import queue
 
 import numpy
 
@@ -58,7 +58,7 @@ class Source:
         :doc:`uproot.source.chunk.Chunk`.
         """
 
-    def chunks(self, ranges, notifications):
+    def chunks(self, ranges, notifications: queue.Queue):
         """
         Args:
             ranges (list of (int, int) 2-tuples): Intervals to fetch
@@ -162,7 +162,7 @@ class MultithreadedSource(Source):
         self._executor.submit(future)
         return chunk
 
-    def chunks(self, ranges, notifications):
+    def chunks(self, ranges, notifications: queue.Queue):
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
@@ -205,13 +205,6 @@ class MultithreadedSource(Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._executor.__exit__(exception_type, exception_value, traceback)
-
-
-def notifier(chunk, notifications):
-    def notify():
-        notifications.put(chunk)
-
-    return notify
 
 
 class Chunk:
@@ -457,3 +450,19 @@ outside expected range {self._start}:{self._stop} for this Chunk""",
                 context,
                 self._source.file_path,
             )
+
+
+def notifier(chunk: Chunk, notifications: queue.Queue):
+    """
+    Returns a function that puts the chunk on the notifications queue when called.
+    The function has a 'future' argument to be compatible with the `concurrent.futures.Future.add_done_callback` method.
+
+    Args:
+        chunk (:doc:`uproot.source.chunk.Chunk`): The chunk to put on the queue.
+        notifications (``queue.Queue``): The notifications queue.
+    """
+
+    def notify(future=None):
+        notifications.put(chunk)
+
+    return notify
