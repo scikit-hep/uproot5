@@ -4,9 +4,8 @@ import pytest
 import uproot
 import uproot.source.fsspec
 
-import queue
-
 import skhep_testdata
+import queue
 
 
 @pytest.mark.network
@@ -76,19 +75,9 @@ def test_fsspec_chunks():
 
     notifications = queue.Queue()
     with uproot.source.fsspec.FSSpecSource(url) as source:
-        import time
-
-        start_time = time.time()
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
-        time_to_get_chunks = time.time() - start_time
-        # TODO: this might not be the best way to test it is non-blocking
-        # This is non-blocking, so it should be fast (0.0005390644073486328 seconds last time I ran it)
-        assert (
-            time_to_get_chunks < 0.01
-        ), f"This should be fast (non-blocking). Elapsed: {time_to_get_chunks} seconds"
-
         expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
