@@ -172,7 +172,7 @@ class Worker(threading.Thread):
 class ThreadPoolExecutor:
     """
     Args:
-        num_workers (None or int): The number of workers to start. If None,
+        max_workers (None or int): The number of workers to start. If None,
             use ``os.cpu_count()``.
 
     Like Python 3 ``concurrent.futures.ThreadPoolExecutor`` except that it has
@@ -182,18 +182,18 @@ class ThreadPoolExecutor:
     class.
     """
 
-    def __init__(self, num_workers=None):
-        if num_workers is None:
+    def __init__(self, max_workers=None):
+        if max_workers is None:
             if hasattr(os, "cpu_count"):
-                num_workers = os.cpu_count()
+                max_workers = os.cpu_count()
             else:
                 import multiprocessing
 
-                num_workers = multiprocessing.cpu_count()
+                max_workers = multiprocessing.cpu_count()
 
         self._work_queue = queue.Queue()
         self._workers = []
-        for _ in range(num_workers):
+        for _ in range(max_workers):
             self._workers.append(Worker(self._work_queue))
         for worker in self._workers:
             worker.start()
@@ -204,11 +204,15 @@ class ThreadPoolExecutor:
         )
 
     @property
-    def num_workers(self):
+    def max_workers(self):
         """
         The number of workers.
         """
         return len(self._workers)
+
+    @property
+    def num_workers(self):
+        return self.max_workers
 
     @property
     def workers(self):
