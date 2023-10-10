@@ -98,19 +98,21 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
+        executor = uproot.source.futures.ResourceThreadPoolExecutor(ranges)
+
         chunks = []
         for start, stop in ranges:
-            future = uproot.source.futures.Future(
-                self._fs.cat_file, (self._file_path, start, stop)
-            )
+
+            def task(_range: tuple = (start, stop)):
+                return self._fs.cat_file(self._file_path, _range[0], _range[1])
+
+            future = uproot.source.futures.ResourceFuture(task)
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
-            uproot.source.chunk.notifier(chunk, notifications)()
+            future._set_notify(uproot.source.chunk.notifier(chunk, notifications))
+            executor.submit(future)
             chunks.append(chunk)
 
-        # TODO: Am I using the futures API correctly? Should I use some executor / resource future instead?
-        for chunk in chunks:
-            chunk.future._run()
-
+        executor.shutdown()
         return chunks
 
     @property

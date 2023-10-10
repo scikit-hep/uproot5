@@ -76,10 +76,22 @@ def test_fsspec_chunks():
 
     notifications = queue.Queue()
     with uproot.source.fsspec.FSSpecSource(url) as source:
+        import time
+
+        start_time = time.time()
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
+        time_to_get_chunks = time.time() - start_time
+        # TODO: this might not be the best way to test it's non-blocking
+        assert (
+            time_to_get_chunks < 0.05
+        ), f"This should be fast (non-blocking). Elapsed: {time_to_get_chunks} seconds"
+
         expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
             chunk = notifications.get()
             expected.pop((chunk.start, chunk.stop))
+
+        chunk_data_sum = {sum(chunk.raw_data) for chunk in chunks}
+        assert chunk_data_sum == {3967, 413, 10985}, "Chunk data does not match"
