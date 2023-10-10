@@ -1,3 +1,5 @@
+import concurrent
+
 import uproot.source.chunk
 
 
@@ -29,11 +31,11 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
 
         if self._use_threads and self._fs.__class__.__name__ == "HTTPFileSystem":
-            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-                [self._fs for _ in range(self._num_workers)]
+            self._executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=self._num_workers
             )
         else:
-            self._executor = uproot.source.futures.ResourceTrivialExecutor(self._fs)
+            self._executor = uproot.source.futures.TrivialExecutor()
 
         # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
@@ -122,14 +124,16 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         chunks = []
         for start, stop in ranges:
-
-            def task(resource=self._fs, path=self._file_path, start=start, stop=stop):
-                return resource.cat_file(path, start, stop)
-
-            future = uproot.source.futures.ResourceFuture(task)
+            future = self._executor.submit(
+                self._fs.cat_file, self._file_path, start, stop
+            )
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
-            future._set_notify(uproot.source.chunk.notifier(chunk, notifications))
-            self._executor.submit(future)
+
+            def callback(future=None, chunk=chunk):
+                uproot.source.chunk.notifier(chunk, notifications)()
+
+            future.add_done_callback(callback)
+
             chunks.append(chunk)
 
         return chunks
