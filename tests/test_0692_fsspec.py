@@ -88,7 +88,6 @@ def test_fsspec_chunks():
         assert (
             time_to_get_chunks < 0.01
         ), f"This should be fast (non-blocking). Elapsed: {time_to_get_chunks} seconds"
-        print(f"Time to get chunks: {time_to_get_chunks} seconds")
 
         expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
         while len(expected) > 0:
