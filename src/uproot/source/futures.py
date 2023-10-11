@@ -21,7 +21,6 @@ This module defines a Python-like Future and Executor for Uproot in three levels
 These classes implement a *subset* of Python's Future and Executor interfaces.
 """
 
-
 import os
 import queue
 import sys
@@ -172,8 +171,9 @@ class Worker(threading.Thread):
 class ThreadPoolExecutor:
     """
     Args:
-        max_workers (None or int): The number of workers to start. If None,
-            use ``os.cpu_count()``.
+        max_workers (None or int): The maximum number of workers to start.
+        In the current implementation this is exactly the number of workers.
+        If None, use ``os.cpu_count()``.
 
     Like Python 3 ``concurrent.futures.ThreadPoolExecutor`` except that it has
     only the subset of the interface Uproot needs and is available in Python 2.
@@ -185,15 +185,15 @@ class ThreadPoolExecutor:
     def __init__(self, max_workers=None):
         if max_workers is None:
             if hasattr(os, "cpu_count"):
-                max_workers = os.cpu_count()
+                self._max_workers = os.cpu_count()
             else:
                 import multiprocessing
 
-                max_workers = multiprocessing.cpu_count()
+                self._max_workers = multiprocessing.cpu_count()
 
         self._work_queue = queue.Queue()
         self._workers = []
-        for _ in range(max_workers):
+        for _ in range(self._max_workers):
             self._workers.append(Worker(self._work_queue))
         for worker in self._workers:
             worker.start()
@@ -204,15 +204,18 @@ class ThreadPoolExecutor:
         )
 
     @property
-    def max_workers(self):
+    def max_workers(self) -> int:
+        """
+        The maximum number of workers.
+        """
+        return len(self._max_workers)
+
+    @property
+    def num_workers(self) -> int:
         """
         The number of workers.
         """
         return len(self._workers)
-
-    @property
-    def num_workers(self):
-        return self.max_workers
 
     @property
     def workers(self):
@@ -267,6 +270,9 @@ class ResourceFuture(Future):
         self._notify = None
 
     def _set_notify(self, notify):
+        """
+        Set the ``notify`` function that is called when this task is complete.
+        """
         self._notify = notify
 
     def _set_excinfo(self, excinfo):
