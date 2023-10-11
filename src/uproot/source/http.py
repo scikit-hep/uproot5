@@ -577,6 +577,15 @@ class HTTPSource(uproot.source.chunk.Source):
                 HTTPResource(self._file_path, self._timeout)
             )
 
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
+
     def __repr__(self):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
@@ -717,6 +726,15 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         self._parsed_url = urlparse(file_path)
         self._auth_headers = basic_auth_headers(self._parsed_url)
 
+        self._open()
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
         self._open()
 
     def _open(self):

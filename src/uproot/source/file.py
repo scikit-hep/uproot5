@@ -119,6 +119,15 @@ class MemmapSource(uproot.source.chunk.Source):
                 self._file_path, **opts  # NOTE: a comma after **opts breaks Python 2
             )
 
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_file")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
+
     def __repr__(self):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
@@ -249,3 +258,12 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
                 FileResource(self._file_path)
             )
         self._num_bytes = os.path.getsize(self._file_path)
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
