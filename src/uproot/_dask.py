@@ -4,9 +4,9 @@ import math
 from collections.abc import Callable, Iterable, Mapping
 
 try:
-    from typing import TYPE_CHECKING
+    from typing import TYPE_CHECKING, Final
 
-    from typing_extensions import Any, Final, Protocol, TypeVar
+    from typing_extensions import Any, Protocol, TypeVar
 except ImportError:
     from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
 
