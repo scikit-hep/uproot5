@@ -173,7 +173,7 @@ def _float16_double32_walk_ast(node, branch, source):
         ):
             out = ast.Constant(6.283185307179586)  # TMath::TwoPi()
         elif isinstance(node, ast.Constant) and isinstance(node.value, numbers.Number):
-            out = ast.Num(float(node.value))
+            out = ast.Constant(float(node.value))
         elif isinstance(node, ast.BinOp) and isinstance(
             node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div)
         ):
