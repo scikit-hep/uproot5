@@ -30,7 +30,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
 
-        if self._use_threads and self._fs.__class__.__name__ == "HTTPFileSystem":
+        if self._use_threads and type(self._fs).__name__ == "HTTPFileSystem":
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
             )
