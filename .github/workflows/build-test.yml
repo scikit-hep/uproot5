@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: ["windows-latest", "macos-latest", "ubuntu-latest"]
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     runs-on: "${{ matrix.platform }}"
     timeout-minutes: 30
@@ -82,4 +82,6 @@ jobs:
 
       - name: "Run pytest"
         run: |
-          python -m pytest -vv tests --reruns 3 --reruns-delay 30 --only-rerun requests.exceptions.HTTPError
+          python -m pytest -vv tests \
+            --reruns 3 --reruns-delay 30 \
+            --only-rerun requests.exceptions.HTTPError
