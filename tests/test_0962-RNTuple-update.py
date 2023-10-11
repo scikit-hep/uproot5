@@ -12,14 +12,12 @@ import skhep_testdata
 #         "https://xrootd-local.unl.edu:1094//store/user/AGC/nanoaod-rntuple/zstd/TT_TuneCUETP8M1_13TeV-powheg-pythia8/cmsopendata2015_ttbar_19980_PU25nsData2015v1_76X_mcRun2_asymptotic_v12_ext3-v1_00000_0000.root"
 #     ) as f:
 #         obj = f["Events"]
-      
+
 #         array = obj.arrays(["nTau"])
 
 
 def test_new_support_RNTuple_files_2():
-    with uproot.open(
-       "test_ntuple_int_multicluster.root"
-    ) as f:
+    with uproot.open("test_ntuple_int_multicluster.root") as f:
         obj = f["ntuple"]
         df = obj.arrays()
         assert df.one_integers[1] == 2
