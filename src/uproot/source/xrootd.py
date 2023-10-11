@@ -97,15 +97,6 @@ class XRootDResource(uproot.source.chunk.Resource):
         if status.error:
             self._xrd_error(status)
 
-    def __getstate__(self):
-        state = dict(self.__dict__)
-        state.pop("_file")
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__ = state
-        self._open()
-
     def _xrd_timeout(self):
         if self._timeout is None:
             return 0
@@ -298,15 +289,6 @@ class XRootDSource(uproot.source.chunk.Source):
                 self._max_num_elements, self._desired_max_num_elements
             )
 
-    def __getstate__(self):
-        state = dict(self.__dict__)
-        state.pop("_executor")
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__ = state
-        self._open()
-
     def __repr__(self):
         path = repr(self._file_path)
         if len(self._file_path) > 10:
@@ -475,15 +457,6 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
             self._executor = uproot.source.futures.ResourceTrivialExecutor(
                 XRootDResource(self._file_path, self._timeout)
             )
-
-    def __getstate__(self):
-        state = dict(self.__dict__)
-        state.pop("_executor")
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__ = state
-        self._open()
 
     @property
     def timeout(self):
