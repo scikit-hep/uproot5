@@ -230,7 +230,7 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     """
     Args:
         file_path (str): The filesystem path of the file to open.
-        options: Must include ``"num_workers"``.
+        options: Must include ``"num_workers"`` and ``"use_threads"``.
 
     A :doc:`uproot.source.chunk.MultithreadedSource` that manages many
     :doc:`uproot.source.file.FileResource` objects.
@@ -239,18 +239,24 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = FileResource
 
     def __init__(self, file_path, **options):
-        self._num_workers = options["num_workers"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
+        self._use_threads = options["use_threads"]
+        self._num_workers = options["num_workers"]
 
         self._file_path = file_path
         self._open()
 
     def _open(self):
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [FileResource(self._file_path) for x in range(self._num_workers)]
-        )
+        if self._use_threads:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [FileResource(self._file_path) for x in range(self._num_workers)]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                FileResource(self._file_path)
+            )
         self._num_bytes = os.path.getsize(self._file_path)
 
     def __getstate__(self):

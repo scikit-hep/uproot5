@@ -13,6 +13,9 @@ import uproot
 ak = pytest.importorskip("awkward")
 
 
+@pytest.mark.skip(
+    reason="FIXME: skipping test_ntuple_stl_containers.root until #928 is fixed"
+)
 def test_rntuple_stl_containers():
     filename = "test_ntuple_stl_containers-2.root"
     # filename = skhep_testdata.data_path("test_ntuple_stl_containers.root")

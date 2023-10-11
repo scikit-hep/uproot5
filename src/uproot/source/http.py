@@ -19,7 +19,6 @@ import base64
 import queue
 import re
 import sys
-from http.client import HTTPConnection, HTTPSConnection
 from urllib.parse import urlparse
 
 import uproot
@@ -37,6 +36,8 @@ def make_connection(parsed_url, timeout):
     Creates a ``http.client.HTTPConnection`` or a ``http.client.HTTPSConnection``,
     depending on the URL scheme.
     """
+    from http.client import HTTPConnection, HTTPSConnection
+
     if parsed_url.scheme == "https":
         return HTTPSConnection(
             parsed_url.hostname, parsed_url.port, None, None, timeout
@@ -283,13 +284,13 @@ for URL {}""".format(
         ``results`` and ``futures``. Subsequent attempts would immediately
         use the :ref:`uproot.source.http.HTTPSource.fallback`.
         """
-        connection = [make_connection(source.parsed_url, source.timeout)]
+        connection = make_connection(source.parsed_url, source.timeout)
 
         range_strings = []
         for start, stop in ranges:
             range_strings.append(f"{start}-{stop - 1}")
 
-        connection[0].request(
+        connection.request(
             "GET",
             full_path(source.parsed_url),
             headers=dict(
@@ -298,25 +299,24 @@ for URL {}""".format(
         )
 
         def task(resource):
+            nonlocal connection
             try:
-                response = connection[0].getresponse()
+                response = connection.getresponse()
 
                 if 300 <= response.status < 400:
-                    connection[0].close()
+                    connection.close()
 
                     for k, x in response.getheaders():
                         if k.lower() == "location":
                             redirect_url = urlparse(x)
-                            connection[0] = make_connection(
-                                redirect_url, source.timeout
-                            )
-                            connection[0].request(
+                            connection = make_connection(redirect_url, source.timeout)
+                            connection.request(
                                 "GET",
                                 full_path(redirect_url),
-                                headers=dict(
-                                    {"Range": "bytes=" + ", ".join(range_strings)},
+                                headers={
+                                    "Range": "bytes=" + ", ".join(range_strings),
                                     **source.auth_headers,
-                                ),
+                                },
                             )
                             task(resource)
                             return
@@ -343,7 +343,7 @@ for URL {}""".format(
                     future._set_excinfo(excinfo)
 
             finally:
-                connection[0].close()
+                connection.close()
 
         return uproot.source.futures.ResourceFuture(task)
 
@@ -531,7 +531,7 @@ class HTTPSource(uproot.source.chunk.Source):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"num_fallback_workers"`` and ``"timeout"``.
+        options: Must include ``"num_fallback_workers"``, ``"use_threads"``, and ``"timeout"``.
 
     A :doc:`uproot.source.chunk.Source` that first attempts an HTTP(S)
     multipart GET, but if the server doesn't support it, it falls back to many
@@ -553,23 +553,28 @@ class HTTPSource(uproot.source.chunk.Source):
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
 
+        self._use_threads = options["use_threads"]
         self._file_path = file_path
         self._num_bytes = None
 
         self._fallback = None
         self._fallback_options = options.copy()
         self._fallback_options["num_workers"] = self._num_fallback_workers
+
+        # Parse the URL here, so that we can expose these fields
+        self._parsed_url = urlparse(file_path)
+        self._auth_headers = basic_auth_headers(self._parsed_url)
+
         self._open()
 
     def _open(self):
-        # if running in a jupyter lite environment, then use a TrivialExecutor
-        if sys.platform == "emscripten":
-            self._executor = uproot.source.futures.ResourceTrivialExecutor(
-                HTTPResource(self._file_path, self._timeout)
-            )
-        else:
+        if self._use_threads:
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
                 [HTTPResource(self._file_path, self._timeout)]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                HTTPResource(self._file_path, self._timeout)
             )
 
     def __getstate__(self):
@@ -667,20 +672,14 @@ class HTTPSource(uproot.source.chunk.Source):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        if sys.platform == "emscripten":
-            return urlparse(self._file_path)
-        else:
-            return self._executor.workers[0].resource.parsed_url
+        return self._parsed_url
 
     @property
     def auth_headers(self):
         """
         Dict containing auth headers, if any
         """
-        if sys.platform == "emscripten":
-            return basic_auth_headers(self.parsed_url)
-        else:
-            return self._executor.workers[0].resource.auth_headers
+        return self._auth_headers
 
     @property
     def fallback(self):
@@ -704,7 +703,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
     """
     Args:
         file_path (str): A URL of the file to open.
-        options: Must include ``"num_workers"`` and ``"timeout"``.
+        options: Must include ``"num_workers"``, ``"use_threads"``, and ``"timeout"``.
 
     A :doc:`uproot.source.chunk.MultithreadedSource` that manages many
     :doc:`uproot.source.http.HTTPResource` objects.
@@ -713,19 +712,43 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
     ResourceClass = HTTPResource
 
     def __init__(self, file_path, **options):
-        num_workers = options["num_workers"]
-        timeout = options["timeout"]
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0
+        self._use_threads = options["use_threads"]
+        self._num_workers = options["num_workers"]
 
         self._file_path = file_path
         self._num_bytes = None
-        self._timeout = timeout
+        self._timeout = options["timeout"]
 
-        self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
-            [HTTPResource(file_path, timeout) for x in range(num_workers)]
-        )
+        # Parse the URL here, so that we can expose these fields
+        self._parsed_url = urlparse(file_path)
+        self._auth_headers = basic_auth_headers(self._parsed_url)
+
+        self._open()
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
+
+    def _open(self):
+        if self._use_threads:
+            self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
+                [
+                    HTTPResource(self._file_path, self._timeout)
+                    for x in range(self._num_workers)
+                ]
+            )
+        else:
+            self._executor = uproot.source.futures.ResourceTrivialExecutor(
+                HTTPResource(self._file_path, self._timeout)
+            )
 
     @property
     def timeout(self):
@@ -747,11 +770,11 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         """
         A ``urllib.parse.ParseResult`` version of the ``file_path``.
         """
-        return self._executor.workers[0].resource.parsed_url
+        return self._parsed_url
 
     @property
     def auth_headers(self):
         """
         Dict containing auth headers, if any
         """
-        return self._executor.workers[0].resource.auth_headers
+        return self._auth_headers

@@ -40,6 +40,7 @@ _dtype_to_char = {
     numpy.dtype(">u8"): "l",
     numpy.dtype(">f4"): "F",
     numpy.dtype(">f8"): "D",
+    numpy.dtype(">U"): "C",
 }
 
 
@@ -190,7 +191,11 @@ class Tree:
                     parameters = {}
 
                 if parameters.get("__array__") == "string":
-                    raise NotImplementedError("array of strings")
+                    if branch_name not in self._branch_lookup:
+                        self._branch_lookup[branch_name] = len(self._branch_data)
+                        self._branch_data.append(
+                            self._branch_np(branch_name, branch_type, numpy.dtype(str))
+                        )
 
                 elif parameters.get("__array__") == "bytes":
                     raise NotImplementedError("array of bytes")
@@ -672,20 +677,62 @@ class Tree:
                 continue
 
             if datum["counter"] is None:
-                big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
-                if big_endian.shape != (len(branch_array),) + datum["shape"]:
-                    raise ValueError(
-                        "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
-                            datum["shape"],
-                            big_endian.shape[1:],
+                if datum["dtype"] == ">U0":
+                    lengths = numpy.asarray(awkward.num(branch_array.layout))
+                    which_big = lengths >= 255
+
+                    lengths_extension_offsets = numpy.empty(
+                        len(branch_array.layout) + 1, numpy.int64
+                    )
+                    lengths_extension_offsets[0] = 0
+                    numpy.cumsum(which_big * 4, out=lengths_extension_offsets[1:])
+
+                    lengths_extension = awkward.contents.ListOffsetArray(
+                        awkward.index.Index64(lengths_extension_offsets),
+                        awkward.contents.NumpyArray(
+                            lengths[which_big].astype(">u4").view("u1")
+                        ),
+                    )
+
+                    lengths[which_big] = 255
+
+                    leafc_data_awkward = awkward.concatenate(
+                        [
+                            lengths.reshape(-1, 1).astype("u1"),
+                            lengths_extension,
+                            awkward.without_parameters(branch_array.layout),
+                        ],
+                        axis=1,
+                    )
+
+                    big_endian = numpy.asarray(awkward.flatten(leafc_data_awkward))
+                    big_endian_offsets = (
+                        lengths_extension_offsets
+                        + numpy.asarray(branch_array.layout.offsets)
+                        + numpy.arange(len(branch_array.layout.offsets))
+                    ).astype(">i4", copy=True)
+                    tofill.append(
+                        (
+                            branch_name,
+                            datum["compression"],
+                            big_endian,
+                            big_endian_offsets,
                         )
                     )
-                tofill.append((branch_name, datum["compression"], big_endian, None))
-
-                if datum["kind"] == "counter":
-                    datum["tleaf_maximum_value"] = max(
-                        big_endian.max(), datum["tleaf_maximum_value"]
-                    )
+                else:
+                    big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
+                    if big_endian.shape != (len(branch_array),) + datum["shape"]:
+                        raise ValueError(
+                            "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
+                                datum["shape"],
+                                big_endian.shape[1:],
+                            )
+                        )
+                    tofill.append((branch_name, datum["compression"], big_endian, None))
+                    if datum["kind"] == "counter":
+                        datum["tleaf_maximum_value"] = max(
+                            big_endian.max(), datum["tleaf_maximum_value"]
+                        )
 
             else:
                 try:
@@ -760,7 +807,13 @@ class Tree:
         for branch_name, compression, big_endian, big_endian_offsets in tofill:
             datum = self._branch_data[self._branch_lookup[branch_name]]
 
-            if big_endian_offsets is None:
+            if datum["dtype"] == ">U0":
+                totbytes, zipbytes, location = self.write_string_basket(
+                    sink, branch_name, compression, big_endian, big_endian_offsets
+                )
+                datum["fEntryOffsetLen"] = 4 * (len(big_endian_offsets) - 1)
+
+            elif big_endian_offsets is None:
                 totbytes, zipbytes, location = self.write_np_basket(
                     sink, branch_name, compression, big_endian
                 )
@@ -965,6 +1018,9 @@ class Tree:
                 special_struct = uproot.models.TLeaf._tleaff1_format1
             elif letter_upper == "D":
                 special_struct = uproot.models.TLeaf._tleafd1_format1
+            elif letter_upper == "C":
+                special_struct = uproot.models.TLeaf._tleafc1_format1
+
             fLenType = datum["dtype"].itemsize
             fIsUnsigned = letter != letter_upper
 
@@ -1273,6 +1329,27 @@ class Tree:
 
             datum["arrays_write_start"] = datum["arrays_write_stop"]
 
+            if datum["dtype"] == ">U0":
+                position = (
+                    base
+                    + datum["basket_metadata_start"]
+                    - 25  # empty TObjArray of fBaskets (embedded)
+                    - 8  # specialized TLeaf* members (fMinimum, fMaximum)
+                    - 4  # null fLeafCount
+                    - 14  # generic TLeaf members
+                )
+                sink.write(
+                    position,
+                    uproot.models.TLeaf._tleaf2_format0.pack(
+                        self._metadata["fLen"],
+                        datum["dtype"].itemsize,
+                        0,
+                        datum["kind"] == "counter",
+                        _dtype_to_char[datum["dtype"]]
+                        != _dtype_to_char[datum["dtype"]].upper(),
+                    ),
+                )
+
             if datum["kind"] == "counter":
                 position = (
                     base
@@ -1418,6 +1495,96 @@ class Tree:
                 fLast,
             )
         )
+        out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
+
+        out.append(compressed_data)
+
+        sink.write(location, b"".join(out))
+        self._freesegments.write(sink)
+        sink.set_file_length(self._freesegments.fileheader.end)
+        sink.flush()
+
+        return fKeylen + fObjlen, fNbytes, location
+
+    def write_string_basket(self, sink, branch_name, compression, array, offsets):
+        fClassName = uproot.serialization.string("TBasket")
+        fName = uproot.serialization.string(branch_name)
+        fTitle = uproot.serialization.string(self._name)
+        fKeylen = (
+            uproot.reading._key_format_big.size
+            + len(fClassName)
+            + len(fName)
+            + len(fTitle)
+            + uproot.models.TBasket._tbasket_format2.size
+            + 1
+        )
+
+        itemsize = array.dtype.itemsize
+        for item in array.shape[1:]:
+            itemsize *= item
+        try:
+            uproot.extras.awkward()
+        except ModuleNotFoundError as err:
+            raise TypeError(
+                f"'awkward' cannot be imported: {self._branch_type!r}"
+            ) from err
+
+        offsets *= itemsize
+        offsets += fKeylen
+
+        raw_array = uproot._util.tobytes(array)
+        raw_offsets = uproot._util.tobytes(offsets)
+        uncompressed_data = (
+            raw_array
+            + _tbasket_offsets_length.pack(len(offsets))
+            + raw_offsets[:-4]
+            + b"\x00\x00\x00\x00"
+        )
+        compressed_data = uproot.compression.compress(uncompressed_data, compression)
+
+        # get size of biggest string
+        self._metadata["fLen"] = (
+            0
+            if len(offsets) == 1
+            else max([offsets[i + 1] - offsets[i] for i in range(len(offsets) - 1)])
+        )
+
+        fLast = offsets[-1]
+        offsets[-1] = 0
+
+        fObjlen = len(uncompressed_data)
+        fNbytes = fKeylen + len(compressed_data)
+
+        parent_location = self._directory.key.location  # FIXME: is this correct?
+
+        location = self._freesegments.allocate(fNbytes, dry_run=False)
+
+        out = []
+        out.append(
+            uproot.reading._key_format_big.pack(
+                fNbytes,
+                1004,  # fVersion
+                fObjlen,
+                uproot._util.datetime_to_code(datetime.datetime.now()),  # fDatime
+                fKeylen,
+                0,  # fCycle
+                location,  # fSeekKey
+                parent_location,  # fSeekPdir
+            )
+        )
+        out.append(fClassName)
+        out.append(fName)
+        out.append(fTitle)
+        out.append(
+            uproot.models.TBasket._tbasket_format2.pack(
+                3,  # fVersion
+                32000,  # fBufferSize
+                1000,  # fNevBufSize
+                len(offsets) - 1,  # fNevBuf
+                fLast,
+            )
+        )
+
         out.append(b"\x00")  # part of the Key (included in fKeylen, at least)
 
         out.append(compressed_data)
