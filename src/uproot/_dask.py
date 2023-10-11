@@ -119,17 +119,18 @@ def dask(
 
     Options (type; default):
 
-    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
+    * handler (:doc:`uproot.source.chunk.Source` class; None)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; None)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; None)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; None)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; None)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
     * use_threads (bool; False on the emscripten platform (i.e. in a web browser), else True)
     * num_fallback_workers (int; 10)
-    * begin_chunk_size (memory_size; 512)
+    * begin_chunk_size (memory_size; 403, the smallest a ROOT file can be)
     * minimal_ttree_metadata (bool; True)
 
     Other file entry points:
