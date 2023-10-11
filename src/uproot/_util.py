@@ -311,7 +311,9 @@ def file_path_to_source_class(file_path, options):
     Use a file path to get the :doc:`uproot.source.chunk.Source` class that would read it.
 
     Returns a tuple of (class, file_path) where the class is a subclass of :doc:`uproot.source.chunk.Source`.
-    If the "handler" option is set... TODO: elaborate
+
+    The "handler" option is the preferred way to specify a custom source class.
+    The "*_handler" options are for backwards compatibility and will override the "handler" option if set.
     """
     import uproot.source.chunk
 
@@ -331,8 +333,7 @@ def file_path_to_source_class(file_path, options):
             or options["s3_handler"] is not None
             or options["http_handler"] is not None
         ):
-            ...
-            # These options should override the "handler" option for backwards compatibility
+            # These options will override the "handler" option for backwards compatibility
             warnings.warn(
                 """In version 5.2.0, the '*_handler' argument ('http_handler`, 's3_handler', etc.) will be removed from 'uproot.open'. Use 'handler' instead.""",
                 stacklevel=1,
