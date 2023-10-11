@@ -208,7 +208,7 @@ class ThreadPoolExecutor:
         """
         The maximum number of workers.
         """
-        return len(self._max_workers)
+        return self._max_workers
 
     @property
     def num_workers(self) -> int:
