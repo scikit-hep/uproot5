@@ -349,7 +349,6 @@ in file {self.file.file_path}"""
         )
         if split:
             # FIX ME
-            pass
             if nbits == 16:
                 pass
                 # split2_reinterpret(tmp)
@@ -394,7 +393,9 @@ in file {self.file.file_path}"""
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
-            self.read_pagedesc(res[tracker:tracker_end], page_desc, dtype_str, dtype, nbits, split)
+            self.read_pagedesc(
+                res[tracker:tracker_end], page_desc, dtype_str, dtype, nbits, split
+            )
             tracker = tracker_end
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
@@ -710,13 +711,13 @@ class ClusterGroupRecordReader:
         out.page_list_link = EnvLinkReader().read(chunk, cursor, context)
         return out
 
+
 class RNTupleSchemaExtension:
-    
     def read(self, chunk, cursor, context):
         out = MetaData(type(self).__name__)
         out.size = cursor.field(chunk, struct.Struct("<I"), context)
         out.field_records = ListFrameReader(
-        RecordFrameReader(FieldRecordReader())
+            RecordFrameReader(FieldRecordReader())
         ).read(chunk, cursor, context)
         out.column_records = ListFrameReader(
             RecordFrameReader(ColumnRecordReader())
@@ -726,10 +727,9 @@ class RNTupleSchemaExtension:
         ).read(chunk, cursor, context)
         out.extra_type_info = ListFrameReader(
             RecordFrameReader(ExtraTypeInfoReader())
-        ).read(
-            chunk, cursor, context
-        )
-        return out 
+        ).read(chunk, cursor, context)
+        return out
+
 
 class FooterReader:
     def __init__(self):
