@@ -1,20 +1,22 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import pytest
-
 import uproot
 import uproot.source.fsspec
 
 import skhep_testdata
+import queue
 
 
 @pytest.mark.network
-def test_open_fsspec_http():
+@pytest.mark.parametrize("use_threads", [True, False])
+def test_open_fsspec_http(use_threads):
     pytest.importorskip("aiohttp")
 
     with uproot.open(
         "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         handler=uproot.source.fsspec.FSSpecSource,
+        use_threads=use_threads,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
@@ -33,12 +35,14 @@ def test_open_fsspec_github():
         assert len(data) == 40
 
 
-def test_open_fsspec_local(tmp_path):
+@pytest.mark.parametrize("use_threads", [True, False])
+def test_open_fsspec_local(use_threads):
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     with uproot.open(
         local_path,
         handler=uproot.source.fsspec.FSSpecSource,
+        use_threads=use_threads,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
@@ -68,3 +72,23 @@ def test_open_fsspec_xrootd():
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20
         assert (data == 194778).all()
+
+
+@pytest.mark.network
+def test_fsspec_chunks():
+    pytest.importorskip("aiohttp")
+
+    url = "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root"
+
+    notifications = queue.Queue()
+    with uproot.source.fsspec.FSSpecSource(url) as source:
+        chunks = source.chunks(
+            [(0, 100), (50, 55), (200, 400)], notifications=notifications
+        )
+        expected = {(chunk.start, chunk.stop): chunk for chunk in chunks}
+        while len(expected) > 0:
+            chunk = notifications.get()
+            expected.pop((chunk.start, chunk.stop))
+
+        chunk_data_sum = {sum(chunk.raw_data) for chunk in chunks}
+        assert chunk_data_sum == {3967, 413, 10985}, "Chunk data does not match"

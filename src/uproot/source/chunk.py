@@ -10,6 +10,8 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 :doc:`uproot.source.chunk.Source`, the primary types of the "physical layer."
 """
 
+from __future__ import annotations
+
 import numbers
 import queue
 
@@ -47,7 +49,7 @@ class Source:
     the file.
     """
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> Chunk:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -58,7 +60,7 @@ class Source:
         :doc:`uproot.source.chunk.Chunk`.
         """
 
-    def chunks(self, ranges, notifications: queue.Queue):
+    def chunks(self, ranges, notifications: queue.Queue) -> list[Chunk]:
         """
         Args:
             ranges (list of (int, int) 2-tuples): Intervals to fetch
@@ -95,21 +97,21 @@ class Source:
         return self._file_path
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         """
         The number of bytes in the file.
         """
         return self._num_bytes
 
     @property
-    def num_requests(self):
+    def num_requests(self) -> int:
         """
         The number of requests that have been made (performance counter).
         """
         return self._num_requests
 
     @property
-    def num_requested_chunks(self):
+    def num_requested_chunks(self) -> int:
         """
         The number of :doc:`uproot.source.chunk.Chunk` objects that have been
         requested (performance counter).
@@ -117,7 +119,7 @@ class Source:
         return self._num_requested_chunks
 
     @property
-    def num_requested_bytes(self):
+    def num_requested_bytes(self) -> int:
         """
         The number of bytes that have been requested (performance counter).
         """
@@ -130,7 +132,7 @@ class Source:
         self.__exit__(None, None, None)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the associated file/connection/thread pool is closed; False
         otherwise.
@@ -152,7 +154,7 @@ class MultithreadedSource(Source):
             type(self).__name__, path, self.num_workers, id(self)
         )
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -162,7 +164,7 @@ class MultithreadedSource(Source):
         self._executor.submit(future)
         return chunk
 
-    def chunks(self, ranges, notifications: queue.Queue):
+    def chunks(self, ranges, notifications: queue.Queue) -> list[Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
@@ -192,7 +194,7 @@ class MultithreadedSource(Source):
         return self._executor.num_workers
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the :doc:`uproot.source.futures.ResourceThreadPoolExecutor` has
         been shut down and the file handles have been closed.

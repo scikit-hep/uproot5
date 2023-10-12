@@ -47,6 +47,12 @@ class TrivialFuture:
     def __init__(self, result):
         self._result = result
 
+    def add_done_callback(self, callback, *, context=None):
+        """
+        The callback is called immediately.
+        """
+        callback(self)
+
     def result(self, timeout=None):
         """
         The result of this (Trivial)Future.
@@ -389,7 +395,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         self.__exit__(None, None, None)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the :doc:`uproot.source.futures.ResourceWorker` threads have
         been stopped and their
@@ -449,7 +455,7 @@ class ResourceTrivialExecutor(TrivialExecutor):
         self.__exit__(None, None, None)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the :doc:`uproot.source.futures.ResourceTrivialExecutor` has
         been stopped.
