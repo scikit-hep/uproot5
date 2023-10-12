@@ -77,12 +77,18 @@ def ensure_numpy(array, types=(numpy.bool_, numpy.integer, numpy.floating)):
     Returns an ``np.ndarray`` if ``array`` can be converted to an array of the
     desired type and raises TypeError if it cannot.
     """
+    import uproot
+
+    awkward = uproot.extras.awkward()
     with warnings.catch_warnings():
         warnings.simplefilter("error", numpy.VisibleDeprecationWarning)
-        try:
-            out = numpy.asarray(array)
-        except (ValueError, numpy.VisibleDeprecationWarning) as err:
-            raise TypeError("cannot be converted to a NumPy array") from err
+        if isinstance(array, awkward.contents.Content):
+            out = awkward.to_numpy(array)
+        else:
+            try:
+                out = numpy.asarray(array)
+            except (ValueError, numpy.VisibleDeprecationWarning) as err:
+                raise TypeError("cannot be converted to a NumPy array") from err
         if not issubclass(out.dtype.type, types):
             raise TypeError(f"cannot be converted to a NumPy array of type {types}")
         return out
