@@ -33,7 +33,7 @@ def test_open_fsspec_github():
         assert len(data) == 40
 
 
-def test_open_fsspec_local(tmp_path):
+def test_open_fsspec_local():
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     with uproot.open(
