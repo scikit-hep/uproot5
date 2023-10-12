@@ -14,6 +14,7 @@ automatically falls back to :doc:`uproot.source.http.MultithreadedHTTPSource`.
 Despite the name, both sources support secure HTTPS (selected by URL scheme).
 """
 
+from __future__ import annotations
 
 import base64
 import queue

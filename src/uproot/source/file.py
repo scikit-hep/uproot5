@@ -12,6 +12,7 @@ If the filesystem or operating system does not support memory-mapped files, the
 :doc:`uproot.source.file.MultithreadedFileSource` is an automatic fallback.
 """
 
+from __future__ import annotations
 
 import os.path
 import queue

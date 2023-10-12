@@ -10,6 +10,7 @@ support vector-read requests; if not, it automatically falls back to
 :doc:`uproot.source.xrootd.MultithreadedXRootDSource`.
 """
 
+from __future__ import annotations
 
 import contextlib
 import queue
