@@ -1,4 +1,5 @@
 import concurrent
+import queue
 
 import uproot.source.chunk
 
@@ -90,7 +91,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
-    def chunks(self, ranges, notifications):
+    def chunks(self, ranges, notifications: queue.Queue):
         """
         Args:
             ranges (list of (int, int) 2-tuples): Intervals to fetch
@@ -128,12 +129,7 @@ class FSSpecSource(uproot.source.chunk.Source):
                 self._fs.cat_file, self._file_path, start, stop
             )
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
-
-            def callback(future=None, chunk=chunk):
-                uproot.source.chunk.notifier(chunk, notifications)()
-
-            future.add_done_callback(callback)
-
+            future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
             chunks.append(chunk)
 
         return chunks
