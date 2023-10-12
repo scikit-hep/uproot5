@@ -45,7 +45,7 @@ class FileResource(uproot.source.chunk.Resource):
         return self._file
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._file.closed
 
     def __enter__(self):
@@ -195,7 +195,7 @@ class MemmapSource(uproot.source.chunk.Source):
         return self._fallback
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         if self._fallback is None:
             return self._file._mmap.closed
         else:
@@ -219,7 +219,7 @@ class MemmapSource(uproot.source.chunk.Source):
             self._fallback.__exit__(exception_type, exception_value, traceback)
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._fallback is None:
             return self._file._mmap.size()
         else:

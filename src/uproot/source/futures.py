@@ -389,7 +389,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         self.__exit__(None, None, None)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the :doc:`uproot.source.futures.ResourceWorker` threads have
         been stopped and their
@@ -449,7 +449,7 @@ class ResourceTrivialExecutor(TrivialExecutor):
         self.__exit__(None, None, None)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the :doc:`uproot.source.futures.ResourceTrivialExecutor` has
         been stopped.

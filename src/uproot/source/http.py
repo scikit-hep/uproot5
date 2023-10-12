@@ -639,7 +639,7 @@ class HTTPSource(uproot.source.chunk.Source):
         return self._executor
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._executor.closed
 
     def __enter__(self):
@@ -658,7 +658,7 @@ class HTTPSource(uproot.source.chunk.Source):
         return self._timeout
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = get_num_bytes(
                 self._file_path, self.parsed_url, self._timeout
@@ -756,7 +756,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         return self._timeout
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = get_num_bytes(
                 self._file_path, self.parsed_url, self._timeout

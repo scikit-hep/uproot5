@@ -141,14 +141,14 @@ in file {self._file_path}"""
         return self._file
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         status, info = self._file.stat(self._xrd_timeout())
         if status.error:
             self._xrd_error(status)
         return info.size
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return not self._file.is_open()
 
     def __enter__(self):
@@ -422,7 +422,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return self._resource.file
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._resource.closed
 
     def __enter__(self):
@@ -433,7 +433,7 @@ class XRootDSource(uproot.source.chunk.Source):
         self._resource.__exit__(exception_type, exception_value, traceback)
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = self._resource.num_bytes
         return self._num_bytes
@@ -493,7 +493,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         return self._timeout
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = self._executor.workers[0].resource.num_bytes
         return self._num_bytes

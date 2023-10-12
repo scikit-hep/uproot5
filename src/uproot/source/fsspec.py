@@ -135,14 +135,14 @@ class FSSpecSource(uproot.source.chunk.Source):
         return chunks
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         """
         The number of bytes in the file.
         """
         return self._fs.size(self._file_path)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the associated file/connection/thread pool is closed; False
         otherwise.

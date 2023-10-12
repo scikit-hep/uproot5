@@ -95,7 +95,7 @@ class Source:
         return self._file_path
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         """
         The number of bytes in the file.
         """
@@ -130,7 +130,7 @@ class Source:
         self.__exit__(None, None, None)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the associated file/connection/thread pool is closed; False
         otherwise.
@@ -192,7 +192,7 @@ class MultithreadedSource(Source):
         return self._executor.num_workers
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the :doc:`uproot.source.futures.ResourceThreadPoolExecutor` has
         been shut down and the file handles have been closed.
