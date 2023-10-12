@@ -102,14 +102,14 @@ class Source:
         return self._num_bytes
 
     @property
-    def num_requests(self):
+    def num_requests(self) -> int:
         """
         The number of requests that have been made (performance counter).
         """
         return self._num_requests
 
     @property
-    def num_requested_chunks(self):
+    def num_requested_chunks(self) -> int:
         """
         The number of :doc:`uproot.source.chunk.Chunk` objects that have been
         requested (performance counter).
@@ -117,7 +117,7 @@ class Source:
         return self._num_requested_chunks
 
     @property
-    def num_requested_bytes(self):
+    def num_requested_bytes(self) -> int:
         """
         The number of bytes that have been requested (performance counter).
         """

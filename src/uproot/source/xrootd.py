@@ -313,7 +313,7 @@ class XRootDSource(uproot.source.chunk.Source):
             path = repr("..." + self._file_path[-10:])
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start

@@ -593,7 +593,7 @@ class HTTPSource(uproot.source.chunk.Source):
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start

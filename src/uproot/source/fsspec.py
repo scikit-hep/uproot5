@@ -1,7 +1,9 @@
-import concurrent
+import concurrent.futures
 import queue
 
+import uproot
 import uproot.source.chunk
+import uproot.source.futures
 
 
 class FSSpecSource(uproot.source.chunk.Source):
@@ -70,7 +72,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._executor.shutdown()
         self._file.__exit__(exception_type, exception_value, traceback)
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -131,7 +133,6 @@ class FSSpecSource(uproot.source.chunk.Source):
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
             chunks.append(chunk)
-
         return chunks
 
     @property

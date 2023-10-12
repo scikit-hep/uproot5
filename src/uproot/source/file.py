@@ -137,7 +137,7 @@ class MemmapSource(uproot.source.chunk.Source):
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         if self._fallback is None:
             if self.closed:
                 raise OSError(f"memmap is closed for file {self._file_path}")
