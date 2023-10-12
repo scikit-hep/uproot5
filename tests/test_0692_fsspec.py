@@ -72,7 +72,6 @@ def test_open_fsspec_xrootd():
 
 @pytest.mark.network
 def test_fsspec_chunks():
-    # Use the local HTTP server to serve test.root
     url = "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root"
 
     notifications = queue.Queue()
