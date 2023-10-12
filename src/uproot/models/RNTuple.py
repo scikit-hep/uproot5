@@ -347,18 +347,32 @@ in file {self.file.file_path}"""
         content = cursor.array(
             decomp_chunk, num_elements_toread, dtype, context, move=False
         )
-        if split:
-            # FIX ME
-            if nbits == 16:
-                pass
-                # split2_reinterpret(tmp)
-            elif nbits == 32:
-                pass
-                # split4_reinterpret(tmp)
-            elif nbits == 64:
-                pass
-                # split8_reinterpret(tmp)
 
+        if split:
+            if nbits == 16:
+                res = numpy.empty(len(content), numpy.uint8)
+                res[::2] = content[0:len(res)//2]
+                res[1::2] = content[len(res)//2:len(res)]
+                
+            elif nbits == 32:
+                res = numpy.empty(len(content), numpy.uint8)
+                res[::4] = content[0:len(res)//4]
+                res[1::4] = content[len(res)//4:len(res)//2]
+                res[2::4] = content[len(res)//2:3*len(res)//4]
+                res[3::4] = content[3*len(res)//4:len(res)]
+    
+            elif nbits == 64:
+                res = numpy.empty(len(content) * 8, numpy.uint8)
+                res[::8] = content[0:len(res)//8]
+                res[1::8] = content[len(res)//8:2*len(res)//8]
+                res[2::8] = content[2*len(res)//8:3*len(res)//8]
+                res[3::8] = content[3*len(res)//8:4*len(res)//8]
+                res[4::8] = content[4*len(res)//8:5*len(res)//8]
+                res[5::8] = content[5*len(res)//8:6*len(res)//8]
+                res[6::8] = content[6*len(res)//8:7*len(res)//8]
+                res[7::8] = content[7*len(res)//8:len(res)]
+
+            content = res
         if isbit:
             content = (
                 numpy.unpackbits(content.view(dtype=numpy.uint8))
