@@ -14,6 +14,7 @@ performed to exhaustively discover all cases.
 
 
 import ast
+import numbers
 import re
 
 import numpy
@@ -164,15 +165,15 @@ def _float16_double32_walk_ast(node, branch, source):
             and isinstance(node.ctx, ast.Load)
             and node.id.lower() == "pi"
         ):
-            out = ast.Num(3.141592653589793)  # TMath::Pi()
+            out = ast.Constant(3.141592653589793)  # TMath::Pi()
         elif (
             isinstance(node, ast.Name)
             and isinstance(node.ctx, ast.Load)
             and node.id.lower() == "twopi"
         ):
-            out = ast.Num(6.283185307179586)  # TMath::TwoPi()
-        elif isinstance(node, ast.Num):
-            out = ast.Num(float(node.n))
+            out = ast.Constant(6.283185307179586)  # TMath::TwoPi()
+        elif isinstance(node, ast.Constant) and isinstance(node.value, numbers.Number):
+            out = ast.Constant(float(node.value))
         elif isinstance(node, ast.BinOp) and isinstance(
             node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div)
         ):
@@ -201,7 +202,8 @@ def _float16_double32_walk_ast(node, branch, source):
             isinstance(node, ast.List)
             and isinstance(node.ctx, ast.Load)
             and len(node.elts) == 3
-            and isinstance(node.elts[2], ast.Num)
+            and isinstance(node.elts[2], ast.Constant)
+            and isinstance(node.elts[2].value, numbers.Number)
         ):
             out = ast.List(
                 [

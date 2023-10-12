@@ -57,8 +57,12 @@ def _walk_ast_yield_symbols(node, keys, aliases, functions, getter):
         and isinstance(node.func, ast.Name)
         and node.func.id == getter
     ):
-        if len(node.args) == 1 and isinstance(node.args[0], ast.Str):
-            yield node.args[0].s
+        if (
+            len(node.args) == 1
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+        ):
+            yield node.args[0].value
         else:
             raise TypeError(
                 f"expected a constant string as the only argument of {getter!r}; "
@@ -104,7 +108,8 @@ def _ast_as_branch_expression(node, keys, aliases, functions, getter):
         and isinstance(node.func, ast.Name)
         and node.func.id == getter
         and len(node.args) == 1
-        and isinstance(node.args[0], ast.Str)
+        and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, str)
     ):
         return node
 
