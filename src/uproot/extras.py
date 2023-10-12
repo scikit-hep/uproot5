@@ -10,15 +10,10 @@ error messages containing instructions on how to install the library.
 
 
 import atexit
+import importlib.metadata as importlib_metadata
 import os
-import sys
 
 from uproot._util import parse_version
-
-if sys.version_info < (3, 8):
-    import importlib_metadata
-else:
-    import importlib.metadata as importlib_metadata
 
 
 def awkward():
@@ -37,11 +32,11 @@ Alternatively, you can use ``library="np"`` or globally set ``uproot.default_lib
 to output as NumPy arrays, rather than Awkward arrays.
 """
         ) from err
-    if parse_version("2") <= parse_version(awkward.__version__):
+    if parse_version(awkward.__version__) >= parse_version("2.4.5"):
         return awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.x can only be used with Awkward 2.x; you have Awkward {}".format(
+            "Uproot 5.x can only be used with Awkward 2.4.5 or newer; you have Awkward {}".format(
                 awkward.__version__
             )
         )
@@ -325,11 +320,11 @@ def dask_awkward():
 or
     conda install -c conda-forge dask dask-awkward"""
         ) from err
-    if parse_version("2023.9.0") <= parse_version(dask_awkward.__version__):
+    if parse_version(dask_awkward.__version__) >= parse_version("2023.10.0a1"):
         return dask_awkward
     else:
         raise ModuleNotFoundError(
-            "Uproot 5.x can only be used with dask-awkward 2023.9.0 or newer; you have dask-awkward {}".format(
+            "Uproot 5.x can only be used with dask-awkward 2023.10.0a1 or newer; you have dask-awkward {}".format(
                 dask_awkward.__version__
             )
         )

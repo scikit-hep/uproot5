@@ -39,9 +39,7 @@ def make_connection(parsed_url, timeout):
     from http.client import HTTPConnection, HTTPSConnection
 
     if parsed_url.scheme == "https":
-        return HTTPSConnection(
-            parsed_url.hostname, parsed_url.port, None, None, timeout
-        )
+        return HTTPSConnection(parsed_url.hostname, parsed_url.port, timeout=timeout)
 
     elif parsed_url.scheme == "http":
         return HTTPConnection(parsed_url.hostname, parsed_url.port, timeout)

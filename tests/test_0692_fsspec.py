@@ -10,6 +10,8 @@ import skhep_testdata
 
 @pytest.mark.network
 def test_open_fsspec_http():
+    pytest.importorskip("aiohttp")
+
     with uproot.open(
         "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         handler=uproot.source.fsspec.FSSpecSource,
