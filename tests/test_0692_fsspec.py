@@ -9,12 +9,14 @@ import queue
 
 
 @pytest.mark.network
-def test_open_fsspec_http():
+@pytest.mark.parametrize("use_threads", [True, False])
+def test_open_fsspec_http(use_threads):
     pytest.importorskip("aiohttp")
 
     with uproot.open(
         "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         http_handler=uproot.source.fsspec.FSSpecSource,
+        use_threads=use_threads,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
@@ -33,12 +35,14 @@ def test_open_fsspec_github():
         assert len(data) == 40
 
 
-def test_open_fsspec_local():
+@pytest.mark.parametrize("use_threads", [True, False])
+def test_open_fsspec_local(use_threads):
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     with uproot.open(
         local_path,
         file_handler=uproot.source.fsspec.FSSpecSource,
+        use_threads=use_threads,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
