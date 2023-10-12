@@ -56,7 +56,6 @@ def test_02(is_forth):
             assert interp._complete_forth_code is not None
 
 
-
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_03(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-FCCDelphesOutput.root")) as file:
@@ -73,7 +72,6 @@ def test_03(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -99,7 +97,6 @@ def test_05():
         # py[-1] == <xAOD::TrigConfKeys_v1 (version 1) at 0x7fecf9212760>
 
 
-
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_06(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
@@ -112,7 +109,6 @@ def test_06(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -152,7 +148,6 @@ def test_09(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -214,7 +209,6 @@ def test_13(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -351,7 +345,6 @@ def test_22(is_forth):
             assert interp.content._complete_forth_code is not None
 
 
-
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_23(is_forth):
@@ -458,7 +451,6 @@ def test_30(is_forth):
             assert interp._complete_forth_code is not None
 
 
-
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_31(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-issue-308.root")) as file:
@@ -471,7 +463,6 @@ def test_31(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -501,7 +492,6 @@ def test_33(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
@@ -784,7 +774,6 @@ def test_54(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
         if is_forth:
             assert interp._complete_forth_code is not None
-
 
 
 @pytest.mark.parametrize("is_forth", [False, True])
