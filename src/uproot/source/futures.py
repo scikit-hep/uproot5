@@ -49,8 +49,9 @@ class TrivialFuture:
 
     def add_done_callback(self, callback, *, context=None):
         """
-        Does nothing, since this (Trivial)Future is already complete.
+        The callback is called immediately.
         """
+        callback(self)
 
     def result(self, timeout=None):
         """
