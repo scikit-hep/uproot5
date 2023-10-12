@@ -10,6 +10,8 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 :doc:`uproot.source.chunk.Source`, the primary types of the "physical layer."
 """
 
+from __future__ import annotations
+
 import numbers
 import queue
 
@@ -47,7 +49,7 @@ class Source:
     the file.
     """
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> Chunk:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -152,7 +154,7 @@ class MultithreadedSource(Source):
             type(self).__name__, path, self.num_workers, id(self)
         )
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
