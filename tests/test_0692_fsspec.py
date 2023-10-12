@@ -72,6 +72,8 @@ def test_open_fsspec_xrootd():
 
 @pytest.mark.network
 def test_fsspec_chunks():
+    pytest.importorskip("aiohttp")
+
     url = "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root"
 
     notifications = queue.Queue()
