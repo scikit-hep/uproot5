@@ -77,11 +77,11 @@ def open(
     Options (type; default):
 
     * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * file_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; None)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -536,11 +536,11 @@ class ReadOnlyFile(CommonFileMethods):
     Options (type; default):
 
     * handler (:doc:`uproot.source.chunk.Source` class; None)
-    * file_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; None)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; None)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
