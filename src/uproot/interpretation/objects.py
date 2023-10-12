@@ -335,7 +335,9 @@ class AsObjects(uproot.interpretation.Interpretation):
             )
 
             context["forth"].gen.update_node_count(value=0)
-            context["forth"].gen.update_previous_model(uproot._awkward_forth.Node("TOP"))
+            context["forth"].gen.update_previous_model(
+                uproot._awkward_forth.Node("TOP")
+            )
 
             output[i] = self._model.read(
                 chunk,

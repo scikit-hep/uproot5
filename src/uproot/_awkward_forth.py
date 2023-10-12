@@ -37,22 +37,23 @@ class Forth_Generator:
         self.context = []
 
     def add_node_to_model(self, new_node, current_node):
-        if (new_node.parent_name == current_node.name) and new_node.parent_name != new_node.name:
+        if (
+            new_node.parent_name == current_node.name
+        ) and new_node.parent_name != new_node.name:
             for child_node in current_node.children:
                 if child_node.name == new_node.name:
                     return
             current_node.add_child(new_node)
         else:
             for child_node in current_node.children:
-                self.add_node_to_model(new_node,child_node)
-    
-    def append_code(self,tree,node_name,code,case):
+                self.add_node_to_model(new_node, child_node)
+
+    def append_code(self, tree, node_name, code, case):
         if tree.name == node_name:
-            tree.append_code_snippet(code,case)
+            tree.append_code_snippet(code, case)
         else:
             for child_node in tree.children:
-                    self.append_code(child_node,node_name,code,case)
-                
+                self.append_code(child_node, node_name, code, case)
 
     def add_form(self, new_form, current_form, new_form_parent):
         if current_form["class"] == "RecordArray":
@@ -68,7 +69,6 @@ class Forth_Generator:
                     current_form["content"]["contents"].append(new_form)
             else:
                 self.add_form(new_form, current_form["content"], new_form_parent)
-
 
     def set_awkward_model(self, dictionary):
         self.awkward_model = dictionary
@@ -164,7 +164,7 @@ class ForthStash:
 
     def get_form(self):
         return self._form
-    
+
     def get_form_key(self):
         return self._form_key
 
@@ -174,7 +174,15 @@ class ForthStash:
         dtype,
         parent_node,
     ):
-        self._node = Node(name,dtype,self._pre_code,self._post_code,self._init,self._header,parent_node)
+        self._node = Node(
+            name,
+            dtype,
+            self._pre_code,
+            self._post_code,
+            self._init,
+            self._header,
+            parent_node,
+        )
 
     def read_forth_AsVector(self, forth_generator, values):
         key = forth_generator.node_count
@@ -240,8 +248,18 @@ class ForthStash:
         )
         forth_generator.append_form_key(self._form_key)
 
+
 class Node:
-    def __init__(self,name,dtype=None,pre_code=None,post_code=None,init_code=None,header_code=None,parent_node_name=None):
+    def __init__(
+        self,
+        name,
+        dtype=None,
+        pre_code=None,
+        post_code=None,
+        init_code=None,
+        header_code=None,
+        parent_node_name=None,
+    ):
         self._name = name
         self._dtype = dtype
         self._pre_code = pre_code
@@ -252,23 +270,14 @@ class Node:
         self._num_of_children = 0
         self._children = []
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return self._name
-    
-    def print_tree(self,level=0,node=None):
-        if node is None:
-            node = self
-        for var in vars(node):
-            print("  "*level,"{}: {}".format(var,vars(node)[var]))
-        for child in node.children:
-            self.print_tree(level+1,child)
-        print()
-    
-    def add_child(self,child):
+
+    def add_child(self, child):
         self._children.append(child)
-        self._num_of_children+=1
-    
-    def append_code_snippet(self,code,case):
+        self._num_of_children += 1
+
+    def append_code_snippet(self, code, case):
         if case == "pre":
             self._pre_code.append(code)
         elif case == "post":
@@ -281,32 +290,35 @@ class Node:
     @property
     def num_of_children(self):
         return self._num_of_children
+
     @property
     def children(self):
         return self._children
+
     @property
     def name(self):
         return self._name
+
     @property
     def parent_name(self):
         return self._parent_node_name
-    
+
     @property
     def pre_code(self):
         return self._pre_code
-    
+
     @property
     def post_code(self):
         return self._post_code
-    
+
     @property
     def header_code(self):
         return self._header_code
-    
+
     @property
     def init_code(self):
         return self._init_code
-    
+
 
 def convert_dtype(format):
     """Takes datatype codes from classses and returns the full datatype name.

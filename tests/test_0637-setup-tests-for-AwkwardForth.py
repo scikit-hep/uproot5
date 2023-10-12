@@ -1021,7 +1021,7 @@ def test_78(is_forth):
         branch = file["tree/map_string_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
-        py = branch.array(interp, library="ak",entry_stop=2)
+        py = branch.array(interp, library="ak", entry_stop=2)
         if is_forth:
             assert interp._complete_forth_code is not None
         assert py[1, 1, "1"] == "TWO"

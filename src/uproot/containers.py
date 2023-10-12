@@ -469,7 +469,7 @@ class AsString(AsContainer):
                 )
         else:
             raise AssertionError(repr(self._length_bytes))
-        
+
         if self._header and header:
             uproot.deserialization.numbytes_check(
                 chunk,
@@ -480,7 +480,7 @@ class AsString(AsContainer):
                 context,
                 file.file_path,
             )
-        
+
         if forth_stash is not None:
             forth_stash.add_to_header(
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
@@ -490,15 +490,18 @@ class AsString(AsContainer):
                 f"node{offsets_num}",
                 "i64",
                 forth_obj.previous_model.name,
-
             )
             temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{offsets_num}"}}'
-            forth_obj.add_form(json.loads(temp_aform),forth_obj.discovered_form,forth_obj.previous_model.name)
+            forth_obj.add_form(
+                json.loads(temp_aform),
+                forth_obj.discovered_form,
+                forth_obj.previous_model.name,
+            )
             forth_obj.add_node_to_model(forth_stash.get_node(), forth_obj.awkward_model)
             for elem in [
-                    f"node{data_num}-data",
-                    f"node{offsets_num}-offsets",
-                ]:
+                f"node{data_num}-data",
+                f"node{offsets_num}-offsets",
+            ]:
                 forth_obj.append_form_key(elem)
         return out
 
@@ -1080,7 +1083,7 @@ class AsSet(AsContainer):
 
         if forth_stash is not None:
             forth_obj = context["forth"].gen
-        
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1119,11 +1122,7 @@ in file {selffile.file_path}"""
             if not isinstance(self._keys, numpy.dtype):
                 forth_stash.add_to_pre("0 do\n")
                 forth_stash.add_to_post("loop\n")
-            forth_stash.set_node(
-                node_key,
-                "i64",
-                forth_obj.previous_model.name
-            )
+            forth_stash.set_node(node_key, "i64", forth_obj.previous_model.name)
             forth_obj.add_node_to_model(forth_stash.get_node(), forth_obj.awkward_model)
 
             forth_obj.add_form(
@@ -1133,7 +1132,7 @@ in file {selffile.file_path}"""
             )
             forth_obj.append_form_key(forth_stash.get_form_key())
             forth_obj.update_previous_model(forth_stash.get_node())
-        
+
         keys = _read_nested(
             self._keys, length, chunk, cursor, context, file, selffile, parent
         )
@@ -1281,12 +1280,14 @@ class AsMap(AsContainer):
             if self._header and header:
                 cursor.skip(6)
                 if forth_stash is not None:
-                    forth_stash.add_to_pre(f"{cursor._index-start_cursor._index} stream skip\n")
+                    forth_stash.add_to_pre(
+                        f"{cursor._index-start_cursor._index} stream skip\n"
+                    )
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_stash is not None:
                 key = forth_obj.get_node_count()
                 forth_obj.increment_node_count()
-                keys_key = key+1
+                keys_key = key + 1
                 form_key = f"node{key}-offsets"
                 aform = {
                     "class": "ListOffsetArray",
@@ -1319,8 +1320,14 @@ class AsMap(AsContainer):
                     "i64",
                     forth_obj.previous_model.name,
                 )
-                forth_obj.add_node_to_model(forth_stash.get_node(),forth_obj.awkward_model)
-                forth_obj.add_form(forth_stash.get_form(),forth_obj.discovered_form,forth_obj.previous_model.name)
+                forth_obj.add_node_to_model(
+                    forth_stash.get_node(), forth_obj.awkward_model
+                )
+                forth_obj.add_form(
+                    forth_stash.get_form(),
+                    forth_obj.discovered_form,
+                    forth_obj.previous_model.name,
+                )
                 forth_obj.append_form_key(forth_stash.get_form_key())
                 forth_obj.update_previous_model(forth_stash.get_node())
 
@@ -1336,13 +1343,22 @@ class AsMap(AsContainer):
                 header=False,
             )
             if forth_stash is not None and not isinstance(self._keys, numpy.dtype):
-                forth_obj.append_code(forth_obj.awkward_model,f"node{keys_key}","loop\n","post")
+                forth_obj.append_code(
+                    forth_obj.awkward_model, f"node{keys_key}", "loop\n", "post"
+                )
             if _has_nested_header(self._values) and header:
                 cursor.skip(6)
                 if forth_stash is not None:
-                    forth_obj.append_code(forth_obj.awkward_model,f"node{keys_key}","6 stream skip\n","post")
+                    forth_obj.append_code(
+                        forth_obj.awkward_model,
+                        f"node{keys_key}",
+                        "6 stream skip\n",
+                        "post",
+                    )
             if forth_stash is not None and not isinstance(self._values, numpy.dtype):
-                forth_obj.append_code(forth_obj.awkward_model,f"node{keys_key}","0 do\n","post")
+                forth_obj.append_code(
+                    forth_obj.awkward_model, f"node{keys_key}", "0 do\n", "post"
+                )
 
             if forth_stash is not None:
                 values_key = forth_obj.get_node_count()
@@ -1357,9 +1373,10 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-            if forth_stash is not None:
-                if not isinstance(self._values, numpy.dtype):
-                    forth_obj.append_code(forth_obj.awkward_model,f"node{values_key}","loop\n","post")
+            if forth_stash is not None and not isinstance(self._values, numpy.dtype):
+                forth_obj.append_code(
+                    forth_obj.awkward_model, f"node{values_key}", "loop\n", "post"
+                )
 
             out = STLMap(keys, values)
 
