@@ -721,7 +721,6 @@ def test_56(is_forth):
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_57(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -730,24 +729,26 @@ def test_57(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLVector ['one', 'two'] at 0x7fdeeb3f8d90>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_58(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_tstring"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
-        py = branch.array(interp, library="ak", entry_stop=2)
+        py = branch.array(interp, library="ak")
         assert py[1][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLVector ['one', 'two'] at 0x7f42edc0c0a0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_59(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -756,11 +757,12 @@ def test_59(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLVector [[1], [1, 2]] at 0x7ff36af3c2b0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_60(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -769,11 +771,12 @@ def test_60(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLVector [['one'], ['one', 'two']] at 0x7fae23700eb0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_61(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -782,11 +785,12 @@ def test_61(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLVector [['one'], ['one', 'two']] at 0x7f06ad24c460>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_62(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -795,11 +799,12 @@ def test_62(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLVector [{1}, {1, 2}] at 0x7f7f97e88880>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_63(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -808,11 +813,12 @@ def test_63(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLVector [{'one'}, {'one', 'two'}] at 0x7fb29ded7370>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_64(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -821,11 +827,12 @@ def test_64(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLSet {1, 2} at 0x7f47a620e310>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_65(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -834,11 +841,12 @@ def test_65(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLSet {'one', 'two'} at 0x7f5ffd9ff1c0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_66(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -847,11 +855,12 @@ def test_66(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[-1]["1"][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {1: 1, 2: 2} at 0x7f23be1efbe0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_67(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -860,11 +869,12 @@ def test_67(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {1: [1], 2: [1, 2]} at 0x7f899441d2b0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_68(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -873,11 +883,12 @@ def test_68(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {1: ['one'], 2: ['one', 'two']} at 0x7fd19d3288b0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_69(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -886,11 +897,12 @@ def test_69(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {1: {1}, 2: {1, 2}} at 0x7f2b3f1b5fa0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_70(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -899,11 +911,12 @@ def test_70(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {1: {'one'}, 2: {'one', 'two'}} at 0x7f4718b237c0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_71(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -912,11 +925,12 @@ def test_71(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {'one': 1, 'two': 2} at 0x7f4179bed1f0>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_72(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -925,11 +939,12 @@ def test_72(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {'one': [1], 'two': [1, 2]} at 0x7f26376e9b20>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_73(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -938,11 +953,12 @@ def test_73(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1] == "two"
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {'one': ['one'], 'two': ['one', 'two']} at 0x7f3e45d34910>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_74(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -951,11 +967,12 @@ def test_74(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {'one': {1}, 'two': {1, 2}} at 0x7f5a94b1c760>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_75(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -963,12 +980,13 @@ def test_75(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
+        if is_forth:
+            assert interp._complete_forth_code is not None
         assert py[1][1]["1"][1] == "two"
         # py[-1] == <STLMap {'one': {'one'}, 'two': {'one', 'two'}} at 0x7f1a1e95aa90>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_76(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -976,12 +994,13 @@ def test_76(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
+        if is_forth:
+            assert interp._complete_forth_code is not None
         assert py[1][1]["1"][1][1] == 2
         # py[-1] == <STLMap {1: [[1]], 2: [[1], [1, 2]]} at 0x7fc98bd7ec10>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_77(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -990,24 +1009,26 @@ def test_77(is_forth):
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
         assert py[1][1]["1"][1][1] == 2
+        if is_forth:
+            assert interp._complete_forth_code is not None
         # py[-1] == <STLMap {1: [{1}], 2: [{1}, {1, 2}]} at 0x7fcf9b191610>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_78(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
-        py = branch.array(interp, library="ak", entry_stop=2)
+        py = branch.array(interp, library="ak",entry_stop=2)
+        if is_forth:
+            assert interp._complete_forth_code is not None
         assert py[1, 1, "1"] == "TWO"
         # py[-1] == <STLMap {'one': 'ONE', 'two': 'TWO'} at 0x7f887b27cb20>
         assert py.layout.form == interp.awkward_form(branch.file)
 
 
-@pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_79(is_forth):
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
@@ -1015,6 +1036,8 @@ def test_79(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
+        if is_forth:
+            assert interp._complete_forth_code is not None
         assert py[1, 1, "1"] == "TWO"
         # py[-1] == <STLMap {'one': 'ONE', 'two': 'TWO'} at 0x7f4c4e527610>
         assert py.layout.form == interp.awkward_form(branch.file)
@@ -1029,6 +1052,8 @@ def test_80(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak")
+        if is_forth:
+            assert interp._complete_forth_code is not None
         assert py.tolist() == [
             [],
             [[], []],
@@ -1046,6 +1071,8 @@ def test_81(is_forth):
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
         interp._forth = is_forth
         py = branch.array(interp, library="ak", entry_stop=2)
+        if is_forth:
+            assert interp._complete_forth_code is not None
         assert py[0]["fY"] == pytest.approx(2.5636332035064697)
         # py[-1] == <STLVector [[], []] at 0x7f046a6951f0>
         assert py.layout.form == interp.awkward_form(branch.file)

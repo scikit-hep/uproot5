@@ -8,6 +8,7 @@ See :doc:`uproot.interpretation` and :doc:`uproot.model`.
 """
 
 
+import json
 import struct
 import types
 from collections.abc import KeysView, Mapping, Sequence, Set, ValuesView
@@ -432,6 +433,14 @@ class AsString(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            # raise NotImplementedError
+            forth_obj = context["forth"].gen
+            offsets_num = forth_obj.get_node_count()
+            forth_obj.increment_node_count()
+            data_num = forth_obj.get_node_count()
+            forth_obj.increment_node_count()
 
         if self._header and header:
             start_cursor = cursor.copy()
@@ -440,15 +449,27 @@ class AsString(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+            if forth_stash is not None:
+                cursor_jump = cursor._index - start_cursor._index
+                if cursor_jump != 0:
+                    forth_stash.add_to_pre(f"{cursor_jump} stream skip\n")
 
         if self._length_bytes == "1-5":
             out = cursor.string(chunk, context)
+            if forth_stash is not None:
+                forth_stash.add_to_pre(
+                    f"stream !B-> stack dup 255 = if drop stream !I-> stack then dup node{offsets_num}-offsets +<- stack stream #!B-> node{data_num}-data\n"
+                )
         elif self._length_bytes == "4":
             length = cursor.field(chunk, _stl_container_size, context)
             out = cursor.string_with_length(chunk, context, length)
+            if forth_stash is not None:
+                forth_stash.add_to_pre(
+                    f"stream !I-> stack dup node{offsets_num}-offsets +<- stack stream #B-> node{data_num}-data\n"
+                )
         else:
             raise AssertionError(repr(self._length_bytes))
-
+        
         if self._header and header:
             uproot.deserialization.numbytes_check(
                 chunk,
@@ -459,6 +480,26 @@ class AsString(AsContainer):
                 context,
                 file.file_path,
             )
+        
+        if forth_stash is not None:
+            forth_stash.add_to_header(
+                f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
+            )
+            forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
+            forth_stash.set_node(
+                f"node{offsets_num}",
+                "i64",
+                forth_obj.previous_model.name,
+
+            )
+            temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{offsets_num}"}}'
+            forth_obj.add_form(json.loads(temp_aform),forth_obj.discovered_form,forth_obj.previous_model.name)
+            forth_obj.add_node_to_model(forth_stash.get_node(), forth_obj.awkward_model)
+            for elem in [
+                    f"node{data_num}-data",
+                    f"node{offsets_num}-offsets",
+                ]:
+                forth_obj.append_form_key(elem)
         return out
 
     def __eq__(self, other):
@@ -1035,7 +1076,11 @@ class AsSet(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's 62,63,64,65,69,70,74,75,77
+        forth_stash = uproot._awkward_forth.forth_stash(context)
 
+        if forth_stash is not None:
+            forth_obj = context["forth"].gen
+        
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1043,6 +1088,10 @@ class AsSet(AsContainer):
                 instance_version,
                 is_memberwise,
             ) = uproot.deserialization.numbytes_version(chunk, cursor, context)
+            if forth_stash is not None:
+                jump = cursor._index - start_cursor._index
+                if jump != 0:
+                    forth_stash.add_to_pre(f"{jump} stream skip\n")
         else:
             is_memberwise = False
 
@@ -1053,6 +1102,38 @@ in file {selffile.file_path}"""
             )
 
         length = cursor.field(chunk, _stl_container_size, context)
+
+        if forth_stash is not None:
+            key = forth_obj.get_node_count()
+            forth_obj.increment_node_count()
+            node_key = f"node{key}"
+            form_key = f"node{key}-offsets"
+            forth_stash.add_to_header(f"output node{key}-offsets int64\n")
+            forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
+            forth_stash.add_to_pre(
+                f"stream !I-> stack\ndup node{key}-offsets +<- stack\n"
+            )
+            forth_stash.add_form_key(form_key)
+            temp_aform = f'{{ "class":"ListOffsetArray", "offsets":"i64", "content": "NULL", "parameters": {{"__array__": "set"}}, "form_key": "node{key}"}}'
+            forth_stash.add_form(json.loads(temp_aform))
+            if not isinstance(self._keys, numpy.dtype):
+                forth_stash.add_to_pre("0 do\n")
+                forth_stash.add_to_post("loop\n")
+            forth_stash.set_node(
+                node_key,
+                "i64",
+                forth_obj.previous_model.name
+            )
+            forth_obj.add_node_to_model(forth_stash.get_node(), forth_obj.awkward_model)
+
+            forth_obj.add_form(
+                forth_stash.get_form(),
+                forth_obj.discovered_form,
+                forth_obj.previous_model.name,
+            )
+            forth_obj.append_form_key(forth_stash.get_form_key())
+            forth_obj.update_previous_model(forth_stash.get_node())
+        
         keys = _read_nested(
             self._keys, length, chunk, cursor, context, file, selffile, parent
         )
@@ -1183,6 +1264,9 @@ class AsMap(AsContainer):
 
     def read(self, chunk, cursor, context, file, selffile, parent, header=True):
         # AwkwardForth testing: test_0637's 00,33,35,39,47,48,66,67,68,69,70,71,72,73,74,75,76,77,78,79
+        forth_stash = uproot._awkward_forth.forth_stash(context)
+        if forth_stash is not None:
+            forth_obj = context["forth"].gen
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1196,9 +1280,50 @@ class AsMap(AsContainer):
         if is_memberwise:
             if self._header and header:
                 cursor.skip(6)
+                if forth_stash is not None:
+                    forth_stash.add_to_pre(f"{cursor._index-start_cursor._index} stream skip\n")
             length = cursor.field(chunk, _stl_container_size, context)
+            if forth_stash is not None:
+                key = forth_obj.get_node_count()
+                forth_obj.increment_node_count()
+                keys_key = key+1
+                form_key = f"node{key}-offsets"
+                aform = {
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "content": {
+                        "class": "RecordArray",
+                        "contents": [],
+                        "parameters": {"__array__": "sorted_map"},
+                    },
+                    "form_key": f"node{key}",
+                }
+                forth_stash.add_form(aform)
+                forth_stash.add_form_key(form_key)
+                forth_stash.add_to_header(f"output {form_key} int64\n")
+                forth_stash.add_to_init(f"0 {form_key} <- stack\n")
+                forth_stash.add_to_pre(
+                    f"stream !I-> stack\n dup {form_key} +<- stack\n"
+                )
             if _has_nested_header(self._keys) and header:
                 cursor.skip(6)
+                if forth_stash is not None:
+                    forth_stash.add_to_pre("6 stream skip\n")
+            if forth_stash is not None:
+                if not isinstance(self._keys, numpy.dtype):
+                    forth_stash.add_to_pre("dup 0 do\n")
+                else:
+                    forth_stash.add_to_pre("dup\n")
+                forth_stash.set_node(
+                    f"node{key}",
+                    "i64",
+                    forth_obj.previous_model.name,
+                )
+                forth_obj.add_node_to_model(forth_stash.get_node(),forth_obj.awkward_model)
+                forth_obj.add_form(forth_stash.get_form(),forth_obj.discovered_form,forth_obj.previous_model.name)
+                forth_obj.append_form_key(forth_stash.get_form_key())
+                forth_obj.update_previous_model(forth_stash.get_node())
+
             keys = _read_nested(
                 self._keys,
                 length,
@@ -1210,8 +1335,17 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
+            if forth_stash is not None and not isinstance(self._keys, numpy.dtype):
+                forth_obj.append_code(forth_obj.awkward_model,f"node{keys_key}","loop\n","post")
             if _has_nested_header(self._values) and header:
                 cursor.skip(6)
+                if forth_stash is not None:
+                    forth_obj.append_code(forth_obj.awkward_model,f"node{keys_key}","6 stream skip\n","post")
+            if forth_stash is not None and not isinstance(self._values, numpy.dtype):
+                forth_obj.append_code(forth_obj.awkward_model,f"node{keys_key}","0 do\n","post")
+
+            if forth_stash is not None:
+                values_key = forth_obj.get_node_count()
             values = _read_nested(
                 self._values,
                 length,
@@ -1223,6 +1357,10 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
+            if forth_stash is not None:
+                if not isinstance(self._values, numpy.dtype):
+                    forth_obj.append_code(forth_obj.awkward_model,f"node{values_key}","loop\n","post")
+
             out = STLMap(keys, values)
 
             if self._header and header:

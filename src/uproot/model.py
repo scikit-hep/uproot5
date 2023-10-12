@@ -836,13 +836,7 @@ class Model:
                 forth_stash.set_node(
                     "model828",
                     "i64",
-                    forth_stash.get_pre(),
-                    forth_stash.get_post(),
-                    forth_stash.get_init(),
-                    forth_stash.get_header(),
-                    1,
-                    {},
-                    forth_obj.previous_model["name"],
+                    forth_obj.previous_model.name,
                 )
                 forth_obj.add_node_to_model(
                     forth_stash.get_node(), forth_obj.awkward_model
@@ -1319,13 +1313,7 @@ class DispatchByVersion:
             forth_stash.set_node(
                 "Model1319",
                 "i64",
-                forth_stash.get_pre(),
-                forth_stash.get_post(),
-                forth_stash.get_init(),
-                forth_stash.get_header(),
-                1,
-                {},
-                forth_obj.previous_model["name"],
+                forth_obj.previous_model.name,
             )
             forth_obj.add_node_to_model(forth_stash.get_node(), forth_obj.awkward_model)
             forth_obj.update_previous_model(forth_stash.get_node())

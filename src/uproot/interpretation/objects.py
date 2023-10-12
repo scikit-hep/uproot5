@@ -296,15 +296,12 @@ class AsObjects(uproot.interpretation.Interpretation):
             return False
 
     def _assemble_forth(self, forth_obj, awkward_model):
-        forth_obj.add_to_header(awkward_model["header_code"])
-        forth_obj.add_to_init(awkward_model["init_code"])
-        forth_obj.add_to_final(awkward_model["pre_code"])
-        if "content" in awkward_model.keys():
-            if isinstance(awkward_model["content"], dict):
-                self._assemble_forth(forth_obj, awkward_model["content"])
-            else:
-                pass
-        forth_obj.add_to_final(awkward_model["post_code"])
+        forth_obj.add_to_header(awkward_model.header_code)
+        forth_obj.add_to_init(awkward_model.init_code)
+        forth_obj.add_to_final(awkward_model.pre_code)
+        for child in awkward_model.children:
+            self._assemble_forth(forth_obj, child)
+        forth_obj.add_to_final(awkward_model.post_code)
 
     def _any_NULL(self, form):
         # Recursion through form.
@@ -338,7 +335,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             )
 
             context["forth"].gen.update_node_count(value=0)
-            context["forth"].gen.update_previous_model({"name": "TOP", "content": {}})
+            context["forth"].gen.update_previous_model(uproot._awkward_forth.Node("TOP"))
 
             output[i] = self._model.read(
                 chunk,
@@ -352,7 +349,7 @@ class AsObjects(uproot.interpretation.Interpretation):
             if not self._any_NULL(context["forth"].gen.discovered_form):
                 context["forth"].prereaddone = True
                 self._assemble_forth(
-                    context["forth"].gen, context["forth"].gen.awkward_model["content"]
+                    context["forth"].gen, context["forth"].gen.awkward_model.children[0]
                 )
                 self._complete_forth_code = f"""input stream
     input byteoffsets

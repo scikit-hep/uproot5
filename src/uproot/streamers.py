@@ -275,8 +275,9 @@ class Model_TStreamerInfo(uproot.model.Model):
             [
                 "        if forth_stash is not None:",
                 f"           forth_stash.add_form({{'class': 'RecordArray', 'contents': content, 'parameters': {{'__record__': {self.name!r}}}}})",
-                "           forth_stash.set_node('dynamic', \"i64\", forth_stash.get_pre(), forth_stash.get_post(), forth_stash.get_init(), forth_stash.get_header(), 0, None, forth_obj.previous_model['name'])",
+                "           forth_stash.set_node('dynamic', \"i64\", forth_obj.previous_model.name)",
                 "           forth_obj.add_form(forth_stash.get_form(),forth_obj.discovered_form,'TOP')",
+                "           forth_obj.append_form_key(forth_stash.get_form_key())",
                 "           forth_obj.add_node_to_model(forth_stash.get_node(),forth_obj.awkward_model)",
                 "           forth_obj.update_previous_model(forth_stash.get_node())",
             ]
@@ -965,6 +966,7 @@ class Model_TStreamerBasicType(Model_TStreamerElement):
                                 f'           content[{fields[0][i]!r}] = {{ "class": "NumpyArray", "primitive": "{uproot._awkward_forth.convert_dtype(formats[0][i])}", "inner_shape": [], "parameters": {{}}, "form_key": f"node{{key}}"}}',
                                 f'           forth_stash.add_to_pre(f"stream !{formats[0][i]}-> node{{key}}-data\\n")',
                                 "           forth_stash.add_form_key(form_key)",
+                                "           forth_obj.append_form_key(forth_stash.get_form_key())",
                                 "           forth_obj.increment_node_count()",
                             ]
                         )
