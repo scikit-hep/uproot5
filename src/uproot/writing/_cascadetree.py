@@ -720,7 +720,9 @@ class Tree:
                         )
                     )
                 else:
-                    big_endian = numpy.asarray(branch_array, dtype=datum["dtype"])
+                    big_endian = uproot._util.ensure_numpy(branch_array).astype(
+                        datum["dtype"]
+                    )
                     if big_endian.shape != (len(branch_array),) + datum["shape"]:
                         raise ValueError(
                             "'extend' must fill branches with a consistent shape: has {}, trying to fill with {}".format(
@@ -780,7 +782,7 @@ class Tree:
                             "how did this pass the type check?\n\n" + repr(content)
                         )
 
-                big_endian = numpy.asarray(content, dtype=datum["dtype"])
+                big_endian = numpy.asarray(content.data, dtype=datum["dtype"])
                 shape = tuple(shape) + big_endian.shape[1:]
 
                 if shape[1:] != datum["shape"]:
