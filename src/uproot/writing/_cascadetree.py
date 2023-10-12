@@ -780,7 +780,7 @@ class Tree:
                             "how did this pass the type check?\n\n" + repr(content)
                         )
 
-                big_endian = numpy.asarray(content, dtype=datum["dtype"])
+                big_endian = numpy.asarray(content.data, dtype=datum["dtype"])
                 shape = tuple(shape) + big_endian.shape[1:]
 
                 if shape[1:] != datum["shape"]:
