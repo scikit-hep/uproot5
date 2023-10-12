@@ -12,6 +12,7 @@ support vector-read requests; if not, it automatically falls back to
 
 
 import contextlib
+import queue
 import sys
 
 import uproot
@@ -322,7 +323,9 @@ class XRootDSource(uproot.source.chunk.Source):
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)

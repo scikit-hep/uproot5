@@ -603,7 +603,9 @@ class HTTPSource(uproot.source.chunk.Source):
         self._executor.submit(future)
         return chunk
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             self._num_requests += 1
             self._num_requested_chunks += len(ranges)

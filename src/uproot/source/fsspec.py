@@ -93,7 +93,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
-    def chunks(self, ranges, notifications: queue.Queue):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         """
         Args:
             ranges (list of (int, int) 2-tuples): Intervals to fetch

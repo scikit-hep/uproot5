@@ -14,6 +14,7 @@ If the filesystem or operating system does not support memory-mapped files, the
 
 
 import os.path
+import queue
 
 import numpy
 
@@ -153,7 +154,9 @@ class MemmapSource(uproot.source.chunk.Source):
         else:
             return self._fallback.chunk(start, stop)
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             if self.closed:
                 raise OSError(f"memmap is closed for file {self._file_path}")
