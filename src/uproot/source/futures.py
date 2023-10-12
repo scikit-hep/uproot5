@@ -47,6 +47,11 @@ class TrivialFuture:
     def __init__(self, result):
         self._result = result
 
+    def add_done_callback(self, callback, *, context=None):
+        """
+        Does nothing, since this (Trivial)Future is already complete.
+        """
+
     def result(self, timeout=None):
         """
         The result of this (Trivial)Future.
