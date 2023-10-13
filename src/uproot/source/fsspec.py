@@ -1,4 +1,13 @@
+# BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
+
+from __future__ import annotations
+
+import concurrent.futures
+import queue
+
+import uproot
 import uproot.source.chunk
+import uproot.source.futures
 
 
 class FSSpecSource(uproot.source.chunk.Source):
@@ -13,16 +22,28 @@ class FSSpecSource(uproot.source.chunk.Source):
     to get many chunks in one request.
     """
 
-    def __init__(self, file_path, **kwargs):
+    def __init__(self, file_path, **options):
         import fsspec.core
+
+        default_options = uproot.reading.open.defaults
+        self._use_threads = options.get("use_threads", default_options["use_threads"])
+        self._num_workers = options.get("num_workers", default_options["num_workers"])
 
         # TODO: is timeout always valid?
 
         # Remove uproot-specific options (should be done earlier)
-        exclude_keys = set(uproot.reading.open.defaults.keys())
-        opts = {k: v for k, v in kwargs.items() if k not in exclude_keys}
+        exclude_keys = set(default_options.keys())
+        opts = {k: v for k, v in options.items() if k not in exclude_keys}
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
+
+        if self._use_threads:
+            self._executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=self._num_workers
+            )
+        else:
+            self._executor = uproot.source.futures.TrivialExecutor()
+
         # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
         self._fh = None
@@ -37,15 +58,25 @@ class FSSpecSource(uproot.source.chunk.Source):
             path = repr("..." + self._file_path[-10:])
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        state.pop("_executor")
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._open()
+
     def __enter__(self):
         self._fh = self._file.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
+        self._executor.shutdown()
         self._file.__exit__(exception_type, exception_value, traceback)
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -66,7 +97,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         """
         Args:
             ranges (list of (int, int) 2-tuples): Intervals to fetch
@@ -97,28 +130,26 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
-        data = self._fs.cat_ranges(
-            [self._file_path] * len(ranges),
-            [start for start, _ in ranges],
-            [stop for _, stop in ranges],
-        )
+
         chunks = []
-        for item, (start, stop) in zip(data, ranges):
-            future = uproot.source.futures.TrivialFuture(item)
+        for start, stop in ranges:
+            future = self._executor.submit(
+                self._fs.cat_file, self._file_path, start, stop
+            )
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
-            uproot.source.chunk.notifier(chunk, notifications)()
+            future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
             chunks.append(chunk)
         return chunks
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         """
         The number of bytes in the file.
         """
         return self._fs.size(self._file_path)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the associated file/connection/thread pool is closed; False
         otherwise.

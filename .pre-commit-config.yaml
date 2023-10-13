@@ -27,3 +27,10 @@ repos:
   hooks:
     - id: ruff
       args: ["--fix", "--show-fixes"]
+
+
+- repo: https://github.com/asottile/pyupgrade
+  rev: v3.13.0
+  hooks:
+  - id: pyupgrade
+    args: ["--py38-plus"]
