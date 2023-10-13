@@ -14,6 +14,7 @@ automatically falls back to :doc:`uproot.source.http.MultithreadedHTTPSource`.
 Despite the name, both sources support secure HTTPS (selected by URL scheme).
 """
 
+from __future__ import annotations
 
 import base64
 import queue
@@ -39,9 +40,7 @@ def make_connection(parsed_url, timeout):
     from http.client import HTTPConnection, HTTPSConnection
 
     if parsed_url.scheme == "https":
-        return HTTPSConnection(
-            parsed_url.hostname, parsed_url.port, None, None, timeout
-        )
+        return HTTPSConnection(parsed_url.hostname, parsed_url.port, timeout=timeout)
 
     elif parsed_url.scheme == "http":
         return HTTPConnection(parsed_url.hostname, parsed_url.port, timeout)
@@ -595,7 +594,7 @@ class HTTPSource(uproot.source.chunk.Source):
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -605,7 +604,9 @@ class HTTPSource(uproot.source.chunk.Source):
         self._executor.submit(future)
         return chunk
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             self._num_requests += 1
             self._num_requested_chunks += len(ranges)
@@ -641,7 +642,7 @@ class HTTPSource(uproot.source.chunk.Source):
         return self._executor
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._executor.closed
 
     def __enter__(self):
@@ -660,7 +661,7 @@ class HTTPSource(uproot.source.chunk.Source):
         return self._timeout
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = get_num_bytes(
                 self._file_path, self.parsed_url, self._timeout
@@ -758,7 +759,7 @@ class MultithreadedHTTPSource(uproot.source.chunk.MultithreadedSource):
         return self._timeout
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = get_num_bytes(
                 self._file_path, self.parsed_url, self._timeout

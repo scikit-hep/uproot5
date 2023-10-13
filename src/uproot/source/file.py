@@ -12,8 +12,10 @@ If the filesystem or operating system does not support memory-mapped files, the
 :doc:`uproot.source.file.MultithreadedFileSource` is an automatic fallback.
 """
 
+from __future__ import annotations
 
 import os.path
+import queue
 
 import numpy
 
@@ -45,7 +47,7 @@ class FileResource(uproot.source.chunk.Resource):
         return self._file
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._file.closed
 
     def __enter__(self):
@@ -137,7 +139,7 @@ class MemmapSource(uproot.source.chunk.Source):
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         if self._fallback is None:
             if self.closed:
                 raise OSError(f"memmap is closed for file {self._file_path}")
@@ -153,7 +155,9 @@ class MemmapSource(uproot.source.chunk.Source):
         else:
             return self._fallback.chunk(start, stop)
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             if self.closed:
                 raise OSError(f"memmap is closed for file {self._file_path}")
@@ -195,7 +199,7 @@ class MemmapSource(uproot.source.chunk.Source):
         return self._fallback
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         if self._fallback is None:
             return self._file._mmap.closed
         else:
@@ -219,7 +223,7 @@ class MemmapSource(uproot.source.chunk.Source):
             self._fallback.__exit__(exception_type, exception_value, traceback)
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._fallback is None:
             return self._file._mmap.size()
         else:

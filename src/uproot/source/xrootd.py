@@ -10,8 +10,10 @@ support vector-read requests; if not, it automatically falls back to
 :doc:`uproot.source.xrootd.MultithreadedXRootDSource`.
 """
 
+from __future__ import annotations
 
 import contextlib
+import queue
 import sys
 
 import uproot
@@ -141,14 +143,14 @@ in file {self._file_path}"""
         return self._file
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         status, info = self._file.stat(self._xrd_timeout())
         if status.error:
             self._xrd_error(status)
         return info.size
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return not self._file.is_open()
 
     def __enter__(self):
@@ -313,7 +315,7 @@ class XRootDSource(uproot.source.chunk.Source):
             path = repr("..." + self._file_path[-10:])
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop):
+    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -322,7 +324,9 @@ class XRootDSource(uproot.source.chunk.Source):
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges, notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
@@ -422,7 +426,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return self._resource.file
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._resource.closed
 
     def __enter__(self):
@@ -433,7 +437,7 @@ class XRootDSource(uproot.source.chunk.Source):
         self._resource.__exit__(exception_type, exception_value, traceback)
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = self._resource.num_bytes
         return self._num_bytes
@@ -493,7 +497,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         return self._timeout
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = self._executor.workers[0].resource.num_bytes
         return self._num_bytes
