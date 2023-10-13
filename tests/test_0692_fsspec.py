@@ -63,11 +63,15 @@ def test_open_fsspec_s3():
 
 @pytest.mark.network
 @pytest.mark.xrootd
-def test_open_fsspec_xrootd():
+@pytest.mark.parametrize(
+    "handler",
+    [uproot.source.fsspec.FSSpecSource, uproot.source.xrootd.XRootDSource, None],
+)
+def test_open_fsspec_xrootd(handler):
     pytest.importorskip("XRootD")
     with uproot.open(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
-        handler=uproot.source.fsspec.FSSpecSource,
+        handler=handler,
     ) as f:
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20
