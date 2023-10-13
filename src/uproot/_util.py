@@ -432,7 +432,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
     elif parsed_url.scheme.upper() == "ROOT":
         out = options["xrootd_handler"]
         if out is None:
-            out = uproot.source.root.XRootDSource
+            out = uproot.source.xrootd.XRootDSource
         else:
             warnings.warn(
                 f"""In version 5.2.0, the 'xrootd_handler' argument will be removed from 'uproot.open'. Use
