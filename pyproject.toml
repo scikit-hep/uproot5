@@ -38,7 +38,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "awkward>=2.4.5",
+    "awkward>=2.4.6",
     "importlib-metadata;python_version<\"3.8\"",
     "numpy",
     "packaging",
@@ -51,7 +51,7 @@ dynamic = [
 [project.optional-dependencies]
 dev = [
     "boost_histogram>=0.13",
-    "dask-awkward>=2023.10.0a1",
+    "dask-awkward>=2023.10.0",
     "dask[array]",
     "hist>=1.2",
     "pandas",
