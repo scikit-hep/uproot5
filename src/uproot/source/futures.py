@@ -508,5 +508,6 @@ class LoopExecutor:
     def loop(self) -> asyncio.AbstractEventLoop:
         return self._loop
 
-    def submit(self, coroutine) -> asyncio.Future:
-        return asyncio.run_coroutine_threadsafe(coroutine, self._loop)
+    def submit(self, coroutine, *args) -> asyncio.Future:
+        coroutine_object = coroutine(*args)
+        return asyncio.run_coroutine_threadsafe(coroutine_object, self._loop)
