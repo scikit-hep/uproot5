@@ -21,6 +21,7 @@ This module defines a Python-like Future and Executor for Uproot in three levels
 These classes implement a *subset* of Python's Future and Executor interfaces.
 """
 
+import asyncio
 import os
 import queue
 import sys
@@ -469,3 +470,43 @@ class ResourceTrivialExecutor(TrivialExecutor):
         self.shutdown()
         self._resource.__exit__(exception_type, exception_value, traceback)
         self._closed = True
+
+
+class LoopExecutor:
+    def __repr__(self):
+        return f"<LoopExecutor at 0x{id(self):012x}>"
+
+    def __init__(self):
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(target=self._run)
+        self.start()
+
+    def start(self):
+        self._thread.start()
+        return self
+
+    def shutdown(self):
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        self._thread.join()
+
+    def _run(self):
+        asyncio.set_event_loop(self._loop)
+        try:
+            self._loop.run_forever()
+        finally:
+            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+            self._loop.close()
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.shutdown()
+
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        return self._loop
+
+    def submit(self, coroutine) -> asyncio.Future:
+        return asyncio.run_coroutine_threadsafe(coroutine, self._loop)
