@@ -139,6 +139,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
         chunks = []
+        # _cat_file is async while cat_file is not
         cat_file = self._fs._cat_file if self._fs.async_impl else self._fs.cat_file
         for start, stop in ranges:
             future = self._executor.submit(cat_file, self._file_path, start, stop)
