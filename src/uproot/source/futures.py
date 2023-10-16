@@ -225,7 +225,7 @@ class ThreadPoolExecutor:
         return len(self._workers)
 
     @property
-    def workers(self):
+    def workers(self) -> list[Worker]:
         """
         A list of workers (:doc:`uproot.source.futures.Worker`).
         """
@@ -316,7 +316,7 @@ class ResourceWorker(Worker):
     executes.
     """
 
-    def __init__(self, work_queue, resource):
+    def __init__(self, work_queue: queue.Queue, resource):
         super().__init__(work_queue)
         self._resource = resource
 
