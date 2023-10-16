@@ -41,9 +41,11 @@ class FSSpecSource(uproot.source.chunk.Source):
             if self._fs.async_impl:
                 self._executor = uproot.source.futures.LoopExecutor()
                 # Bind the loop to the filesystem
-                self._fs = fsspec.filesystem(
-                    protocol=self._fs.protocol, loop=self._executor.loop
-                )
+                async def make_fs():
+                    return fsspec.filesystem(
+                        protocol=self._fs.protocol, loop=self._executor.loop
+                    )
+                self._fs = self._executor.submit(make_fs).result()
             else:
                 self._executor = concurrent.futures.ThreadPoolExecutor(
                     max_workers=self._num_workers
