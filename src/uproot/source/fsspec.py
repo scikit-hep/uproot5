@@ -35,23 +35,25 @@ class FSSpecSource(uproot.source.chunk.Source):
         exclude_keys = set(default_options.keys())
         opts = {k: v for k, v in options.items() if k not in exclude_keys}
 
+        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
+
         if self._use_threads:
             if self._fs.async_impl:
                 self._executor = uproot.source.futures.LoopExecutor()
+
+                # Bind the loop to the filesystem
+                async def make_fs():
+                    return fsspec.filesystem(
+                        protocol=self._fs.protocol, loop=self._executor.loop
+                    )
+
+                self._fs = self._executor.submit(make_fs).result()
             else:
                 self._executor = concurrent.futures.ThreadPoolExecutor(
                     max_workers=self._num_workers
                 )
         else:
             self._executor = uproot.source.futures.TrivialExecutor()
-
-        self._fs, self._file_path = fsspec.core.url_to_fs(
-            file_path,
-            **opts,
-            loop=None
-            if type(self._executor).__name__ != "LoopExecutor"
-            else self._executor._loop,
-        )
 
         # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
