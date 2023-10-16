@@ -52,7 +52,7 @@ class FSSpecSource(uproot.source.chunk.Source):
             self._executor = uproot.source.futures.TrivialExecutor()
 
         # TODO: set mode to "read-only" in a way that works for all filesystems
-        # self._file = self._fs.open(self._file_path)
+        self._file = self._fs.open(self._file_path)
         self._fh = None
         self._num_requests = 0
         self._num_requested_chunks = 0
@@ -75,13 +75,13 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._open()
 
     def __enter__(self):
-        # self._fh = self._file.__enter__()
+        self._fh = self._file.__enter__()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
         self._executor.shutdown()
-        # self._file.__exit__(exception_type, exception_value, traceback)
+        self._file.__exit__(exception_type, exception_value, traceback)
 
     def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         """
