@@ -482,6 +482,9 @@ class LoopExecutor:
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._run)
         self.start()
+        # wait until it's started
+        while not self._loop.is_running():
+            time.sleep(0.001)
 
     def start(self):
         self._thread.start()
