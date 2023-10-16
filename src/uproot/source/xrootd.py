@@ -325,7 +325,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
     def chunks(
-        self, ranges, notifications: queue.Queue
+        self, ranges: list[(int, int)], notifications: queue.Queue
     ) -> list[uproot.source.chunk.Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)

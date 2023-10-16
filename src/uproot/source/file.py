@@ -156,7 +156,7 @@ class MemmapSource(uproot.source.chunk.Source):
             return self._fallback.chunk(start, stop)
 
     def chunks(
-        self, ranges, notifications: queue.Queue
+        self, ranges: list[(int, int)], notifications: queue.Queue
     ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             if self.closed:
