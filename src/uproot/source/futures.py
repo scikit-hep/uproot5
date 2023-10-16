@@ -21,6 +21,8 @@ This module defines a Python-like Future and Executor for Uproot in three levels
 These classes implement a *subset* of Python's Future and Executor interfaces.
 """
 
+from __future__ import annotations
+
 import os
 import queue
 import sys
