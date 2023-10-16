@@ -86,9 +86,6 @@ def test_fsspec_chunks():
 
     notifications = queue.Queue()
     with uproot.source.fsspec.FSSpecSource(url) as source:
-        import time
-
-        time.sleep(1)
         chunks = source.chunks(
             [(0, 100), (50, 55), (200, 400)], notifications=notifications
         )
