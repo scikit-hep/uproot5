@@ -60,7 +60,9 @@ class Source:
         :doc:`uproot.source.chunk.Chunk`.
         """
 
-    def chunks(self, ranges, notifications: queue.Queue) -> list[Chunk]:
+    def chunks(
+        self, ranges: list[(int, int)], notifications: queue.Queue
+    ) -> list[Chunk]:
         """
         Args:
             ranges (list of (int, int) 2-tuples): Intervals to fetch
@@ -164,7 +166,9 @@ class MultithreadedSource(Source):
         self._executor.submit(future)
         return chunk
 
-    def chunks(self, ranges, notifications: queue.Queue) -> list[Chunk]:
+    def chunks(
+        self, ranges: list[(int, int)], notifications: queue.Queue
+    ) -> list[Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)

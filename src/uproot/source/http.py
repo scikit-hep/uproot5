@@ -260,7 +260,7 @@ for URL {}""".format(
         return uproot.source.futures.ResourceFuture(task)
 
     @staticmethod
-    def multifuture(source, ranges, futures, results):
+    def multifuture(source, ranges: list[(int, int)], futures, results):
         """
         Args:
             source (:doc:`uproot.source.http.HTTPSource`): The data source.
@@ -351,7 +351,7 @@ for URL {}""".format(
     )
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
 
-    def is_multipart_supported(self, ranges, response):
+    def is_multipart_supported(self, ranges: list[(int, int)], response) -> bool:
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to check for multipart GET support.
@@ -368,7 +368,7 @@ for URL {}""".format(
         else:
             return True
 
-    def handle_no_multipart(self, source, ranges, futures, results):
+    def handle_no_multipart(self, source, ranges: list[(int, int)], futures, results):
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to handle a lack of multipart GET support.
@@ -605,7 +605,7 @@ class HTTPSource(uproot.source.chunk.Source):
         return chunk
 
     def chunks(
-        self, ranges, notifications: queue.Queue
+        self, ranges: list[(int, int)], notifications: queue.Queue
     ) -> list[uproot.source.chunk.Chunk]:
         if self._fallback is None:
             self._num_requests += 1
