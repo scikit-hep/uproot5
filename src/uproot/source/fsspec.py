@@ -140,10 +140,10 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         chunks = []
         # _cat_file is async while cat_file is not
-        is_async = (
+        use_async = (
             self._fs.async_impl and type(self._executor).__name__ == "LoopExecutor"
         )
-        cat_file = self._fs._cat_file if is_async else self._fs.cat_file
+        cat_file = self._fs._cat_file if use_async else self._fs.cat_file
         for start, stop in ranges:
             future = self._executor.submit(cat_file, self._file_path, start, stop)
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
