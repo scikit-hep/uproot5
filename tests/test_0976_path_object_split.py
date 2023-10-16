@@ -44,7 +44,7 @@ def test_url_split():
         (
             pathlib.Path("/tmp/test/dir/file.root:Test"),
             (
-                "/tmp/test/dir/file.root",
+                str(pathlib.Path("/tmp/test/dir/file.root")),
                 "Test",
             ),
         ),
@@ -52,8 +52,8 @@ def test_url_split():
             r"C:\tmp\test\dir\file.root:Dir/Test",
             (
                 # make it work on Windows and Linux
-                str(pathlib.Path(r"C:\tmp\test\dir\file.root")),
-                str(pathlib.Path("Dir/Test")),
+                r"C:\tmp\test\dir\file.root",
+                "Dir/Test",
             ),
         ),
     ]:
