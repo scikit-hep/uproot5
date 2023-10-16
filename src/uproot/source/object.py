@@ -40,7 +40,7 @@ class ObjectResource(uproot.source.chunk.Resource):
         return self._obj
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return getattr(self._obj, "closed", False)
 
     def __enter__(self):

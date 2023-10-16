@@ -8,7 +8,6 @@ and the classes that are too fundamental to be models:
 and :doc:`uproot.reading.ReadOnlyKey` (``TKey``).
 """
 
-
 import struct
 import sys
 import uuid
@@ -77,11 +76,12 @@ def open(
 
     Options (type; default):
 
-    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.s3.S3Source`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
+    * handler (:doc:`uproot.source.chunk.Source` class; None)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
@@ -178,10 +178,12 @@ class _OpenDefaults(dict):
 
 open.defaults = _OpenDefaults(
     {
-        "file_handler": uproot.source.file.MemmapSource,
-        "s3_handler": uproot.source.s3.S3Source,
-        "http_handler": uproot.source.http.HTTPSource,
-        "object_handler": uproot.source.object.ObjectSource,
+        "handler": None,  # To be updated to fsspec source
+        "file_handler": None,  # Deprecated
+        "s3_handler": None,  # Deprecated
+        "http_handler": None,  # Deprecated
+        "object_handler": None,  # Deprecated
+        "xrootd_handler": None,  # Deprecated
         "timeout": 30,
         "max_num_elements": None,
         "num_workers": 1,
@@ -191,7 +193,6 @@ open.defaults = _OpenDefaults(
         "minimal_ttree_metadata": True,
     }
 )
-
 
 must_be_attached = [
     "TROOT",
@@ -534,11 +535,12 @@ class ReadOnlyFile(CommonFileMethods):
 
     Options (type; default):
 
-    * file_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.file.MemmapSource`)
-    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.XRootDSource`)
-    * s3_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.xrootd.S3Source`)
-    * http_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.http.HTTPSource`)
-    * object_handler (:doc:`uproot.source.chunk.Source` class; :doc:`uproot.source.object.ObjectSource`)
+    * handler (:doc:`uproot.source.chunk.Source` class; None)
+    * file_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * xrootd_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * s3_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * http_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
+    * object_handler (:doc:`uproot.source.chunk.Source` class; None) (Deprecated: Use `handler` instead. If set, this will take precedence over `handler`)
     * timeout (float for HTTP, int for XRootD; 30)
     * max_num_elements (None or int; None)
     * num_workers (int; 1)
