@@ -488,7 +488,6 @@ class LoopExecutor:
 
     def start(self):
         self._thread.start()
-        return self
 
     def shutdown(self):
         self._loop.call_soon_threadsafe(self._loop.stop)
