@@ -4,6 +4,8 @@
 This module defines a physical layer for remote files, accessed via S3.
 """
 
+from __future__ import annotations
+
 import os
 from urllib.parse import parse_qsl, urlparse
 

@@ -6,6 +6,7 @@ a thread-local pointer into a :doc:`uproot.source.chunk.Chunk` and performs
 the lowest level of interpretation (numbers, strings, raw arrays, etc.).
 """
 
+from __future__ import annotations
 
 import datetime
 import struct
