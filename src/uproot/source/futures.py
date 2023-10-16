@@ -483,7 +483,7 @@ class LoopExecutor:
         self._thread = threading.Thread(target=self._run)
         self.start()
         # wait until it's started
-        while not self._loop.is_running():
+        while not self._loop.is_running() or self._loop.is_closed():
             time.sleep(0.001)
 
     def start(self):
