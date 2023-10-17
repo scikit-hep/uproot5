@@ -31,4 +31,3 @@ def test_new_support_RNTuple_split_int16_reading():
         assert df.one_integers[-1] == 1
         assert np.all(np.unique(df.one_integers[: len(df.one_integers) // 2]) == [2])
         assert np.all(np.unique(df.one_integers[len(df.one_integers) / 2 + 1 :]) == [1])
-
