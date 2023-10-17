@@ -358,23 +358,29 @@ in file {self.file.file_path}"""
             elif nbits == 32:
                 res = numpy.empty(len(content), numpy.uint32)
                 content = content.view(numpy.uint8)
-                res[::4] = content[0 : len(res) // 4]
-                res[1::4] = content[len(res) // 4 : len(res) // 2]
-                res[2::4] = content[len(res) // 2 : 3 * len(res) // 4]
-                res[3::4] = content[3 * len(res) // 4 : len(res)]
+                count = len(content) // 4
+                for i in range(count):
+                    b1 = numpy.uint32(content[i]) << 0 
+                    b2 = numpy.uint32(content[count + i]) << 8
+                    b3 = numpy.uint32(content[2* count + i]) << 16
+                    b4 = numpy.uint32(content[3* count + i]) << 24
+                    res[i] = (b1 | b2) | (b3 | b4)
+                
 
             elif nbits == 64:
-                res = numpy.empty(len(content) * 8, numpy.uint8)
+                res = numpy.empty(len(content), numpy.uint64)
                 content = content.view(numpy.uint8)
-                res[::8] = content[0 : len(res) // 8]
-                res[1::8] = content[len(res) // 8 : 2 * len(res) // 8]
-                res[2::8] = content[2 * len(res) // 8 : 3 * len(res) // 8]
-                res[3::8] = content[3 * len(res) // 8 : 4 * len(res) // 8]
-                res[4::8] = content[4 * len(res) // 8 : 5 * len(res) // 8]
-                res[5::8] = content[5 * len(res) // 8 : 6 * len(res) // 8]
-                res[6::8] = content[6 * len(res) // 8 : 7 * len(res) // 8]
-                res[7::8] = content[7 * len(res) // 8 : len(res)]
-
+                count = len(content) // 8
+                for i in range(count):
+                    b1 = numpy.uint32(content[i]) << 0 
+                    b2 = numpy.uint32(content[count + i]) << 8
+                    b3 = numpy.uint32(content[2* count + i]) << 16
+                    b4 = numpy.uint32(content[3* count + i]) << 24
+                    b5 = numpy.uint32(content[4* count + i]) << 32
+                    b6 = numpy.uint32(content[5* count + i]) << 40
+                    b7 = numpy.uint32(content[6* count + i]) << 48
+                    b8 = numpy.uint32(content[7* count + i]) << 56
+                    res[i] = (b_1 | b_2) | (b_3 | b_4) | (b_5 | b_6) | (b_7 | b_8)
             content = res
         if isbit:
             content = (
