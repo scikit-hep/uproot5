@@ -28,7 +28,9 @@ _rntuple_locator_format = struct.Struct("<iQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 
 
-from_zigzag = lambda n: (n >> 1) ^ -(n & 1)
+def from_zigzag(n):
+    return n >> 1 ^ -(n & 1)
+
 
 def _envelop_header(chunk, cursor, context):
     env_version, min_version = cursor.fields(
