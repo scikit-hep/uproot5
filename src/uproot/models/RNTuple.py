@@ -28,19 +28,13 @@ _rntuple_locator_format = struct.Struct("<iQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 
 
+from_zigzag = lambda n: (n >> 1) ^ -(n & 1)
+
 def _envelop_header(chunk, cursor, context):
     env_version, min_version = cursor.fields(
         chunk, uproot.const._rntuple_frame_format, context
     )
     return {"env_version": env_version, "min_version": min_version}
-
-
-def from_zigzag(n):
-    return n >> 1 ^ -(n & 1)
-
-
-def to_zigzag(n):
-    return n << 1 ^ n >> 63
 
 
 class Model_ROOT_3a3a_Experimental_3a3a_RNTuple(uproot.model.Model):
@@ -425,8 +419,7 @@ in file {self.file.file_path}"""
         zigzag = 26 <= dtype_byte <= 28
         delta = 14 <= dtype_byte <= 15
         if zigzag:
-            for i in range(len(res)):
-                res[i] = from_zigzag(res[i])
+            res = from_zigzag(res)
         elif delta:
             numpy.cumsum(res)
         return res
