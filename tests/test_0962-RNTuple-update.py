@@ -22,7 +22,7 @@ def test_new_support_RNTuple_split_int32_reading():
         df = obj.arrays()
         assert len(df) == 5e4
         assert len(df.one_integers) == 5e4
-        assert np.all(df.one_integers == np.arange(5e4  + 1)[::-1][:-1])
+        assert np.all(df.one_integers == np.arange(5e4 + 1)[::-1][:-1])
 
 
 def test_new_support_RNTuple_bit_bool_reading():
