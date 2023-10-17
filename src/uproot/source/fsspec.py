@@ -48,6 +48,8 @@ class FSSpecSource(uproot.source.chunk.Source):
                     )
 
                 self._fs = self._executor.submit(make_fs).result()
+                assert self._fs.loop is self._executor.loop, "loop not bound"
+                assert self._fs.loop.is_running(), "loop not running"
             else:
                 self._executor = concurrent.futures.ThreadPoolExecutor(
                     max_workers=self._num_workers
