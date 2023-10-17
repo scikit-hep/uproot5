@@ -9,7 +9,7 @@ name = "uproot"
 description = "ROOT I/O in pure Python and NumPy."
 readme = "README.md"
 license = "BSD-3-Clause"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 authors = [
     { name = "Jim Pivarski", email = "pivarski@princeton.edu" },
 ]
@@ -25,11 +25,11 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Information Analysis",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -38,10 +38,11 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "awkward>=2.0.0",
+    "awkward>=2.4.6",
     "importlib-metadata;python_version<\"3.8\"",
     "numpy",
     "packaging",
+    "typing_extensions>=4.1.0; python_version < \"3.11\""
 ]
 dynamic = [
     "version",
@@ -50,16 +51,16 @@ dynamic = [
 [project.optional-dependencies]
 dev = [
     "boost_histogram>=0.13",
-    "dask-awkward>=2023.9.0;python_version >= \"3.8\"",
-    "dask[array];python_version >= \"3.8\"",
+    "dask-awkward>=2023.10.0",
+    "dask[array]",
     "hist>=1.2",
     "pandas",
-    "awkward-pandas;python_version >= \"3.8\"",
+    "awkward-pandas",
 ]
 test = [
     "lz4",
     "minio",
-    "aiohttp",
+    "aiohttp; python_version<\"3.12\"",
     "fsspec",
     "fsspec-xrootd",
     "pytest>=6",

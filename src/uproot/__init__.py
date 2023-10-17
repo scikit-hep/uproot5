@@ -185,7 +185,7 @@ from uproot.behaviors.TBranch import concatenate
 from uproot.behavior import behavior_of
 
 from uproot._util import no_filter
-from uproot._dask import dask
+from uproot._dask import dask, ImplementsFormMapping, ImplementsFormMappingInfo
 
 from uproot.pyroot import from_pyroot
 from uproot.pyroot import to_pyroot
