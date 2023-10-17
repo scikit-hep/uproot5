@@ -350,12 +350,14 @@ in file {self.file.file_path}"""
 
         if split:
             if nbits == 16:
-                res = numpy.empty(len(content), numpy.uint8)
+                res = numpy.empty(len(content), numpy.uint16)
+                content = content.view(numpy.uint8)
                 res[::2] = content[0 : len(res) // 2]
                 res[1::2] = content[len(res) // 2 : len(res)]
 
             elif nbits == 32:
-                res = numpy.empty(len(content), numpy.uint8)
+                res = numpy.empty(len(content), numpy.uint32)
+                content = content.view(numpy.uint8)
                 res[::4] = content[0 : len(res) // 4]
                 res[1::4] = content[len(res) // 4 : len(res) // 2]
                 res[2::4] = content[len(res) // 2 : 3 * len(res) // 4]
@@ -363,6 +365,7 @@ in file {self.file.file_path}"""
 
             elif nbits == 64:
                 res = numpy.empty(len(content) * 8, numpy.uint8)
+                content = content.view(numpy.uint8)
                 res[::8] = content[0 : len(res) // 8]
                 res[1::8] = content[len(res) // 8 : 2 * len(res) // 8]
                 res[2::8] = content[2 * len(res) // 8 : 3 * len(res) // 8]
