@@ -379,7 +379,7 @@ in file {self.file.file_path}"""
                     b_6 = numpy.uint32(content[5 * count + i]) << 40
                     b_7 = numpy.uint32(content[6 * count + i]) << 48
                     b_8 = numpy.uint32(content[7 * count + i]) << 56
-                    res[i] = (b1 | b_2) | (b_3 | b_4) | (b_5 | b_6) | (b_7 | b_8)
+                    res[i] = (b_1 | b_2) | (b_3 | b_4) | (b_5 | b_6) | (b_7 | b_8)
             content = res
         if isbit:
             content = (
