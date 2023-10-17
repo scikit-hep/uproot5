@@ -475,37 +475,39 @@ class ResourceTrivialExecutor(TrivialExecutor):
 
 
 class LoopExecutor:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._start()
+        return cls._instance
+
     def __repr__(self):
         return f"<LoopExecutor at 0x{id(self):012x}>"
 
-    def __init__(self):
+    def _start(self):
         self._loop = asyncio.new_event_loop()
-        # TODO: remove daemon=True (or not?)
+        # Thread is daemonized so that it doesn't prevent the main thread from exiting
         self._thread = threading.Thread(target=self._run, daemon=True)
-        self.start()
-
-    def start(self):
         self._thread.start()
-        return self
 
     def shutdown(self):
-        self._loop.call_soon_threadsafe(self._loop.stop)
-        self._thread.join()
+        # TODO: review this
+        ...
 
     def _run(self):
+        # TODO: review this
         asyncio.set_event_loop(self._loop)
-        try:
-            self._loop.run_forever()
-        finally:
-            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
-            self._loop.close()
+        self._loop.run_forever()
 
     def __enter__(self):
-        self.start()
+        # TODO: review this
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.shutdown()
+        # TODO: review this
+        ...
 
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
