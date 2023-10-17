@@ -86,7 +86,10 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
-        self._executor.shutdown()
+        # TODO: proper cleanup. Shutting down the loop executor causes problems
+        # self._executor.shutdown()
+        if not isinstance(self._executor, uproot.source.futures.LoopExecutor):
+            self._executor.shutdown()
         self._file.__exit__(exception_type, exception_value, traceback)
 
     def chunk(self, start, stop) -> uproot.source.chunk.Chunk:

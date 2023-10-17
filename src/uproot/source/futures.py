@@ -480,7 +480,8 @@ class LoopExecutor:
 
     def __init__(self):
         self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(target=self._run)
+        # TODO: remove daemon=True (or not?)
+        self._thread = threading.Thread(target=self._run, daemon=True)
         self.start()
 
     def start(self):
