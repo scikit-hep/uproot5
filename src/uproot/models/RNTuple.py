@@ -360,26 +360,25 @@ in file {self.file.file_path}"""
                 content = content.view(numpy.uint8)
                 count = len(content) // 4
                 for i in range(count):
-                    b1 = numpy.uint32(content[i]) << 0 
+                    b1 = numpy.uint32(content[i]) << 0
                     b2 = numpy.uint32(content[count + i]) << 8
-                    b3 = numpy.uint32(content[2* count + i]) << 16
-                    b4 = numpy.uint32(content[3* count + i]) << 24
+                    b3 = numpy.uint32(content[2 * count + i]) << 16
+                    b4 = numpy.uint32(content[3 * count + i]) << 24
                     res[i] = (b1 | b2) | (b3 | b4)
-                
 
             elif nbits == 64:
                 res = numpy.empty(len(content), numpy.uint64)
                 content = content.view(numpy.uint8)
                 count = len(content) // 8
                 for i in range(count):
-                    b1 = numpy.uint32(content[i]) << 0 
+                    b1 = numpy.uint32(content[i]) << 0
                     b2 = numpy.uint32(content[count + i]) << 8
-                    b3 = numpy.uint32(content[2* count + i]) << 16
-                    b4 = numpy.uint32(content[3* count + i]) << 24
-                    b5 = numpy.uint32(content[4* count + i]) << 32
-                    b6 = numpy.uint32(content[5* count + i]) << 40
-                    b7 = numpy.uint32(content[6* count + i]) << 48
-                    b8 = numpy.uint32(content[7* count + i]) << 56
+                    b3 = numpy.uint32(content[2 * count + i]) << 16
+                    b4 = numpy.uint32(content[3 * count + i]) << 24
+                    numpy.uint32(content[4 * count + i]) << 32
+                    numpy.uint32(content[5 * count + i]) << 40
+                    numpy.uint32(content[6 * count + i]) << 48
+                    numpy.uint32(content[7 * count + i]) << 56
                     res[i] = (b_1 | b_2) | (b_3 | b_4) | (b_5 | b_6) | (b_7 | b_8)
             content = res
         if isbit:
