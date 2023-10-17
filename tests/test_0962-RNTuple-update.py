@@ -2,18 +2,8 @@
 
 import pytest
 import uproot
+import skhep_testdata
 import numpy as np
-
-
-def test_new_support_RNTuple_split_int16_reading():
-    with uproot.open("test_ntuple_int_multicluster.root") as f:
-        obj = f["ntuple"]
-        df = obj.arrays()
-        assert len(df.one_integers) == 1e8
-        assert df.one_integers[0] == 2
-        assert df.one_integers[-1] == 1
-        assert np.all(np.unique(df.one_integers[: len(df.one_integers) // 2]) == [2])
-        assert np.all(np.unique(df.one_integers[len(df.one_integers) / 2 + 1 :]) == [1])
 
 
 def test_new_support_RNTuple_split_int32_reading():
@@ -30,3 +20,15 @@ def test_new_support_RNTuple_bit_bool_reading():
         obj = f["ntuple"]
         df = obj.arrays()
         assert np.all(df.one_bit == np.asarray([1, 0, 0, 1, 0, 0, 1, 0, 0, 1]))
+
+
+def test_new_support_RNTuple_split_int16_reading():
+    with uproot.open("test_ntuple_int_multicluster.root") as f:
+        obj = f["ntuple"]
+        df = obj.arrays()
+        assert len(df.one_integers) == 1e8
+        assert df.one_integers[0] == 2
+        assert df.one_integers[-1] == 1
+        assert np.all(np.unique(df.one_integers[: len(df.one_integers) // 2]) == [2])
+        assert np.all(np.unique(df.one_integers[len(df.one_integers) / 2 + 1 :]) == [1])
+
