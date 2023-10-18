@@ -518,7 +518,8 @@ class LoopExecutor:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.shutdown()
+        # Do nothing
+        ...
 
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
