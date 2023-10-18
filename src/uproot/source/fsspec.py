@@ -44,7 +44,9 @@ class FSSpecSource(uproot.source.chunk.Source):
                 # Bind the loop to the filesystem
                 async def make_fs():
                     return fsspec.filesystem(
-                        protocol=self._fs.protocol, loop=self._executor.loop
+                        protocol=self._fs.protocol,
+                        loop=self._executor.loop,
+                        **self._fs.storage_options,
                     )
 
                 self._fs = self._executor.submit(make_fs).result()
