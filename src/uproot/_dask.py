@@ -889,6 +889,7 @@ class UprootReadMixin:
     base_form: Form
     common_keys: frozenset[str]
     interp_options: dict[str, Any]
+    _high_level_form_and_info: tuple[Form, ImplementsFormMappingInfo]
 
     def read_tree(self, tree: HasBranches, start: int, stop: int) -> AwkArray:
         assert start <= stop
@@ -898,7 +899,7 @@ class UprootReadMixin:
         awkward = uproot.extras.awkward()
         nplike = Numpy.instance()
 
-        form, form_info = self.form_mapping(self.base_form)
+        form, form_info = self._high_level_form_and_info
 
         # The remap implementation should correctly populate the generated
         # buffer mapping in __call__, such that the high-level form can be
@@ -939,7 +940,7 @@ class UprootReadMixin:
 
     def mock(self) -> AwkArray:
         awkward = uproot.extras.awkward()
-        high_level_form, form_info = self.form_mapping(self.base_form)
+        high_level_form, form_info = self._high_level_form_and_info
         return awkward.typetracer.typetracer_from_form(
             high_level_form,
             highlevel=True,
@@ -952,7 +953,7 @@ class UprootReadMixin:
 
         # A form mapping will (may) remap the base form into a new form
         # The remapped form can be queried for structural information
-        high_level_form, form_info = self.form_mapping(self.base_form)
+        high_level_form, form_info = self._high_level_form_and_info
 
         # Build typetracer and associated report object
         meta, report = awkward.typetracer.typetracer_with_report(
@@ -1026,6 +1027,7 @@ class _UprootRead(UprootReadMixin):
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.base_form = base_form
+        self._high_level_form_and_info = self.form_mapping(self.base_form)
 
     def project_keys(self: T, keys: frozenset[str]) -> T:
         return _UprootRead(
@@ -1056,6 +1058,7 @@ class _UprootOpenAndRead(UprootReadMixin):
         self.interp_options = interp_options
         self.form_mapping = form_mapping
         self.base_form = base_form
+        self._high_level_form_and_info = self.form_mapping(self.base_form)
 
     def __call__(self, blockwise_args) -> AwkArray:
         (
