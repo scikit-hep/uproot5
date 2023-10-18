@@ -45,7 +45,7 @@ class Cursor:
     requested by :doc:`uproot.deserialization.read_object_any`.
     """
 
-    def __init__(self, index, origin=0, refs=None):
+    def __init__(self, index: int, origin: int = 0, refs: dict or None = None):
         self._index = index
         self._origin = origin
         self._refs = refs
@@ -67,7 +67,7 @@ class Cursor:
         return f"Cursor({self._index}{o}{r})"
 
     @property
-    def index(self):
+    def index(self) -> int:
         """
         Global seek position in the ROOT file or local position in an
         uncompressed :doc:`uproot.source.chunk.Chunk`.
@@ -75,7 +75,7 @@ class Cursor:
         return self._index
 
     @property
-    def origin(self):
+    def origin(self) -> int:
         """
         Zero-point for numerical keys in
         :ref:`uproot.source.cursor.Cursor.refs`.
@@ -83,7 +83,7 @@ class Cursor:
         return self._origin
 
     @property
-    def refs(self):
+    def refs(self) -> dict:
         """
         References to data already read in
         :doc:`uproot.deserialization.read_object_any`.
@@ -92,7 +92,7 @@ class Cursor:
             self._refs = {}
         return self._refs
 
-    def displacement(self, other=None):
+    def displacement(self, other: Cursor = None) -> int:
         """
         The number of bytes between this :doc:`uproot.source.cursor.Cursor`
         and its :ref:`uproot.source.cursor.Cursor.origin` (if None)
@@ -106,7 +106,7 @@ class Cursor:
         else:
             return self._index - other._index
 
-    def copy(self, link_refs=True):
+    def copy(self, link_refs: bool = True) -> Cursor:
         """
         Returns a copy of this :doc:`uproot.source.cursor.Cursor`. If
         ``link_refs`` is True, any :ref:`uproot.source.cursor.Cursor.refs`
@@ -117,14 +117,14 @@ class Cursor:
         else:
             return Cursor(self._index, origin=self._origin, refs=dict(self._refs))
 
-    def move_to(self, index):
+    def move_to(self, index: int):
         """
         Move the :ref:`uproot.source.cursor.Cursor.index` to a specified seek
         position.
         """
         self._index = index
 
-    def skip(self, num_bytes):
+    def skip(self, num_bytes: int):
         """
         Move the :ref:`uproot.source.cursor.Cursor.index` forward
         ``num_bytes``.
@@ -149,7 +149,7 @@ class Cursor:
             )
         self._index = start_cursor.index + num_bytes
 
-    def skip_over(self, chunk, context):
+    def skip_over(self, chunk: uproot.source.chunk.Chunk, context: dict):
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -172,7 +172,13 @@ class Cursor:
             self._index += num_bytes
             return True
 
-    def fields(self, chunk, format, context, move=True):
+    def fields(
+        self,
+        chunk: uproot.source.chunk.Chunk,
+        format: struct.Struct,
+        context: dict,
+        move: bool = True,
+    ):
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -194,7 +200,13 @@ class Cursor:
             self._index = stop
         return format.unpack(chunk.get(start, stop, self, context))
 
-    def field(self, chunk, format, context, move=True):
+    def field(
+        self,
+        chunk: uproot.source.chunk.Chunk,
+        format: struct.Struct,
+        context: dict,
+        move: bool = True,
+    ):
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -216,7 +228,9 @@ class Cursor:
             self._index = stop
         return format.unpack(chunk.get(start, stop, self, context))[0]
 
-    def double32(self, chunk, context, move=True):
+    def double32(
+        self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
+    ) -> float:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -236,7 +250,13 @@ class Cursor:
             self._index = stop
         return _raw_double32.unpack(chunk.get(start, stop, self, context))[0]
 
-    def float16(self, chunk, num_bits, context, move=True):
+    def float16(
+        self,
+        chunk: uproot.source.chunk.Chunk,
+        num_bits: int,
+        context: dict,
+        move: bool = True,
+    ) -> float:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -269,7 +289,7 @@ class Cursor:
 
         return out.item()
 
-    def byte(self, chunk, context, move=True):
+    def byte(self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True):
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -307,7 +327,14 @@ class Cursor:
             self._index = stop
         return chunk.get(start, stop, self, context)
 
-    def array(self, chunk, length, dtype, context, move=True):
+    def array(
+        self,
+        chunk: uproot.source.chunk.Chunk,
+        length: int,
+        dtype: numpy.dtype,
+        context: dict,
+        move: bool = True,
+    ) -> numpy.ndarray:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -331,7 +358,9 @@ class Cursor:
     _u1 = numpy.dtype("u1")
     _i4 = numpy.dtype(">i4")
 
-    def bytestring(self, chunk, context, move=True):
+    def bytestring(
+        self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
+    ) -> bytes:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -362,7 +391,9 @@ class Cursor:
             self._index = stop
         return uproot._util.tobytes(chunk.get(start, stop, self, context))
 
-    def string(self, chunk, context, move=True):
+    def string(
+        self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
+    ) -> str:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -383,7 +414,13 @@ class Cursor:
             errors="surrogateescape"
         )
 
-    def bytestring_with_length(self, chunk, context, length, move=True):
+    def bytestring_with_length(
+        self,
+        chunk: uproot.source.chunk.Chunk,
+        context: dict,
+        length: int,
+        move: bool = True,
+    ) -> bytes:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -404,7 +441,13 @@ class Cursor:
         data = chunk.get(start, stop, self, context)
         return uproot._util.tobytes(data)
 
-    def string_with_length(self, chunk, context, length, move=True):
+    def string_with_length(
+        self,
+        chunk: uproot.source.chunk.Chunk,
+        context: dict,
+        length: int,
+        move: bool = True,
+    ) -> str:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -422,7 +465,9 @@ class Cursor:
             errors="surrogateescape"
         )
 
-    def classname(self, chunk, context, move=True):
+    def classname(
+        self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
+    ) -> str:
         """
         Args:
             chunk (:doc:`uproot.source.chunk.Chunk`): Buffer of contiguous data
@@ -456,7 +501,9 @@ of file path {}""".format(
             errors="surrogateescape"
         )
 
-    def rntuple_string(self, chunk, context, move=True):
+    def rntuple_string(
+        self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
+    ) -> str:
         if move:
             length = self.field(chunk, _rntuple_string_length, context)
             return self.string_with_length(chunk, context, length)
@@ -466,17 +513,19 @@ of file path {}""".format(
             self._index = index
             return out
 
-    def rntuple_datetime(self, chunk, context, move=True):
+    def rntuple_datetime(
+        self, chunk: uproot.source.chunk.Chunk, context: dict, move: bool = True
+    ) -> datetime.datetime:
         raw = self.field(chunk, _rntuple_datetime, context, move=move)
         return datetime.datetime.fromtimestamp(raw)
 
     def debug(
         self,
-        chunk,
-        context={},  # noqa: B006 (it's not actually mutated in the function)
-        limit_bytes=None,
-        dtype=None,
-        offset=0,
+        chunk: uproot.source.chunk.Chunk,
+        context: dict = {},  # noqa: B006 (it's not actually mutated in the function)
+        limit_bytes: int or None = None,
+        dtype: numpy.dtype = None,
+        offset: int = 0,
         stream=sys.stdout,
     ):
         """
