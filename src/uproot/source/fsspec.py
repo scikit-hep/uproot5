@@ -22,7 +22,7 @@ class FSSpecSource(uproot.source.chunk.Source):
     to get many chunks in one request.
     """
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         import fsspec.core
 
         default_options = uproot.reading.open.defaults

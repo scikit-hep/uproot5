@@ -17,9 +17,11 @@ Despite the name, both sources support secure HTTPS (selected by URL scheme).
 from __future__ import annotations
 
 import base64
+import http.client
 import queue
 import re
 import sys
+import urllib.parse
 from urllib.parse import urlparse
 
 import uproot
@@ -51,7 +53,7 @@ def make_connection(parsed_url: urllib.parse.ParseResult, timeout: float or None
         )
 
 
-def full_path(parsed_url):
+def full_path(parsed_url) -> str:
     """
     Returns the ``parsed_url.path`` with ``"?"`` and the ``parsed_url.query``
     if it exists, just the path otherwise.
@@ -353,7 +355,9 @@ for URL {}""".format(
     )
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
 
-    def is_multipart_supported(self, ranges: list[(int, int)], response: http.client.HTTPResponse) -> bool:
+    def is_multipart_supported(
+        self, ranges: list[(int, int)], response: http.client.HTTPResponse
+    ) -> bool:
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to check for multipart GET support.
@@ -560,7 +564,7 @@ class HTTPSource(uproot.source.chunk.Source):
 
     ResourceClass = HTTPResource
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         self._num_fallback_workers = options["num_fallback_workers"]
         self._timeout = options["timeout"]
         self._num_requests = 0

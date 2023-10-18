@@ -31,7 +31,7 @@ class Resource:
     """
 
     @property
-    def file_path(self):
+    def file_path(self) -> str:
         """
         A path to the file (or URL).
         """
@@ -92,7 +92,7 @@ class Source:
         """
 
     @property
-    def file_path(self):
+    def file_path(self) -> str:
         """
         A path to the file (or URL).
         """

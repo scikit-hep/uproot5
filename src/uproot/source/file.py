@@ -32,7 +32,7 @@ class FileResource(uproot.source.chunk.Resource):
     A :doc:`uproot.source.chunk.Resource` for a simple file handle.
     """
 
-    def __init__(self, file_path):
+    def __init__(self, file_path: str):
         self._file_path = file_path
         try:
             self._file = open(self._file_path, "rb")
@@ -69,9 +69,7 @@ class FileResource(uproot.source.chunk.Resource):
         return self._file.read(stop - start)
 
     @staticmethod
-    def future(
-        source: uproot.source.chunk.Source, start: int, stop: int
-    ):
+    def future(source: uproot.source.chunk.Source, start: int, stop: int):
         """
         Args:
             source (:doc:`uproot.source.file.MultithreadedFileSource`): The
@@ -101,7 +99,7 @@ class MemmapSource(uproot.source.chunk.Source):
 
     _dtype = uproot.source.chunk.Chunk._dtype
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         self._num_fallback_workers = options["num_fallback_workers"]
         self._fallback_opts = options
         self._num_requests = 0
@@ -244,7 +242,7 @@ class MultithreadedFileSource(uproot.source.chunk.MultithreadedSource):
 
     ResourceClass = FileResource
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         self._num_requests = 0
         self._num_requested_chunks = 0
         self._num_requested_bytes = 0

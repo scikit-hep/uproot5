@@ -85,7 +85,7 @@ class XRootDResource(uproot.source.chunk.Resource):
     A :doc:`uproot.source.chunk.Resource` for XRootD connections.
     """
 
-    def __init__(self, file_path, timeout):
+    def __init__(self, file_path: str, timeout):
         self._file_path = file_path
         self._timeout = timeout
         self._open()
@@ -176,7 +176,7 @@ in file {self._file_path}"""
         return data
 
     @staticmethod
-    def future(source, start: int, stop: int):
+    def future(source: uproot.source.chunk.Source, start: int, stop: int):
         """
         Args:
             source (:doc:`uproot.source.xrootd.MultithreadedXRootDSource`): The
@@ -265,7 +265,7 @@ class XRootDSource(uproot.source.chunk.Source):
 
     ResourceClass = XRootDResource
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         self._timeout = options["timeout"]
         self._desired_max_num_elements = options["max_num_elements"]
         self._use_threads = options["use_threads"]
@@ -339,7 +339,9 @@ class XRootDSource(uproot.source.chunk.Source):
         # this is to track which requests were split into smaller ranges and have to be merged
         sub_ranges = {}
 
-        def add_request_range(start, length, sub_ranges_list):
+        def add_request_range(
+            start: int, length: int, sub_ranges_list: list[(int, int)]
+        ):
             if len(all_request_ranges[-1]) >= self._max_num_elements:
                 all_request_ranges.append([])
             all_request_ranges[-1].append((start, length))
@@ -455,7 +457,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
 
     ResourceClass = XRootDResource
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         self._num_workers = options["num_workers"]
         self._timeout = options["timeout"]
         self._use_threads = options["use_threads"]
