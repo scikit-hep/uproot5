@@ -27,7 +27,7 @@ import uproot.source.chunk
 import uproot.source.futures
 
 
-def make_connection(parsed_url, timeout):
+def make_connection(parsed_url, timeout: float or None):
     """
     Args:
         parsed_url (``urllib.parse.ParseResult``): The URL to connect to, which
@@ -78,7 +78,7 @@ def basic_auth_headers(parsed_url):
     return ret
 
 
-def get_num_bytes(file_path, parsed_url, timeout):
+def get_num_bytes(file_path, parsed_url, timeout) -> int:
     """
     Args:
         file_path (str): The URL to access as a raw string.
@@ -158,7 +158,7 @@ class HTTPResource(uproot.source.chunk.Resource):
         self._auth_headers = basic_auth_headers(self._parsed_url)
 
     @property
-    def timeout(self):
+    def timeout(self) -> float or None:
         """
         The timeout in seconds or None.
         """
@@ -184,7 +184,7 @@ class HTTPResource(uproot.source.chunk.Resource):
     def __exit__(self, exception_type, exception_value, traceback):
         pass
 
-    def get(self, connection, start, stop):
+    def get(self, connection, start: int, stop: int) -> bytes:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -235,7 +235,7 @@ for URL {}""".format(
             connection.close()
 
     @staticmethod
-    def future(source, start, stop):
+    def future(source: uproot.source.chunk.Source, start: int, stop: int):
         """
         Args:
             source (:doc:`uproot.source.http.HTTPSource` or :doc:`uproot.source.http.MultithreadedHTTPSource`): The
@@ -260,7 +260,9 @@ for URL {}""".format(
         return uproot.source.futures.ResourceFuture(task)
 
     @staticmethod
-    def multifuture(source, ranges: list[(int, int)], futures, results):
+    def multifuture(
+        source: uproot.source.chunk.Source, ranges: list[(int, int)], futures, results
+    ):
         """
         Args:
             source (:doc:`uproot.source.http.HTTPSource`): The data source.
@@ -368,7 +370,13 @@ for URL {}""".format(
         else:
             return True
 
-    def handle_no_multipart(self, source, ranges: list[(int, int)], futures, results):
+    def handle_no_multipart(
+        self,
+        source: uproot.source.chunk.Source,
+        ranges: list[(int, int)],
+        futures,
+        results,
+    ):
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to handle a lack of multipart GET support.
@@ -383,7 +391,14 @@ for URL {}""".format(
             results[chunk.start, chunk.stop] = chunk.raw_data
             futures[chunk.start, chunk.stop]._run(self)
 
-    def handle_multipart(self, source, futures, results, response, ranges):
+    def handle_multipart(
+        self,
+        source: uproot.source.chunk.Source,
+        futures,
+        results,
+        response,
+        ranges: list[(int, int)],
+    ):
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to handle the multipart GET response.
@@ -477,7 +492,7 @@ for URL {}""".format(
         return range_string, size
 
     @staticmethod
-    def partfuture(results, start, stop):
+    def partfuture(results, start: int, stop: int):
         """
         Returns a :doc:`uproot.source.futures.ResourceFuture` to simply select
         the ``(start, stop)`` item from the ``results`` dict.
@@ -500,7 +515,7 @@ class _ResponseBuffer:
         self.already_read = b""
         self.stream = stream
 
-    def read(self, length):
+    def read(self, length: int):
         if length < len(self.already_read):
             out = self.already_read[:length]
             self.already_read = self.already_read[length:]
@@ -514,7 +529,7 @@ class _ResponseBuffer:
         else:
             return self.stream.read(length)
 
-    def readline(self):
+    def readline(self) -> bytes:
         while True:
             try:
                 index = self.already_read.index(b"\n")
@@ -594,7 +609,7 @@ class HTTPSource(uproot.source.chunk.Source):
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
+    def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start

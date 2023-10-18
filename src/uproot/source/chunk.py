@@ -464,7 +464,7 @@ outside expected range {self._start}:{self._stop} for this Chunk""",
             )
 
 
-def notifier(chunk: Chunk, notifications: queue.Queue) -> callable:
+def notifier(chunk: Chunk, notifications: queue.Queue):
     """
     Returns a function that puts the chunk on the notifications queue when called.
     The function has a 'future' argument to be compatible with the `concurrent.futures.Future.add_done_callback` method.

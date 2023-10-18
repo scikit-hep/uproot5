@@ -76,7 +76,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._executor.shutdown()
         self._file.__exit__(exception_type, exception_value, traceback)
 
-    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
+    def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         """
         Args:
             start (int): Seek position of the first byte to include.

@@ -56,7 +56,7 @@ class FileResource(uproot.source.chunk.Resource):
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.__exit__(exception_type, exception_value, traceback)
 
-    def get(self, start, stop):
+    def get(self, start: int, stop: int) -> bytes:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -69,7 +69,9 @@ class FileResource(uproot.source.chunk.Resource):
         return self._file.read(stop - start)
 
     @staticmethod
-    def future(source, start, stop):
+    def future(
+        source: uproot.source.file.MultithreadedFileSource, start: int, stop: int
+    ):
         """
         Args:
             source (:doc:`uproot.source.file.MultithreadedFileSource`): The
@@ -139,7 +141,7 @@ class MemmapSource(uproot.source.chunk.Source):
             fallback = " with fallback"
         return f"<{type(self).__name__} {path}{fallback} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
+    def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         if self._fallback is None:
             if self.closed:
                 raise OSError(f"memmap is closed for file {self._file_path}")

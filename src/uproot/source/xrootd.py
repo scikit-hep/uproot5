@@ -159,7 +159,7 @@ in file {self._file_path}"""
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.close(timeout=self._xrd_timeout())
 
-    def get(self, start, stop):
+    def get(self, start: int, stop: int) -> bytes:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -176,7 +176,7 @@ in file {self._file_path}"""
         return data
 
     @staticmethod
-    def future(source, start, stop):
+    def future(source, start: int, stop: int):
         """
         Args:
             source (:doc:`uproot.source.xrootd.MultithreadedXRootDSource`): The
@@ -196,7 +196,7 @@ in file {self._file_path}"""
         return uproot.source.futures.ResourceFuture(task)
 
     @staticmethod
-    def partfuture(results, start, stop):
+    def partfuture(results, start: int, stop: int):
         """
         Returns a :doc:`uproot.source.futures.ResourceFuture` to simply select
         the ``(start, stop)`` item from the ``results`` dict.
@@ -315,7 +315,7 @@ class XRootDSource(uproot.source.chunk.Source):
             path = repr("..." + self._file_path[-10:])
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
+    def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
