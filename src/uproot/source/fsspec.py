@@ -40,16 +40,8 @@ class FSSpecSource(uproot.source.chunk.Source):
         if self._use_threads:
             if self._fs.async_impl:
                 self._executor = uproot.source.futures.LoopExecutor()
-
-                # Bind the loop to the filesystem
-                async def make_fs():
-                    return fsspec.filesystem(
-                        protocol=self._fs.protocol,
-                        loop=self._executor.loop,
-                        **self._fs.storage_options,
-                    )
-
-                self._fs = self._executor.submit(make_fs).result()
+                # Is this safe? Should we recreate the filesystem with the new loop?
+                self._fs._loop = self._executor.loop
                 assert self._fs.loop is self._executor.loop, "loop not bound"
                 assert self._fs.loop.is_running(), "loop not running"
             else:
