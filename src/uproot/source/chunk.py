@@ -244,7 +244,7 @@ class Chunk:
     _dtype = numpy.dtype(numpy.uint8)
 
     @classmethod
-    def wrap(cls, source: Source, data: numpy.ndarray, start: int = 0):
+    def wrap(cls, source: Source, data: numpy.ndarray | bytes, start: int = 0):
         """
         Args:
             source (:doc:`uproot.source.chunk.Source`): Source to attach to
@@ -374,7 +374,7 @@ for file path {self._source.file_path}"""
             self._future = None
 
     @property
-    def raw_data(self) -> numpy.ndarray:
+    def raw_data(self) -> numpy.ndarray | bytes:
         """
         Data from the Source as a ``numpy.ndarray`` of ``numpy.uint8``.
 

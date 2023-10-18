@@ -70,7 +70,7 @@ class FileResource(uproot.source.chunk.Resource):
 
     @staticmethod
     def future(
-        source: uproot.source.file.MultithreadedFileSource, start: int, stop: int
+        source: uproot.source.chunk.Source, start: int, stop: int
     ):
         """
         Args:

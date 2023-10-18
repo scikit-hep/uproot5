@@ -27,7 +27,7 @@ import uproot.source.chunk
 import uproot.source.futures
 
 
-def make_connection(parsed_url, timeout: float or None):
+def make_connection(parsed_url: urllib.parse.ParseResult, timeout: float or None):
     """
     Args:
         parsed_url (``urllib.parse.ParseResult``): The URL to connect to, which
@@ -78,7 +78,7 @@ def basic_auth_headers(parsed_url):
     return ret
 
 
-def get_num_bytes(file_path, parsed_url, timeout) -> int:
+def get_num_bytes(file_path: str, parsed_url: urllib.parse.ParseResult, timeout) -> int:
     """
     Args:
         file_path (str): The URL to access as a raw string.
@@ -353,7 +353,7 @@ for URL {}""".format(
     )
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
 
-    def is_multipart_supported(self, ranges: list[(int, int)], response) -> bool:
+    def is_multipart_supported(self, ranges: list[(int, int)], response: http.client.HTTPResponse) -> bool:
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to check for multipart GET support.
@@ -396,7 +396,7 @@ for URL {}""".format(
         source: uproot.source.chunk.Source,
         futures,
         results,
-        response,
+        response: http.client.HTTPResponse,
         ranges: list[(int, int)],
     ):
         """
