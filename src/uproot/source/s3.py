@@ -29,7 +29,7 @@ class S3Source(uproot.source.http.HTTPSource):
 
     def __init__(
         self,
-        file_path,
+        file_path: str,
         endpoint="s3.amazonaws.com",
         access_key=None,
         secret_key=None,

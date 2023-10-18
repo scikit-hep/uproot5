@@ -22,7 +22,7 @@ class FSSpecSource(uproot.source.chunk.Source):
     to get many chunks in one request.
     """
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         import fsspec.core
 
         default_options = uproot.reading.open.defaults
@@ -89,7 +89,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._file.__exit__(exception_type, exception_value, traceback)
         # self._executor.shutdown()
 
-    def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
+    def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         """
         Args:
             start (int): Seek position of the first byte to include.
