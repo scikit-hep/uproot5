@@ -477,37 +477,48 @@ class ResourceTrivialExecutor(TrivialExecutor):
 class LoopExecutor:
     _instance = None
 
+    def __init__(self):
+        self._loop = None
+        self._thread = None
+        self.start()
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._start()
         return cls._instance
 
     def __repr__(self):
         return f"<LoopExecutor at 0x{id(self):012x}>"
 
-    def _start(self):
-        self._loop = asyncio.new_event_loop()
+    def start(self):
+        if self._loop is None or self._loop.is_closed():
+            self._loop = asyncio.new_event_loop()
         # Thread is daemonized so that it doesn't prevent the main thread from exiting
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
 
     def shutdown(self):
-        # TODO: review this
-        ...
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        self._thread.join()
+        self._loop.close()
+        self._loop = None
+        self._thread = None
 
     def _run(self):
-        # TODO: review this
         asyncio.set_event_loop(self._loop)
-        self._loop.run_forever()
+        try:
+            self._loop.run_forever()
+        finally:
+            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+            self._loop.close()
 
     def __enter__(self):
-        # TODO: review this
+        self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # TODO: review this
-        ...
+        self.shutdown()
 
     @property
     def loop(self) -> asyncio.AbstractEventLoop:

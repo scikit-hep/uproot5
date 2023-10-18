@@ -87,7 +87,7 @@ class FSSpecSource(uproot.source.chunk.Source):
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
         self._file.__exit__(exception_type, exception_value, traceback)
-        self._executor.shutdown()
+        # self._executor.shutdown()
 
     def chunk(self, start, stop) -> uproot.source.chunk.Chunk:
         """
