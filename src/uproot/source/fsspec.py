@@ -33,23 +33,24 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         # Remove uproot-specific options (should be done earlier)
         exclude_keys = set(default_options.keys())
-        opts = {k: v for k, v in options.items() if k not in exclude_keys}
+        storage_options = {k: v for k, v in options.items() if k not in exclude_keys}
 
-        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
+        protocol = fsspec.core.split_protocol(file_path)[0]
+        fs_has_async_impl = fsspec.get_filesystem_class(protocol=protocol).async_impl
 
         if self._use_threads:
-            if self._fs.async_impl:
+            if fs_has_async_impl:
                 self._executor = uproot.source.futures.LoopExecutor()
-                # Is this safe? Should we recreate the filesystem with the new loop?
-                self._fs._loop = self._executor.loop
-                assert self._fs.loop is self._executor.loop, "loop not bound"
-                assert self._fs.loop.is_running(), "loop not running"
+                assert self._executor.loop.is_running(), "loop not running"
+                storage_options["loop"] = self._executor.loop
             else:
                 self._executor = concurrent.futures.ThreadPoolExecutor(
                     max_workers=self._num_workers
                 )
         else:
             self._executor = uproot.source.futures.TrivialExecutor()
+
+        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
         # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
