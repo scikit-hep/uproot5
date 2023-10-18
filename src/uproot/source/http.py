@@ -29,7 +29,7 @@ import uproot.source.chunk
 import uproot.source.futures
 
 
-def make_connection(parsed_url: urllib.parse.ParseResult, timeout: float or None):
+def make_connection(parsed_url: urllib.parse.ParseResult, timeout: float | None):
     """
     Args:
         parsed_url (``urllib.parse.ParseResult``): The URL to connect to, which
@@ -160,7 +160,7 @@ class HTTPResource(uproot.source.chunk.Resource):
         self._auth_headers = basic_auth_headers(self._parsed_url)
 
     @property
-    def timeout(self) -> float or None:
+    def timeout(self) -> float | None:
         """
         The timeout in seconds or None.
         """

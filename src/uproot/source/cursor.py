@@ -45,7 +45,7 @@ class Cursor:
     requested by :doc:`uproot.deserialization.read_object_any`.
     """
 
-    def __init__(self, index: int, origin: int = 0, refs: dict or None = None):
+    def __init__(self, index: int, origin: int = 0, refs: dict | None = None):
         self._index = index
         self._origin = origin
         self._refs = refs
@@ -523,7 +523,7 @@ of file path {}""".format(
         self,
         chunk: uproot.source.chunk.Chunk,
         context: dict = {},  # noqa: B006 (it's not actually mutated in the function)
-        limit_bytes: int or None = None,
+        limit_bytes: int | None = None,
         dtype: numpy.dtype = None,
         offset: int = 0,
         stream=sys.stdout,

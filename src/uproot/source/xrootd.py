@@ -85,7 +85,7 @@ class XRootDResource(uproot.source.chunk.Resource):
     A :doc:`uproot.source.chunk.Resource` for XRootD connections.
     """
 
-    def __init__(self, file_path: str, timeout):
+    def __init__(self, file_path: str, timeout: float | None):
         self._file_path = file_path
         self._timeout = timeout
         self._open()
@@ -108,7 +108,7 @@ class XRootDResource(uproot.source.chunk.Resource):
         self.__dict__ = state
         self._open()
 
-    def _xrd_timeout(self):
+    def _xrd_timeout(self) -> int:
         if self._timeout is None:
             return 0
         else:
@@ -129,7 +129,7 @@ in file {self._file_path}"""
             )
 
     @property
-    def timeout(self):
+    def timeout(self) -> float | None:
         """
         The timeout in seconds or None.
         """
@@ -414,7 +414,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return self._resource
 
     @property
-    def timeout(self):
+    def timeout(self) -> float | None:
         """
         The timeout in seconds or None.
         """
@@ -474,7 +474,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
                 [
                     XRootDResource(self._file_path, self._timeout)
-                    for x in range(self._num_workers)
+                    for _ in range(self._num_workers)
                 ]
             )
         else:
@@ -492,7 +492,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         self._open()
 
     @property
-    def timeout(self):
+    def timeout(self) -> float | None:
         """
         The timeout in seconds or None.
         """
