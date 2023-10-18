@@ -514,5 +514,9 @@ class LoopExecutor:
         return self._loop
 
     def submit(self, coroutine, *args) -> asyncio.Future:
+        if not asyncio.iscoroutinefunction(coroutine):
+            raise TypeError("loop executor can only submit coroutines")
+        if not self._loop.is_running():
+            raise RuntimeError("cannot submit coroutine while loop is not running")
         coroutine_object = coroutine(*args)
         return asyncio.run_coroutine_threadsafe(coroutine_object, self._loop)
