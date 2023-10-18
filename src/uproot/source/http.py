@@ -353,7 +353,9 @@ for URL {}""".format(
     )
     _content_range = re.compile(b"Content-Range: bytes ([0-9]+-[0-9]+)", re.I)
 
-    def is_multipart_supported(self, ranges: list[(int, int)], response: http.client.HTTPResponse) -> bool:
+    def is_multipart_supported(
+        self, ranges: list[(int, int)], response: http.client.HTTPResponse
+    ) -> bool:
         """
         Helper function for :ref:`uproot.source.http.HTTPResource.multifuture`
         to check for multipart GET support.

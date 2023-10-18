@@ -69,9 +69,7 @@ class FileResource(uproot.source.chunk.Resource):
         return self._file.read(stop - start)
 
     @staticmethod
-    def future(
-        source: uproot.source.chunk.Source, start: int, stop: int
-    ):
+    def future(source: uproot.source.chunk.Source, start: int, stop: int):
         """
         Args:
             source (:doc:`uproot.source.file.MultithreadedFileSource`): The
