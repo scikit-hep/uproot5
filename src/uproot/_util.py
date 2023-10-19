@@ -285,31 +285,35 @@ _schemes = ["FILE", *_remote_schemes]
 def file_object_path_split(path):
     """
     Split a path with a colon into a file path and an object-in-file path.
+
+    Args:
+        path: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
+
+    Returns:
+        A tuple of the file path and the object-in-file path. If there is no
+        object-in-file path, the second element is ``None``.
+        Example: ``("https://localhost:8888/file.root", "tree")``
     """
-    path = regularize_path(path)
 
-    try:
-        index = path.rindex(":")
-    except ValueError:
-        return path, None
+    path: str = regularize_path(path)
+    # remove whitespace
+    path = path.strip()
+
+    # split url into parts
+    parsed_url = urlparse(path)
+
+    parts = parsed_url.path.split(":")
+    if len(parts) == 1:
+        obj = None
+    elif len(parts) == 2:
+        obj = parts[1]
+        # remove the object from the path (including the colon)
+        path = path[: -len(obj) - 1]
+        obj = obj.strip()
     else:
-        file_path, object_path = path[:index], path[index + 1 :]
+        raise ValueError(f"too many colons in file path: {path} for url {parsed_url}")
 
-        if (
-            _might_be_port.match(object_path) is not None
-            and urlparse(file_path).path == ""
-        ):
-            return path, None
-
-        file_path = file_path.rstrip()
-        object_path = object_path.lstrip()
-
-        if file_path.upper() in _schemes:
-            return path, None
-        elif win and _windows_drive_letter_ending.match(file_path) is not None:
-            return path, None
-        else:
-            return file_path, object_path
+    return path, obj
 
 
 def file_path_to_source_class(file_path, options):
