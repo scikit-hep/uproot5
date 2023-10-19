@@ -192,7 +192,7 @@ class FSSpecLoopExecutor(uproot.source.futures.Executor):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self.loop = loop
 
-    def submit(self, coroutine, *args) -> asyncio.Future:
+    def submit(self, coroutine, *args) -> concurrent.futures.Future:
         if not asyncio.iscoroutinefunction(coroutine):
             raise TypeError("loop executor can only submit coroutines")
         if not self.loop.is_running():
