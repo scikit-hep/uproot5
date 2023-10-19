@@ -1,6 +1,6 @@
 ci:
-  autoupdate_commit_msg: "chore: update pre-commit hooks"
-  autofix_commit_msg: "style: pre-commit fixes"
+  autoupdate_commit_msg: 'chore: update pre-commit hooks'
+  autofix_commit_msg: 'style: pre-commit fixes'
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -23,14 +23,22 @@ repos:
   - id: black
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: "v0.0.292"
+  rev: v0.0.292
   hooks:
-    - id: ruff
-      args: ["--fix", "--show-fixes"]
+  - id: ruff
+    args: [--fix, --show-fixes]
 
 
 - repo: https://github.com/asottile/pyupgrade
   rev: v3.15.0
   hooks:
   - id: pyupgrade
-    args: ["--py38-plus"]
+    args: [--py38-plus]
+
+- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  rev: v2.11.0
+  hooks:
+  - id: pretty-format-toml
+    args: [--autofix]
+  - id: pretty-format-yaml
+    args: [--autofix, --indent, '2']
