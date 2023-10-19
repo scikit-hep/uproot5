@@ -154,7 +154,8 @@ class FSSpecSource(uproot.source.chunk.Source):
             # Loop executor takes a coroutine while ThreadPoolExecutor takes a function.
             future = self._executor.submit(
                 self._fs._cat_file if self._use_async else self._fs.cat_file,
-                path=self._file_path,
+                # it is assumed that the first argument is the file path / url (can have different names: 'url', 'path')
+                self._file_path,
                 start=start,
                 end=stop,
             )
