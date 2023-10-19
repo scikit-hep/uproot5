@@ -256,7 +256,7 @@ class ThreadPoolExecutor(Executor):
         :doc:`uproot.source.futures.Future` so that it will be executed when
         one is available.
         """
-        future = Future(task, *args, **kwargs)
+        future = Future(task, args)
         self._work_queue.put(future)
         return future
 
