@@ -21,6 +21,8 @@ This module defines a Python-like Future and Executor for Uproot in three levels
 These classes implement a *subset* of Python's Future and Executor interfaces.
 """
 
+from __future__ import annotations
+
 import os
 import queue
 import sys
@@ -77,7 +79,7 @@ class TrivialExecutor:
         """
         return TrivialFuture(task(*args))
 
-    def shutdown(self, wait=True):
+    def shutdown(self, wait: bool = True):
         """
         Does nothing, since this object does not have threads to stop.
         """
@@ -144,13 +146,13 @@ class Worker(threading.Thread):
     :doc:`uproot.source.futures.ThreadPoolExecutor`.
     """
 
-    def __init__(self, work_queue):
+    def __init__(self, work_queue: queue.Queue):
         super().__init__()
         self.daemon = True
         self._work_queue = work_queue
 
     @property
-    def work_queue(self):
+    def work_queue(self) -> queue.Queue:
         """
         The worker calls ``get`` on this queue for tasks in the form of
         :doc:`uproot.source.futures.Future` objects and runs them. If it ever
@@ -188,7 +190,7 @@ class ThreadPoolExecutor:
     class.
     """
 
-    def __init__(self, max_workers=None):
+    def __init__(self, max_workers: int | None = None):
         if max_workers is None:
             if hasattr(os, "cpu_count"):
                 self._max_workers = os.cpu_count()
@@ -224,7 +226,7 @@ class ThreadPoolExecutor:
         return len(self._workers)
 
     @property
-    def workers(self):
+    def workers(self) -> list[Worker]:
         """
         A list of workers (:doc:`uproot.source.futures.Worker`).
         """
@@ -241,7 +243,7 @@ class ThreadPoolExecutor:
         self._work_queue.put(future)
         return future
 
-    def shutdown(self, wait=True):
+    def shutdown(self, wait: bool = True):
         """
         Stop every :doc:`uproot.source.futures.Worker` by putting None
         on the :ref:`uproot.source.futures.Worker.work_queue` until none of

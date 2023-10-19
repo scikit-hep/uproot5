@@ -2,10 +2,10 @@
 
 import pytest
 import numpy
-import hist
 import uproot
 import skhep_testdata
 
+pytest.importorskip("hist")
 ROOT = pytest.importorskip("ROOT")
 
 
