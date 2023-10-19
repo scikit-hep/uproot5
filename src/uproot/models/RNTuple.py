@@ -28,6 +28,10 @@ _rntuple_locator_format = struct.Struct("<iQ")
 _rntuple_cluster_summary_format = struct.Struct("<QQ")
 
 
+def from_zigzag(n):
+    return n >> 1 ^ -(n & 1)
+
+
 def _envelop_header(chunk, cursor, context):
     env_version, min_version = cursor.fields(
         chunk, uproot.const._rntuple_frame_format, context
@@ -326,7 +330,7 @@ in file {self.file.file_path}"""
         form = ak.forms.RecordForm(recordlist, topnames, form_key="toplevel")
         return form
 
-    def read_pagedesc(self, destination, desc, dtype_str, dtype):
+    def read_pagedesc(self, destination, desc, dtype_str, dtype, nbits, split):
         loc = desc.locator
         context = {}
         # bool in RNTuple is always stored as bits
@@ -339,6 +343,44 @@ in file {self.file.file_path}"""
         content = cursor.array(
             decomp_chunk, num_elements_toread, dtype, context, move=False
         )
+
+        if split:
+            content = content.view(numpy.uint8)
+
+            if nbits == 16:
+                # AAAAABBBBB needs to become
+                # ABABABABAB
+                res = numpy.empty(len(content), numpy.uint8)
+                res[0::2] = content[len(res) * 0 // 2 : len(res) * 1 // 2]
+                res[1::2] = content[len(res) * 1 // 2 : len(res) * 2 // 2]
+                res = res.view(numpy.uint16)
+
+            elif nbits == 32:
+                # AAAAABBBBBCCCCCDDDDD needs to become
+                # ABCDABCDABCDABCDABCD
+                res = numpy.empty(len(content), numpy.uint8)
+                res[0::4] = content[len(res) * 0 // 4 : len(res) * 1 // 4]
+                res[1::4] = content[len(res) * 1 // 4 : len(res) * 2 // 4]
+                res[2::4] = content[len(res) * 2 // 4 : len(res) * 3 // 4]
+                res[3::4] = content[len(res) * 3 // 4 : len(res) * 4 // 4]
+                res = res.view(numpy.uint32)
+
+            elif nbits == 64:
+                # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
+                # ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH
+                res = numpy.empty(len(content), numpy.uint8)
+                res[0::8] = content[len(res) * 0 // 8 : len(res) * 1 // 8]
+                res[1::8] = content[len(res) * 1 // 8 : len(res) * 2 // 8]
+                res[2::8] = content[len(res) * 2 // 8 : len(res) * 3 // 8]
+                res[3::8] = content[len(res) * 3 // 8 : len(res) * 4 // 8]
+                res[4::8] = content[len(res) * 4 // 8 : len(res) * 5 // 8]
+                res[5::8] = content[len(res) * 5 // 8 : len(res) * 6 // 8]
+                res[6::8] = content[len(res) * 6 // 8 : len(res) * 7 // 8]
+                res[7::8] = content[len(res) * 7 // 8 : len(res) * 8 // 8]
+                res = res.view(numpy.uint64)
+
+            content = res
+
         if isbit:
             content = (
                 numpy.unpackbits(content.view(dtype=numpy.uint8))
@@ -368,14 +410,24 @@ in file {self.file.file_path}"""
         total_len = numpy.sum([desc.num_elements for desc in pagelist])
         res = numpy.empty(total_len, dtype)
         tracker = 0
+        split = 14 <= dtype_byte <= 21 or 26 <= dtype_byte <= 28
+        nbits = uproot.const.rntuple_col_num_to_size_dict[dtype_byte]
         for page_desc in pagelist:
             n_elements = page_desc.num_elements
             tracker_end = tracker + n_elements
-            self.read_pagedesc(res[tracker:tracker_end], page_desc, dtype_str, dtype)
+            self.read_pagedesc(
+                res[tracker:tracker_end], page_desc, dtype_str, dtype, nbits, split
+            )
             tracker = tracker_end
 
         if dtype_byte <= uproot.const.rntuple_col_type_to_num_dict["index32"]:
             res = numpy.insert(res, 0, 0)  # for offsets
+        zigzag = 26 <= dtype_byte <= 28
+        delta = 14 <= dtype_byte <= 15
+        if zigzag:
+            res = from_zigzag(res)
+        elif delta:
+            numpy.cumsum(res)
         return res
 
     def arrays(
@@ -645,6 +697,15 @@ class HeaderReader:
 
         return out
 
+    def read_extension_header(self, out, chunk, cursor, context):
+        out.field_records = self.list_field_record_frames.read(chunk, cursor, context)
+        out.column_records = self.list_column_record_frames.read(chunk, cursor, context)
+        out.alias_columns = self.list_alias_column_frames.read(chunk, cursor, context)
+        out.extra_type_infos = self.list_extra_type_info_reader.read(
+            chunk, cursor, context
+        )
+        return out
+
 
 class ColumnGroupRecordReader:
     def read(self, chunk, cursor, context):
@@ -672,9 +733,29 @@ class ClusterGroupRecordReader:
         return out
 
 
+class RNTupleSchemaExtension:
+    def read(self, chunk, cursor, context):
+        out = MetaData(type(self).__name__)
+        out.size = cursor.field(chunk, struct.Struct("<I"), context)
+        out.field_records = ListFrameReader(
+            RecordFrameReader(FieldRecordReader())
+        ).read(chunk, cursor, context)
+        out.column_records = ListFrameReader(
+            RecordFrameReader(ColumnRecordReader())
+        ).read(chunk, cursor, context)
+        out.alias_records = ListFrameReader(
+            RecordFrameReader(AliasColumnReader())
+        ).read(chunk, cursor, context)
+        out.extra_type_info = ListFrameReader(
+            RecordFrameReader(ExtraTypeInfoReader())
+        ).read(chunk, cursor, context)
+        return out
+
+
 class FooterReader:
     def __init__(self):
-        self.extension_header_links = ListFrameReader(EnvLinkReader())
+        self.extension_header_links = RNTupleSchemaExtension()
+        # self.extension_header_links = ListFrameReader(EnvLinkReader())
         self.column_group_record_frames = ListFrameReader(
             RecordFrameReader(ColumnGroupRecordReader())
         )
@@ -691,8 +772,8 @@ class FooterReader:
         out.env_header = _envelop_header(chunk, cursor, context)
         out.feature_flag = cursor.field(chunk, _rntuple_feature_flag_format, context)
         out.header_crc32 = cursor.field(chunk, struct.Struct("<I"), context)
-
         out.extension_links = self.extension_header_links.read(chunk, cursor, context)
+
         out.col_group_records = self.column_group_record_frames.read(
             chunk, cursor, context
         )
