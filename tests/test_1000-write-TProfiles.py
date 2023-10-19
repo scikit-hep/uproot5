@@ -4,8 +4,9 @@ import pytest
 import uproot
 import os
 import numpy as np
-import hist
-import ROOT
+
+pytest.importorskip("hist")
+ROOT = pytest.importorskip("ROOT")
 
 
 def test_write_TProfile(tmp_path):
