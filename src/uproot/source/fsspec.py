@@ -24,6 +24,7 @@ class FSSpecSource(uproot.source.chunk.Source):
     """
 
     def __init__(self, file_path: str, **options):
+        import fsspec.asyn
         import fsspec.core
 
         default_options = uproot.reading.open.defaults
@@ -39,15 +40,14 @@ class FSSpecSource(uproot.source.chunk.Source):
         protocol = fsspec.core.split_protocol(file_path)[0]
         fs_has_async_impl = fsspec.get_filesystem_class(protocol=protocol).async_impl
 
-        if self._use_threads:
-            if fs_has_async_impl:
-                self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
-            else:
-                self._executor = concurrent.futures.ThreadPoolExecutor(
-                    max_workers=self._num_workers
-                )
-        else:
+        if not self._use_threads:
             self._executor = uproot.source.futures.TrivialExecutor()
+        elif fs_has_async_impl:
+            self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
+        else:
+            self._executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=self._num_workers
+            )
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
