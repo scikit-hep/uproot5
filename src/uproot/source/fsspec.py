@@ -30,6 +30,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         default_options = uproot.reading.open.defaults
         self._use_threads = options.get("use_threads", default_options["use_threads"])
         self._num_workers = options.get("num_workers", default_options["num_workers"])
+        self._use_async = (
+            False  # automatically determined from the protocol and other options
+        )
 
         # TODO: is timeout always valid?
 
@@ -44,6 +47,7 @@ class FSSpecSource(uproot.source.chunk.Source):
             self._executor = uproot.source.futures.TrivialExecutor()
         elif fs_has_async_impl:
             self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
+            self._use_async = True
         else:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
@@ -139,15 +143,26 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
 
         chunks = []
-        # _cat_file is async while cat_file is not
-        use_async = isinstance(self._executor, FSSpecLoopExecutor)
-        cat_file = self._fs._cat_file if use_async else self._fs.cat_file
         for start, stop in ranges:
-            future = self._executor.submit(cat_file, self._file_path, start, stop)
+            # _cat_file is async while cat_file is not.
+            # Loop executor takes a coroutine while ThreadPoolExecutor takes a function.
+            future = self._executor.submit(
+                self._fs._cat_file if self._use_async else self._fs.cat_file,
+                self._file_path,
+                start,
+                stop,
+            )
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
             chunks.append(chunk)
         return chunks
+
+    @property
+    def use_async(self) -> bool:
+        """
+        True if using an async loop executor; False otherwise.
+        """
+        return self._use_async
 
     @property
     def num_bytes(self) -> int:
@@ -155,14 +170,6 @@ class FSSpecSource(uproot.source.chunk.Source):
         The number of bytes in the file.
         """
         return self._fs.size(self._file_path)
-
-    @property
-    def closed(self) -> bool:
-        """
-        True if the associated file/connection/thread pool is closed; False
-        otherwise.
-        """
-        return False
 
 
 class FSSpecLoopExecutor(uproot.source.futures.Executor):
