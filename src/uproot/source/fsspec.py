@@ -154,9 +154,9 @@ class FSSpecSource(uproot.source.chunk.Source):
             # Loop executor takes a coroutine while ThreadPoolExecutor takes a function.
             future = self._executor.submit(
                 self._fs._cat_file if self._use_async else self._fs.cat_file,
-                self._file_path,
-                start,
-                stop,
+                path=self._file_path,
+                start=start,
+                end=stop,
             )
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
@@ -192,10 +192,10 @@ class FSSpecLoopExecutor(uproot.source.futures.Executor):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self.loop = loop
 
-    def submit(self, coroutine, *args) -> concurrent.futures.Future:
+    def submit(self, coroutine, /, *args, **kwargs) -> concurrent.futures.Future:
         if not asyncio.iscoroutinefunction(coroutine):
             raise TypeError("loop executor can only submit coroutines")
         if not self.loop.is_running():
             raise RuntimeError("cannot submit coroutine while loop is not running")
-        coroutine_object = coroutine(*args)
+        coroutine_object = coroutine(*args, **kwargs)
         return asyncio.run_coroutine_threadsafe(coroutine_object, self.loop)
