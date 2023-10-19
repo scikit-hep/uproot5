@@ -385,7 +385,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         for worker in self._workers:
             worker.start()
 
-    def submit(self, future):
+    def submit(self, future: ResourceFuture) -> ResourceFuture:
         """
         Pass the ``task`` onto the workers'
         :ref:`uproot.source.futures.ResourceWorker.work_queue` as a
