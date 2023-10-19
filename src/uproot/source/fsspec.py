@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import concurrent.futures
 import queue
 
@@ -40,9 +41,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         if self._use_threads:
             if fs_has_async_impl:
-                self._executor = uproot.source.futures.LoopExecutor()
-                assert self._executor.loop.is_running(), "loop not running"
-                storage_options["loop"] = self._executor.loop
+                self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
             else:
                 self._executor = concurrent.futures.ThreadPoolExecutor(
                     max_workers=self._num_workers
@@ -141,9 +140,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         chunks = []
         # _cat_file is async while cat_file is not
-        use_async = self._fs.async_impl and isinstance(
-            self._executor, uproot.source.futures.LoopExecutor
-        )
+        use_async = isinstance(self._executor, FSSpecLoopExecutor)
         cat_file = self._fs._cat_file if use_async else self._fs.cat_file
         for start, stop in ranges:
             future = self._executor.submit(cat_file, self._file_path, start, stop)
@@ -166,3 +163,25 @@ class FSSpecSource(uproot.source.chunk.Source):
         otherwise.
         """
         return False
+
+
+class FSSpecLoopExecutor:
+    def __init__(self, loop: asyncio.AbstractEventLoop):
+        self.loop = loop
+
+    def submit(self, coroutine, *args) -> asyncio.Future:
+        if not asyncio.iscoroutinefunction(coroutine):
+            raise TypeError("loop executor can only submit coroutines")
+        if not self.loop.is_running():
+            raise RuntimeError("cannot submit coroutine while loop is not running")
+        coroutine_object = coroutine(*args)
+        return asyncio.run_coroutine_threadsafe(coroutine_object, self.loop)
+
+    def shutdown(self, wait=True):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass

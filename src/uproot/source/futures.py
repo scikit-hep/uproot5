@@ -23,7 +23,6 @@ These classes implement a *subset* of Python's Future and Executor interfaces.
 
 from __future__ import annotations
 
-import asyncio
 import os
 import queue
 import sys
@@ -472,63 +471,3 @@ class ResourceTrivialExecutor(TrivialExecutor):
         self.shutdown()
         self._resource.__exit__(exception_type, exception_value, traceback)
         self._closed = True
-
-
-class LoopExecutor:
-    _instance = None
-
-    def __init__(self):
-        self._loop = None
-        self._thread = None
-        self.start()
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __repr__(self):
-        return f"<LoopExecutor at 0x{id(self):012x}>"
-
-    def start(self):
-        if self._loop is None or self._loop.is_closed():
-            self._loop = asyncio.new_event_loop()
-        # Thread is daemonized so that it doesn't prevent the main thread from exiting
-        if self._thread is None or not self._thread.is_alive():
-            self._thread = threading.Thread(target=self._run, daemon=True)
-            self._thread.start()
-
-    def shutdown(self):
-        self._loop.call_soon_threadsafe(self._loop.stop)
-        self._thread.join()
-        self._loop.close()
-        self._loop = None
-        self._thread = None
-
-    def _run(self):
-        asyncio.set_event_loop(self._loop)
-        try:
-            self._loop.run_forever()
-        finally:
-            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
-            self._loop.close()
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # Do nothing
-        ...
-
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        return self._loop
-
-    def submit(self, coroutine, *args) -> asyncio.Future:
-        if not asyncio.iscoroutinefunction(coroutine):
-            raise TypeError("loop executor can only submit coroutines")
-        if not self._loop.is_running():
-            raise RuntimeError("cannot submit coroutine while loop is not running")
-        coroutine_object = coroutine(*args)
-        return asyncio.run_coroutine_threadsafe(coroutine_object, self._loop)
