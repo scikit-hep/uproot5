@@ -28,6 +28,7 @@ import queue
 import sys
 import threading
 import time
+from abc import ABC, abstractmethod
 
 
 def delayed_raise(exception_class, exception_value, traceback):
@@ -35,6 +36,25 @@ def delayed_raise(exception_class, exception_value, traceback):
     Raise an exception from a background thread on the main thread.
     """
     raise exception_value.with_traceback(traceback)
+
+
+class Executor(ABC):
+    def __repr__(self):
+        return f"<{self.__class__.__name__} at 0x{id(self):012x}>"
+
+    @abstractmethod
+    def submit(self, task, *args):
+        """
+        Submit a task to be run in the background and return a Future object
+        representing that task.
+        """
+        raise NotImplementedError
+
+    def shutdown(self, wait: bool = True):
+        """
+        Stop the executor and free its resources.
+        """
+        return
 
 
 ##################### use-case 1: trivial Futures/Executor (satisfying formalities)
@@ -62,7 +82,7 @@ class TrivialFuture:
         return self._result
 
 
-class TrivialExecutor:
+class TrivialExecutor(Executor):
     """
     Formally satisfies the interface for a
     :doc:`uproot.source.futures.ThreadPoolExecutor`, but the
@@ -70,19 +90,11 @@ class TrivialExecutor:
     ``task`` synchronously.
     """
 
-    def __repr__(self):
-        return f"<TrivialExecutor at 0x{id(self):012x}>"
-
     def submit(self, task, *args):
         """
         Immediately runs ``task(*args)``.
         """
         return TrivialFuture(task(*args))
-
-    def shutdown(self, wait: bool = True):
-        """
-        Does nothing, since this object does not have threads to stop.
-        """
 
 
 ##################### use-case 2: Python-like Futures/Executor for compute
@@ -176,7 +188,7 @@ class Worker(threading.Thread):
             future._run()
 
 
-class ThreadPoolExecutor:
+class ThreadPoolExecutor(Executor):
     """
     Args:
         max_workers (None or int): The maximum number of workers to start.
@@ -207,9 +219,7 @@ class ThreadPoolExecutor:
             worker.start()
 
     def __repr__(self):
-        return "<ThreadPoolExecutor ({} workers) at 0x{:012x}>".format(
-            len(self._workers), id(self)
-        )
+        return f"<{self.__class__.__name__} ({len(self._workers)} workers) at 0x{id(self):012x}>"
 
     @property
     def max_workers(self) -> int:
@@ -368,11 +378,6 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         for worker in self._workers:
             worker.start()
 
-    def __repr__(self):
-        return "<ResourceThreadPoolExecutor ({} workers) at 0x{:012x}>".format(
-            len(self._workers), id(self)
-        )
-
     def submit(self, future):
         """
         Pass the ``task`` onto the workers'
@@ -433,10 +438,7 @@ class ResourceTrivialExecutor(TrivialExecutor):
         self._resource = resource
         self._closed = False
 
-    def __repr__(self):
-        return f"<ResourceTrivialExecutor at 0x{id(self):012x}>"
-
-    def submit(self, future):
+    def submit(self, future: ResourceFuture) -> ResourceFuture:
         """
         Pass the ``task`` as a
         :doc:`uproot.source.futures.ResourceFuture` so that it will be

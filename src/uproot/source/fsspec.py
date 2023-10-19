@@ -165,7 +165,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         return False
 
 
-class FSSpecLoopExecutor:
+class FSSpecLoopExecutor(uproot.source.futures.Executor):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self.loop = loop
 
@@ -176,12 +176,3 @@ class FSSpecLoopExecutor:
             raise RuntimeError("cannot submit coroutine while loop is not running")
         coroutine_object = coroutine(*args)
         return asyncio.run_coroutine_threadsafe(coroutine_object, self.loop)
-
-    def shutdown(self, wait=True):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args):
-        pass
