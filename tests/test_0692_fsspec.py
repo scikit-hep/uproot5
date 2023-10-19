@@ -52,10 +52,10 @@ def test_open_fsspec_local(use_threads):
 @pytest.mark.parametrize(
     "handler, use_threads",
     [
-        (uproot.source.fsspec.FSSpecSource, True),
         (uproot.source.fsspec.FSSpecSource, False),
-        (uproot.source.s3.S3Source, True),
+        (uproot.source.fsspec.FSSpecSource, True),
         (uproot.source.s3.S3Source, False),
+        (uproot.source.s3.S3Source, True),
     ],
 )
 def test_open_fsspec_s3(handler, use_threads):
