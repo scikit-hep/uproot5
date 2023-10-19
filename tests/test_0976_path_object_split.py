@@ -56,6 +56,27 @@ def test_url_split():
                 "Dir/Test",
             ),
         ),
+        (
+            "ssh://user@host:port/path/to/file:object",
+            (
+                "ssh://user@host:port/path/to/file",
+                "object",
+            ),
+        ),
+        (
+            "ssh://user@host:port/path/to/file",
+            (
+                "ssh://user@host:port/path/to/file",
+                None,
+            ),
+        ),
+        (
+            "s3://bucket/path/to/file:object",
+            (
+                "s3://bucket/path/to/file",
+                "object",
+            ),
+        ),
     ]:
         url, obj = uproot._util.file_object_path_split(input_url)
         assert url == result[0]
