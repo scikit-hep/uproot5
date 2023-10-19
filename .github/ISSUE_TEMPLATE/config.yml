@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-- name: Start a discussion (GitHub)
-  about: How do I…?
-  url: https://github.com/scikit-hep/uproot5/discussions
-- name: 'StackOverflow: [uproot] tag'
-  about: How do I…?
-  url: https://stackoverflow.com/questions/tagged/uproot
-- name: 'Gitter: Scikit-HEP/uproot room'
-  about: Getting help in real-time…
-  url: https://gitter.im/Scikit-HEP/uproot
+  - name: Start a discussion (GitHub)
+    about: How do I…?
+    url: https://github.com/scikit-hep/uproot5/discussions
+  - name: 'StackOverflow: [uproot] tag'
+    about: How do I…?
+    url: https://stackoverflow.com/questions/tagged/uproot
+  - name: 'Gitter: Scikit-HEP/uproot room'
+    about: Getting help in real-time…
+    url: https://gitter.im/Scikit-HEP/uproot
