@@ -56,6 +56,13 @@ class Executor(ABC):
         """
         return
 
+    @property
+    def closed(self) -> bool:
+        """
+        True if the executor has been stopped and its resources freed.
+        """
+        return False
+
 
 ##################### use-case 1: trivial Futures/Executor (satisfying formalities)
 

@@ -30,9 +30,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         default_options = uproot.reading.open.defaults
         self._use_threads = options.get("use_threads", default_options["use_threads"])
         self._num_workers = options.get("num_workers", default_options["num_workers"])
-        self._use_async = (
-            False  # automatically determined from the protocol and other options
-        )
+        # Add the possibility to set use_async directly as a hidden option.
+        # It is not encouraged to do so but may be useful for testing purposes.
+        self._use_async = options.get("use_async", None) if self._use_threads else False
 
         # TODO: is timeout always valid?
 
@@ -42,12 +42,18 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         protocol = fsspec.core.split_protocol(file_path)[0]
         fs_has_async_impl = fsspec.get_filesystem_class(protocol=protocol).async_impl
+        # If not explicitly set (default), use async if possible
+        self._use_async = (
+            fs_has_async_impl if self._use_async is None else self._use_async
+        )
+        if self._use_async and not fs_has_async_impl:
+            # This should never be triggered unless the user explicitly set the `use_async` flag for a non-async backend
+            raise ValueError(f"Filesystem {protocol} does not support async")
 
         if not self._use_threads:
             self._executor = uproot.source.futures.TrivialExecutor()
-        elif fs_has_async_impl:
+        elif self._use_async:
             self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
-            self._use_async = True
         else:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
@@ -170,6 +176,16 @@ class FSSpecSource(uproot.source.chunk.Source):
         The number of bytes in the file.
         """
         return self._fs.size(self._file_path)
+
+    # We need this because user may use other executors not defined in `uproot.source` (such as `concurrent.futures`)
+    # that do not have this interface. If not defined it defaults to calling this property on the source's executor
+    @property
+    def closed(self) -> bool:
+        """
+        True if the associated file/connection/thread pool is closed; False
+        otherwise.
+        """
+        return False
 
 
 class FSSpecLoopExecutor(uproot.source.futures.Executor):
