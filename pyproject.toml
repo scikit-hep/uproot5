@@ -58,19 +58,19 @@ dev = [
   "awkward-pandas"
 ]
 test = [
-    "lz4",
-    "minio",
-    "aiohttp; python_version<\"3.12\"",
-    "fsspec",
-    "fsspec-xrootd",
-    "s3fs",
-    "sshfs",
-    "pytest>=6",
-    "pytest-timeout",
-    "pytest-rerunfailures",
-    "requests",
-    "scikit-hep-testdata",
-    "xxhash",
+  "lz4",
+  "minio",
+  "aiohttp; python_version<\"3.12\"",
+  "fsspec",
+  "fsspec-xrootd",
+  "s3fs",
+  "sshfs",
+  "pytest>=6",
+  "pytest-timeout",
+  "pytest-rerunfailures",
+  "requests",
+  "scikit-hep-testdata",
+  "xxhash"
 ]
 
 [project.urls]
