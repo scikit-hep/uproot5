@@ -49,13 +49,23 @@ def test_open_fsspec_local(use_threads):
 
 
 @pytest.mark.network
-def test_open_fsspec_s3():
+@pytest.mark.parametrize(
+    "handler, use_threads",
+    [
+        (uproot.source.fsspec.FSSpecSource, True),
+        (uproot.source.fsspec.FSSpecSource, False),
+        (uproot.source.s3.S3Source, True),
+        (uproot.source.s3.S3Source, False),
+    ],
+)
+def test_open_fsspec_s3(handler, use_threads):
     pytest.importorskip("s3fs")
 
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
         anon=True,
-        handler=uproot.source.fsspec.FSSpecSource,
+        handler=handler,
+        use_threads=use_threads,
     ) as f:
         data = f["Event/Event.mEventId"].array(library="np")
         assert len(data) == 8004
