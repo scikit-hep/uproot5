@@ -7,6 +7,7 @@ import numpy as np
 import hist
 import ROOT
 
+
 def test_write_TProfile(tmp_path):
     newfile = os.path.join(tmp_path, "newfile.root")
 
@@ -14,7 +15,7 @@ def test_write_TProfile(tmp_path):
     h1.Fill(-4, 10)
     h1.Fill(-3.1, 10)
     h1.Fill(-3.1, 20)
-    h1.Fill(2.7, 20)    
+    h1.Fill(2.7, 20)
     h1.Fill(3, 20)
 
     hhist = uproot.from_pyroot(h1).to_hist()
@@ -45,7 +46,7 @@ def test_write_TProfile(tmp_path):
     with uproot.recreate(newfile) as fin:
         fin["hhist"] = hhist
         fin["uhist"] = uhist
- 
+
     f3 = ROOT.TFile(newfile)
     h3 = f3.Get("hhist")
     h4 = f3.Get("uhist")

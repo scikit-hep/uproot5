@@ -346,17 +346,35 @@ def to_writable(obj):
             if obj.kind == "MEAN":
                 return to_TProfile(
                     fName=None,
-                    fTitle=title, 
-                    data=obj.values(flow=True) if hasattr(obj, "storage_type") else obj._bases[0]._bases[-1],
-                    fEntries=obj.size + 1 if hasattr(obj, "storage_type") else obj.member('fEntries'),
-                    fTsumw=obj.sum()["sum_of_weights"] if hasattr(obj, "storage_type") else obj.member('fTsumw'),
-                    fTsumw2=obj.sum()["sum_of_weights_squared"] if hasattr(obj, "storage_type") else obj.member('fTsumw2'),
-                    fTsumwx=0 if hasattr(obj, "storage_type") else obj.member('fTsumwx'),
-                    fTsumwx2=0 if hasattr(obj, "storage_type") else obj.member('fTsumwx2'),
-                    fTsumwy=0 if hasattr(obj, "storage_type") else obj.member('fTsumwy'),
-                    fTsumwy2=0 if hasattr(obj, "storage_type") else obj.member('fTsumwy2'),
+                    fTitle=title,
+                    data=obj.values(flow=True)
+                    if hasattr(obj, "storage_type")
+                    else obj._bases[0]._bases[-1],
+                    fEntries=obj.size + 1
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fEntries"),
+                    fTsumw=obj.sum()["sum_of_weights"]
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fTsumw"),
+                    fTsumw2=obj.sum()["sum_of_weights_squared"]
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fTsumw2"),
+                    fTsumwx=0
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fTsumwx"),
+                    fTsumwx2=0
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fTsumwx2"),
+                    fTsumwy=0
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fTsumwy"),
+                    fTsumwy2=0
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fTsumwy2"),
                     fSumw2=numpy.array([], numpy.float64),
-                    fBinEntries=obj.counts(flow=True) if hasattr(obj, "storage_type") else obj.member("fBinEntries"),
+                    fBinEntries=obj.counts(flow=True)
+                    if hasattr(obj, "storage_type")
+                    else obj.member("fBinEntries"),
                     fBinSumw2=numpy.asarray([]),
                     fXaxis=axes[0],
                 )
@@ -379,7 +397,9 @@ def to_writable(obj):
 
         elif len(axes) == 2:
             if obj.kind == "MEAN":
-                raise NotImplementedError("2D PlottableHistogram with kind='MEAN' (i.e. 2D profile plots) not supported yet")
+                raise NotImplementedError(
+                    "2D PlottableHistogram with kind='MEAN' (i.e. 2D profile plots) not supported yet"
+                )
             else:
                 (
                     fTsumw,
@@ -411,7 +431,9 @@ def to_writable(obj):
 
         elif len(axes) == 3:
             if obj.kind == "MEAN":
-                raise NotImplementedError("3D PlottableHistogram with kind='MEAN' (i.e. 3D profile plots) not supported yet")
+                raise NotImplementedError(
+                    "3D PlottableHistogram with kind='MEAN' (i.e. 3D profile plots) not supported yet"
+                )
             else:
                 (
                     fTsumw,
