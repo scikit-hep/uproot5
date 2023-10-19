@@ -1,10 +1,10 @@
-name: "Test build"
+name: Test build
 
 on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: ["main"]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,46 +15,46 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ["windows-latest", "macos-latest", "ubuntu-latest"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        platform: [windows-latest, macos-latest, ubuntu-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
 
-    runs-on: "${{ matrix.platform }}"
+    runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
 
     # Required for miniconda to activate conda
     defaults:
       run:
-        shell: "bash -l {0}"
+        shell: bash -l {0}
 
     steps:
-      - uses: "actions/checkout@v4"
+      - uses: actions/checkout@v4
 
-      - name: "Get conda"
-        uses: "conda-incubator/setup-miniconda@v2"
+      - name: Get conda
+        uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
           miniforge-variant: Mambaforge
           use-mamba: true
 
-      - name: "Install ROOT"
-        if: "matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'"
+      - name: Install ROOT
+        if: matrix.python-version == 3.8  &&  runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           conda env list
           mamba install root
           conda list
 
-      - name: "Install XRootD"
-        if: "runner.os != 'macOS'  &&  runner.os != 'Windows'"
+      - name: Install XRootD
+        if: runner.os != 'macOS'  &&  runner.os != 'Windows'
         run: |
           conda env list
           mamba install xrootd
           conda list
 
-      - name: "Pip install the package"
+      - name: Pip install the package
         run: python -m pip install .[test,dev]
 
-      - name: "Run pytest"
+      - name: Run pytest
         run: |
           python -m pytest -vv tests \
             --reruns 3 --reruns-delay 30 \
@@ -64,22 +64,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ["windows-latest", "ubuntu-latest", "macos-latest"]
-        python-version: ["3.11"]
+        platform: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ['3.11']
 
-    runs-on: "${{ matrix.platform }}"
+    runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
 
     steps:
-      - uses: "actions/checkout@v4"
+      - uses: actions/checkout@v4
 
-      - uses: "actions/setup-python@v4"
+      - uses: actions/setup-python@v4
         with:
-          python-version: "${{ matrix.python-version }}"
+          python-version: ${{ matrix.python-version }}
 
-      - name: "Pip install the package"
+      - name: Pip install the package
         run: python -m pip install .[test,dev]
 
-      - name: "Run pytest"
+      - name: Run pytest
         run: |
           python -m pytest -vv tests --reruns 3 --reruns-delay 30 --only-rerun requests.exceptions.HTTPError

@@ -4,23 +4,23 @@ on:
   workflow_dispatch:
   release:
     types:
-    - published
+      - published
 
 jobs:
   dist:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Build wheel and SDist
-      run: pipx run build
+      - name: Build wheel and SDist
+        run: pipx run build
 
-    - name: Check metadata
-      run: pipx run twine check dist/*
+      - name: Check metadata
+        run: pipx run twine check dist/*
 
-    - uses: actions/upload-artifact@v3
-      with:
-        path: dist/*
+      - uses: actions/upload-artifact@v3
+        with:
+          path: dist/*
 
 
   publish:
@@ -29,11 +29,11 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
-    - uses: actions/download-artifact@v3
-      with:
-        name: artifact
-        path: dist
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: dist
 
-    - uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.pypi_password }}
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.pypi_password }}
