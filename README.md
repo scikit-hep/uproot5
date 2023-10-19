@@ -178,6 +178,7 @@ Thanks especially to the gracious help of Uproot contributors (including the [or
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/ioanaif"><img src="https://avatars.githubusercontent.com/u/9751871?v=4?s=100" width="100px;" alt="ioanaif"/><br /><sub><b>ioanaif</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=ioanaif" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/natsukium"><img src="https://avatars.githubusercontent.com/u/25083790?v=4?s=100" width="100px;" alt="OTABI Tomoya"/><br /><sub><b>OTABI Tomoya</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=natsukium" title="Tests">⚠️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/JostMigenda"><img src="https://avatars.githubusercontent.com/u/16189747?v=4?s=100" width="100px;" alt="Jost Migenda"/><br /><sub><b>Jost Migenda</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=JostMigenda" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://glepage.com"><img src="https://avatars.githubusercontent.com/u/33058747?v=4?s=100" width="100px;" alt="Gaétan Lepage"/><br /><sub><b>Gaétan Lepage</b></sub></a><br /><a href="https://github.com/scikit-hep/uproot5/commits?author=GaetanLepage" title="Tests">⚠️</a></td>
     </tr>
   </tbody>
 </table>
