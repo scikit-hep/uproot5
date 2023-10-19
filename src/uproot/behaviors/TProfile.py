@@ -304,6 +304,7 @@ class TProfile(Profile):
         storage = boost_histogram.storage.WeightedMean()
 
         xaxis = uproot.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
+        # values = self._bases[0]._bases[-1]
         out = boost_histogram.Histogram(xaxis, storage=storage)
         for k, v in metadata.items():
             setattr(out, k, self.member(v))

@@ -245,11 +245,7 @@ def to_writable(obj):
         ):
             import boost_histogram
 
-        if obj.kind == "MEAN":
-            raise NotImplementedError(
-                "PlottableHistogram with kind='MEAN' (i.e. profile plots) not supported yet"
-            )
-        elif obj.kind != "COUNT":
+        if obj.kind != "COUNT" and obj.kind != "MEAN":
             raise ValueError(
                 "PlottableHistogram can only be converted to ROOT TH* if kind='COUNT' or 'MEAN'"
             )
@@ -347,91 +343,115 @@ def to_writable(obj):
 
         # make TH1, TH2, TH3 types independently
         if len(axes) == 1:
-            fTsumw, fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
-                obj.values(flow=False), obj.axes[0].edges
-            )
-            return to_TH1x(
-                fName=None,
-                fTitle=title,
-                data=data,
-                fEntries=fEntries,
-                fTsumw=fTsumw,
-                fTsumw2=fTsumw2,
-                fTsumwx=fTsumwx,
-                fTsumwx2=fTsumwx2,
-                fSumw2=fSumw2,
-                fXaxis=axes[0],
-            )
+            if obj.kind == "MEAN":
+                return to_TProfile(
+                    fName=None,
+                    fTitle=title, 
+                    data=obj.values(flow=True) if hasattr(obj, "storage_type") else obj._bases[0]._bases[-1],
+                    fEntries=obj.size + 1 if hasattr(obj, "storage_type") else obj.member('fEntries'),
+                    fTsumw=obj.sum()["sum_of_weights"] if hasattr(obj, "storage_type") else obj.member('fTsumw'),
+                    fTsumw2=obj.sum()["sum_of_weights_squared"] if hasattr(obj, "storage_type") else obj.member('fTsumw2'),
+                    fTsumwx=0 if hasattr(obj, "storage_type") else obj.member('fTsumwx'),
+                    fTsumwx2=0 if hasattr(obj, "storage_type") else obj.member('fTsumwx2'),
+                    fTsumwy=0 if hasattr(obj, "storage_type") else obj.member('fTsumwy'),
+                    fTsumwy2=0 if hasattr(obj, "storage_type") else obj.member('fTsumwy2'),
+                    fSumw2=numpy.array([], numpy.float64),
+                    fBinEntries=obj.counts(flow=True) if hasattr(obj, "storage_type") else obj.member("fBinEntries"),
+                    fBinSumw2=numpy.asarray([]),
+                    fXaxis=axes[0],
+                )
+            else:
+                fTsumw, fTsumw2, fTsumwx, fTsumwx2 = _root_stats_1d(
+                    obj.values(flow=False), obj.axes[0].edges
+                )
+                return to_TH1x(
+                    fName=None,
+                    fTitle=title,
+                    data=data,
+                    fEntries=fEntries,
+                    fTsumw=fTsumw,
+                    fTsumw2=fTsumw2,
+                    fTsumwx=fTsumwx,
+                    fTsumwx2=fTsumwx2,
+                    fSumw2=fSumw2,
+                    fXaxis=axes[0],
+                )
 
         elif len(axes) == 2:
-            (
-                fTsumw,
-                fTsumw2,
-                fTsumwx,
-                fTsumwx2,
-                fTsumwy,
-                fTsumwy2,
-                fTsumwxy,
-            ) = _root_stats_2d(
-                obj.values(flow=False), obj.axes[0].edges, obj.axes[1].edges
-            )
-            return to_TH2x(
-                fName=None,
-                fTitle=title,
-                data=data,
-                fEntries=fEntries,
-                fTsumw=fTsumw,
-                fTsumw2=fTsumw2,
-                fTsumwx=fTsumwx,
-                fTsumwx2=fTsumwx2,
-                fTsumwy=fTsumwy,
-                fTsumwy2=fTsumwy2,
-                fTsumwxy=fTsumwxy,
-                fSumw2=fSumw2,
-                fXaxis=axes[0],
-                fYaxis=axes[1],
-            )
+            if obj.kind == "MEAN":
+                raise NotImplementedError("2D PlottableHistogram with kind='MEAN' (i.e. 2D profile plots) not supported yet")
+            else:
+                (
+                    fTsumw,
+                    fTsumw2,
+                    fTsumwx,
+                    fTsumwx2,
+                    fTsumwy,
+                    fTsumwy2,
+                    fTsumwxy,
+                ) = _root_stats_2d(
+                    obj.values(flow=False), obj.axes[0].edges, obj.axes[1].edges
+                )
+                return to_TH2x(
+                    fName=None,
+                    fTitle=title,
+                    data=data,
+                    fEntries=fEntries,
+                    fTsumw=fTsumw,
+                    fTsumw2=fTsumw2,
+                    fTsumwx=fTsumwx,
+                    fTsumwx2=fTsumwx2,
+                    fTsumwy=fTsumwy,
+                    fTsumwy2=fTsumwy2,
+                    fTsumwxy=fTsumwxy,
+                    fSumw2=fSumw2,
+                    fXaxis=axes[0],
+                    fYaxis=axes[1],
+                )
 
         elif len(axes) == 3:
-            (
-                fTsumw,
-                fTsumw2,
-                fTsumwx,
-                fTsumwx2,
-                fTsumwy,
-                fTsumwy2,
-                fTsumwxy,
-                fTsumwz,
-                fTsumwz2,
-                fTsumwxz,
-                fTsumwyz,
-            ) = _root_stats_3d(
-                obj.values(flow=False),
-                obj.axes[0].edges,
-                obj.axes[1].edges,
-                obj.axes[2].edges,
-            )
-            return to_TH3x(
-                fName=None,
-                fTitle=title,
-                data=data,
-                fEntries=fEntries,
-                fTsumw=fTsumw,
-                fTsumw2=fTsumw2,
-                fTsumwx=fTsumwx,
-                fTsumwx2=fTsumwx2,
-                fTsumwy=fTsumwy,
-                fTsumwy2=fTsumwy2,
-                fTsumwxy=fTsumwxy,
-                fTsumwz=fTsumwz,
-                fTsumwz2=fTsumwz2,
-                fTsumwxz=fTsumwxz,
-                fTsumwyz=fTsumwyz,
-                fSumw2=fSumw2,
-                fXaxis=axes[0],
-                fYaxis=axes[1],
-                fZaxis=axes[2],
-            )
+            if obj.kind == "MEAN":
+                raise NotImplementedError("3D PlottableHistogram with kind='MEAN' (i.e. 3D profile plots) not supported yet")
+            else:
+                (
+                    fTsumw,
+                    fTsumw2,
+                    fTsumwx,
+                    fTsumwx2,
+                    fTsumwy,
+                    fTsumwy2,
+                    fTsumwxy,
+                    fTsumwz,
+                    fTsumwz2,
+                    fTsumwxz,
+                    fTsumwyz,
+                ) = _root_stats_3d(
+                    obj.values(flow=False),
+                    obj.axes[0].edges,
+                    obj.axes[1].edges,
+                    obj.axes[2].edges,
+                )
+                return to_TH3x(
+                    fName=None,
+                    fTitle=title,
+                    data=data,
+                    fEntries=fEntries,
+                    fTsumw=fTsumw,
+                    fTsumw2=fTsumw2,
+                    fTsumwx=fTsumwx,
+                    fTsumwx2=fTsumwx2,
+                    fTsumwy=fTsumwy,
+                    fTsumwy2=fTsumwy2,
+                    fTsumwxy=fTsumwxy,
+                    fTsumwz=fTsumwz,
+                    fTsumwz2=fTsumwz2,
+                    fTsumwxz=fTsumwxz,
+                    fTsumwyz=fTsumwyz,
+                    fSumw2=fSumw2,
+                    fXaxis=axes[0],
+                    fYaxis=axes[1],
+                    fZaxis=axes[2],
+                )
 
     elif (
         isinstance(obj, (tuple, list))
