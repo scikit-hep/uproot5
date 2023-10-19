@@ -43,7 +43,7 @@ class Executor(ABC):
         return f"<{self.__class__.__name__} at 0x{id(self):012x}>"
 
     @abstractmethod
-    def submit(self, task, *args):
+    def submit(self, task, /, *args, **kwargs):
         """
         Submit a task to be run in the background and return a Future object
         representing that task.
@@ -97,11 +97,11 @@ class TrivialExecutor(Executor):
     ``task`` synchronously.
     """
 
-    def submit(self, task, *args):
+    def submit(self, task, /, *args, **kwargs):
         """
         Immediately runs ``task(*args)``.
         """
-        return TrivialFuture(task(*args))
+        return TrivialFuture(task(*args, **kwargs))
 
 
 ##################### use-case 2: Python-like Futures/Executor for compute
@@ -249,7 +249,7 @@ class ThreadPoolExecutor(Executor):
         """
         return self._workers
 
-    def submit(self, task, *args):
+    def submit(self, task, /, *args, **kwargs):
         """
         Pass the ``task`` and ``args`` onto the workers'
         :ref:`uproot.source.futures.Worker.work_queue` as a
@@ -385,7 +385,7 @@ class ResourceThreadPoolExecutor(ThreadPoolExecutor):
         for worker in self._workers:
             worker.start()
 
-    def submit(self, future):
+    def submit(self, future: ResourceFuture) -> ResourceFuture:
         """
         Pass the ``task`` onto the workers'
         :ref:`uproot.source.futures.ResourceWorker.work_queue` as a
