@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import concurrent.futures
 import queue
 
@@ -23,26 +24,42 @@ class FSSpecSource(uproot.source.chunk.Source):
     """
 
     def __init__(self, file_path: str, **options):
+        import fsspec.asyn
         import fsspec.core
 
         default_options = uproot.reading.open.defaults
         self._use_threads = options.get("use_threads", default_options["use_threads"])
         self._num_workers = options.get("num_workers", default_options["num_workers"])
+        # Add the possibility to set use_async directly as a hidden option.
+        # It is not encouraged to do so but may be useful for testing purposes.
+        self._use_async = options.get("use_async", None) if self._use_threads else False
 
         # TODO: is timeout always valid?
 
         # Remove uproot-specific options (should be done earlier)
         exclude_keys = set(default_options.keys())
-        opts = {k: v for k, v in options.items() if k not in exclude_keys}
+        storage_options = {k: v for k, v in options.items() if k not in exclude_keys}
 
-        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **opts)
+        protocol = fsspec.core.split_protocol(file_path)[0]
+        fs_has_async_impl = fsspec.get_filesystem_class(protocol=protocol).async_impl
+        # If not explicitly set (default), use async if possible
+        self._use_async = (
+            fs_has_async_impl if self._use_async is None else self._use_async
+        )
+        if self._use_async and not fs_has_async_impl:
+            # This should never be triggered unless the user explicitly set the `use_async` flag for a non-async backend
+            raise ValueError(f"Filesystem {protocol} does not support async")
 
-        if self._use_threads:
+        if not self._use_threads:
+            self._executor = uproot.source.futures.TrivialExecutor()
+        elif self._use_async:
+            self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
+        else:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
             )
-        else:
-            self._executor = uproot.source.futures.TrivialExecutor()
+
+        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
         # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
@@ -73,8 +90,8 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
-        self._executor.shutdown()
         self._file.__exit__(exception_type, exception_value, traceback)
+        self._executor.shutdown()
 
     def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         """
@@ -133,13 +150,25 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         chunks = []
         for start, stop in ranges:
+            # _cat_file is async while cat_file is not.
+            # Loop executor takes a coroutine while ThreadPoolExecutor takes a function.
             future = self._executor.submit(
-                self._fs.cat_file, self._file_path, start, stop
+                self._fs._cat_file if self._use_async else self._fs.cat_file,
+                self._file_path,
+                start,
+                stop,
             )
             chunk = uproot.source.chunk.Chunk(self, start, stop, future)
             future.add_done_callback(uproot.source.chunk.notifier(chunk, notifications))
             chunks.append(chunk)
         return chunks
+
+    @property
+    def use_async(self) -> bool:
+        """
+        True if using an async loop executor; False otherwise.
+        """
+        return self._use_async
 
     @property
     def num_bytes(self) -> int:
@@ -148,6 +177,8 @@ class FSSpecSource(uproot.source.chunk.Source):
         """
         return self._fs.size(self._file_path)
 
+    # We need this because user may use other executors not defined in `uproot.source` (such as `concurrent.futures`)
+    # that do not have this interface. If not defined it defaults to calling this property on the source's executor
     @property
     def closed(self) -> bool:
         """
@@ -155,3 +186,16 @@ class FSSpecSource(uproot.source.chunk.Source):
         otherwise.
         """
         return False
+
+
+class FSSpecLoopExecutor(uproot.source.futures.Executor):
+    def __init__(self, loop: asyncio.AbstractEventLoop):
+        self.loop = loop
+
+    def submit(self, coroutine, *args) -> concurrent.futures.Future:
+        if not asyncio.iscoroutinefunction(coroutine):
+            raise TypeError("loop executor can only submit coroutines")
+        if not self.loop.is_running():
+            raise RuntimeError("cannot submit coroutine while loop is not running")
+        coroutine_object = coroutine(*args)
+        return asyncio.run_coroutine_threadsafe(coroutine_object, self.loop)
