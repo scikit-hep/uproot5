@@ -345,38 +345,42 @@ in file {self.file.file_path}"""
         )
 
         if split:
+            content = content.view(numpy.uint8)
+
             if nbits == 16:
-                res = numpy.empty(len(content), numpy.uint16)
-                content = content.view(numpy.uint8)
-                res[::2] = content[0 : len(res) // 2]
-                res[1::2] = content[len(res) // 2 : len(res)]
+                # AAAAABBBBB needs to become
+                # ABABABABAB
+                res = numpy.empty(len(content), numpy.uint8)
+                res[0::2] = content[len(res) * 0 // 2 : len(res) * 1 // 2]
+                res[1::2] = content[len(res) * 1 // 2 : len(res) * 2 // 2]
+                res = res.view(numpy.uint16)
 
             elif nbits == 32:
-                res = numpy.empty(len(content), numpy.uint32)
-                content = content.view(numpy.uint8)
-                count = len(content) // 4
-                for i in range(count):
-                    b_1 = numpy.uint32(content[i]) << 0
-                    b_2 = numpy.uint32(content[count + i]) << 8
-                    b_3 = numpy.uint32(content[2 * count + i]) << 16
-                    b_4 = numpy.uint32(content[3 * count + i]) << 24
-                    res[i] = (b_1 | b_2) | (b_3 | b_4)
+                # AAAAABBBBBCCCCCDDDDD needs to become
+                # ABCDABCDABCDABCDABCD
+                res = numpy.empty(len(content), numpy.uint8)
+                res[0::4] = content[len(res) * 0 // 4 : len(res) * 1 // 4]
+                res[1::4] = content[len(res) * 1 // 4 : len(res) * 2 // 4]
+                res[2::4] = content[len(res) * 2 // 4 : len(res) * 3 // 4]
+                res[3::4] = content[len(res) * 3 // 4 : len(res) * 4 // 4]
+                res = res.view(numpy.uint32)
 
             elif nbits == 64:
-                res = numpy.empty(len(content), numpy.uint64)
-                content = content.view(numpy.uint8)
-                count = len(content) // 8
-                for i in range(count):
-                    b_1 = numpy.uint32(content[i]) << 0
-                    b_2 = numpy.uint32(content[count + i]) << 8
-                    b_3 = numpy.uint32(content[2 * count + i]) << 16
-                    b_4 = numpy.uint32(content[3 * count + i]) << 24
-                    b_5 = numpy.uint32(content[4 * count + i]) << 32
-                    b_6 = numpy.uint32(content[5 * count + i]) << 40
-                    b_7 = numpy.uint32(content[6 * count + i]) << 48
-                    b_8 = numpy.uint32(content[7 * count + i]) << 56
-                    res[i] = (b_1 | b_2) | (b_3 | b_4) | (b_5 | b_6) | (b_7 | b_8)
+                # AAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHH needs to become
+                # ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH
+                res = numpy.empty(len(content), numpy.uint8)
+                res[0::8] = content[len(res) * 0 // 8 : len(res) * 1 // 8]
+                res[1::8] = content[len(res) * 1 // 8 : len(res) * 2 // 8]
+                res[2::8] = content[len(res) * 2 // 8 : len(res) * 3 // 8]
+                res[3::8] = content[len(res) * 3 // 8 : len(res) * 4 // 8]
+                res[4::8] = content[len(res) * 4 // 8 : len(res) * 5 // 8]
+                res[5::8] = content[len(res) * 5 // 8 : len(res) * 6 // 8]
+                res[6::8] = content[len(res) * 6 // 8 : len(res) * 7 // 8]
+                res[7::8] = content[len(res) * 7 // 8 : len(res) * 8 // 8]
+                res = res.view(numpy.uint64)
+
             content = res
+
         if isbit:
             content = (
                 numpy.unpackbits(content.view(dtype=numpy.uint8))
