@@ -10,8 +10,10 @@ support vector-read requests; if not, it automatically falls back to
 :doc:`uproot.source.xrootd.MultithreadedXRootDSource`.
 """
 
+from __future__ import annotations
 
 import contextlib
+import queue
 import sys
 
 import uproot
@@ -83,7 +85,7 @@ class XRootDResource(uproot.source.chunk.Resource):
     A :doc:`uproot.source.chunk.Resource` for XRootD connections.
     """
 
-    def __init__(self, file_path, timeout):
+    def __init__(self, file_path: str, timeout: float | None):
         self._file_path = file_path
         self._timeout = timeout
         self._open()
@@ -106,7 +108,7 @@ class XRootDResource(uproot.source.chunk.Resource):
         self.__dict__ = state
         self._open()
 
-    def _xrd_timeout(self):
+    def _xrd_timeout(self) -> int:
         if self._timeout is None:
             return 0
         else:
@@ -127,7 +129,7 @@ in file {self._file_path}"""
             )
 
     @property
-    def timeout(self):
+    def timeout(self) -> float | None:
         """
         The timeout in seconds or None.
         """
@@ -141,14 +143,14 @@ in file {self._file_path}"""
         return self._file
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         status, info = self._file.stat(self._xrd_timeout())
         if status.error:
             self._xrd_error(status)
         return info.size
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return not self._file.is_open()
 
     def __enter__(self):
@@ -157,7 +159,7 @@ in file {self._file_path}"""
     def __exit__(self, exception_type, exception_value, traceback):
         self._file.close(timeout=self._xrd_timeout())
 
-    def get(self, start, stop):
+    def get(self, start: int, stop: int) -> bytes:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -174,7 +176,7 @@ in file {self._file_path}"""
         return data
 
     @staticmethod
-    def future(source, start, stop):
+    def future(source: uproot.source.chunk.Source, start: int, stop: int):
         """
         Args:
             source (:doc:`uproot.source.xrootd.MultithreadedXRootDSource`): The
@@ -194,7 +196,7 @@ in file {self._file_path}"""
         return uproot.source.futures.ResourceFuture(task)
 
     @staticmethod
-    def partfuture(results, start, stop):
+    def partfuture(results, start: int, stop: int):
         """
         Returns a :doc:`uproot.source.futures.ResourceFuture` to simply select
         the ``(start, stop)`` item from the ``results`` dict.
@@ -263,7 +265,7 @@ class XRootDSource(uproot.source.chunk.Source):
 
     ResourceClass = XRootDResource
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         self._timeout = options["timeout"]
         self._desired_max_num_elements = options["max_num_elements"]
         self._use_threads = options["use_threads"]
@@ -313,7 +315,7 @@ class XRootDSource(uproot.source.chunk.Source):
             path = repr("..." + self._file_path[-10:])
         return f"<{type(self).__name__} {path} at 0x{id(self):012x}>"
 
-    def chunk(self, start, stop):
+    def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -322,7 +324,9 @@ class XRootDSource(uproot.source.chunk.Source):
         future = uproot.source.futures.TrivialFuture(data)
         return uproot.source.chunk.Chunk(self, start, stop, future)
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges: list[(int, int)], notifications: queue.Queue
+    ) -> list[uproot.source.chunk.Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
@@ -335,7 +339,9 @@ class XRootDSource(uproot.source.chunk.Source):
         # this is to track which requests were split into smaller ranges and have to be merged
         sub_ranges = {}
 
-        def add_request_range(start, length, sub_ranges_list):
+        def add_request_range(
+            start: int, length: int, sub_ranges_list: list[(int, int)]
+        ):
             if len(all_request_ranges[-1]) >= self._max_num_elements:
                 all_request_ranges.append([])
             all_request_ranges[-1].append((start, length))
@@ -408,7 +414,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return self._resource
 
     @property
-    def timeout(self):
+    def timeout(self) -> float | None:
         """
         The timeout in seconds or None.
         """
@@ -422,7 +428,7 @@ class XRootDSource(uproot.source.chunk.Source):
         return self._resource.file
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._resource.closed
 
     def __enter__(self):
@@ -433,7 +439,7 @@ class XRootDSource(uproot.source.chunk.Source):
         self._resource.__exit__(exception_type, exception_value, traceback)
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = self._resource.num_bytes
         return self._num_bytes
@@ -451,7 +457,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
 
     ResourceClass = XRootDResource
 
-    def __init__(self, file_path, **options):
+    def __init__(self, file_path: str, **options):
         self._num_workers = options["num_workers"]
         self._timeout = options["timeout"]
         self._use_threads = options["use_threads"]
@@ -468,7 +474,7 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
             self._executor = uproot.source.futures.ResourceThreadPoolExecutor(
                 [
                     XRootDResource(self._file_path, self._timeout)
-                    for x in range(self._num_workers)
+                    for _ in range(self._num_workers)
                 ]
             )
         else:
@@ -486,14 +492,14 @@ class MultithreadedXRootDSource(uproot.source.chunk.MultithreadedSource):
         self._open()
 
     @property
-    def timeout(self):
+    def timeout(self) -> float | None:
         """
         The timeout in seconds or None.
         """
         return self._timeout
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         if self._num_bytes is None:
             self._num_bytes = self._executor.workers[0].resource.num_bytes
         return self._num_bytes

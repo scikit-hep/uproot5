@@ -8,6 +8,7 @@ object) and one source :doc:`uproot.source.object.ObjectSource` which always
 has exactly one worker (we can't assume that the object is thread-safe).
 """
 
+from __future__ import annotations
 
 import uproot
 import uproot.source.chunk
@@ -40,7 +41,7 @@ class ObjectResource(uproot.source.chunk.Resource):
         return self._obj
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return getattr(self._obj, "closed", False)
 
     def __enter__(self):
@@ -52,7 +53,7 @@ class ObjectResource(uproot.source.chunk.Resource):
         if hasattr(self._obj, "__exit__"):
             self._obj.__exit__(exception_type, exception_value, traceback)
 
-    def get(self, start, stop):
+    def get(self, start: int, stop: int):
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -65,7 +66,7 @@ class ObjectResource(uproot.source.chunk.Resource):
         return self._obj.read(stop - start)
 
     @staticmethod
-    def future(source, start, stop):
+    def future(source: uproot.source.chunk.Source, start: int, stop: int):
         """
         Args:
             source (:doc:`uproot.source.object.ObjectSource`): The data source.

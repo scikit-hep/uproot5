@@ -10,8 +10,10 @@ Also defines abstract classes for :doc:`uproot.source.chunk.Resource` and
 :doc:`uproot.source.chunk.Source`, the primary types of the "physical layer."
 """
 
+from __future__ import annotations
 
 import numbers
+import queue
 
 import numpy
 
@@ -29,7 +31,7 @@ class Resource:
     """
 
     @property
-    def file_path(self):
+    def file_path(self) -> str:
         """
         A path to the file (or URL).
         """
@@ -47,7 +49,7 @@ class Source:
     the file.
     """
 
-    def chunk(self, start, stop):
+    def chunk(self, start: int, stop: int) -> Chunk:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -58,7 +60,9 @@ class Source:
         :doc:`uproot.source.chunk.Chunk`.
         """
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges: list[(int, int)], notifications: queue.Queue
+    ) -> list[Chunk]:
         """
         Args:
             ranges (list of (int, int) 2-tuples): Intervals to fetch
@@ -88,28 +92,28 @@ class Source:
         """
 
     @property
-    def file_path(self):
+    def file_path(self) -> str:
         """
         A path to the file (or URL).
         """
         return self._file_path
 
     @property
-    def num_bytes(self):
+    def num_bytes(self) -> int:
         """
         The number of bytes in the file.
         """
         return self._num_bytes
 
     @property
-    def num_requests(self):
+    def num_requests(self) -> int:
         """
         The number of requests that have been made (performance counter).
         """
         return self._num_requests
 
     @property
-    def num_requested_chunks(self):
+    def num_requested_chunks(self) -> int:
         """
         The number of :doc:`uproot.source.chunk.Chunk` objects that have been
         requested (performance counter).
@@ -117,7 +121,7 @@ class Source:
         return self._num_requested_chunks
 
     @property
-    def num_requested_bytes(self):
+    def num_requested_bytes(self) -> int:
         """
         The number of bytes that have been requested (performance counter).
         """
@@ -130,7 +134,7 @@ class Source:
         self.__exit__(None, None, None)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the associated file/connection/thread pool is closed; False
         otherwise.
@@ -152,7 +156,7 @@ class MultithreadedSource(Source):
             type(self).__name__, path, self.num_workers, id(self)
         )
 
-    def chunk(self, start, stop):
+    def chunk(self, start: int, stop: int) -> Chunk:
         self._num_requests += 1
         self._num_requested_chunks += 1
         self._num_requested_bytes += stop - start
@@ -162,7 +166,9 @@ class MultithreadedSource(Source):
         self._executor.submit(future)
         return chunk
 
-    def chunks(self, ranges, notifications):
+    def chunks(
+        self, ranges: list[(int, int)], notifications: queue.Queue
+    ) -> list[Chunk]:
         self._num_requests += 1
         self._num_requested_chunks += len(ranges)
         self._num_requested_bytes += sum(stop - start for start, stop in ranges)
@@ -184,7 +190,7 @@ class MultithreadedSource(Source):
         return self._executor
 
     @property
-    def num_workers(self):
+    def num_workers(self) -> int:
         """
         The number of :doc:`uproot.source.futures.ResourceWorker` threads in
         the :doc:`uproot.source.futures.ResourceThreadPoolExecutor`.
@@ -192,7 +198,7 @@ class MultithreadedSource(Source):
         return self._executor.num_workers
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the :doc:`uproot.source.futures.ResourceThreadPoolExecutor` has
         been shut down and the file handles have been closed.
@@ -205,13 +211,6 @@ class MultithreadedSource(Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._executor.__exit__(exception_type, exception_value, traceback)
-
-
-def notifier(chunk, notifications):
-    def notify():
-        notifications.put(chunk)
-
-    return notify
 
 
 class Chunk:
@@ -245,7 +244,7 @@ class Chunk:
     _dtype = numpy.dtype(numpy.uint8)
 
     @classmethod
-    def wrap(cls, source, data, start=0):
+    def wrap(cls, source: Source, data: numpy.ndarray | bytes, start: int = 0):
         """
         Args:
             source (:doc:`uproot.source.chunk.Source`): Source to attach to
@@ -260,7 +259,9 @@ class Chunk:
         future = uproot.source.futures.TrivialFuture(data)
         return Chunk(source, start, start + len(data), future)
 
-    def __init__(self, source, start, stop, future, is_memmap=False):
+    def __init__(
+        self, source: Source, start: int, stop: int, future, is_memmap: bool = False
+    ):
         self._source = source
         self._start = start
         self._stop = stop
@@ -272,21 +273,21 @@ class Chunk:
         return f"<Chunk {self._start}-{self._stop}>"
 
     @property
-    def source(self):
+    def source(self) -> Source:
         """
         Source from which this Chunk is derived.
         """
         return self._source
 
     @property
-    def start(self):
+    def start(self) -> int:
         """
         Seek position of the first byte to include.
         """
         return self._start
 
     @property
-    def stop(self):
+    def stop(self) -> int:
         """
         Seek position of the first byte to exclude (one greater than the last
         byte to include).
@@ -302,7 +303,7 @@ class Chunk:
         return self._future
 
     @property
-    def is_memmap(self):
+    def is_memmap(self) -> bool:
         """
         If True, the `raw_data` is or will be a view into a memmap file, which
         must be handled carefully. Accessing that data after the file is closed
@@ -331,7 +332,7 @@ class Chunk:
         else:
             return self
 
-    def __contains__(self, range):
+    def __contains__(self, range: tuple[int, int]):
         start, stop = range
         if isinstance(start, uproot.source.cursor.Cursor):
             start = start.index
@@ -339,7 +340,7 @@ class Chunk:
             stop = stop.index
         return self._start <= start and stop <= self._stop
 
-    def wait(self, insist=True):
+    def wait(self, insist: bool = True):
         """
         Args:
             insist (bool or int): If True, raise an OSError if ``raw_data`` does
@@ -373,7 +374,7 @@ for file path {self._source.file_path}"""
             self._future = None
 
     @property
-    def raw_data(self):
+    def raw_data(self) -> numpy.ndarray | bytes:
         """
         Data from the Source as a ``numpy.ndarray`` of ``numpy.uint8``.
 
@@ -384,7 +385,9 @@ for file path {self._source.file_path}"""
         self.wait()
         return self._raw_data
 
-    def get(self, start, stop, cursor, context):
+    def get(
+        self, start: int, stop: int, cursor: uproot.source.cursor.Cursor, context: dict
+    ) -> numpy.ndarray:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -422,7 +425,9 @@ outside expected range {self._start}:{self._stop} for this Chunk""",
                 self._source.file_path,
             )
 
-    def remainder(self, start, cursor, context):
+    def remainder(
+        self, start: int, cursor: uproot.source.cursor.Cursor, context: dict
+    ) -> numpy.ndarray:
         """
         Args:
             start (int): Seek position of the first byte to include.
@@ -457,3 +462,19 @@ outside expected range {self._start}:{self._stop} for this Chunk""",
                 context,
                 self._source.file_path,
             )
+
+
+def notifier(chunk: Chunk, notifications: queue.Queue):
+    """
+    Returns a function that puts the chunk on the notifications queue when called.
+    The function has a 'future' argument to be compatible with the `concurrent.futures.Future.add_done_callback` method.
+
+    Args:
+        chunk (:doc:`uproot.source.chunk.Chunk`): The chunk to put on the queue.
+        notifications (``queue.Queue``): The notifications queue.
+    """
+
+    def notify(future=None):
+        notifications.put(chunk)
+
+    return notify
