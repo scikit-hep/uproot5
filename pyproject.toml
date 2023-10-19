@@ -63,6 +63,8 @@ test = [
     "aiohttp; python_version<\"3.12\"",
     "fsspec",
     "fsspec-xrootd",
+    "s3fs",
+    "sshfs",
     "pytest>=6",
     "pytest-timeout",
     "pytest-rerunfailures",
@@ -102,32 +104,32 @@ profile = "black"
 [tool.ruff]
 select = [
     "E", "F", "W", # flake8
-    "B", "B904",   # flake8-bugbear
-    "I",           # isort
+    "B", "B904", # flake8-bugbear
+    "I", # isort
     # "ARG",         # flake8-unused-arguments
-    "C4",          # flake8-comprehensions
-    "ISC",         # flake8-implicit-str-concat
-    "PGH",         # pygrep-hooks
-    "PIE",         # flake8-pie
-    "PL",          # pylint
-    "PT",          # flake8-pytest-style
-    "RUF",         # Ruff-specific
-    "SIM",         # flake8-simplify
-    "T20",         # flake8-print
-    "UP",          # pyupgrade
-    "YTT",         # flake8-2020
+    "C4", # flake8-comprehensions
+    "ISC", # flake8-implicit-str-concat
+    "PGH", # pygrep-hooks
+    "PIE", # flake8-pie
+    "PL", # pylint
+    "PT", # flake8-pytest-style
+    "RUF", # Ruff-specific
+    "SIM", # flake8-simplify
+    "T20", # flake8-print
+    "UP", # pyupgrade
+    "YTT", # flake8-2020
 ]
 ignore = [
     "E501",
     "E722",
     "PLR",
     "PLW0120", # else on loop without break
-    "SIM118",  # key in dict, broken since uproot doesn't behave like a dict
-    "PGH003",  # too-broad type ignore
-    "SIM114",  # combine `if` branches using logical `or` operator
-    "PGH001",  # no eval allowed
+    "SIM118", # key in dict, broken since uproot doesn't behave like a dict
+    "PGH003", # too-broad type ignore
+    "SIM114", # combine `if` branches using logical `or` operator
+    "PGH001", # no eval allowed
     "PLC1901", # empty string is falsey (but I don't want to rely on such weak typing)
-    "RUF012",  # enforces type annotations on a codebase that lacks type annotations
+    "RUF012", # enforces type annotations on a codebase that lacks type annotations
 ]
 exclude = [
     "tests/*.py",
@@ -141,4 +143,4 @@ max-complexity = 100
 
 [tool.ruff.per-file-ignores]
 "dev/*" = ["T20"]
-"src/uproot/*/file.py" =  ["SIM115"]
+"src/uproot/*/file.py" = ["SIM115"]
