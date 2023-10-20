@@ -71,8 +71,8 @@ def test_open_fsspec_s3(handler, use_threads):
         assert len(data) == 8004
 
 
-@pytest.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
-@pytest.skip("you must provide an ssh server to test this")
+@pytest.mark.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
+@pytest.mark.skip("you must provide an ssh server to test this")
 def test_open_fsspec_ssh(handler):
     pytest.importorskip("sshfs")
 
