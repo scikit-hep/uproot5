@@ -38,8 +38,42 @@ import numpy as np
 
 
 def test_new_support_RNTuple_event_data():
-    with uproot.open("https://xrootd-local.unl.edu:1094//store/user/AGC/nanoaod-rntuple/zstd/TT_TuneCUETP8M1_13TeV-powheg-pythia8/cmsopendata2015_ttbar_19980_PU25nsData2015v1_76X_mcRun2_asymptotic_v12_ext3-v1_00000_0000.root") as f:
+    with uproot.open(
+        "https://xrootd-local.unl.edu:1094//store/user/AGC/nanoaod-rntuple/zstd/TT_TuneCUETP8M1_13TeV-powheg-pythia8/cmsopendata2015_ttbar_19980_PU25nsData2015v1_76X_mcRun2_asymptotic_v12_ext3-v1_00000_0000.root"
+    ) as f:
         obj = f["Events"]
         df = obj.arrays(["nTau"])
         assert len(df) == 1334428
-        assert df[:31] == [0,0,2,0,1,1,1,1,2,0,1,2,0,0,1,0,0,0,2,2,1,1,1,1,1,1,1,0,0,1,0]
+        assert df[:31] == [
+            0,
+            0,
+            2,
+            0,
+            1,
+            1,
+            1,
+            1,
+            2,
+            0,
+            1,
+            2,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            2,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+        ]
