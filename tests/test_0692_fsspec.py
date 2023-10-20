@@ -71,6 +71,18 @@ def test_open_fsspec_s3(handler, use_threads):
         assert len(data) == 8004
 
 
+@pytest.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
+@pytest.skip("you must provide an ssh server to test this")
+def test_open_fsspec_ssh(handler):
+    pytest.importorskip("sshfs")
+
+    # change this to a server you have access to
+    uri = "ssh://user@host:22/tmp/file.root"
+    with uproot.open(uri, handler=handler) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize(
