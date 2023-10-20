@@ -63,6 +63,7 @@ test = [
   "aiohttp; python_version<\"3.12\"",
   "fsspec",
   "fsspec-xrootd",
+  "s3fs",
   "pytest>=6",
   "pytest-timeout",
   "pytest-rerunfailures",
