@@ -61,6 +61,11 @@ class FSSpecSource(uproot.source.chunk.Source):
 
         self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
+        if not self._use_threads:
+            # assert threading.active_count() == 1
+            ...
+            # fsspec may spawn a thread even if 'use_threads' is set to False (can this be avoided?)
+
         # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
         self._fh = None
