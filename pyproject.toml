@@ -60,11 +60,11 @@ dev = [
 test = [
   "lz4",
   "minio",
-  "aiohttp; python_version<\"3.12\"",
+  "aiohttp; python_version<\"3.12\"",  # asyncio not available
   "fsspec",
   "fsspec-xrootd",
-  "s3fs; python_version<\"3.12\"",
-  "sshfs; python_version<\"3.12\"",
+  "s3fs; python_version<\"3.12\"",  # asyncio not available
+  "sshfs; python_version<\"3.12\"",  # asyncio not available
   "pytest>=6",
   "pytest-timeout",
   "pytest-rerunfailures",
