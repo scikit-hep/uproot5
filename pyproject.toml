@@ -64,7 +64,7 @@ test = [
   "fsspec",
   "fsspec-xrootd",
   "s3fs; python_version<\"3.12\"",
-  "sshfs",
+  "sshfs; python_version<\"3.12\"",
   "pytest>=6",
   "pytest-timeout",
   "pytest-rerunfailures",
