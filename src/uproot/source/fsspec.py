@@ -55,6 +55,15 @@ class FSSpecSource(uproot.source.chunk.Source):
             self._executor = uproot.source.futures.TrivialExecutor()
         elif self._use_async:
             self._executor = FSSpecLoopExecutor()
+            try:
+                import s3fs.core
+
+                if isinstance(self._fs, s3fs.core.S3FileSystem):
+                    self._session = asyncio.run_coroutine_threadsafe(
+                        self._fs.set_session(), self._executor.loop
+                    ).result()
+            except ImportError:
+                ...
         else:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
@@ -96,18 +105,9 @@ class FSSpecSource(uproot.source.chunk.Source):
         self._fh = None
         self._file.__exit__(exception_type, exception_value, traceback)
 
-        try:
-            import fsspec.asyn
-            import s3fs
-
-            if isinstance(self._fs, s3fs.core.S3FileSystem):
-                loop = fsspec.asyn.get_loop()
-                session = asyncio.run_coroutine_threadsafe(
-                    self._fs.set_session(), loop
-                ).result()
-                self._fs.close_session(loop, session)
-        except ImportError:
-            ...
+        if hasattr(self, "_session") and self._session is not None:
+            self._fs.close_session(self._executor.loop, self._session)
+            self._session = None
 
         self._executor.shutdown()
 
