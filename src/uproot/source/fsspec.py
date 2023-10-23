@@ -103,6 +103,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
+        self._file.close()
         self._file.__exit__(exception_type, exception_value, traceback)
 
         if hasattr(self, "_session") and self._session is not None:
