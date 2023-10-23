@@ -24,7 +24,6 @@ class FSSpecSource(uproot.source.chunk.Source):
     """
 
     def __init__(self, file_path: str, **options):
-        import fsspec.asyn
         import fsspec.core
 
         default_options = uproot.reading.open.defaults
@@ -55,14 +54,7 @@ class FSSpecSource(uproot.source.chunk.Source):
         if not self._use_threads:
             self._executor = uproot.source.futures.TrivialExecutor()
         elif self._use_async:
-            self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
-
-            async def get_session():
-                return await self._fs.set_session()
-
-            self._executor.session = asyncio.run_coroutine_threadsafe(
-                get_session(), self._executor.loop
-            ).result()
+            self._executor = FSSpecLoopExecutor()
         else:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
@@ -103,6 +95,20 @@ class FSSpecSource(uproot.source.chunk.Source):
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
         self._file.__exit__(exception_type, exception_value, traceback)
+
+        try:
+            import fsspec.asyn
+            import s3fs
+
+            if isinstance(self._fs, s3fs.core.S3FileSystem):
+                loop = fsspec.asyn.get_loop()
+                session = asyncio.run_coroutine_threadsafe(
+                    self._fs.set_session(), loop
+                ).result()
+                self._fs.close_session(loop, session)
+        except ImportError:
+            ...
+
         self._executor.shutdown()
 
     def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
@@ -202,17 +208,17 @@ class FSSpecSource(uproot.source.chunk.Source):
 
 
 class FSSpecLoopExecutor(uproot.source.futures.Executor):
-    def __init__(self, loop: asyncio.AbstractEventLoop):
-        self.loop = loop
-        self.session = None
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        import fsspec.asyn
+
+        return fsspec.asyn.get_loop()
 
     def submit(self, coroutine, /, *args, **kwargs) -> concurrent.futures.Future:
+        loop = self.loop
         if not asyncio.iscoroutinefunction(coroutine):
             raise TypeError("loop executor can only submit coroutines")
-        if not self.loop.is_running():
+        if not loop.is_running():
             raise RuntimeError("cannot submit coroutine while loop is not running")
         coroutine_object = coroutine(*args, **kwargs)
-        return asyncio.run_coroutine_threadsafe(coroutine_object, self.loop)
-
-    def shutdown(self, wait: bool = True):
-        asyncio.run_coroutine_threadsafe(self.session.close(), self.loop).result()
+        return asyncio.run_coroutine_threadsafe(coroutine_object, loop)
