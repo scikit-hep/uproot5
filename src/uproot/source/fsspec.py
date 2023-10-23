@@ -50,16 +50,23 @@ class FSSpecSource(uproot.source.chunk.Source):
             # This should never be triggered unless the user explicitly set the `use_async` flag for a non-async backend
             raise ValueError(f"Filesystem {protocol} does not support async")
 
+        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
+
         if not self._use_threads:
             self._executor = uproot.source.futures.TrivialExecutor()
         elif self._use_async:
             self._executor = FSSpecLoopExecutor(fsspec.asyn.get_loop())
+
+            async def get_session():
+                return await self._fs.set_session()
+
+            self._executor.session = asyncio.run_coroutine_threadsafe(
+                get_session(), self._executor.loop
+            ).result()
         else:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
             )
-
-        self._fs, self._file_path = fsspec.core.url_to_fs(file_path, **storage_options)
 
         if not self._use_threads:
             # assert threading.active_count() == 1
@@ -197,6 +204,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 class FSSpecLoopExecutor(uproot.source.futures.Executor):
     def __init__(self, loop: asyncio.AbstractEventLoop):
         self.loop = loop
+        self.session = None
 
     def submit(self, coroutine, /, *args, **kwargs) -> concurrent.futures.Future:
         if not asyncio.iscoroutinefunction(coroutine):
@@ -205,3 +213,6 @@ class FSSpecLoopExecutor(uproot.source.futures.Executor):
             raise RuntimeError("cannot submit coroutine while loop is not running")
         coroutine_object = coroutine(*args, **kwargs)
         return asyncio.run_coroutine_threadsafe(coroutine_object, self.loop)
+
+    def shutdown(self, wait: bool = True):
+        asyncio.run_coroutine_threadsafe(self.session.close(), self.loop).result()
