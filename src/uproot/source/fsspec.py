@@ -55,15 +55,6 @@ class FSSpecSource(uproot.source.chunk.Source):
             self._executor = uproot.source.futures.TrivialExecutor()
         elif self._use_async:
             self._executor = FSSpecLoopExecutor()
-            try:
-                import s3fs.core
-
-                if isinstance(self._fs, s3fs.core.S3FileSystem):
-                    self._session = asyncio.run_coroutine_threadsafe(
-                        self._fs.set_session(), self._executor.loop
-                    ).result()
-            except ImportError:
-                ...
         else:
             self._executor = concurrent.futures.ThreadPoolExecutor(
                 max_workers=self._num_workers
@@ -74,7 +65,6 @@ class FSSpecSource(uproot.source.chunk.Source):
             ...
             # fsspec may spawn a thread even if 'use_threads' is set to False (can this be avoided?)
 
-        # TODO: set mode to "read-only" in a way that works for all filesystems
         self._file = self._fs.open(self._file_path)
         self._fh = None
         self._num_requests = 0
@@ -103,13 +93,7 @@ class FSSpecSource(uproot.source.chunk.Source):
 
     def __exit__(self, exception_type, exception_value, traceback):
         self._fh = None
-        self._file.close()
         self._file.__exit__(exception_type, exception_value, traceback)
-
-        if hasattr(self, "_session") and self._session is not None:
-            self._fs.close_session(self._executor.loop, self._session)
-            self._session = None
-
         self._executor.shutdown()
 
     def chunk(self, start: int, stop: int) -> uproot.source.chunk.Chunk:
