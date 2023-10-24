@@ -196,3 +196,7 @@ class FSSpecLoopExecutor(uproot.source.futures.Executor):
         if not asyncio.iscoroutine(coroutine):
             raise TypeError("loop executor can only submit coroutines")
         return asyncio.run_coroutine_threadsafe(coroutine, self.loop)
+
+    def shutdown(self, wait: bool = True):
+        # TODO: close all unclosed resources
+        self.loop.call_soon_threadsafe(self.loop.stop)
