@@ -324,7 +324,7 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
         path = path[: -len(obj) - 1]
         obj = obj.strip()
     else:
-        raise ValueError(f"too many colons in file path: {path}")
+        raise ValueError(f"could not split object from path {path}")
 
     return path, obj
 
