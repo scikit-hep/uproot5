@@ -283,6 +283,7 @@ _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 _might_be_port = re.compile(r"^[0-9].*")
 _remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
 _schemes = ["FILE", *_remote_schemes]
+_uri_scheme = re.compile("^[a-zA-Z][a-zA-Z0-9+.-]*://")
 
 
 def file_object_path_split(path: str) -> tuple[str, str | None]:
@@ -301,7 +302,7 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
     path: str = regularize_path(path)
     path = path.strip()
 
-    if "://" in path:
+    if _uri_scheme.match(path):
         parsed_url = urlparse(path)
         parts = parsed_url.path.split(":")
     else:
