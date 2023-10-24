@@ -5,11 +5,14 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
+from __future__ import annotations
+
 import datetime
 import glob
 import itertools
 import numbers
 import os
+import pathlib
 import platform
 import re
 import warnings
@@ -282,7 +285,7 @@ _remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
 _schemes = ["FILE", *_remote_schemes]
 
 
-def file_object_path_split(path):
+def file_object_path_split(path: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
 
@@ -296,13 +299,23 @@ def file_object_path_split(path):
     """
 
     path: str = regularize_path(path)
-    # remove whitespace
     path = path.strip()
 
-    # split url into parts
-    parsed_url = urlparse(path)
+    if "://" in path:
+        parsed_url = urlparse(path)
+        parts = parsed_url.path.split(":")
+    else:
+        # local file path
+        pathlib_path = pathlib.Path(path)
+        if pathlib.PureWindowsPath(path).drive:
+            # Windows absolute path
+            parts = str(pathlib_path).split(":")
+            assert len(parts) == 3
+            parts = [parts[0] + ":" + parts[1], parts[2]]
+        else:
+            pathlib_path = pathlib.PurePosixPath(pathlib_path)
+            parts = str(pathlib_path).split(":")
 
-    parts = parsed_url.path.split(":")
     if len(parts) == 1:
         obj = None
     elif len(parts) == 2:
@@ -311,7 +324,7 @@ def file_object_path_split(path):
         path = path[: -len(obj) - 1]
         obj = obj.strip()
     else:
-        raise ValueError(f"too many colons in file path: {path} for url {parsed_url}")
+        raise ValueError(f"too many colons in file path: {path}")
 
     return path, obj
 
