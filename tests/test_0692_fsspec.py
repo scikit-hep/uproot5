@@ -62,6 +62,7 @@ def test_open_fsspec_s3():
 
 
 @pytest.mark.network
+@pytest.mark.flaky(reruns=3, reruns_delay=20)
 @pytest.mark.xrootd
 @pytest.mark.parametrize(
     "handler, use_threads",
