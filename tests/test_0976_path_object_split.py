@@ -52,9 +52,15 @@ import pathlib
         (
             r"C:\tmp\test\dir\file.root:Dir/Test",
             (
-                # make it work on Windows and Linux
                 r"C:\tmp\test\dir\file.root",
                 "Dir/Test",
+            ),
+        ),
+        (
+            r"C:\tmp\test\dir\file.root",
+            (
+                r"C:\tmp\test\dir\file.root",
+                None,
             ),
         ),
         (

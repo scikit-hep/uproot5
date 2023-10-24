@@ -309,8 +309,8 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
         parts = path.split(":")
         if pathlib.PureWindowsPath(path).drive:
             # Windows absolute path
-            assert len(parts) == 3, f"could not split object from path {path}"
-            parts = [parts[0] + ":" + parts[1], parts[2]]
+            assert len(parts) >= 2, f"could not split object from windows path {path}"
+            parts = [parts[0] + ":" + parts[1]] + parts[2:]
 
     if len(parts) == 1:
         obj = None
