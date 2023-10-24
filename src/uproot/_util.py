@@ -306,7 +306,7 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
         parts = parsed_url.path.split(":")
     else:
         # local file path
-        pathlib_path = pathlib.Path(path)
+        pathlib_path = pathlib.PurePosixPath(path)
         if pathlib.PureWindowsPath(path).drive:
             # Windows absolute path
             parts = str(pathlib_path).split(":")
