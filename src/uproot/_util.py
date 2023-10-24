@@ -346,7 +346,7 @@ def file_path_to_source_class(file_path, options):
     if out is not None:
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'handler' is not a class object inheriting from Source: " + repr(out)
+                f"'handler' is not a class object inheriting from Source: {out!r}"
             )
         # check if "object_handler" is set
         if (
@@ -387,8 +387,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'object_handler' is not a class object inheriting from Source: "
-                + repr(out)
+                f"'object_handler' is not a class object inheriting from Source: {out!r}"
             )
 
         return out, file_path
