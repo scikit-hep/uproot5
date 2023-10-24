@@ -4,8 +4,9 @@ import uproot
 import pathlib
 
 
-def test_url_split():
-    for input_url, result in [
+@pytest.mark.parametrize(
+    "input_value, expected_output",
+    [
         (
             "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root:Events",
             (
@@ -77,7 +78,24 @@ def test_url_split():
                 "object",
             ),
         ),
-    ]:
-        url, obj = uproot._util.file_object_path_split(input_url)
-        assert url == result[0]
-        assert obj == result[1]
+        (
+            "00376186-543E-E311-8D30-002618943857.root:Events",
+            (
+                "00376186-543E-E311-8D30-002618943857.root",
+                "Events",
+            ),
+        ),
+        (
+            "00376186-543E-E311-8D30-002618943857.root",
+            (
+                "00376186-543E-E311-8D30-002618943857.root",
+                None,
+            ),
+        ),
+    ],
+)
+def test_url_split(input_value, expected_output):
+    url, obj = uproot._util.file_object_path_split(input_value)
+    url_expected, obj_expected = expected_output
+    assert url == url_expected
+    assert obj == obj_expected
