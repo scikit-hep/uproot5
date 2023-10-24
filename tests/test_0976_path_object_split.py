@@ -98,6 +98,13 @@ import pathlib
                 None,
             ),
         ),
+        (
+            "local/file.root://Events",
+            (
+                "local/file.root",
+                "//Events",
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
