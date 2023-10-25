@@ -4,8 +4,11 @@ import pytest
 import threading
 import contextlib
 import os
-from http.server import HTTPServer, SimpleHTTPRequestHandler
 import skhep_testdata
+
+# The base http server does not support range requests. Watch https://github.com/python/cpython/issues/86809 for updates
+from http.server import HTTPServer
+from RangeHTTPServer import RangeRequestHandler
 
 import uproot
 
@@ -18,9 +21,10 @@ def reset_classes():
 
 @contextlib.contextmanager
 def serve():
-    port = 24211
+    port = 24211  # any available port
     server_address = ("", port)
-    httpd = HTTPServer(server_address, SimpleHTTPRequestHandler)
+    httpd = HTTPServer(server_address, RangeRequestHandler)
+    # serve files from the skhep_testdata data directory
     os.chdir(skhep_testdata.local_files._cache_path())
     th = threading.Thread(target=httpd.serve_forever, daemon=True)
     th.start()
