@@ -280,10 +280,19 @@ def regularize_path(path):
 _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
-_might_be_port = re.compile(r"^[0-9].*")
-_remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
-_schemes = ["FILE", *_remote_schemes]
-_uri_scheme = re.compile("^[a-zA-Z][a-zA-Z0-9+.-]*://")
+
+_remote_schemes = ["root", "s3", "http", "https"]
+_schemes = ["file", *_remote_schemes]
+
+try:
+    # TODO: remove this try/except when fsspec becomes a required dependency
+    import fsspec
+
+    _schemes = list({*_schemes, *fsspec.available_protocols()})
+except ImportError:
+    pass
+
+_uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
 
 
 def file_object_path_split(path: str) -> tuple[str, str | None]:
@@ -302,16 +311,23 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
     path: str = regularize_path(path)
     path = path.strip()
 
-    if _uri_scheme.match(path):
-        parsed_url = urlparse(path)
-        parts = parsed_url.path.split(":")
-    else:
-        # local file path
+    if "://" not in path:
+        # assume it's a local file path
         parts = path.split(":")
         if pathlib.PureWindowsPath(path).drive:
             # Windows absolute path
             assert len(parts) >= 2, f"could not split object from windows path {path}"
             parts = [parts[0] + ":" + parts[1]] + parts[2:]
+    elif _uri_scheme.match(path):
+        # if not a local path, attempt to match a URI scheme
+        parsed_url = urlparse(path)
+        parts = parsed_url.path.split(":")
+    else:
+        # invalid scheme
+        scheme = path.split("://")[0]
+        raise ValueError(
+            f"Invalid URI scheme: '{scheme}://' in {path}. Available schemes: {', '.join(_schemes)}."
+        )
 
     if len(parts) == 1:
         obj = None
@@ -983,7 +999,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
 
         parsed_url = urlparse(file_path)
 
-        if parsed_url.scheme.upper() in _remote_schemes:
+        if parsed_url.scheme.lower() in _remote_schemes:
             yield file_path, object_path, maybe_steps
 
         else:
