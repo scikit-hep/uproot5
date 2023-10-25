@@ -117,12 +117,11 @@ def test_memmap_fail(use_threads, tmp_path):
             ...
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
-@pytest.mark.network
-def test_http(use_threads):
+@pytest.mark.parametrize("use_threads", [True, False])
+def test_http(server, use_threads):
+    url = f"{server}/uproot-issue121.root"
     with uproot.source.http.HTTPSource(
-        "https://example.com",
+        url,
         timeout=10,
         num_fallback_workers=1,
         use_threads=use_threads,
@@ -136,7 +135,7 @@ def test_http(use_threads):
         assert tmp.fallback is None
 
     with uproot.source.http.MultithreadedHTTPSource(
-        "https://example.com", num_workers=1, timeout=10, use_threads=use_threads
+        url, num_workers=1, timeout=10, use_threads=use_threads
     ) as tmp:
         notifications = queue.Queue()
         chunks = tmp.chunks([(0, 100), (50, 55), (200, 400)], notifications)
@@ -185,8 +184,7 @@ def test_http_port(use_threads):
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
-@pytest.mark.parametrize("use_threads", [True, False], indirect=True)
-@pytest.mark.network
+@pytest.mark.parametrize("use_threads", [True, False])
 def test_http_size(server, use_threads):
     url = f"{server}/uproot-issue121.root"
     with uproot.source.http.HTTPSource(
