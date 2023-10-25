@@ -21,22 +21,26 @@ def reset_classes():
 
 @contextlib.contextmanager
 def serve():
-    port = 24211  # any available port
+    port = 7879  # any available port
     server_address = ("", port)
     httpd = HTTPServer(server_address, RangeRequestHandler)
     # serve files from the skhep_testdata data directory
-    os.chdir(skhep_testdata.local_files._cache_path())
+    files_directory = skhep_testdata.local_files._cache_path()
+    os.chdir(files_directory)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     try:
         yield f"http://127.0.0.1:{port}"
     finally:
-        httpd.socket.close()
-        httpd.shutdown()
-        thread.join()
+        try:
+            httpd.socket.close()
+            httpd.shutdown()
+            thread.join()
+        except Exception as e:
+            print("Exception while shutting down server", e)
 
 
 @pytest.fixture(scope="module")
 def server():
-    with serve() as server:
-        yield server
+    with serve() as server_url:
+        yield server_url
