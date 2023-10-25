@@ -117,7 +117,6 @@ def test_memmap_fail(use_threads, tmp_path):
             ...
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.parametrize("use_threads", [True, False])
 @pytest.mark.network
 def test_http(server, use_threads):
@@ -158,7 +157,6 @@ def test_colons_and_ports():
     ) == ("https://example.com:443/something", "else")
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.parametrize("use_threads", [True, False], indirect=True)
 @pytest.mark.network
 def test_http_port(use_threads):
