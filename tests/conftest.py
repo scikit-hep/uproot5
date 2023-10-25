@@ -22,9 +22,16 @@ def reset_classes():
 @contextlib.contextmanager
 def serve():
     # serve files from the skhep_testdata data directory
-    handler = partial(
-        RangeRequestHandler, directory=skhep_testdata.local_files._cache_path()
-    )
+    cache_path = skhep_testdata.local_files._cache_path()
+    print(f"Serving files from {cache_path}")
+
+    # download all files to the cache directory (TODO: download them on demand)
+    for file in skhep_testdata.known_files:
+        print(f"Downloading {file}")
+        skhep_testdata.data_path(file)
+
+    handler = partial(RangeRequestHandler, directory=cache_path)
+
     server = HTTPServer(server_address=("localhost", 0), RequestHandlerClass=handler)
     server.server_activate()
 
@@ -44,7 +51,7 @@ def serve():
         thread.join()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def server():
     with serve() as server_url:
         yield server_url
