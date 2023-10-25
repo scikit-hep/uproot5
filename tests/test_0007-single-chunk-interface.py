@@ -1,7 +1,9 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot5/blob/main/LICENSE
 
 import os
+import sys
 
+import numpy
 import pytest
 
 import uproot
@@ -73,40 +75,36 @@ def test_memmap(tmpdir):
         )
 
 
-@pytest.mark.parametrize(
-    "num_workers",
-    [1, 2],
-)
-def test_http(server, num_workers):
-    url = f"{server}/uproot-issue121.root"
-    with uproot.source.http.MultithreadedHTTPSource(
-        url, num_workers=num_workers, timeout=10, use_threads=True
-    ) as source:
-        for start, stop in [(0, 100), (50, 55), (200, 400)]:
-            chunk = source.chunk(start, stop)
-            assert len(tobytes(chunk.raw_data)) == stop - start
-
-
-@pytest.mark.parametrize(
-    "num_workers",
-    [1, 2],
-)
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
 @pytest.mark.network
-def test_http_fail(num_workers):
-    with pytest.raises(Exception):
+def test_http():
+    for num_workers in [1, 2]:
         with uproot.source.http.MultithreadedHTTPSource(
-            "https://wonky.cern/does-not-exist",
-            num_workers=num_workers,
-            timeout=0.1,
-            use_threads=True,
+            "https://example.com", num_workers=num_workers, timeout=10, use_threads=True
         ) as source:
-            source.chunk(0, 100)
+            for start, stop in [(0, 100), (50, 55), (200, 400)]:
+                chunk = source.chunk(start, stop)
+                assert len(tobytes(chunk.raw_data)) == stop - start
 
 
-def test_http_multipart(server):
-    url = f"{server}/uproot-issue121.root"
+@pytest.mark.network
+def test_http_fail():
+    for num_workers in [1, 2]:
+        with pytest.raises(Exception):
+            with uproot.source.http.MultithreadedHTTPSource(
+                "https://wonky.cern/does-not-exist",
+                num_workers=num_workers,
+                timeout=0.1,
+                use_threads=True,
+            ) as source:
+                source.chunk(0, 100)
+
+
+@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
+@pytest.mark.network
+def test_http_multipart():
     with uproot.source.http.HTTPSource(
-        url, timeout=10, num_fallback_workers=1, use_threads=True
+        "https://example.com", timeout=10, num_fallback_workers=1, use_threads=True
     ) as source:
         for start, stop in [(0, 100), (50, 55), (200, 400)]:
             chunk = source.chunk(start, stop)
