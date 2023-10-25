@@ -31,7 +31,6 @@ def use_threads(request):
 @pytest.mark.parametrize(
     "use_threads, num_workers",
     [(True, 1), (True, 2), (False, 0)],
-    indirect=True,
 )
 def test_file(use_threads, num_workers, tmp_path):
     filename = tmp_path / "tmp.raw"
@@ -61,7 +60,6 @@ def test_file(use_threads, num_workers, tmp_path):
 @pytest.mark.parametrize(
     "use_threads, num_workers",
     [(True, 1), (True, 2), (False, 0)],
-    indirect=True,
 )
 def test_file_fail(use_threads, num_workers, tmp_path):
     filename = tmp_path / "tmp.raw"
@@ -250,7 +248,6 @@ def test_http_fail(use_threads):
 @pytest.mark.parametrize(
     "use_threads, num_workers",
     [(True, 1), (True, 2), (False, 0)],
-    indirect=True,
 )
 @pytest.mark.network
 def test_no_multipart(use_threads, num_workers):
@@ -272,7 +269,6 @@ def test_no_multipart(use_threads, num_workers):
 @pytest.mark.parametrize(
     "use_threads, num_workers",
     [(True, 1), (True, 2), (False, 0)],
-    indirect=True,
 )
 @pytest.mark.network
 def test_no_multipart_fail(use_threads, num_workers):
@@ -288,9 +284,7 @@ def test_no_multipart_fail(use_threads, num_workers):
         chunks[0].raw_data
 
 
-@pytest.mark.parametrize(
-    "use_threads, num_workers", [(True, 1), (True, 2), (False, 0)], indirect=True
-)
+@pytest.mark.parametrize("use_threads, num_workers", [(True, 1), (True, 2), (False, 0)])
 def test_fallback(server, use_threads, num_workers):
     url = f"{server}/uproot-issue121.root"
     with uproot.source.http.HTTPSource(
