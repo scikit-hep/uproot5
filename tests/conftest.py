@@ -37,8 +37,7 @@ def serve():
     finally:
         try:
             if server:
-                server.socket.close()
-                server.shutdown()
+                server.server_close()
             if thread:
                 thread.join()
         except Exception as e:
