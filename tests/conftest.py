@@ -26,14 +26,14 @@ def serve():
     httpd = HTTPServer(server_address, RangeRequestHandler)
     # serve files from the skhep_testdata data directory
     os.chdir(skhep_testdata.local_files._cache_path())
-    th = threading.Thread(target=httpd.serve_forever, daemon=True)
-    th.start()
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
     try:
         yield f"http://127.0.0.1:{port}"
     finally:
         httpd.socket.close()
         httpd.shutdown()
-        th.join()
+        thread.join()
 
 
 @pytest.fixture(scope="module")
