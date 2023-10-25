@@ -5,11 +5,14 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
+from __future__ import annotations
+
 import datetime
 import glob
 import itertools
 import numbers
 import os
+import pathlib
 import platform
 import re
 import warnings
@@ -280,9 +283,10 @@ _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
 _might_be_port = re.compile(r"^[0-9].*")
 _remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
 _schemes = ["FILE", *_remote_schemes]
+_uri_scheme = re.compile("^[a-zA-Z][a-zA-Z0-9+.-]*://")
 
 
-def file_object_path_split(path):
+def file_object_path_split(path: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
 
@@ -296,13 +300,19 @@ def file_object_path_split(path):
     """
 
     path: str = regularize_path(path)
-    # remove whitespace
     path = path.strip()
 
-    # split url into parts
-    parsed_url = urlparse(path)
+    if _uri_scheme.match(path):
+        parsed_url = urlparse(path)
+        parts = parsed_url.path.split(":")
+    else:
+        # local file path
+        parts = path.split(":")
+        if pathlib.PureWindowsPath(path).drive:
+            # Windows absolute path
+            assert len(parts) >= 2, f"could not split object from windows path {path}"
+            parts = [parts[0] + ":" + parts[1]] + parts[2:]
 
-    parts = parsed_url.path.split(":")
     if len(parts) == 1:
         obj = None
     elif len(parts) == 2:
@@ -311,7 +321,7 @@ def file_object_path_split(path):
         path = path[: -len(obj) - 1]
         obj = obj.strip()
     else:
-        raise ValueError(f"too many colons in file path: {path} for url {parsed_url}")
+        raise ValueError(f"could not split object from path {path}")
 
     return path, obj
 
@@ -333,7 +343,7 @@ def file_path_to_source_class(file_path, options):
     if out is not None:
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'handler' is not a class object inheriting from Source: " + repr(out)
+                f"'handler' is not a class object inheriting from Source: {out!r}"
             )
         # check if "object_handler" is set
         if (
@@ -374,8 +384,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'object_handler' is not a class object inheriting from Source: "
-                + repr(out)
+                f"'object_handler' is not a class object inheriting from Source: {out!r}"
             )
 
         return out, file_path
