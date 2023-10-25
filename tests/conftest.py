@@ -44,7 +44,7 @@ def serve():
         thread.join()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def server():
     with serve() as server_url:
         yield server_url
