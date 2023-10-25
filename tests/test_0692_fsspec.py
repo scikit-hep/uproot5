@@ -78,7 +78,6 @@ def test_open_fsspec_ssh(handler):
 
 @pytest.mark.network
 @pytest.mark.xrootd
-@pytest.mark.skip("flaky")
 @pytest.mark.parametrize(
     "handler",
     [
