@@ -21,18 +21,32 @@ def reset_classes():
 
 @contextlib.contextmanager
 def serve():
-    # serve files from the skhep_testdata data directory
-    cache_path = skhep_testdata.local_files._cache_path()
-    print(f"Serving files from {cache_path}")
+    # serve files from the skhep_testdata cache directory.
+    # This directory is initially empty and files are downloaded on demand
+    class Handler(RangeRequestHandler):
+        def _cache_file(self, path: str):
+            path = path.lstrip("/")
+            if path in skhep_testdata.known_files:
+                return skhep_testdata.data_path(path)
+            else:
+                raise FileNotFoundError(
+                    f"File '{path}' not available in skhep_testdata"
+                )
 
-    # download all files to the cache directory (TODO: download them on demand)
-    for file in skhep_testdata.known_files:
-        print(f"Downloading {file}")
-        skhep_testdata.data_path(file)
+        def do_HEAD(self):
+            self._cache_file(self.path)
+            return super().do_HEAD()
 
-    handler = partial(RangeRequestHandler, directory=cache_path)
+        def do_GET(self):
+            self._cache_file(self.path)
+            return super().do_GET()
 
-    server = HTTPServer(server_address=("localhost", 0), RequestHandlerClass=handler)
+    server = HTTPServer(
+        server_address=("localhost", 0),
+        RequestHandlerClass=partial(
+            Handler, directory=skhep_testdata.local_files._cache_path()
+        ),
+    )
     server.server_activate()
 
     def serve_forever(httpd=server):
