@@ -149,8 +149,7 @@ def test_http(use_threads):
         assert [tobytes(x.raw_data) for x in chunks] == [one, two, three]
 
 
-@pytest.mark.skip(reason="RECHECK: example.com is flaky, too")
-def colons_and_ports():
+def test_colons_and_ports():
     assert uproot._util.file_object_path_split("https://example.com:443") == (
         "https://example.com:443",
         None,

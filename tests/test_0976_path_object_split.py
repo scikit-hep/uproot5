@@ -98,13 +98,6 @@ import pathlib
                 None,
             ),
         ),
-        (
-            "local/file.root://Events",
-            (
-                "local/file.root",
-                "//Events",
-            ),
-        ),
     ],
 )
 def test_url_split(input_value, expected_output):
@@ -112,3 +105,14 @@ def test_url_split(input_value, expected_output):
     url_expected, obj_expected = expected_output
     assert url == url_expected
     assert obj == obj_expected
+
+
+@pytest.mark.parametrize(
+    "input_value",
+    [
+        "local/file.root://Events",
+    ],
+)
+def test_url_split_invalid(input_value):
+    with pytest.raises(ValueError):
+        uproot._util.file_object_path_split(input_value)
