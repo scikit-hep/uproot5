@@ -280,9 +280,8 @@ def regularize_path(path):
 _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
-_might_be_port = re.compile(r"^[0-9].*")
-_remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
-_schemes = ["FILE", *_remote_schemes]
+_remote_schemes = ["root", "s3", "http", "https"]
+_schemes = ["file", *_remote_schemes]
 _uri_scheme = re.compile("^[a-zA-Z][a-zA-Z0-9+.-]*://")
 
 
@@ -983,7 +982,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
 
         parsed_url = urlparse(file_path)
 
-        if parsed_url.scheme.upper() in _remote_schemes:
+        if parsed_url.scheme.lower() in _remote_schemes:
             yield file_path, object_path, maybe_steps
 
         else:
