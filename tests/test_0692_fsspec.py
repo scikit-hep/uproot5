@@ -64,14 +64,22 @@ def test_open_fsspec_s3():
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize(
-    "handler",
-    [uproot.source.fsspec.FSSpecSource, uproot.source.xrootd.XRootDSource, None],
+    "handler, use_threads",
+    [
+        (uproot.source.fsspec.FSSpecSource, True),
+        (uproot.source.fsspec.FSSpecSource, False),
+        (uproot.source.xrootd.XRootDSource, True),
+        (uproot.source.xrootd.XRootDSource, False),
+        (None, True),
+        (None, False),
+    ],
 )
-def test_open_fsspec_xrootd(handler):
+def test_open_fsspec_xrootd(handler, use_threads):
     pytest.importorskip("XRootD")
     with uproot.open(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         handler=handler,
+        use_threads=use_threads,
     ) as f:
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20

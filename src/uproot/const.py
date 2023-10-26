@@ -129,18 +129,25 @@ rntuple_col_num_to_dtype_dict = {
     7: "float64",
     8: "float32",
     9: "float16",
-    10: "int64",
-    11: "int32",
-    12: "int16",
-    13: "int8",
-    14: "uint32",  # SplitIndex64 delta encoding
-    15: "uint64",  # SplitIndex32 delta encoding
+    10: "uint64",
+    11: "uint32",
+    12: "uint16",
+    13: "uint8",
+    14: "uint64",  # SplitIndex64 delta encoding
+    15: "uint32",  # SplitIndex32 delta encoding
     16: "float64",  # split
     17: "float32",  # split
     18: "float16",  # split
-    19: "int64",  # split
-    20: "int32",  # split
-    21: "int16",  # split
+    19: "uint64",  # split
+    20: "uint32",  # split
+    21: "uint16",  # split
+    22: "int64",
+    23: "int32",
+    24: "int16",
+    25: "int8",
+    26: "int64",  # split + zigzag encoding
+    27: "int32",  # split + zigzag encoding
+    28: "int16",  # split + zigzag encoding
 }
 rntuple_col_num_to_size_dict = {
     1: 64,
@@ -156,14 +163,21 @@ rntuple_col_num_to_size_dict = {
     11: 32,
     12: 16,
     13: 8,
-    14: 32,  # SplitIndex64 delta encoding
-    15: 64,  # SplitIndex32 delta encoding
+    14: 64,  # SplitIndex64 delta encoding
+    15: 32,  # SplitIndex32 delta encoding
     16: 64,  # split
     17: 32,  # split
     18: 16,  # split
     19: 64,  # split
     20: 32,  # split
     21: 16,  # split
+    22: 64,
+    23: 32,
+    24: 16,
+    25: 8,
+    26: 64,  # split + zigzag encoding
+    27: 32,  # split + zigzag encoding
+    28: 16,  # split + zigzag encoding
 }
 
 rntuple_col_type_to_num_dict = {
@@ -176,10 +190,10 @@ rntuple_col_type_to_num_dict = {
     "real64": 7,
     "real32": 8,
     "real16": 9,
-    "int64": 10,
-    "int32": 11,
-    "int16": 12,
-    "int8": 13,
+    "uint64": 10,
+    "uint32": 11,
+    "uint16": 12,
+    "uint8": 13,
     "splitindex64": 14,
     "splitindex32": 15,
     "splitreal64": 16,
@@ -188,6 +202,13 @@ rntuple_col_type_to_num_dict = {
     "splitin64": 19,
     "splitint32": 20,
     "splitint16": 21,
+    "int64": 22,
+    "int32": 23,
+    "int16": 24,
+    "int8": 25,
+    "splitzigzagint64": 26,
+    "splitzigzagint32": 27,
+    "splitzigzagint16": 28,
 }
 
 rntuple_role_leaf = 0

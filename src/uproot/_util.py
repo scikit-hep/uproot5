@@ -5,11 +5,14 @@ This module defines utilities for internal use. This is not a public interface
 and may be changed without notice.
 """
 
+from __future__ import annotations
+
 import datetime
 import glob
 import itertools
 import numbers
 import os
+import pathlib
 import platform
 import re
 import warnings
@@ -277,39 +280,66 @@ def regularize_path(path):
 _windows_drive_letter_ending = re.compile(r".*\b[A-Za-z]$")
 _windows_absolute_path_pattern = re.compile(r"^[A-Za-z]:[\\/]")
 _windows_absolute_path_pattern_slash = re.compile(r"^[\\/][A-Za-z]:[\\/]")
-_might_be_port = re.compile(r"^[0-9].*")
-_remote_schemes = ["ROOT", "S3", "HTTP", "HTTPS"]
-_schemes = ["FILE", *_remote_schemes]
+
+_remote_schemes = ["root", "s3", "http", "https"]
+_schemes = ["file", *_remote_schemes]
+
+try:
+    # TODO: remove this try/except when fsspec becomes a required dependency
+    import fsspec
+
+    _schemes = list({*_schemes, *fsspec.available_protocols()})
+except ImportError:
+    pass
+
+_uri_scheme = re.compile("^(" + "|".join([re.escape(x) for x in _schemes]) + ")://")
 
 
-def file_object_path_split(path):
+def file_object_path_split(path: str) -> tuple[str, str | None]:
     """
     Split a path with a colon into a file path and an object-in-file path.
+
+    Args:
+        path: The path to split. Example: ``"https://localhost:8888/file.root:tree"``
+
+    Returns:
+        A tuple of the file path and the object-in-file path. If there is no
+        object-in-file path, the second element is ``None``.
+        Example: ``("https://localhost:8888/file.root", "tree")``
     """
-    path = regularize_path(path)
 
-    try:
-        index = path.rindex(":")
-    except ValueError:
-        return path, None
+    path: str = regularize_path(path)
+    path = path.strip()
+
+    if "://" not in path:
+        # assume it's a local file path
+        parts = path.split(":")
+        if pathlib.PureWindowsPath(path).drive:
+            # Windows absolute path
+            assert len(parts) >= 2, f"could not split object from windows path {path}"
+            parts = [parts[0] + ":" + parts[1]] + parts[2:]
+    elif _uri_scheme.match(path):
+        # if not a local path, attempt to match a URI scheme
+        parsed_url = urlparse(path)
+        parts = parsed_url.path.split(":")
     else:
-        file_path, object_path = path[:index], path[index + 1 :]
+        # invalid scheme
+        scheme = path.split("://")[0]
+        raise ValueError(
+            f"Invalid URI scheme: '{scheme}://' in {path}. Available schemes: {', '.join(_schemes)}."
+        )
 
-        if (
-            _might_be_port.match(object_path) is not None
-            and urlparse(file_path).path == ""
-        ):
-            return path, None
+    if len(parts) == 1:
+        obj = None
+    elif len(parts) == 2:
+        obj = parts[1]
+        # remove the object from the path (including the colon)
+        path = path[: -len(obj) - 1]
+        obj = obj.strip()
+    else:
+        raise ValueError(f"could not split object from path {path}")
 
-        file_path = file_path.rstrip()
-        object_path = object_path.lstrip()
-
-        if file_path.upper() in _schemes:
-            return path, None
-        elif win and _windows_drive_letter_ending.match(file_path) is not None:
-            return path, None
-        else:
-            return file_path, object_path
+    return path, obj
 
 
 def file_path_to_source_class(file_path, options):
@@ -329,7 +359,7 @@ def file_path_to_source_class(file_path, options):
     if out is not None:
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'handler' is not a class object inheriting from Source: " + repr(out)
+                f"'handler' is not a class object inheriting from Source: {out!r}"
             )
         # check if "object_handler" is set
         if (
@@ -370,8 +400,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         if not (isinstance(out, type) and issubclass(out, uproot.source.chunk.Source)):
             raise TypeError(
-                "'object_handler' is not a class object inheriting from Source: "
-                + repr(out)
+                f"'object_handler' is not a class object inheriting from Source: {out!r}"
             )
 
         return out, file_path
@@ -970,7 +999,7 @@ def _regularize_files_inner(files, parse_colon, counter, HasBranches, steps_allo
 
         parsed_url = urlparse(file_path)
 
-        if parsed_url.scheme.upper() in _remote_schemes:
+        if parsed_url.scheme.lower() in _remote_schemes:
             yield file_path, object_path, maybe_steps
 
         else:
