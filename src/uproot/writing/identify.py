@@ -345,9 +345,9 @@ def to_writable(obj):
         if len(axes) == 1:
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
-                    try: 
-                        fSumw2=obj.metadata["fSumw2"]
-                    except: 
+                    try:
+                        fSumw2 = obj.metadata["fSumw2"]
+                    except:
                         raise ValueError(f"fSumw2 could not be found for {obj}")
                     return to_TProfile(
                         fName=None,
@@ -361,7 +361,7 @@ def to_writable(obj):
                         fTsumwy=0,
                         fTsumwy2=0,
                         fSumw2=fSumw2,
-                        fBinEntries = obj.counts(flow=True),
+                        fBinEntries=obj.counts(flow=True),
                         fBinSumw2=numpy.asarray([], numpy.float64),
                         fXaxis=axes[0],
                     )
