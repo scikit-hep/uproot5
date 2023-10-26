@@ -297,14 +297,14 @@ class TProfile(Profile):
         boost_histogram = uproot.extras.boost_histogram()
 
         effective_counts = self.counts(flow=True)
-        values, errors = self._values_errors(True, self.member("fErrorMode"))
+        _, errors = self._values_errors(True, self.member("fErrorMode"))
+        values = self._bases[0]._bases[-1]
         variances = numpy.square(errors)
         sum_of_bin_weights = numpy.asarray(self.member("fBinEntries"))
 
         storage = boost_histogram.storage.WeightedMean()
 
         xaxis = uproot.behaviors.TH1._boost_axis(self.member("fXaxis"), axis_metadata)
-        # values = self._bases[0]._bases[-1]
         out = boost_histogram.Histogram(xaxis, storage=storage)
         for k, v in metadata.items():
             setattr(out, k, self.member(v))
@@ -315,6 +315,7 @@ class TProfile(Profile):
             variances = variances[1:]
             sum_of_bin_weights = sum_of_bin_weights[1:]
 
+        out.metadata = {"fSumw2": self.member("fSumw2")}
         view = out.view(flow=True)
 
         # https://github.com/root-project/root/blob/ffc7c588ac91aca30e75d356ea971129ee6a836a/hist/hist/src/TProfileHelper.h#L668-L671
