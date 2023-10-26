@@ -345,10 +345,10 @@ def to_writable(obj):
         if len(axes) == 1:
             if obj.kind == "MEAN":
                 if hasattr(obj, "storage_type"):
-                    try:
+                    if "fSumw2" in obj.metadata.keys():
                         fSumw2 = obj.metadata["fSumw2"]
-                    except:
-                        raise ValueError(f"fSumw2 could not be found for {obj}")
+                    else:
+                        raise ValueError(f"fSumw2 has not been set for {obj}")
                     return to_TProfile(
                         fName=None,
                         fTitle=title,
