@@ -70,7 +70,8 @@ test = [
   "pytest-rerunfailures",
   "requests",
   "scikit-hep-testdata",
-  "xxhash"
+  "xxhash",
+  "rangehttpserver"
 ]
 
 [project.urls]

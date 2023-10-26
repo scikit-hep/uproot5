@@ -8,12 +8,12 @@ import skhep_testdata
 import queue
 
 
-@pytest.mark.network
-def test_open_fsspec_http():
+def test_open_fsspec_http(server):
     pytest.importorskip("aiohttp")
 
+    url = f"{server}/uproot-issue121.root"
     with uproot.open(
-        "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
+        url,
         handler=uproot.source.fsspec.FSSpecSource,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
@@ -21,10 +21,10 @@ def test_open_fsspec_http():
 
 
 @pytest.mark.network
+@pytest.mark.skip(
+    reason="skipping due to GitHub API rate limitations - this should work fine - see https://github.com/scikit-hep/uproot5/pull/973 for details"
+)
 def test_open_fsspec_github():
-    pytest.skip(
-        "skipping due to GitHub API rate limitations - this should work fine - see https://github.com/scikit-hep/uproot5/pull/973 for details"
-    )
     with uproot.open(
         "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
         handler=uproot.source.fsspec.FSSpecSource,
@@ -49,7 +49,7 @@ def test_open_fsspec_local():
     "handler",
     [
         uproot.source.fsspec.FSSpecSource,
-        # None,
+        uproot.source.s3.S3Source,
     ],
 )
 def test_open_fsspec_s3(handler):
@@ -97,11 +97,10 @@ def test_open_fsspec_xrootd(handler):
         assert (data == 194778).all()
 
 
-@pytest.mark.network
-def test_fsspec_chunks():
+def test_fsspec_chunks(server):
     pytest.importorskip("aiohttp")
 
-    url = "https://github.com/scikit-hep/scikit-hep-testdata/raw/v0.4.33/src/skhep_testdata/data/uproot-issue121.root"
+    url = f"{server}/uproot-issue121.root"
 
     notifications = queue.Queue()
     with uproot.source.fsspec.FSSpecSource(url) as source:
