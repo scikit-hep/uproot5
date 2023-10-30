@@ -48,8 +48,9 @@ def test_open_fsspec_local():
 @pytest.mark.parametrize(
     "handler",
     [
-        uproot.source.fsspec.FSSpecSource,
+        # uproot.source.fsspec.FSSpecSource,
         uproot.source.s3.S3Source,
+        None,
     ],
 )
 def test_open_fsspec_s3(handler):
