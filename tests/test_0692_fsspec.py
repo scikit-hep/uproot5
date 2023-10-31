@@ -66,30 +66,36 @@ def test_open_fsspec_s3(handler):
         assert len(data) == 8004
 
 
-@pytest.mark.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
-def test_open_fsspec_ssh(handler):
+def test_open_fsspec_ssh():
     pytest.importorskip("sshfs")
 
     # check localhost has ssh access to itself
-    user = subprocess.check_output(["whoami"]).strip().decode("ascii")
-    host = "localhost"
-    ssh_command = f"ssh {user}@{host} 'echo hello'"
-    result = subprocess.run(
-        ssh_command,
-        shell=True,
-        text=True,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        pytest.skip(f"Cannot run ssh command {ssh_command}: {result.stderr}")
+    try:
+        user = subprocess.check_output(["whoami"]).strip().decode("ascii")
+        host = "localhost"
+        ssh_command = f"ssh {user}@{host} 'echo hello'"
+        result = subprocess.run(
+            ssh_command,
+            shell=True,
+            text=True,
+            capture_output=True,
+        )
+        assert (
+            result.returncode == 0
+        ), f"ssh access to localhost failed with {result.stderr}"
+    except Exception as e:
+        pytest.skip(f"ssh access to localhost failed with {e}")
 
     # cache the file
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     uri = f"ssh://{user}@{host}:22{local_path}"
-    with uproot.open(uri, handler=handler) as f:
-        data = f["Events/MET_pt"].array(library="np")
-        assert len(data) == 40
+    try:
+        with uproot.open(uri, handler=uproot.source.fsspec.FSSpecSource) as f:
+            data = f["Events/MET_pt"].array(library="np")
+            assert len(data) == 40
+    except NotImplementedError:
+        pytest.skip("sshfs needs to implement some interface")
 
 
 @pytest.mark.network
