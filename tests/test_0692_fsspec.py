@@ -6,6 +6,7 @@ import uproot.source.fsspec
 
 import skhep_testdata
 import queue
+import subprocess
 
 
 def test_open_fsspec_http(server):
@@ -66,12 +67,26 @@ def test_open_fsspec_s3(handler):
 
 
 @pytest.mark.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
-@pytest.mark.skip("you must provide an ssh server to test this")
 def test_open_fsspec_ssh(handler):
     pytest.importorskip("sshfs")
 
-    # change this to a server you have access to
-    uri = "ssh://user@host:22/tmp/file.root"
+    # check localhost has ssh access to itself
+    user = subprocess.check_output(["whoami"]).strip().decode("ascii")
+    host = "localhost"
+    ssh_command = f"ssh {user}@{host} 'echo hello'"
+    result = subprocess.run(
+        ssh_command,
+        shell=True,
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"Cannot run ssh command {ssh_command}: {result.stderr}")
+
+    # cache the file
+    local_path = skhep_testdata.data_path("uproot-issue121.root")
+
+    uri = f"ssh://{user}@{host}:22{local_path}"
     with uproot.open(uri, handler=handler) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
