@@ -1,5 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
-
+import fsspec
 import pytest
 import uproot
 import uproot.source.fsspec
@@ -86,16 +86,20 @@ def test_open_fsspec_ssh():
     except Exception as e:
         pytest.skip(f"ssh access to localhost failed with {e}")
 
+    # at this time sshfs does not implement cat_file. This will alert us if it ever does
+    with pytest.raises(NotImplementedError):
+        fs = fsspec.filesystem("ssh", host="localhost")
+        fs.cat_file("some-file", start=0, end=100)
+
+    pytest.skip("sshfs does not implement cat_file")
+
     # cache the file
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     uri = f"ssh://{user}@{host}:22{local_path}"
-    try:
-        with uproot.open(uri, handler=uproot.source.fsspec.FSSpecSource) as f:
-            data = f["Events/MET_pt"].array(library="np")
-            assert len(data) == 40
-    except NotImplementedError:
-        pytest.skip("sshfs needs to implement some interface")
+    with uproot.open(uri, handler=uproot.source.fsspec.FSSpecSource) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
 
 
 @pytest.mark.network
