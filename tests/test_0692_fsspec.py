@@ -8,16 +8,13 @@ import skhep_testdata
 import queue
 
 
-@pytest.mark.parametrize("use_threads", [True, False])
-def test_open_fsspec_http(server, use_threads):
+def test_open_fsspec_http(server):
     pytest.importorskip("aiohttp")
 
     url = f"{server}/uproot-issue121.root"
-
     with uproot.open(
         url,
         handler=uproot.source.fsspec.FSSpecSource,
-        use_threads=use_threads,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
@@ -36,51 +33,65 @@ def test_open_fsspec_github():
         assert len(data) == 40
 
 
-@pytest.mark.parametrize("use_threads", [True, False])
-def test_open_fsspec_local(use_threads):
+def test_open_fsspec_local():
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     with uproot.open(
         local_path,
         handler=uproot.source.fsspec.FSSpecSource,
-        use_threads=use_threads,
     ) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
 
 
 @pytest.mark.network
-def test_open_fsspec_s3():
+@pytest.mark.parametrize(
+    "handler",
+    [
+        # uproot.source.fsspec.FSSpecSource,
+        uproot.source.s3.S3Source,
+        None,
+    ],
+)
+def test_open_fsspec_s3(handler):
     pytest.importorskip("s3fs")
 
     with uproot.open(
         "s3://pivarski-princeton/pythia_ppZee_run17emb.picoDst.root:PicoDst",
         anon=True,
-        handler=uproot.source.fsspec.FSSpecSource,
+        handler=handler,
     ) as f:
         data = f["Event/Event.mEventId"].array(library="np")
         assert len(data) == 8004
 
 
+@pytest.mark.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
+@pytest.mark.skip("you must provide an ssh server to test this")
+def test_open_fsspec_ssh(handler):
+    pytest.importorskip("sshfs")
+
+    # change this to a server you have access to
+    uri = "ssh://user@host:22/tmp/file.root"
+    with uproot.open(uri, handler=handler) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
 @pytest.mark.network
 @pytest.mark.xrootd
 @pytest.mark.parametrize(
-    "handler, use_threads",
+    "handler",
     [
-        (uproot.source.fsspec.FSSpecSource, True),
-        (uproot.source.fsspec.FSSpecSource, False),
-        (uproot.source.xrootd.XRootDSource, True),
-        (uproot.source.xrootd.XRootDSource, False),
-        (None, True),
-        (None, False),
+        uproot.source.fsspec.FSSpecSource,
+        uproot.source.xrootd.XRootDSource,
+        None,
     ],
 )
-def test_open_fsspec_xrootd(handler, use_threads):
+def test_open_fsspec_xrootd(handler):
     pytest.importorskip("XRootD")
     with uproot.open(
         "root://eospublic.cern.ch//eos/root-eos/cms_opendata_2012_nanoaod/Run2012B_DoubleMuParked.root",
         handler=handler,
-        use_threads=use_threads,
     ) as f:
         data = f["Events/run"].array(library="np", entry_stop=20)
         assert len(data) == 20
