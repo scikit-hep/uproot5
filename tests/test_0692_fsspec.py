@@ -66,7 +66,14 @@ def test_open_fsspec_s3(handler):
         assert len(data) == 8004
 
 
-def test_open_fsspec_ssh():
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_open_fsspec_ssh(handler):
     pytest.importorskip("paramiko")
     import paramiko
 
@@ -85,7 +92,7 @@ def test_open_fsspec_ssh():
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
     uri = f"ssh://{user}@{host}:{port}{local_path}"
-    with uproot.open(uri, handler=uproot.source.fsspec.FSSpecSource) as f:
+    with uproot.open(uri, handler=handler) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
 
