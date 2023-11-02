@@ -73,7 +73,7 @@ def test_open_fsspec_ssh():
     try:
         user = subprocess.check_output(["whoami"]).strip().decode("ascii")
         host = "localhost"
-        ssh_command = f"ssh {user}@{host} 'echo hello'"
+        ssh_command = ["ssh", f"{user}@{host}", "'echo hello'"]
         result = subprocess.run(
             ssh_command,
             shell=True,
