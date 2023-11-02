@@ -76,12 +76,14 @@ def test_open_fsspec_s3(handler):
 def test_open_fsspec_ssh(handler):
     pytest.importorskip("paramiko")
     import paramiko
+    import getpass
+
+    user = getpass.getuser()
+    host = "localhost"
+    port = 22
 
     # only test this if we can connect to the host (this will work in GitHub Actions)
     try:
-        host = "localhost"
-        user = subprocess.check_output(["whoami"]).strip().decode("ascii")
-        port = 22
         with paramiko.SSHClient() as client:
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             client.connect(hostname=host, port=port, username=user)
