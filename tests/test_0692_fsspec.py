@@ -161,3 +161,46 @@ def test_fsspec_memory():
     with uproot.open(f"memory://{file_path}") as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
+
+
+def test_fsspec_tar(tmp_path):
+    import tarfile
+    import io
+
+    filename = "uproot-issue121.root"
+    with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
+        contents = f.read()
+
+    # write the file to a compressed archive
+    filename_tar = f"{tmp_path}/uproot-issue121.tar"
+    with tarfile.open(filename_tar, "w") as tar:
+        file_info = tarfile.TarInfo(name=filename)
+        file_info.size = len(contents)
+        tar.addfile(file_info, fileobj=io.BytesIO(contents))
+
+    # open with fsspec
+    with uproot.open(
+        f"tar://{filename_tar}!{filename}", handler=uproot.source.fsspec.FSSpecSource
+    ) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
+def test_fsspec_zip(tmp_path):
+    import zipfile
+
+    filename = "uproot-issue121.root"
+    with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
+        contents = f.read()
+
+    # write the file to a compressed archive
+    filename_zip = f"{tmp_path}/uproot-issue121.zip"
+    with zipfile.ZipFile(filename_zip, "w") as zip_file:
+        zip_file.writestr(filename, contents)
+
+    # open with fsspec
+    with uproot.open(
+        f"zip://{filename_zip}", handler=uproot.source.fsspec.FSSpecSource
+    ) as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
