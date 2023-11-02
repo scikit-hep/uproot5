@@ -78,15 +78,21 @@ def test_open_fsspec_ssh(handler):
     import paramiko
 
     # only test this if we can connect to the host (this will work in GitHub Actions)
+    client = None
     try:
         host = "localhost"
         user = subprocess.check_output(["whoami"]).strip().decode("ascii")
         port = 22
-        with paramiko.SSHClient() as client:
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(hostname=host, port=port, username=user)
-    except paramiko.ssh_exception.NoValidConnectionsError as e:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(hostname=host, port=port, username=user)
+    except Exception as e:
         pytest.skip(f"ssh connection to host failed: {e}")
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
 
     # cache the file
     local_path = skhep_testdata.data_path("uproot-issue121.root")
