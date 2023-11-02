@@ -70,7 +70,7 @@ def test_open_fsspec_ssh():
     pytest.importorskip("paramiko")
     import paramiko
 
-    # only test if we can connect to the host (enabled in GitHub Actions)
+    # only test this if we can connect to the host (this will work in GitHub Actions)
     try:
         host = "localhost"
         user = subprocess.check_output(["whoami"]).strip().decode("ascii")
@@ -84,7 +84,7 @@ def test_open_fsspec_ssh():
     # cache the file
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
-    uri = f"ssh://{user}@{host}:22{local_path}"
+    uri = f"ssh://{user}@{host}:{port}{local_path}"
     with uproot.open(uri, handler=uproot.source.fsspec.FSSpecSource) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
