@@ -23,16 +23,16 @@ def test_open_fsspec_http(server):
 
 
 @pytest.mark.network
-@pytest.mark.skip(
-    reason="skipping due to GitHub API rate limitations - this should work fine - see https://github.com/scikit-hep/uproot5/pull/973 for details"
-)
 def test_open_fsspec_github():
-    with uproot.open(
-        "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
-        handler=uproot.source.fsspec.FSSpecSource,
-    ) as f:
-        data = f["Events/MET_pt"].array(library="np")
-        assert len(data) == 40
+    try:
+        with uproot.open(
+            "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root"
+        ) as f:
+            data = f["Events/MET_pt"].array(library="np")
+            assert len(data) == 40
+    except NotImplementedError:
+        # TODO: replace with actual exception when api limit is hit
+        pytest.skip("github api limits")
 
 
 def test_open_fsspec_local():
