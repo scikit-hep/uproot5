@@ -82,10 +82,10 @@ def test_open_fsspec_ssh(handler):
         host = "localhost"
         user = subprocess.check_output(["whoami"]).strip().decode("ascii")
         port = 22
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(hostname=host, port=port, username=user)
-    except Exception as e:
+        with paramiko.SSHClient() as client:
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(hostname=host, port=port, username=user)
+    except paramiko.ssh_exception.NoValidConnectionsError as e:
         pytest.skip(f"ssh connection to host failed: {e}")
 
     # cache the file
