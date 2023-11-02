@@ -141,3 +141,23 @@ def test_fsspec_chunks(server):
 
         chunk_data_sum = {sum(chunk.raw_data) for chunk in chunks}
         assert chunk_data_sum == {3967, 413, 10985}, "Chunk data does not match"
+
+
+def test_fsspec_memory():
+    # read the file into memory
+    with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
+        contents = f.read()
+
+    # create a memory filesystem
+    fs = fsspec.filesystem("memory")
+    fs.store.clear()
+    file_path = "skhep_testdata/uproot-issue121.root"
+    fs.touch(file_path)
+    # write contents into memory filesystem
+    with fs.open(file_path, "wb") as f:
+        f.write(contents)
+
+    # read from memory filesystem
+    with uproot.open(f"memory://{file_path}") as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
