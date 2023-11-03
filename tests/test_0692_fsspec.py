@@ -6,7 +6,7 @@ import uproot.source.fsspec
 
 import skhep_testdata
 import queue
-import subprocess
+import fsspec
 
 
 def test_open_fsspec_http(server):
@@ -148,7 +148,7 @@ def test_fsspec_memory():
         contents = f.read()
 
     # create a memory filesystem
-    fs = fsspec.filesystem("memory")
+    fs = fsspec.filesystem(protocol="memory")
     fs.store.clear()
     file_path = "skhep_testdata/uproot-issue121.root"
     fs.touch(file_path)
