@@ -421,13 +421,14 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         elif _windows_absolute_path_pattern_slash.match(parsed_url_path) is not None:
             windows_absolute_path = parsed_url_path[1:]
 
+    scheme = parsed_url.scheme.lower()
     if (
-        parsed_url.scheme.upper() == "FILE"
+        scheme == "file"
         or len(parsed_url.scheme) == 0
         or windows_absolute_path is not None
     ):
         if windows_absolute_path is None:
-            if parsed_url.netloc.upper() == "LOCALHOST":
+            if parsed_url.netloc.lower() == "localhost":
                 file_path = parsed_url_path
             else:
                 file_path = parsed_url.netloc + parsed_url_path
@@ -458,7 +459,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         return out, os.path.expanduser(file_path)
 
-    elif parsed_url.scheme.upper() == "ROOT":
+    elif scheme == "root":
         out = options["xrootd_handler"]
         if out is None:
             out = uproot.source.xrootd.XRootDSource
@@ -482,7 +483,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         return out, file_path
 
-    elif parsed_url.scheme.upper() in {"S3"}:
+    elif scheme == "s3":
         out = options["s3_handler"]
         if out is None:
             out = uproot.source.s3.S3Source
@@ -505,7 +506,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
             )
         return out, file_path
 
-    elif parsed_url.scheme.upper() in {"HTTP", "HTTPS"}:
+    elif scheme in ("http", "https"):
         out = options["http_handler"]
         if out is None:
             out = uproot.source.http.HTTPSource
@@ -530,6 +531,10 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         return out, file_path
 
     else:
+        # try to use fsspec before raising an error
+        if scheme in _schemes:
+            return uproot.source.fsspec.FSSpecSource, file_path
+
         raise ValueError(f"URI scheme not recognized: {file_path}")
 
 

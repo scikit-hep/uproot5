@@ -6,6 +6,7 @@ import uproot.source.fsspec
 
 import skhep_testdata
 import queue
+import subprocess
 
 
 def test_open_fsspec_http(server):
@@ -65,13 +66,37 @@ def test_open_fsspec_s3(handler):
         assert len(data) == 8004
 
 
-@pytest.mark.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
-@pytest.mark.skip("you must provide an ssh server to test this")
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
 def test_open_fsspec_ssh(handler):
-    pytest.importorskip("sshfs")
+    pytest.importorskip("paramiko")
+    import paramiko
+    import getpass
 
-    # change this to a server you have access to
-    uri = "ssh://user@host:22/tmp/file.root"
+    user = getpass.getuser()
+    host = "localhost"
+    port = 22
+
+    # only test this if we can connect to the host (this will work in GitHub Actions)
+    try:
+        with paramiko.SSHClient() as client:
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(hostname=host, port=port, username=user)
+    except (
+        paramiko.ssh_exception.SSHException,
+        paramiko.ssh_exception.NoValidConnectionsError,
+    ) as e:
+        pytest.skip(f"ssh connection to host failed: {e}")
+
+    # cache the file
+    local_path = skhep_testdata.data_path("uproot-issue121.root")
+
+    uri = f"ssh://{user}@{host}:{port}{local_path}"
     with uproot.open(uri, handler=handler) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
