@@ -1,11 +1,13 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
+import fsspec
 import pytest
 import uproot
 import uproot.source.fsspec
 
 import skhep_testdata
 import queue
+import subprocess
 
 
 def test_open_fsspec_http(server):
@@ -65,14 +67,38 @@ def test_open_fsspec_s3(handler):
         assert len(data) == 8004
 
 
-@pytest.mark.parametrize("handler", [uproot.source.fsspec.FSSpecSource, None])
-@pytest.mark.skip("you must provide an ssh server to test this")
-def test_open_fsspec_ssh(handler):
+def test_open_fsspec_ssh():
     pytest.importorskip("sshfs")
 
-    # change this to a server you have access to
-    uri = "ssh://user@host:22/tmp/file.root"
-    with uproot.open(uri, handler=handler) as f:
+    # check localhost has ssh access to itself
+    try:
+        user = subprocess.check_output(["whoami"]).strip().decode("ascii")
+        host = "localhost"
+        ssh_command = ["ssh", f"{user}@{host}", "'echo hello'"]
+        result = subprocess.run(
+            ssh_command,
+            shell=True,
+            text=True,
+            capture_output=True,
+        )
+        assert (
+            result.returncode == 0
+        ), f"ssh access to localhost failed with {result.stderr}"
+    except Exception as e:
+        pytest.skip(f"ssh access to localhost failed with {e}")
+
+    # at this time sshfs does not implement cat_file. This will alert us if it ever does
+    with pytest.raises(NotImplementedError):
+        fs = fsspec.filesystem("ssh", host="localhost")
+        fs.cat_file("some-file", start=0, end=100)
+
+    pytest.skip("sshfs does not implement cat_file")
+
+    # cache the file
+    local_path = skhep_testdata.data_path("uproot-issue121.root")
+
+    uri = f"ssh://{user}@{host}:22{local_path}"
+    with uproot.open(uri, handler=uproot.source.fsspec.FSSpecSource) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
 
