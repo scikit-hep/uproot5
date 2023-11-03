@@ -1,6 +1,5 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
-import fsspec
 import pytest
 import uproot
 import uproot.source.fsspec
@@ -67,38 +66,38 @@ def test_open_fsspec_s3(handler):
         assert len(data) == 8004
 
 
-def test_open_fsspec_ssh():
-    pytest.importorskip("sshfs")
+@pytest.mark.parametrize(
+    "handler",
+    [
+        uproot.source.fsspec.FSSpecSource,
+        None,
+    ],
+)
+def test_open_fsspec_ssh(handler):
+    pytest.importorskip("paramiko")
+    import paramiko
+    import getpass
 
-    # check localhost has ssh access to itself
+    user = getpass.getuser()
+    host = "localhost"
+    port = 22
+
+    # only test this if we can connect to the host (this will work in GitHub Actions)
     try:
-        user = subprocess.check_output(["whoami"]).strip().decode("ascii")
-        host = "localhost"
-        ssh_command = ["ssh", f"{user}@{host}", "'echo hello'"]
-        result = subprocess.run(
-            ssh_command,
-            shell=True,
-            text=True,
-            capture_output=True,
-        )
-        assert (
-            result.returncode == 0
-        ), f"ssh access to localhost failed with {result.stderr}"
-    except Exception as e:
-        pytest.skip(f"ssh access to localhost failed with {e}")
-
-    # at this time sshfs does not implement cat_file. This will alert us if it ever does
-    with pytest.raises(NotImplementedError):
-        fs = fsspec.filesystem("ssh", host="localhost")
-        fs.cat_file("some-file", start=0, end=100)
-
-    pytest.skip("sshfs does not implement cat_file")
+        with paramiko.SSHClient() as client:
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(hostname=host, port=port, username=user)
+    except (
+        paramiko.ssh_exception.SSHException,
+        paramiko.ssh_exception.NoValidConnectionsError,
+    ) as e:
+        pytest.skip(f"ssh connection to host failed: {e}")
 
     # cache the file
     local_path = skhep_testdata.data_path("uproot-issue121.root")
 
-    uri = f"ssh://{user}@{host}:22{local_path}"
-    with uproot.open(uri, handler=uproot.source.fsspec.FSSpecSource) as f:
+    uri = f"ssh://{user}@{host}:{port}{local_path}"
+    with uproot.open(uri, handler=handler) as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
 
