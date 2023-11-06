@@ -77,7 +77,7 @@ def _sink_from_path(file_path_or_object: str | IO) -> uproot.sink.file.FileSink:
         return uproot.sink.file.FileSink.from_object(file_path_or_object)
 
     file_path = uproot._util.regularize_path(file_path_or_object)
-    path, obj = uproot._util.file_object_path_split(file_path)
+    file_path, obj = uproot._util.file_object_path_split(file_path)
     if obj is not None:
         raise ValueError(f"file path '{file_path}' cannot contain an object: {obj}")
 
@@ -93,7 +93,9 @@ def _sink_from_path(file_path_or_object: str | IO) -> uproot.sink.file.FileSink:
         # TODO: remove try/except block when fsspec becomes a dependency
         import fsspec
 
-        file_object = fsspec.open(file_path_or_object, mode="wb")
+        file_object = fsspec.open(
+            file_path, mode="wb"
+        ).__enter__()  # the sink is responsible for closing this
         return uproot.sink.file.FileSink.from_object(file_object)
 
     except ImportError:
