@@ -71,7 +71,9 @@ def create(file_path: str | IO, **options):
     return recreate(file_path, **options)
 
 
-def _sink_from_path(file_path_or_object: str | IO) -> uproot.sink.file.FileSink:
+def _sink_from_path(
+    file_path_or_object: str | IO, **storage_options
+) -> uproot.sink.file.FileSink:
     if not uproot._util.isstr(file_path_or_object):
         # assume it's a file-like object
         return uproot.sink.file.FileSink.from_object(file_path_or_object)
@@ -96,7 +98,7 @@ def _sink_from_path(file_path_or_object: str | IO) -> uproot.sink.file.FileSink:
         import fsspec
 
         file_object = fsspec.open(
-            file_path, mode="w+b"
+            file_path, mode="wb", **storage_options
         ).__enter__()  # the sink is responsible for closing this
         return uproot.sink.file.FileSink.from_object(file_object)
 
@@ -130,7 +132,11 @@ def recreate(file_path: str | IO, **options):
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
-    sink = _sink_from_path(file_path)
+
+    storage_options = {
+        key: value for key, value in options.items() if key not in recreate.defaults
+    }
+    sink = _sink_from_path(file_path, **storage_options)
 
     compression = options.pop("compression", create.defaults["compression"])
 
@@ -179,7 +185,11 @@ def update(file_path: str | IO, **options):
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
-    sink = _sink_from_path(file_path)
+
+    storage_options = {
+        key: value for key, value in options.items() if key not in update.defaults
+    }
+    sink = _sink_from_path(file_path, **storage_options)
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
