@@ -85,7 +85,9 @@ def _sink_from_path(file_path_or_object: str | IO) -> uproot.sink.file.FileSink:
     scheme = parsed_url.scheme
 
     if not scheme:
-        # no scheme, so it's a local file
+        # no scheme, assume local file
+        with open(file_path, "w"):
+            pass
         return uproot.sink.file.FileSink(file_path)
 
     # use fsspec to open the file
@@ -94,7 +96,7 @@ def _sink_from_path(file_path_or_object: str | IO) -> uproot.sink.file.FileSink:
         import fsspec
 
         file_object = fsspec.open(
-            file_path, mode="wb"
+            file_path, mode="w+b"
         ).__enter__()  # the sink is responsible for closing this
         return uproot.sink.file.FileSink.from_object(file_object)
 
