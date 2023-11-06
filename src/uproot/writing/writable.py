@@ -16,6 +16,7 @@ There is no feature parity between writable and readable versions of each of the
 types. Writing and reading are considered separate projects with different capabilities.
 """
 
+from __future__ import annotations
 
 import datetime
 import itertools
@@ -24,6 +25,7 @@ import queue
 import sys
 import uuid
 from collections.abc import Mapping, MutableMapping
+from typing import IO
 
 import uproot._util
 import uproot.compression
@@ -36,14 +38,11 @@ import uproot.writing._cascade
 from uproot._util import no_filter, no_rename
 
 
-def create(file_path, **options):
+def create(file_path: str | IO, **options):
     """
     Args:
         file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
             file to open or an open file.
-        compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-            and level for new objects added to the file. Can be updated after creating
-            the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
         options: See below.
 
     Opens a local file for writing. Like ROOT's ``"CREATE"`` option, this function
@@ -56,6 +55,9 @@ def create(file_path, **options):
     * initial_directory_bytes (int; 256)
     * initial_streamers_bytes (int; 1024)
     * uuid_function (callable; ``uuid.uuid1``)
+    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
+    and level for new objects added to the file. Can be updated after creating
+    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
@@ -68,14 +70,11 @@ def create(file_path, **options):
     return recreate(file_path, **options)
 
 
-def recreate(file_path, **options):
+def recreate(file_path: str | IO, **options):
     """
     Args:
         file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
             file to open or an open file.
-        compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
-            and level for new objects added to the file. Can be updated after creating
-            the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
         options: See below.
 
     Opens a local file for writing. Like ROOT's ``"RECREATE"`` option, this function
@@ -88,6 +87,9 @@ def recreate(file_path, **options):
     * initial_directory_bytes (int; 256)
     * initial_streamers_bytes (int; 1024)
     * uuid_function (callable; ``uuid.uuid1``)
+    * compression (:doc:`uproot.compression.Compression` or None): Compression algorithm
+    and level for new objects added to the file. Can be updated after creating
+    the :doc:`uproot.writing.writable.WritableFile`. Default is ``uproot.ZLIB(1)``.
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
@@ -127,7 +129,7 @@ def recreate(file_path, **options):
     ).root_directory
 
 
-def update(file_path, **options):
+def update(file_path: str | IO, **options):
     """
     Args:
         file_path (str, ``pathlib.Path`` or file-like object): The filesystem path of the
@@ -219,7 +221,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         return f"<WritableFile {self.file_path!r} at 0x{id(self):012x}>"
 
     @property
-    def sink(self):
+    def sink(self) -> uproot.sink.file.FileSink:
         """
         Returns a :doc:`uproot.sink.file.FileSink`, the physical layer for writing
         (and sometimes reading) data.
@@ -227,7 +229,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         return self._sink
 
     @property
-    def initial_directory_bytes(self):
+    def initial_directory_bytes(self) -> int:
         """
         Number of bytes to allocate for new directories, so that TKeys can be added
         to them without immediately needing to rewrite the block.
@@ -262,14 +264,14 @@ class WritableFile(uproot.reading.CommonFileMethods):
         }
 
     @property
-    def is_64bit(self):
+    def is_64bit(self) -> bool:
         """
         True if the file has 8-byte pointers in its header; False if the pointers are 4-byte.
         """
         return self._cascading.fileheader.big
 
     @property
-    def compression(self):
+    def compression(self) -> uproot.compression.Compression | None:
         """
         Compression algorithm and level (:doc:`uproot.compression.Compression` or None)
         for new objects added to the file.
@@ -301,7 +303,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         return self._cascading.fileheader.free_location
 
     @property
-    def fNbytesFree(self):
+    def fNbytesFree(self) -> int:
         """
         The number of bytes in the ``TFree`` data, for managing empty spaces
         in a ROOT file (filesystem-like fragmentation).
@@ -309,7 +311,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         return self._cascading.fileheader.free_num_bytes
 
     @property
-    def nfree(self):
+    def nfree(self) -> int:
         """
         The number of objects in the ``TFree`` data, for managing empty spaces
         in a ROOT file (filesystem-like fragmentation).
@@ -317,7 +319,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         return self._cascading.fileheader.free_num_slices + 1
 
     @property
-    def fUnits(self):
+    def fUnits(self) -> int:
         """
         Number of bytes in the serialization of file seek points, which can either
         be 4 or 8.
@@ -349,7 +351,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         return self._cascading.fileheader.info_location
 
     @property
-    def fNbytesInfo(self):
+    def fNbytesInfo(self) -> int:
         """
         The number of bytes in the ``TStreamerInfo`` data, where
         TStreamerInfo records are located.
@@ -379,7 +381,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._cascading.streamers.update_streamers(self.sink, streamers)
 
     @property
-    def file_path(self):
+    def file_path(self) -> str | None:
         """
         Filesystem path of the open file, or None if using a file-like object.
         """
@@ -397,7 +399,7 @@ class WritableFile(uproot.reading.CommonFileMethods):
         self._sink.close()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the file has been closed; False otherwise.
 
@@ -563,7 +565,7 @@ class WritableDirectory(MutableMapping):
         self._file.close()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the file has been closed; False otherwise.
 
@@ -1644,7 +1646,7 @@ class WritableTree:
         return self._path
 
     @property
-    def object_path(self):
+    def object_path(self) -> str:
         """
         Path of directory names to this TTree as a single string, delimited by
         slashes.
@@ -1652,7 +1654,7 @@ class WritableTree:
         return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
-    def file_path(self):
+    def file_path(self) -> str | None:
         """
         Filesystem path of the open file, or None if using a file-like object.
         """
@@ -1678,7 +1680,7 @@ class WritableTree:
         self._file.close()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the file has been closed; False otherwise.
 
@@ -1780,14 +1782,14 @@ class WritableTree:
             )
 
     @property
-    def num_entries(self):
+    def num_entries(self) -> int:
         """
         The number of entries accumulated so far.
         """
         return self._cascading.num_entries
 
     @property
-    def num_baskets(self):
+    def num_baskets(self) -> int:
         """
         The number of TBaskets accumulated so far.
         """
@@ -1995,7 +1997,7 @@ class WritableNTuple:
         return "/".join(("", *self._path, "")).replace("//", "/")
 
     @property
-    def file_path(self):
+    def file_path(self) -> str | None:
         """
         Filesystem path of the open file, or None if using a file-like object.
         """
@@ -2021,7 +2023,7 @@ class WritableNTuple:
         self._file.close()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the file has been closed; False otherwise.
 
@@ -2112,7 +2114,7 @@ class WritableNTuple:
             )
 
     @property
-    def num_entries(self):
+    def num_entries(self) -> int:
         """
         The number of entries accumulated so far.
         """
