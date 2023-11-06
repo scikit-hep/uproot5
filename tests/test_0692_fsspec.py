@@ -145,7 +145,7 @@ def test_fsspec_chunks(server):
 
 def test_fsspec_writing_no_integration(tmp_path):
     uri = f"file://{tmp_path}/file.root"
-    with fsspec.open(uri, "wb") as file_obj:
+    with fsspec.open(uri, mode="wb") as file_obj:
         # write a simple root file
         with uproot.recreate(file_obj) as f:
             f["tree"] = {"x": np.array([1, 2, 3])}
