@@ -6,7 +6,8 @@ import uproot.source.fsspec
 
 import skhep_testdata
 import queue
-import subprocess
+import fsspec
+import numpy as np
 
 
 def test_open_fsspec_http(server):
@@ -140,3 +141,14 @@ def test_fsspec_chunks(server):
 
         chunk_data_sum = {sum(chunk.raw_data) for chunk in chunks}
         assert chunk_data_sum == {3967, 413, 10985}, "Chunk data does not match"
+
+
+def test_fsspec_writing_no_integration(tmp_path):
+    uri = f"file://{tmp_path}/file.root"
+    with fsspec.open(uri, "wb") as file_obj:
+        # write a simple root file
+        with uproot.recreate(file_obj) as f:
+            f["tree"] = {"x": np.array([1, 2, 3])}
+
+    with uproot.open(uri) as f:
+        assert f["tree"]["x"].array().tolist() == [1, 2, 3]
