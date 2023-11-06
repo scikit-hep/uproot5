@@ -9,9 +9,23 @@ context manager (Python's ``with`` statement) to ensure that files are properly 
 (although files are flushed after every object-write).
 """
 
+from __future__ import annotations
 
 import numbers
 import os
+
+
+def _is_file_like(obj) -> bool:
+    return (
+        callable(getattr(obj, "read", None))
+        and callable(getattr(obj, "write", None))
+        and callable(getattr(obj, "seek", None))
+        and callable(getattr(obj, "tell", None))
+        and callable(getattr(obj, "flush", None))
+        and (not hasattr(obj, "readable") or obj.readable())
+        and (not hasattr(obj, "writable") or obj.writable())
+        and (not hasattr(obj, "seekable") or obj.seekable())
+    )
 
 
 class FileSink:
@@ -38,16 +52,7 @@ class FileSink:
         as ``io.BytesIO``. The object must be readable, writable, and seekable
         with ``"r+b"`` mode semantics.
         """
-        if (
-            callable(getattr(obj, "read", None))
-            and callable(getattr(obj, "write", None))
-            and callable(getattr(obj, "seek", None))
-            and callable(getattr(obj, "tell", None))
-            and callable(getattr(obj, "flush", None))
-            and (not hasattr(obj, "readable") or obj.readable())
-            and (not hasattr(obj, "writable") or obj.writable())
-            and (not hasattr(obj, "seekable") or obj.seekable())
-        ):
+        if _is_file_like(obj):
             self = cls(None)
             self._file = obj
         else:
@@ -101,7 +106,7 @@ class FileSink:
         return self._file.flush()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """
         True if the file is closed; False otherwise.
         """
@@ -124,7 +129,7 @@ class FileSink:
         self.close()
 
     @property
-    def in_path(self):
+    def in_path(self) -> str:
         if self._file_path is None:
             return ""
         else:
