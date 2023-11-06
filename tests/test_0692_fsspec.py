@@ -152,3 +152,12 @@ def test_fsspec_writing_no_integration(tmp_path):
 
     with uproot.open(uri) as f:
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+
+def test_fsspec_writing_integration(tmp_path):
+    uri = f"file://{tmp_path}/file.root"
+    with uproot.recreate(uri) as f:
+        f["tree"] = {"x": np.array([1, 2, 3])}
+
+    with uproot.open(uri) as f:
+        assert f["tree"]["x"].array().tolist() == [1, 2, 3]
