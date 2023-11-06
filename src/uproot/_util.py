@@ -410,7 +410,7 @@ after the first `import uproot` or use `@pytest.mark.filterwarnings("error:::upr
         windows_absolute_path = file_path
 
     parsed_url = urlparse(file_path)
-    if parsed_url.scheme.upper() == "FILE":
+    if parsed_url.scheme.lower() == "file":
         parsed_url_path = unquote(parsed_url.path)
     else:
         parsed_url_path = parsed_url.path

@@ -26,6 +26,7 @@ import sys
 import uuid
 from collections.abc import Mapping, MutableMapping
 from typing import IO
+from urllib.parse import urlparse
 
 import uproot._util
 import uproot.compression
@@ -70,6 +71,38 @@ def create(file_path: str | IO, **options):
     return recreate(file_path, **options)
 
 
+def _sink_from_path(file_path_or_object: str | IO) -> uproot.sink.file.FileSink:
+    if not uproot._util.isstr(file_path_or_object):
+        # assume it's a file-like object
+        return uproot.sink.file.FileSink.from_object(file_path_or_object)
+
+    file_path = uproot._util.regularize_path(file_path_or_object)
+    path, obj = uproot._util.file_object_path_split(file_path)
+    if obj is not None:
+        raise ValueError(f"file path '{file_path}' cannot contain an object: {obj}")
+
+    parsed_url = urlparse(file_path)
+    scheme = parsed_url.scheme
+
+    if not scheme:
+        # no scheme, so it's a local file
+        return uproot.sink.file.FileSink(file_path)
+
+    # use fsspec to open the file
+    try:
+        # TODO: remove try/except block when fsspec becomes a dependency
+        import fsspec
+
+        file_object = fsspec.open(file_path_or_object, mode="wb")
+        return uproot.sink.file.FileSink.from_object(file_object)
+
+    except ImportError:
+        raise ImportError(
+            f"cannot open file path '{file_path}' with scheme '{scheme}' because "
+            "the fsspec package is not installed."
+        ) from None
+
+
 def recreate(file_path: str | IO, **options):
     """
     Args:
@@ -93,14 +126,7 @@ def recreate(file_path: str | IO, **options):
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
-    file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
-        # Truncate file
-        with open(file_path, "w"):
-            pass
-        sink = uproot.sink.file.FileSink(file_path)
-    else:
-        sink = uproot.sink.file.FileSink.from_object(file_path)
+    sink = _sink_from_path(file_path)
 
     compression = options.pop("compression", create.defaults["compression"])
 
@@ -149,11 +175,7 @@ def update(file_path: str | IO, **options):
 
     See :doc:`uproot.writing.writable.WritableFile` for details on these options.
     """
-    file_path = uproot._util.regularize_path(file_path)
-    if uproot._util.isstr(file_path):
-        sink = uproot.sink.file.FileSink(file_path)
-    else:
-        sink = uproot.sink.file.FileSink.from_object(file_path)
+    sink = _sink_from_path(file_path)
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
