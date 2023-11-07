@@ -73,7 +73,7 @@ def create(file_path: str | IO, **options):
 
 
 def _sink_from_path(
-    file_path_or_object: str | IO, **storage_options
+    file_path_or_object: str | IO, recreate: bool = False, **storage_options
 ) -> uproot.sink.file.FileSink:
     if not uproot._util.isstr(file_path_or_object):
         # assume it's a file-like object
@@ -89,10 +89,12 @@ def _sink_from_path(
 
     if not scheme:
         # no scheme, assume local file
-        # create an empty file if it doesn't exist
-        path = Path(file_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
+        if recreate:
+            path = Path(file_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            # truncate the file
+            with open(file_path, "wb"):
+                pass
         return uproot.sink.file.FileSink(file_path)
 
     # use fsspec to open the file
@@ -139,7 +141,7 @@ def recreate(file_path: str | IO, **options):
     storage_options = {
         key: value for key, value in options.items() if key not in recreate.defaults
     }
-    sink = _sink_from_path(file_path, **storage_options)
+    sink = _sink_from_path(file_path, recreate=True, **storage_options)
 
     compression = options.pop("compression", create.defaults["compression"])
 
@@ -192,7 +194,7 @@ def update(file_path: str | IO, **options):
     storage_options = {
         key: value for key, value in options.items() if key not in update.defaults
     }
-    sink = _sink_from_path(file_path, **storage_options)
+    sink = _sink_from_path(file_path, recreate=False, **storage_options)
 
     initial_directory_bytes = options.pop(
         "initial_directory_bytes", create.defaults["initial_directory_bytes"]
