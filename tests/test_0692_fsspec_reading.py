@@ -9,6 +9,7 @@ import uproot.source.fsspec
 import skhep_testdata
 import queue
 import fsspec
+import os
 
 
 def test_open_fsspec_http(server):
@@ -174,7 +175,7 @@ def test_fsspec_tar(tmp_path):
     with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
         contents = f.read()
 
-    filename_tar = f"{tmp_path}/uproot-issue121.root.tar"
+    filename_tar = os.path.join(tmp_path, filename + ".tar")
     with tarfile.open(filename_tar, mode="w") as tar:
         file_info = tarfile.TarInfo(name=filename)
         file_info.size = len(contents)
@@ -193,7 +194,7 @@ def test_fsspec_zip(tmp_path):
     with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
         contents = f.read()
 
-    filename_zip = f"{tmp_path}/uproot-issue121.root.zip"
+    filename_zip = os.path.join(tmp_path, filename + ".zip")
     with zipfile.ZipFile(filename_zip, mode="w") as zip_file:
         zip_file.writestr(filename, data=contents)
 
@@ -214,7 +215,7 @@ def test_fsspec_zip(tmp_path):
 def test_fsspec_writing_local_update(tmp_path, scheme):
     import numpy as np
 
-    uri = f"{scheme}{tmp_path}/file.root"
+    uri = scheme + os.path.join(tmp_path, "file.root")
     with uproot.recreate(uri) as f:
         f["tree1"] = {"x": np.array([1, 2, 3])}
 
