@@ -177,7 +177,7 @@ def test_fsspec_tar(tmp_path):
         tar.addfile(file_info, fileobj=io.BytesIO(contents))
 
     # open with fsspec
-    with uproot.open(f"tar://{filename_tar}") as f:
+    with uproot.open(f"tar://{filename}::file://{filename_tar}") as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
 
@@ -194,7 +194,7 @@ def test_fsspec_zip(tmp_path):
         zip_file.writestr(filename, data=contents)
 
     # open with fsspec
-    with uproot.open(f"zip://{filename_zip}") as f:
+    with uproot.open(f"zip://{filename}::file://{filename_zip}") as f:
         data = f["Events/MET_pt"].array(library="np")
         assert len(data) == 40
 
