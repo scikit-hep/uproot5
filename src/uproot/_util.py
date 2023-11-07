@@ -311,17 +311,26 @@ def file_object_path_split(path: str) -> tuple[str, str | None]:
     path: str = regularize_path(path)
     path = path.strip()
 
-    if "://" not in path:
-        # assume it's a local file path
+    def _split_path(path: str) -> list[str]:
         parts = path.split(":")
         if pathlib.PureWindowsPath(path).drive:
             # Windows absolute path
             assert len(parts) >= 2, f"could not split object from windows path {path}"
             parts = [parts[0] + ":" + parts[1]] + parts[2:]
+        return parts
+
+    if "://" not in path:
+        # assume it's a local file path
+        parts = _split_path(path)
     elif _uri_scheme.match(path):
         # if not a local path, attempt to match a URI scheme
         parsed_url = urlparse(path)
-        parts = parsed_url.path.split(":")
+        parsed_url_path = parsed_url.path
+        if parsed_url_path.startswith("//"):
+            # This can be a leftover from url chaining in fsspec
+            # TODO: replace this with str.removeprefix once Python 3.8 is dropped
+            parsed_url_path = parsed_url_path[2:]
+        parts = _split_path(parsed_url_path)
     else:
         # invalid scheme
         scheme = path.split("://")[0]
