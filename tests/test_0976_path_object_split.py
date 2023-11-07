@@ -98,6 +98,13 @@ import pathlib
                 None,
             ),
         ),
+        (
+            "zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip:Events/MET_pt",
+            (
+                "zip://uproot-issue121.root::file:///tmp/pytest-of-runner/pytest-0/test_fsspec_zip0/uproot-issue121.root.zip",
+                "Events/MET_pt",
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
