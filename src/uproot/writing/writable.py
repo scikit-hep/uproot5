@@ -99,7 +99,12 @@ def _sink_from_path(
         file_object = fsspec.open(
             file_path, mode="wb", **storage_options
         ).__enter__()  # the sink is responsible for closing this
-        return uproot.sink.file.FileSink.from_object(file_object)
+        try:
+            return uproot.sink.file.FileSink.from_object(file_object)
+        except Exception:
+            # an exception may be thrown if the file_object does not have the required interfaces
+            file_object.close()
+            raise
 
     except ImportError:
         raise ImportError(
