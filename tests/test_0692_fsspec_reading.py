@@ -199,8 +199,10 @@ def test_fsspec_zip(tmp_path):
         zip_file.writestr(filename, data=contents)
 
     # open with fsspec
-    with uproot.open(f"zip://{filename}::file://{filename_zip}") as f:
-        data = f["Events/MET_pt"].array(library="np")
+    with uproot.open(
+        f"zip://{filename}::file://{filename_zip}:Events/MET_pt"
+    ) as branch:
+        data = branch.array(library="np")
         assert len(data) == 40
 
 
