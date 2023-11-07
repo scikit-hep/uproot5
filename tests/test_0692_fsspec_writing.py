@@ -10,7 +10,7 @@ import numpy as np
 
 
 def test_fsspec_writing_no_integration(tmp_path):
-    uri = f"file://{tmp_path}/file.root"
+    uri = os.path.join(tmp_path, "some", "path", "file.root")
     with fsspec.open(uri, mode="wb") as file_obj:
         # write a simple root file
         with uproot.recreate(file_obj) as f:
@@ -22,7 +22,7 @@ def test_fsspec_writing_no_integration(tmp_path):
 
 @pytest.mark.parametrize("scheme", ["", "file://"])
 def test_fsspec_writing_local(tmp_path, scheme):
-    uri = f"{scheme}{tmp_path}/file.root"
+    uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.recreate(uri) as f:
         f["tree"] = {"x": np.array([1, 2, 3])}
 
@@ -38,7 +38,7 @@ def test_fsspec_writing_local(tmp_path, scheme):
     ],
 )
 def test_fsspec_writing_local_update(tmp_path, scheme):
-    uri = f"{scheme}{tmp_path}/some/path/file.root"
+    uri = scheme + os.path.join(tmp_path, "some", "path", "file.root")
     with uproot.recreate(uri) as f:
         f["tree1"] = {"x": np.array([1, 2, 3])}
 
