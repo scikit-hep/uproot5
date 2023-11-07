@@ -198,33 +198,9 @@ def test_fsspec_zip(tmp_path):
     with zipfile.ZipFile(filename_zip, mode="w") as zip_file:
         zip_file.writestr(filename, data=contents)
 
-    uri = f"zip://{filename}::file://{filename_zip}:Events/MET_pt"
-    pytest.skip("URI: " + uri)
     # open with fsspec
-    with uproot.open(uri) as branch:
+    with uproot.open(
+        f"zip://{filename}::file://{filename_zip}:Events/MET_pt"
+    ) as branch:
         data = branch.array(library="np")
         assert len(data) == 40
-
-
-# TODO: REMOVE THIS
-@pytest.mark.parametrize(
-    "scheme",
-    [
-        "",
-        # "file://",  # This fails because of the fsspec file-like object cannot be used for reading and writing at the same time
-    ],
-)
-def test_fsspec_writing_local_update(tmp_path, scheme):
-    import numpy as np
-
-    uri = scheme + os.path.join(tmp_path, "file.root")
-    with uproot.recreate(uri) as f:
-        f["tree1"] = {"x": np.array([1, 2, 3])}
-
-    with uproot.update(uri) as f:
-        f["tree2"] = {"y": np.array([4, 5, 6])}
-
-    # read data and compare
-    with uproot.open(uri) as f:
-        assert f["tree1"]["x"].array().tolist() == [1, 2, 3]
-        assert f["tree2"]["y"].array().tolist() == [4, 5, 6]
