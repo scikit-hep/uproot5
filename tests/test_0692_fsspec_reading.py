@@ -1,12 +1,15 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import pytest
+import requests
+
 import uproot
 import uproot.source.fsspec
 
 import skhep_testdata
 import queue
-import subprocess
+import fsspec
+import os
 
 
 def test_open_fsspec_http(server):
@@ -22,16 +25,18 @@ def test_open_fsspec_http(server):
 
 
 @pytest.mark.network
-@pytest.mark.skip(
-    reason="skipping due to GitHub API rate limitations - this should work fine - see https://github.com/scikit-hep/uproot5/pull/973 for details"
-)
 def test_open_fsspec_github():
-    with uproot.open(
-        "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root",
-        handler=uproot.source.fsspec.FSSpecSource,
-    ) as f:
-        data = f["Events/MET_pt"].array(library="np")
-        assert len(data) == 40
+    try:
+        with uproot.open(
+            "github://scikit-hep:scikit-hep-testdata@v0.4.33/src/skhep_testdata/data/uproot-issue121.root"
+        ) as f:
+            data = f["Events/MET_pt"].array(library="np")
+            assert len(data) == 40
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 403:
+            pytest.skip("GitHub API limit has been reached")
+        else:
+            raise e
 
 
 def test_open_fsspec_local():
@@ -140,3 +145,62 @@ def test_fsspec_chunks(server):
 
         chunk_data_sum = {sum(chunk.raw_data) for chunk in chunks}
         assert chunk_data_sum == {3967, 413, 10985}, "Chunk data does not match"
+
+
+def test_fsspec_memory():
+    # read the file into memory
+    with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
+        contents = f.read()
+
+    # create a memory filesystem
+    fs = fsspec.filesystem(protocol="memory")
+    fs.store.clear()
+    file_path = "skhep_testdata/uproot-issue121.root"
+    fs.touch(file_path)
+    # write contents into memory filesystem
+    with fs.open(file_path, "wb") as f:
+        f.write(contents)
+
+    # read from memory filesystem
+    with uproot.open(f"memory://{file_path}") as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
+def test_fsspec_tar(tmp_path):
+    import tarfile
+    import io
+
+    filename = "uproot-issue121.root"
+    with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
+        contents = f.read()
+
+    filename_tar = os.path.join(tmp_path, filename + ".tar")
+    with tarfile.open(filename_tar, mode="w") as tar:
+        file_info = tarfile.TarInfo(name=filename)
+        file_info.size = len(contents)
+        tar.addfile(file_info, fileobj=io.BytesIO(contents))
+
+    # open with fsspec
+    with uproot.open(f"tar://{filename}::file://{filename_tar}") as f:
+        data = f["Events/MET_pt"].array(library="np")
+        assert len(data) == 40
+
+
+def test_fsspec_zip(tmp_path):
+    import zipfile
+
+    filename = "uproot-issue121.root"
+    with open(skhep_testdata.data_path("uproot-issue121.root"), "rb") as f:
+        contents = f.read()
+
+    filename_zip = os.path.join(tmp_path, filename + ".zip")
+    with zipfile.ZipFile(filename_zip, mode="w") as zip_file:
+        zip_file.writestr(filename, data=contents)
+
+    # open with fsspec
+    with uproot.open(
+        f"zip://{filename}::file://{filename_zip}:Events/MET_pt"
+    ) as branch:
+        data = branch.array(library="np")
+        assert len(data) == 40
