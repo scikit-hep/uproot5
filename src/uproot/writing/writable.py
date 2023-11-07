@@ -25,6 +25,7 @@ import queue
 import sys
 import uuid
 from collections.abc import Mapping, MutableMapping
+from pathlib import Path
 from typing import IO
 from urllib.parse import urlparse
 
@@ -88,8 +89,10 @@ def _sink_from_path(
 
     if not scheme:
         # no scheme, assume local file
-        with open(file_path, "w"):
-            pass
+        # create an empty file if it doesn't exist
+        path = Path(file_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
         return uproot.sink.file.FileSink(file_path)
 
     # use fsspec to open the file
