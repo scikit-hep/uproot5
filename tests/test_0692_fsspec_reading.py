@@ -1,6 +1,8 @@
 # BSD 3-Clause License; see https://github.com/scikit-hep/uproot4/blob/main/LICENSE
 
 import pytest
+import requests
+
 import uproot
 import uproot.source.fsspec
 
@@ -29,9 +31,11 @@ def test_open_fsspec_github():
         ) as f:
             data = f["Events/MET_pt"].array(library="np")
             assert len(data) == 40
-    except NotImplementedError:
-        # TODO: replace with actual exception when api limit is hit
-        pytest.skip("github api limits")
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 403:
+            pytest.skip("GitHub API limit has been reached")
+        else:
+            raise e
 
 
 def test_open_fsspec_local():
