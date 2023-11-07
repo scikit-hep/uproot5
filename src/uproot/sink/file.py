@@ -22,9 +22,10 @@ def _is_file_like(obj) -> bool:
         and callable(getattr(obj, "seek", None))
         and callable(getattr(obj, "tell", None))
         and callable(getattr(obj, "flush", None))
-        and (not hasattr(obj, "readable") or obj.readable())
-        and (not hasattr(obj, "writable") or obj.writable())
-        and (not hasattr(obj, "seekable") or obj.seekable())
+        # TODO: what was the motivation behind the checks below? (need to remove them for some fsspec backends)
+        # and (not hasattr(obj, "readable") or obj.readable())
+        # and (not hasattr(obj, "writable") or obj.writable())
+        # and (not hasattr(obj, "seekable") or obj.seekable())
     )
 
 
