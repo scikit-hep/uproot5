@@ -96,15 +96,8 @@ def _sink_from_path(
         # TODO: remove try/except block when fsspec becomes a dependency
         import fsspec
 
-        file_object = fsspec.open(
-            file_path, mode="wb", **storage_options
-        ).__enter__()  # the sink is responsible for closing this
-        try:
-            return uproot.sink.file.FileSink.from_object(file_object)
-        except Exception:
-            # an exception may be thrown if the file_object does not have the required interfaces
-            file_object.close()
-            raise
+        open_file = fsspec.open(file_path, mode="wb", **storage_options)
+        return uproot.sink.file.FileSink.from_fsspec(open_file)
 
     except ImportError:
         raise ImportError(
@@ -141,10 +134,11 @@ def recreate(file_path: str | IO, **options):
         key: value for key, value in options.items() if key not in recreate.defaults
     }
     sink = _sink_from_path(file_path, **storage_options)
-    # crete parent directories and truncate the file
-    Path(sink.file_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(sink.file_path, "wb"):
-        pass
+    if sink.file_path:
+        # crete parent directories and truncate the file
+        Path(sink.file_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(sink.file_path, "wb"):
+            pass
 
     compression = options.pop("compression", create.defaults["compression"])
 
