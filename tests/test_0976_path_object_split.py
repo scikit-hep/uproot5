@@ -105,6 +105,13 @@ import pathlib
                 "Events/MET_pt",
             ),
         ),
+        (
+            r"zip://uproot-issue121.root::file://C:\Users\runneradmin\AppData\Local\Temp\pytest-of-runneradmin\pytest-0\test_fsspec_zip0\uproot-issue121.root.zip:Events/MET_pt",
+            (
+                r"zip://uproot-issue121.root::file://C:\Users\runneradmin\AppData\Local\Temp\pytest-of-runneradmin\pytest-0\test_fsspec_zip0\uproot-issue121.root.zip",
+                "Events/MET_pt",
+            ),
+        ),
     ],
 )
 def test_url_split(input_value, expected_output):
