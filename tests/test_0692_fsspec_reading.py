@@ -208,6 +208,8 @@ def test_fsspec_zip(tmp_path):
     ],
 )
 def test_fsspec_writing_local_update(tmp_path, scheme):
+    import numpy as np
+
     uri = f"{scheme}{tmp_path}/some/path/file.root"
     with uproot.recreate(uri) as f:
         f["tree1"] = {"x": np.array([1, 2, 3])}
