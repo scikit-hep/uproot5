@@ -7,8 +7,8 @@ import uproot.source.fsspec
 import skhep_testdata
 import queue
 import fsspec
-import os
 import requests
+import os
 
 
 def test_open_fsspec_http(server):
