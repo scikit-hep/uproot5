@@ -65,7 +65,7 @@ class FileSink:
             )
         return self
 
-    def __init__(self, file_path):
+    def __init__(self, file_path: str | None):
         self._file_path = file_path
         self._file = None
 
