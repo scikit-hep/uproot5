@@ -22,10 +22,9 @@ def _is_file_like(obj) -> bool:
         and callable(getattr(obj, "seek", None))
         and callable(getattr(obj, "tell", None))
         and callable(getattr(obj, "flush", None))
-        # TODO: what was the motivation behind the checks below? (need to remove them for some fsspec backends)
-        # and (not hasattr(obj, "readable") or obj.readable())
-        # and (not hasattr(obj, "writable") or obj.writable())
-        # and (not hasattr(obj, "seekable") or obj.seekable())
+        and (not hasattr(obj, "readable") or obj.readable())
+        and (not hasattr(obj, "writable") or obj.writable())
+        and (not hasattr(obj, "seekable") or obj.seekable())
     )
 
 
@@ -90,11 +89,13 @@ class FileSink:
     def _ensure(self):
         if self._file:
             return
+
         if self._fsspec_open_file:
+            assert (
+                self._fsspec_open_file.mode == "r+b"
+            ), "FileSink only supports r+b mode"
             self._file = self._fsspec_open_file.open()
         else:
-            if self._file_path is None:
-                raise TypeError("FileSink created from an object cannot be reopened")
             self._file = open(self._file_path, "r+b")
 
         self._file.seek(0)
