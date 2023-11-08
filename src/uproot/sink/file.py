@@ -21,7 +21,7 @@ class FileSink:
         file_path (str): The filesystem path of the file to open.
 
     An object that can write (and read) files on a local filesystem, which either opens
-    a new file from a ``file_path`` in ``"r+b"`` mode or wraps a file-like object
+    a new file from a ``file_path`` in ``"rb+"`` mode or wraps a file-like object
     with the :ref:`uproot.sink.file.FileSink.from_object` constructor.
 
     With the ``file_path``-based constructor, the file is opened upon first read or
@@ -37,7 +37,7 @@ class FileSink:
 
         Creates a :doc:`uproot.sink.file.FileSink` from a file-like object, such
         as ``io.BytesIO``. The object must be readable, writable, and seekable
-        with ``"r+b"`` mode semantics.
+        with ``"rb+"`` mode semantics.
         """
         if (
             callable(getattr(obj, "read", None))
@@ -88,11 +88,11 @@ class FileSink:
 
         if self._fsspec_open_file:
             assert (
-                self._fsspec_open_file.mode == "r+b"
-            ), "FileSink only supports r+b mode"
+                self._fsspec_open_file.mode == "rb+"
+            ), "FileSink only supports rb+ mode"
             self._file = self._fsspec_open_file.open()
         else:
-            self._file = open(self._file_path, "r+b")
+            self._file = open(self._file_path, "rb+")
 
         self._file.seek(0)
 

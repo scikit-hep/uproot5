@@ -105,7 +105,7 @@ def _sink_from_path(
         with fsspec.open(file_path, mode="wb", **storage_options):
             pass
 
-        open_file = fsspec.open(file_path, mode="r+b", **storage_options)
+        open_file = fsspec.open(file_path, mode="rb+", **storage_options)
         return uproot.sink.file.FileSink.from_fsspec(open_file)
 
     except ImportError:
