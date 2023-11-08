@@ -15,19 +15,6 @@ import numbers
 import os
 
 
-def _is_file_like(obj) -> bool:
-    return (
-        callable(getattr(obj, "read", None))
-        and callable(getattr(obj, "write", None))
-        and callable(getattr(obj, "seek", None))
-        and callable(getattr(obj, "tell", None))
-        and callable(getattr(obj, "flush", None))
-        and (not hasattr(obj, "readable") or obj.readable())
-        and (not hasattr(obj, "writable") or obj.writable())
-        and (not hasattr(obj, "seekable") or obj.seekable())
-    )
-
-
 class FileSink:
     """
     Args:
@@ -52,7 +39,16 @@ class FileSink:
         as ``io.BytesIO``. The object must be readable, writable, and seekable
         with ``"r+b"`` mode semantics.
         """
-        if _is_file_like(obj):
+        if (
+            callable(getattr(obj, "read", None))
+            and callable(getattr(obj, "write", None))
+            and callable(getattr(obj, "seek", None))
+            and callable(getattr(obj, "tell", None))
+            and callable(getattr(obj, "flush", None))
+            and (not hasattr(obj, "readable") or obj.readable())
+            and (not hasattr(obj, "writable") or obj.writable())
+            and (not hasattr(obj, "seekable") or obj.seekable())
+        ):
             self = cls(None)
             self._file = obj
         else:
@@ -180,7 +176,7 @@ class FileSink:
         if missing > 0:
             self._file.write(b"\x00" * missing)
 
-    def read(self, location, num_bytes, insist=True):
+    def read(self, location, num_bytes, insist=True) -> bytes:
         """
         Args:
             location (int): Position in the file to read.
