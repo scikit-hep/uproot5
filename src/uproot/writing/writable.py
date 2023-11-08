@@ -89,6 +89,11 @@ def _sink_from_path(
 
     if not scheme:
         # no scheme, assume local file
+        if not os.path.exists(file_path):
+            # truncate the file
+            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, mode="wb"):
+                pass
         return uproot.sink.file.FileSink(file_path)
 
     # use fsspec to open the file
@@ -96,7 +101,11 @@ def _sink_from_path(
         # TODO: remove try/except block when fsspec becomes a dependency
         import fsspec
 
-        open_file = fsspec.open(file_path, mode="wb", **storage_options)
+        # truncate the file
+        with fsspec.open(file_path, mode="wb", **storage_options):
+            pass
+
+        open_file = fsspec.open(file_path, mode="r+b", **storage_options)
         return uproot.sink.file.FileSink.from_fsspec(open_file)
 
     except ImportError:
@@ -134,11 +143,6 @@ def recreate(file_path: str | IO, **options):
         key: value for key, value in options.items() if key not in recreate.defaults
     }
     sink = _sink_from_path(file_path, **storage_options)
-    if sink.file_path:
-        # crete parent directories and truncate the file
-        Path(sink.file_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(sink.file_path, "wb"):
-            pass
 
     compression = options.pop("compression", create.defaults["compression"])
 
