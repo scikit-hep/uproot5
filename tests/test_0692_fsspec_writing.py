@@ -30,6 +30,18 @@ def test_fsspec_writing_local(tmp_path, scheme):
         assert f["tree"]["x"].array().tolist() == [1, 2, 3]
 
 
+def test_fsspec_writing_http(server):
+    uri = f"{server}/file.root"
+
+    with pytest.raises(NotImplementedError):
+        # TODO: review this when fsspec supports writing to http
+        with uproot.recreate(uri) as f:
+            f["tree"] = {"x": np.array([1, 2, 3])}
+
+        with uproot.open(uri) as f:
+            assert f["tree"]["x"].array().tolist() == [1, 2, 3]
+
+
 @pytest.mark.parametrize(
     "scheme",
     [
