@@ -12,6 +12,7 @@ pytest.importorskip("awkward")
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_00(is_forth):
+    # see AwkwardForth testing: L, P, R
     with uproot.open(skhep_testdata.data_path("issue367b.root")) as file:
         branch = file["tree/weights"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -27,6 +28,7 @@ def test_00(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_01(is_forth):
+    # see AwkwardForth testing: A, B, D, E, J, N
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
         branch = file["Delphes/GenJet/GenJet.SoftDroppedSubJet1"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -43,6 +45,7 @@ def test_01(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_02(is_forth):
+    # see AwkwardForth testing: A, B, D, E, J, N
     with uproot.open(skhep_testdata.data_path("uproot-delphes-pr442.root")) as file:
         branch = file["Delphes/GenJet/GenJet.TrimmedP4[5]"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -58,6 +61,7 @@ def test_02(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_03(is_forth):
+    # see AwkwardForth testing: L, P
     with uproot.open(skhep_testdata.data_path("uproot-FCCDelphesOutput.root")) as file:
         branch = file["metadata/gaudiConfigOptions"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -76,6 +80,7 @@ def test_03(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_04(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["POOLContainerForm/DataHeaderForm/m_uints"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -90,6 +95,7 @@ def test_04(is_forth):
 
 
 def test_05():
+    # see AwkwardForth testing: A, E
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/TrigConfKeys"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -99,6 +105,7 @@ def test_05():
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_06(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisJetsAuxDyn.NumTrkPt500"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -113,6 +120,7 @@ def test_06(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_07(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisJetsAuxDyn.SumPtTrkPt500"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -126,6 +134,7 @@ def test_07(is_forth):
 
 
 def test_08():
+    # see AwkwardForth testing: A, B, E, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisJetsAuxDyn.GhostTrack"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -136,6 +145,7 @@ def test_08():
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_09(is_forth):
+    # see AwkwardForth testing: A, B, E, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree"][
             "AntiKt10UFOCSSKJetsAuxDyn.GhostVR30Rmax4Rmin02TrackJet_BTagging201903"
@@ -152,6 +162,7 @@ def test_09(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_10(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/CaloCalTopoClustersAuxDyn.e_sampl"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -167,6 +178,7 @@ def test_10(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_11(is_forth):
+    # see AwkwardForth testing: A, B, E, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree"][
             "TruthBosonsWithDecayVerticesAuxDyn.incomingParticleLinks"
@@ -184,6 +196,7 @@ def test_11(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_12(is_forth):
+    # see AwkwardForth testing: A, B, E, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/TruthBottomAuxDyn.parentLinks"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -199,6 +212,7 @@ def test_12(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_13(is_forth):
+    # see AwkwardForth testing: A, B, E, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/egammaClustersAuxDyn.constituentClusterLinks"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -213,6 +227,7 @@ def test_13(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_14(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/egammaClustersAuxDyn.eta_sampl"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -228,6 +243,7 @@ def test_14(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_15(is_forth):
+    # see AwkwardForth testing: A, B, E, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisHLT_mu24_ilooseAuxDyn.TrigMatchedObjects"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -243,6 +259,7 @@ def test_15(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_16(is_forth):
+    # see AwkwardForth testing: A, B, E, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-123a.root")) as file:
         branch = file["CollectionTree/AnalysisHLT_mu40AuxDyn.TrigMatchedObjects"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -258,6 +275,7 @@ def test_16(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_17(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/AAObject/usr_names"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -273,6 +291,7 @@ def test_17(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_18(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.t"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -288,6 +307,7 @@ def test_18(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_19(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.a"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -303,6 +323,7 @@ def test_19(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_20(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.trig"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -318,6 +339,7 @@ def test_20(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_21(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.tot"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -333,6 +355,7 @@ def test_21(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_22(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/hits/hits.pos.x"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -348,6 +371,7 @@ def test_22(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_23(is_forth):
+    # see AwkwardForth testing: N, P
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/trks/trks.usr_names"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -363,6 +387,7 @@ def test_23(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_24(is_forth):
+    # see AwkwardForth testing: N, P
     with uproot.open(skhep_testdata.data_path("uproot-issue390.root")) as file:
         branch = file["E/Evt/trks/trks.rec_stages"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -378,6 +403,7 @@ def test_24(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_25(is_forth):
+    # see AwkwardForth testing: L, N
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
         branch = file["config/VERSION/VERSION._name"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -391,6 +417,7 @@ def test_25(is_forth):
 
 
 def test_26():
+    # see AwkwardForth testing: N, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
         branch = file["config/SEL/SEL._firstSteps"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -401,6 +428,7 @@ def test_26():
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_27(is_forth):
+    # see AwkwardForth testing: L, N, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
         branch = file["config/SEL/SEL._branchAlias"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -416,6 +444,7 @@ def test_27(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_28(is_forth):
+    # see AwkwardForth testing: N, P
     with uproot.open(skhep_testdata.data_path("uproot-issue-208.root")) as file:
         branch = file["config/SEL/SEL._nCutsInBranch"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -429,6 +458,7 @@ def test_28(is_forth):
 
 
 def test_29():
+    # see AwkwardForth testing: A, B, C, D, E, J, M
     with uproot.open(skhep_testdata.data_path("uproot-issue213.root")) as file:
         branch = file["T/eventPack/fGenInfo"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -439,6 +469,7 @@ def test_29():
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_30(is_forth):
+    # see AwkwardForth testing: L, N
     with uproot.open(skhep_testdata.data_path("uproot-issue243-new.root")) as file:
         branch = file["triggerList/triggerMap/triggerMap.first"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -453,6 +484,7 @@ def test_30(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_31(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue-308.root")) as file:
         branch = file["MetaData/BranchIDLists"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -467,6 +499,7 @@ def test_31(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_32(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue31.root")) as file:
         branch = file["T/data/name"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -482,6 +515,7 @@ def test_32(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_33(is_forth):
+    # see AwkwardForth testing: L, P, R
     with uproot.open(skhep_testdata.data_path("uproot-issue367b.root")) as file:
         branch = file["tree/weights"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -496,6 +530,7 @@ def test_33(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_34(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Header/Header./Header.geant4Version"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -510,6 +545,7 @@ def test_34(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_35(is_forth):
+    # see AwkwardForth testing: A, E, G, L, R
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -525,6 +561,7 @@ def test_35(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_36(is_forth):
+    # see AwkwardForth testing: L, P
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Model/Model./Model.samplerNamesUnique"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -540,6 +577,7 @@ def test_36(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_37(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Model/Model./Model.staPos"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -555,6 +593,7 @@ def test_37(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_38(is_forth):
+    # see AwkwardForth testing: A, B, D, G, L, P
     with uproot.open(skhep_testdata.data_path("uproot-issue371.root")) as file:
         branch = file["Event/PRBHF_46."]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -570,6 +609,7 @@ def test_38(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_39(is_forth):
+    # see AwkwardForth testing: A, E, G, L, R
     with uproot.open(skhep_testdata.data_path("uproot-issue399.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -585,6 +625,7 @@ def test_39(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_40(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue-407.root")) as file:
         branch = file["tree/branch"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -600,6 +641,7 @@ def test_40(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_41(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
         branch = file["Event/Trajectory./Trajectory.XYZ"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -615,6 +657,7 @@ def test_41(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_42(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
         branch = file["Event/Trajectory./Trajectory.energyDeposit"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -630,6 +673,7 @@ def test_42(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_43(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue468.root")) as file:
         branch = file["Event/Trajectory./Trajectory.ionA"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -645,6 +689,7 @@ def test_43(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_44(is_forth):
+    # see AwkwardForth testing: A, C, D, F, G, P
     with uproot.open(skhep_testdata.data_path("uproot-issue46.root")) as file:
         branch = file["tree/evt"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -658,6 +703,7 @@ def test_44(is_forth):
 
 
 def test_45():
+    # see AwkwardForth testing: A, B, E, G, J, L, M, P
     with uproot.open(skhep_testdata.data_path("uproot-issue485.root")) as file:
         branch = file["MCTrack/global"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -666,6 +712,7 @@ def test_45():
 
 
 def test_46():
+    # see AwkwardForth testing: A, B, E, J, M, P
     with uproot.open(skhep_testdata.data_path("uproot-issue485.root")) as file:
         branch = file["MCParticle/detector1"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -676,6 +723,7 @@ def test_46():
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_47(is_forth):
+    # see AwkwardForth testing: A, E, G, L, R
     with uproot.open(skhep_testdata.data_path("uproot-issue494.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.particles"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -689,6 +737,7 @@ def test_47(is_forth):
 
 
 def test_48():
+    # see AwkwardForth testing: R
     with uproot.open(skhep_testdata.data_path("uproot-issue494.root")) as file:
         branch = file["Geant4Data/Geant4Data./Geant4Data.ions"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -699,6 +748,7 @@ def test_48():
 
 
 def test_49():
+    # see AwkwardForth testing: A, B, E, J, M, P
     with uproot.open(skhep_testdata.data_path("uproot-issue498.root")) as file:
         branch = file["MCParticle/timepix"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -708,6 +758,7 @@ def test_49():
 
 
 def test_50():
+    # see AwkwardForth testing: A, B, E, G, J, M, P
     with uproot.open(skhep_testdata.data_path("uproot-issue498.root")) as file:
         branch = file["PixelHit/timepix"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -720,6 +771,7 @@ def test_50():
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_51(is_forth):
+    # see AwkwardForth testing: L, N
     with uproot.open(skhep_testdata.data_path("uproot-issue510b.root")) as file:
         branch = file["EDepSimEvents/Event/Primaries/Primaries.GeneratorName"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -734,6 +786,7 @@ def test_51(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_52(is_forth):
+    # see AwkwardForth testing: A, N
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
         branch = file["Delphes/EFlowPhoton/EFlowPhoton.Particles"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -749,6 +802,7 @@ def test_52(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_53(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
         branch = file["Delphes/Jet/Jet.SoftDroppedSubJet2"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -764,6 +818,7 @@ def test_53(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_54(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-issue513.root")) as file:
         branch = file["Delphes/Jet/Jet.TrimmedP4[5]"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -778,6 +833,7 @@ def test_54(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_55(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-issue519.root")) as file:
         branch = file["testtree/testbranch"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -793,6 +849,7 @@ def test_55(is_forth):
 @pytest.mark.skip(reason="AwkwardForth generation not implemented for this case.")
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_56(is_forth):
+    # see AwkwardForth testing: A, C, D, E, F, G, J, L, P
     with uproot.open(
         skhep_testdata.data_path("uproot-small-evnt-tree-nosplit.root")
     ) as file:
@@ -809,6 +866,7 @@ def test_56(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_57(is_forth):
+    # see AwkwardForth testing: L, P
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -823,6 +881,7 @@ def test_57(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_58(is_forth):
+    # see AwkwardForth testing: L, P
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_tstring"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -837,6 +896,7 @@ def test_58(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_59(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_vector_int32"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -851,6 +911,7 @@ def test_59(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_60(is_forth):
+    # see AwkwardForth testing: L, P
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_vector_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -865,6 +926,7 @@ def test_60(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_61(is_forth):
+    # see AwkwardForth testing: L, P
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_vector_tstring"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -879,6 +941,7 @@ def test_61(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_62(is_forth):
+    # see AwkwardForth testing: P, Q
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_set_int32"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -893,6 +956,7 @@ def test_62(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_63(is_forth):
+    # see AwkwardForth testing: L, P, Q
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/vector_set_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -907,6 +971,7 @@ def test_63(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_64(is_forth):
+    # see AwkwardForth testing: Q
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/set_int32"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -921,6 +986,7 @@ def test_64(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_65(is_forth):
+    # see AwkwardForth testing: L, Q
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/set_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -935,6 +1001,7 @@ def test_65(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_66(is_forth):
+    # see AwkwardForth testing: R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -949,6 +1016,7 @@ def test_66(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_67(is_forth):
+    # see AwkwardForth testing: P, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -963,6 +1031,7 @@ def test_67(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_68(is_forth):
+    # see AwkwardForth testing: L, P, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -977,6 +1046,7 @@ def test_68(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_69(is_forth):
+    # see AwkwardForth testing: Q, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_set_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -991,6 +1061,7 @@ def test_69(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_70(is_forth):
+    # see AwkwardForth testing: L, Q, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_set_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1005,6 +1076,7 @@ def test_70(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_71(is_forth):
+    # see AwkwardForth testing: L, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1019,6 +1091,7 @@ def test_71(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_72(is_forth):
+    # see AwkwardForth testing: L, P, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_vector_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1033,6 +1106,7 @@ def test_72(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_73(is_forth):
+    # see AwkwardForth testing: L, P, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_vector_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1047,6 +1121,7 @@ def test_73(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_74(is_forth):
+    # see AwkwardForth testing: L, Q, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_set_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1061,6 +1136,7 @@ def test_74(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_75(is_forth):
+    # see AwkwardForth testing: L, Q, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_set_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1075,6 +1151,7 @@ def test_75(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_76(is_forth):
+    # see AwkwardForth testing: P, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_vector_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1089,6 +1166,7 @@ def test_76(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_77(is_forth):
+    # see AwkwardForth testing: P, Q, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_int32_vector_set_int16"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1103,6 +1181,7 @@ def test_77(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_78(is_forth):
+    # see AwkwardForth testing: L, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_string"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1117,6 +1196,7 @@ def test_78(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_79(is_forth):
+    # see AwkwardForth testing: L, R
     with uproot.open(skhep_testdata.data_path("uproot-stl_containers.root")) as file:
         branch = file["tree/map_string_tstring"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
@@ -1131,6 +1211,7 @@ def test_79(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_80(is_forth):
+    # see AwkwardForth testing: P
     with uproot.open(
         skhep_testdata.data_path("uproot-vectorVectorDouble.root")
     ) as file:
@@ -1152,6 +1233,7 @@ def test_80(is_forth):
 
 @pytest.mark.parametrize("is_forth", [False, True])
 def test_81(is_forth):
+    # see AwkwardForth testing: (none?)
     with uproot.open(skhep_testdata.data_path("uproot-HZZ-objects.root")) as file:
         branch = file["events/MET"]
         interp = uproot.interpretation.identify.interpretation_of(branch, {}, False)
