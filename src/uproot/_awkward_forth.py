@@ -268,8 +268,33 @@ class Node:
             return self._form_details
 
         elif self._form_details.get("class") == "ListOffsetArray":
-            assert len(self._children) == 1
             out = dict(self._form_details)
+
+            if (
+                self._form_details.get("parameters", {}).get("__array__")
+                in ("string", "bytestring")
+                and self._form_details.get("content", {}).get("class") == "NumpyArray"
+            ):
+                return out
+
+            elif len(self._children) == 0:
+                out["content"] = "NULL"
+                return out
+
+            elif (
+                len(self._children) == 2
+                and self._form_details.get("content", {}).get("class") == "RecordArray"
+                and self._form_details["content"].get("parameters", {}).get("__array__")
+                == "sorted_map"
+            ):
+                out["content"] = dict(out["content"])
+                out["content"]["fields"] = None
+                out["content"]["contents"] = []
+                for child in self._children:
+                    out["content"]["contents"].append(child.derive_form())
+                return out
+
+            assert len(self._children) == 1
             out["content"] = self._children[0].derive_form()
             return out
 
@@ -306,6 +331,7 @@ class Node:
             return self._children[0].derive_form()
 
         else:
+            # print(json.dumps(self.get_dict(), indent=4))
             return "NULL"
 
 

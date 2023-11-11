@@ -54,7 +54,9 @@ def _read_nested(
         symbol = uproot._awkward_forth.symbol_dict.get(model)
 
         if forth_stash is not None and symbol is None:
-            raise TypeError("Cannot be awkward")  # FIXME: use CannotBeAwkward exception type
+            raise TypeError(
+                "Cannot be awkward"
+            )  # FIXME: use CannotBeAwkward exception type
 
         if forth_stash is not None:
             forth_obj = context["forth"].gen
@@ -67,7 +69,7 @@ def _read_nested(
                     "class": "NumpyArray",
                     "primitive": uproot._awkward_forth.convert_dtype(symbol),
                     "form_key": f"node{key}",
-                }
+                },
             )
 
             forth_stash.add_to_header(
@@ -457,12 +459,28 @@ class AsString(AsContainer):
         # AwkwardForth testing L: test_0637's 00,03,25,27,30,33,35,36,38,39,45,47,51,56,57,58,60,61,63,65,68,70,71,72,73,74,75,78,79
         forth_stash = uproot._awkward_forth.forth_stash(context)
         if forth_stash is not None:
-            # raise NotImplementedError
             forth_obj = context["forth"].gen
             offsets_num = forth_obj.get_key_number()
             forth_obj.increment_key_number()
             data_num = forth_obj.get_key_number()
             forth_obj.increment_key_number()
+
+            forth_stash = uproot._awkward_forth.Node(
+                f"node{offsets_num}",
+                form_details={
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "content": {
+                        "class": "NumpyArray",
+                        "primitive": "uint8",
+                        "inner_shape": [],
+                        "parameters": {"__array__": "char"},
+                        "form_key": f"node{data_num}",
+                    },
+                    "parameters": {"__array__": "string"},
+                    "form_key": f"node{offsets_num}",
+                },
+            )
 
         if self._header and header:
             start_cursor = cursor.copy()
@@ -508,21 +526,10 @@ class AsString(AsContainer):
                 f"output node{offsets_num}-offsets int64\noutput node{data_num}-data uint8\n"
             )
             forth_stash.add_to_init(f"0 node{offsets_num}-offsets <- stack\n")
-            forth_stash.set_node(f"node{offsets_num}", "i64")
-            temp_aform = f'{{"class": "ListOffsetArray", "offsets": "i64", "content": {{"class": "NumpyArray", "primitive": "uint8", "inner_shape": [], "parameters": {{"__array__": "char"}}, "form_key": "node{data_num}"}}, "parameters": {{"__array__": "string"}}, "form_key": "node{offsets_num}"}}'
-            forth_obj.add_form(
-                json.loads(temp_aform),
-                forth_obj.discovered_form,
-                forth_obj.previous_model.name,
-            )
-            forth_obj.add_node_to_model(
-                forth_stash.node, forth_obj.awkward_model, forth_obj.previous_model.name
-            )
-            for elem in [
-                f"node{data_num}-data",
-                f"node{offsets_num}-offsets",
-            ]:
-                forth_obj.append_form_key(elem)
+            forth_obj.add_node_to_model(forth_stash)
+            forth_obj.append_form_key(f"node{data_num}-data")
+            forth_obj.append_form_key(f"node{offsets_num}-offsets")
+
         return out
 
     def __eq__(self, other):
@@ -1043,7 +1050,7 @@ class AsVector(AsContainer):
                     "offsets": "i64",
                     "parameters": {},
                     "form_key": node_key,
-                }
+                },
             )
 
         if self._header and header:
@@ -1403,6 +1410,20 @@ class AsMap(AsContainer):
         forth_stash = uproot._awkward_forth.forth_stash(context)
         if forth_stash is not None:
             forth_obj = context["forth"].gen
+            key = forth_obj.get_key_number()
+            forth_stash = uproot._awkward_forth.Node(
+                f"node{key}",
+                form_details={
+                    "class": "ListOffsetArray",
+                    "offsets": "i64",
+                    "content": {
+                        "class": "RecordArray",
+                        "parameters": {"__array__": "sorted_map"},
+                    },
+                    "form_key": f"node{key}",
+                },
+            )
+
         if self._header and header:
             start_cursor = cursor.copy()
             (
@@ -1420,32 +1441,20 @@ class AsMap(AsContainer):
                     forth_stash.add_to_pre(
                         f"{cursor._index-start_cursor._index} stream skip\n"
                     )
+
             length = cursor.field(chunk, _stl_container_size, context)
             if forth_stash is not None:
-                key = forth_obj.get_key_number()
                 forth_obj.increment_key_number()
-                keys_key = key + 1
-                form_key = f"node{key}-offsets"
-                aform = {
-                    "class": "ListOffsetArray",
-                    "offsets": "i64",
-                    "content": {
-                        "class": "RecordArray",
-                        "contents": [],
-                        "parameters": {"__array__": "sorted_map"},
-                    },
-                    "form_key": f"node{key}",
-                }
-                forth_obj.add_form(
-                    aform,
-                    forth_obj.discovered_form,
-                    forth_obj.previous_model.name,
-                )
-                forth_obj.append_form_key(form_key)
-                forth_stash.add_to_header(f"output {form_key} int64\n")
-                forth_stash.add_to_init(f"0 {form_key} <- stack\n")
+                forth_obj.get_key_number()
+                forth_obj.increment_key_number()
+                forth_obj.get_key_number()
+                forth_obj.increment_key_number()
+
+                forth_obj.append_form_key(f"node{key}-offsets")
+                forth_stash.add_to_header(f"output node{key}-offsets int64\n")
+                forth_stash.add_to_init(f"0 node{key}-offsets <- stack\n")
                 forth_stash.add_to_pre(
-                    f"stream !I-> stack\n dup {form_key} +<- stack\n"
+                    f"stream !I-> stack\n dup node{key}-offsets +<- stack\n"
                 )
             if _has_nested_header(self._keys) and header:
                 cursor.skip(6)
@@ -1456,13 +1465,8 @@ class AsMap(AsContainer):
                     forth_stash.add_to_pre("dup 0 do\n")
                 else:
                     forth_stash.add_to_pre("dup\n")
-                forth_stash.set_node(f"node{key}", "i64")
-                forth_obj.add_node_to_model(
-                    forth_stash.node,
-                    forth_obj.awkward_model,
-                    forth_obj.previous_model.name,
-                )
-                forth_obj.update_previous_model(forth_stash.node)
+                forth_obj.add_node_to_model(forth_stash)
+                forth_obj.update_previous_model(forth_stash)
 
             keys = _read_nested(
                 self._keys,
@@ -1475,26 +1479,23 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-            if forth_stash is not None and not isinstance(self._keys, numpy.dtype):
-                forth_obj.append_code(
-                    forth_obj.awkward_model, f"node{keys_key}", "loop\n", "post"
-                )
+            if (
+                forth_stash is not None
+                and not isinstance(self._keys, numpy.dtype)
+                and len(forth_stash.children) > 0
+            ):
+                forth_stash.children[0].add_to_post("loop\n")
             if _has_nested_header(self._values) and header:
                 cursor.skip(6)
-                if forth_stash is not None:
-                    forth_obj.append_code(
-                        forth_obj.awkward_model,
-                        f"node{keys_key}",
-                        "6 stream skip\n",
-                        "post",
-                    )
-            if forth_stash is not None and not isinstance(self._values, numpy.dtype):
-                forth_obj.append_code(
-                    forth_obj.awkward_model, f"node{keys_key}", "0 do\n", "post"
-                )
+                if forth_stash is not None and len(forth_stash.children) > 0:
+                    forth_stash.children[0].add_to_post("6 stream skip\n")
+            if (
+                forth_stash is not None
+                and not isinstance(self._values, numpy.dtype)
+                and len(forth_stash.children) > 0
+            ):
+                forth_stash.children[0].add_to_post("0 do\n")
 
-            if forth_stash is not None:
-                values_key = forth_obj.get_key_number()
             values = _read_nested(
                 self._values,
                 length,
@@ -1506,10 +1507,12 @@ class AsMap(AsContainer):
                 parent,
                 header=False,
             )
-            if forth_stash is not None and not isinstance(self._values, numpy.dtype):
-                forth_obj.append_code(
-                    forth_obj.awkward_model, f"node{values_key}", "loop\n", "post"
-                )
+            if (
+                forth_stash is not None
+                and not isinstance(self._values, numpy.dtype)
+                and len(forth_stash.children) > 1
+            ):
+                forth_stash.children[1].add_to_post("loop\n")
 
             out = STLMap(keys, values)
 

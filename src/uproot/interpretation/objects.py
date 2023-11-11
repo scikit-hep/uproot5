@@ -19,8 +19,8 @@ while an array is being built from ``TBaskets``. Its final form is determined
 by the :doc:`uproot.interpretation.library.Library`.
 """
 
-import json
 import contextlib
+import json
 import threading
 
 import numpy
@@ -305,9 +305,13 @@ class AsObjects(uproot.interpretation.Interpretation):
 
     def _debug_forth(self, forth_obj):
         self._assemble_forth(forth_obj, forth_obj.awkward_model.children[0])
-        expected_form = self._model.awkward_form(self._branch.file, {"index_format": "i64", "breadcrumbs": (), "header": False})
+        expected_form = self._model.awkward_form(
+            self._branch.file,
+            {"index_format": "i64", "breadcrumbs": (), "header": False},
+        )
 
-        raise Exception(f"""EXPECTED FORM:
+        raise Exception(
+            f"""EXPECTED FORM:
 {expected_form}
 
 DISCOVERED FORM:
@@ -324,7 +328,8 @@ input stream
     stream seek
     {"".join(forth_obj.final_code)}
     loop
-    """)
+    """
+        )
 
     def _discover_forth(self, data, byte_offsets, branch, context, cursor_offset):
         output = numpy.empty(len(byte_offsets) - 1, dtype=numpy.dtype(object))
@@ -351,6 +356,7 @@ input stream
                 branch,
             )
 
+            # print(json.dumps(context["forth"].gen.awkward_model.get_dict(), indent=4))
             # context["forth"].gen._debug_forth()
 
             derived_form = context["forth"].gen.awkward_model.derive_form()
